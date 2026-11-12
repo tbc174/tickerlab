@@ -23,7 +23,7 @@ chave = rotas.chave
 cliente = rotas.cliente
 ROTA = "/api/v1/analista/ficha/vinculos"
 ALFA = vinculos_de_mentira.ALFA
-TABELAS = ("ligacoes", "entidades", "identificadores", "cnpj_empresas_historico")
+TABELAS = ("ligacoes", "entidades", "identificadores", "cnpj_empresas_pj")
 
 
 def _mudar_plano(banco, plano: str) -> None:

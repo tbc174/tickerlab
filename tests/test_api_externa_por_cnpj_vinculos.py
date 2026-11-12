@@ -4,9 +4,11 @@ Base de mentira, sem internet; os CNPJs são de ninguém. A ALFA é controlada d
 controla a NETA, que controla a BISNETA), tem uma coligada e é auditada por uma firma. Uma controlada só ficou
 pública depois do dia; uma acabou e se soube antes do dia; outra acabou, mas só se soube depois. Há também o
 que nunca sai: a controlada que a rede trata como pessoa, o sócio pessoa física, o fundo que detém o papel e a
-série do regulador. O nome de cada ponta vem do histórico datado da Receita: a ALFA mudou de nome depois do
-dia, a COLIGADA não tem retrato e a VENDIDA_DEPOIS saiu do arquivo antes do dia. Riscos: olhar o futuro (também
-no nome, que a rede guarda só como é hoje), vazar pessoa e servir ligação ou nome de fonte sem direito.
+série do regulador. O nome de cada ponta vem do retrato mensal da lista sem pessoa da Receita
+(`cnpj_empresas_pj`, linha 867), o mais novo já público no dia, com o mês dele: a ALFA mudou de nome depois do
+dia, a COLIGADA não está na lista e a VENDIDA_DEPOIS saiu dela antes do dia. O histórico datado (com pessoa) não é
+lido. Riscos: olhar o futuro (também no nome, que a rede guarda só como é hoje), vazar pessoa e servir ligação ou
+nome de fonte sem direito.
 """
 
 from datetime import date
@@ -48,22 +50,38 @@ ALFA = _cnpj("11111111")
 PESSOA = _cnpj("33333333")
 FORA_DA_REDE = _cnpj("44444444")
 
-# o histórico datado da razão social (cnpj_empresas_historico): (raiz, mês do retrato, disponível em, consta,
-# natureza, razão social). O nome da rede (ENTIDADES) é o de hoje e nunca sai.
+# a lista sem pessoa da Receita (`cnpj_empresas_pj`), um retrato inteiro por mês: (raiz, mês do retrato,
+# disponível em, natureza, razão social). O nome da rede (ENTIDADES) é o de hoje e nunca sai.
+_PERMANENTES = [
+    ("22222222", "2046", "MAE PARTICIPACOES S.A."),
+    ("55555555", "2062", "FILHA LTDA"),
+    ("56565656", "2062", "NETA LTDA"),
+    ("57575757", "2062", "BISNETA LTDA"),
+    ("67676767", "2062", "FUTURA LTDA"),
+    ("68686868", "2062", "VENDIDA LTDA"),
+    ("99999999", "2240", "AUDITORA UM"),
+]
 NOMES = [
-    ("11111111", "2023-05", "2023-05-21", True, "2046", "ALFA LTDA"),
-    ("11111111", "2025-07", "2025-07-21", True, "2046", "ALFA HOLDING S.A."),
-    ("22222222", "2023-05", "2023-05-21", True, "2046", "MAE PARTICIPACOES S.A."),
-    ("55555555", "2023-05", "2023-05-21", True, "2062", "FILHA LTDA"),
-    ("56565656", "2023-05", "2023-05-21", True, "2062", "NETA LTDA"),
-    ("57575757", "2023-05", "2023-05-21", True, "2062", "BISNETA LTDA"),
-    ("67676767", "2023-05", "2023-05-21", True, "2062", "FUTURA LTDA"),
-    ("68686868", "2023-05", "2023-05-21", True, "2062", "VENDIDA LTDA"),
-    ("69696969", "2023-05", "2023-05-21", True, "2062", "VENDIDA DEPOIS LTDA"),
-    ("69696969", "2025-03", "2025-03-21", False, None, None),
-    ("99999999", "2023-05", "2023-05-21", True, "2240", "AUDITORA UM"),
-    ("12121212", "2023-05", "2023-05-21", True, "2135", None),
-]  # fmt: skip
+    *[
+        (raiz, "2023-05", "2023-05-21", natureza, nome)
+        for raiz, natureza, nome in _PERMANENTES
+    ],
+    ("11111111", "2023-05", "2023-05-21", "2046", "ALFA LTDA"),
+    ("69696969", "2023-05", "2023-05-21", "2062", "VENDIDA DEPOIS LTDA"),
+    # 2025-03: a VENDIDA_DEPOIS saiu da lista
+    *[
+        (raiz, "2025-03", "2025-03-21", natureza, nome)
+        for raiz, natureza, nome in _PERMANENTES
+    ],
+    ("11111111", "2025-03", "2025-03-21", "2046", "ALFA LTDA"),
+    # 2025-07 (depois do dia): a ALFA mudou de nome
+    *[
+        (raiz, "2025-07", "2025-07-21", natureza, nome)
+        for raiz, natureza, nome in _PERMANENTES
+    ],
+    ("11111111", "2025-07", "2025-07-21", "2046", "ALFA HOLDING S.A."),
+]
+RETRATO_NO_DIA = "2025-03"
 
 # (de, para, tipo, participação, aconteceu em, público em, até, fim público em, fonte)
 LIGACOES = [
@@ -94,15 +112,16 @@ def _gravar(pasta, caminho: str, tabela: pd.DataFrame) -> None:
 def _gravar_nomes(base, nomes: list[tuple]) -> None:
     tabela = pd.DataFrame(
         nomes,
-        columns=["cnpj_basico", "mes_do_retrato", "disponivel_em", "consta", "natureza_juridica", "razao_social"],
+        columns=["cnpj_basico", "mes_do_retrato", "disponivel_em", "natureza_juridica", "razao_social"],
     )  # fmt: skip
     tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
     tabela = tabela.assign(
+        porte="05",
         origem_sha256="0" * 64,
         montado_em=pd.Timestamp("2026-11-05", tz="UTC"),
         versao_do_codigo="teste",
     )
-    _gravar(base, "cnpj_empresas_historico/1.parquet", tabela)
+    _gravar(base, "cnpj_empresas_pj/11.parquet", tabela)
 
 
 def gravar_base(
@@ -216,7 +235,13 @@ def test_cada_campo_sai_no_envelope_com_a_fonte_e_o_dia_publico(pasta):
             "razao_social": {
                 "valor": "ALFA LTDA",
                 "fonte": RECEITA,
-                "publico_em": "2023-05-31",  # o retrato é mensal: vale pelo último dia do mês
+                "publico_em": "2025-03-31",  # o retrato é mensal: vale pelo último dia do mês
+                "visto_em": None,
+            },
+            "mes_do_retrato_do_cadastro": {
+                "valor": RETRATO_NO_DIA,
+                "fonte": RECEITA,
+                "publico_em": "2025-03-31",
                 "visto_em": None,
             },
         }
@@ -239,7 +264,7 @@ def test_o_auditor_sai_pelo_fca_sem_participacao(pasta):
     auditoria = _ler(pasta).corpo["vinculos"][-1]
     assert auditoria["tipo"]["valor"] == "audits"
     assert auditoria["de"]["razao_social"] == {
-        "valor": "AUDITORA UM", "fonte": RECEITA, "publico_em": "2023-05-31", "visto_em": None,
+        "valor": "AUDITORA UM", "fonte": RECEITA, "publico_em": "2025-03-31", "visto_em": None,
     }  # fmt: skip
     assert "participacao_no_capital" not in auditoria
     assert auditoria["tipo"]["fonte"] == FCA
@@ -249,7 +274,7 @@ def test_ponta_sem_retrato_da_receita_sai_sem_nome(pasta):
     coligada = next(
         v for v in _ler(pasta).corpo["vinculos"] if v["tipo"]["valor"] == "affiliate_of"
     )
-    # a rede sabe um nome (do GLEIF), mas ele é o de hoje e de fonte que não sai: só o da Receita no dia sai
+    # a rede sabe um nome (do GLEIF), mas ele é o de hoje e de fonte que não sai: só o da lista da Receita sai
     assert coligada["de"] == {"id_na_rede": "ECOLIGADA", "raiz_do_cnpj": "66666666"}
     assert coligada["participacao_no_capital"]["valor"] == 30.0
 
@@ -262,8 +287,9 @@ def _nome(servido, id_na_rede: str) -> object:
     raise AssertionError(f"{id_na_rede} não está nos vínculos")
 
 
-def test_o_nome_da_ponta_e_o_que_valia_no_dia_nao_o_de_hoje(pasta):
-    # a ALFA virou ALFA HOLDING em 07/2025: no dia ela ainda era ALFA LTDA (o nome da rede, ALFA S.A., é o de hoje)
+def test_o_nome_da_ponta_e_o_do_retrato_publico_no_dia_nao_o_de_hoje(pasta):
+    # a ALFA virou ALFA HOLDING no retrato de 07/2025: no dia, o retrato público era o de 03/2025 (o nome da rede,
+    # ALFA S.A., é o de hoje)
     assert _nome(_ler(pasta), "EALFA") == "ALFA LTDA"
     assert _nome(_ler(pasta, dia=date(2025, 7, 31)), "EALFA") == "ALFA HOLDING S.A."
 
@@ -278,8 +304,9 @@ def test_antes_do_primeiro_retrato_a_ponta_sai_sem_nome(pasta):
     assert RECEITA not in servido.fontes
 
 
-def test_a_raiz_que_saiu_do_arquivo_sai_sem_nome(pasta):
-    # a VENDIDA_DEPOIS não consta do retrato de 03/2025 (o último antes do dia)
+def test_a_raiz_fora_do_retrato_mais_novo_sai_sem_nome(pasta):
+    # a VENDIDA_DEPOIS não consta do retrato de 03/2025 (o mais novo já público no dia): o nome do retrato de
+    # 05/2023 não vale mais (P2 da revisão cruzada do #1075)
     assert _nome(_ler(pasta), "EVENDIDA_DEPOIS") is None
     assert (
         _nome(_ler(pasta, dia=date(2025, 3, 1)), "EVENDIDA_DEPOIS")
@@ -288,23 +315,75 @@ def test_a_raiz_que_saiu_do_arquivo_sai_sem_nome(pasta):
 
 
 def test_a_ponta_que_era_empresario_individual_sai_sem_nome_no_periodo(tmp_path):
-    # a MAE era empresário individual (razão social vazia, ADR 0106) até virar S.A. depois do dia
+    # a MAE era empresário individual (natureza 2135, ADR 0106) até virar S.A. no retrato de 07/2025
     nomes = [linha for linha in NOMES if linha[0] != "22222222"] + [
-        ("22222222", "2023-05", "2023-05-21", True, "2135", None),
-        ("22222222", "2025-07", "2025-07-21", True, "2046", "MAE PARTICIPACOES S.A."),
+        ("22222222", "2025-03", "2025-03-21", "2135", "MAE PARTICIPACOES S.A."),
+        ("22222222", "2025-07", "2025-07-21", "2046", "MAE PARTICIPACOES S.A."),
     ]
     pasta = gravar_base(tmp_path / "base", nomes=nomes)
     assert _nome(_ler(pasta), "EMAE") is None
     assert _nome(_ler(pasta, dia=date(2025, 7, 31)), "EMAE") == "MAE PARTICIPACOES S.A."
 
 
-def test_sem_o_historico_da_receita_as_pontas_saem_sem_nome(pasta):
-    for arquivo in (pasta / "cnpj_empresas_historico").glob("*.parquet"):
+@pytest.mark.parametrize(
+    "linhas_da_mae",
+    [
+        [("22222222", "2025-03", "2025-03-21", "2046", "MAE PARTICIPACOES S.A.")]
+        * 2,  # raiz repetida
+        [
+            ("22222222", "2025-03", "2025-03-21", None, "MAE PARTICIPACOES S.A.")
+        ],  # natureza vazia
+        [("22222222", "2025-03", "2025-03-21", " ", "MAE PARTICIPACOES S.A.")],
+        [("22222222", "2025-03", "2025-03-21", "2046", None)],  # sem nome
+        [("22222222", "2025-03", "2025-03-21", "2046", "  ")],
+    ],
+)
+def test_retrato_em_duvida_nao_da_nome(tmp_path, linhas_da_mae):
+    nomes = [
+        linha for linha in NOMES if linha[:2] != ("22222222", "2025-03")
+    ] + linhas_da_mae
+    pasta = gravar_base(tmp_path / "base", nomes=nomes)
+    assert _nome(_ler(pasta), "EMAE") is None
+    assert _nome(_ler(pasta), "EALFA") == "ALFA LTDA"
+
+
+def test_sem_a_lista_da_receita_as_pontas_saem_sem_nome(pasta):
+    for arquivo in (pasta / "cnpj_empresas_pj").glob("*.parquet"):
         arquivo.unlink()
-    (pasta / "cnpj_empresas_historico").rmdir()
+    (pasta / "cnpj_empresas_pj").rmdir()
     servido = _ler(pasta)
     assert len(servido.corpo["vinculos"]) == 5
     assert RECEITA not in servido.fontes
+
+
+def test_o_historico_datado_com_pessoa_nao_e_lido(pasta):
+    # linha 867: o histórico (que tem pessoa e não vai ao VPS) não é lido nem quando está na base
+    historico = pd.DataFrame(
+        [("11111111", "2025-03", date(2025, 3, 21), True, "2046", "NOME DO HISTORICO")],
+        columns=[
+            "cnpj_basico",
+            "mes_do_retrato",
+            "disponivel_em",
+            "consta",
+            "natureza_juridica",
+            "razao_social",
+        ],
+    ).assign(
+        origem_sha256="0" * 64,
+        montado_em=pd.Timestamp("2026-11-05", tz="UTC"),
+        versao_do_codigo="teste",
+    )
+    _gravar(pasta, "cnpj_empresas_historico/1.parquet", historico)
+    assert _nome(_ler(pasta), "EALFA") == "ALFA LTDA"
+
+
+def test_o_mes_do_retrato_sai_so_com_o_nome(pasta):
+    def sem_o_mes(fonte: str, nome: str, _derivado: bool) -> bool:
+        return (fonte, nome) != (RECEITA, "mes_do_retrato_do_cadastro")
+
+    de = _ler(pasta, permitido=sem_o_mes).corpo["vinculos"][0]["de"]
+    assert de["razao_social"]["valor"] == "ALFA LTDA"
+    assert "mes_do_retrato_do_cadastro" not in de
 
 
 def test_a_ligacao_publicada_depois_do_dia_nao_entra(pasta):
@@ -449,8 +528,10 @@ def test_nome_negado_some_mas_a_ponta_fica(pasta):
     servido = _ler(pasta, permitido=sem_nome)
     assert servido.corpo["vinculos"]
     assert all(
-        "razao_social" not in v["de"] and "razao_social" not in v["para"]
+        campo not in ponta
         for v in servido.corpo["vinculos"]
+        for ponta in (v["de"], v["para"])
+        for campo in ("razao_social", "mes_do_retrato_do_cadastro")
     )
     assert RECEITA not in servido.fontes
 

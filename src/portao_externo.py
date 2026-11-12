@@ -548,9 +548,11 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         _PROVA_CVM,
     ),
     # links (linha 736, PR 5): as ligações da rede (`ligacoes`, ADR 0077) que vêm do FRE (controle, coligação e
-    # participação, `controladas`) e do FCA (auditoria, `auditores`), e a razão social de cada ponta como era no
-    # dia (o histórico datado da Receita; o nome da rede é o de hoje e não sai). A ponta que é pessoa ou que a
-    # rede trata como pessoa não sai (`conjuntos/vinculos.py`), e as outras ligações não são lidas.
+    # participação, `controladas`) e do FCA (auditoria, `auditores`), e a razão social de cada ponta com o mês do
+    # retrato, do retrato mais novo já público da lista sem pessoa da Receita (`cnpj_empresas_pj`, linha 867; o
+    # histórico datado tem pessoa e não é lido; o nome da rede é o de hoje e não sai). Uma linha por caminho,
+    # declarando só a tabela lida. A ponta que é pessoa ou que a rede trata como pessoa não sai
+    # (`conjuntos/vinculos.py`), e as outras ligações não são lidas.
     *_campos(
         ("cvm-hist-fre",),
         "links",
@@ -568,8 +570,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "links",
-        ("cnpj_empresas_historico",),
-        ("razao_social",),
+        ("cnpj_empresas_pj",),
+        ("razao_social", "mes_do_retrato_do_cadastro"),
         _PROVA_RECEITA,
     ),
     # buyers (linha 810, PR 4): quem já se mexeu num setor, só pessoa jurídica. O setor e os nomes saem das
