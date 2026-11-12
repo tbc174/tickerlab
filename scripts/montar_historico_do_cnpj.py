@@ -3,7 +3,7 @@
     python -m scripts.montar_historico_do_cnpj simples --cnpj <base do CNPJ> --destino <acervo>/base
     python -m scripts.montar_historico_do_cnpj empresas --destino <acervo>/base --ensaio   (só lista os meses)
     python -m scripts.montar_historico_do_cnpj empresas --destino <acervo>/base [--ate AAAA-MM]
-    python -m scripts.montar_historico_do_cnpj situacao --cnpj <base do CNPJ> --destino <acervo>/base
+    python -m scripts.montar_historico_do_cnpj situacao --cnpj <base do CNPJ> --destino <acervo>/base [--so-vigente]
 
 `simples`: `cnpj_simples_historico/<xx>.parquet` (um arquivo pelos 2 primeiros caracteres da raiz), do vigente
 e das mudanças que a carga do CNPJ já guardou (`scripts/carga_receita_mes.py`). As mudanças são repartidas
@@ -14,6 +14,10 @@ regrava nada (`gravar_se_mudou`).
 `situacao`: `cnpj_situacao_cadastral/<xx>.parquet` (linha 841, `base/situacao_cadastral.py`), como o `simples`,
 mas dos estabelecimentos e só das raízes da lista sem pessoa (`cnpj_estabelecimentos_pj`, que tem de ser do mês
 do vigente: rode antes o `montar_empresas_pj`). As mudanças são lidas em blocos e só nas colunas da situação.
+Com `--so-vigente` (linha 841, plano da Diretoria de 11/11/2026 enquanto as mudanças de 2024-11 e 2024-12 são
+refeitas), as mudanças nem são lidas: uma versão por estabelecimento, a do retrato vigente, pública a partir do
+último dia do mês dele; antes disso a ficha dá `not_available`. A série completa substitui depois com o mesmo
+contrato: mova antes a pasta para o lado, senão cada prefixo vira `.vN` (`gravar_se_mudou`).
 
 `empresas`: `cnpj_empresas_historico/<xx>.parquet`, um mês por vez, em ordem, retomando do último gravado
 (`meses.json` da pasta). Baixa os `Empresas*.zip` do mês (fonte oficial, ~500 MB), lê só raiz, razão social
@@ -205,6 +209,31 @@ class SituacaoNoFormatoAntigo(RuntimeError):
 FORMATO_ANTIGO = "[0-9][0-9][0-9][0-9]-[0-9][0-9]*.parquet"
 
 
+class SituacaoDeOutroModo(RuntimeError):
+    """A pasta tem a situação do outro modo (só do vigente ou a série completa): montar por cima mandaria o
+    que está gravado para `.vN` sem aviso. Mova a pasta para o lado, com a data, antes de trocar de modo."""
+
+
+def _conferir_o_modo_gravado(pasta: Path, ultimo_mes: str, so_vigente: bool) -> None:
+    """Só do vigente não monta por cima da série completa (meses antes do vigente), nem a série por cima
+    do só do vigente (só o mês do vigente)."""
+    gravados = sorted(pasta.glob("??.parquet"))
+    if not gravados:
+        return
+    meses = set(
+        pd.concat([pd.read_parquet(a, columns=[historico.MES]) for a in gravados])[
+            historico.MES
+        ].astype(str)
+    )
+    tem_serie = bool(meses - {ultimo_mes})
+    if so_vigente and tem_serie:
+        raise SituacaoDeOutroModo(
+            f"{SITUACAO} já tem a série completa ({min(meses)} em diante)"
+        )
+    if not so_vigente and not tem_serie:
+        raise SituacaoDeOutroModo(f"{SITUACAO} tem só o retrato vigente ({ultimo_mes})")
+
+
 def _colunas_do_arquivo(arquivo: Path, colunas: Iterable[str]) -> list[str]:
     nomes = set(pq.ParquetFile(arquivo).schema_arrow.names)
     return [c for c in colunas if c in nomes]
@@ -265,8 +294,12 @@ def _vigente_da_situacao(cnpj: Path, prefixo: str) -> pd.DataFrame:
     return pd.concat(partes, ignore_index=True)
 
 
-def montar_situacao(cnpj: Path, destino: Path, agora: datetime) -> dict[str, int]:
-    """`<destino>/cnpj_situacao_cadastral/<xx>.parquet` do vigente e das mudanças de estabelecimentos, só PJ."""
+def montar_situacao(
+    cnpj: Path, destino: Path, agora: datetime, *, so_vigente: bool = False
+) -> dict[str, int]:
+    """`<destino>/cnpj_situacao_cadastral/<xx>.parquet` do vigente e das mudanças de estabelecimentos, só PJ.
+
+    `so_vigente`: só o retrato vigente, sem ler as mudanças (uma versão por estabelecimento, do mês dele)."""
     if not (destino / LISTA_SEM_PESSOA).is_dir():
         raise ListaSemPessoaForaDoMes(f"{LISTA_SEM_PESSOA} ausente em {destino}")
     antigos = sorted(p.name for p in (destino / SITUACAO).glob(FORMATO_ANTIGO))
@@ -276,6 +309,9 @@ def montar_situacao(cnpj: Path, destino: Path, agora: datetime) -> dict[str, int
         )
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     meses = sorted(manifesto["meses"])
+    _conferir_o_modo_gravado(destino / SITUACAO, meses[-1], so_vigente)
+    if so_vigente:
+        meses = meses[-1:]
     zips = {m: _zips_do_mes(manifesto, m, ZIP_DE_ESTABELECIMENTOS) for m in meses}
     sha_do_mes = {m: next(iter(z.values()), "") for m, z in zips.items()}
     origens = _origens(zips)
@@ -284,7 +320,8 @@ def montar_situacao(cnpj: Path, destino: Path, agora: datetime) -> dict[str, int
     vigente = cnpj / "vigente" / "estabelecimentos"
     contagem: dict[str, int] = {}
     try:
-        _repartir_mudancas_de_estabelecimentos(cnpj, trabalho)
+        if not so_vigente:
+            _repartir_mudancas_de_estabelecimentos(cnpj, trabalho)
         for prefixo in _prefixos(vigente, trabalho):
             raizes = _raizes_sem_pessoa(destino, prefixo, meses[-1])
             if not raizes:
@@ -423,6 +460,11 @@ def main(argv: list[str] | None = None) -> int:
         "--cnpj", type=Path, required=True, help="a base do CNPJ (vigente e mudanças)"
     )
     situacao.add_argument("--destino", type=Path, required=True)
+    situacao.add_argument(
+        "--so-vigente",
+        action="store_true",
+        help="só o retrato vigente, sem as mudanças (uma versão por estabelecimento)",
+    )
     empresas = tarefas.add_parser("empresas")
     empresas.add_argument("--destino", type=Path, required=True)
     empresas.add_argument("--ate", default=None, help="último mês (AAAA-MM)")
@@ -436,7 +478,12 @@ def main(argv: list[str] | None = None) -> int:
             montar_simples(opcoes.cnpj, opcoes.destino, datetime.now(UTC))
             return 0
         if opcoes.tarefa == "situacao":
-            montar_situacao(opcoes.cnpj, opcoes.destino, datetime.now(UTC))
+            montar_situacao(
+                opcoes.cnpj,
+                opcoes.destino,
+                datetime.now(UTC),
+                so_vigente=opcoes.so_vigente,
+            )
             return 0
         return _main_empresas(opcoes)  # pragma: no cover - rede
     except (
@@ -445,6 +492,7 @@ def main(argv: list[str] | None = None) -> int:
         MesForaDeOrdem,
         ListaSemPessoaForaDoMes,
         SituacaoNoFormatoAntigo,
+        SituacaoDeOutroModo,
     ) as erro:
         print(
             f"FALHAS: histórico do CNPJ: {type(erro).__name__}: {erro}"[

@@ -246,6 +246,17 @@ def eventos(corpo: Mapping) -> str:
     )
 
 
+def dossie(corpo: Mapping) -> str:
+    """O dossiê: quantos pedidos gastou, o que ficou de fora, e depois cada seção com fonte e data."""
+    lacunas = [g for g in corpo.get("gaps") or [] if isinstance(g, Mapping)]
+    topo = f"Dossiê: {corpo.get('requests_used')} pedidos gastos da quota."
+    if lacunas:
+        topo += " Ficou de fora: " + "; ".join(
+            f"{g.get('section')} ({g.get('reason')})" for g in lacunas
+        )
+    return f"{topo}\n\n{resposta_de_dado(corpo)}"
+
+
 def setores(corpo: Mapping) -> str:
     """Os setores que a ficha da noite tem, com o dia dela; a lista não traz dado nem gasta a quota."""
     lista = [s for s in corpo.get("sectors") or [] if isinstance(s, Mapping)]
@@ -265,6 +276,33 @@ def setores(corpo: Mapping) -> str:
         f"{topo}\n\nPeça um setor com `tickerlab setor {exemplo}` (mercado, concentração e as companhias "
         "abertas dele, com a fonte de cada número)."
     )
+
+
+def _marca_do_recorte(recorte: object) -> str:
+    """Avisa, fora das aspas, que o trecho é só um pedaço do original (nada inventado dentro delas)."""
+    partes = {
+        "inicio": "o original continua antes",
+        "fim": "o original continua depois",
+        "ambos": "o original continua antes e depois",
+    }
+    aviso = partes.get(str(recorte))
+    return f"  [recorte: {aviso}]" if aviso else ""
+
+
+def novidades(corpo: Mapping) -> str:
+    """As fontes que a pesquisa provou na janela: órgão, data, trecho literal e o hash do original."""
+    itens = [i for i in corpo.get("items") or [] if isinstance(i, Mapping)]
+    if not itens:
+        return "Nenhuma fonte nova provada na semana."
+    blocos = [
+        f"{celula(i.get('agency'))} · {celula(i.get('date'))}\n"
+        f"  “{i.get('excerpt')}”{_marca_do_recorte(i.get('excerpt_cut'))}\n"
+        f"  original: {i.get('source_url')}\n"
+        f"  sha256: {i.get('original_sha256')}"
+        for i in itens
+    ]
+    cabeca = f"{len(itens)} fonte(s) provada(s) pela pesquisa (trecho literal e hash do original):"
+    return "\n\n".join([cabeca, *blocos, AVISO])
 
 
 def catalogo(corpo: Mapping) -> str:

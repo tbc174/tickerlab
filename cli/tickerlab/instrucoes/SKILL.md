@@ -19,9 +19,14 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD] --json`: as companhias abertas do mesmo grupo de
      setores, cada uma com o último DFP (receita, EBITDA, lucro, dívida líquida e razões), e a mediana de cada
      razão em `peer_medians`; leia `limits` antes de comparar múltiplos.
+   - `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20] --json`: candidatos a
+     comprador do setor (entrou como sócio, fundo sócio, controla empresa do setor), só pessoa jurídica, com
+     sinais e evidências. Movimento passado não é intenção de compra: leia `limits`.
    - `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo controlada|coligada|participada|auditor] --json`: de quem a
      empresa era controlada, coligada ou participada, quem ela controlava (com a participação no capital) e quem a
      auditava, como era no dia; sem pessoa física. Leia `limits` e `truncated`.
+   - `tickerlab dossie <cnpj> [--como-era AAAA-MM-DD] --json`: perfil, eventos, vínculos e comparáveis numa saída
+     só (4 pedidos da quota); leia `gaps` (seção que faltou e por quê) e `limits`.
    - `tickerlab eventos <cnpj> [--tipo documento|auditor] [--como-era AAAA-MM-DD] --json`: documentos entregues à
      CVM (fato relevante, comunicado, assembleia...) e trocas de auditor, do mais novo ao mais velho, com o
      endereço de cada documento; `next_cursor` preenchido: há mais, `--todas` busca todas. Leia `limits`: sem
@@ -36,6 +41,9 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab setor --json`: os setores disponíveis (não gasta a quota); `tickerlab setor <chave> --json`:
      mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
      antes de concluir sobre concentração).
+   - `tickerlab novidades [--dias 1-30] --json`: as fontes que a pesquisa provou na semana (órgão, data, trecho
+     literal de até 300 caracteres, `excerpt_cut` quando é só um pedaço do trecho do bot (vazio não prova que é o original completo), endereço e sha256 do
+     original). Lista vazia: diga "nenhuma fonte nova provada na semana"; não invente.
    - `tickerlab catalogo --json`: o que a chave pode pedir hoje (não gasta a quota).
    - `tickerlab consumo --json`: pedidos do mês e limites (não gasta a quota).
    - `--como-era AAAA-MM-DD` em qualquer comando de dado: o dado como era público naquele dia.

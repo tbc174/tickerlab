@@ -2,8 +2,8 @@
 
 O contêiner `tickerlab-api` de produção não tinha `<acervo>/base`: sem ela a API externa (`/data/v1`) e a
 `/v1/base/tabelas` respondem 503. Este script monta, a partir da base de casa, uma cópia **só do que a API
-serve**, em dois degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
-aberta da v1), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
+serve**, em degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
+aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
 
 Lista de permissão (Diretoria, 10/11/2026, ADR 0101 Emenda 4): só vai a tabela escrita em `DEGRAU_1` ou
 `DEGRAU_2_ACRESCENTA`, e só a coluna que o dicionário (`base/dicionario.py`) conhece, menos as
@@ -13,8 +13,14 @@ as tabelas de pessoa nem são lidos. Arquivo sem nada a tirar segue **byte a byt
 continua valendo para a linhagem); arquivo com coluna ou linha a tirar é regravado, e a saída é lida de novo e
 conferida antes do envio: pessoa na saída é erro e nada sai.
 
+A rede (`entidades`, `identificadores`, `ligacoes`) não passa pela cópia por arquivo: vai inteira no degrau 3, pelo
+filtro e pela trava de `base/rede/recorte_so_pj.py` (só PJ da `cnpj_empresas_pj` da mesma saída, sem `nome`, só os
+tipos de ligação da `links`). A trava lê a saída e derruba a montagem em qualquer pessoa; o envio do degrau 3 pede
+o pode da Diretoria com as contagens que ela devolve.
+
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
+    python -m scripts.montar_recorte_da_api --degrau 3 --base <acervo>/base --saida /tmp/base-api-rede
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -42,7 +48,13 @@ from base.dossie import (
     pode_mostrar,
     tem_dia_publico,
 )
-from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela, servida_pela_porta
+from base.porta.duckdb import (
+    ARQUIVOS,
+    PASTA_TEMPORARIA,
+    arquivos_da_tabela,
+    servida_pela_porta,
+)
+from base.rede import recorte_so_pj
 from base.rede.entidades import EMPRESARIO_INDIVIDUAL, GRUPO_DAS_PESSOAS_FISICAS
 from src import acervo
 
@@ -62,11 +74,8 @@ FICAM_EM_CASA = (
     "comex_preco_medio",
     "fidc_informe",
     "processos_partes",
-    # Rede e situação especial têm pessoa (MEI, EI, `nao_informada` com nome, falência de MEI): só vão ao VPS
-    # filtradas pela vista publicada, depois da linha 787 (Diretoria, 10/11/2026).
-    "entidades",
-    "identificadores",
-    "ligacoes",
+    # Situação especial tem pessoa (falência de MEI): só vai ao VPS filtrada, depois da linha 787 (Diretoria,
+    # 10/11/2026). A rede saiu daqui para `REDE_SO_PJ` (linha 843).
     "cnpj_situacao_especial",
     # Têm linha de pessoa (EI/MEI, auditor sem CNPJ de firma) ou dúvida, achadas pela 789 em 10/11/2026 depois de
     # subirem no degrau 2; apagadas do VPS com o pode da Diretoria. Só voltam com a marca de pessoa por linha.
@@ -106,10 +115,16 @@ DEGRAU_2_ACRESCENTA = (
     # aqui (`conferir_sem_pessoa_do_cnpj`). Pode da Diretoria, 10/11/2026 18h31 (Emenda 4), linha 796.
     "cnpj_empresas_pj", "cnpj_estabelecimentos_pj",
     # sem pessoa por desenho (linha 810, PR 2): sócia PJ de empresa PJ, só para a API externa (a consulta aberta
-    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_entradas_so_pj`
+    # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_raizes_so_pj`
     # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
     "entradas_de_socio_pj",
+    # sem pessoa por desenho (linha 841): só das raízes de `cnpj_estabelecimentos_pj`, só para a API externa
+    # (ficha por CNPJ e crédito). A mesma guarda (`conferir_raizes_so_pj`) confere cada raiz na saída.
+    "cnpj_situacao_cadastral",
 )  # fmt: skip
+# A rede só PJ (linha 843; desenho aceito pela Diretoria em 11/11/2026): só no degrau 3, inteira, pelo filtro e pela
+# trava de `base/rede/recorte_so_pj.py`, nunca pela cópia por arquivo.
+REDE_SO_PJ = recorte_so_pj.REDE
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
 SUFIXO_DO_MANIFESTO = ".json"
@@ -133,17 +148,23 @@ class Resultado:
 
 
 def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
-    """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta), na ordem da lista."""
+    """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta; 3 = o 2 + a rede só PJ), na ordem da lista."""
     if degrau == 1:
         return DEGRAU_1
     if degrau == 2:
         return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA)
-    raise RecorteErro(f"degrau {degrau} não existe (1 ou 2)")
+    if degrau == 3:
+        return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA, *REDE_SO_PJ)
+    raise RecorteErro(f"degrau {degrau} não existe (1, 2 ou 3)")
 
 
 def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
     """Falha se uma tabela da lista não pode sair: sem arquivo na porta, de pessoa ou fora do que a porta mostra."""
     for nome in tabelas:
+        if nome in REDE_SO_PJ:
+            raise RecorteErro(
+                f"{nome}: a rede só vai pelo degrau 3, com o filtro e a trava"
+            )
         if nome not in ARQUIVOS or nome not in TABELAS:
             raise RecorteErro(f"{nome}: a porta não serve esta tabela")
         if TABELAS[nome].pessoa:
@@ -319,49 +340,157 @@ def tirar_raizes_de_mei(
     return tiradas
 
 
-def conferir_entradas_so_pj(
+# As tabelas só de PJ por desenho e as colunas de raiz de cada uma: toda raiz tem de estar em `cnpj_empresas_pj`
+# da mesma saída (`conferir_raizes_so_pj`).
+RAIZES_SO_PJ: dict[str, tuple[str, ...]] = {
+    "entradas_de_socio_pj": (
+        "cnpj_basico",
+        "raiz_socio_pj",
+    ),  # a empresa e a sócia (linha 810)
+    "cnpj_situacao_cadastral": ("cnpj_basico",),  # o estabelecimento (linha 841)
+}
+# A tabela que também traz o CNPJ inteiro: a raiz conferida tem de ser a do CNPJ (senão a guarda olharia outra).
+CNPJ_DA_RAIZ: dict[str, str] = {"cnpj_situacao_cadastral": "cnpj"}
+
+
+def conferir_raizes_so_pj(
     con: duckdb.DuckDBPyConnection, saida: Path, tabelas: tuple[str, ...]
 ) -> None:
-    """Toda raiz (a empresa e a sócia) de `entradas_de_socio_pj` da saída está em `cnpj_empresas_pj` da saída.
+    """Toda raiz das tabelas de `RAIZES_SO_PJ` da saída está em `cnpj_empresas_pj` da saída.
 
-    A tabela é PJ com PJ por desenho (linha 810); a garantia não pode depender da contagem de um dia: a raiz
-    que a saída de empresas não tem (fora da lista, ou MEI tirado por `tirar_raizes_de_mei`) derruba o envio.
+    As tabelas são só PJ por desenho (linhas 810 e 841); a garantia não pode depender da contagem de um dia: a
+    raiz que a saída de empresas não tem (fora da lista, ou MEI tirado por `tirar_raizes_de_mei`) derruba o envio.
     """
-    if "entradas_de_socio_pj" not in tabelas:
-        return
-    if "cnpj_empresas_pj" not in tabelas:
-        raise RecorteErro("entradas_de_socio_pj só vai junto com cnpj_empresas_pj")
-    entradas = sorted((saida / "entradas_de_socio_pj").glob("*.parquet"))
-    empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
-    if not entradas:
-        return
-    if not empresas:
-        raise RecorteErro(
-            "entradas_de_socio_pj sem cnpj_empresas_pj na saída para conferir"
-        )
+    for nome, colunas in RAIZES_SO_PJ.items():
+        if nome not in tabelas:
+            continue
+        if "cnpj_empresas_pj" not in tabelas:
+            raise RecorteErro(f"{nome} só vai junto com cnpj_empresas_pj")
+        arquivos = sorted((saida / nome).glob("*.parquet"))
+        empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+        if not arquivos:
+            continue
+        if not empresas:
+            raise RecorteErro(f"{nome} sem cnpj_empresas_pj na saída para conferir")
+        _conferir_raizes(con, nome, colunas, arquivos, empresas)
+
+
+def _conferir_raizes(
+    con: duckdb.DuckDBPyConnection,
+    nome: str,
+    colunas: tuple[str, ...],
+    arquivos: list[Path],
+    empresas: list[Path],
+) -> None:
     lista = ", ".join(_aspas(a.as_posix()) for a in empresas)
-    fonte = ", ".join(_aspas(a.as_posix()) for a in entradas)
+    fonte = ", ".join(_aspas(a.as_posix()) for a in arquivos)
+    juncoes = " ".join(
+        f'LEFT JOIN pj j{i} ON j{i}.cnpj_basico = t."{coluna}"'
+        for i, coluna in enumerate(colunas)
+    )
+    # raiz nula também é fora: a junção não acha nada
+    fora_da_lista = " OR ".join(
+        f"j{i}.cnpj_basico IS NULL" for i in range(len(colunas))
+    )
     fora = con.execute(
         f"WITH pj AS (SELECT DISTINCT cnpj_basico FROM read_parquet([{lista}])) "
-        f"SELECT count(*) FROM read_parquet([{fonte}]) e "
-        "LEFT JOIN pj a ON a.cnpj_basico = e.cnpj_basico "
-        "LEFT JOIN pj b ON b.cnpj_basico = e.raiz_socio_pj "
-        "WHERE a.cnpj_basico IS NULL OR b.cnpj_basico IS NULL"  # raiz nula também é fora
+        f"SELECT count(*) FROM read_parquet([{fonte}]) t {juncoes} WHERE {fora_da_lista}"
     ).fetchone()
     if fora and fora[0]:
         raise RecorteErro(
-            f"entradas_de_socio_pj: {fora[0]} linha(s) com raiz fora da lista sem pessoa"
+            f"{nome}: {fora[0]} linha(s) com raiz fora da lista sem pessoa"
         )
+    if nome in CNPJ_DA_RAIZ:
+        trocadas = con.execute(
+            f"SELECT count(*) FROM read_parquet([{fonte}]) "
+            f"WHERE cnpj_basico IS DISTINCT FROM "
+            f"left(regexp_replace(\"{CNPJ_DA_RAIZ[nome]}\", '[^0-9]', '', 'g'), 8)"
+        ).fetchone()
+        if trocadas and trocadas[0]:
+            raise RecorteErro(
+                f"{nome}: {trocadas[0]} linha(s) com a raiz diferente da do CNPJ"
+            )
+
+
+def conectar() -> duckdb.DuckDBPyConnection:
+    """Uma conexão do DuckDB que despeja na temporária do sistema, não em `.tmp` da pasta atual.
+
+    No cron a pasta atual é a `/app` da imagem, sem permissão de escrita: a junção da conferência das entradas
+    de sócio PJ passou da memória do contêiner e o envio de 11/11/2026 caiu ali (a porta teve a mesma falha
+    em 20/10, `base.porta.duckdb.conectar`)."""
+    con = duckdb.connect()
+    con.execute("SET temp_directory = " + _aspas(str(PASTA_TEMPORARIA)))
+    return con
+
+
+def _origem_da_rede(base: Path, nome: str) -> list[Path]:
+    arquivos = arquivos_da_tabela(base, ARQUIVOS[nome])
+    if not arquivos:
+        raise RecorteErro(f"{nome}: sem arquivo na base: a rede vai inteira ou não vai")
+    for origem in arquivos:
+        if origem.relative_to(base).parts[0] in PASTAS_PROIBIDAS:
+            raise RecorteErro(
+                f"{nome}: {origem.relative_to(base)} está em pasta proibida"
+            )
+    return arquivos
+
+
+def _colunas_da_rede(
+    con: duckdb.DuckDBPyConnection, nome: str, arquivos: list[Path]
+) -> list[str]:
+    """As colunas que podem sair: as que o dicionário conhece (de todos os arquivos), sem as de pessoa."""
+    todas = list(
+        dict.fromkeys(c for a in arquivos for c in _colunas_do_arquivo(con, a))
+    )
+    return colunas_permitidas(nome, todas)
+
+
+def montar_rede(
+    con: duckdb.DuckDBPyConnection, base: Path, saida: Path, tabelas: tuple[str, ...]
+) -> list[Resultado]:
+    """A rede só PJ (degrau 3): as três tabelas inteiras, pelo filtro, e a trava de zero pessoa na saída.
+
+    Roda depois de `tirar_raizes_de_mei`: a lista sem pessoa que a trava usa é a `cnpj_empresas_pj` da saída."""
+    if set(REDE_SO_PJ) - set(tabelas):
+        raise RecorteErro(
+            "a rede vai inteira ou não vai (entidades, identificadores e ligacoes)"
+        )
+    if "cnpj_empresas_pj" not in tabelas:
+        raise RecorteErro("a rede só vai junto com cnpj_empresas_pj")
+    empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+    origem = {nome: _origem_da_rede(base, nome) for nome in REDE_SO_PJ}
+    destino = {nome: saida / ARQUIVOS[nome] for nome in REDE_SO_PJ}
+    colunas = {nome: _colunas_da_rede(con, nome, origem[nome]) for nome in REDE_SO_PJ}
+    try:
+        linhas = recorte_so_pj.recortar_rede(con, origem, empresas, destino, colunas)
+        contagens = recorte_so_pj.conferir_rede_so_pj(con, destino, empresas)
+    except recorte_so_pj.RedeComPessoa as erro:
+        raise RecorteErro(str(erro)) from erro
+    for nome, por_tipo in contagens.items():
+        log.info("%s na saída (zero pessoa conferido): %s", nome, por_tipo)
+    return [
+        Resultado(
+            nome,
+            len(origem[nome]),
+            0,
+            1,
+            linhas[nome][0] - linhas[nome][1],
+            destino[nome].stat().st_size,
+        )
+        for nome in REDE_SO_PJ
+    ]
 
 
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
-    conferir_a_lista(tabelas)
+    rede = tuple(t for t in tabelas if t in REDE_SO_PJ)
+    tabelas_por_arquivo = tuple(t for t in tabelas if t not in REDE_SO_PJ)
+    conferir_a_lista(tabelas_por_arquivo)
     base = base.resolve()
     resultados: list[Resultado] = []
-    con = duckdb.connect()
+    con = conectar()
     try:
-        for nome in tabelas:
+        for nome in tabelas_por_arquivo:
             arquivos = arquivos_da_tabela(base, ARQUIVOS[nome])
             copiados = recortados = tiradas = enviados = 0
             for origem in arquivos:
@@ -382,7 +511,9 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
         tiradas_de_mei = tirar_raizes_de_mei(con, saida, tabelas)
         if tiradas_de_mei:
             log.info("cnpj_empresas_pj: %d raiz(es) de MEI tiradas", tiradas_de_mei)
-        conferir_entradas_so_pj(con, saida, tabelas)
+        conferir_raizes_so_pj(con, saida, tabelas)
+        if rede:
+            resultados += montar_rede(con, base, saida, tabelas)
     finally:
         con.close()
     return resultados
@@ -427,7 +558,7 @@ def comando_ssh_padrao() -> list[str]:
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Recorte da base para o VPS (linha 739)")
-    p.add_argument("--degrau", type=int, choices=(1, 2), required=True)
+    p.add_argument("--degrau", type=int, choices=(1, 2, 3), required=True)
     p.add_argument(
         "--base", type=Path, help="<acervo>/base (padrão: o acervo do ambiente)"
     )

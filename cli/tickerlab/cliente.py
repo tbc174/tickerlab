@@ -109,6 +109,22 @@ MENSAGENS: Mapping[tuple[int, str], tuple[str, Saida]] = {
         "Tipo de evento desconhecido. Confira com `tickerlab eventos --help`.",
         Saida.PEDIDO_INVALIDO,
     ),
+    (400, "invalid_cnae"): (
+        "A API recusou o CNAE: use 5 ou 7 dígitos (3511501 é a subclasse; 35115 é a classe).",
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_state"): (
+        "A API recusou a UF: use 2 letras, como SP.",
+        Saida.PEDIDO_INVALIDO,
+    ),
+    (400, "invalid_years"): (
+        "Os anos vão de 1 a 10.",
+        Saida.USO,
+    ),
+    (400, "invalid_limit"): (
+        "O limite vai de 1 a 50 compradores.",
+        Saida.USO,
+    ),
     (400, "invalid_depth"): (
         "A profundidade vai de 1 a 3 saltos.",
         Saida.USO,
@@ -262,6 +278,64 @@ class ApiDoTickerlab:
     def comparaveis(self, cnpj: str, como_era: str | None) -> dict:
         return self.pedir(f"/companies/{cnpj}/comparables", _datas(known_at=como_era))
 
+    def dossie(self, cnpj: str, como_era: str | None) -> dict:
+        """O perfil, os eventos, os vínculos e os comparáveis de um CNPJ numa resposta só (4 pedidos).
+
+        O perfil é obrigatório (sem ele, o erro sobe). Nas outras seções, uma chave sem o conjunto ou um
+        CNPJ sem dado vira uma lacuna dita em `gaps`, não um dossiê que some com a seção sem avisar.
+        As fontes e os limites de cada seção se juntam no topo, sem repetir.
+        """
+        corpo: dict = {"cnpj": cnpj, "known_at": como_era}
+        secoes: list[tuple[str, Callable[[], dict]]] = [
+            ("profile", lambda: self.perfil(cnpj, como_era)),
+            ("events", lambda: self.eventos(cnpj, como_era, [], False)),
+            ("links", lambda: self.vinculos(cnpj, como_era, 1, [])),
+            ("comparables", lambda: self.comparaveis(cnpj, como_era)),
+        ]
+        lacunas: list[dict] = []
+        fontes: list = []
+        limites: list = []
+        for nome, pedir in secoes:
+            try:
+                resposta = pedir()
+            except ErroDaCli as erro:
+                if nome == "profile" or erro.exit_code not in (
+                    Saida.CHAVE,
+                    Saida.SEM_DADO,
+                ):
+                    raise
+                lacunas.append(
+                    {
+                        "section": nome,
+                        "reason": "não achado: " + erro.format_message(),
+                    }
+                )
+                continue
+            fontes += resposta.pop("sources", None) or []
+            limites += resposta.pop("limits", None) or []
+            corpo[nome] = resposta
+        corpo["gaps"] = lacunas
+        corpo["requests_used"] = len(secoes)
+        corpo["limits"] = [i for n, i in enumerate(limites) if i not in limites[:n]]
+        corpo["sources"] = [i for n, i in enumerate(fontes) if i not in fontes[:n]]
+        return corpo
+
+    def compradores(
+        self,
+        cnae: str,
+        uf: str | None,
+        anos: int,
+        limite: int,
+        como_era: str | None,
+    ) -> dict:
+        parametros = {
+            "cnae": cnae,
+            "years": str(anos),
+            "limit": str(limite),
+            **_datas(state=uf, known_at=como_era),
+        }
+        return self.pedir("/buyers", parametros)
+
     def vinculos(
         self,
         cnpj: str,
@@ -330,6 +404,9 @@ class ApiDoTickerlab:
 
     def setores(self) -> dict:
         return self.pedir("/sectors")
+
+    def novidades(self, dias: int) -> dict:
+        return self.pedir("/research/news", {"days": str(dias)})
 
     def setor(self, chave: str, como_era: str | None) -> dict:
         return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))

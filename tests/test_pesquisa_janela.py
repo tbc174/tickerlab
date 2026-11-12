@@ -1,0 +1,100 @@
+"""A janela literal em volta do valor provado (linha 830): fatia do original, com o valor, sem texto inventado."""
+
+import pytest
+
+from pesquisa.janela import janela_do_valor
+from src.novidades_da_pesquisa import (
+    CORTE_NO_FIM,
+    CORTE_NO_INICIO,
+    CORTE_NOS_DOIS,
+    SEM_CORTE,
+    TRECHO_MAXIMO,
+)
+
+ENCHIMENTO = "palavra "
+
+
+def _linha(antes: int, depois: int, valor: str = "120 MW") -> str:
+    return f"{ENCHIMENTO * antes}{valor} {ENCHIMENTO * depois}".strip()
+
+
+def test_trecho_curto_sai_igual_e_sem_corte():
+    janela = janela_do_valor("Parque: 120 MW", "120 MW", TRECHO_MAXIMO)
+    assert janela is not None
+    assert (janela.texto, janela.recorte) == ("Parque: 120 MW", SEM_CORTE)
+
+
+def test_trecho_curto_sai_igual_mesmo_sem_valor_localizavel():
+    janela = janela_do_valor("Parque Exemplo", "", TRECHO_MAXIMO)
+    assert janela is not None and janela.texto == "Parque Exemplo"
+
+
+@pytest.mark.parametrize(
+    ("antes", "depois", "recorte"),
+    [(80, 80, CORTE_NOS_DOIS), (0, 80, CORTE_NO_FIM), (80, 0, CORTE_NO_INICIO)],
+)
+def test_janela_e_fatia_literal_dentro_do_maximo_com_o_valor(antes, depois, recorte):
+    trecho = _linha(antes, depois)
+    janela = janela_do_valor(trecho, "120 MW", TRECHO_MAXIMO)
+    assert janela is not None
+    assert janela.texto in trecho  # literal: fatia contígua do original
+    assert "120 MW" in janela.texto  # o valor provado está dentro
+    assert len(janela.texto) <= TRECHO_MAXIMO
+    assert janela.recorte == recorte
+    assert "…" not in janela.texto and "..." not in janela.texto
+
+
+def test_janela_nao_corta_palavra_no_meio():
+    trecho = _linha(80, 80)
+    janela = janela_do_valor(trecho, "120 MW", TRECHO_MAXIMO)
+    assert janela is not None
+    assert all(p in trecho.split() for p in janela.texto.split())
+
+
+def test_valor_acha_sem_ligar_para_a_caixa():
+    trecho = _linha(80, 80, valor="Valor Exato")
+    janela = janela_do_valor(trecho, "valor exato", TRECHO_MAXIMO)
+    assert janela is not None and "Valor Exato" in janela.texto
+
+
+@pytest.mark.parametrize("valor", ["", "   ", "999 GW", "x" * (TRECHO_MAXIMO + 1)])
+def test_fato_sem_valor_localizavel_fica_de_fora(valor):
+    assert janela_do_valor(_linha(80, 80), valor, TRECHO_MAXIMO) is None
+
+
+def test_valor_nao_casa_dentro_de_outro_numero():
+    # "120" aparece em "2120" (sem limite) e em "120 MW" (com limite): a janela tem de trazer o "120 MW"
+    trecho = (
+        "Planilha1 linha 12 | Contrato 2120/2024 | "
+        + "coluna | " * 60
+        + "Parque Exemplo | 120 MW | vigencia 2035"
+    )
+    janela = janela_do_valor(trecho, "120", TRECHO_MAXIMO)
+    assert janela is not None and "120 MW" in janela.texto
+    assert "2120" not in janela.texto
+
+
+def test_valor_so_dentro_de_outro_numero_fica_de_fora():
+    trecho = "Contrato 2120/2024 | " + "coluna | " * 60 + "sem o valor"
+    assert janela_do_valor(trecho, "120", TRECHO_MAXIMO) is None
+
+
+def test_valor_que_aparece_mais_de_uma_vez_com_limite_fica_de_fora():
+    trecho = "120 MW em janeiro | " + "coluna | " * 60 + "e 120 MW em março"
+    assert janela_do_valor(trecho, "120 MW", TRECHO_MAXIMO) is None
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [" total 1.120 kW", " total 1,120 kW", " total 120.000,00", " total -120 kW"],
+)
+def test_numero_ligado_a_outro_digito_nao_e_o_valor(extra):
+    trecho = "Usina X potencia 120 MW " + "campo " * 70 + extra
+    janela = janela_do_valor(trecho, "120", 300)
+    # "120" aparece de verdade só em "120 MW" — as vizinhas "1.120", "120.000" e "-120" são outros números
+    assert janela is not None and "120 MW" in janela.texto
+
+
+def test_valor_so_em_numero_maior_nao_tem_janela():
+    trecho = "campo " * 70 + " total 1.120 kW"
+    assert janela_do_valor(trecho, "120", 300) is None

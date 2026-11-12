@@ -49,6 +49,7 @@ ERROS: dict[str, tuple[int, str]] = {
     "invalid_cursor": (400, "`cursor` que não veio da página anterior desta rota"),
     "invalid_event_type": (400, "`types` com um tipo de evento que não existe"),
     "invalid_depth": (400, "`depth` fora de 1 a 3"),
+    "invalid_days": (400, "`days` fora de 1 a 30"),
     "invalid_link_type": (400, "`types` com um tipo de vínculo que não existe"),
     "not_available": (
         404,
@@ -66,6 +67,8 @@ DE_UM_CNPJ = ("invalid_cnpj", "not_available")
 # rota de dado que lê a ficha da noite, não a base (`conjuntos/setores.py`): sem o 503 da base, com o 404
 DA_FICHA_DA_NOITE = ("/data/v1/sectors/{key}",)
 DOS_VINCULOS = "/links"
+# rota que lê o arquivo das novidades, não a base: gasta a quota, sem o 503 da base, com o 404 sem contrato
+DO_ARQUIVO_DAS_NOVIDADES = ("/data/v1/research/news",)
 
 
 def _parametros(operacao: dict) -> set[str]:
@@ -89,6 +92,10 @@ def codigos_da_operacao(caminho: str, operacao: dict) -> list[str]:
     if caminho in DA_FICHA_DA_NOITE:
         codigos.remove("service_unavailable")
         codigos.append("not_available")
+    if caminho in DO_ARQUIVO_DAS_NOVIDADES:
+        codigos += ["monthly_quota_exceeded", "not_available"]
+    if "days" in parametros:
+        codigos.append("invalid_days")
     if "assumed_return" in parametros:
         codigos.append("invalid_assumed_return")
     if _lote(operacao):

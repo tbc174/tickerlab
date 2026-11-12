@@ -201,6 +201,17 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "entrou_como_socio": "took_stake",
     "fundo_socio": "fund_stake",
     "controla_no_setor": "controls_in_sector",
+    # research: as fontes que a pesquisa provou (linha 830), só órgão público
+    "gerado_em": "generated_at",
+    "dias": "days",
+    "total_de_novidades": "total_news",
+    "orgao": "agency",
+    "fonte_url": "source_url",
+    "data": "date",
+    "trecho": "excerpt",
+    "recorte": "excerpt_cut",
+    "sha256": "original_sha256",
+    "posicao": "location",
     "Tipo_Fundo": "fund_type",  # o campo do portão do sinal do FIP (não sai como chave)
 }
 

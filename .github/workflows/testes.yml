@@ -242,7 +242,7 @@ jobs:
       - name: Testes do README e da raiz (mudança só de texto)
         if: needs.mudancas.outputs.so_texto == 'true'
         run: |
-          python -m pip install pytest==9.1.1
+          python -m pip install pytest==9.1.1 PyYAML==6.0.3  # o test_publicacao lê o compose.conector.yaml
           python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py tests/test_raiz_do_repositorio.py
 
   web:

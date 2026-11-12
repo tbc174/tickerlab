@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from base.porta import Porta
-from src.analista import busca, comparacao, eventos, leitura, planilha
+from src.analista import busca, comparacao, eventos, leitura, planilha, vinculos
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
@@ -204,6 +204,28 @@ def eventos_da_empresa(
             raise HTTPException(status_code=422, detail=detalhe) from erro
     log.info("eventos do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
     return esquemas.de_eventos_do_analista(resposta, eventos.LIMITES)
+
+
+@router.post("/ficha/vinculos")
+def vinculos_da_empresa(
+    _conta: Conta, pedido: PedidoDaFichaV1
+) -> esquemas.VinculosDaEmpresaV1:
+    """Controle, coligação, participação e auditoria da empresa, a um salto, cada campo com fonte e dia. Mesmo
+    acesso, mesmo plano e mesmos estados da ficha; pessoa natural nunca sai."""
+    if len(pedido.cnpj) > TAMANHO_MAXIMO_DO_CNPJ:
+        raise HTTPException(status_code=422, detail=CNPJ_INVALIDO)
+    with _porta() as porta:
+        try:
+            resposta = vinculos.vinculos(
+                porta,
+                pedido.cnpj,
+                hoje=hoje(),
+                regras=rotas_da_api_externa.regras_da_api(),
+            )
+        except ValueError as erro:
+            raise HTTPException(status_code=422, detail=CNPJ_INVALIDO) from erro
+    log.info("vínculos do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
+    return esquemas.de_vinculos_do_analista(resposta, vinculos.LIMITES)
 
 
 def _busca_do_pedido(

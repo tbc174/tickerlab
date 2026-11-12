@@ -57,7 +57,9 @@ def test_os_degraus_nao_repetem_tabela_nem_se_cruzam_com_o_que_fica_em_casa():
 
 def test_tabela_nova_que_a_porta_libera_nao_entra_sozinha():
     """Se a porta passar a mostrar uma tabela, alguém decide: degrau 2 ou fica em casa."""
-    decididas = {*envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.FICAM_EM_CASA}
+    decididas = {
+        *envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.REDE_SO_PJ, *envio.FICAM_EM_CASA,
+    }  # fmt: skip
     novas = sorted(n for n in TABELAS if pode_consultar(n) and n not in decididas)
     assert novas == []
 
@@ -68,14 +70,21 @@ def test_nenhuma_tabela_da_lista_e_de_pessoa_nem_mora_em_pasta_proibida():
         assert ARQUIVOS[nome].split("/")[0] not in envio.PASTAS_PROIBIDAS, nome
 
 
-@pytest.mark.parametrize(
-    "nome", ["entidades", "identificadores", "ligacoes", "cnpj_situacao_especial"]
-)
-def test_rede_e_situacao_especial_nao_vao_ate_a_linha_787(nome):
-    """Têm pessoa (MEI, EI, nome em `nao_informada`): só filtradas pela vista publicada."""
+def test_situacao_especial_nao_vai_ate_a_linha_787():
+    """Tem pessoa (falência de MEI): só filtrada."""
+    nome = "cnpj_situacao_especial"
     assert nome in envio.FICAM_EM_CASA
     assert nome not in envio.tabelas_do_degrau(2)
     with pytest.raises(envio.RecorteErro, match="fica em casa"):
+        envio.conferir_a_lista((nome,))
+
+
+@pytest.mark.parametrize("nome", ["entidades", "identificadores", "ligacoes"])
+def test_a_rede_so_vai_pelo_degrau_3(nome):
+    """Tem pessoa (MEI, EI, nome em `nao_informada`): só pelo filtro e pela trava (linha 843)."""
+    assert nome in envio.REDE_SO_PJ
+    assert nome not in envio.tabelas_do_degrau(2)
+    with pytest.raises(envio.RecorteErro, match="degrau 3"):
         envio.conferir_a_lista((nome,))
 
 
@@ -398,3 +407,116 @@ def test_a_da_api_externa_ainda_passa_pela_trava_de_mostrar(monkeypatch):
     monkeypatch.setattr(envio, "pode_mostrar", lambda _: False)
     with pytest.raises(envio.RecorteErro, match="API externa não pode"):
         envio.conferir_a_lista(("entradas_de_socio_pj",))
+
+
+# ---------------------------------------------------------------- situação cadastral (linha 841)
+
+COM_SITUACAO = (*TABELAS_PJ, "cnpj_situacao_cadastral")
+
+
+def _situacao(base: Path, linhas: str) -> None:
+    """Versões (cnpj, raiz) com as colunas da tabela de verdade."""
+    _parquet(
+        base / "cnpj_situacao_cadastral" / "00.parquet",
+        "SELECT cnpj, cnpj_basico, true AS matriz, '02' AS situacao_cadastral, "
+        "DATE '2020-01-01' AS data_situacao_cadastral, '00' AS motivo_situacao, '2026-10' AS mes_do_retrato, "
+        "DATE '2026-10-21' AS disponivel_em, true AS consta "
+        f"FROM (VALUES {linhas}) t(cnpj, cnpj_basico)",
+    )
+
+
+def _empresas_e_situacao(base: Path, linhas: str) -> None:
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('55555555', 'FULANO DE TAL', '2062', 'micro')",
+        "('00000000')",
+    )
+    _situacao(base, linhas)
+
+
+def test_situacao_cadastral_sobe_no_degrau_2_so_pela_api_externa():
+    """Linha 841: montada só das raízes sem pessoa; vai com as empresas PJ e só a API externa a serve."""
+    assert "cnpj_situacao_cadastral" in envio.tabelas_do_degrau(2)
+    assert "cnpj_situacao_cadastral" not in envio.tabelas_do_degrau(1)
+    assert "cnpj_situacao_cadastral" not in envio.FICAM_EM_CASA
+    assert not pode_consultar("cnpj_situacao_cadastral")
+    envio.conferir_a_lista(("cnpj_situacao_cadastral",))
+
+
+def test_situacao_so_de_raiz_pj_sai_inteira(tmp_path):
+    base = tmp_path / "base"
+    _empresas_e_situacao(
+        base, "('00.000.000/0001-91', '00000000'), ('00.000.000/0002-72', '00000000')"
+    )
+    envio.montar(base, tmp_path / "saida", COM_SITUACAO)
+    arquivo = tmp_path / "saida" / "cnpj_situacao_cadastral" / "00.parquet"
+    assert duckdb.sql(f"SELECT count(*) FROM '{arquivo.as_posix()}'").fetchone() == (2,)
+
+
+@pytest.mark.parametrize(
+    ("linha", "erro"),
+    [
+        (
+            "('99.999.999/0001-91', '99999999')",
+            "fora da lista sem pessoa",
+        ),  # fora da lista
+        (
+            "('55.555.555/0001-91', '55555555')",
+            "fora da lista sem pessoa",
+        ),  # MEI que a saída tira
+        ("(NULL, NULL)", "fora da lista sem pessoa"),  # sem raiz
+        ("('55.555.555/0001-91', '00000000')", "diferente da do CNPJ"),  # raiz trocada
+    ],
+)
+def test_situacao_com_raiz_fora_da_lista_derruba_o_envio(tmp_path, linha, erro):
+    base = tmp_path / "base"
+    _empresas_e_situacao(base, f"('00.000.000/0001-91', '00000000'), {linha}")
+    with pytest.raises(envio.RecorteErro, match=erro):
+        envio.montar(base, tmp_path / "saida", COM_SITUACAO)
+
+
+def test_situacao_nao_vai_sem_empresas_pj(tmp_path):
+    base = tmp_path / "base"
+    _situacao(base, "('00.000.000/0001-91', '00000000')")
+    with pytest.raises(envio.RecorteErro, match="junto"):
+        envio.montar(base, tmp_path / "saida", ("cnpj_situacao_cadastral",))
+
+
+def test_a_conexao_despeja_na_temporaria_do_sistema_e_nao_na_pasta_atual(
+    tmp_path, monkeypatch
+):
+    """Regressão de 11/11/2026: no cron, o DuckDB tentou criar `.tmp` na `/app` da imagem (sem permissão)."""
+    atual = tmp_path / "atual"
+    atual.mkdir()
+    (atual / ".tmp").write_text("um arquivo no lugar da pasta: criar `.tmp` falharia")
+    monkeypatch.chdir(atual)
+    temporaria = tmp_path / "temporaria"
+    monkeypatch.setattr(envio, "PASTA_TEMPORARIA", temporaria)
+    con = envio.conectar()
+    try:
+        con.execute("SET memory_limit = '200MB'")
+        con.execute("SET threads = 1")
+        # ordena mais do que cabe na memória: o DuckDB precisa despejar em arquivo temporário
+        linhas = con.execute(
+            "SELECT count(*) FROM (SELECT i, md5(i::VARCHAR) AS h FROM range(12000000) t(i) ORDER BY h)"
+        ).fetchone()
+        pasta = con.execute("SELECT current_setting('temp_directory')").fetchone()
+    finally:
+        con.close()
+    assert linhas == (12000000,)
+    assert pasta is not None and Path(pasta[0]) == temporaria
+    assert (atual / ".tmp").is_file()  # nada foi criado na pasta atual
+
+
+def test_montar_usa_a_conexao_com_a_temporaria(tmp_path, monkeypatch):
+    usadas = []
+    original = envio.conectar
+
+    def espiao():
+        usadas.append(True)
+        return original()
+
+    monkeypatch.setattr(envio, "conectar", espiao)
+    envio.montar(tmp_path / "base", tmp_path / "saida", ())
+    assert usadas == [True]

@@ -23,7 +23,7 @@ Duas tabelas saem daqui:
 """
 
 import zipfile
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import IO
 
@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
-from base.receita_diff import ENTROU, SAIU, disponivel_em
+from base.receita_diff import ENTROU, MUDOU, ORDEM, SAIU, disponivel_em
 from base.receita_retrato import CODIFICACAO, TAMANHO_DA_PARTE, _conferir_campos
 from base.rede.entidades import natureza_de_pessoa
 
@@ -143,6 +143,50 @@ def versoes_das_mudancas(
     return _com_disponivel_em(_ordenar(versoes, chave))
 
 
+def juntar_retratos_com_defeito(
+    mudancas: pd.DataFrame,
+    chave: Sequence[str],
+    campos: Sequence[str],
+    retratos_com_defeito: Mapping[str, str],
+) -> pd.DataFrame:
+    """As mudanças de um retrato com defeito conhecido e as do mês seguinte viram uma só por linha do arquivo.
+
+    Cada `retratos_com_defeito[defeito] = seguinte`: a linha (a `chave` com a `ordem` de `receita_diff`) fica com
+    o lado de antes da primeira mudança e o de depois da última, no mês `seguinte`. É comparar o seguinte direto
+    com o anterior ao defeito: a cópia em dobro que entrou e saiu some, a que faltou e voltou igual não se mexeu,
+    a que voltou diferente mudou, e nada vale antes do piso de publicação do seguinte.
+    """
+    if mudancas.empty or not retratos_com_defeito:
+        return mudancas
+    seguinte = mudancas["mes"].replace(dict(retratos_com_defeito))
+    no_seguinte = seguinte.isin(set(retratos_com_defeito.values()))
+    if not no_seguinte.any():
+        return mudancas
+    linha = ["mes", *chave, ORDEM]
+    juntas = (
+        mudancas[no_seguinte]
+        .assign(_original=mudancas["mes"], mes=seguinte)
+        .sort_values([*linha, "_original"], kind="stable")
+    )
+    primeira = juntas.drop_duplicates(linha, keep="first").set_index(linha)
+    ultima = juntas.drop_duplicates(linha, keep="last").set_index(linha)
+    tinha, tem = primeira["tipo"].ne(ENTROU), ultima["tipo"].ne(SAIU)
+    composta = pd.DataFrame(index=primeira.index)
+    igual = pd.Series(True, index=composta.index)
+    for campo in campos:
+        antes = primeira[f"{campo}{ANTES}"].where(tinha)
+        depois = ultima[f"{campo}{DEPOIS}"].where(tem)
+        composta[f"{campo}{ANTES}"], composta[f"{campo}{DEPOIS}"] = antes, depois
+        igual &= antes.eq(depois) | (antes.isna() & depois.isna())
+    composta["tipo"] = SAIU
+    composta.loc[tem, "tipo"] = ENTROU
+    composta.loc[tinha & tem, "tipo"] = MUDOU
+    composta = composta[(tinha | tem) & ~(tinha & tem & igual)]
+    return pd.concat(
+        [mudancas[~no_seguinte], composta.reset_index()], ignore_index=True
+    )
+
+
 def ultimas_versoes(versoes: pd.DataFrame, chave: Sequence[str]) -> pd.DataFrame:
     """A versão mais recente de cada chave (a que vale hoje)."""
     return _ordenar(versoes, chave).drop_duplicates(list(chave), keep="last")
@@ -162,10 +206,16 @@ def _em_texto(tabela: pd.DataFrame) -> np.ndarray:
 
 
 def _iguais(a: pd.DataFrame, b: pd.DataFrame) -> bool:
-    """Mesmo conteúdo, com vazio igual a vazio, sem olhar o tipo exato de cada coluna."""
+    """Mesmo conteúdo, com vazio igual a vazio, sem olhar o tipo exato de cada coluna.
+
+    O vazio se confere à parte: no pandas 3 o `map` de `_em_texto` devolve coluna de texto, e o `None`
+    volta como `nan`, que não é igual a si mesmo (uma data vazia no vigente não conferia consigo).
+    """
     if a.shape != b.shape:
         return False
-    return bool((_em_texto(a) == _em_texto(b)).all())
+    x, y = _em_texto(a), _em_texto(b)
+    vazio_x, vazio_y = pd.isna(x), pd.isna(y)
+    return bool(((x == y) | (vazio_x & vazio_y)).all() and (vazio_x == vazio_y).all())
 
 
 def conferir_com_o_vigente(

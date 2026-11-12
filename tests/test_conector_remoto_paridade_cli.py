@@ -22,7 +22,10 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "comparaveis": ("comparaveis",),
     "demonstracoes": ("demonstracoes",),
     "eventos": ("eventos",),
+    "vinculos": ("vinculos",),
+    "compradores": ("compradores_do_setor",),
     "fundo": ("fundo",),
+    "novidades": ("novidades",),
     "setor": ("setores", "setor"),  # sem chave, a lista; com chave, o setor
     "catalogo": ("o_que_posso_ver",),
     "consumo": ("o_que_posso_ver",),
@@ -31,16 +34,12 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
 SEM_FERRAMENTA: dict[str, str] = {
     "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
+    "dossie": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
-    "eventos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pelo PR 1014 da 773)",
-    "vinculos": "ainda sem ferramenta no conector: fica para a 570 (o comando entrou na CLI pela 773)",
 }
 
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
-SO_NO_CONECTOR: dict[str, str] = {
-    "vinculos": "o comando `vinculos` entra na CLI pela linha 773; quando entrar, passa a "
-    "FERRAMENTAS_DO_COMANDO e ganha um caso em CASOS",
-}
+SO_NO_CONECTOR: dict[str, str] = {}
 
 ENDERECO = "https://api.exemplo.test"
 CNPJ = "11111111000191"  # de mentira, com os dígitos verificadores certos
@@ -81,11 +80,24 @@ CASOS = [
         id="eventos",
     ),
     pytest.param(
+        ["vinculos", CNPJ, "--como-era", UM_DIA, "--profundidade", "2", "--tipo", "coligada"],
+        "vinculos",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA, "profundidade": 2, "tipos": ["coligada"]},
+        id="vinculos",
+    ),
+    pytest.param(
+        ["compradores", "--cnae", "35115", "--uf", "SP", "--anos", "5", "--limite", "10", "--como-era", UM_DIA],
+        "compradores_do_setor",
+        {"cnae": "35115", "uf": "SP", "anos": 5, "limite": 10, "como_era_em": UM_DIA},
+        id="compradores",
+    ),
+    pytest.param(
         ["fundo", CNPJ, "--como-era", UM_DIA, "--retorno-suposto", "0.1"],
         "fundo",
         {"cnpj": CNPJ, "como_era_em": UM_DIA, "retorno_suposto": 0.1},
         id="fundo",
     ),
+    pytest.param(["novidades", "--dias", "14"], "novidades", {"dias": 14}, id="novidades"),
     pytest.param(["setor"], "setores", {}, id="setores"),
     pytest.param(
         ["setor", "combustiveis", "--como-era", UM_DIA],

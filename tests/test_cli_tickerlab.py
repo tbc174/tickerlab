@@ -13,6 +13,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import stat
 from datetime import date
 from typing import ClassVar
@@ -1082,7 +1083,10 @@ def test_instrucoes_do_agente(rodar):
         "prospectar",
         "comparaveis",
         "eventos",
+        "dossie",
+        "compradores",
         "vinculos",
+        "novidades",
         "catalogo",
         "consumo",
     ):
@@ -1705,6 +1709,77 @@ def test_eventos_recusa_da_api_em_portugues(rodar, chave, codigo, trecho):
     assert trecho in resultado.stderr
 
 
+CORPO_DE_COMPRADORES = {
+    "buyers": [
+        {
+            "entity_id": "pj:99999999",
+            "legal_name": {
+                "value": "COMPRADORA EXEMPLO S.A.",
+                "source": "rfb-cnpj",
+                "published_at": "2026-10-01",
+                "observed_at": "2026-10-02",
+            },
+            "signals": {
+                "value": ["entrou_como_socio"],
+                "source": "rfb-cnpj",
+                "published_at": "2026-10-01",
+                "observed_at": "2026-10-02",
+            },
+        }
+    ],
+    "limits": [
+        {"source": "rfb-cnpj", "text": "Movimento passado não é intenção de compra."}
+    ],
+}
+
+
+def _pedir_compradores(rodar, chave, *argumentos):
+    vistos: list[httpx.Request] = []
+
+    def guardar(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        return httpx.Response(200, json=CORPO_DE_COMPRADORES)
+
+    resultado = rodar(
+        "compradores", *argumentos, http=_http_falso(guardar), **_com_chave(chave)
+    )
+    return resultado, vistos
+
+
+def test_compradores_pede_a_rota_com_os_filtros(rodar, chave):
+    resultado, vistos = _pedir_compradores(
+        rodar, chave, "--cnae", "3511-5/01", "--uf", "sp", "--anos", "5",
+        "--limite", "10", "--como-era", "2026-03-31",
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = vistos
+    assert pedido.url.path == "/data/v1/buyers"
+    assert dict(pedido.url.params) == {
+        "cnae": "3511501",
+        "state": "SP",
+        "years": "5",
+        "limit": "10",
+        "known_at": "2026-03-31",
+    }
+    assert "COMPRADORA EXEMPLO S.A." in resultado.stdout
+    assert "## limits" in resultado.stdout
+    assert resultado.stdout.rstrip().endswith(formato.AVISO)
+
+
+def test_compradores_padrao_de_anos_e_limite(rodar, chave):
+    resultado, vistos = _pedir_compradores(rodar, chave, "--cnae", "35115")
+    assert resultado.exit_code == 0, resultado.output
+    parametros = dict(vistos[0].url.params)
+    assert parametros["years"] == "3" and parametros["limit"] == "20"
+    assert "state" not in parametros
+
+
+def test_compradores_em_json_e_o_envelope_da_rota(rodar, chave):
+    resultado, _ = _pedir_compradores(rodar, chave, "--cnae", "35115", "--json")
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == CORPO_DE_COMPRADORES
+
+
 # ---------------------------------------------------------------- vinculos (rota da linha 736, PR 5)
 
 DIA_DOS_VINCULOS = vinculos_de_mentira.DIA.isoformat()
@@ -1791,6 +1866,33 @@ def test_vinculos_fora_do_contrato_e_sem_dado(rodar, chave, tmp_path, monkeypatc
 
 @pytest.mark.parametrize(
     "argumentos",
+    [
+        ("--cnae", "351"),
+        ("--cnae", "35115", "--uf", "SAO"),
+        ("--cnae", "35115", "--anos", "11"),
+        ("--cnae", "35115", "--limite", "51"),
+        (),
+    ],
+)
+def test_compradores_pedido_ruim_nem_chega_a_api(rodar, chave, argumentos):
+    resultado, vistos = _pedir_compradores(rodar, chave, *argumentos)
+    assert resultado.exit_code == Saida.USO
+    assert vistos == []
+
+
+def test_compradores_recusa_da_api_vira_mensagem_clara(rodar, chave):
+    def recusa(_p: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"detail": "invalid_cnae"})
+
+    resultado = rodar(
+        "compradores", "--cnae", "35115", http=_http_falso(recusa), **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
+    assert "5 ou 7 dígitos" in resultado.stderr
+
+
+@pytest.mark.parametrize(
+    "argumentos",
     [("--profundidade", "4"), ("--profundidade", "0"), ("--tipo", "fusao")],
 )
 def test_vinculos_pedido_mal_escrito_nem_chega_a_api(rodar, chave, argumentos):
@@ -1818,3 +1920,174 @@ def test_vinculos_recusa_da_api_em_portugues(rodar, chave, codigo, saida, trecho
     )
     assert resultado.exit_code == saida
     assert trecho in resultado.stderr
+
+
+# ---------------------------------------------------------------- novidades (fontes provadas pela pesquisa, linha 830)
+
+CORPO_DE_NOVIDADES = {
+    "generated_at": "2026-11-11T12:00:00+00:00",
+    "days": 7,
+    "total_news": 1,
+    "items": [
+        {
+            "agency": "CVM",
+            "source": "cvm",
+            "source_url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/exemplo.csv",
+            "date": "2026-11-10",
+            "excerpt": "Parque Exemplo Eólico: 120 MW, vigência 2035",
+            "original_sha256": "a" * 64,
+            "position": "linha 3",
+        }
+    ],
+}
+
+
+def _pedir_novidades(rodar, chave, corpo, *argumentos):
+    vistos: list[httpx.Request] = []
+
+    def guardar(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        return httpx.Response(200, json=corpo)
+
+    resultado = rodar(
+        "novidades", *argumentos, http=_http_falso(guardar), **_com_chave(chave)
+    )
+    return resultado, vistos
+
+
+def test_novidades_pede_a_rota_e_mostra_orgao_trecho_e_hash(rodar, chave):
+    resultado, vistos = _pedir_novidades(
+        rodar, chave, CORPO_DE_NOVIDADES, "--dias", "14"
+    )
+    assert resultado.exit_code == 0
+    assert vistos[0].url.path.endswith("/research/news")
+    assert vistos[0].url.params["days"] == "14"
+    assert "CVM · 2026-11-10" in resultado.stdout
+    assert "Parque Exemplo Eólico: 120 MW" in resultado.stdout
+    assert "a" * 64 in resultado.stdout
+
+
+def test_novidades_marca_o_recorte_fora_das_aspas(rodar, chave):
+    item = CORPO_DE_NOVIDADES["items"][0] | {"excerpt_cut": "ambos"}
+    corpo = CORPO_DE_NOVIDADES | {"items": [item]}
+    resultado, _ = _pedir_novidades(rodar, chave, corpo)
+    assert "vigência 2035”  [recorte: o original continua antes e depois]" in (
+        resultado.stdout
+    )
+
+
+def test_novidades_sem_nada_diz_que_nao_ha(rodar, chave):
+    vazio = {"generated_at": None, "days": 7, "total_news": 0, "items": []}
+    resultado, _ = _pedir_novidades(rodar, chave, vazio)
+    assert resultado.exit_code == 0
+    assert "Nenhuma fonte nova provada na semana" in resultado.stdout
+
+
+def test_novidades_dias_fora_da_faixa_nem_chega_a_api(rodar, chave):
+    resultado = rodar("novidades", "--dias", "31", http=None, **_com_chave(chave))
+    assert resultado.exit_code != 0
+
+
+def _env(valor):
+    return {
+        "value": valor,
+        "source": "rfb-cnpj",
+        "published_at": "2026-10-01",
+        "observed_at": "2026-10-02",
+    }
+
+
+def _secoes_do_dossie(faltando: dict[str, int] | None = None):
+    faltando = faltando or {}
+    corpos = {
+        "/profile": {
+            "cnpj": {"razao": _env("EMPRESA EXEMPLO S.A.")},
+            "sources": [{"source": "rfb-cnpj"}],
+        },
+        "/events": {
+            "events": [],
+            "sources": [{"source": "rfb-cnpj"}, {"source": "cvm"}],
+        },
+        "/links": {
+            "links": [],
+            "limits": [{"source": "x", "text": "limite dos vínculos"}],
+        },
+        "/comparables": {"comparables": [], "sources": [{"source": "cvm"}]},
+    }
+    vistos: list[str] = []
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        sufixo = "/" + pedido.url.path.rsplit("/", 1)[1]
+        vistos.append(sufixo)
+        if sufixo in faltando:
+            codigo = {403: "dataset_not_in_contract", 404: "not_available"}[
+                faltando[sufixo]
+            ]
+            return httpx.Response(faltando[sufixo], json={"detail": codigo})
+        return httpx.Response(200, json=dict(corpos[sufixo]))
+
+    return responder, vistos
+
+
+def test_dossie_junta_as_quatro_secoes_sem_repetir_fonte(rodar, chave):
+    responder, vistos = _secoes_do_dossie()
+    resultado = rodar(
+        "dossie",
+        "11111111000191",
+        "--json",
+        http=_http_falso(responder),
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos == ["/profile", "/events", "/links", "/comparables"]
+    corpo = json.loads(resultado.stdout)
+    assert corpo["requests_used"] == 4 and corpo["gaps"] == []
+    assert [f["source"] for f in corpo["sources"]] == ["rfb-cnpj", "cvm"]
+    assert corpo["limits"] == [{"source": "x", "text": "limite dos vínculos"}]
+    assert "sources" not in corpo["events"]
+
+
+def test_dossie_secao_sem_dado_vira_lacuna_dita(rodar, chave):
+    responder, _ = _secoes_do_dossie({"/links": 404})
+    resultado = rodar(
+        "dossie", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert "Ficou de fora: links" in resultado.stdout
+    assert "## comparables" in resultado.stdout
+
+
+def test_dossie_sem_perfil_e_erro(rodar, chave):
+    responder, _ = _secoes_do_dossie({"/profile": 404})
+    resultado = rodar(
+        "dossie", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.SEM_DADO
+
+
+def test_dossie_em_planilha_tem_aba_das_fontes(rodar, chave, tmp_path):
+    responder, _ = _secoes_do_dossie()
+    arquivo = tmp_path / "dossie.xlsx"
+    resultado = rodar(
+        "dossie", "11111111000191", "--planilha", str(arquivo),
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    abas = _abrir_xlsx(arquivo)
+    assert any("fonte" in aba.lower() for aba in abas)
+
+
+def test_dossie_exportado_so_chama_rotas_de_pj_e_nao_leva_cpf(rodar, chave, tmp_path):
+    responder, vistos = _secoes_do_dossie({"/links": 404})
+    arquivo = tmp_path / "dossie.xlsx"
+    resultado = rodar(
+        "dossie", "11111111000191", "--planilha", str(arquivo),
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos == ["/profile", "/events", "/links", "/comparables"]
+    celulas = " ".join(
+        str(c) for linhas in _abrir_xlsx(arquivo).values() for l in linhas for c in l
+    )
+    assert not re.search(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", celulas)
+    assert "não achado:" in celulas

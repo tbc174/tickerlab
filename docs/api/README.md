@@ -128,7 +128,7 @@ leitura com o recorte sem pessoa que `scripts/montar_recorte_da_api.py` envia. C
 vazia, a API sobe igual e estas rotas respondem 503; a tabela que não está no recorte também dá 503.
 Na página Dados, a coluna "Consulta", a frase e o painel nascem escondidos e só aparecem quando
 `GET /api/v1/base/tabelas` responde. A `fidc_informe` (410 colunas) não cabe nos 512MB da porta nem
-numa leitura simples e fica fora do recorte: a consulta dela dá 503 até um PR próprio.
+numa leitura simples e fica fora do recorte: a consulta aberta não a anuncia nem a serve (404, como as outras 14 da linha 842) até ter prontidão.
 
 Sem `taxa`, a taxa livre de risco é o CDI do período (zero se o Banco Central não responder), como
 na tela. Toda resposta traz `ativo` com o período real, a origem dos preços (`atual`,
