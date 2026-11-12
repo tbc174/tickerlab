@@ -39,7 +39,7 @@ URL_2025 = (
 URL_2008 = (
     f"{lote_sefaz_pe.PORTAL}/dataset/x/resource/z/download/beneficios_fiscais_2008_.csv"
 )
-CPF = "12345678909"
+CPF = "88800000046"
 
 
 def _beneficio(

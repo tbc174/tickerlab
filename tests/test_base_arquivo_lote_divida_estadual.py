@@ -129,12 +129,14 @@ def test_filtro_guarda_so_cnpj_sem_nome_e_sem_cpf():
     bruto = (
         CABECALHO
         + _linha("1", EMPRESA, "CALCADOS BIRU LTDA")
-        + _linha("2", "", "JOAO DA SILVA", cpf="123.456.789-09")  # pessoa física
         + _linha(
-            "3", "00.184.780/0001-77", "JOAO ADOEZIO 123.456.789-09"
+            "2", "", "PESSOA INVENTADA LICITACAO", cpf="888.000.000-46"
+        )  # pessoa física
+        + _linha(
+            "3", "00.184.780/0001-77", "JOAO ADOEZIO 888.000.000-46"
         )  # CPF no nome
         + _linha(
-            "4", "00.184.780/0001-78", "OUTRA", cpf="123.456.789-09"
+            "4", "00.184.780/0001-78", "OUTRA", cpf="888.000.000-46"
         )  # CPF na coluna
         + _linha("5", "", "SEM DOCUMENTO")
         + _linha("6", OUTRA, "FORTQUIM LTDA", suspensao="DEPOSITO JUDICIAL")
@@ -149,7 +151,7 @@ def test_filtro_guarda_so_cnpj_sem_nome_e_sem_cpf():
         "BIRU",
         "FORTQUIM",
         "JOAO",
-        "123.456.789-09",
+        "888.000.000-46",
         "Nome/raz",
         "CPF",
     ):
@@ -160,7 +162,7 @@ def test_filtro_recusa_documento_com_texto_junto_do_cnpj():
     """A coluna do documento é gravada como veio: "CNPJ - razão social" levaria o nome ao disco."""
     bruto = (
         CABECALHO
-        + _linha("1", f"{EMPRESA} - FULANO 029.037.377-89")
+        + _linha("1", f"{EMPRESA} - FULANO 888.000.003-99")
         + _linha("2", EMPRESA)
     )
     guardado = _filtrar(bruto)

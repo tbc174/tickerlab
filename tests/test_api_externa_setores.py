@@ -119,17 +119,17 @@ def test_setor_sai_com_fonte_data_e_atribuicao_em_ingles(cliente, cenario):
 def test_nenhuma_pessoa_fisica_na_resposta(cliente, cenario, pasta):
     # uma linha com 11 dígitos (CPF) plantada nos membros e na participação não sai
     def plantar(secao: dict) -> None:
-        pessoa = {"cnpj": "12345678909", "empresa": "FULANO", "motivo": "ligada"}
+        pessoa = {"cnpj": "88800000046", "empresa": "FULANO", "motivo": "ligada"}
         secao["tabelas"]["membros"].append(pessoa)
         linha = dict(secao["tabelas"]["participacao_dos_membros"][0])
         secao["tabelas"]["participacao_dos_membros"].append(
-            linha | {"cnpj": "12345678909", "empresa": "FULANO"}
+            linha | {"cnpj": "88800000046", "empresa": "FULANO"}
         )
 
     _regravar_noite(pasta, plantar)
     corpo = _get(cliente, cenario).json()
     texto = json.dumps(corpo)
-    assert "12345678909" not in texto
+    assert "88800000046" not in texto
     assert "FULANO" not in texto
     for chave in aj.chaves_de(corpo):
         assert not set(chave.split("_")) & portao.PALAVRAS_QUE_NUNCA_SAEM, chave

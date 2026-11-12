@@ -482,7 +482,7 @@ NOMES_DO_MUNDO_FALSO = (
     "DELTA PAPEL S.A.",
     "AUDITORES UM",
     "AUDITORES DOIS",
-    "JOAO DA SILVA",
+    "PESSOA INVENTADA LICITACAO",
 )
 LUCRO = "Lucro/Prejuízo Consolidado do Período"
 MILHAO = 1e6

@@ -495,7 +495,7 @@ def _empresas() -> io.BytesIO:
     return _zip(
         [
             [RAIZ_ALFA, "ALFA OLEOS S.A.", "2054", "10", "1000,00", "05", ""],
-            [RAIZ_BETA, "FULANO EXEMPLAR 12345678909", "2135", "50", "0,00", "01", ""],
+            [RAIZ_BETA, "FULANO EXEMPLAR 88800000046", "2135", "50", "0,00", "01", ""],
             [RAIZ_GAMA, "GAMA COMERCIO LTDA", "2062", "49", "10,00", "03", ""],
             [RAIZ_DELTA, "DELTA HOLDING LTDA", "2062", "49", "10,00", "03", ""],
             ["55555555", "OUTRA COISA LTDA", "2062", "49", "10,00", "03", ""],
@@ -537,7 +537,7 @@ def test_receita_devolve_so_raiz_e_o_nome_ja_normalizado():
         "delta",
         "fulano",
         "gama comercio",
-        "fulano exemplar 12345678909",
+        "fulano exemplar 88800000046",
         "omega pagamentos",
         "urgo",
     }

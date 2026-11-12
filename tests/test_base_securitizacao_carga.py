@@ -18,7 +18,7 @@ from src.banco.coletas import com_registro
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "securitizacao"
 AGORA = datetime(2026, 10, 26, 18, tzinfo=UTC)
 CNPJ_FORMATADO = re.compile(r"\d\d\.\d{3}\.\d{3}/\d{4}-\d\d")
-CPF_FICTICIO = "52998224725"  # dígitos verificadores certos, de ninguém
+CPF_FICTICIO = "88800000127"  # dígitos verificadores certos, de ninguém
 URLS = {
     "cvm-cri": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_CRI/DADOS/inf_mensal_cri_2026.zip",
     "cvm-cra": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_CRA/DADOS/inf_mensal_cra_2026.zip",

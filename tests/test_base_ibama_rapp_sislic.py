@@ -61,7 +61,7 @@ def test_campo_vazio_vira_nulo_e_nao_zero():
 
 def test_pessoa_fisica_fica_de_fora_do_rapp():
     tabela = ibama.ler_rapp_madeira_lenha(
-        _rapp_com("123.456.789-09;FULANO;GOIAS;RIO VERDE;2020;1,00;0,00;0,00;Ativa"),
+        _rapp_com("888.000.000-46;FULANO;GOIAS;RIO VERDE;2020;1,00;0,00;0,00;Ativa"),
         COLETA,
     )
     assert tabela.empty

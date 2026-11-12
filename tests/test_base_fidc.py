@@ -22,7 +22,7 @@ ARQUIVOS = (
     "inf_mensal_fidc_2019.zip",
     "inf_mensal_fidc_202608.zip",
 )
-CPF_FICTICIO = "52998224725"  # dígitos verificadores certos, de ninguém
+CPF_FICTICIO = "88800000127"  # dígitos verificadores certos, de ninguém
 
 
 def _ler(nome: str) -> dict[str, pd.DataFrame]:
@@ -55,7 +55,7 @@ def test_le_as_tabelas_do_informe_de_cada_layout(nome):
     [
         ("33000167000101", "33.000.167/0001-01"),  # Petrobras
         ("7526557000100", "07.526.557/0001-00"),  # Ambev, sem o zero à esquerda
-        # o CNPJ do Banco do Brasil sem os zeros ("191") também é um CPF válido (000.000.001-91):
+        # o CNPJ do Banco do Brasil sem os zeros ("191") também é um CPF válido (888.000.010-18):
         # na dúvida, é tratado como dado pessoal e sai
         ("191", None),
         (CPF_FICTICIO, None),  # CPF: dado pessoal, sai

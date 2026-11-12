@@ -96,7 +96,7 @@ def test_os_dois_cnpjs_ficam_cada_um_na_sua_coluna():
 
 
 def test_pessoa_fisica_fica_sem_nome_e_cpf_nao_vira_cnpj():
-    consultorio = _item("0000009", nu_cnpj="123.456.789-09", nu_cnpj_mantenedora=None)
+    consultorio = _item("0000009", nu_cnpj="888.000.000-46", nu_cnpj_mantenedora=None)
     linha = cnes.tabela_da_competencia([consultorio], COMPETENCIA, COLETA).iloc[0]
     assert linha["cnpj"] == ""
     assert linha["cnpj_mantenedora"] == ""
@@ -109,7 +109,7 @@ def test_pessoa_fisica_fica_sem_nome_e_cpf_nao_vira_cnpj():
 
 def test_pessoa_fisica_fica_sem_coordenada_e_pessoa_juridica_mantem():
     """Condição do MS (05/11/2026): a coordenada do consultório, com o código CNES, acharia a pessoa."""
-    consultorio = _item("0000009", nu_cnpj="123.456.789-09", nu_cnpj_mantenedora=None)
+    consultorio = _item("0000009", nu_cnpj="888.000.000-46", nu_cnpj_mantenedora=None)
     hospital = _item("2627183", nu_cnpj="33.000.167/0001-01")
     tabela = cnes.tabela_da_competencia([consultorio, hospital], COMPETENCIA, COLETA)
     pessoa, empresa = tabela.iloc[0], tabela.iloc[1]

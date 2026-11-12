@@ -79,7 +79,7 @@ def test_individual_cpf_inteiro_tambem_e_descartado():
     cabecalho = "C;D;P;Data;V;R;D;C;S\r\n"
     contagem = transacoes.Contagem()
     tabela = _individual(
-        (cabecalho + "FULANO;123.456.789-09;P;jan/24;1;1;1;;1\r\n").encode(), contagem
+        (cabecalho + "FULANO;888.000.000-46;P;jan/24;1;1;1;;1\r\n").encode(), contagem
     )
     assert tabela.empty and contagem.sem_cnpj_descartadas == 1
 

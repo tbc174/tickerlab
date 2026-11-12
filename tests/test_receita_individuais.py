@@ -18,12 +18,11 @@ from base.pessoas import chave as chaves
 from base.pessoas.chave import id_da_raiz
 from base.receita_contato import RaizesDeIndividual
 from base.receita_retrato import ErroDeLayout
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado, meio, no_formato
 
 CHAVE = b"k" * 32
 SEM_OPOSTOS = Opostos(frozenset(), CHAVE)
-CPF = (
-    "52998224725"  # número de exemplo que fecha nos dígitos; não é de ninguém conhecido
-)
+CPF = CPF_DE_TESTE  # inventado, montado na hora (tests/ajudantes_de_cpf.py); não é de ninguém
 
 
 def _linha(raiz="11222333", razao="FULANA EXEMPLO", natureza="2135") -> str:
@@ -65,12 +64,12 @@ def test_so_o_empresario_individual_sai(natureza):
     "razao",
     [
         f"FULANA EXEMPLO {CPF}",
-        "FULANA EXEMPLO 529.982.247-25",
-        "FULANA EXEMPLO 529982247-25",
-        "FULANA EXEMPLO 529 982 247 25",
-        "FULANA EXEMPLO CPF 529/982/247/25",
+        f"FULANA EXEMPLO {formatado(CPF)}",
+        f"FULANA EXEMPLO {no_formato(CPF, 'ddddddddd-dd')}",
+        f"FULANA EXEMPLO {no_formato(CPF, 'ddd ddd ddd dd')}",
+        f"FULANA EXEMPLO CPF {no_formato(CPF, 'ddd/ddd/ddd/dd')}",
         f"{CPF} FULANA EXEMPLO",
-        "FULANA EXEMPLO ***982247**",
+        f"FULANA EXEMPLO ***{meio(CPF)}**",
     ],
 )
 def test_cpf_no_nome_sai_em_qualquer_formato(razao):
@@ -99,13 +98,13 @@ def test_cnpj_com_letras_sai_em_maiusculas():
 @pytest.mark.parametrize(
     "escrito",
     [
-        "52998224725",
-        "529.982.247-25",
-        "***982247**",
-        "***.982.247-**",
-        "529 982 247 25",
-        "CPF 529/982/247/25",
-        "529.982.247 25",
+        CPF,
+        formatado(CPF),
+        f"***{meio(CPF)}**",
+        f"***.{no_formato(meio(CPF), 'ddd.ddd')}-**",
+        no_formato(CPF, "ddd ddd ddd dd"),
+        f"CPF {no_formato(CPF, 'ddd/ddd/ddd/dd')}",
+        no_formato(CPF, "ddd.ddd.ddd dd"),
     ],
 )
 def test_oposto_sai_com_o_cpf_escrito_em_qualquer_formato(escrito):
