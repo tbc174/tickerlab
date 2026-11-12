@@ -903,7 +903,7 @@ def test_eventos_fica_fora_da_consulta_aberta_mesmo_com_prontidao(cliente, monke
     NÃO volta com a prontidão (nem se alguém a pôr no registro): só sai da lista de conserto quando a máscara
     entrar na carga e este teste for trocado de propósito."""
     assert "eventos" in FECHADAS_ATE_A_PRONTIDAO
-    assert FECHADAS_ATE_O_CONSERTO_DO_DADO == {"eventos"}
+    assert {"eventos"} == FECHADAS_ATE_O_CONSERTO_DO_DADO
     assert pode_consultar("eventos") and not pode_consultar_aberto("eventos")
     for registro in ({}, _prontidao_de_todas_do_cnpj(), {"eventos": object()}):
         monkeypatch.setattr(prontidao, "PRONTIDAO", registro)
