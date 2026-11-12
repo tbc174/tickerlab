@@ -117,6 +117,7 @@ Assim, a chave não vai em texto aberto pela rede.
 - Sem `--json`, imprime uma tabela por bloco, com a fonte e a data de publicação de cada campo ou linha. A tabela
   termina com as fontes (licença e frase de atribuição) e com o aviso de que nada é recomendação de investimento.
   Os nomes dos campos saem como a API os dá, para a pessoa e o agente falarem dos mesmos nomes.
+- Dado de piloto (`pilot: true` no campo e `pilot_notice` na resposta, ADR 0108 Emenda 2): a tela mostra a coluna `piloto` ao lado da fonte e da data e a frase da API logo abaixo da tabela; a planilha leva a coluna `piloto` e a frase (aba `fontes` no XLSX); o `--json` passa tudo como veio. A CLI não escreve a frase: mostra a que a API mandou.
 - Uma resposta cortada no limite do plano (`truncated`) ganha um aviso na tabela.
 - Com `--planilha ARQUIVO` (em `empresa`, `comparaveis`, `eventos`, `vinculos`, `compradores`, `dossie`, `demonstracoes`, `fundo`, `setor` e `prospectar`), grava a resposta para o Excel, em
   vez de imprimir a tabela (pedido da Diretoria de 10/11: a equipe da casa de M&A leva os dados para o Excel).

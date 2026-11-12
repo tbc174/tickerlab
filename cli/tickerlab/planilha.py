@@ -19,11 +19,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from tickerlab.formato import AVISO, e_envelope, rotulo_do_item, tem_listas
+from tickerlab.formato import (
+    AVISO,
+    avisos_de_piloto,
+    colunas_da_linha,
+    e_de_piloto,
+    e_envelope,
+    frase_de_piloto_da_linha,
+    frase_do_envelope,
+    rotulo_do_item,
+    tem_listas,
+)
 
 EXTENSOES = (".csv", ".xlsx")
 COLUNA_DA_FONTE = "fonte"
 COLUNA_DA_DATA = "publicado_em"
+COLUNA_DO_PILOTO = "piloto"
 INICIO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
 LIMITE_DO_NOME_DA_ABA = 31  # o Excel não abre aba com nome maior
 PROIBIDO_NO_NOME_DA_ABA = re.compile(r"[\[\]:*?/\\]")
@@ -40,6 +51,8 @@ class Tabela:
     nome: str
     cabecalho: list[str]
     linhas: list[list[Valor]] = field(default_factory=list)
+    # linha de `linhas` -> a frase de piloto do campo que ela traz (só a tabela `campos` usa)
+    pilotos: dict[int, str] = field(default_factory=dict)
 
 
 def _cru(valor: object) -> Valor:
@@ -59,14 +72,21 @@ def _fonte_e_data(envelopes: Sequence[Mapping]) -> list[Valor]:
 
 
 def _tabela_de_linhas(nome: str, linhas: Sequence[Mapping]) -> Tabela:
-    colunas = list(dict.fromkeys(chave for linha in linhas for chave in linha))
+    colunas = colunas_da_linha(linhas)
     com_fonte = any(e_envelope(v) for linha in linhas for v in linha.values())
+    frases = [frase_de_piloto_da_linha(linha) for linha in linhas]
+    com_piloto = any(frases)
     extra = [COLUNA_DA_FONTE, COLUNA_DA_DATA] if com_fonte else []
+    extra += [COLUNA_DO_PILOTO] if com_piloto else []
     tabela = Tabela(nome, [*colunas, *extra])
-    for linha in linhas:
+    for linha, frase in zip(linhas, frases, strict=True):
         valores = [_cru(linha.get(coluna)) for coluna in colunas]
         if com_fonte:
             valores += _fonte_e_data([v for v in linha.values() if e_envelope(v)])
+        if (
+            com_piloto
+        ):  # a coluna leva a própria frase: o arquivo da lista a carrega sozinho
+            valores.append(frase)
         tabela.linhas.append(valores)
     return tabela
 
@@ -86,6 +106,8 @@ def _percorrer(
             campos.linhas.append(
                 [_juntar(caminho, nome), _cru(valor), *_fonte_e_data([valor])]
             )
+            if e_de_piloto(valor):
+                campos.pilotos[len(campos.linhas) - 1] = frase_do_envelope(valor)
         elif valor is None or isinstance(valor, str | int | float | bool):
             # o que identifica o pedido (CNPJ, dia, hipótese, corte): sem fonte, não é dado de fonte
             campos.linhas.append([_juntar(caminho, nome), valor, None, None])
@@ -93,6 +115,15 @@ def _percorrer(
             _percorrer(_juntar(caminho, nome), valor, campos, tabelas)
         elif isinstance(valor, list):
             _lista(_juntar(caminho, nome), valor, campos, tabelas)
+
+
+def _marcar_campos_de_piloto(campos: Tabela) -> None:
+    """Acrescenta a coluna `piloto` (com a frase) nos campos soltos quando a API marcou algum como piloto."""
+    if not campos.pilotos:
+        return
+    campos.cabecalho.append(COLUNA_DO_PILOTO)
+    for posicao, linha in enumerate(campos.linhas):
+        linha.append(campos.pilotos.get(posicao))
 
 
 def _lista(caminho: str, itens: list, campos: Tabela, tabelas: list[Tabela]) -> None:
@@ -113,6 +144,7 @@ def tabelas_da_resposta(corpo: Mapping) -> list[Tabela]:
     campos = Tabela("campos", ["campo", "valor", COLUNA_DA_FONTE, COLUNA_DA_DATA])
     tabelas: list[Tabela] = []
     _percorrer("", corpo, campos, tabelas)
+    _marcar_campos_de_piloto(campos)
     return [campos, *tabelas] if campos.linhas else tabelas
 
 
@@ -129,6 +161,9 @@ def tabela_das_fontes(corpo: Mapping) -> Tabela:
                 ]
             )
     fontes.linhas.append(["aviso", AVISO, None])
+    fontes.linhas.extend(
+        ["aviso de piloto", frase, None] for frase in avisos_de_piloto(corpo)
+    )
     return fontes
 
 
