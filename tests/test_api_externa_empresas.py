@@ -128,7 +128,8 @@ def _identificadores() -> pd.DataFrame:
 
 # o histórico datado da raiz da EMPRESA (o mês vale pelo último dia, como a situação): o nome mudou em
 # 2025-06 e em 2025-07; o Simples foi excluído em 2025-03 e a raiz saiu do arquivo do Simples em 2025-06. O MEI também
-# tem histórico, e nada dele pode sair.
+# tem histórico, e nada dele pode sair. O nome e a natureza saem do retrato da lista sem pessoa (`LISTA_DO_NOME`,
+# os mesmos meses, sem o MEI), nunca do histórico do nome (linha 861).
 EMPRESAS_HISTORICO = "cnpj_empresas_historico"
 SIMPLES_HISTORICO = "cnpj_simples_historico"
 # fmt: off
@@ -137,6 +138,12 @@ VERSOES_DO_NOME = [
     (EMPRESA[:8], "2025-06", "2025-06-21", True, "2054", "ALFA S.A."),
     (EMPRESA[:8], "2025-07", "2025-07-21", True, "2054", "ALFA HOLDING S.A."),
     (MEI[:8], "2023-05", "2023-05-21", True, "2135", None),
+]
+# a lista sem pessoa (`cnpj_empresas_pj`) dos mesmos meses: o MEI não entra nela
+LISTA_DO_NOME = [
+    (raiz, nome, natureza, "05", mes, disponivel)
+    for raiz, mes, disponivel, _, natureza, nome in VERSOES_DO_NOME
+    if raiz != MEI[:8]
 ]
 VERSOES_DO_SIMPLES = [
     (EMPRESA[:8], "2023-05", "2023-05-21", True, True, "2018-01-01", None, False),
@@ -184,14 +191,28 @@ def _gravar_historicos(base, nome: pd.DataFrame, simples: pd.DataFrame) -> None:
 
 
 def _gravar_base(
-    base, retratos: pd.DataFrame, com_rede: bool = True, historicos: bool = True
+    base,
+    retratos: pd.DataFrame,
+    com_rede: bool = True,
+    historicos: bool = True,
+    lista_pj: list | None = None,
 ) -> None:
+    """A base de teste; com os históricos vem também a lista sem pessoa dos mesmos meses (`LISTA_DO_NOME`),
+    a não ser que `lista_pj` diga outra."""
     pasta = base / TABELA
     pasta.mkdir(parents=True, exist_ok=True)
     for mes, linhas in retratos.groupby("mes_do_retrato"):
         linhas.to_parquet(pasta / f"{mes}.parquet", index=False)
     if historicos:
         _gravar_historicos(base, _historico_do_nome(), _historico_do_simples())
+    lista = (
+        lista_pj if lista_pj is not None else (LISTA_DO_NOME if historicos else None)
+    )
+    if lista is not None:
+        (base / empresas.LISTA_DE_EMPRESAS).mkdir(parents=True, exist_ok=True)
+        _lista_pj(lista).to_parquet(
+            base / empresas.LISTA_DE_EMPRESAS / "00.parquet", index=False
+        )
     if com_rede:
         (base / "rede").mkdir(exist_ok=True)
         _entidades().to_parquet(base / "rede" / "entidades.parquet", index=False)
@@ -530,8 +551,13 @@ def test_cortar_o_futuro_nao_muda_o_passado(tmp_path, cenario, monkeypatch):
     inteira = _get(cliente, cenario, known_at=dia).json()
     base = tmp_path / "cortada"
     retratos = _retratos()
+    # o retrato da lista sem pessoa de julho ainda não era público em 15/07: some da base cortada
+    ja_publica = [linha for linha in LISTA_DO_NOME if linha[4] < "2025-07"]
     _gravar_base(
-        base, retratos[retratos["mes_do_retrato"] < "2025-06"], historicos=False
+        base,
+        retratos[retratos["mes_do_retrato"] < "2025-06"],
+        historicos=False,
+        lista_pj=ja_publica,
     )
     _gravar_historicos(
         base,
@@ -726,10 +752,10 @@ def test_o_conjunto_e_o_do_catalogo():
     assert acesso is not None
 
 
-# ---------------------------------------------------------------- sem o histórico: o retrato da lista sem pessoa
-# (linha 861) O VPS não tem `cnpj_empresas_historico`: a razão social e a natureza vêm do retrato de
-# `cnpj_empresas_pj` (só PJ, sem MEI nem empresário individual), só se o retrato já era público no dia, e a
-# resposta diz de que mês ele é. O retrato de 2025-06 (baixado em 21/06) vale pelo último dia do mês: 30/06.
+# ---------------------------------------------------------------- o nome do retrato da lista sem pessoa
+# (linha 861) A razão social e a natureza vêm do retrato de `cnpj_empresas_pj` (só PJ, sem MEI nem empresário
+# individual), só se o retrato já era público no dia, e a resposta diz de que mês ele é; o histórico do nome não
+# é lido (ele não está no VPS, tem pessoa e não tem prova). Aqui a base não tem os históricos. O retrato de 2025-06 (baixado em 21/06) vale pelo último dia do mês: 30/06.
 RETRATO_PJ = "2025-06"
 # fmt: off
 LISTA_PJ = [
@@ -757,12 +783,7 @@ def _base_sem_historico(
     historicos=False,
 ):
     base = tmp_path / nome
-    _gravar_base(base, _retratos(), historicos=historicos)
-    if lista is not None:
-        (base / empresas.LISTA_DE_EMPRESAS).mkdir(parents=True)
-        _lista_pj(lista).to_parquet(
-            base / empresas.LISTA_DE_EMPRESAS / "00.parquet", index=False
-        )
+    _gravar_base(base, _retratos(), historicos=historicos, lista_pj=lista)
     monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
     return aj.cliente_da_api(monkeypatch, AGORA)
 
@@ -830,21 +851,19 @@ def test_sem_o_historico_cortar_o_futuro_nao_muda_o_passado(
     assert _get(sem_o_retrato, cenario, known_at=dia).json() == inteira
 
 
-def test_com_o_historico_o_retrato_pj_nao_e_usado(tmp_path, cenario, monkeypatch):
+def test_com_o_historico_do_nome_na_base_o_nome_vem_do_retrato(
+    tmp_path, cenario, monkeypatch
+):
+    # o histórico do nome diz ALFA HOLDING S.A. em 31/07; o retrato da lista sem pessoa diz BETA: sai o retrato,
+    # com o mês dele (o portão julga a tabela lida, `cnpj_empresas_pj`)
     cliente = _base_sem_historico(tmp_path, monkeypatch, historicos=True)
-    # o histórico manda, mesmo no dia em que ele não tem versão pública e o retrato tem
-    assert (
-        _get(cliente, cenario, known_at="2025-07-31").json()["legal_name"]["value"]
-        == "ALFA HOLDING S.A."
-    )
-    antes = _get(cliente, cenario, known_at="2023-05-30").json()
-    assert (
-        "legal_name" not in antes
-        or antes["legal_name"]["value"] != "BETA COMERCIO LTDA"
-    )
-    assert (
-        "registry_snapshot_month"
-        not in _get(cliente, cenario, known_at="2025-07-31").json()
+    corpo = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert corpo["legal_name"]["value"] == "BETA COMERCIO LTDA"
+    assert corpo["registry_snapshot_month"]["value"] == RETRATO_PJ
+    # antes de o retrato ser público, o histórico não entra no lugar dele
+    antes = _get(cliente, cenario, known_at="2025-05-31").json()
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        antes
     )
 
 

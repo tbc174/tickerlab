@@ -5,18 +5,19 @@ português (a rota traduz na saída), a situação cadastral do estabelecimento 
 novo que já era público em `como_era_em`. O retrato do mês vale pelo último dia do mês em que foi baixado (a
 porta faz o corte): o CNPJ baixado em junho e publicado em julho continua ativo até 31/07.
 
-Da empresa (a raiz do CNPJ) saem também a razão social, a natureza jurídica e a opção pelo Simples, cada uma
-da versão do histórico datado (`cnpj_empresas_historico` e `cnpj_simples_historico`, `base/cnpj_historico.py`)
-que já era pública em `como_era_em`, com a data dela no envelope ("pode 8" do Tiago em 05/11/2026). Campo sem
-versão pública na data, de raiz que tinha saído do arquivo ou de tabela que a base não tem fica de fora; a
-situação cadastral continua sendo a âncora: sem ela, a empresa não sai.
+Da empresa (a raiz do CNPJ) sai também a opção pelo Simples, da versão do histórico datado
+(`cnpj_simples_historico`, `base/cnpj_historico.py`) que já era pública em `como_era_em`, com a data dela no
+envelope ("pode 8" do Tiago em 05/11/2026). Campo sem versão pública na data, de raiz que tinha saído do arquivo
+ou de tabela que a base não tem fica de fora; a situação cadastral continua sendo a âncora: sem ela, a empresa
+não sai.
 
-Sem o histórico do nome na base (o VPS não o tem, linha 861), a razão social e a natureza saem do retrato da
-lista sem pessoa (`cnpj_empresas_pj`), na leitura estreita do "sem olhar o futuro": só se o retrato já era
-público em `como_era_em` (a porta corta pelo último dia do mês) e a raiz está nele uma só vez, com natureza
-informada que não é de pessoa. A resposta diz de que retrato saíram (`mes_do_retrato_do_cadastro`): é o retrato
-daquele mês, não "como era" no dia. Com o histórico na base, ele manda e o retrato não é lido. O Simples não tem
-lista sem pessoa: sem o histórico dele, não sai.
+A razão social e a natureza jurídica saem do retrato da lista sem pessoa (`cnpj_empresas_pj`, linha 861), na
+leitura estreita do "sem olhar o futuro": só se o retrato já era público em `como_era_em` (a porta corta pelo
+último dia do mês) e a raiz está nele uma só vez, com natureza informada que não é de pessoa. A resposta diz de
+que retrato saíram (`mes_do_retrato_do_cadastro`): é o retrato daquele mês, não "como era" no dia. Não saem
+mais do histórico datado (`cnpj_empresas_historico`): ele não está no VPS nem em casa, tem pessoa e não tem prova
+de prontidão, e o portão julga a tabela que foi lida (a Diretoria, 12/11/2026). O Simples não tem lista sem
+pessoa: sem o histórico dele, não sai.
 
 Pessoa não sai (ADR 0108 D2.2). Quando a rede conhece o CNPJ (algum identificador dela tem o CNPJ ou a raiz),
 decide ela: só sai se ela o conhece como uma só empresa que não trata como pessoa (MEI, empresário individual e
@@ -76,15 +77,13 @@ class Historico:
 
 
 HISTORICOS = (
-    Historico("cnpj_empresas_historico", ("razao_social", "natureza_juridica")),
     Historico(
         "cnpj_simples_historico",
         ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
     ),
 )
-HISTORICO_DO_NOME = HISTORICOS[0].tabela
-# sem o histórico do nome: do retrato da lista sem pessoa, com o mês dele (linha 861)
-CAMPOS_DO_RETRATO_PJ = HISTORICOS[0].campos
+# o nome e a natureza: do retrato da lista sem pessoa, com o mês dele (linha 861)
+CAMPOS_DO_RETRATO_PJ = ("razao_social", "natureza_juridica")
 RETRATO_DO_CADASTRO = "mes_do_retrato_do_cadastro"
 TABELAS = (TABELA, *(historico.tabela for historico in HISTORICOS), LISTA_DE_EMPRESAS)
 CAMPOS_DATADOS = tuple(campo for historico in HISTORICOS for campo in historico.campos)
@@ -413,7 +412,7 @@ class LeitorDeEmpresas:
         }  # fmt: skip
 
     def _do_retrato_pj(self, raiz: str, como_era_em: date) -> dict[str, dict]:
-        """Sem o histórico do nome: a razão social e a natureza do retrato mais novo de `cnpj_empresas_pj` já
+        """A razão social e a natureza do retrato mais novo de `cnpj_empresas_pj` já
         público em `como_era_em`, com o mês dele; nada se a base não tem a lista, se o retrato ainda não era
         público ou se a raiz não está nele uma só vez com natureza de empresa (na dúvida, não)."""
         if LISTA_DE_EMPRESAS not in views(self.porta.con):
@@ -434,8 +433,8 @@ class LeitorDeEmpresas:
         return self._servidos(linha, (*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO))
 
     def empresa(self, cnpj: str, como_era_em: date) -> EmpresaServida | None:
-        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, a
-        versão do histórico datado que valia no dia, só com o que o portão libera; None se o CNPJ não é de
+        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, o nome
+        do retrato sem pessoa e o Simples do histórico datado que valiam no dia, só com o que o portão libera; None se o CNPJ não é de
         empresa, se não há versão pública da situação, se o estabelecimento tinha saído do arquivo ou se
         nada sai."""
         normal = cnpj_.normalizar_cnpj(cnpj)
@@ -460,8 +459,7 @@ class LeitorDeEmpresas:
             versao = self._versao(historico, raiz, como_era_em)
             if versao is not None:
                 servidos |= self._servidos(versao, historico.campos)
-        if HISTORICO_DO_NOME not in views(self.porta.con):
-            servidos |= self._do_retrato_pj(raiz, como_era_em)
+        servidos |= self._do_retrato_pj(raiz, como_era_em)
         if not servidos:
             return None
         corpo = {"cnpj": normal, "como_era_em": como_era_em.isoformat(), **servidos}

@@ -228,7 +228,7 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
     servidos = {
         empresas.TABELA: empresas.CAMPOS,
         **{historico.tabela: historico.campos for historico in empresas.HISTORICOS},
-        # sem o histórico, o nome e a natureza do retrato da lista sem pessoa, com o mês (linha 861)
+        # o nome e a natureza do retrato da lista sem pessoa, com o mês (linha 861)
         empresas.LISTA_DE_EMPRESAS: (
             *empresas.CAMPOS_DO_RETRATO_PJ,
             empresas.RETRATO_DO_CADASTRO,
@@ -247,14 +247,7 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
         or any(tabela.startswith("cnpj_") for tabela in linha.tabelas)
     ]
     assert do_cnpj
-    # o nome e a natureza vêm do histórico ou, sem ele, do retrato da lista sem pessoa (linha 861): a única linha
-    # do CNPJ com duas tabelas, e as duas servem o campo
-    do_nome = (empresas.HISTORICO_DO_NOME, empresas.LISTA_DE_EMPRESAS)
     for linha in do_cnpj:
-        if linha.tabelas == do_nome:
-            assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha
-            assert all(linha.campo in servidos[tabela] for tabela in do_nome), linha
-            continue
         (tabela,) = linha.tabelas
         if linha.conjunto == credito.CONJUNTO:
             assert (tabela, linha.campo) in da_ficha, linha
