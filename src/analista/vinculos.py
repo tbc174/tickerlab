@@ -8,6 +8,9 @@ natural ou que a rede trata como pessoa.
 Os estados são os da ficha (`leitura`): `pronta` (a lista, que pode ser vazia), `nao_liberada` (o portão ainda
 não libera nenhum campo de nenhum tipo; decide-se sem ler o CNPJ) e `nao_disponivel` (o leitor não serve o
 CNPJ: não existe, é pessoa ou a rede não o conhece como empresa), sem dizer o motivo.
+
+O tipo que o portão não libera para a tela não some em silêncio (linha 889, molde dos eventos no #1088): ele vai
+em `tipos_de_vinculo_nao_disponiveis` e os limites, os do leitor, avisam que a lista não diz nada sobre ele.
 """
 
 from collections.abc import Callable
@@ -23,11 +26,16 @@ from src.portao_externo import Regras
 LINHAS_MAXIMAS = 100
 PROFUNDIDADE = 1
 
-# os limites do leitor, sem o nome de campo para quem programa (`known_at`): a tela fala do "dia da ficha"
-LIMITES = tuple(
-    leitura.DIA_DA_FICHA if "known_at" in limite else limite
-    for limite in vinculos_.LIMITES
+# o aviso do leitor fala do campo da API externa; a tela usa o nome do campo dela (linha 889, molde do #1088)
+LIMITE_DO_TIPO_NAO_DISPONIVEL = (
+    "Os tipos em tipos_de_vinculo_nao_disponiveis não estão liberados para a tela e não foram consultados: a "
+    "lista de vínculos não diz nada sobre eles."
 )
+AVISOS_DA_TELA = {
+    vinculos_.LIMITE_DO_TIPO_NAO_DISPONIVEL: LIMITE_DO_TIPO_NAO_DISPONIVEL
+}
+# os limites com todos os tipos servidos: os das respostas sem vínculos (não liberada, não disponível)
+LIMITES = leitura.limites_da_tela(vinculos_.LIMITES, AVISOS_DA_TELA)
 
 
 def _algum_campo_liberado(permitido: Callable[[str, str, bool], bool]) -> bool:
@@ -57,7 +65,10 @@ def vinculos(
     servidos = leitor.vinculos(cnpj, hoje, PROFUNDIDADE)
     if servidos is None:
         return leitura.Resposta(leitura.NAO_DISPONIVEL)
-    corpo = {**servidos.corpo, "limites": list(LIMITES)}
+    # os limites são os do leitor (só dos tipos servidos, com o aviso do que ficou de fora), não o texto fixo:
+    # linha 889
+    limites = leitura.limites_da_tela(servidos.corpo["limites"], AVISOS_DA_TELA)
+    corpo = {**servidos.corpo, "limites": list(limites)}
     return leitura.Resposta(
         leitura.PRONTA, corpo, fontes_da_resposta(servidos.fontes), servidos.linhas
     )
