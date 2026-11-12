@@ -229,7 +229,7 @@ REGRAS: dict[str, Regra] = {
     "ligacoes": Regra(
         chave=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"),
         opcionais={
-            "papel": "os tipos controlada_de, participada_de, coligada_de, audita e emite não têm papel: ele só existe nas ligações de sócio e de administrador"
+            "papel": "os tipos controlada_de, participada_de, coligada_de, audita e emite não têm papel: ele só existe nos tipos detem, do_conglomerado_de e opera_para"
         },
     ),
     "identificadores": Regra(
@@ -242,7 +242,7 @@ REGRAS: dict[str, Regra] = {
         chave=("cnpj_companhia", "referencia", "versao", "cnpj"),
         periodo="referencia",
         opcionais={
-            "cnpj": "investida sem CNPJ no formulário de referência (em geral a do exterior); só se distingue pelo nome"
+            "cnpj": "investida sem CNPJ no formulário de referência; só se distingue pelo nome"
         },
         repetidas_aceitas=8373,
         porque_repetidas="a maior parte são investidas sem CNPJ que só se distinguem pelo nome; 866 linhas são idênticas em todas as colunas; o resto repete o CNPJ com participação ou tipo diferente no mesmo documento. Quem junta por CNPJ pode receber mais de uma linha; a base não corrige",
