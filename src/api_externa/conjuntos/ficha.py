@@ -97,7 +97,7 @@ TABELA_DO_CAMPO_DO_CADASTRO = {
 # o nome de dentro da lista dos campos do cadastro que o portão não libera (ou sem a tabela na base)
 CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS = "campos_do_cadastro_nao_disponiveis"
 LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL = nao_disponivel.aviso(
-    CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "campos", "o cadastro na Receita"
+    CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "campos", "o cadastro nesta resposta"
 )
 
 
