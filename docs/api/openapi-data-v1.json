@@ -2069,7 +2069,7 @@
     },
     "/data/v1/companies/{cnpj}/financials": {
       "get": {
-        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia.",
+        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia. O documento que a organização\nnão tem vai em `unavailable_filings` (sem as linhas dele não é \"não entregou\"), com o aviso em `limits`.",
         "operationId": "demonstracoes_da_empresa_data_v1_companies__cnpj__financials_get",
         "parameters": [
           {
@@ -3219,7 +3219,7 @@
     },
     "/data/v1/funds/{cnpj}": {
       "get": {
-        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.",
+        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.\nO bloco pedido que a organização não tem vai em `unavailable_sections` (a carteira vazia não é \"sem\nposição\"), com o aviso em `limits`.",
         "operationId": "fundo_data_v1_funds__cnpj__get",
         "parameters": [
           {
@@ -3724,7 +3724,7 @@
     },
     "/data/v1/sectors/{key}": {
       "get": {
-        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`.",
+        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a\norganização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,\ncom o aviso em `limits`.",
         "operationId": "setor_data_v1_sectors__key__get",
         "parameters": [
           {
