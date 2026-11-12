@@ -4411,8 +4411,8 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` "
-            "lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou fundo que "
-            "não é FIP."
+            "lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj`, CNPJ que não "
+            "confere (dígito errado ou CPF completado com zeros), fundo que não é FIP ou cópia vazia."
         ),
         colunas={
             "CNPJ_Fundo": ("CNPJ do fundo (14 dígitos)", TEXTO),
@@ -8151,8 +8151,9 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê "
-            "a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou linha sem CNPJ "
-            "com tipo ou participação."
+            "a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj`, CNPJ que não confere "
+            "(dígito errado; na controlada, também CPF completado com zeros), linha sem CNPJ com tipo ou "
+            "participação ou cópia vazia."
         ),
         colunas={
             "cnpj_companhia": ("CNPJ da companhia que informou (14 dígitos)", TEXTO),

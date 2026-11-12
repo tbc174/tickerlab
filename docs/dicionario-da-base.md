@@ -561,7 +561,7 @@ Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compr
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/fips_registrados/fips_registrados.parquet`, só no VPS (montado pelo recorte, `base/recorte_dos_compradores.py`)
-- **Linhagem:** Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou fundo que não é FIP.
+- **Linhagem:** Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj`, CNPJ que não confere (dígito errado ou CPF completado com zeros), fundo que não é FIP ou cópia vazia.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -5590,7 +5590,7 @@ Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores 
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/controladas_pj/controladas_pj.parquet`, só no VPS (montado pelo recorte, `base/recorte_dos_compradores.py`)
-- **Linhagem:** Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou linha sem CNPJ com tipo ou participação.
+- **Linhagem:** Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj`, CNPJ que não confere (dígito errado; na controlada, também CPF completado com zeros), linha sem CNPJ com tipo ou participação ou cópia vazia.
 
 | Coluna | O que é | Unidade |
 |---|---|---|

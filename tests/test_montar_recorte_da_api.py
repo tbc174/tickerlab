@@ -537,9 +537,9 @@ def _empresas_controladas_e_fundos(base: Path) -> None:
     )
     _parquet(
         base / "controladas" / "2025.parquet",
-        "SELECT '14000001000101' AS cnpj_companhia, 'ABERTA SA' AS companhia, DATE '2024-12-31' AS referencia, "
+        "SELECT '14000001000140' AS cnpj_companhia, 'ABERTA SA' AS companhia, DATE '2024-12-31' AS referencia, "
         "1 AS versao, DATE '2025-05-01' AS conhecido_em, cnpj, razao_social, 'controlada' AS tipo, "
-        "60.0 AS participacao FROM (VALUES ('11000001000101', 'ALVO SA'), ('55555555000101', 'FULANO DE TAL')) "
+        "60.0 AS participacao FROM (VALUES ('11000001000152', 'ALVO SA'), ('55555555000191', 'FULANO DE TAL')) "
         "t(cnpj, razao_social)",
     )
     _parquet(
@@ -547,7 +547,7 @@ def _empresas_controladas_e_fundos(base: Path) -> None:
         "SELECT '1' AS ID_Registro_Fundo, CNPJ_Fundo, Tipo_Fundo, '2020-01-01' AS Data_Registro, "
         "NULL::VARCHAR AS Data_Cancelamento, 'PF' AS Tipo_Pessoa_Gestor, NULL::VARCHAR AS CPF_CNPJ_Gestor, "
         "NULL::VARCHAR AS Gestor, 'ADM SA' AS Administrador "
-        "FROM (VALUES ('13000001000101', 'FIP'), ('55555555000101', 'FIP'), ('11000001000101', 'FIDC')) "
+        "FROM (VALUES ('13000001000188', 'FIP'), ('55555555000191', 'FIP'), ('11000001000152', 'FIDC')) "
         "t(CNPJ_Fundo, Tipo_Fundo)",
     )
 
@@ -577,10 +577,10 @@ def test_reduzidas_saem_so_pj_e_sem_gestor(tmp_path):
     # o MEI tirado de `cnpj_empresas_pj` leva junto a controlada e o fundo dele
     assert duckdb.sql(
         f"SELECT cnpj FROM '{controladas.as_posix()}' ORDER BY cnpj NULLS LAST"
-    ).fetchall() == [("11000001000101",), (None,)]
+    ).fetchall() == [("11000001000152",), (None,)]
     assert duckdb.sql(
         f"SELECT CNPJ_Fundo, Tipo_Fundo FROM '{fundos.as_posix()}'"
-    ).fetchall() == [("13000001000101", "FIP")]
+    ).fetchall() == [("13000001000188", "FIP")]
     for arquivo in (controladas, fundos):
         colunas = {
             c[0].lower()
