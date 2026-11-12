@@ -529,3 +529,100 @@ def test_pedido_sem_acervo_nao_acha_o_dono_de_mei(tmp_path, capsys, monkeypatch)
          "--cnpj", "22333444000181"]
     )  # fmt: skip
     assert saida == 1 and cli.NINGUEM in capsys.readouterr().out
+
+
+# ---------------------------------------- MEI sem CPF na razão, acervo errado, acesso e conferência (829)
+
+RAIZ_MEI = "33444555"
+CNPJ_MEI = RAIZ_MEI + "000199"
+
+
+def _acervo_com_mei_sem_cpf(tmp_path) -> Path:
+    """Um `acervo_pessoa/` pronto: um sócio, um MEI cuja razão não traz CPF (id pela raiz) e o contato dele."""
+    destino = tmp_path / "acervo_pessoa"
+    for tabela in (montar.SOCIOS, montar.INDIVIDUAIS, montar.CONTATO):
+        (destino / tabela).mkdir(parents=True)
+    pd.DataFrame(
+        {"nome_socio": ["FULANA EXEMPLO"], "id_pessoa": ["a" * 32]}
+    ).to_parquet(destino / montar.SOCIOS / "p0.parquet")
+    pd.DataFrame(
+        {
+            "cnpj_basico": [RAIZ_MEI],
+            "titular": ["GICLANA EXEMPLO"],
+            "id_pessoa": [chaves.id_da_raiz(RAIZ_MEI, CHAVE)],
+        }
+    ).to_parquet(destino / montar.INDIVIDUAIS / "p0.parquet")
+    pd.DataFrame(
+        {"cnpj_basico": [RAIZ_MEI, "11222333"], "email": ["x@exemplo.com"] * 2}
+    ).to_parquet(destino / montar.CONTATO / "p0.parquet")
+    return destino
+
+
+def _restrita(tmp_path) -> Path:
+    restrita = tmp_path / "restrita"
+    (restrita / "pessoas").mkdir(parents=True)
+    return restrita
+
+
+def _pedido_do_mei(tmp_path, destino, monkeypatch) -> int:
+    monkeypatch.setattr("sys.stdin", io.StringIO("Giclana Exemplo\n"))
+    return cli.main(
+        ["pedido", "--base", str(tmp_path / "base"), "--restrita", str(_restrita(tmp_path)),
+         "--cnpj", CNPJ_MEI, "--acervo-pessoa", str(destino),
+         "--pedido-em", "2026-11-11", "--hoje", "2026-11-11"]
+    )  # fmt: skip
+
+
+def test_pedido_do_mei_cuja_razao_nao_tem_cpf_tira_titular_e_contato(
+    tmp_path, capsys, monkeypatch
+):
+    destino = _acervo_com_mei_sem_cpf(tmp_path)
+    assert _pedido_do_mei(tmp_path, destino, monkeypatch) == 0
+    assert "GICLANA" not in capsys.readouterr().out.upper()
+    assert _tabela(destino, montar.INDIVIDUAIS).empty
+    assert set(_tabela(destino, montar.CONTATO)["cnpj_basico"]) == {"11222333"}
+
+
+def test_acervo_pessoa_errado_recusa_antes_de_registrar(tmp_path, capsys, monkeypatch):
+    saida = _pedido_do_mei(tmp_path, tmp_path / "caminho-errado", monkeypatch)
+    assert saida == 2 and "acervo_pessoa" in capsys.readouterr().err
+    assert not oposicoes.ids_opostos(tmp_path / "restrita")  # nada foi registrado
+
+
+def test_acervo_montado_antes_do_id_pessoa_recusa(tmp_path, capsys, monkeypatch):
+    destino = _acervo_com_mei_sem_cpf(tmp_path)
+    antigo = pd.read_parquet(destino / montar.SOCIOS / "p0.parquet").drop(
+        columns="id_pessoa"
+    )
+    antigo.to_parquet(destino / montar.SOCIOS / "p0.parquet")
+    assert _pedido_do_mei(tmp_path, destino, monkeypatch) == 2
+    assert "monte de novo" in capsys.readouterr().err
+    assert not oposicoes.ids_opostos(tmp_path / "restrita")
+
+
+def test_acesso_do_mei_diz_que_a_tela_mostra_titular_e_contato_sem_imprimir_nome(
+    tmp_path, capsys, monkeypatch
+):
+    destino = _acervo_com_mei_sem_cpf(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO("Giclana Exemplo\n"))
+    saida = cli.main(
+        ["acesso", "--restrita", str(_restrita(tmp_path)), "--cnpj", CNPJ_MEI,
+         "--acervo-pessoa", str(destino)]
+    )  # fmt: skip
+    texto = capsys.readouterr().out
+    assert saida == 0 and "empresário individual" in texto and "contato" in texto
+    assert (
+        "GICLANA" not in texto.upper()
+        and chaves.id_da_raiz(RAIZ_MEI, CHAVE) not in texto
+    )
+
+
+def test_conferir_acusa_linha_de_quem_se_opos_que_seguiu_no_acervo(tmp_path, capsys):
+    destino = _acervo_com_mei_sem_cpf(tmp_path)
+    restrita = _restrita(tmp_path)
+    oposicoes.registrar(restrita, [chaves.id_da_raiz(RAIZ_MEI, CHAVE)], AGORA.date())
+    argumentos = ["conferir", "--restrita", str(restrita), "--acervo-pessoa", str(destino),
+                  "--hoje", "2026-11-11"]  # fmt: skip
+    assert cli.main(argumentos) == 1 and "FALHAS" in capsys.readouterr().out
+    oposicao_na_tela.aplicar_no_acervo(destino, oposicoes.ids_opostos(restrita))
+    assert cli.main(argumentos) == 0

@@ -86,7 +86,12 @@ def _individuais(
     )
     saida = saida.loc[com_nome]
     cpf = fica.loc[com_nome, "razao_social"].map(_cpf_da_razao)
-    saida["id_pessoa"] = opostos.ids_de(cpf, saida["titular"])
+    ids = opostos.ids_de(cpf, saida["titular"])
+    sem_cpf = (
+        ids == ""
+    )  # razão sem CPF: o id vem da raiz, para a oposição achar a linha
+    ids[sem_cpf] = opostos.ids_da_raiz(saida.loc[sem_cpf, "cnpj_basico"])
+    saida["id_pessoa"] = ids
     oposto = opostos.marcar(saida["id_pessoa"])
     descartes[OPOSTO] += int(oposto.sum())
     tiradas.update(

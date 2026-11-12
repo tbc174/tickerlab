@@ -15,6 +15,7 @@ import pytest
 from base import receita_individuais as ri
 from base.oposicao_na_tela import Opostos
 from base.pessoas import chave as chaves
+from base.pessoas.chave import id_da_raiz
 from base.receita_retrato import ErroDeLayout
 
 CHAVE = b"k" * 32
@@ -46,9 +47,8 @@ def test_individual_sai_com_a_raiz_e_o_nome_e_nada_mais():
     tabela, descartes = _ler(_linha())
     assert list(tabela.columns) == list(ri.COLUNAS)
     linha = tabela.iloc[0].to_dict()
-    assert (
-        linha.pop("id_pessoa") == ""
-    )  # razão sem CPF: sem id, a pessoa não tem como se opor
+    # razão sem CPF: o id vem da raiz do CNPJ, para a oposição achar a linha (P1 da revisão cruzada)
+    assert linha.pop("id_pessoa") == id_da_raiz("11222333", SEM_OPOSTOS.chave)
     assert linha == {"cnpj_basico": "11222333", "titular": "FULANA EXEMPLO"}
     assert not descartes
 

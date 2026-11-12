@@ -121,6 +121,9 @@ def test_membro_da_organizacao_com_a_permissao_ve_os_socios(cliente, casa):
     ]
     assert all(set(s) == {"nome", "qualificacao", "entrou_em"} for s in dados["socios"])
     assert dados["total"] == 2
+    assert (
+        "id_pessoa" not in resposta.text
+    )  # o pseudônimo fica no acervo, nunca na resposta
     assert dados["fonte"]["fonte"] == "rfb-cnpj" and dados["fonte"]["mes_do_retrato"]
     assert dados["limites"] == list(pessoa.LIMITES)
     assert resposta.headers["Cache-Control"] == "no-store"

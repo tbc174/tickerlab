@@ -27,6 +27,10 @@ class SemOposicoesError(RuntimeError):
     """A pasta restrita, onde estão as oposições, não existe neste servidor."""
 
 
+class SemAcervoError(RuntimeError):
+    """O `--acervo-pessoa` não aponta para um acervo montado com os ids."""
+
+
 @dataclass(frozen=True)
 class Opostos:
     """Os ids com oposição registrada e a chave para calcular o id de quem entra no acervo."""
@@ -48,6 +52,12 @@ class Opostos:
         oposição de amanhã valer sem refazer a montagem (`oposicoes.aplicar_no_acervo`)."""
         ids = [self._id(d, n) for d, n in zip(documentos, nomes, strict=True)]
         return pd.Series(ids, index=documentos.index, dtype=object)
+
+    def ids_da_raiz(self, raizes: pd.Series) -> pd.Series:
+        """O id de quem não tem CPF na razão social: sai da raiz do CNPJ (`chaves.id_da_raiz`)."""
+        return raizes.map(lambda raiz: chaves.id_da_raiz(raiz, self.chave)).astype(
+            object
+        )
 
     def marcar(self, ids: pd.Series) -> pd.Series:
         """Verdadeiro para quem tem oposição registrada."""
@@ -78,6 +88,7 @@ def aplicar_no_acervo(acervo_pessoa: Path, ids: set[str]) -> int:
     """Tira do `acervo_pessoa/` já montado quem tem oposição (idempotente): o sócio, o titular do
     individual e o contato da raiz dele. Faz a oposição valer no dia, sem esperar a montagem do mês
     seguinte (prazo de 15 dias da política). Devolve quantas linhas saíram; só contagem."""
+    exigir_acervo(acervo_pessoa)
     if not ids:
         return 0
     raizes: set[str] = set()
@@ -106,9 +117,59 @@ def aplicar_no_acervo(acervo_pessoa: Path, ids: set[str]) -> int:
     return tiradas
 
 
+def exigir_acervo(acervo_pessoa: Path) -> None:
+    """Recusa um `--acervo-pessoa` que não é um `acervo_pessoa/` montado com os ids (caminho errado
+    ou montagem antiga): sem isto a oposição pareceria aplicada e a pessoa continuaria na tela."""
+    pasta = acervo_pessoa / SOCIOS
+    if not pasta.is_dir() or not any(pasta.glob("*.parquet")):
+        raise SemAcervoError("acervo_pessoa ausente ou vazio: confira o caminho")
+    amostra = pd.read_parquet(next(iter(sorted(pasta.glob("*.parquet")))))
+    if "id_pessoa" not in amostra.columns:
+        raise SemAcervoError(
+            "acervo_pessoa montado antes da coluna id_pessoa: monte de novo"
+        )
+
+
+def restantes(acervo_pessoa: Path, ids: set[str]) -> int:
+    """Quantas linhas de quem tem oposição ainda estão no acervo (sócio, titular do individual e o contato
+    da raiz dele). Deve ser zero depois do `aplicar_no_acervo`; só contagem, nunca o conteúdo."""
+    exigir_acervo(acervo_pessoa)
+    if not ids:
+        return 0
+    total = 0
+    raizes: set[str] = set()
+    for tabela in (INDIVIDUAIS, SOCIOS):
+        for arquivo in sorted((acervo_pessoa / tabela).glob("*.parquet")):
+            linhas = pd.read_parquet(arquivo)
+            oposto = linhas["id_pessoa"].isin(ids)
+            total += int(oposto.sum())
+            if tabela == INDIVIDUAIS:
+                raizes.update(linhas.loc[oposto, "cnpj_basico"])
+    for arquivo in sorted((acervo_pessoa / CONTATO).glob("*.parquet")):
+        total += int(pd.read_parquet(arquivo)["cnpj_basico"].isin(raizes).sum())
+    return total
+
+
+def tem_na_tela(acervo_pessoa: Path, cnpj: str, ids: list[str]) -> tuple[int, int]:
+    """Quantas linhas de titular de individual e de contato a base guarda desta raiz para estes ids
+    (direito de acesso, LGPD art. 18, I e II). Só contagem."""
+    exigir_acervo(acervo_pessoa)
+    raiz = oposicoes.raiz_do_cnpj(cnpj)
+    titular = contato = 0
+    for arquivo in sorted((acervo_pessoa / INDIVIDUAIS).glob("*.parquet")):
+        linhas = pd.read_parquet(arquivo, filters=[("cnpj_basico", "=", raiz)])
+        titular += int(linhas["id_pessoa"].isin(ids).sum())
+    if titular:
+        for arquivo in sorted((acervo_pessoa / CONTATO).glob("*.parquet")):
+            linhas = pd.read_parquet(arquivo, filters=[("cnpj_basico", "=", raiz)])
+            contato += len(linhas)
+    return titular, contato
+
+
 def achar_titular_individual(acervo_pessoa: Path, cnpj: str, nome: str) -> list[str]:
     """Os `id_pessoa` do titular de um empresário individual ou MEI (que não está no quadro de sócios),
     achado na tabela `individuais` pela raiz do CNPJ e pelo nome como a Receita publica."""
+    exigir_acervo(acervo_pessoa)
     raiz = oposicoes.raiz_do_cnpj(cnpj)
     alvo = chaves.normalizar_nome(nome)
     ids: set[str] = set()
