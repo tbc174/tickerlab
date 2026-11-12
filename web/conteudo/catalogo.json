@@ -453,7 +453,7 @@
       "marca": "vendavel",
       "orgao": "Anvisa (vigilância sanitária)",
       "ritmo": null,
-      "termos_lidos_em": "2026-10-29",
+      "termos_lidos_em": "2026-11-12",
       "uso": "em_uso"
     },
     {
@@ -3832,21 +3832,21 @@
       "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-29"
+      "termos_lidos_em": "2026-11-12"
     },
     {
       "id": "anvisa-produtos",
       "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-29"
+      "termos_lidos_em": "2026-11-12"
     },
     {
       "id": "anvisa-cmed",
       "licenca": "Listas da CMED sem licença própria escrita (a confirmar; citar a CMED)",
       "marca": "vendavel",
       "ritmo": "mensal",
-      "termos_lidos_em": "2026-10-29"
+      "termos_lidos_em": "2026-11-12"
     },
     {
       "id": "antt-rntrc",
