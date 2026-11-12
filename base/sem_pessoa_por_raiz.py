@@ -6,7 +6,10 @@ cada raiz (oito primeiros dígitos do CNPJ) com a `cnpj_empresas_pj`, que a mont
 empresário individual (natureza 213-5) e do grupo 4 de natureza. Raiz que não está lá é tratada como
 possível pessoa: a tabela fica vermelha e não entra na lista `SEM_PESSOA_PELA_RAIZ`.
 
-Só conta e lista quantas raízes ficaram de fora; nunca devolve a raiz (pode ser pessoa).
+Alcance: prova que **quem a linha descreve** é pessoa jurídica. Não cobre texto livre (o assunto de um
+evento, por exemplo). Um CNPJ sem os 14 dígitos conta como fora (zero à esquerda perdido deslocaria a raiz).
+
+Só conta quantas raízes ficaram de fora; nunca devolve a raiz (pode ser pessoa).
 """
 
 from typing import NamedTuple
@@ -37,14 +40,13 @@ class Cruzamento(NamedTuple):
         return self.raizes > 0 and self.fora_da_pj == 0
 
 
-_SO_DIGITOS_8 = r"left(regexp_replace(cast({coluna} as varchar), '\D', '', 'g'), 8)"
-
-
 def cruzar(porta: Porta, tabela: str, coluna: str) -> Cruzamento:
     """Cruza as raízes de `tabela.coluna` com a `cnpj_empresas_pj` da mesma base."""
     vista = porta._view(tabela, None)
     pj = porta._view(TABELA_PJ, None)
-    raiz = _SO_DIGITOS_8.format(coluna=f'"{coluna}"')
+    digitos = rf"""regexp_replace(cast("{coluna}" as varchar), '\D', '', 'g')"""
+    # CNPJ sem os 14 dígitos (zeros à esquerda perdidos, lixo) não vale: conta como fora, o lado seguro
+    raiz = f"CASE WHEN length({digitos}) = 14 THEN left({digitos}, 8) ELSE '?' END"
     total, fora = porta.con.execute(
         f"""
         WITH raizes AS (SELECT DISTINCT {raiz} AS r FROM "{vista}" WHERE "{coluna}" IS NOT NULL),
