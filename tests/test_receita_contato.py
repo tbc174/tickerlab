@@ -198,8 +198,14 @@ def test_numero_de_rua_e_cep_comuns_nao_sao_confundidos_com_cpf():
 # ---------------------------------------- individual e MEI: só município e UF no endereço (linha 859)
 
 
+def _raizes(*raizes: str) -> rc.RaizesDeIndividual:
+    conjunto = rc.RaizesDeIndividual()
+    conjunto.juntar(pd.Series(list(raizes)))
+    return conjunto
+
+
 def test_individual_sai_so_com_municipio_uf_telefone_e_email():
-    partes = list(rc.ler_contato(_zip(_linha()), set(), {"11222333"}))
+    partes = list(rc.ler_contato(_zip(_linha()), set(), _raizes("11222333")))
     tabela = pd.concat([p.estabelecimentos for p in partes], ignore_index=True)
     linha = tabela.iloc[0]
     for coluna in (*rc.ENDERECO, "cep"):
@@ -210,11 +216,15 @@ def test_individual_sai_so_com_municipio_uf_telefone_e_email():
 
 
 def test_empresa_que_nao_e_individual_segue_com_o_endereco_inteiro():
-    partes = list(
-        rc.ler_contato(_zip(_linha(), _linha("22333444")), set(), {"22333444"})
-    )
+    linhas = _zip(_linha(), _linha("22333444"))
+    partes = list(rc.ler_contato(linhas, set(), _raizes("22333444")))
     tabela = pd.concat([p.estabelecimentos for p in partes], ignore_index=True)
     inteira = tabela[tabela["cnpj_basico"] == "11222333"].iloc[0]
     assert inteira["logradouro"] == "DOS EXEMPLOS" and inteira["cep"] == "01001000"
     cortada = tabela[tabela["cnpj_basico"] == "22333444"].iloc[0]
     assert pd.isna(cortada["logradouro"]) and pd.isna(cortada["cep"])
+
+
+def test_sem_raizes_de_individual_o_conjunto_vazio_nao_corta_nada():
+    partes = list(rc.ler_contato(_zip(_linha()), set(), rc.RaizesDeIndividual()))
+    assert partes[0].estabelecimentos.iloc[0]["logradouro"] == "DOS EXEMPLOS"

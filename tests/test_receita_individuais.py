@@ -16,6 +16,7 @@ from base import receita_individuais as ri
 from base.oposicao_na_tela import Opostos
 from base.pessoas import chave as chaves
 from base.pessoas.chave import id_da_raiz
+from base.receita_contato import RaizesDeIndividual
 from base.receita_retrato import ErroDeLayout
 
 CHAVE = b"k" * 32
@@ -132,7 +133,8 @@ def test_layout_com_campo_a_mais_quebra_a_leitura():
 
 
 def test_toda_raiz_de_individual_vai_para_o_contato_cortar_o_endereco_ate_a_sem_nome():
-    raizes: set[str] = set()
+    raizes = RaizesDeIndividual()
     sem_nome = _linha(raiz="44555666", razao="12345")
     list(ri.ler_individuais(_zip(_linha(), sem_nome), SEM_OPOSTOS, set(), raizes))
-    assert raizes == {"11222333", "44555666"}
+    achadas = raizes.contem(pd.Series(["11222333", "44555666", "99999999"]))
+    assert achadas.tolist() == [True, True, False]

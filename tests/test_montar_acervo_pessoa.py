@@ -635,5 +635,7 @@ def test_montagem_zera_o_endereco_do_individual_e_mantem_o_da_empresa(tmp_path):
     for coluna in (*rc.ENDERECO, "cep"):
         assert pd.isna(do_mei[coluna]), coluna
     assert do_mei["uf"] and do_mei["municipio"] and do_mei["email"] is not None
+    manifesto = json.loads((destino / montar.MANIFESTO).read_text(encoding="utf-8"))
+    assert manifesto["descartes"][rc.ENDERECO_CORTADO] == 1  # a marca que a rota exige
     da_empresa = contato[contato["cnpj_basico"] == "11222333"].iloc[0]
     assert da_empresa["logradouro"] == "DOS EXEMPLOS" and da_empresa["cep"]

@@ -10,6 +10,7 @@ Do arquivo de sócios saem **só** o nome do sócio, a qualificação e a data d
 nome, então uma coluna a mais no arquivo nunca chega à tela.
 """
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,20 +19,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from base import cnpj as cnpj_
-from base import receita_codigos
+from base import receita_codigos, receita_contato
 
 VARIAVEL = "TICKERLAB_ACERVO_PESSOA"
 SOCIOS = "socios_pf"
 CONTATO = "contato"
-INDIVIDUAIS = "individuais"
-CAMPOS_DE_ENDERECO = (
-    "tipo_logradouro",
-    "logradouro",
-    "numero",
-    "complemento",
-    "bairro",
-    "cep",
-)
+MANIFESTO = "manifesto.json"
 TAMANHO_DA_RAIZ = 8
 PREFIXO = (
     2  # o arquivo de cada raiz é o dos 2 primeiros caracteres (como o montador reparte)
@@ -177,18 +170,21 @@ def _estabelecimento(linha: dict) -> dict[str, str | bool | list[str] | None]:
     }
 
 
-def _e_individual(pasta: Path, raiz: str) -> bool:
-    """A raiz é de empresário individual ou MEI? Sem a tabela `individuais` (acervo montado antes da
-    linha 859) o corte já veio feito da montagem, que zera o endereço no próprio dado."""
-    if not (pasta / INDIVIDUAIS).is_dir():
-        return False
-    return bool(_linhas_da_raiz(pasta, INDIVIDUAIS, raiz, ["cnpj_basico"]))
-
-
-def _so_municipio(linha: dict) -> dict:
-    """Política de privacidade, versão 16: o endereço de MEI e de empresário individual vai só até o
-    município e a UF (linha 859). Telefone e e-mail seguem."""
-    return linha | dict.fromkeys(CAMPOS_DE_ENDERECO)
+def _exigir_corte_do_endereco(pasta: Path) -> None:
+    """Só serve contato de um acervo montado com o corte do endereço de MEI e de empresário individual
+    (linha 859): o manifesto da montagem conta o motivo `endereco_de_individual_cortado`. Acervo anterior
+    ainda teria a rua de toda pessoa; o servidor o trata como fora do ar até a montagem nova."""
+    try:
+        manifesto = json.loads((pasta / MANIFESTO).read_text(encoding="utf-8"))
+        marcado = receita_contato.ENDERECO_CORTADO in manifesto["descartes"]
+    except (OSError, ValueError, KeyError, TypeError) as erro:
+        raise AcervoIndisponivelError(
+            "manifesto do acervo de pessoa ilegível"
+        ) from erro
+    if not marcado:
+        raise AcervoIndisponivelError(
+            "acervo de pessoa sem o corte do endereço de individual"
+        )
 
 
 def contato_da_empresa(pasta: Path, cnpj: str) -> Contato:
@@ -199,13 +195,10 @@ def contato_da_empresa(pasta: Path, cnpj: str) -> Contato:
     ou não pôde ser lida. Empresa sem estabelecimento ativo no acervo: lista vazia.
     """
     pedido = _cnpj(cnpj)
+    _exigir_corte_do_endereco(pasta)
     linhas = _linhas_da_raiz(
         pasta, CONTATO, pedido[:TAMANHO_DA_RAIZ], COLUNAS_DO_CONTATO
     )
-    if _e_individual(
-        pasta, pedido[:TAMANHO_DA_RAIZ]
-    ):  # o corte é do servidor, nunca da tela
-        linhas = [_so_municipio(linha) for linha in linhas]
     linhas.sort(key=lambda e: (e["cnpj"] != pedido, not e["matriz"], e["cnpj"]))
     mes = linhas[0]["mes_do_retrato"] if linhas else None
     mostrados = linhas[:MAXIMO_DE_ESTABELECIMENTOS]

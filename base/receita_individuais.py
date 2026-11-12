@@ -22,7 +22,7 @@ import pandas as pd
 from base.cnpj_historico import CAMPOS_NO_ARQUIVO_DE_EMPRESAS, EMPRESA
 from base.oposicao_na_tela import Opostos
 from base.pessoas.sem_cpf import CPF_COM_SEPARADOR_LARGO, tirar_cpf_da_coluna
-from base.receita_contato import ONZE_DIGITOS_SEPARADOS
+from base.receita_contato import ONZE_DIGITOS_SEPARADOS, RaizesDeIndividual
 from base.receita_retrato import _partes
 
 EMPRESARIO_INDIVIDUAL = "2135"
@@ -64,7 +64,7 @@ def _individuais(
     parte: pd.DataFrame,
     opostos: Opostos,
     tiradas: set[str],
-    raizes: set[str] | None = None,
+    raizes: RaizesDeIndividual | None = None,
 ) -> ParteDosIndividuais:
     parte = parte.rename(columns=EMPRESA)
     individual = (
@@ -78,7 +78,7 @@ def _individuais(
     if (
         raizes is not None
     ):  # toda raiz de individual, com ou sem nome: o endereço dela é da pessoa
-        raizes.update(fica["cnpj_basico"].str.strip().str.upper())
+        raizes.juntar(fica["cnpj_basico"].str.strip().str.upper())
     nome = tirar_cpf_da_coluna(fica["razao_social"].str.strip())
     nome = nome.str.replace(CPF_MASCARADO, " ", regex=True)
     nome = nome.str.replace(ONZE_DIGITOS_SEPARADOS, " ", regex=True)
@@ -111,7 +111,7 @@ def ler_individuais(
     arquivo_zip: Path | IO[bytes],
     opostos: Opostos,
     tiradas: set[str],
-    raizes: set[str] | None = None,
+    raizes: RaizesDeIndividual | None = None,
 ) -> Iterator[ParteDosIndividuais]:
     """O titular dos empresários individuais de um `Empresas*.zip`, em partes, com os descartes.
 

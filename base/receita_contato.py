@@ -22,8 +22,10 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import IO, NamedTuple
 
+import numpy as np
 import pandas as pd
 
+from base import cnpj
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from base.receita_retrato import CAMPOS_DO_ESTABELECIMENTO, MATRIZ, _partes
 
@@ -124,10 +126,37 @@ def _contato(parte: pd.DataFrame) -> ParteDoContato:
     return ParteDoContato(fica[list(COLUNAS)].reset_index(drop=True), +descartes)
 
 
-def _so_municipio(contato: ParteDoContato, raizes: set[str]) -> ParteDoContato:
+class RaizesDeIndividual:
+    """As raízes de empresário individual e MEI do mês (milhões): números de 64 bits ordenados, não textos,
+    para a montagem do contato caber na memória e não refazer um conjunto de texto a cada parte."""
+
+    def __init__(self) -> None:
+        self._partes: list[np.ndarray] = []
+        self._ordenadas: np.ndarray | None = None
+
+    def juntar(self, raizes: pd.Series) -> None:
+        self._partes.append(cnpj.raizes_em_numeros(raizes))
+        self._ordenadas = None
+
+    def contem(self, raizes: pd.Series) -> pd.Series:
+        if self._ordenadas is None:
+            self._ordenadas = cnpj.ordenados(
+                np.concatenate(self._partes)
+                if self._partes
+                else np.array([], dtype=np.int64)
+            )
+        return pd.Series(
+            cnpj.contem(self._ordenadas, cnpj.raizes_em_numeros(raizes)),
+            index=raizes.index,
+        )
+
+
+def _so_municipio(
+    contato: ParteDoContato, raizes: RaizesDeIndividual
+) -> ParteDoContato:
     """Empresário individual e MEI: o endereço é o da pessoa, então só o município e a UF ficam (linha 859;
     política de privacidade, versão 16). Telefone e e-mail seguem, como a política diz."""
-    cortar = contato.estabelecimentos["cnpj_basico"].isin(raizes)
+    cortar = raizes.contem(contato.estabelecimentos["cnpj_basico"])
     if not cortar.any():
         return contato
     estabelecimentos = contato.estabelecimentos.copy()
@@ -140,7 +169,7 @@ def _so_municipio(contato: ParteDoContato, raizes: set[str]) -> ParteDoContato:
 def ler_contato(
     arquivo_zip: Path | IO[bytes],
     tiradas: set[str],
-    individuais: set[str] | None = None,
+    individuais: RaizesDeIndividual | None = None,
 ) -> Iterator[ParteDoContato]:
     """O contato dos estabelecimentos ativos de um `Estabelecimentos*.zip`, em partes, com os descartes.
 
@@ -150,7 +179,9 @@ def ler_contato(
     em `individuais` (todo empresário individual e MEI) saem só com município, UF, telefones e e-mail.
     """
     for parte in _partes(arquivo_zip, CAMPOS_DO_ESTABELECIMENTO, ESTABELECIMENTO):
-        contato = _so_municipio(_contato(parte), individuais or set())
+        contato = _contato(parte)
+        if individuais is not None:
+            contato = _so_municipio(contato, individuais)
         oposto = contato.estabelecimentos["cnpj_basico"].isin(tiradas)
         if oposto.any():
             contato.descartes[DE_OPOSTO] += int(oposto.sum())

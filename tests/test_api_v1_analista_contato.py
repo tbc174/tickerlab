@@ -6,8 +6,10 @@ ver; (3) o CNPJ ou o contato ir para a auditoria ou para o log; (4) sair coluna 
 endereço, telefone e e-mail aqui é inventado.
 """
 
+import json
 import logging
 
+import pandas as pd
 import pytest
 
 from src.analista import pessoa
@@ -177,37 +179,59 @@ def test_o_log_nao_leva_cnpj_nem_contato(cliente, casa, caplog):
 
 # ------------------------------------------- individual e MEI: endereço só até município e UF (linha 859)
 
+MEI = "33444555000181"
+SEM_RUA = dict.fromkeys(
+    ("tipo_logradouro", "logradouro", "numero", "complemento", "bairro", "cep")
+)
 
-def _virar_individual(acervo) -> None:
-    acervo_de_mentira._acervo_de_individuais(acervo, [EMPRESA[:8]])
+
+def _com_mei(acervo) -> None:
+    """Regrava o contato como a montagem grava: a raiz de MEI sem rua, a da empresa inteira."""
+    pasta = acervo / pessoa.CONTATO
+    for arquivo in pasta.glob("*.parquet"):
+        arquivo.unlink()
+    linhas = [*acervo_de_mentira.CONTATOS, acervo_de_mentira._contato(MEI) | SEM_RUA]
+    tabela = pd.DataFrame(linhas).assign(mes_do_retrato=acervo_de_mentira.MES)
+    for prefixo, parte in tabela.groupby(tabela["cnpj_basico"].str[:2]):
+        parte.to_parquet(pasta / f"{prefixo}.parquet", index=False)
 
 
-def test_organizacao_com_a_permissao_nao_recebe_a_rua_de_individual(
+def test_organizacao_com_a_permissao_recebe_o_mei_sem_a_rua_e_a_empresa_inteira(
     cliente, casa, acervo
 ):
-    _virar_individual(acervo)
+    _com_mei(acervo)
+    do_mei = cliente.post(ROTA, json={"cnpj": MEI}).json()["estabelecimentos"][0]
+    assert (
+        do_mei["logradouro"] is None
+        and do_mei["bairro"] is None
+        and do_mei["cep"] is None
+    )
+    assert (
+        do_mei["municipio"] and do_mei["uf"] and do_mei["telefones"] and do_mei["email"]
+    )
+    empresa = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()["estabelecimentos"][0]
+    assert empresa["logradouro"] and empresa["cep"]
+
+
+def test_acervo_sem_a_marca_do_corte_e_servido_como_fora_do_ar(cliente, casa, acervo):
+    (acervo / pessoa.MANIFESTO).write_text(
+        json.dumps({"descartes": {}}), encoding="utf-8"
+    )
     resposta = cliente.post(ROTA, json={"cnpj": EMPRESA})
-    assert resposta.status_code == 200, resposta.text
-    for e in resposta.json()["estabelecimentos"]:
-        assert e["logradouro"] is None and e["bairro"] is None and e["cep"] is None
-        assert e["municipio"] and e["uf"]
-    assert "DOS EXEMPLOS" not in resposta.text and "01001000" not in resposta.text
+    assert resposta.status_code == 503 and "DOS EXEMPLOS" not in resposta.text
 
 
-def test_duas_organizacoes_so_a_com_a_permissao_recebe_e_sem_a_rua_de_individual(
+def test_duas_organizacoes_so_a_com_a_permissao_recebe_o_mei(
     cliente, casa, acervo, da_bia, banco, dia
 ):
     bia, cliente_da_bia = da_bia
     dos_socios._organizacao_com(banco, dia, "Outra Exemplo", bia.id, permite=False)
-    _virar_individual(acervo)
-    corpo = {"cnpj": EMPRESA}
-    assert cliente.post(ROTA, json=corpo).json()["estabelecimentos"][0]["cep"] is None
-    _igual_a_rota_que_nao_existe(cliente_da_bia, corpo)
+    _com_mei(acervo)
+    assert cliente.post(ROTA, json={"cnpj": MEI}).status_code == 200
+    _igual_a_rota_que_nao_existe(cliente_da_bia, {"cnpj": MEI})
 
 
-def test_conta_sem_organizacao_nao_ve_nem_o_municipio_de_individual(
-    cliente, acervo, monkeypatch
-):
-    _virar_individual(acervo)
+def test_conta_sem_organizacao_nao_ve_o_mei(cliente, acervo, monkeypatch):
+    _com_mei(acervo)
     _nao_le_nada(monkeypatch)
-    _igual_a_rota_que_nao_existe(cliente, {"cnpj": EMPRESA})
+    _igual_a_rota_que_nao_existe(cliente, {"cnpj": MEI})
