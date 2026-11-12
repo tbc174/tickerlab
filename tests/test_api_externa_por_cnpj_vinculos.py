@@ -542,6 +542,71 @@ def test_sem_nenhum_tipo_liberado_nada_sai(pasta):
     assert _ler(pasta, tipos=so_fre, permitido=lambda f, *_: f != FCA) is None
 
 
+# linha 880: o tipo pedido que o portão não libera não some em silêncio
+
+
+def _sem_o_fca(fonte: str, _campo: str, _derivado: bool) -> bool:
+    return fonte != FCA
+
+
+def test_tipo_barrado_vem_listado_com_o_nome_de_fora(pasta):
+    servido = _ler(pasta, permitido=_sem_o_fca)
+    assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == ["audits"]
+    assert "audits" not in {t for t, _, _ in _pares(servido)}
+
+
+def test_com_tudo_liberado_nenhum_tipo_fica_de_fora(pasta):
+    servido = _ler(pasta)
+    assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == []
+    assert servido.corpo["limites"] == list(vinculos.LIMITES)
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL not in servido.corpo["limites"]
+
+
+def test_os_limites_nao_falam_da_fonte_barrada_e_trazem_o_aviso(pasta):
+    limites = _ler(pasta, permitido=_sem_o_fca).corpo["limites"]
+    assert vinculos.LIMITES_DA_FONTE[FCA] not in limites
+    assert not any("FCA" in frase for frase in limites)
+    assert vinculos.LIMITES_DA_FONTE[FRE] in limites
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL in limites
+    assert "unavailable_link_types" in vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL
+
+
+def test_sem_o_fre_os_tres_tipos_dele_vem_listados_e_o_fre_some_dos_limites(pasta):
+    def sem_o_fre(fonte: str, _campo: str, _derivado: bool) -> bool:
+        return fonte != FRE
+
+    servido = _ler(pasta, permitido=sem_o_fre)
+    assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == [
+        "subsidiary_of",
+        "affiliate_of",
+        "investee_of",
+    ]
+    assert {t for t, _, _ in _pares(servido)} == {"audits"}
+    assert not any("FRE" in frase for frase in servido.corpo["limites"])
+
+
+def test_so_o_tipo_pedido_entra_na_lista_dos_barrados(pasta):
+    so_fre = vinculos.tipos_do_pedido(["subsidiary_of"])
+    servido = _ler(pasta, tipos=so_fre, permitido=_sem_o_fca)
+    assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == []
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL not in servido.corpo["limites"]
+
+
+def test_sem_o_tipo_liberado_o_resto_dos_campos_dele_nao_conta(pasta):
+    def sem_o_tipo_da_auditoria(fonte: str, nome: str, _derivado: bool) -> bool:
+        return (fonte, nome) != (FCA, "tipo")
+
+    servido = _ler(pasta, permitido=sem_o_tipo_da_auditoria)
+    assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == ["audits"]
+
+
+def test_empresa_sem_vinculo_com_tipo_barrado_diz_qual_ficou_de_fora(pasta):
+    (pasta / "rede" / "ligacoes.parquet").unlink()
+    servido = _ler(pasta, permitido=_sem_o_fca)
+    assert servido.corpo["vinculos"] == []
+    assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == ["audits"]
+
+
 def test_a_pagina_vai_ate_o_limite_de_linhas(pasta):
     servido = _ler(pasta, linhas_maximas=2)
     assert servido.linhas == 2

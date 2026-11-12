@@ -96,6 +96,7 @@ def test_vinculos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert corpo["cnpj"] == ALFA and corpo["known_at"] == DIA
     assert corpo["depth"] == 1 and corpo["truncated"] is False
     assert corpo["limits"] == list(vinculos.LIMITES)
+    assert corpo["unavailable_link_types"] == []
     assert _tipos(corpo) == [
         "subsidiary_of", "subsidiary_of", "subsidiary_of", "affiliate_of", "audits",
     ]  # fmt: skip
@@ -255,6 +256,89 @@ def test_sem_o_tipo_do_fca_a_auditoria_nao_sai(cliente, cenario, monkeypatch):
     corpo = _get(cliente, cenario, known_at=DIA).json()
     assert "audits" not in _tipos(corpo)
     assert "cvm-hist-fca" not in {f["source"] for f in corpo["sources"]}
+
+
+# ---------------------------------------------------------------- o tipo barrado (linha 880)
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `links`, outra só com o de `companies`; o portão sem o tipo de
+    vínculo do FCA (a auditoria barrada, como uma linha de direito retirada)."""
+    ator = aj.admin(banco)
+    com_links = aj.organizacao(banco, ator, "Organização com links")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem links")
+    aj.contrato(banco, ator, com_links, conjunto=vinculos.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _sem(_regras(), "tipo", "cvm-hist-fca")
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_links).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_o_tipo_barrado_vem_como_nao_disponivel_e_os_limites_nao_falam_dele(duas):
+    cliente, com_links, _so_de_companies = duas
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_links)
+    )
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert "audits" not in _tipos(corpo)
+    assert corpo["unavailable_link_types"] == ["audits"]
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL in corpo["limits"]
+    assert "unavailable_link_types" in vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL
+    assert vinculos.LIMITES_DA_FONTE[vinculos.FCA] not in corpo["limits"]
+    assert "cvm-hist-fca" not in {f["source"] for f in corpo["sources"]}
+
+
+def test_a_lista_vazia_com_o_tipo_barrado_diz_o_que_nao_foi_consultado(duas, pasta):
+    cliente, com_links, _so_de_companies = duas
+    (pasta / "rede" / "ligacoes.parquet").unlink()
+    corpo = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_links)
+    ).json()
+    assert corpo["links"] == []
+    assert corpo["unavailable_link_types"] == ["audits"]
+
+
+def test_so_o_tipo_barrado_pedido_da_404(duas):
+    cliente, com_links, _so_de_companies = duas
+    resposta = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": ["audits"]},
+        headers=aj.bearer(com_links),
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_o_tipo_liberado_pedido_sozinho_nao_lista_o_barrado(duas):
+    cliente, com_links, _so_de_companies = duas
+    corpo = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": ["subsidiary_of"]},
+        headers=aj.bearer(com_links),
+    ).json()
+    assert corpo["unavailable_link_types"] == []
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL not in corpo["limits"]
+
+
+@pytest.mark.parametrize("tipos", [[], ["subsidiary_of"]])
+def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista_dos_barrados(
+    duas, tipos
+):
+    cliente, _com_links, so_de_companies = duas
+    resposta = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": tipos},
+        headers=aj.bearer(so_de_companies),
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
 
 
 def test_sem_a_razao_social_da_receita_a_ponta_sai_sem_nome(

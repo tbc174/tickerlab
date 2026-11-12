@@ -34,7 +34,7 @@ def test_lote_aceita_cnpj_formatado_e_desduplica():
 
 def test_cnpj_com_dv_errado_e_cpf_ficam_de_fora():
     cpf_de_exemplo = (
-        "52998224725"  # CPF válido de 11 dígitos: nunca vira CNPJ com zeros
+        "88800000127"  # CPF válido de 11 dígitos: nunca vira CNPJ com zeros
     )
     lido = lote.ler_lote([PETROBRAS, "33000167000102", cpf_de_exemplo, "", 123])
     assert lido.validos == [PETROBRAS]

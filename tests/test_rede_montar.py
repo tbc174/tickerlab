@@ -98,7 +98,7 @@ def _entradas() -> montar.Entradas:
                 "CPF_CNPJ_GESTOR": [None],
                 "GESTOR": [None],
                 "CNPJ_AUDITOR": ["44.555.666/0001-81"],
-                "AUDITOR": ["MEI AUDITOR 52998224725"],
+                "AUDITOR": ["MEI AUDITOR 88800000127"],
             }
         ),
         ifdata=pd.DataFrame(
@@ -221,7 +221,7 @@ def test_natureza_pela_receita_e_mei_sem_nome():
     ]  # fmt: skip
     mei = por_id.loc[_id("44555666")]
     assert mei["mei"] and mei["trata_como_pessoa"] and pd.isna(mei["nome"])
-    assert "52998224725" not in entidades.astype(str).to_string()
+    assert "88800000127" not in entidades.astype(str).to_string()
 
 
 def test_nome_da_fonte_de_maior_prioridade():

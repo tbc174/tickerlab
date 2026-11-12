@@ -21,6 +21,7 @@ from xml.sax.saxutils import escape
 
 from tickerlab.formato import (
     AVISO,
+    aviso_de_nao_disponivel,
     avisos_de_piloto,
     colunas_da_linha,
     e_de_piloto,
@@ -163,6 +164,11 @@ def tabela_das_fontes(corpo: Mapping) -> Tabela:
     fontes.linhas.append(["aviso", AVISO, None])
     fontes.linhas.extend(
         ["aviso de piloto", frase, None] for frase in avisos_de_piloto(corpo)
+    )
+    fontes.linhas.extend(
+        ["não disponível", aviso, None]
+        for aviso in [aviso_de_nao_disponivel(corpo)]
+        if aviso
     )
     return fontes
 

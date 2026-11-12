@@ -33,7 +33,7 @@ def _zip_rs(linhas: list[str]) -> bytes:
     saida = io.BytesIO()
     with zipfile.ZipFile(saida, "w") as pacote:
         pacote.writestr("contrato.csv", "\n".join([cabecalho, *linhas]))
-        pacote.writestr("pessoas.csv", "NR_DOCUMENTO\n12345678909")
+        pacote.writestr("pessoas.csv", "NR_DOCUMENTO\n88800000046")
     return saida.getvalue()
 
 
@@ -149,7 +149,7 @@ class _Fonte:
         return _zip_rs(
             [
                 f"7;1;2024;9;2025;J;{CNPJ};1.500,00".replace(".", "", 1),
-                "7;1;2024;10;2025;F;12345678909;5,00",
+                "7;1;2024;10;2025;F;88800000046;5,00",
             ]
         )
 

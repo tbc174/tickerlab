@@ -128,18 +128,18 @@ def test_deck_do_setor_tem_so_o_que_o_portao_libera(setor, monkeypatch):
 
 def test_deck_do_setor_sem_pessoa_fisica(setor, noite):
     def plantar(secao: dict) -> None:
-        pessoa = {"cnpj": "12345678909", "empresa": "FULANO", "motivo": "ligada"}
+        pessoa = {"cnpj": "88800000046", "empresa": "FULANO", "motivo": "ligada"}
         secao["tabelas"]["membros"].append(pessoa)
         linha = dict(secao["tabelas"]["participacao_dos_membros"][0])
         secao["tabelas"]["participacao_dos_membros"].append(
-            linha | {"cnpj": "12345678909", "empresa": "FULANO"}
+            linha | {"cnpj": "88800000046", "empresa": "FULANO"}
         )
 
     _regravar(noite, plantar)
     cliente, _org, chave = setor
     texto = _textos(_get(cliente, chave, DECK_DO_SETOR).content)
     assert "FULANO" not in texto
-    assert "123.456.789-09" not in texto and "12345678909" not in texto
+    assert "888.000.000-46" not in texto and "88800000046" not in texto
 
 
 def test_texto_do_dado_com_caractere_de_controle_nao_quebra_o_arquivo(setor, noite):

@@ -129,7 +129,7 @@ def test_nome_conhecido_no_assunto_corta_o_trecho():
 
 def test_cpf_no_assunto_corta_o_trecho():
     fatos, _ = _g2(
-        _eventos(_evento("A", "ACME conclui aquisição da Beta de 123.456.789-09"))
+        _eventos(_evento("A", "ACME conclui aquisição da Beta de 888.000.000-46"))
     )
     assert fatos.iloc[0]["trecho"] == ""
     assert fatos.iloc[0]["marcas"] == ["trecho_cortado"]

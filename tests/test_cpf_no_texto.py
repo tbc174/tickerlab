@@ -21,11 +21,15 @@ from src import eventos as ev
 from src.banco import eventos as repo
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.modelo import eventos
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado, no_formato
 from tests.test_eventos import PASTA, _zip
 
-# número de teste que confere nos dois dígitos (não é de ninguém: o exemplo clássico de calculadora)
-CPF = "111.444.777-35"
-CPF_COLADO = "11144477735"
+# número de teste que confere nos dois dígitos, montado na hora a partir de nove dígitos inventados
+CPF = formatado(CPF_DE_TESTE)
+CPF_COLADO = CPF_DE_TESTE
+# a mesma forma, com o dígito verificador trocado (não confere)
+CPF_DE_DIGITO_ERRADO = CPF[:-2] + f"{(int(CPF[-2:]) + 1) % 100:02d}"
+CPF_COM_ESPACO_NAO_SEPARAVEL = no_formato(CPF_DE_TESTE, "ddd ddd ddd dd")
 
 
 @pytest.mark.parametrize(
@@ -47,7 +51,7 @@ def test_cpf_que_confere_e_achado_e_mascarado(texto):
     [
         "protocolo 20190123456",  # 11 dígitos que não conferem
         "cnpj 11.222.333/0001-81",  # CNPJ não é CPF
-        "123.456.789-00",  # forma de CPF, dígitos errados
+        CPF_DE_DIGITO_ERRADO,  # forma de CPF, dígitos errados
         "00000000000",  # todos iguais
         f"9{CPF_COLADO}",  # parte de um número maior
         "",
@@ -125,7 +129,7 @@ def test_o_recorte_deixa_passar_texto_sem_cpf_e_numero_que_nao_confere(tmp_path)
     arquivo = tmp_path / "eventos" / "a.parquet"
     _parquet(
         arquivo,
-        "SELECT * FROM (VALUES ('fato relevante'), ('prot 20190123456'), ('123.456.789-00'), "
+        f"SELECT * FROM (VALUES ('fato relevante'), ('prot 20190123456'), ('{CPF_DE_DIGITO_ERRADO}'), "
         f"('cpf {MARCA}')) t(assunto)",
     )
     envio.conferir_sem_cpf_no_texto(duckdb.connect(), "eventos", arquivo)
@@ -141,7 +145,7 @@ def test_o_recorte_ve_cpf_separado_por_espaco_nao_separavel_e_quebra_de_linha(tm
     arquivo = tmp_path / "eventos" / "a.parquet"
     _parquet(
         arquivo,
-        "SELECT * FROM (VALUES ('a 111 444 777 35'), ('b 111.444.777\n35')) t(assunto)",
+        f"SELECT * FROM (VALUES ('a {CPF_COM_ESPACO_NAO_SEPARAVEL}'), ('b {CPF[:11]}\n{CPF[12:]}')) t(assunto)",
     )
     with pytest.raises(envio.RecorteErro, match="CPF no texto"):
         envio.conferir_sem_cpf_no_texto(duckdb.connect(), "eventos", arquivo)

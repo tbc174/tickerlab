@@ -103,7 +103,7 @@ def test_tabela_sem_colunas_declaradas_sai(tmp_path: Path) -> None:
 
 def test_cpf_na_ficha_barra_a_ficha_inteira(tmp_path: Path) -> None:
     bruta = _bruta()
-    bruta["secoes"][0]["paragrafos"].append("Responsável: 123.456.789-09")
+    bruta["secoes"][0]["paragrafos"].append("Responsável: 888.000.000-46")
     assert dossie.ficha_do(CPFL, _pasta(tmp_path, bruta)) is None
 
 

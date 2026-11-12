@@ -20,7 +20,7 @@ def _cnpj(raiz: str, filial: str = "0001") -> str:
 EMPRESA = _cnpj("11222333")
 OUTRA = _cnpj("33000167")
 INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
-CPF = "366.176.019-04"
+CPF = "888.000.005-51"
 DIA = pd.Timestamp("2026-10-14")
 
 
@@ -82,7 +82,7 @@ def _embargos(*linhas: str) -> bytes:
 def test_embargos_so_cnpj_entra_com_area_em_decimal_e_ano_impossivel_vazio():
     conteudo = _embargos(
         _embargo("1", EMPRESA),
-        _embargo("2", "48522783349"),  # CPF
+        _embargo("2", "88800000801"),  # CPF
         _embargo("3", INVALIDO),
         _embargo("4", OUTRA, embargo="2925-09-25 15:10:00"),
         _embargo("1", OUTRA),  # SEQ_TAD repetido

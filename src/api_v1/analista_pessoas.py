@@ -42,6 +42,8 @@ SEM_SOCIOS = "sem_socios"
 SEM_CONTATO = "sem_contato"
 TIPO_SOCIOS = "socios"
 TIPO_CONTATO = "contato"
+SEM_TITULAR = "sem_titular"
+TIPO_TITULAR = "titular"
 
 Conta = Annotated[Usuario, Depends(conta_com_acesso)]
 router = APIRouter(prefix="/v1/analista", dependencies=[Depends(exigir_api_ligada)])
@@ -90,6 +92,21 @@ class ContatoDaEmpresaV1(BaseModel):
 
     estado: str  # "pronta" ou "sem_contato" (nenhum estabelecimento ativo no retrato)
     estabelecimentos: list[EstabelecimentoV1]
+    total: int
+    fonte: FonteDosSociosV1
+    limites: list[str]
+
+
+class TitularV1(BaseModel):
+    nome: str
+
+
+class TitularDaEmpresaV1(BaseModel):
+    """O titular do empresário individual ou do MEI: o estado, a lista (só o nome), o total, a fonte e os
+    limites, sempre."""
+
+    estado: str  # "pronta" ou "sem_titular" (a empresa não é individual, ou o titular saiu da tela)
+    titulares: list[TitularV1]
     total: int
     fonte: FonteDosSociosV1
     limites: list[str]
@@ -170,6 +187,34 @@ def socios_da_ficha(
             mes_do_retrato=socios.mes_do_retrato,
         ),
         limites=list(pessoa.LIMITES),
+    )
+
+
+@router.post("/ficha/titular")
+def titular_da_ficha(
+    conta: Conta,
+    organizacao: Organizacao,
+    pedido: Pedido,
+    resposta: Response,
+) -> TitularDaEmpresaV1:
+    """O nome do titular do empresário individual ou do MEI do CNPJ, do cadastro da Receita (sem CPF).
+    Só para a organização com a permissão; para as outras contas a rota não existe (404)."""
+    titular = _ler(pessoa.titular_da_empresa, pedido)
+    # a auditoria vem antes da resposta: se não gravar, nada sai
+    _registrar(conta, organizacao, TIPO_TITULAR, len(titular.titulares))
+    estado = PRONTA if titular.titulares else SEM_TITULAR
+    log.info("titular da ficha: %s", estado)  # só o estado, nunca o CNPJ nem um nome
+    resposta.headers["Cache-Control"] = "no-store"
+    return TitularDaEmpresaV1(
+        estado=estado,
+        titulares=[TitularV1.model_validate(t) for t in titular.titulares],
+        total=titular.total,
+        fonte=FonteDosSociosV1(
+            fonte=pessoa.FONTE,
+            atribuicao=pessoa.ATRIBUICAO_DO_TITULAR,
+            mes_do_retrato=titular.mes_do_retrato,
+        ),
+        limites=list(pessoa.LIMITES_DO_TITULAR),
     )
 
 

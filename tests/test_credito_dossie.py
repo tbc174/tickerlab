@@ -193,11 +193,11 @@ def test_pessoa_fisica_como_parte_nao_monta():
 @pytest.mark.parametrize(
     "texto",
     [
-        "123.456.789-09",
-        "12345678909",
+        "888.000.000-46",
+        "88800000046",
         "***456789**",
         "***.456.789-**",
-        "sócio 529.982.247-25 entrou",
+        "sócio 888.000.001-27 entrou",
     ],
 )
 def test_cpf_em_qualquer_texto_nao_monta(texto):
