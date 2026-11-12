@@ -89,6 +89,54 @@ def com_aviso_de_piloto(texto: str, dado: object) -> str:
     return "\n".join(f"Aviso de piloto: {f}" for f in faltam) + "\n\n" + texto
 
 
+# A API diz o que a organização não pode consultar em campos `unavailable_<o que>` (lista; a lista de dados
+# não diz nada sobre eles). Rótulo da tela por campo; o que não está aqui sai pelo próprio nome do campo.
+PREFIXO_NAO_DISPONIVEL = "unavailable_"
+ROTULOS_NAO_DISPONIVEIS = {"unavailable_event_types": "tipos de evento"}
+
+
+def nao_disponiveis(dado: object) -> dict[str, list[str]]:
+    """O que a API disse que não está disponível para a organização, por rótulo (de qualquer nível da resposta)."""
+    achados: dict[str, list[str]] = {}
+    for bloco in _percorrer(dado):
+        for chave, valores in bloco.items():
+            if not (
+                isinstance(chave, str)
+                and chave.startswith(PREFIXO_NAO_DISPONIVEL)
+                and isinstance(valores, list)
+            ):
+                continue
+            rotulo = ROTULOS_NAO_DISPONIVEIS.get(
+                chave, chave.removeprefix(PREFIXO_NAO_DISPONIVEL).replace("_", " ")
+            )
+            for valor in valores:
+                if str(valor) not in achados.setdefault(rotulo, []):
+                    achados[rotulo].append(str(valor))
+    return {rotulo: valores for rotulo, valores in achados.items() if valores}
+
+
+def aviso_de_nao_disponivel(dado: object) -> str | None:
+    """A frase de tela: o que não está disponível para a organização e que o resultado não diz nada sobre isso."""
+    itens = nao_disponiveis(dado)
+    if not itens:
+        return None
+    lista = "; ".join(
+        f"{rotulo}: {', '.join(valores)}" for rotulo, valores in itens.items()
+    )
+    return (
+        f"Parte dos dados não está disponível para a sua organização ({lista}). Não foi consultada: o "
+        "resultado abaixo não diz nada sobre ela."
+    )
+
+
+def com_aviso_de_nao_disponivel(texto: str, dado: object) -> str:
+    """Garante que o aviso de indisponível aparece na saída de toda tela (rede de segurança)."""
+    aviso = aviso_de_nao_disponivel(dado)
+    if aviso is None or aviso in texto:
+        return texto
+    return aviso + "\n\n" + texto
+
+
 def e_envelope(valor: object) -> bool:
     """Diz se o valor é um campo no envelope da API (valor, fonte e data)."""
     return isinstance(valor, Mapping) and "value" in valor and "source" in valor
@@ -272,6 +320,13 @@ def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
     """Uma resposta em páginas: quantas linhas vieram, se há mais, e cada linha com a fonte e a data."""
     linhas = [e for e in corpo.get(lista) or [] if isinstance(e, Mapping)]
     topo = f"{len(linhas)} {nome} nesta resposta." if linhas else vazia
+    faltou = aviso_de_nao_disponivel(corpo)
+    if faltou:  # o "nenhum" só vale para o que foi consultado
+        topo = f"{faltou} " + (
+            f"{len(linhas)} {nome} nesta resposta."
+            if linhas
+            else f"Nos demais, nenhum dos {nome} até o dia. Sem evento não quer dizer que nada aconteceu."
+        )
     if corpo.get("next_cursor"):
         topo += (
             " Há mais: rode de novo com --todas para buscar as outras páginas (cada página é um pedido "
@@ -445,6 +500,7 @@ def planilha_gravada(arquivos: Sequence[object], corpo: Mapping) -> str:
         [
             f"Planilha gravada (cada linha com a fonte e a data):\n{lista}",
             *(f"Aviso de piloto: {f}" for f in avisos_de_piloto(corpo)),
+            *([aviso] if (aviso := aviso_de_nao_disponivel(corpo)) else []),
             fontes(corpo.get("sources")),
             AVISO,
         ]
