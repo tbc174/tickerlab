@@ -61,6 +61,15 @@ def id_pessoa(cpf: str, primeiro: str, ultimo: str, chave: bytes) -> str:
     ]
 
 
+def id_da_raiz(raiz: str, chave: bytes) -> str:
+    """O pseudônimo de um empresário individual cuja razão social não traz o CPF: vem da raiz do CNPJ.
+    Não é dado de pessoa (a raiz é pública); serve só para a oposição achar a linha dele (linha 829)."""
+    mensagem = "raiz|" + raiz.strip()
+    return hmac.new(chave, mensagem.encode(), hashlib.sha256).hexdigest()[
+        :TAMANHO_DO_ID
+    ]
+
+
 def ler_chave(caminho: Path | None = None) -> bytes:
     """A chave do arquivo (`TICKERLAB_PESSOAS_CHAVE` ou o caminho padrão); recusa sumida ou curta."""
     destino = caminho or Path(os.environ.get(VARIAVEL_DA_CHAVE, CAMINHO_PADRAO))

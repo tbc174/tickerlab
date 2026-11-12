@@ -32,9 +32,10 @@ EXCECOES_HERDADAS: dict[str, str] = {
     "base/cripto/coleta.py": _CRIPTO,
     "base/cripto/leitura.py": _CRIPTO,
     "base/cripto/reprodutivel.py": _CRIPTO,
+    "base/oposicao_na_tela.py": "aplica a oposição do titular no acervo de pessoa (pasta à parte, fora da porta, do portão e da API por chave; ADR 0128, Emenda 1): relê e regrava as próprias tabelas",
     "src/analista/pessoa.py": "não lê a base: lê o acervo de pessoa, pasta à parte que de propósito fica fora da porta, do portão e da API por chave (ADR 0128, Emenda 1); a rota confere a permissão antes",
 }
-TETO_DE_EXCECOES = 13  # 13 desde a linha 808 (o leitor do acervo de pessoa, que não é a base); só desce: arquivo que passou para a porta sai da lista e o teto cai
+TETO_DE_EXCECOES = 14  # 14 desde a linha 829 (a oposição na tela, mesmo acervo de pessoa); 13 desde a linha 808 (o leitor do acervo de pessoa, que não é a base); só desce: arquivo que passou para a porta sai da lista e o teto cai
 
 
 def _arquivos() -> list[str]:

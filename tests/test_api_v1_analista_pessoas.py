@@ -13,6 +13,7 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
+from base import oposicao_na_tela
 from src import auditoria
 from src.analista import pessoa
 from src.api_v1 import analista, analista_pessoas
@@ -23,6 +24,7 @@ from src.banco.usuarios import entrar, mudar_plano
 from src.conformidade import registrar_aceite
 from tests import test_analista_pessoa as acervo_de_mentira
 from tests import test_api_v1_rotas as rotas
+from tests import test_montar_acervo_pessoa as montar_de_mentira
 from tests.ajudantes_da_api import da_sessao
 
 chave = rotas.chave
@@ -119,6 +121,9 @@ def test_membro_da_organizacao_com_a_permissao_ve_os_socios(cliente, casa):
     ]
     assert all(set(s) == {"nome", "qualificacao", "entrou_em"} for s in dados["socios"])
     assert dados["total"] == 2
+    assert (
+        "id_pessoa" not in resposta.text
+    )  # o pseudônimo fica no acervo, nunca na resposta
     assert dados["fonte"]["fonte"] == "rfb-cnpj" and dados["fonte"]["mes_do_retrato"]
     assert dados["limites"] == list(pessoa.LIMITES)
     assert resposta.headers["Cache-Control"] == "no-store"
@@ -299,3 +304,45 @@ def test_o_log_nao_leva_cnpj_nem_nome(cliente, casa, caplog):
         cliente.post(ROTA, json={"cnpj": "123"})
     assert "11222333" not in caplog.text and "EXEMPLO" not in caplog.text
     assert "sócios da ficha: pronta" in caplog.text
+
+
+# ---------------------------------------- oposição do titular na tela (linha 829)
+
+
+def test_quem_se_opos_nao_aparece_para_a_organizacao_com_a_permissao(
+    cliente, casa, da_bia, banco, dia, tmp_path, monkeypatch
+):
+    """O acervo montado com a oposição da Fulana: a tela da casa não a mostra; outras contas seguem sem pessoa."""
+    cnpj, bruto = montar_de_mentira._acervo(tmp_path / "origem")
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    opostos = montar_de_mentira._opostos(("***123456**", "FULANA EXEMPLO"))
+    montar_de_mentira.montar.carregar(
+        cnpj, bruto, destino, montar_de_mentira.AGORA, opostos
+    )
+    monkeypatch.setenv(pessoa.VARIAVEL, str(destino))
+
+    da_fulana = cliente.post(ROTA, json={"cnpj": "11.222.333/0001-81"}).json()
+    do_beltrano = cliente.post(ROTA, json={"cnpj": "22.333.444/0001-81"}).json()
+    assert da_fulana["socios"] == [] and da_fulana["total"] == 0
+    assert [s["nome"] for s in do_beltrano["socios"]] == ["BELTRANO EXEMPLO"]
+
+    bia, cliente_da_bia = da_bia
+    _organizacao_com(banco, dia, "Outra Exemplo", bia.id, permite=False)
+    _igual_a_rota_que_nao_existe(cliente_da_bia, {"cnpj": "22333444000181"})
+
+
+def test_oposicao_registrada_hoje_some_da_tela_sem_esperar_a_montagem(
+    cliente, casa, tmp_path, monkeypatch
+):
+    destino, _ = montar_de_mentira._montar_com(tmp_path, montar_de_mentira.SEM_OPOSTOS)
+    monkeypatch.setenv(pessoa.VARIAVEL, str(destino))
+    antes = cliente.post(ROTA, json={"cnpj": "11222333000181"}).json()
+    assert [s["nome"] for s in antes["socios"]] == ["FULANA EXEMPLO"]
+
+    ids = montar_de_mentira._opostos(("***123456**", "FULANA EXEMPLO")).ids
+    oposicao_na_tela.aplicar_no_acervo(destino, set(ids))  # o que o `pedido` faz no dia
+
+    depois = cliente.post(ROTA, json={"cnpj": "11222333000181"}).json()
+    assert depois["socios"] == [] and depois["total"] == 0
+    outro = cliente.post(ROTA, json={"cnpj": "22333444000181"}).json()
+    assert [s["nome"] for s in outro["socios"]] == ["BELTRANO EXEMPLO"]

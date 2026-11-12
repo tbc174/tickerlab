@@ -1,7 +1,7 @@
 """Monta o `acervo_pessoa/` da tela da equipe (ADR 0128, Emenda 1; linha 808). Roda só no servidor de casa.
 
     python -m scripts.montar_acervo_pessoa --cnpj <acervo>/base/cnpj --bruto <acervo>/bruto/rfb-cnpj \
-        --destino <fora do acervo>/acervo_pessoa [--ensaio]
+        --destino <fora do acervo>/acervo_pessoa --restrita <pasta restrita de pessoas> [--ensaio]
 
 Para o mês do retrato vigente da base do CNPJ (o último do `manifesto.json`) lê os ZIPs que a carga já
 guardou em `--bruto` (pelo SHA-256 do manifesto; nada é baixado) e grava, repartidas pelos 2 primeiros
@@ -9,7 +9,14 @@ caracteres da raiz:
 - `socios_pf/<xx>.parquet` (dos `Socios*.zip`): raiz da empresa, nome do sócio pessoa física, qualificação e
   data de entrada. Sem CPF e sem menor de idade (`base/receita_pessoa.py` diz o que é descartado);
 - `contato/<xx>.parquet` (dos `Estabelecimentos*.zip`): endereço, telefones e e-mail dos estabelecimentos
-  ativos. Sem nome fantasia, sem fax e sem nada com cara de CPF (`base/receita_contato.py`).
+  ativos. Sem nome fantasia, sem fax e sem nada com cara de CPF (`base/receita_contato.py`);
+- `individuais/<xx>.parquet` (dos `Empresas*.zip`): raiz e nome do titular do empresário individual e do MEI
+  (natureza 213-5), sem o CPF que vem no fim da razão social (`base/receita_individuais.py`).
+
+**Oposição do titular (linha 829):** a pasta restrita (`--restrita`) traz as oposições (`base/pessoas/oposicoes.py`);
+quem se opôs, atendida ou não, fica fora de `socios_pf` e `individuais`, e o `contato` da raiz do empresário
+individual que se opôs também. O CPF usado para casar o id é lido só na memória. Sem a pasta ou sem a chave
+do pseudônimo, nada é montado.
 
 A pasta fica **fora do acervo**: o script recusa um `--destino` dentro dele, para que nenhuma cópia do acervo
 (PC, Drive, VPS, recorte da API) leve pessoa junto. Levar esta pasta a outro servidor é outra decisão, pedida
@@ -37,7 +44,10 @@ from typing import IO, NamedTuple
 
 import pandas as pd
 
-from base import receita_contato, receita_pessoa
+from base import oposicao_na_tela, receita_contato, receita_individuais, receita_pessoa
+from base.oposicao_na_tela import Opostos, SemOposicoesError
+from base.pessoas.chave import ErroSemChave
+from base.receita_contato import RaizesDeIndividual
 from base.receita_retrato import ErroDeLayout
 from scripts import carga_receita_mes as carga
 from scripts.montar_historico_do_cnpj import _arquivos, _ler, _repartir, _zips_do_mes
@@ -45,8 +55,9 @@ from scripts.montar_historico_do_cnpj import _arquivos, _ler, _repartir, _zips_d
 log = logging.getLogger("tickerlab.montar_acervo_pessoa")
 
 NOME_DA_PASTA = "acervo_pessoa"
-SOCIOS = "socios_pf"
-CONTATO = "contato"
+SOCIOS = oposicao_na_tela.SOCIOS
+CONTATO = oposicao_na_tela.CONTATO
+INDIVIDUAIS = oposicao_na_tela.INDIVIDUAIS
 TRABALHO = "_trabalho"
 ANTIGA = "_antiga"  # a tabela anterior, posta de lado só durante a troca
 MANIFESTO = "manifesto.json"
@@ -58,28 +69,47 @@ Parte = tuple[
 ]  # as linhas que ficam e os descartes por motivo
 
 
+class Contexto(NamedTuple):
+    """O que as tabelas dividem na rodada: quem se opôs e as raízes de individual que saíram por isso."""
+
+    opostos: Opostos
+    tiradas: set[
+        str
+    ]  # preenchida por `individuais`, lida por `contato`: a ordem de TABELAS importa
+    individuais: RaizesDeIndividual  # toda raiz de individual e MEI (linha 859): o contato dela sem rua
+
+
 class Tabela(NamedTuple):
     """Uma tabela do acervo de pessoa: de que ZIPs sai, quem os lê e o que identifica uma linha."""
 
     nome: str
     arquivos: str  # começo do nome dos ZIPs do mês
-    ler: Callable[[Path | IO[bytes]], Iterator[Parte]]
+    ler: Callable[[Path | IO[bytes], Contexto], Iterator[Parte]]
     chave: list[str]
     motivos: tuple[str, ...]
 
 
-TABELAS = (
+TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai junto
     Tabela(
         SOCIOS,
         "Socios",
-        receita_pessoa.ler_socios_pf,
+        lambda zip_, c: receita_pessoa.ler_socios_pf(zip_, c.opostos),
         ["cnpj_basico", "nome_socio", "qualificacao", "data_entrada"],
         receita_pessoa.MOTIVOS,
     ),
     Tabela(
+        INDIVIDUAIS,
+        "Empresas",
+        lambda zip_, c: receita_individuais.ler_individuais(
+            zip_, c.opostos, c.tiradas, c.individuais
+        ),
+        ["cnpj_basico"],
+        receita_individuais.MOTIVOS,
+    ),
+    Tabela(
         CONTATO,
         "Estabelecimentos",
-        receita_contato.ler_contato,
+        lambda zip_, c: receita_contato.ler_contato(zip_, c.tiradas, c.individuais),
         ["cnpj"],
         receita_contato.MOTIVOS,
     ),
@@ -124,11 +154,13 @@ def zips_do_mes(cnpj: Path, bruto: Path) -> tuple[str, dict[str, dict[str, Path]
 
 
 def _repartir_os_zips(
-    tabela: Tabela, zips: dict[str, Path], trabalho: Path
+    tabela: Tabela, zips: dict[str, Path], trabalho: Path, contexto: Contexto
 ) -> Counter[str]:
     descartes: Counter[str] = Counter()
     for numero, (nome, arquivo) in enumerate(sorted(zips.items())):
-        for parte_numero, (linhas, da_parte) in enumerate(tabela.ler(arquivo)):
+        for parte_numero, (linhas, da_parte) in enumerate(
+            tabela.ler(arquivo, contexto)
+        ):
             descartes += da_parte
             _repartir(linhas, trabalho, f"{numero:02d}-{parte_numero:04d}")
         log.info("lido %s", nome)
@@ -140,7 +172,10 @@ def _gravar_prefixos(
 ) -> dict[str, int]:
     pronta.mkdir(parents=True)
     total, empresas = 0, 0
-    for pasta in sorted(p for p in trabalho.iterdir() if p.is_dir()):
+    prefixos = (
+        trabalho.iterdir() if trabalho.is_dir() else ()
+    )  # tudo oposto: nada foi repartido
+    for pasta in sorted(p for p in prefixos if p.is_dir()):
         linhas = _ler(_arquivos(pasta))
         if linhas is None or linhas.empty:
             continue
@@ -172,10 +207,12 @@ def _trocar(pronta: Path, atual: Path) -> None:
 
 
 def _preparar_tabela(
-    tabela: Tabela, trabalho: Path, mes: str, zips: dict[str, Path]
+    tabela: Tabela, trabalho: Path, mes: str, zips: dict[str, Path], contexto: Contexto
 ) -> tuple[dict[str, int], Counter[str]]:
     """Lê os ZIPs e grava a tabela pronta em `trabalho/<nome>`, sem tocar no destino."""
-    descartes = _repartir_os_zips(tabela, zips, trabalho / f"{tabela.nome}-partes")
+    descartes = _repartir_os_zips(
+        tabela, zips, trabalho / f"{tabela.nome}-partes", contexto
+    )
     contagem = _gravar_prefixos(
         tabela, trabalho / f"{tabela.nome}-partes", trabalho / tabela.nome, mes
     )
@@ -188,6 +225,7 @@ def montar(
     zips: dict[str, dict[str, Path]],
     shas: dict[str, str],
     agora: datetime,
+    opostos: Opostos,
 ) -> dict:
     """Grava as tabelas do `mes` e o manifesto; devolve o manifesto (só números e SHA-256).
 
@@ -204,10 +242,11 @@ def montar(
     trabalho = destino / TRABALHO
     shutil.rmtree(trabalho, ignore_errors=True)
     contagens, descartes = {}, {}
+    contexto = Contexto(opostos, set(), RaizesDeIndividual())
     try:
         for tabela in TABELAS:
             contagem, da_tabela = _preparar_tabela(
-                tabela, trabalho, mes, zips[tabela.nome]
+                tabela, trabalho, mes, zips[tabela.nome], contexto
             )
             contagens[tabela.nome] = contagem
             descartes |= {motivo: da_tabela.get(motivo, 0) for motivo in tabela.motivos}
@@ -220,6 +259,7 @@ def montar(
         "montado_em": agora.isoformat(),
         "tabelas": contagens,
         "descartes": descartes,
+        "oposicoes_aplicadas": len(opostos.ids),  # só a contagem, nunca os ids
         "origens": dict(sorted(shas.items())),
     }
     (destino / MANIFESTO).write_text(
@@ -232,7 +272,9 @@ def _nomes(zips: dict[str, dict[str, Path]]) -> list[str]:
     return sorted(nome for arquivos in zips.values() for nome in arquivos)
 
 
-def carregar(cnpj: Path, bruto: Path, destino: Path, agora: datetime) -> dict:
+def carregar(
+    cnpj: Path, bruto: Path, destino: Path, agora: datetime, opostos: Opostos
+) -> dict:
     """Confere o destino, acha os ZIPs do mês vigente no bruto e monta."""
     conferir_destino(cnpj, destino)
     mes, zips = zips_do_mes(cnpj, bruto)
@@ -241,7 +283,7 @@ def carregar(cnpj: Path, bruto: Path, destino: Path, agora: datetime) -> dict:
         for arquivos in zips.values()
         for nome, arquivo in arquivos.items()
     }
-    return montar(destino, mes, zips, shas, agora)
+    return montar(destino, mes, zips, shas, agora, opostos)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -249,6 +291,11 @@ def main(argv: list[str] | None = None) -> int:
     analisador.add_argument("--cnpj", type=Path, required=True)
     analisador.add_argument("--bruto", type=Path, required=True)
     analisador.add_argument("--destino", type=Path, required=True)
+    analisador.add_argument(
+        "--restrita",
+        type=Path,
+        help="pasta restrita de pessoas, com as oposições (obrigatória, salvo --ensaio)",
+    )
     analisador.add_argument("--ensaio", action="store_true")
     opcoes = analisador.parse_args(argv)
     logging.basicConfig(
@@ -259,11 +306,23 @@ def main(argv: list[str] | None = None) -> int:
         mes, zips = zips_do_mes(opcoes.cnpj, opcoes.bruto)
         print(f"mês do retrato vigente: {mes}; arquivos: {', '.join(_nomes(zips))}")
         if not opcoes.ensaio:
+            if opcoes.restrita is None:
+                raise ValueError("falta --restrita: sem as oposições nada é montado")
+            opostos = oposicao_na_tela.carregar(opcoes.restrita)
             agora = datetime.now(UTC)
-            manifesto = carregar(opcoes.cnpj, opcoes.bruto, opcoes.destino, agora)
+            manifesto = carregar(
+                opcoes.cnpj, opcoes.bruto, opcoes.destino, agora, opostos
+            )
             print(json.dumps({k: manifesto[k] for k in ("tabelas", "descartes")}))
         return 0
-    except (ErroDeLayout, KeyError, ValueError, OSError) as erro:
+    except (
+        ErroDeLayout,
+        ErroSemChave,
+        SemOposicoesError,
+        KeyError,
+        ValueError,
+        OSError,
+    ) as erro:
         resumo = f"FALHAS: acervo de pessoa: {type(erro).__name__}: {erro}"
         print(resumo[:TAMANHO_MAXIMO_DO_RESUMO])
         return 1
