@@ -18,6 +18,11 @@ const NOME_DO_TIPO: Record<string, string> = {
   ipe_filing: "Documento à CVM",
   auditor_change: "Troca de auditor",
 };
+// no plural, para o aviso dos tipos que o portão não libera (linha 878)
+const TIPOS_NO_PLURAL: Record<string, string> = {
+  ipe_filing: "os documentos à CVM",
+  auditor_change: "as trocas de auditor",
+};
 const LINK_SEGURO = /^https:\/\//;
 
 const valor = (evento: EventoDaEmpresaV1, campo: string): string => {
@@ -110,6 +115,8 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
   const todas = [dados, ...seguintes.filter((s) => s.cnpj === cnpj).map((s) => s.pagina)];
   const eventos = todas.flatMap((pagina) => pagina.eventos);
   const cursor = todas[todas.length - 1]?.proximo_cursor ?? null;
+  // um tipo barrado não foi consultado: a lista vazia (ou curta) não pode parecer "a empresa não tem"
+  const naoConsultados = (dados.tipos_nao_disponiveis ?? []).map((tipo) => TIPOS_NO_PLURAL[tipo] ?? tipo);
 
   async function carregarMais() {
     if (token === null || cursor === null) return;
@@ -130,11 +137,19 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
       <h2 id="eventos-da-ficha">Documentos à CVM e trocas de auditor</h2>
       {dados.estado === "nao_liberada" ? (
         <p className="apagado">Dado ainda não liberado: os eventos da empresa entram quando a conferência terminar.</p>
+      ) : eventos.length === 0 && naoConsultados.length > 0 ? (
+        <p className="apagado">Nenhum evento dos tipos consultados.</p>
       ) : eventos.length === 0 ? (
         <p className="apagado">Sem eventos desta empresa na base: só as companhias abertas entregam documentos à CVM.</p>
       ) : (
         <Tabela eventos={eventos} />
       )}
+      {dados.estado === "pronta" && naoConsultados.length > 0 ? (
+        <p>
+          Não consultados: {naoConsultados.join(" e ")} ainda não estão liberados para a tela; a falta deles aqui
+          não quer dizer que a empresa não tenha.
+        </p>
+      ) : null}
       {cursor !== null ? (
         <p>
           <button type="button" className="botao" onClick={carregarMais} disabled={carregando}>

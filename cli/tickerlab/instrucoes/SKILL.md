@@ -25,6 +25,8 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo controlada|coligada|participada|auditor] --json`: de quem a
      empresa era controlada, coligada ou participada, quem ela controlava (com a participação no capital) e quem a
      auditava, como era no dia; sem pessoa física. Leia `limits` e `truncated`.
+   - `tickerlab ativos <cnpj> [--como-era AAAA-MM-DD] --json`: os ativos por bloco (hoje, contratos de E&P da ANP), com fonte e data;
+     bloco sem dado vem com `found` falso e o que a base não cobre, em `not_covered`
    - `tickerlab dossie <cnpj> [--como-era AAAA-MM-DD] --json`: perfil, eventos, vínculos e comparáveis numa saída
      só (4 pedidos da quota); leia `gaps` (seção que faltou e por quê) e `limits`.
    - `tickerlab eventos <cnpj> [--tipo documento|auditor] [--como-era AAAA-MM-DD] --json`: documentos entregues à

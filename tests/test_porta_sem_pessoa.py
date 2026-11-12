@@ -31,7 +31,7 @@ DE_PESSOA = (RAIZ_DO_MEI, RAIZ_SEM_MARCA, NOME_FICTICIO, PESSOA)
 
 # a rede não tem a marca por linha: a porta a filtra pela `trata_como_pessoa` das entidades
 DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
-COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf")
+COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 # Inventário de 10/11/2026 (linha 787): consultáveis com coluna de CNPJ e sem a marca de pessoa. A maior
 # parte é de quem tem registro na CVM ou no BCB, mas nenhuma foi conferida; a fila 789 confere uma a uma
 # (marca na montagem, sai da consulta em lote ou fica aqui com o motivo). Só encolhe.
@@ -44,7 +44,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "anp_concessionarios",
         "auditores",
         "carteiras_bloco_8",
-        "carteiras_dos_fundos",
         "cda_cotas",
         "cnpj_empresas_historico",
         "cnpj_simples_historico",
@@ -52,11 +51,9 @@ AINDA_SEM_A_MARCA = frozenset(
         "controladas",
         "cvm_fiagro",
         "debentures_assembleias",
-        "demonstracoes_como_era",
         "dmpl_como_era",
         "emissores",
-        "eventos",
-        "fca_geral",
+        "eventos",  # o `assunto` (texto livre) traz CPF: 4 linhas medidas em 12/11/2026 (revisão cruzada do #1085)
         "fidc_informe",
         "fre_capital_social",
         "fre_comites",
@@ -81,7 +78,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "processos_partes",
         "ratings",
         "release_x_oficial",
-        "rotulos_atraso",
         "securitizacao_cedente_devedor",
         "securitizacao_certificados",
         "sus_ambulatorial",
@@ -90,11 +86,91 @@ AINDA_SEM_A_MARCA = frozenset(
         "valores_mobiliarios",
     }
 )
+# Furo achado em 12/11/2026 (linha 877): fora da consulta em lote também há tabela com coluna de CNPJ e sem a marca,
+# e o inventário acima não a via (`cadastro_das_companhias`, `cnpj_situacao_cadastral`, `empresa_serie`...). Essas
+# não saem pelo piloto (a marca falta); entram aqui com o mesmo compromisso: só encolhe.
+FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
+    {
+        "achados_de_qualidade",
+        "registro_de_fundos",
+        "cadastro_de_fundos",
+        "fips_registrados",
+        "cadastro_gestor_hist",
+        "cadastro_admin_hist",
+        "amostra_painel",
+        "anatel_outorgas",
+        "ancine_agentes",
+        "aneel_cde",
+        "anm_titulos",
+        "ans_operadoras",
+        "ans_penalidades",
+        "antt_rntrc",
+        "anvisa_registros",
+        "bcb_rde_ied",
+        "cadastro_das_companhias",
+        "cmed_precos",
+        "cnes_estabelecimentos",
+        "cnpj_estabelecimentos",
+        "cnpj_estabelecimentos_mudancas",
+        "cnpj_qsa",
+        "cnpj_qsa_mudancas",
+        "cnpj_simples",
+        "cnpj_simples_mudancas",
+        "cnpj_situacao_cadastral",
+        "cobertura_dos_fundos",
+        "codigos_fora_do_fca",
+        "colunas_atraso",
+        "contraparte_cafe",
+        "controladas_pj",
+        "emissores_antigos",
+        "emissores_sem_ligacao",
+        "empresa_serie",
+        "es_ordem_cronologica",
+        "eventos_de_capital",
+        "financiamentos_bndes",
+        "financiamentos_finep",
+        "fre_acionistas",
+        "fre_eventos_de_capital",
+        "fre_partes_relacionadas",
+        "fre_proventos",
+        "gleif_ponte",
+        "ibama_embargos",
+        "ligacao_dos_bancos",
+        "ma_partes",
+        "mapa_sipeagro",
+        "mme_reidi",
+        "mte_lista_suja",
+        "notas_dfp",
+        "proventos",
+        "sancoes_cgu",
+        "sef_mg_divida_ativa",
+        "sef_mg_parcelamentos",
+        "sefa_pr_divida_ativa",
+        "sefaz_pe_beneficios",
+        "sefaz_pe_ordem_cronologica",
+        "sus_competencias",
+        "susep_cadastro",
+        "tce_ce_contratos",
+        "tce_pe_aditivos",
+        "tce_pe_contratos",
+        "tce_pe_licitacoes",
+        "tce_rs_contratos",
+        "tce_sp_despesas",
+    }
+)
 # Sem pessoa por construção: a montagem nem deixa entrar o empresário individual (213-5) nem o
 # grupo 4 (linha 584; o contrato de cada uma diz). Não precisam da marca por linha.
 # sem pessoa por desenho: o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
 SEM_PESSOA_NA_MONTAGEM = frozenset(
-    {"cnpj_empresas_pj", "cnpj_estabelecimentos_pj", "entradas_de_socio_pj"}
+    {
+        "carteiras_dos_fundos",
+        "cnpj_empresas_pj",
+        "cnpj_estabelecimentos_pj",
+        "demonstracoes_como_era",
+        "entradas_de_socio_pj",
+        "fca_geral",
+        "rotulos_atraso",
+    }
 )
 COM_A_MARCA = sorted(
     nome
@@ -265,6 +341,21 @@ def test_toda_consultavel_com_cnpj_tem_a_marca_ou_esta_no_inventario():
         and any(COLUNA_DE_CNPJ.search(coluna) for coluna in tabela.colunas)
     }
     assert sem_a_marca == AINDA_SEM_A_MARCA
+
+
+def test_fora_da_consulta_tambem_tem_inventario_das_sem_a_marca():
+    """O mesmo cuidado do teste acima para a tabela que a consulta em lote não abre: sem marca e com coluna de
+    CNPJ, ela só pode sair do inventário ganhando a marca (ou perdendo a coluna)."""
+    sem_a_marca = {
+        nome
+        for nome, tabela in TABELAS.items()
+        if not pode_consultar(nome)
+        and not tabela.linhas_de_pessoa
+        and nome not in DA_REDE
+        and nome not in SEM_PESSOA_NA_MONTAGEM
+        and any(COLUNA_DE_CNPJ.search(coluna) for coluna in tabela.colunas)
+    }
+    assert sem_a_marca == FORA_DA_CONSULTA_SEM_A_MARCA
 
 
 def test_a_rede_e_consultavel_so_porque_a_porta_a_filtra():

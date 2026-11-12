@@ -1091,6 +1091,7 @@ def test_instrucoes_do_agente(rodar):
         "eventos",
         "dossie",
         "compradores",
+        "ativos",
         "vinculos",
         "novidades",
         "catalogo",
@@ -2542,3 +2543,54 @@ def test_campo_unavailable_de_outra_rota_sai_pelo_proprio_nome(rodar, chave):
     )
     assert resultado.exit_code == 0, resultado.output
     assert "link types: auditor" in resultado.stdout
+
+
+def _ativos_da_anp() -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "assets": {
+            "oil_gas_contracts": {
+                "found": True,
+                "source": "ANP",
+                "latest_published_at": "2025-06-30",
+                "coverage": "contratos de E&P vigentes",
+                "items": [{"contract": "BM-X-1", "share": _env(0.3)}],
+                "truncated": False,
+            }
+        },
+        "not_covered": ["mining_rights"],
+        "limits": ["Não achado não quer dizer que a empresa não tem o ativo."],
+        "sources": [{"source": "ANP"}],
+    }
+
+
+def test_ativos_pede_a_rota_e_mostra_o_bloco(rodar, chave):
+    pedidos: list[str] = []
+
+    def responder(pedido):
+        pedidos.append(pedido.url.path)
+        return httpx.Response(200, json=_ativos_da_anp())
+
+    resultado = rodar(
+        "ativos", "11111111000191", "--como-era", "2025-07-01",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert pedidos == ["/data/v1/companies/11111111000191/assets"]
+    assert "oil_gas_contracts" in resultado.stdout
+    assert "BM-X-1" in resultado.stdout
+    assert "mining_rights" in resultado.stdout
+
+
+def test_ativos_em_json_passa_inteiro(rodar, chave):
+    resultado = rodar(
+        "ativos", "11111111000191", "--json",
+        http=_resposta_fixa(_ativos_da_anp()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == _ativos_da_anp()
+
+
+def test_ativos_sem_chave_sai_com_o_codigo_de_chave(rodar):
+    resultado = rodar("ativos", "11111111000191")
+    assert resultado.exit_code == 3

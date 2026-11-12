@@ -282,6 +282,7 @@ ROTAS_DE_ARQUIVO = {
     "/v1/analista/ficha/eventos": "/v1/analista/ficha",
     "/v1/analista/ficha/vinculos": "/v1/analista/ficha",
     "/v1/analista/ficha/contato": "/v1/analista/ficha",
+    "/v1/analista/ficha/titular": "/v1/analista/ficha",
     "/v1/analista/empresas/planilha": "/v1/analista/empresas",
 }
 

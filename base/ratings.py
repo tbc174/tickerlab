@@ -26,6 +26,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
+from base.cpf_no_texto import mascarar_coluna
 from base.parquet import LINHAGEM, gravar_se_mudou
 from src import acervo, eventos
 from src.banco.coletas import originais_mais_recentes
@@ -74,13 +75,17 @@ def ler_ipe_bruto(conteudo_do_zip: bytes) -> pd.DataFrame:
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         nome = next(n for n in arquivo.namelist() if "ipe_cia_aberta" in n)
         with arquivo.open(nome) as csv:
-            return pd.read_csv(
-                csv,
-                sep=";",
-                encoding=CODIFICACAO_DA_CVM,
-                encoding_errors="replace",
-                dtype=str,
-            ).fillna("")
+            return (
+                pd.read_csv(
+                    csv,
+                    sep=";",
+                    encoding=CODIFICACAO_DA_CVM,
+                    encoding_errors="replace",
+                    dtype=str,
+                )
+                .fillna("")
+                .assign(Assunto=lambda t: mascarar_coluna(t["Assunto"]))
+            )
 
 
 def evidencias(bruto: pd.DataFrame) -> pd.Series:

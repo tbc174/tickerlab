@@ -547,6 +547,28 @@ def eventos(
 @principal.command()
 @argumento_cnpj
 @opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def ativos(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os ativos da empresa por bloco (hoje, contratos de E&P da ANP), cada um com fonte e data.
+
+    Bloco sem dado vem com `found` falso; o que a base ainda não cobre vem em `not_covered`. Não achado
+    não quer dizer que a empresa não tem o ativo: leia os `limits`. Só pessoa jurídica.
+    """
+    corpo = _api(contexto).ativos(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
 @click.option(
     "--periodo",
     type=click.DateTime(formats=["%Y-%m-%d"]),

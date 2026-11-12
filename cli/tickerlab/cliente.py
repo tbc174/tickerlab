@@ -395,6 +395,10 @@ class ApiDoTickerlab:
             parametros["types"] = list(tipos)
         return self.pedir(f"/companies/{cnpj}/links", parametros)
 
+    def ativos(self, cnpj: str, como_era: str | None) -> dict:
+        """Os ativos da empresa por bloco (hoje, os contratos de E&P da ANP), cada bloco com a própria fonte."""
+        return self.pedir(f"/companies/{cnpj}/assets", _datas(known_at=como_era))
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
