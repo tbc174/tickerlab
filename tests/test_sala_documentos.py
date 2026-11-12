@@ -468,7 +468,10 @@ def test_nome_do_arquivo_e_texto_nunca_vao_para_log_nem_auditoria(
         documentos.apagar_documento(conexao, **_ids(ana, documento))
         registros = " ".join(str(tuple(r)) for r in _auditoria(conexao))
     logs = caplog.text
-    for vazamento in ("Fulana", "segredo", "529.982", "52998"):
+    # O CPF inteiro, com e sem pontuação: cinco algarismos soltos ("52998") aparecem por
+    # acaso num id ou numa hora do log e fariam o teste falhar sem vazamento nenhum.
+    cpf_so_digitos = "".join(c for c in gerar.CPF_VALIDO if c.isdigit())
+    for vazamento in ("Fulana", "segredo", "529.982", cpf_so_digitos):
         assert vazamento not in logs, vazamento
         assert vazamento not in registros, vazamento
 
