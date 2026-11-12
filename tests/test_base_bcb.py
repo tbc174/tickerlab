@@ -10,6 +10,7 @@ Amostras reais recortadas (`tests/arquivos/bcb/`), do inventário de 14/10/2026:
 
 import io
 import json
+import logging
 import zipfile
 from pathlib import Path
 
@@ -75,6 +76,47 @@ def test_ifdata_linhas_de_total_sem_instituicao_ficam_fora():
 def test_ifdata_resposta_vazia_vira_tabela_vazia():
     vazio = json.dumps({"@odata.context": "x", "value": []}).encode()
     assert bcb_ifdata.ler_valores(vazio).empty
+
+
+def _resposta_com(linhas: list[dict]) -> bytes:
+    return json.dumps({"@odata.context": "x", "value": linhas}).encode()
+
+
+def test_ifdata_resposta_com_linhas_identicas_fica_com_uma_de_cada(caplog):
+    """A resposta do BC da data-base 2025-09 veio com a mesma linha cerca de três vezes (medido em
+    12/11/2026, linha 877): o arquivo da base fica com uma de cada."""
+    bruto = json.loads(_ifdata("valores_202506_t1_r1.json"))["value"]
+    limpo = bcb_ifdata.ler_valores(_resposta_com(bruto))
+    with caplog.at_level(logging.WARNING, logger="base.bcb_ifdata"):
+        triplicado = bcb_ifdata.ler_valores(_resposta_com(bruto * 3))
+    pd.testing.assert_frame_equal(triplicado, limpo)
+    assert not triplicado.duplicated(list(bcb_ifdata.CHAVE_DOS_VALORES)).any()
+    assert "120 linhas idênticas" in caplog.text
+
+
+def test_ifdata_resposta_sem_repetidas_fica_igual_e_nao_avisa(caplog):
+    bruto = json.loads(_ifdata("valores_202506_t1_r1.json"))["value"]
+    with caplog.at_level(logging.WARNING, logger="base.bcb_ifdata"):
+        valores = bcb_ifdata.ler_valores(_resposta_com(bruto))
+    assert len(valores) == len(bruto) == 60
+    assert caplog.text == ""
+
+
+def test_ifdata_chave_igual_com_valor_diferente_fica_e_conta_no_log(caplog):
+    bruto = json.loads(_ifdata("valores_202506_t1_r1.json"))["value"]
+    outro_saldo = {**bruto[0], "Saldo": (bruto[0]["Saldo"] or 0) + 1}
+    with caplog.at_level(logging.WARNING, logger="base.bcb_ifdata"):
+        valores = bcb_ifdata.ler_valores(_resposta_com([*bruto, outro_saldo]))
+    assert len(valores) == 61
+    assert "1 linhas com a chave repetida e valor diferente" in caplog.text
+
+
+def test_ifdata_carga_de_uma_coleta_com_linhas_identicas_nao_repete_a_chave():
+    bruto = json.loads(_ifdata("valores_202506_t1_r1.json"))["value"]
+    lida = bcb_ifdata.ler_valores(_resposta_com(bruto * 3))
+    tabela = bcb_ifdata.valores_com_revisoes([(pd.Timestamp("2026-11-12"), lida)])
+    assert len(tabela) == 60
+    assert not tabela.duplicated(list(bcb_ifdata.CHAVE_DOS_VALORES)).any()
 
 
 def test_ifdata_datas_base_e_tipos_de_instituicao():
