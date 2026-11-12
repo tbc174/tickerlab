@@ -12,8 +12,10 @@ import pandas as pd
 import pytest
 
 from base import receita_pessoa as rp
+from base.oposicao_na_tela import Opostos
 from base.receita_retrato import ErroDeLayout
 
+SEM_OPOSTOS = Opostos(frozenset(), b"k" * 32)
 SEM_REP = '"***000000**";"";"00"'
 
 
@@ -33,7 +35,7 @@ def _zip(*linhas: str) -> io.BytesIO:
 
 
 def _ler(*linhas: str) -> tuple[pd.DataFrame, Counter]:
-    partes = list(rp.ler_socios_pf(_zip(*linhas)))
+    partes = list(rp.ler_socios_pf(_zip(*linhas), SEM_OPOSTOS))
     socios = pd.concat([p.socios for p in partes], ignore_index=True)
     descartes = sum((p.descartes for p in partes), Counter())
     return socios, descartes

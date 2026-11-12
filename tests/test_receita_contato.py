@@ -44,7 +44,7 @@ def _zip(*linhas: str) -> io.BytesIO:
 
 
 def _ler(*linhas: str) -> tuple[pd.DataFrame, Counter]:
-    partes = list(rc.ler_contato(_zip(*linhas)))
+    partes = list(rc.ler_contato(_zip(*linhas), set()))
     tabela = pd.concat([p.estabelecimentos for p in partes], ignore_index=True)
     return tabela, sum((p.descartes for p in partes), Counter())
 
@@ -154,7 +154,7 @@ def test_cnpj_com_letras_sai_em_maiusculas():
 
 def test_layout_com_campo_a_mais_quebra_a_leitura():
     with pytest.raises(ErroDeLayout):
-        list(rc.ler_contato(_zip(_linha().rstrip("\n") + ';"X"\n')))
+        list(rc.ler_contato(_zip(_linha().rstrip("\n") + ';"X"\n'), set()))
 
 
 @pytest.mark.parametrize(
