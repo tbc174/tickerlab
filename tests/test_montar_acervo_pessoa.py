@@ -415,3 +415,20 @@ def test_main_com_oposicao_registrada_tira_o_oposto(tmp_path, capsys):
     assert montar.main(argumentos) == 0
     assert set(_tabela(destino)["nome_socio"]) == {"BELTRANO EXEMPLO"}
     assert "FULANA" not in capsys.readouterr().out
+
+
+def test_cpf_e_id_nunca_vao_a_arquivo_log_nem_saida(tmp_path, caplog, capsys):
+    cnpj, bruto = _acervo(tmp_path)
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    ids = _opostos(("***123456**", "FULANA EXEMPLO")).ids
+    argumentos = _argumentos(tmp_path, cnpj, bruto, destino)
+    oposicoes.registrar(tmp_path / "restrita", list(ids), AGORA.date())
+    with caplog.at_level("INFO"):
+        assert montar.main(argumentos) == 0
+    proibidos = [b"123456", b"52998224725", b"FULANA", *(i.encode() for i in ids)]
+    for arquivo in destino.rglob("*"):
+        if arquivo.is_file():
+            conteudo = arquivo.read_bytes()
+            assert not any(p in conteudo for p in proibidos), arquivo.name
+    texto = caplog.text + capsys.readouterr().out
+    assert not any(p.decode() in texto for p in proibidos)
