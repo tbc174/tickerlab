@@ -262,6 +262,30 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         assert promessa_antiga not in privacidade, promessa_antiga
 
 
+def test_texto_17_diz_que_a_idade_do_titular_de_mei_e_de_individual_nao_e_conhecida():
+    """Texto 17 (12/11, linha 890): o titular de MEI e de empresário individual pode ser menor de idade.
+
+    O arquivo da Receita não traz a idade do titular (`base/receita_individuais.py`), então a política deixa de
+    prometer "sem menor de idade" para tudo: a promessa vale para o quadro de sócios, e a ressalva diz o resto e
+    como pedir para sair. Não é uso novo de dado da conta: a versão do aceite não sobe.
+    """
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 17" in privacidade
+    for trecho in (
+        "do microempreendedor individual e do empresário individual a Receita não publica a idade",
+        "é quase sempre um emancipado, de 16 ou 17 anos (art. 5º, parágrafo único)",
+        "a empresa que era dos pais ou que herdou (art. 974)",
+        "O TickerLab não tem como reconhecer nenhum dos dois.",
+        "escreva para privacidade@tickerlab.com.br: o nome sai da tela em até 15 dias",
+        "menor de idade no quadro de sócios, quem tem representante legal",
+        "sem CPF e sem sócio menor de idade",
+    ):
+        assert trecho in privacidade, trecho
+    for promessa_antiga in ("sem CPF e sem menor de idade", "é sempre um emancipado"):
+        assert promessa_antiga not in privacidade, promessa_antiga
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-11.14"
+
+
 def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
     """Versão 13 (22/10): quem entra no servidor e usa sudo fica 12 meses, cifrado, em outro computador."""
     assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.13"
