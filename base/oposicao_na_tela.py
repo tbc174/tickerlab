@@ -91,28 +91,28 @@ def aplicar_no_acervo(acervo_pessoa: Path, ids: set[str]) -> int:
     exigir_acervo(acervo_pessoa)
     if not ids:
         return 0
-    raizes: set[str] = set()
     tiradas = 0
-    for tabela in (
-        INDIVIDUAIS,
-        SOCIOS,
-    ):  # `individuais` primeiro: ela diz que raízes perdem o contato
+    raizes: set[str] = (
+        set()
+    )  # lidas antes de regravar qualquer coisa: queda no meio não as perde
+    for arquivo in sorted((acervo_pessoa / INDIVIDUAIS).glob("*.parquet")):
+        linhas = pd.read_parquet(arquivo, columns=["cnpj_basico", "id_pessoa"])
+        raizes.update(linhas.loc[linhas["id_pessoa"].isin(ids), "cnpj_basico"])
+    for arquivo in sorted(
+        (acervo_pessoa / CONTATO).glob("*.parquet")
+    ):  # contato primeiro
+        linhas = pd.read_parquet(arquivo)
+        do_oposto = linhas["cnpj_basico"].isin(raizes)
+        if do_oposto.any():
+            _regravar(arquivo, linhas.loc[~do_oposto].reset_index(drop=True))
+            tiradas += int(do_oposto.sum())
+    for tabela in (INDIVIDUAIS, SOCIOS):
         for arquivo in sorted((acervo_pessoa / tabela).glob("*.parquet")):
             linhas = pd.read_parquet(arquivo)
             oposto = linhas["id_pessoa"].isin(ids)
-            if not oposto.any():
-                continue
-            if tabela == INDIVIDUAIS:
-                raizes.update(linhas.loc[oposto, "cnpj_basico"])
-            _regravar(arquivo, linhas.loc[~oposto].reset_index(drop=True))
-            tiradas += int(oposto.sum())
-    if raizes:
-        for arquivo in sorted((acervo_pessoa / CONTATO).glob("*.parquet")):
-            linhas = pd.read_parquet(arquivo)
-            do_oposto = linhas["cnpj_basico"].isin(raizes)
-            if do_oposto.any():
-                _regravar(arquivo, linhas.loc[~do_oposto].reset_index(drop=True))
-                tiradas += int(do_oposto.sum())
+            if oposto.any():
+                _regravar(arquivo, linhas.loc[~oposto].reset_index(drop=True))
+                tiradas += int(oposto.sum())
     log.info("oposição no acervo de pessoa: %d linha(s) tirada(s)", tiradas)
     return tiradas
 
