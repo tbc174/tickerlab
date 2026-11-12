@@ -100,7 +100,23 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Diária no servidor de casa (carga do ENET às 0h30); a base é remontada por ano",
-      "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
+      "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento",
+      "prontidao": {
+        "versao_maior": 3,
+        "cruzada": {
+          "data": "2026-11-12",
+          "prova": "DFP lida da base contra o mesmo documento no ENET, em amostra sorteada: 16055 valores comparados, 16055 iguais, nenhum diferente",
+          "independencia": "mesmo documento, outro canal: a base lê os dados abertos da CVM e a conferência baixa o XML da entrega no ENET"
+        },
+        "qualidade": {
+          "data": "2026-11-12",
+          "prova": "placar de qualidade verde em 24328845 linhas: chave única, colunas obrigatórias preenchidas, 2 achados todos explicados"
+        },
+        "dicionario": {
+          "data": "2026-11-10",
+          "prova": "dicionário revisado em 10 de novembro de 2026 pela Diretoria, a pedido do Tiago (pedido: revise o dicionario): resultado revisado, sem correção pendente"
+        }
+      }
     },
     "dmpl_como_era": {
       "tabela": "dmpl_como_era",
