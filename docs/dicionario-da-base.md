@@ -1006,7 +1006,7 @@ Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (
 
 ## `anp_concessionarios`
 
-Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar), o CNPJ do sócio, a participação em pontos percentuais e a marca de quem opera. É a foto do dia da coleta, sem data própria: o primeiro valor vale desde a coleta que o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte (o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes
+Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar), o CNPJ do sócio, a participação em pontos percentuais e a marca de quem opera. É a foto do dia da coleta, sem data própria: o primeiro valor vale desde a coleta que o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte (o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
 
 - **Fonte:** ANP: relação de concessionários (dados abertos)
 - **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
@@ -1146,7 +1146,7 @@ Nome de cada via de transporte do Comex Stat, para ler o código que `comex_prec
 
 ## `aneel_samp`
 
-Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece
+Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
 
 - **Fonte:** ANEEL: SAMP, mercado de distribuição (dados abertos, um Parquet por ano)
 - **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor

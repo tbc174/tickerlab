@@ -25,6 +25,8 @@ SEM_PESSOA_PELA_RAIZ: dict[str, str] = {
     "fca_geral": "cnpj",
     "demonstracoes_como_era": "cnpj",
     "carteiras_dos_fundos": "cnpj_fundo",
+    "aneel_samp": "cnpj",
+    "anp_concessionarios": "cnpj",
 }
 
 
