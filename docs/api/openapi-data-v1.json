@@ -2283,7 +2283,7 @@
     },
     "/data/v1/companies/{cnpj}/links": {
       "get": {
-        "description": "Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,\ncoligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e\na firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano\n(`truncated`). MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,\ncoligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e\na firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano\n(`truncated`). O tipo pedido que não está disponível para a organização não foi consultado e vem em\n`unavailable_link_types` (os `limits` não falam da fonte dele); se nenhum tipo pedido está disponível, a\nresposta é `not_available`. MEI, empresário individual e o que não é empresa saem `not_available`.",
         "operationId": "vinculos_da_empresa_data_v1_companies__cnpj__links_get",
         "parameters": [
           {

@@ -666,7 +666,9 @@ def vinculos_da_empresa(
     """Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,
     coligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e
     a firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano
-    (`truncated`). MEI, empresário individual e o que não é empresa saem `not_available`."""
+    (`truncated`). O tipo pedido que não está disponível para a organização não foi consultado e vem em
+    `unavailable_link_types` (os `limits` não falam da fonte dele); se nenhum tipo pedido está disponível, a
+    resposta é `not_available`. MEI, empresário individual e o que não é empresa saem `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     try:
