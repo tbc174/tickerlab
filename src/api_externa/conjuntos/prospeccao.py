@@ -17,6 +17,11 @@ matriz, capital social (mínimo e máximo) e número mínimo de estabelecimentos
 além da situação: ninguém baixa a base inteira. Ordem por CNPJ (padrão), por capital social ou por número de
 estabelecimentos, crescente ou decrescente (`-` na frente), sempre com o CNPJ como desempate; cursor opaco
 (o último CNPJ da página, e o valor da ordenação quando ela não é por CNPJ) e `limite` (padrão 50, no máximo 100 e o que o plano deixa por resposta).
+**Registros na Anvisa (linha 860):** `anvisa_type` (cosméticos, produtos para saúde, saneantes ou a soma
+desses três; medicamentos, alimentos, AFE e CBPF só entram quando a licença de cada um for lida),
+`anvisa_active_min` e `anvisa_total_min` filtram, e `sort=anvisa` ordena, pela contagem de registros da
+empresa na tabela `anvisa_por_empresa`, no retrato mais novo já público em `como_era_em` (por dia, não por
+mês). Empresa sem registro vale 0. **É sinal de porte, não faturamento**, e a resposta diz isso.
 Sem total: contar custaria uma varredura a mais por chamada. A consulta lê só as colunas pedidas dos
 arquivos Parquet (formato em colunas), com os filtros empurrados para a leitura.
 
@@ -68,7 +73,30 @@ CAMPOS_DA_EMPRESA = (
     "razao_social", "natureza_juridica", "porte", "capital_social", "n_estabelecimentos",
 )  # fmt: skip
 # a ordem pedida (`sort`) -> a coluna da base; o `-` na frente é decrescente
-ORDENS = {"capital": "capital_social", "branches": "n_estabelecimentos"}
+ORDENS = {
+    "capital": "capital_social",
+    "branches": "n_estabelecimentos",
+    "anvisa": "registros_anvisa_ativos",
+}
+# registros na Anvisa (linha 860): a tabela derivada, a fonte que a atribuição cita e os dois campos servidos
+ANVISA = "anvisa_por_empresa"
+FONTE_ANVISA = "anvisa-produtos"
+CAMPOS_DA_ANVISA = ("registros_anvisa_total", "registros_anvisa_ativos")
+# o tipo como a API o diz -> os prefixos das colunas da tabela (`<prefixo>_total`, `<prefixo>_ativos`) que ele soma.
+# Só entram os tipos cuja licença foi lida em 12/11/2026 (CC Attribution nas fichas do dados.gov.br: cosméticos,
+# saneantes e produtos para saúde). Medicamentos, alimentos, AFE e CBPF existem na tabela, mas a API não os serve até
+# a ficha de cada um ser lida (leitura mais estreita, linha 860); `products` soma só os tipos liberados.
+TIPOS_DA_ANVISA = {
+    "cosmetics": ("cosmeticos",),
+    "health_products": ("produtos_saude",),
+    "sanitizers": ("saneantes",),
+    "products": ("cosmeticos", "saneantes", "produtos_saude"),
+}
+TIPO_PADRAO_DA_ANVISA = "products"
+AVISO_DA_ANVISA = (
+    "Registros na Anvisa são um sinal de porte da empresa, não faturamento."
+)
+REGISTROS_MAXIMOS = 10_000_000
 CAPITAL_MAXIMO = (
     1e15  # acima disso o número não é capital: recusa em vez de comparar lixo
 )
@@ -108,6 +136,11 @@ class Busca:
     capital_min: float | None = None
     capital_max: float | None = None
     filiais_min: int | None = None
+    anvisa_tipo: str | None = (
+        None  # o tipo como a API o diz (chave de TIPOS_DA_ANVISA); None não usa a Anvisa
+    )
+    anvisa_ativos_min: int | None = None
+    anvisa_total_min: int | None = None
     ordem: str | None = (
         None  # coluna da base (`capital_social` ou `n_estabelecimentos`); None é por CNPJ
     )
@@ -130,8 +163,23 @@ class Busca:
             )
         ) + sum(
             v is not None
-            for v in (self.matriz, self.capital_min, self.capital_max, self.filiais_min)
+            for v in (
+                self.matriz, self.capital_min, self.capital_max, self.filiais_min,
+                self.anvisa_ativos_min, self.anvisa_total_min,
+            )
         )  # fmt: skip
+
+    def usa_anvisa(self) -> bool:
+        """A busca filtra, ordena ou mostra pelos registros da Anvisa?"""
+        return self.anvisa_tipo is not None
+
+    def campos_da_anvisa_filtrados(self) -> set[str]:
+        """Os campos da Anvisa que esta busca usa para filtrar ou ordenar (filtro por campo negado é oráculo)."""
+        usados = {
+            "registros_anvisa_ativos": self.anvisa_ativos_min is not None or self.ordem == ORDENS["anvisa"],
+            "registros_anvisa_total": self.anvisa_total_min is not None,
+        }  # fmt: skip
+        return {nome for nome, uso in usados.items() if uso}
 
     def campos_filtrados(self) -> set[str]:
         """Os campos da base que esta busca usa para filtrar (a situação sempre filtra)."""
@@ -253,6 +301,30 @@ def _ordem(sort: str | None) -> tuple[str | None, bool]:
     return ORDENS[nome], decrescente
 
 
+def _registros_minimos(valor: int | None) -> int | None:
+    """O mínimo de registros da Anvisa: de 1 em diante (0 filtraria nada), com teto para não virar lixo."""
+    if valor is not None and not 1 <= valor <= REGISTROS_MAXIMOS:
+        raise FiltroInvalido
+    return valor
+
+
+def _tipo_da_anvisa(
+    tipo: str | None,
+    ativos_min: int | None,
+    total_min: int | None,
+    sort: str | None,
+) -> str | None:
+    """O tipo de registro da Anvisa que a busca usa, ou None se ela não toca na Anvisa. Dando filtro ou ordem
+    sem o tipo, vale a soma dos tipos liberados; tipo fora do vocabulário é recusado."""
+    ordena = sort is not None and sort.strip().lower().removeprefix("-") == "anvisa"
+    if tipo is None and ativos_min is None and total_min is None and not ordena:
+        return None
+    pedido = (tipo or TIPO_PADRAO_DA_ANVISA).strip().lower()
+    if pedido not in TIPOS_DA_ANVISA:
+        raise FiltroInvalido
+    return pedido
+
+
 def _numero(valor: float | None, maximo: float) -> float | None:
     if valor is None:
         return None
@@ -268,6 +340,8 @@ def busca_dos_pedidos(
     opened_after: date | None, head_office: bool | None, cursor: str | None, limit: int | None,
     capital_min: float | None = None, capital_max: float | None = None,
     branches_min: int | None = None, sort: str | None = None,
+    anvisa_type: str | None = None, anvisa_active_min: int | None = None,
+    anvisa_total_min: int | None = None,
 ) -> Busca:  # fmt: skip
     """Os filtros da rota (nomes de fora, valores como o cliente escreve) viram uma `Busca`; `FiltroInvalido`
     se algo está fora do vocabulário ou da forma, ou se não há filtro nenhum além da situação."""
@@ -283,6 +357,9 @@ def busca_dos_pedidos(
         raise FiltroInvalido
     if branches_min is not None and not 1 <= branches_min <= FILIAIS_MAXIMAS:
         raise FiltroInvalido
+    anvisa_tipo = _tipo_da_anvisa(
+        anvisa_type, anvisa_active_min, anvisa_total_min, sort
+    )
     ordem, decrescente = _ordem(sort)
     depois_de, coluna_do_cursor, valor_depois_de = (
         (None, None, None) if cursor is None else _do_cursor(cursor)
@@ -311,6 +388,9 @@ def busca_dos_pedidos(
         capital_min=capital_min,
         capital_max=capital_max,
         filiais_min=branches_min,
+        anvisa_tipo=anvisa_tipo,
+        anvisa_ativos_min=_registros_minimos(anvisa_active_min),
+        anvisa_total_min=_registros_minimos(anvisa_total_min),
         ordem=ordem,
         decrescente=decrescente,
         depois_de=depois_de,
@@ -376,9 +456,22 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
     if busca.filiais_min is not None:
         condicoes.append("p.n_estabelecimentos >= $filiais_min")
         parametros["filiais_min"] = busca.filiais_min
+    condicoes += _onde_da_anvisa(busca, parametros)
     if busca.depois_de:
         condicoes.append(_depois_do_cursor(busca, parametros))
     return condicoes, parametros
+
+
+def _onde_da_anvisa(busca: Busca, parametros: dict[str, object]) -> list[str]:
+    """As condições da contagem de registros da Anvisa; empresa sem linha na tabela vale 0."""
+    condicoes = []
+    if busca.anvisa_ativos_min is not None:
+        condicoes.append("COALESCE(a.registros_anvisa_ativos, 0) >= $anvisa_ativos_min")
+        parametros["anvisa_ativos_min"] = busca.anvisa_ativos_min
+    if busca.anvisa_total_min is not None:
+        condicoes.append("COALESCE(a.registros_anvisa_total, 0) >= $anvisa_total_min")
+        parametros["anvisa_total_min"] = busca.anvisa_total_min
+    return condicoes
 
 
 def _depois_do_cursor(busca: Busca, parametros: dict[str, object]) -> str:
@@ -395,7 +488,10 @@ def _depois_do_cursor(busca: Busca, parametros: dict[str, object]) -> str:
 def _valor_da_ordem(busca: Busca) -> str:
     """O valor que ordena, com capital ou contagem ausente (tabela remontada em partes) valendo 0, igual no
     ORDER BY, no filtro do cursor e no cursor: uma linha sem valor não some da paginação."""
-    return f"COALESCE(p.{busca.ordem}, 0)"  # a coluna vem de ORDENS, nunca do pedido
+    origem = (
+        "a" if busca.ordem == ORDENS["anvisa"] else "p"
+    )  # a Anvisa vem da junção própria
+    return f"COALESCE({origem}.{busca.ordem}, 0)"  # a coluna vem de ORDENS, nunca do pedido
 
 
 def _ordenacao(busca: Busca) -> str:
@@ -409,6 +505,7 @@ def _depende_da_empresa(busca: Busca) -> bool:
     """O filtro ou a ordem olha uma coluna da empresa (então o corte só vale depois da junção)?"""
     return bool(
         busca.ordem
+        or busca.usa_anvisa()
         or busca.portes
         or busca.naturezas
         or busca.capital_min is not None
@@ -441,13 +538,37 @@ class LeitorDeProspeccao:
             meses.append(None if achado is None else achado[0])
         return None if None in meses else min(meses)
 
+    def _retrato_da_anvisa(self, como_era_em: date) -> date | None:
+        """O retrato mais novo de `anvisa_por_empresa` já público em `como_era_em` (a tabela é por dia); None se
+        a base não tem a tabela ou nenhum retrato valia ainda."""
+        try:
+            condicao = condicao_como_era(self.porta.colunas(ANVISA), ANVISA)
+        except KeyError:
+            return None  # a tabela ainda não foi montada nesta base: a Anvisa não é servida
+        achado = self.porta.con.execute(
+            f"SELECT max(publico_em) FROM {_aspas(nome_da_view(ANVISA))} WHERE {condicao}",
+            {"dia": dia_de(como_era_em)},
+        ).fetchone()
+        valor = None if achado is None else achado[0]
+        return None if valor is None else pd.Timestamp(valor).date()
+
     def _liberados(self, busca: Busca) -> bool:
         """O portão libera algum campo e todo campo que serve de filtro? Filtro por campo negado seria um
-        oráculo do valor que o portão nega, e o CNPJ sozinho não sai."""
+        oráculo do valor que o portão nega, e o CNPJ sozinho não sai. Quem toca na Anvisa precisa também de
+        pelo menos um campo dela liberado e de todo campo dela que filtra ou ordena."""
         if not any(self.permitido(FONTE, nome, False) for nome in CAMPOS):
             return False
-        return all(
+        if not all(
             self.permitido(FONTE, campo_, False) for campo_ in busca.campos_filtrados()
+        ):
+            return False
+        if not busca.usa_anvisa():
+            return True
+        return any(
+            self.permitido(FONTE_ANVISA, nome, False) for nome in CAMPOS_DA_ANVISA
+        ) and all(
+            self.permitido(FONTE_ANVISA, campo_, False)
+            for campo_ in busca.campos_da_anvisa_filtrados()
         )
 
     def buscar(self, busca: Busca, como_era_em: date) -> BuscaServida | None:
@@ -461,20 +582,35 @@ class LeitorDeProspeccao:
         existentes = set(self.porta.colunas(EMPRESAS))
         if not busca.campos_filtrados() <= existentes | set(CAMPOS_DO_ESTABELECIMENTO):
             return None  # a tabela montada antes de capital e estabelecimentos não responde a esse filtro
+        retrato_anvisa = (
+            self._retrato_da_anvisa(como_era_em) if busca.usa_anvisa() else None
+        )
+        if busca.usa_anvisa() and retrato_anvisa is None:
+            return None  # sem tabela ou sem retrato público ainda: não dá para filtrar nem ordenar pela Anvisa
         limite = max(1, min(busca.limite, self.linhas_maximas))
         condicoes, parametros = _onde(busca, mes)
         parametros["limite"] = limite + 1
+        if retrato_anvisa is not None:
+            parametros["retrato_anvisa"] = retrato_anvisa.isoformat()
         achadas = self._executar(busca, condicoes, parametros, existentes)
         cortada = len(achadas) > limite
         achadas = achadas.head(limite)
-        empresas = [self._empresa(linha) for _, linha in achadas.iterrows()]
+        empresas = [
+            self._empresa(linha, retrato_anvisa) for _, linha in achadas.iterrows()
+        ]
         corpo = {
             "como_era_em": como_era_em.isoformat(),
             "empresas": empresas,
             "cortada": cortada,
             "proximo_cursor": self._proximo_cursor(busca, achadas) if cortada else None,
         }
-        return BuscaServida(corpo, {FONTE} if empresas else set(), len(empresas))
+        fontes = {FONTE} if empresas else set()
+        if retrato_anvisa is not None:
+            corpo["anvisa_tipo"] = busca.anvisa_tipo
+            corpo["anvisa_aviso"] = AVISO_DA_ANVISA
+            if empresas:
+                fontes.add(FONTE_ANVISA)
+        return BuscaServida(corpo, fontes, len(empresas))
 
     def _executar(
         self,
@@ -498,6 +634,9 @@ class LeitorDeProspeccao:
         juncao = (
             f" JOIN {empresa} p ON p.cnpj_basico = e.cnpj_basico AND p.{MES} = e.{MES}"
         )
+        if busca.usa_anvisa():
+            campos += ", a.registros_anvisa_total, a.registros_anvisa_ativos"
+            juncao += _juncao_da_anvisa(busca)
         onde = " AND ".join(condicoes)
         if not _depende_da_empresa(busca):
             achadas = self.porta.con.execute(
@@ -523,15 +662,45 @@ class LeitorDeProspeccao:
             str(ultima["cnpj"]), 0.0 if pd.isna(valor) else float(valor), busca.ordem
         )
 
-    def _empresa(self, linha: pd.Series) -> dict[str, object]:
-        """Uma empresa: o CNPJ e, em envelope, os campos que o portão libera."""
+    def _empresa(
+        self, linha: pd.Series, retrato_anvisa: date | None = None
+    ) -> dict[str, object]:
+        """Uma empresa: o CNPJ e, em envelope, os campos que o portão libera (os da Anvisa, com o dia do retrato
+        como `publico_em`, só quando a busca os usa; empresa sem registro vale 0)."""
         publico_em = pd.Timestamp(linha[PUBLICADO_EM]).date()
         servidos = {
             nome: campo(_valor(nome, linha[nome]), fonte=FONTE, publico_em=publico_em, visto_em=None)
             for nome in CAMPOS
             if nome in linha.index and self.permitido(FONTE, nome, False)
         }  # fmt: skip
+        if retrato_anvisa is not None:
+            servidos |= {
+                nome: campo(_registros(linha[nome]), fonte=FONTE_ANVISA, publico_em=retrato_anvisa, visto_em=None)
+                for nome in CAMPOS_DA_ANVISA
+                if self.permitido(FONTE_ANVISA, nome, False)
+            }  # fmt: skip
         return {"cnpj": str(linha["cnpj"]), **servidos}
+
+
+def _registros(valor: object) -> int:
+    """A contagem de registros da Anvisa; empresa que não está na tabela não tem registro (0)."""
+    return 0 if valor is None or pd.isna(valor) else int(valor)  # type: ignore[call-overload,arg-type]
+
+
+def _soma_das_colunas(prefixos: tuple[str, ...], sufixo: str) -> str:
+    """`a_ativos + b_ativos`: a soma das contagens dos tipos (os nomes vêm de TIPOS_DA_ANVISA, nunca do pedido)."""
+    return " + ".join(f"{prefixo}_{sufixo}" for prefixo in prefixos)
+
+
+def _juncao_da_anvisa(busca: Busca) -> str:
+    """A junção à contagem do tipo pedido no retrato `$retrato_anvisa`; as colunas vêm de TIPOS_DA_ANVISA."""
+    prefixos = TIPOS_DA_ANVISA[busca.anvisa_tipo or TIPO_PADRAO_DA_ANVISA]
+    return (
+        f" LEFT JOIN (SELECT cnpj_basico, {_soma_das_colunas(prefixos, 'ativos')} AS registros_anvisa_ativos,"
+        f" {_soma_das_colunas(prefixos, 'total')} AS registros_anvisa_total"
+        f" FROM {_aspas(nome_da_view(ANVISA))} WHERE publico_em = CAST($retrato_anvisa AS DATE)) a"
+        " ON a.cnpj_basico = e.cnpj_basico"
+    )
 
 
 def _valor(nome: str, valor: object) -> object:

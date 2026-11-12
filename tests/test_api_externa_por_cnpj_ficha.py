@@ -240,6 +240,52 @@ def test_portao_que_nega_a_cvm_tira_o_bloco_sem_null(pasta):
     assert servida.fontes == {RECEITA}
 
 
+# ---------------------------------------------------------------- documento não disponível (linha 881)
+
+
+def test_com_tudo_liberado_nenhum_documento_fica_de_fora(pasta):
+    corpo = _corpo(pasta)
+    assert corpo["entregas_nao_disponiveis"] == []
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL not in corpo["limites"]
+
+
+def test_documento_que_o_portao_nao_libera_vai_na_lista_e_no_aviso(pasta):
+    """Sem o ITR, a lista de entregas só tem DFP: sem a lista de fora, leria como "nenhum ITR devido"."""
+    corpo = _corpo(pasta, permitido=lambda fonte, _c, _d: fonte != CVM_ITR)
+    assert {linha["documento"]["valor"] for linha in corpo["entregas"]} == {"DFP"}
+    assert corpo["entregas_nao_disponiveis"] == ["ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limites"]
+    # as frases das entregas continuam: o DFP foi consultado
+    assert set(ficha.LIMITES) <= set(corpo["limites"])
+
+
+def test_sem_nenhum_documento_o_bloco_some_e_os_limites_nao_falam_das_entregas(pasta):
+    servida = _ler(pasta, permitido=lambda fonte, _c, _d: fonte == RECEITA)
+    assert servida is not None
+    corpo = servida.corpo
+    assert "entregas" not in corpo
+    assert corpo["entregas_nao_disponiveis"] == ["DFP", "ITR"]
+    assert corpo["limites"] == [
+        ficha.LIMITES_GERAIS[0],
+        ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL,
+        *ficha.LIMITES_GERAIS[1:],
+    ]
+    assert not any("entregas cobrem" in limite for limite in corpo["limites"])
+
+
+def test_documento_com_so_conta_nossa_negada_continua_consultado(pasta):
+    """Negar só os derivados tira os campos, não o documento: ele não vai para a lista de fora."""
+    corpo = _corpo(pasta, permitido=lambda _f, _c, derivado: not derivado)
+    assert corpo["entregas_nao_disponiveis"] == []
+
+
+def test_base_sem_a_tabela_conta_os_dois_documentos_como_nao_consultados(tmp_path):
+    corpo = _corpo(_base(tmp_path))
+    assert "entregas" not in corpo
+    assert corpo["entregas_nao_disponiveis"] == ["DFP", "ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limites"]
+
+
 def test_portao_que_nega_a_receita_nao_serve_nada(pasta):
     """Sem cadastro, nada sai, nem as entregas que o portão liberaria."""
     assert _ler(pasta, permitido=lambda fonte, _c, _d: fonte != RECEITA) is None
@@ -250,7 +296,9 @@ def test_documento_que_nao_e_dfp_nem_itr_nao_sai(tmp_path):
         ("FRE", "2023-12-31", "2024-05-31", "2024-05-30", 0, False, False, False)
     ]
     servida = _ler(_base(tmp_path, _rotulos(estranho)))
-    assert servida is not None and "entregas" not in servida.corpo
+    # os dois documentos foram consultados: a lista sai vazia, não some
+    assert servida is not None and servida.corpo["entregas"] == []
+    assert servida.corpo["entregas_nao_disponiveis"] == []
 
 
 def test_cnpj_invalido_e_erro_de_quem_chama(pasta):

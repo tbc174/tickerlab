@@ -265,3 +265,72 @@ def test_cnpj_invalido_da_400(cliente, cenario):
 
 def test_sem_chave_da_401(cliente, cenario):
     assert cliente.get(ROTA).status_code == 401
+
+
+# ---------------------------------------------------------------- documento não disponível (linha 881)
+
+
+def _sem_o_itr(regras: portao.Regras) -> portao.Regras:
+    linhas = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == ficha.CONJUNTO and linha.fonte == "cvm-hist-itr")
+    )
+    return dataclasses.replace(regras, linhas=linhas)
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `profiles`, outra só com o de `companies`; o portão sem as
+    linhas do ITR (como uma linha de direito retirada)."""
+    ator = aj.admin(banco)
+    com_perfil = aj.organizacao(banco, ator, "Organização com perfil")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem perfil")
+    aj.contrato(banco, ator, com_perfil, conjunto=ficha.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _sem_o_itr(_regras())
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_perfil).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_com_tudo_liberado_a_lista_de_fora_sai_vazia(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_filings"] == []
+
+
+def test_o_documento_barrado_vem_como_nao_disponivel_com_o_aviso(duas):
+    cliente, com_perfil, _so_de_companies = duas
+    resposta = cliente.get(ROTA, headers=aj.bearer(com_perfil))
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert {f["document"]["value"] for f in corpo["periodic_filings"]} == {"DFP"}
+    assert corpo["unavailable_filings"] == ["ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limits"]
+    assert "unavailable_filings" in ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL
+    assert "cvm-hist-itr" not in {f["source"] for f in corpo["sources"]}
+
+
+def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
+    cliente, _com_perfil, so_de_companies = duas
+    resposta = cliente.get(ROTA, headers=aj.bearer(so_de_companies))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_entregas_sem_prontidao_dizem_que_os_dois_documentos_nao_foram_consultados(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(empresas.TABELAS))
+    corpo = _get(cliente, cenario).json()
+    assert "periodic_filings" not in corpo
+    assert corpo["unavailable_filings"] == ["DFP", "ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limits"]
+    assert not any(
+        "periodic" in limite or "entregas cobrem" in limite
+        for limite in corpo["limits"]
+    )

@@ -1,14 +1,14 @@
 """O jeito único de dizer "não disponível para a sua organização" na API externa (linhas 878 e 880).
 
-O ajudante `src/api_externa/nao_disponivel.py` é usado pelos eventos e pelos vínculos (e, nas linhas 881 e 882,
-pelos outros conjuntos): a parte pedida que o portão não libera vai numa lista com nome de fora, e os limites
+O ajudante `src/api_externa/nao_disponivel.py` é usado pelos eventos e pelos vínculos, pelos compradores, pelo
+perfil e pelos comparáveis (linha 881): a parte pedida que o portão não libera vai numa lista com nome de fora, e os limites
 só falam do que foi servido. Os testes de cada conjunto ficam com o conjunto; aqui, as regras do ajudante.
 """
 
 import pytest
 
 from src.api_externa import nao_disponivel
-from src.api_externa.conjuntos import eventos, vinculos
+from src.api_externa.conjuntos import comparaveis, compradores, eventos, ficha, vinculos
 from src.api_externa.nomes import NOMES_DE_FORA
 
 GERAIS = ("o do dia", "o do meio", "o do fim")
@@ -37,6 +37,21 @@ def test_a_frase_que_vale_para_duas_partes_sai_uma_vez_so():
     assert limites.count("frase de a") == 1
 
 
+def test_antes_diz_quantos_gerais_vem_antes_das_partes():
+    limites = nao_disponivel.limites(GERAIS, DAS_PARTES, ["b"], ["a"], AVISO, antes=2)
+    assert limites == ["o do dia", "o do meio", "frase de b", "o aviso", "o do fim"]
+
+
+def test_a_parte_pode_ter_mais_de_uma_frase_e_a_comum_sai_uma_vez():
+    das_partes = {"a": "comum", "b": ("comum", "so de b")}
+    assert nao_disponivel.limites(GERAIS, das_partes, ["a", "b"], [], AVISO) == [
+        "o do dia", "comum", "so de b", "o do meio", "o do fim",
+    ]  # fmt: skip
+    assert "so de b" not in nao_disponivel.limites(
+        GERAIS, das_partes, ["a"], ["b"], AVISO
+    )
+
+
 def test_o_aviso_cita_o_nome_de_fora_da_lista():
     frase = nao_disponivel.aviso("tipos_nao_disponiveis", "tipos", "a lista de eventos")
     assert NOMES_DE_FORA["tipos_nao_disponiveis"] in frase
@@ -61,6 +76,9 @@ def test_o_aviso_dos_eventos_continua_o_mesmo_texto_do_contrato():
     [
         (eventos.NAO_DISPONIVEIS, "unavailable_event_types"),
         (vinculos.NAO_DISPONIVEIS, "unavailable_link_types"),
+        (compradores.NAO_DISPONIVEIS, "unavailable_signals"),
+        (ficha.NAO_DISPONIVEIS, "unavailable_filings"),
+        (comparaveis.NAO_DISPONIVEIS, "unavailable_figures"),
     ],
 )
 def test_toda_lista_de_partes_de_fora_segue_o_molde_unavailable(chave, de_fora):

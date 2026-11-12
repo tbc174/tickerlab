@@ -109,6 +109,7 @@ src/api_v1/esquemas.py: unused variable 'dias_tmin_abaixo_de_2c' (60% confidence
 src/api_v1/esquemas.py: unused variable 'endereco_do_conector' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'entregas_com_atraso' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'entregas_conhecidas' (60% confidence)
+src/api_v1/esquemas.py: unused variable 'entregas_nao_disponiveis' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'erro_mil_sacas' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'erro_pct' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'estoque_consumo_mundo' (60% confidence)
