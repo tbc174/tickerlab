@@ -6,6 +6,7 @@ não entra no arquivo. Riscos: pessoa física dentro do deck, uma organização 
 dado quebrando o arquivo, arquivo grande demais e o pedido fora da quota.
 """
 
+from datetime import UTC, datetime
 from io import BytesIO
 
 import pytest
@@ -352,3 +353,41 @@ def test_o_contrato_publicado_tem_os_dois_decks_como_arquivo():
         assert {"400", "401", "404", "429"} <= set(respostas)
     assert "503" not in do_setor_  # lê a ficha da noite, não a base
     assert "503" in da_empresa
+
+
+# ---------------------------------------------------------------- o tamanho do deck
+
+
+def _envelope(valor: object) -> dict:
+    return {
+        "valor": valor,
+        "fonte": "aneel-samp",
+        "publico_em": "2026-10-17",
+        "visto_em": None,
+    }
+
+
+def test_deck_com_series_demais_para_no_maximo_e_mantem_o_fechamento():
+    linha = {"ano": _envelope(2025), "hhi": _envelope(1000.0)}
+    serie = {
+        "serie": "aneel_consumidores",
+        "concentracao": [linha] * deck.LINHAS_POR_TABELA,
+        "participacao_dos_membros": [],
+    }
+    corpo = {
+        "setor": "eletricas",
+        "nome": "Elétricas",
+        "como_era_em": "2026-10-17",
+        "por_serie": [serie] * 20,  # 20 séries de 5 slides cada: passaria de 100
+        "membros": [],
+        "avisos": [],
+        "cortada": False,
+    }
+    feito = deck.do_setor(corpo, [], datetime(2026, 11, 10, 9, tzinfo=UTC))
+    assert len(feito.slides) == deck.SLIDES_NO_MAXIMO
+    titulos = [s.titulo for s in feito.slides]
+    assert titulos[-3] == "O deck parou aqui"
+    assert titulos[-2:] == [
+        apresentacao.TITULO_DAS_FONTES,
+        apresentacao.TITULO_DOS_LIMITES,
+    ]
