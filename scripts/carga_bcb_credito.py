@@ -4,6 +4,7 @@
     python -m scripts.carga_bcb_credito                     (tudo, até hoje)
     python -m scripts.carga_bcb_credito --so ifdata --desde 2024
     python -m scripts.carga_bcb_credito --so scr --pasta <acervo>/base/bcb
+    python -m scripts.carga_bcb_credito --data-base 202509 --forcar   (só manual)
 
 Grava, com manifesto e versões (`base/parquet.py::gravar_com_versoes`):
 - `ifdata/valores/tipo_<t>/<AAAAMM>.parquet`: os 15 relatórios de uma data-base e um tipo de
@@ -17,7 +18,13 @@ As 8 datas-base mais novas do IF.data e os 2 anos mais novos do SCR são baixado
 por vez, com pausa; se o firewall do BC bloquear, espera 5 minutos e tenta mais uma vez. Recusa rodar
 sem a versão do código (exigência 13 da ADR 0055).
 
-Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h15); citado em dicionario.py.
+`--data-base AAAAMM` refaz só os valores dessa data-base pelas respostas já guardadas no acervo, sem
+baixar do BC e sem tocar no cadastro, na ligação, no SCR nem nas outras datas-base; se faltar uma
+resposta guardada, para e diz qual. `--forcar` (só junto com `--data-base`) remonta mesmo com as mesmas
+respostas, quando o leitor mudou (linha 877: a 2025-09 gravada com linhas repetidas antes do #1101).
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h15), sem `--data-base`; com
+`--data-base` e `--forcar`, só manual, nunca agendado; citado em dicionario.py.
 """
 
 import argparse
@@ -61,6 +68,15 @@ ESPERA_DEPOIS_DO_BLOQUEIO = 300.0
 NAO_ENCONTRADO = 404
 ORDEM_DOS_VALORES = ["cod_inst", "relatorio", "conta", "grupo", "coluna"]
 ORDEM_DO_CADASTRO = ["cod_inst"]
+VAZIO = "vazio"  # o BC não mandou linha nenhuma do tipo na data-base
+
+
+class RespostaGuardadaFaltandoError(LookupError):
+    """`--data-base` só relê o que está guardado: falta a resposta destes endereços."""
+
+    def __init__(self, enderecos: list[str]) -> None:
+        super().__init__("; ".join(enderecos))
+        self.enderecos = enderecos
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
@@ -130,6 +146,30 @@ def _valores_do_tipo(
     return pd.concat(partes, ignore_index=True)
 
 
+def _gravar_valores_do_tipo(
+    conexao: sa.Connection,
+    destino: Path,
+    lidos: list[tuple[str, bytes]],
+    forcar: bool = False,
+) -> str:
+    """Os relatórios de um tipo de instituição numa data-base (`VAZIO` se o BC não mandou linha)."""
+    coletas = {u: _coletas_do_relatorio(conexao, u, c) for u, c in lidos}
+    origens = [_origem(u, c) for u, guardadas in coletas.items() for _, c in guardadas]
+    if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
+        return VAZIO
+    return gravar_com_versoes(
+        lambda: _valores_do_tipo(coletas),
+        destino,
+        origens,
+        ORDEM_DOS_VALORES,
+        forcar=forcar,
+    )
+
+
+def _destino_dos_valores(pasta: Path, tipo: int, data_base: int) -> Path:
+    return pasta / "ifdata" / "valores" / f"tipo_{tipo}" / str(data_base)
+
+
 def carregar_ifdata_data(
     conexao: sa.Connection, data_base: int, pasta: Path, de_novo: bool
 ) -> str:
@@ -142,22 +182,9 @@ def carregar_ifdata_data(
             conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
             if conteudo is not None:
                 lidos.append((url, conteudo))
-        coletas = {u: _coletas_do_relatorio(conexao, u, c) for u, c in lidos}
-        origens = [
-            _origem(u, c) for u, guardadas in coletas.items() for _, c in guardadas
-        ]
-        if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
-            resultados.append("vazio")
-            continue
-        resultados.append(
-            gravar_com_versoes(
-                lambda c=coletas: _valores_do_tipo(c),
-                pasta / "ifdata" / "valores" / f"tipo_{tipo}" / str(data_base),
-                origens,
-                ORDEM_DOS_VALORES,
-            )
-        )
-    if all(r == "vazio" for r in resultados):
+        destino = _destino_dos_valores(pasta, tipo, data_base)
+        resultados.append(_gravar_valores_do_tipo(conexao, destino, lidos))
+    if all(r == VAZIO for r in resultados):
         return "sem dados (ainda não publicada?)"
     url = bcb_ifdata.endereco_do_cadastro(data_base)
     conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
@@ -174,6 +201,38 @@ def carregar_ifdata_data(
             )
         )
     return f"{resultados.count(GRAVADO)} gravadas, {resultados.count(IGUAL)} iguais"
+
+
+def refazer_valores_da_data(
+    conexao: sa.Connection, data_base: int, pasta: Path, forcar: bool
+) -> str:
+    """Remonta só os valores de uma data-base pelas respostas do BC já guardadas no acervo, sem baixar
+    nada (linha 877: o leitor mudou e as mesmas respostas não regravam). O cadastro, a ligação dos
+    bancos, o SCR e as outras datas-base ficam como estão. Se faltar alguma resposta guardada, para
+    antes de gravar qualquer tipo (`RespostaGuardadaFaltandoError`)."""
+    lidos_por_tipo: dict[int, list[tuple[str, bytes]]] = {}
+    faltando = []
+    for tipo in bcb_ifdata.tipos_da_data(data_base):
+        lidos_por_tipo[tipo] = []
+        for relatorio in bcb_ifdata.RELATORIOS:
+            url = bcb_ifdata.endereco_dos_valores(data_base, tipo, relatorio)
+            guardada = original_mais_recente(conexao, url)
+            if guardada is None:
+                faltando.append(url)
+            else:
+                lidos_por_tipo[tipo].append((url, guardada))
+    if faltando:
+        raise RespostaGuardadaFaltandoError(faltando)
+    resultados = [
+        _gravar_valores_do_tipo(
+            conexao, _destino_dos_valores(pasta, tipo, data_base), lidos, forcar
+        )
+        for tipo, lidos in lidos_por_tipo.items()
+    ]
+    return (
+        f"{resultados.count(GRAVADO)} gravadas, {resultados.count(IGUAL)} iguais, "
+        f"{resultados.count(VAZIO)} vazias"
+    )
 
 
 def montar_ligacao(pasta: Path, pasta_do_fca: Path) -> int:
@@ -226,15 +285,62 @@ def carregar_scr_ano(
     )
 
 
+def _conferir_opcoes(
+    argumentos: argparse.ArgumentParser, opcoes: argparse.Namespace
+) -> None:
+    """`--forcar` só com `--data-base` (nunca num intervalo de anos); `--data-base` sozinha."""
+    if opcoes.forcar and opcoes.data_base is None:
+        argumentos.error("--forcar só vale junto com --data-base")
+    if opcoes.data_base is None:
+        return
+    if any(o is not None for o in (opcoes.so, opcoes.desde, opcoes.ate)):
+        argumentos.error("--data-base não se mistura com --so, --desde nem --ate")
+    ano = opcoes.data_base // 100
+    if ano < bcb_ifdata.PRIMEIRO_ANO or opcoes.data_base not in bcb_ifdata.datas_base(
+        ano, ano
+    ):
+        argumentos.error(
+            f"--data-base {opcoes.data_base}: não é uma data-base do IF.data (AAAAMM de fim de trimestre)"
+        )
+
+
+def _refazer(conexao: sa.Connection, data_base: int, pasta: Path, forcar: bool) -> int:
+    try:
+        resultado = refazer_valores_da_data(conexao, data_base, pasta, forcar)
+    except RespostaGuardadaFaltandoError as erro:
+        log.error(
+            "IF.data %s: faltam %d respostas guardadas; nada foi baixado nem gravado: %s",
+            data_base,
+            len(erro.enderecos),
+            erro,
+        )
+        return 1
+    log.info("IF.data %s refeita pelas respostas guardadas: %s", data_base, resultado)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
     argumentos.add_argument("--so", choices=("ifdata", "scr"), default=None)
     argumentos.add_argument("--desde", type=int, default=None)
-    argumentos.add_argument("--ate", type=int, default=hoje.year)
+    argumentos.add_argument("--ate", type=int, default=None, help="padrão: este ano")
     argumentos.add_argument("--pasta", type=Path, default=None)
     argumentos.add_argument("--fca", type=Path, default=None, help="pasta da carga_fca")
+    argumentos.add_argument(
+        "--data-base",
+        type=int,
+        default=None,
+        help="AAAAMM: refaz só os valores dessa data-base pelas respostas guardadas, sem baixar",
+    )
+    argumentos.add_argument(
+        "--forcar",
+        action="store_true",
+        help="só com --data-base: remonta mesmo com as mesmas respostas (o leitor mudou)",
+    )
     opcoes = argumentos.parse_args(argv)
+    _conferir_opcoes(argumentos, opcoes)
+    ate = opcoes.ate or hoje.year
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
@@ -249,11 +355,13 @@ def main(argv: list[str] | None = None) -> int:
     motor = criar_engine(url)
     try:
         with motor.connect() as conexao:
+            if opcoes.data_base is not None:
+                return _refazer(conexao, opcoes.data_base, pasta, opcoes.forcar)
             if opcoes.so in (None, "ifdata"):
                 desde = opcoes.desde or bcb_ifdata.PRIMEIRO_ANO
                 datas = [
                     d
-                    for d in bcb_ifdata.datas_base(desde, opcoes.ate)
+                    for d in bcb_ifdata.datas_base(desde, ate)
                     if _data_da_base(d) < hoje
                 ]
                 todas = [
@@ -281,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
                     )
             if opcoes.so in (None, "scr"):
                 desde = opcoes.desde or bcb_scr.PRIMEIRO_ANO
-                for ano in range(max(desde, bcb_scr.PRIMEIRO_ANO), opcoes.ate + 1):
+                for ano in range(max(desde, bcb_scr.PRIMEIRO_ANO), ate + 1):
                     resultado = carregar_scr_ano(
                         conexao, ano, pasta, ano > hoje.year - ANOS_RECENTES
                     )

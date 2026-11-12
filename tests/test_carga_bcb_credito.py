@@ -2,6 +2,7 @@
 
 import io
 import json
+import logging
 import zipfile
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import pandas as pd
 import pytest
 
 from base import bcb_ifdata
-from base.parquet import conferir_tabela, gravar_tabela
+from base.parquet import conferir_tabela, gravar_tabela, origens_gravadas
 from base.setoriais import revisoes
 from scripts import carga_bcb_credito as carga
 from src import acervo
@@ -279,3 +280,117 @@ def test_revisao_do_scr_so_vale_desde_o_dia_em_que_foi_vista(ambiente, monkeypat
     assert (pasta / "scr" / "2012.v1.parquet").exists()
     (nova,) = tabela[tabela["carteira_ativa"] == 999999.5].to_dict("records")
     assert nova["disponivel_em"] == nova["visto_em"] > nova["data_base"]
+
+
+VALORES_202506 = "@AnoMes=202506&@TipoInstituicao=1&@Relatorio='1'"
+CADASTRO_202506 = "IfDataCadastro(AnoMes=@AnoMes)?@AnoMes=202506"
+
+
+def _com_a_data_base_202503(respostas: dict[str, bytes]) -> None:
+    """Uma segunda data-base com dado (a de 2025-06 trocada por 2025-03), para ver que ela não muda."""
+    for chave in (VALORES_202506, CADASTRO_202506):
+        respostas[chave.replace("202506", "202503")] = respostas[chave].replace(
+            b"202506", b"202503"
+        )
+
+
+def _arquivos(pasta: Path) -> dict[str, bytes]:
+    return {
+        a.relative_to(pasta).as_posix(): a.read_bytes()
+        for a in pasta.rglob("*")
+        if a.is_file()
+    }
+
+
+def _sem_internet(monkeypatch) -> None:
+    def baixar(endereco: str) -> bytes | None:
+        raise AssertionError(f"baixou {endereco}")
+
+    monkeypatch.setattr(carga, "baixar_ifdata", baixar)
+    monkeypatch.setattr(carga, "baixar_scr", baixar)
+
+
+def test_refazer_uma_data_base_tira_as_repetidas_e_nao_mexe_no_resto(
+    ambiente, monkeypatch
+):
+    """Linha 877: a carga de 14/10 gravou a 2025-09 com cada linha cerca de três vezes. O #1101 conserta
+    o leitor, mas com as mesmas respostas a carga não regrava (`IGUAL`). `--data-base --forcar` remonta só
+    os valores dessa data-base pelas respostas guardadas, sem baixar nada: a gravada vira versão, e as
+    outras datas-base, o cadastro, a ligação dos bancos e o SCR ficam byte a byte iguais."""
+    pasta, respostas, _ = ambiente
+    _com_a_data_base_202503(respostas)
+    _rodar(pasta, "--desde", "2025", "--ate", "2025")
+    assert (pasta / "ifdata" / "valores" / "tipo_1" / "202503.parquet").exists()
+    destino = pasta / "ifdata" / "valores" / "tipo_1" / "202506"
+    limpa = pd.read_parquet(destino.with_suffix(".parquet"))
+    triplicada = pd.concat([limpa, limpa, limpa], ignore_index=True)
+    gravar_tabela(
+        triplicada, destino, origens_gravadas(destino) or [], carga.ORDEM_DOS_VALORES
+    )
+    antes = _arquivos(pasta)
+    _sem_internet(monkeypatch)
+
+    # sem --forcar: as mesmas respostas, nada muda
+    assert _rodar(pasta, "--data-base", "202506") == 0
+    assert _arquivos(pasta) == antes
+
+    assert _rodar(pasta, "--data-base", "202506", "--forcar") == 0
+    depois = _arquivos(pasta)
+    refeita = pd.read_parquet(destino.with_suffix(".parquet"))
+    assert len(refeita) == len(limpa)
+    assert not refeita.duplicated().any()
+    assert len(pd.read_parquet(destino.with_suffix(".v1.parquet"))) == len(triplicada)
+    mudaram = {a for a in antes.keys() | depois.keys() if antes.get(a) != depois.get(a)}
+    assert mudaram == {
+        f"ifdata/valores/tipo_1/202506{fim}"
+        for fim in (".parquet", ".json", ".v1.parquet", ".v1.json")
+    }
+
+    # de novo: já está limpa, nada muda
+    assert _rodar(pasta, "--data-base", "202506", "--forcar") == 0
+    assert _arquivos(pasta) == depois
+
+
+@pytest.mark.parametrize(
+    "opcoes",
+    [
+        ("--forcar",),
+        ("--forcar", "--desde", "2025", "--ate", "2025"),
+        ("--forcar", "--so", "ifdata"),
+        ("--data-base", "202506", "--desde", "2025"),
+        ("--data-base", "202506", "--ate", "2025"),
+        ("--data-base", "202506", "--so", "scr"),
+        ("--data-base", "202505"),
+        ("--data-base", "199912"),
+    ],
+)
+def test_forcar_so_com_uma_data_base_e_nada_roda_no_erro(ambiente, opcoes):
+    """`--forcar` não vale para um intervalo de anos; `--data-base` não se mistura com `--so`, `--desde`
+    nem `--ate`, e tem de ser uma data-base do IF.data. No erro, nada roda."""
+    pasta, _, pedidos = ambiente
+    with pytest.raises(SystemExit) as erro:
+        _rodar(pasta, *opcoes)
+    assert erro.value.code == 2
+    assert pedidos == []
+    assert not pasta.exists()
+
+
+def test_refazer_sem_uma_resposta_guardada_para_e_diz_qual(
+    ambiente, monkeypatch, caplog
+):
+    """Se faltar uma resposta guardada, não baixa do BC: para antes de gravar qualquer tipo e diz qual."""
+    pasta, _, _ = ambiente
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+    antes = _arquivos(pasta)
+    _sem_internet(monkeypatch)
+    faltando = bcb_ifdata.endereco_dos_valores(202506, 3, 4)
+    guardada = carga.original_mais_recente
+    monkeypatch.setattr(
+        carga,
+        "original_mais_recente",
+        lambda conexao, url: None if url == faltando else guardada(conexao, url),
+    )
+    with caplog.at_level(logging.ERROR, logger=carga.log.name):
+        assert _rodar(pasta, "--data-base", "202506", "--forcar") == 1
+    assert _arquivos(pasta) == antes
+    assert faltando in caplog.text

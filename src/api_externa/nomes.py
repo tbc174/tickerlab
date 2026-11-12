@@ -205,6 +205,9 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "total_de_compradores": "total_buyers",
     "sinais": "signals",
     "sinais_nao_disponiveis": "unavailable_signals",
+    # o que o portão não libera em fundos e setores (linha 882)
+    "series_nao_disponiveis": "unavailable_series",
+    "blocos_nao_disponiveis": "unavailable_sections",
     "provas": "evidence",
     "quantas": "count",
     "exemplos": "examples",
