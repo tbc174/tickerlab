@@ -160,3 +160,16 @@ def test_gravar_sem_acervo_para(monkeypatch):
     monkeypatch.setattr(conferir_qualidade.acervo, "pasta_do_acervo", lambda: None)
     with pytest.raises(SystemExit):
         conferir_qualidade.gravar("2026-11-11", [])
+
+
+def test_medir_uma_tabela_nao_apaga_as_outras_do_dia(monkeypatch, tmp_path):
+    """`--tabela` regravava o arquivo do dia só com ela e apagava a prova das outras (12/11/2026)."""
+    monkeypatch.setattr(conferir_qualidade.acervo, "pasta_do_acervo", lambda: tmp_path)
+    conferir_qualidade.gravar("2026-11-12", [_resultado("a"), _resultado("b")])
+    destino = conferir_qualidade.gravar("2026-11-12", [_resultado("b", vermelho=True)])
+    tabelas = json.loads(destino.read_text(encoding="utf-8"))["tabelas"]
+    assert {t["tabela"]: t["vermelho"] for t in tabelas} == {"a": False, "b": True}
+
+
+def _resultado(tabela: str, vermelho: bool = False) -> dict[str, object]:
+    return {"tabela": tabela, "linhas": 1, "vermelho": vermelho, "achados": []}
