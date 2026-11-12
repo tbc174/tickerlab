@@ -25,6 +25,7 @@ ESPERA_MAXIMA = (
 )
 CODIGO_DA_QUOTA_DO_MES = "monthly_quota_exceeded"
 esperar: Callable[[float], None] = time.sleep  # os testes trocam, para não dormir
+EVENTOS_POR_PAGINA = 50  # `eventos` sem --todas: uma página de 50 (a de uma Petrobras passa de mil e enche o terminal)
 PAGINAS_MAXIMAS = 100  # `prospectar --todas`: até 100 pedidos de uma vez; o resto fica no próximo cursor
 CAMINHO_DA_BUSCA = "/companies"
 
@@ -391,10 +392,12 @@ class ApiDoTickerlab:
     def eventos(
         self, cnpj: str, como_era: str | None, tipos: Sequence[str], todas: bool
     ) -> dict:
-        """Os eventos da empresa, do mais novo ao mais velho; com `todas`, segue o cursor como a busca."""
+        """Os eventos da empresa, do mais novo ao mais velho: 50 por página; com `todas`, segue o cursor como a busca."""
         parametros: dict[str, str | Sequence[str]] = {**_datas(known_at=como_era)}
         if tipos:
             parametros["types"] = list(tipos)
+        if not todas:
+            parametros["limit"] = str(EVENTOS_POR_PAGINA)
         return self._paginas(f"/companies/{cnpj}/events", parametros, "events", todas)
 
     def _paginas(

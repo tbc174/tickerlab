@@ -68,6 +68,10 @@ PROFUNDIDADE_MAXIMA = 3  # a da API (`src/api_externa/conjuntos/vinculos.py`)
 # os da API (`src/api_externa/conjuntos/compradores.py`)
 ANOS_MAXIMO_DOS_COMPRADORES = 10
 LIMITE_MAXIMO_DOS_COMPRADORES = 50
+# Um evento pesa ~750 caracteres e a IA aceita ~150 mil por resposta: sem teto próprio, a 1ª página de uma
+# companhia grande (1.000 eventos) passava do limite e a ferramenta falhava.
+LIMITE_MAXIMO_DOS_EVENTOS = 100
+LIMITE_PADRAO_DOS_EVENTOS = 50
 DIAS_MAXIMO_DAS_NOVIDADES = 30  # o da API (`src/api_externa/conjuntos/novidades.py`)
 
 MENSAGEM_DE_PESSOA = (
@@ -448,6 +452,14 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
                 ),
             ),
         ] = None,
+        limite: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DOS_EVENTOS,
+                description="Eventos por página (até 100).",
+            ),
+        ] = LIMITE_PADRAO_DOS_EVENTOS,
         cursor: Annotated[
             str | None,
             Field(
@@ -460,11 +472,12 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         """Os eventos da empresa, do mais novo ao mais velho: cada documento entregue à CVM (protocolo,
         categoria, tipo, data de referência e endereço; o assunto escrito pela companhia não sai) e cada
         troca de auditor (a firma anterior, a nova, o dia e os anos com a anterior). Cada valor traz a
-        fonte e o dia em que ficou público; a página vai até o limite do plano e `next_cursor` traz a
-        seguinte."""
+        fonte e o dia em que ficou público; a página tem até `limite` eventos (padrão 50) e `next_cursor` traz
+        a seguinte."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir("eventos", f"/companies/{numeros}/events", {
             "types": [TIPOS_DE_EVENTO[tipo] for tipo in tipos or ()],
+            "limit": str(limite),
             "cursor": cursor,
             "known_at": _dia(como_era_em),
         })  # fmt: skip

@@ -151,6 +151,26 @@ def test_a_pagina_segue_pelo_cursor_sem_perder_nem_repetir(
     assert inteira.status_code == 200
 
 
+def test_limit_encurta_a_pagina_e_o_plano_continua_sendo_o_teto(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(acesso, "linhas_por_resposta", lambda _contexto: 3)
+    curta = _get(cliente, cenario, known_at=DIA, limit=2).json()
+    assert len(curta["events"]) == 2 and curta["truncated"] is True
+    resto = _get(cliente, cenario, known_at=DIA, limit=2, cursor=curta["next_cursor"])
+    assert len(curta["events"]) + len(resto.json()["events"]) <= EVENTOS_NO_DIA
+    # pedir mais do que o plano deixa não passa do plano
+    assert len(_get(cliente, cenario, known_at=DIA, limit=500).json()["events"]) == 3
+
+
+def test_limit_menor_que_1_da_400_sem_gastar_a_quota(cliente, cenario, banco):
+    _ator, org, _chave = cenario
+    resposta = _get(cliente, cenario, limit=0)
+    assert resposta.status_code == 400
+    assert resposta.json() == {"detail": "invalid_limit"}
+    assert _consumo(banco, org).pedidos == 0
+
+
 def test_eventos_sem_prontidao_de_uma_tabela_saem_so_da_outra(
     cliente, cenario, monkeypatch
 ):

@@ -1435,7 +1435,7 @@
     },
     "/data/v1/companies/{cnpj}/events": {
       "get": {
-        "description": "Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à\nCVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor\n(`auditor_change`). `types` filtra; a página vai até o limite de linhas do plano e `next_cursor` traz a\nseguinte. MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à\nCVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor\n(`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o\nplano é o teto) e `next_cursor` traz a seguinte. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
         "operationId": "eventos_da_empresa_data_v1_companies__cnpj__events_get",
         "parameters": [
           {
@@ -1491,6 +1491,22 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
             }
           },
           {
