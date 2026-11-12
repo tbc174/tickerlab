@@ -4392,6 +4392,34 @@ TABELAS: dict[str, Tabela] = {
             "Gestor": ("Nome do gestor; vazio quando é pessoa física", TEXTO),
         },
     ),
+    "fips_registrados": Tabela(
+        descricao=(
+            "Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compradores por setor da "
+            "API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma "
+            "linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM "
+            "não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. "
+            "Montada no envio, não fica no acervo de casa"
+        ),
+        fonte="CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)",
+        familia_da_fonte="cvm",
+        frequencia="A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+        atraso="O de `registro_de_fundos`: um retrato do registro na data da coleta",
+        onde=(
+            "Parquet em `<acervo>/base/fips_registrados/fips_registrados.parquet`, só no VPS (montado pelo "
+            "recorte, `base/recorte_dos_compradores.py`)"
+        ),
+        linhagem=(
+            "Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` "
+            "lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou fundo que "
+            "não é FIP."
+        ),
+        colunas={
+            "CNPJ_Fundo": ("CNPJ do fundo (14 dígitos)", TEXTO),
+            "Tipo_Fundo": ("Tipo do fundo: sempre FIP", TEXTO),
+            "Data_Registro": ("Data do registro na CVM", DATA),
+            "Data_Cancelamento": ("Data do cancelamento (vazio: ativo)", DATA),
+        },
+    ),
     "painel_dos_fundos": Tabela(
         descricao=(
             "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por "
@@ -8100,6 +8128,50 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_DA_LINHA,
         },
     ),
+    "controladas_pj": Tabela(
+        descricao=(
+            "Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores por setor da API "
+            "externa (linha 844): só a companhia e a controlada cujas raízes estão em `cnpj_empresas_pj` (sem "
+            "pessoa), sem a razão social da sociedade nem o nome da companhia. Cada documento do FRE (companhia, "
+            "referência e versão) tem ainda uma linha de marca, com `cnpj`, `tipo` e `participacao` vazios: assim "
+            "o FRE mais recente da companhia continua o mesmo da tabela inteira, mesmo quando ele só tinha "
+            "controladas fora da lista. Montada no envio, não fica no acervo de casa"
+        ),
+        fonte="CVM: dados abertos do FRE, tabela de participação em sociedades (cópia reduzida de `controladas`)",
+        familia_da_fonte="cvm",
+        frequencia="A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+        atraso=ATRASO_DO_FRE + "; a ligação vale a partir de `publico_em`",
+        onde=(
+            "Parquet em `<acervo>/base/controladas_pj/controladas_pj.parquet`, só no VPS (montado pelo recorte, "
+            "`base/recorte_dos_compradores.py`)"
+        ),
+        linhagem=(
+            "Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê "
+            "a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou linha sem CNPJ "
+            "com tipo ou participação."
+        ),
+        colunas={
+            "cnpj_companhia": ("CNPJ da companhia que informou (14 dígitos)", TEXTO),
+            "cnpj": (
+                "CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento",
+                TEXTO,
+            ),
+            "tipo": (
+                "controlada, coligada ou vazio (não informado, ou a linha de marca)",
+                TEXTO,
+            ),
+            "participacao": (
+                "Participação da companhia na sociedade",
+                PONTOS_PERCENTUAIS,
+            ),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO),
+            "publico_em": (
+                "Data em que a CVM recebeu essa versão do FRE (`conhecido_em`)",
+                DATA,
+            ),
+        },
+    ),
     "rotulos_atraso": Tabela(
         descricao=(
             "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030; a rota da API acrescenta "
@@ -9471,6 +9543,7 @@ _CONTRATO = {
     "cadastro_gestor_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_GESTOR"), datas={"aconteceu_em": "DT_INI_GESTOR"}, historico_desde=_CVM),
     "cadastro_admin_hist": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO", "DT_INI_ADMIN"), datas={"aconteceu_em": "DT_INI_ADMIN"}, historico_desde=_CVM),
     "registro_de_fundos": _contrato(modulo=_FIDC, chaves=("ID_Registro_Fundo", "CPF_CNPJ_Gestor"), datas={"aconteceu_em": "Data_Registro"}, historico_desde=_CVM),
+    "fips_registrados": _contrato(modulo=_FIDC, chaves=("CNPJ_Fundo", "Data_Registro"), datas={"aconteceu_em": "Data_Registro"}, historico_desde=_CVM),  # linha 844: cópia reduzida de `registro_de_fundos`, só no VPS
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
     "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),
@@ -9712,6 +9785,7 @@ _CONTRATO = {
     "noticias_fatos": _contrato(modulo=_ME, chaves=("id_fato",), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "controladas_pj": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em"}, historico_desde=_CVM),  # linha 844: cópia reduzida de `controladas`, só no VPS
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "colunas_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "data_da_previsao", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),

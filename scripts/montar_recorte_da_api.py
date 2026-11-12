@@ -3,7 +3,8 @@
 O contêiner `tickerlab-api` de produção não tinha `<acervo>/base`: sem ela a API externa (`/data/v1`) e a
 `/v1/base/tabelas` respondem 503. Este script monta, a partir da base de casa, uma cópia **só do que a API
 serve**, em degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
-aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
+aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843; `--degrau 4`: mais as cópias reduzidas
+da lista de compradores, linha 844), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
 
 Lista de permissão (Diretoria, 10/11/2026, ADR 0101 Emenda 4): só vai a tabela escrita em `DEGRAU_1` ou
 `DEGRAU_2_ACRESCENTA`, e só a coluna que o dicionário (`base/dicionario.py`) conhece, menos as
@@ -18,9 +19,15 @@ filtro e pela trava de `base/rede/recorte_so_pj.py` (só PJ da `cnpj_empresas_pj
 tipos de ligação da `links`). A trava lê a saída e derruba a montagem em qualquer pessoa; o envio do degrau 3 pede
 o pode da Diretoria com as contagens que ela devolve.
 
+As cópias reduzidas da lista de compradores (`controladas_pj` e `fips_registrados`, linha 844) também não passam
+pela cópia por arquivo: vão no degrau 4, pelo filtro e pela trava de `base/recorte_dos_compradores.py` (só as
+colunas listadas, só raízes da `cnpj_empresas_pj` da mesma saída, sem gestor, administrador, nome nem CPF). O cron
+diário segue no degrau 2; o envio do degrau 4 pede o pode da Diretoria com as contagens e a prova de zero pessoa.
+
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
     python -m scripts.montar_recorte_da_api --degrau 3 --base <acervo>/base --saida /tmp/base-api-rede
+    python -m scripts.montar_recorte_da_api --degrau 4 --base <acervo>/base --saida /tmp/base-api-compradores
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -40,6 +47,7 @@ from pathlib import Path
 
 import duckdb
 
+from base import recorte_dos_compradores
 from base.dicionario import TABELAS
 from base.dossie import (
     COLUNAS_DE_PESSOA,
@@ -125,6 +133,9 @@ DEGRAU_2_ACRESCENTA = (
 # A rede só PJ (linha 843; desenho aceito pela Diretoria em 11/11/2026): só no degrau 3, inteira, pelo filtro e pela
 # trava de `base/rede/recorte_so_pj.py`, nunca pela cópia por arquivo.
 REDE_SO_PJ = recorte_so_pj.REDE
+# As cópias reduzidas da lista de compradores (linha 844): só no degrau 4, pelo filtro e pela trava de
+# `base/recorte_dos_compradores.py`, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
+REDUZIDAS = recorte_dos_compradores.REDUZIDAS
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
 SUFIXO_DO_MANIFESTO = ".json"
@@ -148,14 +159,17 @@ class Resultado:
 
 
 def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
-    """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta; 3 = o 2 + a rede só PJ), na ordem da lista."""
+    """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta; 3 = o 2 + a rede só PJ; 4 = o 3 + as cópias
+    reduzidas da lista de compradores), na ordem da lista."""
     if degrau == 1:
         return DEGRAU_1
     if degrau == 2:
         return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA)
     if degrau == 3:
         return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA, *REDE_SO_PJ)
-    raise RecorteErro(f"degrau {degrau} não existe (1, 2 ou 3)")
+    if degrau == 4:
+        return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA, *REDE_SO_PJ, *REDUZIDAS)
+    raise RecorteErro(f"degrau {degrau} não existe (1, 2, 3 ou 4)")
 
 
 def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
@@ -164,6 +178,10 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
         if nome in REDE_SO_PJ:
             raise RecorteErro(
                 f"{nome}: a rede só vai pelo degrau 3, com o filtro e a trava"
+            )
+        if nome in REDUZIDAS:
+            raise RecorteErro(
+                f"{nome}: a cópia reduzida só vai pelo degrau 4, com o filtro e a trava"
             )
         if nome not in ARQUIVOS or nome not in TABELAS:
             raise RecorteErro(f"{nome}: a porta não serve esta tabela")
@@ -481,10 +499,57 @@ def montar_rede(
     ]
 
 
+def _origem_das_reduzidas(base: Path, nome: str) -> list[Path]:
+    """Os Parquets da tabela inteira de onde a cópia reduzida sai (nunca de pasta proibida)."""
+    inteira = recorte_dos_compradores.ORIGEM[nome]
+    arquivos = arquivos_da_tabela(base, ARQUIVOS[inteira])
+    if not arquivos:
+        raise RecorteErro(f"{nome}: sem {inteira} na base")
+    for origem in arquivos:
+        if origem.relative_to(base).parts[0] in PASTAS_PROIBIDAS:
+            raise RecorteErro(
+                f"{nome}: {origem.relative_to(base)} está em pasta proibida"
+            )
+    return arquivos
+
+
+def montar_reduzidas(
+    con: duckdb.DuckDBPyConnection, base: Path, saida: Path, tabelas: tuple[str, ...]
+) -> list[Resultado]:
+    """As cópias reduzidas da lista de compradores (degrau 4): o filtro e a trava de zero pessoa na saída.
+
+    Roda depois de `tirar_raizes_de_mei`: a lista sem pessoa é a `cnpj_empresas_pj` da saída."""
+    if "cnpj_empresas_pj" not in tabelas:
+        raise RecorteErro("as cópias reduzidas só vão junto com cnpj_empresas_pj")
+    nomes = tuple(t for t in REDUZIDAS if t in tabelas)
+    empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+    origem = {nome: _origem_das_reduzidas(base, nome) for nome in nomes}
+    destino = {nome: saida / nome / f"{nome}.parquet" for nome in nomes}
+    montadoras = {
+        recorte_dos_compradores.CONTROLADAS_PJ: recorte_dos_compradores.montar_controladas_pj,
+        recorte_dos_compradores.FIPS_REGISTRADOS: recorte_dos_compradores.montar_fips_registrados,
+    }
+    try:
+        for nome in nomes:
+            montadoras[nome](con, origem[nome], empresas, destino[nome])
+        linhas = recorte_dos_compradores.conferir_reduzidas(con, destino, empresas)
+    except recorte_dos_compradores.ReduzidaComPessoa as erro:
+        raise RecorteErro(str(erro)) from erro
+    for nome, total in linhas.items():
+        log.info("%s na saída (zero pessoa conferido): %d linha(s)", nome, total)
+    return [
+        Resultado(nome, len(origem[nome]), 0, 1, 0, destino[nome].stat().st_size)
+        for nome in nomes
+    ]
+
+
 def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]:
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     rede = tuple(t for t in tabelas if t in REDE_SO_PJ)
-    tabelas_por_arquivo = tuple(t for t in tabelas if t not in REDE_SO_PJ)
+    reduzidas = tuple(t for t in tabelas if t in REDUZIDAS)
+    tabelas_por_arquivo = tuple(
+        t for t in tabelas if t not in REDE_SO_PJ and t not in REDUZIDAS
+    )
     conferir_a_lista(tabelas_por_arquivo)
     base = base.resolve()
     resultados: list[Resultado] = []
@@ -514,6 +579,8 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
         conferir_raizes_so_pj(con, saida, tabelas)
         if rede:
             resultados += montar_rede(con, base, saida, tabelas)
+        if reduzidas:
+            resultados += montar_reduzidas(con, base, saida, tabelas)
     finally:
         con.close()
     return resultados
@@ -558,7 +625,7 @@ def comando_ssh_padrao() -> list[str]:
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Recorte da base para o VPS (linha 739)")
-    p.add_argument("--degrau", type=int, choices=(1, 2, 3), required=True)
+    p.add_argument("--degrau", type=int, choices=(1, 2, 3, 4), required=True)
     p.add_argument(
         "--base", type=Path, help="<acervo>/base (padrão: o acervo do ambiente)"
     )

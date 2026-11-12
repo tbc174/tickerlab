@@ -1369,6 +1369,48 @@
       "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
       "atraso": "Do dia: é um retrato do registro na data da coleta"
     },
+    "fips_registrados": {
+      "tabela": "fips_registrados",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "CNPJ_Fundo": {
+          "descricao": "CNPJ do fundo (14 dígitos)",
+          "unidade": "texto"
+        },
+        "Tipo_Fundo": {
+          "descricao": "Tipo do fundo: sempre FIP",
+          "unidade": "texto"
+        },
+        "Data_Registro": {
+          "descricao": "Data do registro na CVM",
+          "unidade": "data (dia)"
+        },
+        "Data_Cancelamento": {
+          "descricao": "Data do cancelamento (vazio: ativo)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "CNPJ_Fundo",
+        "Data_Registro"
+      ],
+      "datas": {
+        "aconteceu_em": "Data_Registro"
+      },
+      "sinonimos_de_tempo": {
+        "Data_Registro": "aconteceu_em",
+        "Data_Cancelamento": "ate"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+      "atraso": "O de `registro_de_fundos`: um retrato do registro na data da coleta"
+    },
     "painel_dos_fundos": {
       "tabela": "painel_dos_fundos",
       "modulo": "credito_e_fidc",
@@ -15106,6 +15148,63 @@
       "pessoa": false,
       "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`"
+    },
+    "controladas_pj": {
+      "tabela": "controladas_pj",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_companhia": {
+          "descricao": "CNPJ da companhia que informou (14 dígitos)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "controlada, coligada ou vazio (não informado, ou a linha de marca)",
+          "unidade": "texto"
+        },
+        "participacao": {
+          "descricao": "Participação da companhia na sociedade",
+          "unidade": "pontos percentuais (66,25 = 66,25%)"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número inteiro"
+        },
+        "publico_em": {
+          "descricao": "Data em que a CVM recebeu essa versão do FRE (`conhecido_em`)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj_companhia",
+        "referencia",
+        "versao",
+        "cnpj"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "publico_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "publico_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `publico_em`"
     },
     "rotulos_atraso": {
       "tabela": "rotulos_atraso",

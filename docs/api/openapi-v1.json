@@ -1938,6 +1938,23 @@
         "title": "CurvaV1",
         "type": "object"
       },
+      "DadosECoberturaV1": {
+        "description": "O que a base serve de verdade (`GET /v1/base/tabelas` sem as colunas), na ordem do catálogo.",
+        "properties": {
+          "tabelas": {
+            "items": {
+              "$ref": "#/components/schemas/TabelaDaCoberturaV1"
+            },
+            "title": "Tabelas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tabelas"
+        ],
+        "title": "DadosECoberturaV1",
+        "type": "object"
+      },
       "DestaqueDaAnaliseV1": {
         "description": "Uma seção da ficha puxada para perto de uma parte do texto.",
         "properties": {
@@ -6943,6 +6960,65 @@
         "title": "SimulacaoV1",
         "type": "object"
       },
+      "TabelaDaCoberturaV1": {
+        "description": "Uma tabela da base como o catálogo público a declara: o que traz, de onde vem e com que licença.",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "frase": {
+            "title": "Frase",
+            "type": "string"
+          },
+          "frequencia": {
+            "title": "Frequencia",
+            "type": "string"
+          },
+          "historico_desde": {
+            "title": "Historico Desde",
+            "type": "string"
+          },
+          "licenca": {
+            "title": "Licenca",
+            "type": "string"
+          },
+          "modulo": {
+            "title": "Modulo",
+            "type": "string"
+          },
+          "n_colunas": {
+            "title": "N Colunas",
+            "type": "integer"
+          },
+          "orgao": {
+            "title": "Orgao",
+            "type": "string"
+          },
+          "situacao_da_licenca": {
+            "title": "Situacao Da Licenca",
+            "type": "string"
+          },
+          "tabela": {
+            "title": "Tabela",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tabela",
+          "modulo",
+          "frase",
+          "fonte",
+          "orgao",
+          "licenca",
+          "historico_desde",
+          "frequencia",
+          "situacao_da_licenca",
+          "n_colunas"
+        ],
+        "title": "TabelaDaCoberturaV1",
+        "type": "object"
+      },
       "TabelaDoRelatorioV1": {
         "description": "Uma tabela de uma seção, com o título e as células já escritas (como na página e no PDF).",
         "properties": {
@@ -8028,6 +8104,25 @@
           }
         },
         "summary": "Entrar"
+      }
+    },
+    "/v1/dados-e-cobertura": {
+      "get": {
+        "description": "As tabelas consultáveis da base, na ordem do catálogo, com a fonte e a licença de cada uma.",
+        "operationId": "dados_e_cobertura_v1_dados_e_cobertura_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DadosECoberturaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dados E Cobertura"
       }
     },
     "/v1/entrada/codigo": {

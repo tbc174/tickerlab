@@ -500,26 +500,31 @@ def eventos_da_empresa(
     known_at: date | None = None,
     types: Annotated[list[str], Query()] = [],  # noqa: B006 - o FastAPI copia o padrão
     cursor: str | None = None,
+    limit: int | None = None,
 ) -> object:
     """Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à
     CVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor
-    (`auditor_change`). `types` filtra; a página vai até o limite de linhas do plano e `next_cursor` traz a
-    seguinte. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    (`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o
+    plano é o teto) e `next_cursor` traz a seguinte. MEI, empresário individual e o que não é empresa saem
+    `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     try:
         tipos = eventos.tipos_do_pedido(types)
         if cursor is not None:
             eventos.chave_do_cursor(cursor)
+        if limit is not None and limit < 1:
+            raise eventos.PedidoInvalido("invalid_limit")
     except eventos.PedidoInvalido as erro:
         raise _recusa(erro.codigo) from erro
+    do_plano = acesso.linhas_por_resposta(contexto)
     return _um_pedido(
         contexto,
         eventos.CONJUNTO,
         lambda conexao, porta: eventos.LeitorDeEventos(
             porta,
             _portao(conexao, contexto, eventos.CONJUNTO),
-            acesso.linhas_por_resposta(contexto),
+            do_plano if limit is None else min(limit, do_plano),
         ).eventos(numeros, dia, tipos, cursor),
     )
 

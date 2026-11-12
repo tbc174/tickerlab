@@ -546,6 +546,30 @@ O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o
 | `CPF_CNPJ_Gestor` | CNPJ do gestor; vazio quando o gestor é pessoa física | texto |
 | `Gestor` | Nome do gestor; vazio quando é pessoa física | texto |
 
+## `fips_registrados`
+
+Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. Montada no envio, não fica no acervo de casa
+
+- **Fonte:** CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)
+- **Atraso de divulgação:** O de `registro_de_fundos`: um retrato do registro na data da coleta
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `CNPJ_Fundo`, `Data_Registro`
+- **Três datas:** aconteceu_em = `Data_Registro`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fips_registrados/fips_registrados.parquet`, só no VPS (montado pelo recorte, `base/recorte_dos_compradores.py`)
+- **Linhagem:** Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou fundo que não é FIP.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `CNPJ_Fundo` | CNPJ do fundo (14 dígitos) | texto |
+| `Tipo_Fundo` | Tipo do fundo: sempre FIP | texto |
+| `Data_Registro` | Data do registro na CVM | data (dia) |
+| `Data_Cancelamento` | Data do cancelamento (vazio: ativo) | data (dia) |
+
 ## `painel_dos_fundos`
 
 Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ). O emissor vira CNPJ pelo FCA e, no que falta (empresas que saíram antes de 2018), pela tabela conferida `base/conferidas/emissores_antigos.csv`; cada ano tem pelo menos 95% do valor comprado com CNPJ (`cobertura`), e o resto está em `buracos`. Inclui empresas que saíram da bolsa (sem viés de sobrevivência)
@@ -5550,6 +5574,33 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `controladas_pj`
+
+Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só a companhia e a controlada cujas raízes estão em `cnpj_empresas_pj` (sem pessoa), sem a razão social da sociedade nem o nome da companhia. Cada documento do FRE (companhia, referência e versão) tem ainda uma linha de marca, com `cnpj`, `tipo` e `participacao` vazios: assim o FRE mais recente da companhia continua o mesmo da tabela inteira, mesmo quando ele só tinha controladas fora da lista. Montada no envio, não fica no acervo de casa
+
+- **Fonte:** CVM: dados abertos do FRE, tabela de participação em sociedades (cópia reduzida de `controladas`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)
+- **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `publico_em`
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_companhia`, `referencia`, `versao`, `cnpj`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/controladas_pj/controladas_pj.parquet`, só no VPS (montado pelo recorte, `base/recorte_dos_compradores.py`)
+- **Linhagem:** Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj` ou linha sem CNPJ com tipo ou participação.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_companhia` | CNPJ da companhia que informou (14 dígitos) | texto |
+| `cnpj` | CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento | texto |
+| `tipo` | controlada, coligada ou vazio (não informado, ou a linha de marca) | texto |
+| `participacao` | Participação da companhia na sociedade | pontos percentuais (66,25 = 66,25%) |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número inteiro |
+| `publico_em` | Data em que a CVM recebeu essa versão do FRE (`conhecido_em`) | data (dia) |
 
 ## `rotulos_atraso`
 

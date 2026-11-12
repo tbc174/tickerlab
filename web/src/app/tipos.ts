@@ -1108,6 +1108,24 @@ export interface OQueMudouV1 {
   entregas: EntregaDoDiaV1[];
 }
 
+// Dados e cobertura (linha 832): o catálogo público da base sem as colunas; só o que a API declara
+export interface TabelaDaCoberturaV1 {
+  tabela: string;
+  modulo: string;
+  frase: string;
+  fonte: string;
+  orgao: string;
+  licenca: string;
+  historico_desde: string;
+  frequencia: string;
+  situacao_da_licenca: string;
+  n_colunas: number;
+}
+
+export interface DadosECoberturaV1 {
+  tabelas: TabelaDaCoberturaV1[];
+}
+
 // Encontrar empresas (tela do analista, linha 798): a matriz ativa por setor, UF, idade, capital e estabelecimentos. Cada campo
 // vem no envelope (null se o portão não serve); os *_descricao/_nome são os nomes da Receita ao lado do código
 export interface EmpresaDaBuscaV1 {

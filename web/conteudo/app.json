@@ -11,7 +11,7 @@
       "titulo": "Não quer aceitar? Baixe ou apague os seus dados"
     },
     "titulo": "Antes de começar",
-    "versao": "2026-10-22.13"
+    "versao": "2026-11-11.14"
   },
   "areas": [
     {
@@ -60,6 +60,7 @@
       "frase": "Regras testadas no passado, com custos, e o que você acompanha: teses, carteira, alertas, juros e inflação.",
       "icone": "mais",
       "paginas": [
+        "dados_e_cobertura",
         "backtest",
         "ranking",
         "carteira",
