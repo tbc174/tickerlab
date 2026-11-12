@@ -188,15 +188,23 @@ def pasta(tmp_path, monkeypatch):
     _gravar(base / compradores.ENTRADAS / "parte.parquet", _entradas())
     _gravar(base / "fidc" / "cadastro" / "registro_fundo.parquet", _fundos())
     _gravar(base / compradores.CONTROLADAS / "2025.parquet", _controladas())
+    # o FIP só sai da cópia reduzida (a do VPS), montada do registro inteiro pela mesma função do recorte
+    reduzidas.montar_fips_registrados(
+        duckdb.connect(),
+        [base / "fidc" / "cadastro" / "registro_fundo.parquet"],
+        sorted((base / compradores.EMPRESAS).glob("*.parquet")),
+        base / compradores.FIPS_REGISTRADOS / f"{compradores.FIPS_REGISTRADOS}.parquet",
+    )
     monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
     return base
 
 
+# o FIP: o portão confere a cópia `fips_registrados` (a tabela servida no VPS), não o registro inteiro
 TABELAS = (
     compradores.ESTABELECIMENTOS,
     compradores.EMPRESAS,
     compradores.ENTRADAS,
-    compradores.FUNDOS,
+    compradores.FIPS_REGISTRADOS,
     compradores.CONTROLADAS,
 )
 
@@ -499,7 +507,7 @@ def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
 
 
 def test_o_fundo_barrado_tira_so_o_sinal_do_fundo(cliente, cenario, monkeypatch):
-    sem_fundos = tuple(t for t in TABELAS if t != compradores.FUNDOS)
+    sem_fundos = tuple(t for t in TABELAS if t != compradores.FIPS_REGISTRADOS)
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fundos))
     corpo = _get(cliente, cenario).json()
     assert corpo["unavailable_signals"] == ["fund_stake"]
@@ -522,8 +530,14 @@ def test_a_lista_de_fora_acompanha_o_portao_mesmo_com_a_resposta_guardada(
 
 
 def _so_reduzidas(pasta) -> None:
-    """Troca as tabelas inteiras do FRE e do registro de fundos pelas cópias reduzidas, como no VPS: montadas
-    e conferidas pela mesma trava do recorte."""
+    """Troca as tabelas inteiras do FRE e do registro de fundos pelas cópias reduzidas, como no VPS."""
+    _montar_reduzidas(pasta)
+    shutil.rmtree(pasta / compradores.CONTROLADAS)
+    shutil.rmtree(pasta / "fidc")
+
+
+def _montar_reduzidas(pasta) -> None:
+    """Monta as cópias reduzidas ao lado das tabelas inteiras, conferidas pela mesma trava do recorte."""
     con = duckdb.connect()
     empresas = sorted((pasta / compradores.EMPRESAS).glob("*.parquet"))
     origens = {
@@ -542,8 +556,6 @@ def _so_reduzidas(pasta) -> None:
     for nome, destino in destinos.items():
         montar[nome](con, origens[nome], empresas, destino)
     reduzidas.conferir_reduzidas(con, destinos, empresas)
-    shutil.rmtree(pasta / compradores.CONTROLADAS)
-    shutil.rmtree(pasta / "fidc")
 
 
 def test_so_com_as_copias_reduzidas_a_resposta_e_a_mesma(cliente, cenario, pasta):
@@ -588,3 +600,70 @@ def test_na_copia_reduzida_o_portao_segue_pela_tabela_inteira(
     resposta = _get(cliente, cenario)
     assert resposta.status_code == 200
     assert ABERTA not in _raizes(resposta)
+
+
+# ---------------------------------------------------------------- o FIP lê a tabela que o portão confere
+
+
+def _so_a_inteira_prontas() -> tuple[str, ...]:
+    return (
+        *(t for t in TABELAS if t != compradores.FIPS_REGISTRADOS),
+        compradores.FUNDOS,
+    )
+
+
+def test_o_fundo_nao_sai_pela_tabela_inteira_pronta(
+    cliente, cenario, pasta, monkeypatch
+):
+    # o registro inteiro tem fundo com CNPJ fora da lista sem pessoa: pronto ou não, ele não libera o sinal
+    _montar_reduzidas(pasta)
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: _regras(*_so_a_inteira_prontas())
+    )
+    resposta = _get(cliente, cenario)
+    assert resposta.status_code == 200
+    assert _comprador(resposta, FUNDO)["signals"] == ["took_stake"]
+    assert "fund_stake" in resposta.json()["unavailable_signals"]
+
+
+def test_com_as_duas_na_porta_o_fundo_sai_da_copia_e_a_resposta_e_a_mesma(
+    cliente, cenario, pasta
+):
+    antes = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    _montar_reduzidas(pasta)
+    # a inteira deixa de dizer FIP: se a leitura fosse por ela, o sinal sumiria
+    _gravar(
+        pasta / "fidc" / "cadastro" / "registro_fundo.parquet",
+        _fundos().assign(Tipo_Fundo="FIDC"),
+    )
+    depois = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    assert depois == antes
+    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
+        "took_stake",
+        "fund_stake",
+    ]
+
+
+def test_por_chave_so_com_a_tabela_inteira_o_fundo_e_recusado(cliente, cenario, pasta):
+    # sem a cópia na porta, o FIP nunca sai do registro inteiro (que tem CNPJ_Fundo fora da lista sem pessoa),
+    # nem com a inteira pronta: o sinal vem como não disponível e nada do registro de fundos vai na resposta
+    shutil.rmtree(pasta / compradores.FIPS_REGISTRADOS)
+    assert (pasta / "fidc" / "cadastro" / "registro_fundo.parquet").exists()
+    for prontas in (TABELAS, (*TABELAS, compradores.FUNDOS)):
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                rotas, "regras_da_api", lambda prontas=prontas: _regras(*prontas)
+            )
+            resposta = _get(cliente, cenario)
+        corpo = resposta.json()
+        assert resposta.status_code == 200
+        assert "fund_stake" in corpo["unavailable_signals"]
+        assert all("fund_stake" not in c["signals"] for c in corpo["buyers"])
+        assert "cvm-fidc-base" not in {f["source"] for f in corpo["sources"]}
+        assert _comprador(resposta, FUNDO)["signals"] == ["took_stake"]
