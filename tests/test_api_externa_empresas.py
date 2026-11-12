@@ -840,6 +840,24 @@ def test_com_dois_retratos_vale_o_mais_novo_ja_publico(tmp_path, cenario, monkey
     assert depois["registry_snapshot_month"]["value"] == RETRATO_PJ
 
 
+def test_raiz_fora_do_retrato_mais_novo_nao_leva_o_nome_de_um_mais_velho(
+    tmp_path, cenario, monkeypatch
+):
+    # P2 da revisão cruzada do #1075 (linha 867): a raiz está no retrato de maio, mas o de junho (já público)
+    # não a traz; o nome de maio não sai mais, embora a raiz não tenha retrato mais novo que ele
+    saiu = [
+        (EMPRESA[:8], "BETA COMERCIO LTDA", "2062", "05", "2025-05", "2025-05-21"),
+        ("99999999", "OUTRA LTDA", "2062", "05", RETRATO_PJ, "2025-06-21"),
+    ]
+    cliente = _base_sem_historico(tmp_path, monkeypatch, "saiu_da_lista", lista=saiu)
+    em_junho = _get(cliente, cenario, known_at="2025-06-15").json()
+    assert em_junho["legal_name"]["value"] == "BETA COMERCIO LTDA"
+    depois = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        depois
+    )
+
+
 def test_sem_o_historico_cortar_o_futuro_nao_muda_o_passado(
     tmp_path, cenario, monkeypatch
 ):

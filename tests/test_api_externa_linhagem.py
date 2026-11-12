@@ -269,13 +269,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             }, linha
             continue
         if linha.conjunto == vinculos.CONJUNTO:
-            # os vínculos leem só a razão social, e só da ponta que passou pela trava da rede (MEI e quem a
-            # rede trata como pessoa saem antes, `vinculos.LeitorDeVinculos._pontas`); na tabela, a razão
-            # social do empresário individual e do MEI já vem vazia (ADR 0106)
-            assert (tabela, linha.campo) == (
-                vinculos.HISTORICO_DOS_NOMES,
-                vinculos.NOME,
-            ), linha
+            # os vínculos leem só a razão social e o mês do retrato, da lista sem pessoa (linha 867), e só da
+            # ponta que passou pela trava da rede (MEI e quem a rede trata como pessoa saem antes,
+            # `vinculos.LeitorDeVinculos._pontas`); a natureza de pessoa também não dá nome
+            assert tabela == empresas.LISTA_DE_EMPRESAS, linha
+            assert linha.campo in {vinculos.NOME, empresas.RETRATO_DO_CADASTRO}, linha
             continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha

@@ -84,7 +84,8 @@ Assim, a chave não vai em texto aberto pela rede.
 - `tickerlab vinculos` traz os vínculos da empresa como eram no dia, de 1 a 3 saltos (`--profundidade`): de quem ela
   era controlada, coligada ou participada e quem ela controlava (pelo FRE, com a participação no capital) e a firma
   que a auditava (pelo FCA). `--tipo controlada|coligada|participada|auditor` (repete) filtra. Cada ponta sai com o
-  id da rede, a raiz do CNPJ e a razão social que valia no dia; pessoa física não sai. A tabela mostra `de` e `para`
+  id da rede, a raiz do CNPJ e a razão social do retrato mensal da Receita mais novo já público no dia, com o mês
+  dele; pessoa física não sai. A tabela mostra `de` e `para`
   em uma célula cada; o `--json` traz as pontas inteiras. Pede o conjunto `links` no contrato.
 - `tickerlab dossie` junta o perfil, os eventos, os vínculos e os comparáveis de um CNPJ numa saída só, com fonte e
   data; o perfil é obrigatório e uma seção que a chave não cobre ou sem dado aparece em `gaps` com o motivo. Gasta

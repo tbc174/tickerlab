@@ -1633,7 +1633,8 @@ def de_eventos_do_analista(
 
 
 class PontaDoVinculoV1(BaseModel):
-    """Uma ponta do vínculo: a raiz do CNPJ e a razão social que valia no dia (sem nome quando a Receita não tem)."""
+    """Uma ponta do vínculo: a raiz do CNPJ e a razão social do retrato mensal da Receita mais novo já público no
+    dia (sem nome quando a raiz não está nele)."""
 
     raiz_do_cnpj: str | None
     razao_social: CampoComFonteV1 | None
