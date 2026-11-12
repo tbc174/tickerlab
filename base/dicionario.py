@@ -5081,6 +5081,7 @@ TABELAS: dict[str, Tabela] = {
             "o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia "
             "em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte "
             "(o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes"
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="ANP: relação de concessionários (dados abertos)",
         familia_da_fonte="anp",
@@ -5267,6 +5268,7 @@ TABELAS: dict[str, Tabela] = {
             "consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde "
             "2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem "
             "nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="ANEEL: SAMP, mercado de distribuição (dados abertos, um Parquet por ano)",
         familia_da_fonte="aneel",

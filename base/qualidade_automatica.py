@@ -242,6 +242,30 @@ REGRAS: dict[str, Regra] = {
         },
     ),
     "fca_geral": Regra(chave=("cnpj", "referencia", "versao"), periodo="referencia"),
+    "aneel_samp": Regra(
+        chave=(
+            "competencia",
+            "cnpj",
+            "tipo_de_mercado",
+            "modalidade_tarifaria",
+            "subgrupo_tarifario",
+            "classe_de_consumo",
+            "subclasse_de_consumo",
+            "detalhe_do_consumidor",
+            "nucleo_ceg",
+            "posto_tarifario",
+            "opcao_de_energia",
+            "detalhe_do_mercado",
+            "visto_em",
+        ),
+        periodo="competencia",
+        opcionais={
+            "nucleo_ceg": "a fonte deixa em branco o CEG de algumas usinas da opção de energia Geração (2023 a 2026); as demais linhas trazem 0"
+        },
+    ),
+    "anp_concessionarios": Regra(
+        chave=("numero_do_contrato", "cnpj", "visto_em"), periodo="disponivel_em"
+    ),
     "entidades": Regra(chave=("id_entidade",)),
     "ligacoes": Regra(
         chave=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"),
