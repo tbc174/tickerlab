@@ -102,7 +102,7 @@ def test_posicao_so_aparece_depois_da_divulgacao():
 # sobre o bloco 4, e quase nada repetido entre os blocos. Amostra real de 06/2016: a Itaú Ações
 # Petrobras e o Caixa FMP-FGTS Petrobras III, que só informam a Petrobras no bloco 8
 PETROBRAS = "33.000.167/0001-01"
-CPF_DE_TESTE = "529.982.247-25"  # CPF válido usado só em testes (não é de ninguém)
+CPF_DE_TESTE = "888.000.001-27"  # CPF válido usado só em testes (não é de ninguém)
 
 
 def _bloco_8(conteudo: bytes) -> pd.DataFrame:

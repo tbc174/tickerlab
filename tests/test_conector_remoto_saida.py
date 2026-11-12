@@ -15,6 +15,7 @@ from conector_remoto.acesso import FORMATO_DA_CHAVE
 from src import chaves_da_api
 from src.api_externa.nomes import IDENTIFICADORES, NOMES_DE_FORA
 from src.portao_externo import PALAVRAS_QUE_NUNCA_SAEM
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, OUTRO_CPF_DE_TESTE, formatado
 
 PASTA_DO_CONECTOR = Path(__file__).resolve().parent.parent / "conector_remoto"
 
@@ -47,11 +48,11 @@ def test_chave_de_pessoa_e_achada_em_qualquer_forma(chave):
 @pytest.mark.parametrize(
     "texto",
     [
-        "123.456.789-09",
+        formatado(CPF_DE_TESTE),
         "sócio ***123456**",
         "***.123.456-**",
         "fale com ana@exemplo.com.br",
-        "documento 11144477735",
+        f"documento {OUTRO_CPF_DE_TESTE}",
     ],
 )
 def test_cpf_inteiro_ou_mascarado_e_email_no_texto(texto):

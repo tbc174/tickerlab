@@ -69,7 +69,7 @@ OUTRA = _cnpj("33000167")
 COM_LETRAS = _cnpj("12ABC345", "01DE")
 MEI = _cnpj("44555666")
 INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
-CPF = "12345678909"
+CPF = "88800000046"
 RAZAO_SOCIAL = "EMPRESA DE MENTIRA LTDA"
 
 
@@ -448,11 +448,11 @@ def test_anatel_com_acento_no_nome_das_colunas(banco, tmp_path, monkeypatch):
         "CNPJ ou CPF": EMPRESA,
         "Tipo de Entidade": "Outorgada",
         "Tipo de Outorga": "Serviços de Interesse Restrito - SIR",
-        "Fistel da Outorga": "50437303314",
+        "Fistel da Outorga": "88800000631",
         "Processo SEI da Outorga": "53500036134202046",
         "Data Inclusão da Outorga": "12/02/2021",
         "Código e Nome do Serviço da Notificação": "076 - Serviço de Rede Privado",
-        "Fistel da Notificação": "50413785505",
+        "Fistel da Notificação": "88800000712",
         "Nome do Munícipio do Endereço Sede": "PORTO ALEGRE",
         "UF do Endereço Sede": "RS",
     }
@@ -465,7 +465,7 @@ def test_anatel_com_acento_no_nome_das_colunas(banco, tmp_path, monkeypatch):
     )
     _montar(banco, tmp_path)
     gravada = _tabela(tmp_path, "outorgas").iloc[0]
-    assert gravada["id_na_fonte"] == "50437303314|50413785505"
+    assert gravada["id_na_fonte"] == "88800000631|88800000712"
     assert gravada["municipio"] == "PORTO ALEGRE"
     assert gravada["concedido_em"] == date(2021, 2, 12)
     assert gravada["descricao"] == "076 - Serviço de Rede Privado"

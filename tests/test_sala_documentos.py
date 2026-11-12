@@ -24,6 +24,7 @@ from src.banco.modelo import documentos_da_sala, metadata, operacoes
 from src.banco.usuarios import entrar
 from src.sala import arquivos, cofre, documentos, guarda, leitura
 from tests import ajudantes_da_sala as gerar
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, OUTRO_CPF_DE_TESTE, formatado
 
 HOJE = date(2026, 10, 21)
 NOME_SENSIVEL = "Laudo da Fulana de Tal 123.pdf"
@@ -165,9 +166,15 @@ def test_dois_envios_ao_mesmo_tempo_numa_sala_nova_ficam_com_a_mesma_chave(
 @pytest.mark.parametrize(
     ("nome", "guardado"),
     [
-        ("Procuração 529.982.247-25.pdf", "Procuração ***.***.***-25.pdf"),
-        ("cpf_52998224725.pdf", "cpf_***.***.***-25.pdf"),
-        ("529.982.247-25 e 111.444.777-35.pdf", "***.***.***-25 e ***.***.***-35.pdf"),
+        (
+            f"Procuração {formatado(CPF_DE_TESTE)}.pdf",
+            f"Procuração ***.***.***-{CPF_DE_TESTE[9:]}.pdf",
+        ),
+        (f"cpf_{CPF_DE_TESTE}.pdf", f"cpf_***.***.***-{CPF_DE_TESTE[9:]}.pdf"),
+        (
+            f"{formatado(CPF_DE_TESTE)} e {formatado(OUTRO_CPF_DE_TESTE)}.pdf",
+            f"***.***.***-{CPF_DE_TESTE[9:]} e ***.***.***-{OUTRO_CPF_DE_TESTE[9:]}.pdf",
+        ),
         ("Balanço 2025.pdf", "Balanço 2025.pdf"),  # sem CPF: nada muda
         ("contrato 12345678901.pdf", "contrato 12345678901.pdf"),  # dígito não confere
     ],
@@ -360,7 +367,7 @@ def test_ler_guarda_o_texto_cifrado_e_com_o_cpf_mascarado(motor, ana, raiz):
         texto = documentos.texto_do_documento(conexao, **_ids(ana, documento))
     assert lido.situacao == "lido" and lido.paginas == 2
     assert lido.lido_por == leitura.VERSAO_DO_LEITOR
-    assert texto == ["Socio CPF ***.***.***-25", "Receita 100"]
+    assert texto == [f"Socio CPF ***.***.***-{gerar.CPF_VALIDO[-2:]}", "Receita 100"]
     no_disco = guarda.caminho_do_documento(
         raiz, documento.operacao_id, documento.id, "texto"
     )

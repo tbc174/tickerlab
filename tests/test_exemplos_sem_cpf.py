@@ -12,6 +12,14 @@ o CPF de alguém de verdade. O teste varre `dados_de_exemplo/` e `tests/arquivos
    falso; numa coluna de documento ele é um CPF (o CNPJ tem 14 dígitos; os dados abertos da CVM e do PNCP
    põem o CPF do devedor ou do fornecedor pessoa física na coluna do CNPJ).
 
+3. **No código dos testes** (`tests/**/*.py`, linha 886 da fila): 11 dígitos em grupos de 3, 3, 3 e 2, com
+   ou sem separador entre eles (até 3 caracteres como ponto, hífen, barra, espaço, travessão ou sublinhado, ou
+   o `\\n` escrito no código), com o dígito certo, em qualquer lugar. O teste que precisa de um CPF que confere (máscara, detector de CPF no texto, trava de
+   pessoa física) monta-o na hora com `tests/ajudantes_de_cpf.py`, a partir de nove dígitos inventados.
+4. **CPF completado com zeros** no código dos testes: 14 dígitos seguidos que começam com "000" e cujos 11
+   últimos conferem como CPF (é assim que o PIT do TCE e o SUS mandam o CPF). Se os 14 também conferem como
+   CNPJ (o do Banco do Brasil começa com zeros), o número é tratado como CNPJ e não conta.
+
 A mensagem de erro diz só o arquivo, a linha e a coluna, nunca o valor. Para consertar, troque os 11 dígitos
 por uma sequência claramente inventada com o dígito que não confere (trocar só o último dígito não basta: os
 dois dígitos verificadores saem dos nove primeiros, e quem lê refaz o CPF numa conta). O leitor continua
@@ -31,7 +39,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base.cnpj import cpf_confere
+from base.cnpj import cpf_confere, dv_confere
 
 RAIZ = Path(__file__).resolve().parents[1]
 PASTAS = (RAIZ / "dados_de_exemplo", RAIZ / "tests" / "arquivos")
@@ -174,6 +182,99 @@ def achados() -> list[str]:
                     )
                 )
     return encontrados
+
+
+PASTA_DOS_TESTES = RAIZ / "tests"
+# entre os grupos: nada, "\n" escrito no código, ou até 3 caracteres que não são letra, dígito, vírgula, aspas
+# nem parênteses ou colchetes (ponto, hífen, barra, espaço, espaço não separável, travessão, sublinhado,
+# " . "...); a vírgula e as aspas ficam de fora para uma lista de números ([100, 101, 102, 99]) não contar
+_SEPARADOR = r"(?:\\n|(?:[^\w,'\"()\[\]]|_){0,3})"
+CPF_NO_CODIGO = re.compile(
+    rf"(?<!\d)(?<!\d[.,])(\d{{3}}{_SEPARADOR}\d{{3}}{_SEPARADOR}\d{{3}}{_SEPARADOR}\d{{2}})(?!\d)"
+)
+CPF_COMPLETADO_COM_ZEROS = re.compile(r"(?<!\d)000(\d{11})(?!\d)")
+
+
+def achados_no_codigo(nome: str, texto: str) -> Iterator[str]:
+    """Onde há CPF que confere no código de um teste (regras 3 e 4): 'arquivo:linha:coluna', sem o valor."""
+    for numero, linha in enumerate(texto.splitlines(), start=1):
+        for achado in CPF_NO_CODIGO.finditer(linha):
+            if e_cpf_valido(achado.group(1).replace("\\n", "")):
+                yield f"{nome}:{numero}:{achado.start() + 1}"
+        for achado in CPF_COMPLETADO_COM_ZEROS.finditer(linha):
+            # os 14 dígitos que também conferem como CNPJ (o do Banco do Brasil começa com zeros) são CNPJ
+            if e_cpf_valido(achado.group(1)) and not dv_confere(achado.group(0)):
+                yield f"{nome}:{numero}:{achado.start() + 1}"
+
+
+def achados_nos_testes() -> list[str]:
+    encontrados: list[str] = []
+    for arquivo in sorted(PASTA_DOS_TESTES.rglob("*.py")):
+        nome = arquivo.relative_to(RAIZ).as_posix()
+        encontrados.extend(achados_no_codigo(nome, arquivo.read_text(encoding="utf-8")))
+    return encontrados
+
+
+def test_nenhum_teste_guarda_cpf_valido():
+    encontrados = achados_nos_testes()
+    assert not encontrados, (
+        "CPF com dígito verificador certo no código dos testes (monte-o na hora com tests/ajudantes_de_cpf.py, "
+        "ou troque os 11 dígitos por uma sequência inventada com o dígito que não confere; o valor não é "
+        "mostrado de propósito):\n" + "\n".join(encontrados)
+    )
+
+
+def test_a_varredura_do_codigo_acha_o_cpf_em_qualquer_forma_e_nao_mostra_o_valor():
+    cpf = _cpf_inventado()
+    formas = [
+        cpf,
+        _formatado(cpf),
+        f"{cpf[:3]} {cpf[3:6]} {cpf[6:9]} {cpf[9:]}",
+        f"{cpf[:3]}/{cpf[3:6]}/{cpf[6:9]}/{cpf[9:]}",
+        f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}–{cpf[9:]}",
+        f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}\\n{cpf[9:]}",
+        f"{cpf[:3]} {cpf[3:6]} {cpf[6:9]} {cpf[9:]}",
+        f"{cpf[:3]} . {cpf[3:6]} . {cpf[6:9]} - {cpf[9:]}",
+        f"{cpf[:3]}_{cpf[3:6]}_{cpf[6:9]}_{cpf[9:]}",
+    ]
+    for forma in formas:
+        achado = list(achados_no_codigo("t.py", f'x = "a {forma} b"'))
+        assert achado == ["t.py:1:8"], forma
+        assert cpf[3:9] not in achado[0]
+    assert list(achados_no_codigo("t.py", f'x = "N.{cpf}"')) == ["t.py:1:8"]
+    assert not list(achados_no_codigo("t.py", f'x = "{_formatado(_estragado(cpf))}"'))
+    assert not list(achados_no_codigo("t.py", f'x = "1{cpf}"'))
+    assert not list(achados_no_codigo("t.py", f'x = "1.{cpf[:9]},{cpf[9:]}"'))
+
+
+def test_a_varredura_do_codigo_acha_o_cpf_completado_com_zeros_que_nao_passa_como_cnpj():
+    cpf = _cpf_inventado()
+    assert not dv_confere("000" + cpf)  # o inventado, com os zeros, não passa como CNPJ
+    assert list(achados_no_codigo("t.py", f'x = "000{cpf}"')) == ["t.py:1:6"]
+    assert not list(achados_no_codigo("t.py", f'x = "000{_estragado(cpf)}"'))
+    assert not list(achados_no_codigo("t.py", f'x = "000{_cpf_que_passa_como_cnpj()}"'))
+
+
+def _cpf_que_passa_como_cnpj() -> str:
+    """Um CPF que confere e que, com "000" na frente, também confere como CNPJ (aí ele conta como CNPJ)."""
+    for numero in range(
+        1_112_222, 1_212_222
+    ):  # começa com 00: os pesos do CNPJ dão os mesmos dígitos
+        nove = f"{numero:09d}"
+        cpf = next(
+            f"{nove}{f:02d}" for f in range(100) if cpf_confere(f"{nove}{f:02d}")
+        )
+        if dv_confere("000" + cpf):
+            return cpf
+    raise AssertionError("nenhum passa como CNPJ")  # pragma: no cover
+
+
+def test_a_varredura_do_codigo_nao_conta_lista_de_numeros():
+    cpf = _cpf_inventado()
+    lista = f"[{cpf[:3]}, {cpf[3:6]}, {cpf[6:9]}, {cpf[9:]}]"
+    chamada = f'linha({cpf[:3]}, "{cpf[3:9]}", {cpf[9:]})'
+    assert not list(achados_no_codigo("t.py", lista))
+    assert not list(achados_no_codigo("t.py", chamada))
 
 
 def test_nenhum_exemplo_guarda_cpf_valido():

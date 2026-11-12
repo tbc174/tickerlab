@@ -5,17 +5,20 @@ import pandas as pd
 import pytest
 
 from base.pessoas import chave, portao, proibidas, tabelas
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado, meio
+
+MASCARADO = f"***{meio(CPF_DE_TESTE)}**"  # o CPF de teste como a Receita o mostra
 
 CHAVE = b"k" * 32
 
 
 def test_mascara_deixa_os_6_do_meio():
-    assert chave.mascarar_cpf("529.982.247-25") == "***982247**"
-    assert chave.mascarar_cpf("52998224725") == "***982247**"
+    assert chave.mascarar_cpf(formatado(CPF_DE_TESTE)) == MASCARADO
+    assert chave.mascarar_cpf(CPF_DE_TESTE) == MASCARADO
 
 
 def test_mascara_e_idempotente_e_recusa_lixo():
-    assert chave.mascarar_cpf("***982247**") == "***982247**"
+    assert chave.mascarar_cpf(MASCARADO) == MASCARADO
     with pytest.raises(ValueError):
         chave.mascarar_cpf("123")
 
@@ -31,16 +34,16 @@ def test_chave_usa_primeiro_e_ultimo_nome():
 
 
 def test_id_igual_entre_cpf_inteiro_e_mascarado():
-    a = chave.id_pessoa("529.982.247-25", "Ana", "Lima", CHAVE)
-    b = chave.id_pessoa("***982247**", "ANA", "lima", CHAVE)
+    a = chave.id_pessoa(formatado(CPF_DE_TESTE), "Ana", "Lima", CHAVE)
+    b = chave.id_pessoa(MASCARADO, "ANA", "lima", CHAVE)
     assert a == b
-    assert len(a) == 32 and "982247" not in a
+    assert len(a) == 32 and meio(CPF_DE_TESTE) not in a
 
 
 def test_id_muda_com_a_chave_e_com_o_nome():
-    base = chave.id_pessoa("***982247**", "ANA", "LIMA", CHAVE)
-    assert base != chave.id_pessoa("***982247**", "ANA", "LIMA", b"z" * 32)
-    assert base != chave.id_pessoa("***982247**", "ANA", "SOUZA", CHAVE)
+    base = chave.id_pessoa(MASCARADO, "ANA", "LIMA", CHAVE)
+    assert base != chave.id_pessoa(MASCARADO, "ANA", "LIMA", b"z" * 32)
+    assert base != chave.id_pessoa(MASCARADO, "ANA", "SOUZA", CHAVE)
 
 
 def test_sem_chave_nao_roda(tmp_path, monkeypatch):
@@ -64,7 +67,7 @@ def _brutas():
             "nome_socio": ["MARIA DA SILVA", "JOHN SMITH"],
             "qualificacao": ["49", "37"],
             "data_entrada": pd.to_datetime(["2019-03-01", None]),
-            "cpf_mascarado": ["***982247**", "00000000000"],
+            "cpf_mascarado": [MASCARADO, "00000000000"],
         }
     )
 
@@ -90,7 +93,7 @@ def test_nome_sem_letra_nao_vira_pessoa_e_o_id_fica_vazio():
 
 
 def test_cpf_so_mascarado():
-    inteiro = _brutas().assign(cpf_mascarado=["52998224725", "00000000000"])
+    inteiro = _brutas().assign(cpf_mascarado=[CPF_DE_TESTE, "00000000000"])
     with pytest.raises(ValueError):
         tabelas.montar_pessoas(inteiro, "rfb-cnpj", CHAVE)
 
@@ -169,9 +172,9 @@ def test_coluna_proibida_e_achada():
 
 
 def test_conteudo_parecido_com_cpf_quebra():
-    achados = proibidas.procurar(pd.DataFrame({"doc": ["529.982.247-25"]}), "t")
+    achados = proibidas.procurar(pd.DataFrame({"doc": [formatado(CPF_DE_TESTE)]}), "t")
     assert achados
-    assert proibidas.procurar(pd.DataFrame({"doc": ["52998224725"]}), "t")
+    assert proibidas.procurar(pd.DataFrame({"doc": [CPF_DE_TESTE]}), "t")
 
 
 def test_cnpj_nao_e_confundido_com_cpf():
@@ -186,7 +189,7 @@ def test_email_de_pessoa_quebra():
 
 
 def test_cpf_mascarado_passa():
-    assert proibidas.procurar(pd.DataFrame({"doc": ["***982247**"]}), "t") == []
+    assert proibidas.procurar(pd.DataFrame({"doc": [MASCARADO]}), "t") == []
 
 
 def test_nenhuma_tabela_fora_de_pessoas_tem_coluna_proibida():

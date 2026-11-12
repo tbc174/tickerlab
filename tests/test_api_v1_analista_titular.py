@@ -71,7 +71,7 @@ def test_membro_da_organizacao_com_a_permissao_ve_o_titular(cliente, casa):
     assert dados["estado"] == analista_pessoas.PRONTA
     assert dados["titulares"] == [{"nome": "BELTRANO EXEMPLO"}]
     assert dados["total"] == 1
-    assert "id_pessoa" not in resposta.text and "52998224725" not in resposta.text
+    assert "id_pessoa" not in resposta.text and "88800000127" not in resposta.text
     assert dados["fonte"]["fonte"] == "rfb-cnpj" and dados["fonte"]["mes_do_retrato"]
     assert dados["limites"] == list(pessoa.LIMITES_DO_TITULAR)
     assert resposta.headers["Cache-Control"] == "no-store"
@@ -191,7 +191,7 @@ def test_titular_que_se_opos_nao_aparece_para_a_organizacao_com_a_permissao(
 ):
     cnpj, bruto = montar_de_mentira._acervo(tmp_path / "origem2")
     destino = tmp_path / "fora2" / "acervo_pessoa"
-    opostos = montar_de_mentira._opostos(("52998224725", "BELTRANO EXEMPLO"))
+    opostos = montar_de_mentira._opostos(("88800000127", "BELTRANO EXEMPLO"))
     montar_de_mentira.montar.carregar(
         cnpj, bruto, destino, montar_de_mentira.AGORA, opostos
     )

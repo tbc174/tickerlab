@@ -57,7 +57,7 @@ def test_secao_fora_do_registro_barra_a_amostra(tmp_path: Path) -> None:
 
 def test_cpf_na_ficha_barra_a_amostra(tmp_path: Path) -> None:
     def com_cpf(bruta: dict) -> None:
-        bruta["secoes"][0]["paragrafos"].append("Conselheiro 123.456.789-09")
+        bruta["secoes"][0]["paragrafos"].append("Conselheiro 888.000.000-46")
 
     with pytest.raises(dossie_da_base.PessoaNaFichaError):
         amostra.montar(_ficha_alterada(tmp_path, com_cpf))

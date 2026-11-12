@@ -1,7 +1,7 @@
 """Leitores de GO, MS e capital de SP (base/contratos_go_ms_sp.py): só pessoa jurídica, sem nomes.
 
 Recortes no formato dos cabeçalhos medidos em 03/11/2026, com nomes e documentos inventados. CNPJ
-11.222.333/0001-81 tem DV certo; ...-82 é o mesmo com DV errado; o CPF 123.456.789-09 é o de documentação.
+11.222.333/0001-81 tem DV certo; ...-82 é o mesmo com DV errado; o CPF 888.000.000-46 é o de documentação.
 """
 
 from datetime import date
@@ -49,7 +49,7 @@ def test_ms_descarta_pessoa_fisica_e_nao_le_o_nome_do_credor() -> None:
     corpo = _csv(
         cabecalho,
         f"1,SES,{resto},{CNPJ},EMPRESA NAO ENTRA,2016NE000123,Dispensa,1000.50,900.00,800.00",
-        f"2,SES,{resto},123.456.789-09,PESSOA FISICA,2016NE000124,Dispensa,10,10,10",
+        f"2,SES,{resto},888.000.000-46,PESSOA FISICA,2016NE000124,Dispensa,10,10,10",
         f"3,SES,{resto},***456789**,OUTRA PF,2016NE000125,Dispensa,10,10,10",
     )
     lido = t.ler_ms_despesas(corpo, 2016, 11, HOJE)
@@ -72,7 +72,7 @@ def test_sp_capital_acha_o_cabecalho_por_apelido_em_cp1252_e_ponto_e_virgula() -
         "Início Vigência;Fim Vigência;Valor Total",
         f"001/2024;6010.2024/0001;SMS;{CNPJ};EMPRESA NAO ENTRA;OBJETO NAO ENTRA;"
         "02/01/2024;03/01/2024;02/01/2025;1.234,56",
-        "002/2024;6010.2024/0002;SMS;123.456.789-09;PF;OBJ;02/01/2024;03/01/2024;02/01/2025;10,00",
+        "002/2024;6010.2024/0002;SMS;888.000.000-46;PF;OBJ;02/01/2024;03/01/2024;02/01/2025;10,00",
         codificacao="cp1252",
     )
     lido = t.ler_sp_capital_contratos(corpo, HOJE)
@@ -106,7 +106,7 @@ def test_sp_capital_pula_as_linhas_de_titulo_e_le_o_cabecalho_real_de_2024() -> 
         '"SECRETARIA X";"273";"21/12/2023";"12 M";"OBJETO NAO ENTRA";"DISPENSA  ";'
         '"6022.2023/0005315-6";"11.222.333/0001-81";"EMPRESA NAO ENTRA";"36.500,00"',
         '"SECRETARIA X";"274";"21/12/2023";"12 M";"OBJ";"DISPENSA";"6022.2023/1";'
-        '"123.456.789-09";"PF NAO ENTRA";"10,00"',
+        '"888.000.000-46";"PF NAO ENTRA";"10,00"',
     )
     lido = t.ler_sp_capital_contratos(corpo, HOJE)
     assert lido.descartadas == 1

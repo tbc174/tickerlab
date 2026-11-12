@@ -87,7 +87,7 @@ def test_completo_nao_transforma_cpf_em_cnpj():
     """Coluna que mistura CPF e CNPJ: só os 14 contam (o CPF não ganha zeros e vira "CNPJ")."""
     assert cnpj.completo("12.abc.345/01de-35") == EXEMPLO_DA_RECEITA
     assert cnpj.completo("33.000.167/0001-01") == "33000167000101"
-    assert cnpj.completo("123.456.789-09") is None
+    assert cnpj.completo("888.000.000-46") is None
     assert cnpj.completo("03645752") is None
     assert cnpj.completo(None) is None
 

@@ -5,6 +5,7 @@ from hypothesis import strategies as st
 
 from src.sala import mascara
 from tests.ajudantes_da_sala import CPF_INVALIDO, CPF_VALIDO
+from tests.ajudantes_de_cpf import CPF_DE_TESTE
 
 
 def _verificador(digitos: list[int]) -> int:
@@ -24,9 +25,9 @@ def _cpf(nove: list[int]) -> str:
 
 
 def test_mascara_o_cpf_formatado_e_o_so_numeros():
-    texto = f"Sócio: Fulano, CPF {CPF_VALIDO}; procurador CPF 52998224725."
+    texto = f"Sócio: Fulano, CPF {CPF_VALIDO}; procurador CPF {CPF_DE_TESTE}."
     assert mascara.mascarar_cpfs(texto) == (
-        "Sócio: Fulano, CPF ***.***.***-25; procurador CPF ***.***.***-25."
+        f"Sócio: Fulano, CPF ***.***.***-{CPF_DE_TESTE[9:]}; procurador CPF ***.***.***-{CPF_DE_TESTE[9:]}."
     )
 
 
@@ -36,7 +37,7 @@ def test_nao_mexe_no_que_nao_e_cpf():
         "Receita de 1.234.567.890,12 no ano",  # valor com pontos
         "CNPJ 11.222.333/0001-81",
         "Conta 123456789012 (12 dígitos)",
-        "Valor 52998224725,00 em reais",  # 11 dígitos seguidos de decimal
+        f"Valor {CPF_DE_TESTE},00 em reais",  # 11 dígitos seguidos de decimal
         "Telefone 11999998888",  # 11 dígitos que não fecham a conta do CPF
         "Todos iguais 111.111.111-11",
     ]
@@ -45,8 +46,8 @@ def test_nao_mexe_no_que_nao_e_cpf():
 
 
 def test_cpf_valido_e_invalido():
-    assert mascara.e_cpf_valido("52998224725")
-    assert not mascara.e_cpf_valido("52998224726")
+    assert mascara.e_cpf_valido(CPF_DE_TESTE)
+    assert not mascara.e_cpf_valido(CPF_INVALIDO.replace(".", "").replace("-", ""))
     assert not mascara.e_cpf_valido("00000000000")
 
 

@@ -193,8 +193,8 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
 @pytest.mark.parametrize(
     "cnpj",
     [
-        "123.456.789-09",
-        "12345678909",
+        "888.000.000-46",
+        "88800000046",
         "../catalog",
         "11111111000191/../../usage",
         "x" * 14,

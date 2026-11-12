@@ -92,7 +92,13 @@ def com_aviso_de_piloto(texto: str, dado: object) -> str:
 # A API diz o que a organização não pode consultar em campos `unavailable_<o que>` (lista; a lista de dados
 # não diz nada sobre eles). Rótulo da tela por campo; o que não está aqui sai pelo próprio nome do campo.
 PREFIXO_NAO_DISPONIVEL = "unavailable_"
-ROTULOS_NAO_DISPONIVEIS = {"unavailable_event_types": "tipos de evento"}
+ROTULOS_NAO_DISPONIVEIS = {
+    "unavailable_event_types": "tipos de evento",
+    "unavailable_link_types": "tipos de vínculo",
+    "unavailable_signals": "sinais de comprador",
+    "unavailable_filings": "entregas à CVM",
+    "unavailable_figures": "números dos comparáveis",
+}
 
 
 def nao_disponiveis(dado: object) -> dict[str, list[str]]:
