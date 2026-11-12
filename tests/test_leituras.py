@@ -531,3 +531,16 @@ def test_fundamentos_mostra_o_que_mudou_nos_riscos(banco):
     metricas = {m.label: m.value for m in app.metric}
     assert metricas["Frases novas"] == "1"
     assert "Lazy Prices" in " ".join(c.value for c in app.caption)
+
+
+def test_lote_troca_o_cpf_do_assunto_pela_marca(tmp_path):
+    """O assunto do lote vai ao modelo de leitura: CPF inventado (que confere) sai antes."""
+    caminho = _lote_sem_protocolo(tmp_path)
+    caminho.write_text(
+        caminho.read_text(encoding="utf-8").replace(
+            "Fato Relevante", "Fato do sócio 123.456.789-09"
+        ),
+        encoding="utf-8",
+    )
+    [(*_, assunto)] = atualizar_leituras_cvm.ler_lote(caminho)
+    assert assunto == "Fato do sócio [CPF omitido]"

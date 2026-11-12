@@ -211,3 +211,14 @@ def test_referencia_depois_da_entrega_nao_tira_a_tabela_do_contrato(tmp_path):
     )
     problemas = conferir(tabela, "ma_candidatos").problemas
     assert not [p for p in problemas if p.startswith("datas")]
+
+
+def test_cpf_no_assunto_nao_vai_para_os_candidatos():
+    """O CPF (inventado, com verificadores que conferem) que a empresa escreve no assunto vira a marca."""
+    tabela = _candidatos(
+        _linha(*FATO, "Incorporação da Beta pelo sócio CPF 123.456.789-09 hoje")
+    )
+    assert (
+        tabela.iloc[0]["assunto"]
+        == "Incorporação da Beta pelo sócio CPF [CPF omitido] hoje"
+    )
