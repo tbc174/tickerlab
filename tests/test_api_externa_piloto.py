@@ -273,9 +273,10 @@ def _linhas_misturadas() -> tuple[portao.LinhaDeDireito, ...]:
     )
 
 
-def test_resposta_com_campo_pronto_e_campo_de_piloto_marca_cada_um(
+def test_resposta_com_campo_pronto_e_campo_de_piloto_marca_todos(
     duas, monkeypatch
 ) -> None:
+    """Com um campo de piloto na resposta, o campo pronto também leva a marca (D11.3, leitura mais estreita)."""
     cliente, chaves, _ator, _org = duas
     monkeypatch.setattr(
         rotas,
@@ -293,7 +294,7 @@ def test_resposta_com_campo_pronto_e_campo_de_piloto_marca_cada_um(
         prontos = [envelope for nome, envelope in linha.items() if nome != "value"]
         assert prontos
         assert all(
-            "pilot" not in envelope and "pilot_notice" not in envelope
+            envelope["pilot"] is True and envelope["pilot_notice"] == AVISO_DE_PILOTO
             for envelope in prontos
         )
     assert do_piloto["pilot_notice"] == AVISO_DE_PILOTO
@@ -373,7 +374,6 @@ def test_registro_anota_cada_caminho() -> None:
         assert piloto.registrar("cvm-dfp", "conta", Decisao(True, Motivo.LIBERADO))
         assert not piloto.registrar("cvm-dfp", "cpf", Decisao(False, Motivo.NUNCA_SAI))
     assert liberados.piloto == {("cvm-dfp", "valor")}
-    assert liberados.cheio == {("cvm-dfp", "conta")}
     assert (
         piloto.registrar("cvm-dfp", "valor", LIBERADO_PELO_PILOTO) is False
     )  # fechou com o `with`
@@ -383,11 +383,10 @@ def _envelope(fonte: str = "cvm-dfp") -> dict:
     return {"valor": 1, "fonte": fonte, "publico_em": "2026-01-01", "visto_em": None}
 
 
-def test_na_duvida_o_envelope_leva_a_marca() -> None:
-    """Envelope com nome que não é o do campo (lista, mediana...) leva a marca se há piloto na resposta."""
-    liberados = piloto.Liberados(
-        cheio={("cvm-dfp", "conta")}, piloto={("cvm-dfp", "medianas")}
-    )
+def test_com_piloto_todo_envelope_leva_a_marca() -> None:
+    """Com piloto na resposta, todo envelope leva a marca: o de outro nome (lista, mediana...), o de outra fonte
+    e o da prontidão cheia (D11.3, leitura mais estreita)."""
+    liberados = piloto.Liberados(piloto={("cvm-dfp", "medianas")})
     corpo = {
         "medianas": [_envelope()],
         "conta": _envelope(),
@@ -396,16 +395,14 @@ def test_na_duvida_o_envelope_leva_a_marca() -> None:
     marcado = piloto.marcar(corpo, liberados)
     assert marcado["medianas"][0][piloto.MARCA] is True
     assert marcado["outra"][piloto.AVISO] == AVISO_DE_PILOTO
-    assert piloto.MARCA not in marcado["conta"]
+    assert marcado["conta"][piloto.MARCA] is True
     assert marcado[piloto.AVISO] == AVISO_DE_PILOTO
 
 
 def test_campo_de_piloto_que_so_filtrou_marca_todos_os_blocos() -> None:
     """D11.3: o campo de piloto que não virou bloco (a data que escolhe quais compradores saem) tocou blocos
     que não se sabe quais; todos levam a marca, inclusive o da prontidão cheia."""
-    liberados = piloto.Liberados(
-        cheio={("cvm-dfp", "conta")}, piloto={("rfb-cnpj", "data_entrada")}
-    )
+    liberados = piloto.Liberados(piloto={("rfb-cnpj", "data_entrada")})
     marcado = piloto.marcar({"conta": _envelope(), "lista": [_envelope()]}, liberados)
     assert marcado["conta"][piloto.MARCA] is True
     assert marcado["conta"][piloto.AVISO] == AVISO_DE_PILOTO
@@ -413,23 +410,22 @@ def test_campo_de_piloto_que_so_filtrou_marca_todos_os_blocos() -> None:
     assert marcado[piloto.AVISO] == AVISO_DE_PILOTO
 
 
-def test_campo_de_piloto_dentro_do_valor_de_outro_bloco_conta_como_bloco() -> None:
-    """O bloco de piloto aninhado no valor de outro envelope é visto: a exceção da prontidão cheia vale."""
-    liberados = piloto.Liberados(
-        cheio={("cvm-dfp", "conta")}, piloto={("rfb-cnpj", "porte")}
-    )
+def test_envelope_dentro_do_valor_de_outro_tambem_leva_a_marca() -> None:
+    """O bloco aninhado no valor de outro envelope é visto e marcado, como o de fora."""
+    liberados = piloto.Liberados(piloto={("rfb-cnpj", "porte")})
     corpo = {
         "conta": _envelope(),
         "empresa": {**_envelope("rfb-cnpj"), "valor": {"porte": _envelope("rfb-cnpj")}},
     }
     marcado = piloto.marcar(corpo, liberados)
-    assert piloto.MARCA not in marcado["conta"]
+    assert marcado["conta"][piloto.MARCA] is True
+    assert marcado["empresa"][piloto.MARCA] is True
     assert marcado["empresa"]["valor"]["porte"][piloto.MARCA] is True
 
 
 def test_sem_piloto_marcar_devolve_o_mesmo_corpo() -> None:
     corpo = {"conta": _envelope()}
-    assert piloto.marcar(corpo, piloto.Liberados(cheio={("cvm-dfp", "conta")})) is corpo
+    assert piloto.marcar(corpo, piloto.Liberados()) is corpo
 
 
 def test_os_nomes_da_marca_tem_traducao() -> None:
