@@ -327,14 +327,14 @@ class TestPessoaFisicaFora:
     @given(st.integers(min_value=10**8, max_value=10**9 - 1), st.booleans())
     @example(
         int(CPF_AMBIGUO[:9]), True
-    )  # o caso raro (1,4%) que o sorteio quase nunca acha
+    )  # o caso raro (a base começa com 00, e o sorteio começa em 10**8: nunca o acha)
     def test_propriedade_nenhum_cpf_sai_nas_colunas_de_cnpj(self, base, com_zeros):
         """Para qualquer CPF válido, puro ou com "000", os 11 dígitos não aparecem em `cnpj` nem em
         `cnpj_mantenedora`; a única exceção é a matriz (filial 0001) que também é CNPJ válido."""
         validos = [
-            f"{base}{dv:02d}"
+            f"{base:09d}{dv:02d}"
             for dv in range(100)
-            if cnpj_de_teste.cpf_confere(f"{base}{dv:02d}")
+            if cnpj_de_teste.cpf_confere(f"{base:09d}{dv:02d}")
         ]
         assume(validos)  # 111111111 e afins não têm CPF válido
         cpf = validos[0]

@@ -133,7 +133,7 @@ def test_email_nao_informado_nao_conta_como_descarte():
 
 
 @pytest.mark.parametrize("campo", ["logradouro", "numero", "complemento", "bairro"])
-@pytest.mark.parametrize("cpf", [CPF_VALIDO, "888.000.001-27", "***.982.247-**"])
+@pytest.mark.parametrize("cpf", [CPF_VALIDO, "888.000.001-27", "***.000.001-**"])
 def test_cpf_escrito_no_endereco_sai(campo, cpf):
     tabela, _ = _ler(_linha(**{campo: f"CASA {cpf} FUNDOS"}))
     assert tabela.loc[0, campo] == "CASA FUNDOS"

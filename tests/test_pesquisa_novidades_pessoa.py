@@ -160,7 +160,7 @@ def test_a_busca_de_pessoa_do_conector_e_a_de_src_dizem_o_mesmo():
     amostras = [
         "888.000.001-27",
         "88800000127",
-        "***.982.247-**",
+        "***.000.001-**",
         "fulano@exemplo.invalid",
         "11222333000181",
         "Parque Exemplo 120 MW",
