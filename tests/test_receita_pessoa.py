@@ -12,8 +12,10 @@ import pandas as pd
 import pytest
 
 from base import receita_pessoa as rp
+from base.oposicao_na_tela import Opostos
 from base.receita_retrato import ErroDeLayout
 
+SEM_OPOSTOS = Opostos(frozenset(), b"k" * 32)
 SEM_REP = '"***000000**";"";"00"'
 
 
@@ -33,7 +35,7 @@ def _zip(*linhas: str) -> io.BytesIO:
 
 
 def _ler(*linhas: str) -> tuple[pd.DataFrame, Counter]:
-    partes = list(rp.ler_socios_pf(_zip(*linhas)))
+    partes = list(rp.ler_socios_pf(_zip(*linhas), SEM_OPOSTOS))
     socios = pd.concat([p.socios for p in partes], ignore_index=True)
     descartes = sum((p.descartes for p in partes), Counter())
     return socios, descartes
@@ -46,8 +48,10 @@ def test_adulto_sai_so_com_as_quatro_colunas():
         "nome_socio",
         "qualificacao",
         "data_entrada",
+        "id_pessoa",  # o pseudônimo (HMAC), para a oposição de depois; nunca o CPF
     ]
     linha = socios.iloc[0]
+    assert len(linha["id_pessoa"]) == 32 and "123456" not in linha["id_pessoa"]
     assert linha["cnpj_basico"] == "11222333"
     assert linha["nome_socio"] == "FULANA EXEMPLO DA SILVA"
     assert linha["qualificacao"] == "49"

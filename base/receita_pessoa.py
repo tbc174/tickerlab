@@ -25,16 +25,22 @@ from typing import IO, NamedTuple
 
 import pandas as pd
 
+from base.oposicao_na_tela import Opostos
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from base.receita_retrato import CAMPOS_DO_SOCIO, CPF_MASCARADO, _datas, _partes
 
-# posição de cada campo no arquivo; o documento do sócio (3) e o país (6) nem são lidos
+# posição de cada campo no arquivo; o país (6) nem é lido; o documento (3) só entra em `SOCIO_COM_DOCUMENTO`
 SOCIO = {
     0: "cnpj_basico", 1: "tipo_socio", 2: "nome_socio", 4: "qualificacao", 5: "data_entrada",
     7: "cpf_do_representante", 8: "nome_do_representante", 9: "qualificacao_do_representante",
     10: "faixa_etaria",
 }  # fmt: skip
+SOCIO_COM_DOCUMENTO = {
+    **SOCIO,
+    3: "documento",
+}  # o CPF mascarado: só para casar a oposição, nunca guardado
 COLUNAS = ("cnpj_basico", "nome_socio", "qualificacao", "data_entrada")
+COLUNAS_COM_ID = (*COLUNAS, "id_pessoa")  # o id pseudônimo, para a oposição de depois
 TIPO_PESSOA_FISICA = "2"
 FAIXAS_DE_MENOR = {"1", "2"}  # 0 a 12 anos; 13 a 20 anos
 FAIXAS_DE_ADULTO = {"3", "4", "5", "6", "7", "8", "9"}  # 21 a 30 ... mais de 80
@@ -52,9 +58,10 @@ COM_REPRESENTANTE = "com_representante_legal"
 QUALIFICACAO_DE_MENOR = "qualificacao_de_menor_ou_incapaz"
 QUALIFICACAO_DE_REPRESENTANTE = "qualificacao_de_quem_representa"
 SEM_NOME = "sem_nome"
+OPOSTO = "oposto"  # pediu a oposição (linha 829): sai da tela da organização
 MOTIVOS = (
     NAO_E_PESSOA_FISICA, MENOR_PELA_FAIXA, FAIXA_DESCONHECIDA, COM_REPRESENTANTE,
-    QUALIFICACAO_DE_MENOR, QUALIFICACAO_DE_REPRESENTANTE, SEM_NOME,
+    QUALIFICACAO_DE_MENOR, QUALIFICACAO_DE_REPRESENTANTE, SEM_NOME, OPOSTO,
 )  # fmt: skip
 
 
@@ -86,7 +93,7 @@ def _motivo_do_descarte(parte: pd.DataFrame) -> pd.Series:
         SEM_NOME: parte["nome_socio"].str.strip() == "",
     }
     motivo = pd.Series("", index=parte.index)
-    for nome in reversed(MOTIVOS):  # o primeiro da ordem vence
+    for nome in reversed(tuple(condicoes)):  # o primeiro da ordem vence
         motivo = motivo.mask(condicoes[nome], nome)
     return motivo
 
@@ -101,10 +108,13 @@ def _sem_documento(nomes: pd.Series) -> pd.Series:
     )
 
 
-def _socios_pf(parte: pd.DataFrame) -> ParteDosSocios:
-    parte = parte.rename(columns=SOCIO)
+def _socios_pf(parte: pd.DataFrame, opostos: Opostos) -> ParteDosSocios:
+    parte = parte.rename(columns=SOCIO_COM_DOCUMENTO)
     motivo = _motivo_do_descarte(parte)
-    fica = parte.loc[motivo == "", list(COLUNAS)].copy()
+    parte["id_pessoa"] = opostos.ids_de(parte["documento"], parte["nome_socio"])
+    oposto = opostos.marcar(parte["id_pessoa"]) & (motivo == "")
+    motivo = motivo.mask(oposto, OPOSTO)
+    fica = parte.loc[motivo == "", list(COLUNAS_COM_ID)].copy()
     fica["cnpj_basico"] = fica["cnpj_basico"].str.strip().str.upper()
     fica["nome_socio"] = _sem_documento(fica["nome_socio"])
     fica["qualificacao"] = fica["qualificacao"].str.strip().str.zfill(2)
@@ -113,11 +123,14 @@ def _socios_pf(parte: pd.DataFrame) -> ParteDosSocios:
     return ParteDosSocios(fica.reset_index(drop=True), descartes)
 
 
-def ler_socios_pf(arquivo_zip: Path | IO[bytes]) -> Iterator[ParteDosSocios]:
+def ler_socios_pf(
+    arquivo_zip: Path | IO[bytes], opostos: Opostos
+) -> Iterator[ParteDosSocios]:
     """Os sócios pessoa física adultos de um `Socios*.zip`, em partes, com a contagem dos descartes.
 
     `socios`: `cnpj_basico`, `nome_socio`, `qualificacao` (código de 2 dígitos) e `data_entrada`. Sem
-    documento, sem faixa etária e sem representante. `descartes` conta as linhas tiradas por motivo.
+    documento, sem faixa etária e sem representante. `descartes` conta as linhas tiradas por motivo. Quem tem
+    oposição registrada (`opostos`) sai também; o CPF mascarado é lido só para isso e nunca é guardado.
     """
-    for parte in _partes(arquivo_zip, CAMPOS_DO_SOCIO, SOCIO):
-        yield _socios_pf(parte)
+    for parte in _partes(arquivo_zip, CAMPOS_DO_SOCIO, SOCIO_COM_DOCUMENTO):
+        yield _socios_pf(parte, opostos)

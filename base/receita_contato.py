@@ -54,8 +54,10 @@ NAO_ATIVO = "estabelecimento_nao_ativo"
 TELEFONE_FORA_DO_FORMATO = "telefone_fora_do_formato"
 EMAIL_FORA_DO_FORMATO = "email_fora_do_formato"
 EMAIL_COM_CARA_DE_CPF = "email_com_cara_de_cpf"
+DE_OPOSTO = "contato_de_titular_que_se_opos"  # linha 829
 MOTIVOS = (
     NAO_ATIVO, TELEFONE_FORA_DO_FORMATO, EMAIL_FORA_DO_FORMATO, EMAIL_COM_CARA_DE_CPF,
+    DE_OPOSTO,
 )  # fmt: skip
 
 
@@ -121,11 +123,22 @@ def _contato(parte: pd.DataFrame) -> ParteDoContato:
     return ParteDoContato(fica[list(COLUNAS)].reset_index(drop=True), +descartes)
 
 
-def ler_contato(arquivo_zip: Path | IO[bytes]) -> Iterator[ParteDoContato]:
+def ler_contato(
+    arquivo_zip: Path | IO[bytes], tiradas: set[str]
+) -> Iterator[ParteDoContato]:
     """O contato dos estabelecimentos ativos de um `Estabelecimentos*.zip`, em partes, com os descartes.
 
     `estabelecimentos` tem as colunas de `COLUNAS`; o que não foi informado, ou não passou no formato, vem
     ausente. `descartes` conta os estabelecimentos que não estão ativos e os campos esvaziados, por motivo.
+    As raízes em `tiradas` (empresário individual ou MEI que pediu a oposição, linha 829) ficam de fora.
     """
     for parte in _partes(arquivo_zip, CAMPOS_DO_ESTABELECIMENTO, ESTABELECIMENTO):
-        yield _contato(parte)
+        contato = _contato(parte)
+        oposto = contato.estabelecimentos["cnpj_basico"].isin(tiradas)
+        if oposto.any():
+            contato.descartes[DE_OPOSTO] += int(oposto.sum())
+            contato = ParteDoContato(
+                contato.estabelecimentos.loc[~oposto].reset_index(drop=True),
+                contato.descartes,
+            )
+        yield contato
