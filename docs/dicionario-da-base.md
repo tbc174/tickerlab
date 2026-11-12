@@ -2828,6 +2828,48 @@ Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: q
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `anvisa_por_empresa`
+
+Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas práticas): o total e os que estão em vigor, uma linha por raiz de CNPJ e por retrato do arquivo da Anvisa. **É um sinal de porte, uma aproximação, não faturamento:** um registro não diz quanto a empresa vende, e empresa pequena pode ter muitos produtos. **Sem pessoa:** só pessoa jurídica; a raiz que tem qualquer linha de empresário individual, MEI, natureza do grupo 4 ou CNPJ que a Receita guardada não tem sai inteira, nos totais e nos ativos. Cada registro conta uma vez (a versão mais nova vista até o retrato), o que saiu do arquivo não conta, e situação vazia ou fora do vocabulário nunca conta como ativa. Medicamento com apresentações de situações diferentes ('Ativo / Inativo') conta como ativo. O retrato mais antigo é de 2026-10-29 (o arquivista começou ali): antes disso a base não viu a Anvisa.
+
+- **Fonte:** Anvisa: dados abertos, consultas de empresas e de produtos, contados de `anvisa_registros` (`scripts/montar_anvisa_por_empresa.py`)
+- **Licença:** CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A `anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim do mês esconderia um dado que a base já tinha na véspera
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj_basico`, `disponivel_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `montado_em`
+- **Histórico desde:** 2026-10-29 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anvisa_por_empresa/anvisa_por_empresa.parquet` (servidor de casa, `scripts/montar_anvisa_por_empresa.py`)
+- **Linhagem:** Derivada de `anvisa_registros`; o manifesto lista o SHA-256 de cada cadastro lido. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `disponivel_em` | Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia | data (dia) |
+| `trata_como_pessoa` | Sempre falso: a raiz com alguma linha de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `cosmeticos_total` | Registros de cosméticos da empresa, em vigor ou não | número inteiro |
+| `cosmeticos_ativos` | Registros de cosméticos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `produtos_saude_total` | Registros de produtos para saúde da empresa, em vigor ou não | número inteiro |
+| `produtos_saude_ativos` | Registros de produtos para saúde da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `saneantes_total` | Registros de saneantes da empresa, em vigor ou não | número inteiro |
+| `saneantes_ativos` | Registros de saneantes da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `alimentos_total` | Registros de alimentos da empresa, em vigor ou não | número inteiro |
+| `alimentos_ativos` | Registros de alimentos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `medicamentos_total` | Registros de medicamentos da empresa, em vigor ou não | número inteiro |
+| `medicamentos_ativos` | Registros de medicamentos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `produtos_total` | Registros de produtos (a soma dos cinco tipos de produto) da empresa, em vigor ou não | número inteiro |
+| `produtos_ativos` | Registros de produtos (a soma dos cinco tipos de produto) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `afe_total` | Registros de autorizações de funcionamento (AFE) da empresa, em vigor ou não | número inteiro |
+| `afe_ativos` | Registros de autorizações de funcionamento (AFE) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `cbpf_total` | Registros de certificados de boas práticas de fabricação (CBPF) da empresa, em vigor ou não | número inteiro |
+| `cbpf_ativos` | Registros de certificados de boas práticas de fabricação (CBPF) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não os serve.
