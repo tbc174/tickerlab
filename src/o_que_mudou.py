@@ -31,8 +31,8 @@ ENTREGAS: tuple[Entrega, ...] = (
     Entrega(
         data=date(2026, 11, 12),
         o_que=(
-            'Encontrar empresas: cada linha da lista tem o link "Pôr na comparação", que leva o CNPJ '
-            "direto para comparar empresas."
+            'Encontrar empresas: cada linha da lista tem o link "Pôr na comparação", que leva o CNPJ da linha '
+            "para a tela de comparar empresas, já preenchido."
         ),
         pagina="encontrar_empresas",
     ),
