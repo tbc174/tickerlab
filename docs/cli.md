@@ -87,7 +87,7 @@ Assim, a chave não vai em texto aberto pela rede.
   id da rede, a raiz do CNPJ e a razão social do retrato mensal da Receita mais novo já público no dia, com o mês
   dele; pessoa física não sai. A tabela mostra `de` e `para`
   em uma célula cada; o `--json` traz as pontas inteiras. Pede o conjunto `links` no contrato.
-- **Parte não disponível para a organização:** quando a API diz que um tipo (hoje `unavailable_event_types`, nos eventos) não foi consultado, a primeira linha da tela diz qual, o `dossie` o põe em `gaps` e a planilha o leva nas fontes; "nenhum evento" só vale para o que foi consultado. A leitura está num lugar só (`formato.CAMPOS_NAO_DISPONIVEIS`): rota nova com campo do mesmo tipo entra ali.
+- **Parte não disponível para a organização:** quando a API diz que um tipo (hoje `unavailable_event_types`, nos eventos) não foi consultado, a primeira linha da tela diz qual, o `dossie` o põe em `gaps` e a planilha o leva nas fontes; "nenhum evento" só vale para o que foi consultado. A leitura está num lugar só (`formato.nao_disponiveis` e `ROTULOS_NAO_DISPONIVEIS`): qualquer campo `unavailable_*` da API é lido sozinho.
 - `tickerlab dossie` junta o perfil, os eventos, os vínculos e os comparáveis de um CNPJ numa saída só, com fonte e
   data; o perfil é obrigatório e uma seção que a chave não cobre ou sem dado aparece em `gaps` com o motivo. Gasta
   4 pedidos da quota. Com `--planilha`, vai para o Excel (linha 831).

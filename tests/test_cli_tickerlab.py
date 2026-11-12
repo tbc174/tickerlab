@@ -2533,3 +2533,12 @@ def test_planilha_de_eventos_leva_o_aviso_de_nao_disponivel(rodar, chave, tmp_pa
         str(c) for linhas in _abrir_xlsx(arquivo).values() for l in linhas for c in l
     )
     assert "auditor_change" in celulas
+
+
+def test_campo_unavailable_de_outra_rota_sai_pelo_proprio_nome(rodar, chave):
+    corpo = {"links": [], "unavailable_link_types": ["auditor"], "sources": []}
+    resultado = rodar(
+        "vinculos", "11111111000191", http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert "link types: auditor" in resultado.stdout

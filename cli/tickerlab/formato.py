@@ -89,21 +89,29 @@ def com_aviso_de_piloto(texto: str, dado: object) -> str:
     return "\n".join(f"Aviso de piloto: {f}" for f in faltam) + "\n\n" + texto
 
 
-# Campos com que a API diz o que a organização não pode consultar (a lista não diz nada sobre eles): chave
-# da resposta -> como a tela chama o que vem na lista. Rota nova com campo do mesmo tipo entra aqui, num lugar só.
-CAMPOS_NAO_DISPONIVEIS = {"unavailable_event_types": "tipos de evento"}
+# A API diz o que a organização não pode consultar em campos `unavailable_<o que>` (lista; a lista de dados
+# não diz nada sobre eles). Rótulo da tela por campo; o que não está aqui sai pelo próprio nome do campo.
+PREFIXO_NAO_DISPONIVEL = "unavailable_"
+ROTULOS_NAO_DISPONIVEIS = {"unavailable_event_types": "tipos de evento"}
 
 
 def nao_disponiveis(dado: object) -> dict[str, list[str]]:
     """O que a API disse que não está disponível para a organização, por rótulo (de qualquer nível da resposta)."""
     achados: dict[str, list[str]] = {}
     for bloco in _percorrer(dado):
-        for chave, rotulo in CAMPOS_NAO_DISPONIVEIS.items():
-            valores = bloco.get(chave)
-            if isinstance(valores, list):
-                for valor in valores:
-                    if str(valor) not in achados.setdefault(rotulo, []):
-                        achados[rotulo].append(str(valor))
+        for chave, valores in bloco.items():
+            if not (
+                isinstance(chave, str)
+                and chave.startswith(PREFIXO_NAO_DISPONIVEL)
+                and isinstance(valores, list)
+            ):
+                continue
+            rotulo = ROTULOS_NAO_DISPONIVEIS.get(
+                chave, chave.removeprefix(PREFIXO_NAO_DISPONIVEL).replace("_", " ")
+            )
+            for valor in valores:
+                if str(valor) not in achados.setdefault(rotulo, []):
+                    achados[rotulo].append(str(valor))
     return {rotulo: valores for rotulo, valores in achados.items() if valores}
 
 
