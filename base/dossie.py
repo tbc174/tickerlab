@@ -139,8 +139,18 @@ def exige_prontidao_na_consulta_aberta(nome_da_tabela: str) -> bool:
 
 # Servidas só pela API externa paga, atrás do portão e da prontidão (D10): a consulta aberta e a página Dados
 # não as mostram. A leitura mais estreita da Diretoria (11/11/2026, linha 810): nada novo fica aberto sem prontidão.
-# A situação cadastral (linha 841) entrou pela mesma leitura: montada só das raízes sem pessoa, mas nova.
-SO_PELA_API_EXTERNA = frozenset({"entradas_de_socio_pj", "cnpj_situacao_cadastral"})
+# A situação cadastral (linha 841) e a contagem de registros da Anvisa (linha 860) entraram pela mesma leitura:
+# montadas só das raízes sem pessoa, mas novas.
+# As cópias reduzidas da lista de compradores (linha 844) também: `controladas_pj` (a `fips_registrados` nem dá o dia
+# público por linha, então a consulta aberta já não a serve).
+SO_PELA_API_EXTERNA = frozenset(
+    {
+        "entradas_de_socio_pj",
+        "cnpj_situacao_cadastral",
+        "controladas_pj",
+        "anvisa_por_empresa",
+    }
+)
 COLUNAS_DE_PESSOA = frozenset(
     {"cpf", "administrador", "conselheiro", "diretor", "nome_pessoa", "socio"}
 )

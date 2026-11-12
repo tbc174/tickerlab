@@ -219,6 +219,30 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
+        "dados_e_cobertura",
+        "Dados e cobertura",
+        GRUPO_TOPO,
+        ":material/database:",
+        "O que a base serve de verdade: cada tabela, o que traz, a fonte, a licença, o histórico e a "
+        "frequência, como o catálogo público a declara.",
+        area=AREA_MAIS,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/dados-e-cobertura", (), "DadosECoberturaV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "conectar",
+        "Conectar",
+        GRUPO_TOPO,
+        ":material/cable:",
+        "Ligue o TickerLab ao Claude ou ao ChatGPT e use a CLI: endereço do conector, passos, comandos e "
+        "perguntas prontas para copiar.",
+        area=AREA_MAIS,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/conectar", (), "ConectarV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "relatorio",
         "Gerar relatório",
         GRUPO_TOPO,

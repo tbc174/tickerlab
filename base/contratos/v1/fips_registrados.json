@@ -1,0 +1,42 @@
+{
+  "tabela": "fips_registrados",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "CNPJ_Fundo": {
+      "descricao": "CNPJ do fundo (14 dígitos)",
+      "unidade": "texto"
+    },
+    "Tipo_Fundo": {
+      "descricao": "Tipo do fundo: sempre FIP",
+      "unidade": "texto"
+    },
+    "Data_Registro": {
+      "descricao": "Data do registro na CVM",
+      "unidade": "data (dia)"
+    },
+    "Data_Cancelamento": {
+      "descricao": "Data do cancelamento (vazio: ativo)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "CNPJ_Fundo",
+    "Data_Registro"
+  ],
+  "datas": {
+    "aconteceu_em": "Data_Registro"
+  },
+  "sinonimos_de_tempo": {
+    "Data_Registro": "aconteceu_em",
+    "Data_Cancelamento": "ate"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+  "atraso": "O de `registro_de_fundos`: um retrato do registro na data da coleta"
+}

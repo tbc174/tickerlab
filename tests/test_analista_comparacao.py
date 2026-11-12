@@ -15,6 +15,7 @@ Base de mentira, sem internet: a da ficha (`test_api_externa_por_cnpj_ficha.py`)
 """
 
 import dataclasses
+import shutil
 
 import pytest
 
@@ -53,6 +54,8 @@ def base_de_teste(tmp_path):
     busca_de_mentira._gravar(
         pasta, prospeccao.ESTABELECIMENTOS, busca_de_mentira._estabelecimentos()
     )
+    # a lista sem pessoa é uma só: a da busca substitui a que a base da ficha gravou (linha 861)
+    shutil.rmtree(pasta / prospeccao.EMPRESAS)
     busca_de_mentira._gravar(pasta, prospeccao.EMPRESAS, busca_de_mentira._empresas())
     return pasta
 

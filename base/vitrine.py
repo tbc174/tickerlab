@@ -185,18 +185,23 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
 # Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
 # por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
 TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
+# Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
+# mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.
+COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
 
 
 def catalogo_publico(catalogo: dict) -> dict:
     """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
     DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
     no dicionário do repositório, mas o site não anuncia dado que não pode sair em tela, relatório,
-    API nem exportação."""
+    API nem exportação. As cópias reduzidas (`COPIAS_REDUZIDAS`) também ficam de fora: a tabela de onde
+    saem já está no catálogo."""
     internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
     tabelas = {
         nome: tabela
         for nome, tabela in catalogo["tabelas"].items()
-        if tabela["licenca"] not in internas and nome not in TABELAS_SO_INTERNAS
+        if tabela["licenca"] not in internas
+        and nome not in TABELAS_SO_INTERNAS | COPIAS_REDUZIDAS
     }
     return {**catalogo, "tabelas": tabelas}
 
@@ -503,6 +508,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "ans_operadoras",
             "susep_cadastro",
             "anvisa_registros",
+            "anvisa_por_empresa",
             "anp_concessionarios",
             "antt_rntrc",
             "mapa_sipeagro",
