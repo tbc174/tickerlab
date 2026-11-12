@@ -246,18 +246,20 @@ def test_tabela_sem_a_marca_de_pessoa_decidida_nunca_sai(duas, monkeypatch) -> N
     assert _get(cliente, chaves["piloto"]).status_code == 404
 
 
-def test_com_a_marca_de_pessoa_do_dicionario_as_demonstracoes_nao_saem_hoje(
+def test_com_a_marca_de_pessoa_do_dicionario_as_demonstracoes_saem_pelo_piloto(
     duas, monkeypatch
 ) -> None:
-    """As demonstrações ainda estão no inventário sem a marca (fila 789): com a regra de verdade, nem o piloto."""
+    """Com a regra de verdade da marca (fila 784), as demonstrações têm a marca decidida e saem pelo piloto; uma
+    tabela que ainda está no inventário sem a marca não (a regra, e não o teste, é quem decide)."""
     cliente, chaves, _ator, _org = duas
     monkeypatch.setattr(
         rotas,
         "regras_da_api",
         lambda: _regras(pessoa_decidida=prontidao.tabelas_com_pessoa_decidida()),
     )
-    assert TABELA not in prontidao.tabelas_com_pessoa_decidida()
-    assert _get(cliente, chaves["piloto"]).status_code == 404
+    assert TABELA in prontidao.tabelas_com_pessoa_decidida()
+    assert "cnpj_simples_historico" not in prontidao.tabelas_com_pessoa_decidida()
+    assert _get(cliente, chaves["piloto"]).status_code == 200
 
 
 # ---------------------------------------------------------------- um campo pronto e outro só de piloto
