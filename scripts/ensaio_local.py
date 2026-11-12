@@ -35,6 +35,7 @@ NOME_DA_ORGANIZACAO = "Ensaio local"
 CONJUNTOS_DO_ENSAIO = (
     "financials", "companies", "profiles", "funds", "sectors",
     "prospecting", "events", "links", "comparables", "buyers",
+    "assets",
 )  # fmt: skip
 FINALIDADE_DO_ENSAIO = "analise"
 INICIO_DOS_DIREITOS = date(2026, 1, 1)

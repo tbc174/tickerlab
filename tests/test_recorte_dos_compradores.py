@@ -12,9 +12,25 @@ import pytest
 from base import recorte_dos_compradores as reduzidas
 from base import vitrine
 from base.contrato import catalogo
+from base.controladas import cnpj14
 from base.dossie import COLUNAS_DE_PESSOA
 
-LISTA = ("11000001", "13000001", "14000001")  # alvo, FIP e companhia aberta: todas PJ
+
+def _completado(cpf: str) -> str:
+    """O valor como o `cnpj14` do FRE o grava: um CPF de 11 dígitos completado com zeros até 14."""
+    valor = cnpj14(cpf)
+    assert valor is not None
+    return valor
+
+
+# um CPF (inventado, de dígitos que conferem) completado pelo `cnpj14`: o dígito do CNPJ não confere
+CPF_COMPLETADO = _completado("12345678909")
+# outro CPF inventado cuja forma completada também passa no dígito do CNPJ (1 em cada ~70 CPFs passa)
+CPF_QUE_PASSA = _completado("47823085909")
+# raiz da lista, 14 caracteres, dígito verificador que não confere
+DV_ERRADO = "11000001000101"
+# alvo, FIP e companhia aberta (PJ) e as raízes dos dois CPFs: a lista nunca deveria ter, mas a trava não confia
+LISTA = ("11000001", "13000001", "14000001", CPF_COMPLETADO[:8], CPF_QUE_PASSA[:8])
 FORA = "99000001"  # raiz que a lista sem pessoa não tem (MEI, EI, fora do retrato)
 
 
@@ -39,12 +55,19 @@ def _controladas(pasta: Path) -> list[Path]:
     que a lista não tem; com as colunas de nome do arquivo de verdade."""
     linhas = (
         # companhia, referencia, versao, conhecido_em, cnpj, razao_social, tipo, participacao
-        "('14000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 60.0), "
-        f"('14000001000101', DATE '2024-12-31', 2, DATE '2025-06-01', '{FORA}000101', 'FULANO DE TAL', 'coligada', 20.0), "
-        "('14000001000101', DATE '2024-12-31', 2, DATE '2025-06-01', NULL, 'ESTRANGEIRA LTD', 'controlada', 100.0), "
-        "('98000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 51.0), "
+        "('14000001000140', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000152', 'ALVO SA', 'controlada', 60.0), "
+        f"('14000001000140', DATE '2024-12-31', 2, DATE '2025-06-01', '{FORA}000101', 'FULANO DE TAL', 'coligada', 20.0), "
+        "('14000001000140', DATE '2024-12-31', 2, DATE '2025-06-01', NULL, 'ESTRANGEIRA LTD', 'controlada', 100.0), "
+        "('98000001000130', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000152', 'ALVO SA', 'controlada', 51.0), "
         # um CPF (11 dígitos) cuja raiz coincide com a de uma PJ da lista: não é CNPJ e não sai
-        "('14000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001901', 'FULANO', 'controlada', 5.0)"
+        "('14000001000140', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001901', 'FULANO', 'controlada', 5.0), "
+        # o mesmo CPF depois do `cnpj14` (14 caracteres, raiz na lista), o que passa no dígito do CNPJ e o dígito
+        # errado: nenhum sai
+        f"('14000001000140', DATE '2024-12-31', 1, DATE '2025-05-01', '{CPF_COMPLETADO}', 'FULANO', 'controlada', 5.0), "
+        f"('14000001000140', DATE '2024-12-31', 1, DATE '2025-05-01', '{CPF_QUE_PASSA}', 'FULANO', 'controlada', 5.0), "
+        f"('14000001000140', DATE '2024-12-31', 1, DATE '2025-05-01', '{DV_ERRADO}', 'ALVO SA', 'controlada', 5.0), "
+        # a companhia que é um CPF completado não sai nem com a marca
+        f"('{CPF_COMPLETADO}', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000152', 'ALVO SA', 'controlada', 5.0)"
     )
     return [
         _parquet(
@@ -61,11 +84,14 @@ def _controladas(pasta: Path) -> list[Path]:
 def _registro(pasta: Path) -> list[Path]:
     """FIP da lista com dois gestores (um pessoa física), FIP fora da lista e FIDC da lista."""
     linhas = (
-        "('1', '13.000.001/0001-01', 'FIP', '2020-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
-        "('1', '13.000.001/0001-01', 'FIP', '2020-01-01', NULL, 'PF', NULL, NULL, 'ADM SA'), "
+        "('1', '13.000.001/0001-88', 'FIP', '2020-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        "('1', '13.000.001/0001-88', 'FIP', '2020-01-01', NULL, 'PF', NULL, NULL, 'ADM SA'), "
         f"('2', '{FORA}000101', 'FIP', '2021-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
-        "('3', '11000001000101', 'FIDC', '2019-01-01', '2023-01-01', 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
-        "('4', '13000001901', 'FIP', '2022-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA')"
+        "('3', '11000001000152', 'FIDC', '2019-01-01', '2023-01-01', 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        "('4', '13000001901', 'FIP', '2022-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        f"('5', '{CPF_COMPLETADO}', 'FIP', '2022-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        f"('6', '{CPF_QUE_PASSA}', 'FIP', '2022-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        "('7', '13000001000101', 'FIP', '2022-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA')"
     )
     return [
         _parquet(
@@ -132,10 +158,10 @@ def test_controladas_pj_so_com_raiz_da_lista_e_a_marca_de_cada_documento(tmp_pat
     )
     v1, v2 = "2025-05-01", "2025-06-01"
     assert [(c, cn, ti, pa, ve, str(pu)) for c, cn, ti, pa, ve, pu in linhas] == [
-        ("14000001000101", "11000001000101", "controlada", 60.0, 1, v1),
-        ("14000001000101", None, None, None, 1, v1),  # a marca do documento v1
+        ("14000001000140", "11000001000152", "controlada", 60.0, 1, v1),
+        ("14000001000140", None, None, None, 1, v1),  # a marca do documento v1
         (
-            "14000001000101",
+            "14000001000140",
             None,
             None,
             None,
@@ -149,13 +175,13 @@ def test_o_documento_mais_novo_da_companhia_e_o_mesmo_da_tabela_inteira(tmp_path
     """Sem a marca, o v2 (que só tinha controladas fora da lista) sumiria e o v1 voltaria a valer."""
     _, destinos, _ = _montar(tmp_path)
     ultimo = "SELECT cnpj_companhia, max(versao) FROM t GROUP BY 1"
-    assert _linhas(destinos["controladas_pj"], ultimo) == [("14000001000101", 2)]
+    assert _linhas(destinos["controladas_pj"], ultimo) == [("14000001000140", 2)]
 
 
 def test_fips_registrados_so_fip_da_lista_sem_repetir_o_gestor(tmp_path):
     _, destinos, _ = _montar(tmp_path)
     assert _linhas(destinos["fips_registrados"]) == [
-        ("13.000.001/0001-01", "FIP", "2020-01-01", None)
+        ("13.000.001/0001-88", "FIP", "2020-01-01", None)
     ]
 
 
@@ -176,7 +202,7 @@ def _saida_com(
 
 
 CONTROLADA = (
-    "SELECT '14000001000101' AS cnpj_companhia, {cnpj} AS cnpj, {tipo} AS tipo, {participacao} AS participacao, "
+    "SELECT '14000001000140' AS cnpj_companhia, {cnpj} AS cnpj, {tipo} AS tipo, {participacao} AS participacao, "
     "DATE '2024-12-31' AS referencia, 1 AS versao, DATE '2025-05-01' AS publico_em"
 )
 FIP = (
@@ -202,7 +228,7 @@ FIP = (
         ),
         (
             "controladas_pj",
-            CONTROLADA.replace("'14000001000101' AS", f"'{FORA}000101' AS").format(
+            CONTROLADA.replace("'14000001000140' AS", f"'{FORA}000101' AS").format(
                 cnpj="NULL", tipo="NULL", participacao="NULL"
             ),
             "raiz fora da lista",
@@ -210,7 +236,7 @@ FIP = (
         (
             "controladas_pj",
             CONTROLADA.format(
-                cnpj="'11000001000101'", tipo="'controlada'", participacao="1.0"
+                cnpj="'11000001000152'", tipo="'controlada'", participacao="1.0"
             )
             + ", 'FULANO' AS razao_social",
             r"coluna\(s\) fora da lista",
@@ -227,6 +253,35 @@ FIP = (
             FIP.format(cnpj="'13000001901'", tipo="'FIP'"),
             "sem os 14 caracteres",
         ),
+        *(
+            caso
+            for valor in (CPF_COMPLETADO, CPF_QUE_PASSA, DV_ERRADO)
+            for caso in (
+                (
+                    "controladas_pj",
+                    CONTROLADA.format(
+                        cnpj=f"'{valor}'", tipo="'controlada'", participacao="5.0"
+                    ),
+                    "CNPJ que não confere",
+                ),
+                (
+                    "fips_registrados",
+                    FIP.format(cnpj=f"'{valor}'", tipo="'FIP'"),
+                    "CNPJ que não confere",
+                ),
+            )
+        ),
+        # a companhia só precisa do dígito do CNPJ (ver test_a_companhia_aberta_com_raiz_de_zeros_fica)
+        *(
+            (
+                "controladas_pj",
+                CONTROLADA.replace("'14000001000140' AS", f"'{valor}' AS").format(
+                    cnpj="NULL", tipo="NULL", participacao="NULL"
+                ),
+                "CNPJ que não confere",
+            )
+            for valor in (CPF_COMPLETADO, DV_ERRADO)
+        ),
         (
             "fips_registrados",
             FIP.format(cnpj=f"'{FORA}000101'", tipo="'FIP'"),
@@ -239,17 +294,17 @@ FIP = (
         ),
         (
             "fips_registrados",
-            FIP.format(cnpj="'13000001000101'", tipo="'FIDC'"),
+            FIP.format(cnpj="'13000001000188'", tipo="'FIDC'"),
             "não é FIP",
         ),
         (
             "fips_registrados",
-            FIP.format(cnpj="'13000001000101'", tipo="'FIP'") + ", 'FULANA' AS Gestor",
+            FIP.format(cnpj="'13000001000188'", tipo="'FIP'") + ", 'FULANA' AS Gestor",
             r"coluna\(s\) fora da lista",
         ),
         (
             "fips_registrados",
-            FIP.format(cnpj="'13000001000101'", tipo="'FIP'")
+            FIP.format(cnpj="'13000001000188'", tipo="'FIP'")
             + ", '12345678901' AS CPF_CNPJ_Gestor",
             r"coluna\(s\) fora da lista",
         ),
@@ -259,9 +314,73 @@ def test_a_trava_derruba_a_saida_fora_da_regra(tmp_path, nome, selecao, erro):
     con, destinos, empresas = _saida_com(tmp_path, nome, selecao)
     with pytest.raises(reduzidas.ReduzidaComPessoa, match=erro) as achado:
         reduzidas.conferir_reduzidas(con, destinos, empresas)
-    # a mensagem vai ao log e ao aviso do Kuma: só contagens, nunca um CNPJ ou um nome
-    assert FORA not in str(achado.value)
-    assert "FULAN" not in str(achado.value)
+    # a mensagem vai ao log e ao aviso do Kuma: só contagens, nunca um CNPJ, um CPF ou um nome
+    for valor in (FORA, CPF_COMPLETADO[3:], CPF_QUE_PASSA[3:], "FULAN"):
+        assert valor not in str(achado.value)
+
+
+@pytest.mark.parametrize(
+    ("valor", "e_de_empresa"),
+    [
+        ("11000001000152", True),
+        ("11.000.001/0001-52", True),
+        ("98000001000130", True),
+        (DV_ERRADO, False),
+        ("11000001901", False),  # CPF sem completar
+        (
+            CPF_COMPLETADO,
+            False,
+        ),  # CPF completado pelo cnpj14: o dígito do CNPJ não confere
+        (
+            CPF_QUE_PASSA,
+            False,
+        ),  # passa no dígito do CNPJ, mas o resto é um CPF que confere
+        ("00000000000000", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_so_o_cnpj_de_empresa_passa(valor, e_de_empresa):
+    assert reduzidas.cnpj_de_empresa(valor) is e_de_empresa
+    # a regra da companhia só não tem a dos três zeros
+    assert reduzidas.cnpj_que_confere(valor) is (e_de_empresa or valor == CPF_QUE_PASSA)
+
+
+def test_a_companhia_aberta_com_raiz_de_zeros_fica(tmp_path):
+    """A emissora registrada na CVM é sempre PJ: a regra dos três zeros não vale para ela (há companhia aberta de
+    verdade com essa cara). A controlada com a mesma cara não sai."""
+    assert reduzidas.cnpj_que_confere(CPF_QUE_PASSA)
+    companhia = CONTROLADA.replace("'14000001000140' AS", f"'{CPF_QUE_PASSA}' AS")
+    con, destinos, empresas = _saida_com(
+        tmp_path,
+        "controladas_pj",
+        companhia.format(
+            cnpj="'11000001000152'", tipo="'controlada'", participacao="60.0"
+        ),
+    )
+    assert reduzidas.conferir_reduzidas(con, destinos, empresas)["controladas_pj"] == 1
+    origem = tmp_path / "fre_com_zeros" / "controladas.parquet"
+    _parquet(
+        origem,
+        companhia.replace("publico_em", "conhecido_em").format(
+            cnpj="'11000001000152'", tipo="'controlada'", participacao="60.0"
+        ),
+    )
+    destino = tmp_path / "fre_com_zeros" / "saida.parquet"
+    # a linha da controlada e a marca do documento
+    assert reduzidas.montar_controladas_pj(con, [origem], empresas, destino) == 2
+
+
+@pytest.mark.parametrize("nome", reduzidas.REDUZIDAS)
+def test_a_trava_derruba_a_copia_vazia(tmp_path, nome):
+    """Cópia vazia trocaria a do VPS por nada: a lista perderia o sinal sem ninguém saber."""
+    con, destinos, empresas = _montar(tmp_path)
+    vazia = {"controladas_pj": CONTROLADA, "fips_registrados": FIP}[nome].format(
+        cnpj="'11000001000152'", tipo="'FIP'", participacao="1.0"
+    )
+    _parquet(destinos[nome], f"SELECT * FROM ({vazia}) WHERE false")
+    with pytest.raises(reduzidas.ReduzidaComPessoa, match=f"{nome}: cópia vazia"):
+        reduzidas.conferir_reduzidas(con, destinos, empresas)
 
 
 def test_a_trava_falha_sem_a_lista_sem_pessoa(tmp_path):
@@ -289,7 +408,7 @@ def test_a_trava_derruba_a_copia_sem_uma_coluna_da_lista(tmp_path):
     con, destinos, empresas = _saida_com(
         tmp_path,
         "fips_registrados",
-        "SELECT '13000001000101' AS CNPJ_Fundo, 'FIP' AS Tipo_Fundo, '2020-01-01' AS Data_Registro",
+        "SELECT '13000001000188' AS CNPJ_Fundo, 'FIP' AS Tipo_Fundo, '2020-01-01' AS Data_Registro",
     )
     with pytest.raises(
         reduzidas.ReduzidaComPessoa, match=r"sem \['Data_Cancelamento'\]"

@@ -31,6 +31,7 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
      CVM (fato relevante, comunicado, assembleia...) e trocas de auditor, do mais novo ao mais velho, com o
      endereço de cada documento; `next_cursor` preenchido: há mais, `--todas` busca todas. Leia `limits`: sem
      evento não quer dizer que nada aconteceu.
+   - `tickerlab deck <cnpj>` ou `tickerlab deck --setor <chave>` `[--saida arq.pptx]`: grava o deck (.pptx) da empresa ou do setor, com fonte e data em cada tabela; diga onde o arquivo ficou.
    - `tickerlab demonstracoes <cnpj> [--periodo AAAA-MM-DD] --json`: DFP e ITR (CVM), uma linha por conta e
      período, com documento, versão e data de entrega.
    - `tickerlab fundo <cnpj> [--retorno-suposto 0.12] --json`: cadastro, taxas e carteira do fundo (CVM).

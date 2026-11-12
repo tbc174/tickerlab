@@ -177,7 +177,7 @@ REGRAS: dict[str, Regra] = {
             "CNPJ_CONTROLADOR": "fundo sem controlador informado",
         },
         repetidas_aceitas=1,
-        porque_repetidas="uma linha idêntica em todas as colunas (FIC-FITVM, mesmo CNPJ), duplicada no arquivo da CVM; a base não corrige",
+        porque_repetidas="um par de linhas do mesmo CNPJ que só difere na situação do fundo (`SIT`); a base não corrige",
     ),
     "carteiras_dos_fundos": Regra(
         chave=(
@@ -200,5 +200,98 @@ REGRAS: dict[str, Regra] = {
         },
         repetidas_aceitas=100,
         porque_repetidas="linhas idênticas em todas as colunas, duplicadas no arquivo da CVM (cerca de 0,0005% da tabela); a base não corrige",
+    ),
+    # retrato mensal da Receita: um único mês por vez, sem série por ano para comparar; vale a chave única
+    # (um estabelecimento por CNPJ de 14 dígitos) e nenhuma coluna de cadastro vazia
+    "cnpj_estabelecimentos_pj": Regra(
+        chave=(
+            "cnpj",
+            "cnpj_basico",
+            "matriz",
+            "situacao_cadastral",
+            "uf",
+            "municipio",
+            "cnae_principal",
+            "data_inicio_atividade",
+        ),
+    ),
+    "cnpj_empresas_pj": Regra(
+        chave=("cnpj_basico", "razao_social", "natureza_juridica", "porte"),
+    ),
+    # ---- tabelas do roteiro de M&A (linha 784, piloto D11): chave = a do dicionário; primeira medida de 12/11/2026
+    "rotulos_atraso": Regra(chave=("cnpj", "documento", "referencia"), periodo="prazo"),
+    "cnpj_situacao_cadastral": Regra(chave=("cnpj", "mes_do_retrato")),
+    "eventos": Regra(
+        chave=("protocolo", "versao"),
+        periodo="publicado_em",
+        repetidas_aceitas=3,
+        porque_repetidas="3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega); a base não corrige",
+    ),
+    # o ano é o de `conhecido_em` (o arquivo começa em maio de 2010); `efetiva_em` vai de 2001 a 2027 e é esparsa
+    "trocas_de_auditor": Regra(
+        chave=("cnpj", "efetiva_em", "novo_id"),
+        periodo="conhecido_em",
+        saltos_explicados={
+            2011: "2010 só tem as trocas conhecidas de maio a dezembro, quando o arquivo começa",
+            2012: "pico compatível com o rodízio obrigatório do auditor independente a cada cinco anos (pico a cada cinco anos: 2012, 2017, 2022)",
+            2013: "volta ao patamar normal depois do pico do rodízio de 2012",
+            2017: "pico compatível com o rodízio obrigatório do auditor independente a cada cinco anos (pico a cada cinco anos: 2012, 2017, 2022)",
+            2018: "volta ao patamar normal depois do pico do rodízio de 2017",
+            2022: "pico compatível com o rodízio obrigatório do auditor independente a cada cinco anos (pico a cada cinco anos: 2012, 2017, 2022)",
+            2023: "volta ao patamar normal depois do pico do rodízio de 2022",
+        },
+    ),
+    "fca_geral": Regra(chave=("cnpj", "referencia", "versao"), periodo="referencia"),
+    "entidades": Regra(chave=("id_entidade",)),
+    "ligacoes": Regra(
+        chave=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"),
+        opcionais={
+            "papel": "os tipos controlada_de, participada_de, coligada_de, audita e emite não têm papel: ele só existe nos tipos detem, do_conglomerado_de e opera_para"
+        },
+    ),
+    "identificadores": Regra(
+        chave=("id_entidade", "sistema", "valor", "desde"),
+        opcionais={
+            "desde": "só o ticker e o emissor trazem o dia em que o código passou a valer; os registros oficiais (CNPJ, ISIN, códigos da CVM e das agências) não dizem"
+        },
+    ),
+    "controladas": Regra(
+        chave=("cnpj_companhia", "referencia", "versao", "cnpj"),
+        periodo="referencia",
+        opcionais={
+            "cnpj": "investida sem CNPJ no formulário de referência; só se distingue pelo nome"
+        },
+        repetidas_aceitas=8373,
+        porque_repetidas="a maior parte são investidas sem CNPJ que só se distinguem pelo nome; 866 linhas são idênticas em todas as colunas; o resto repete o CNPJ com participação ou tipo diferente no mesmo documento. Quem junta por CNPJ pode receber mais de uma linha; a base não corrige",
+    ),
+    "entradas_de_socio_pj": Regra(
+        chave=(
+            "movimento",
+            "cnpj_basico",
+            "raiz_socio_pj",
+            "data_entrada",
+            "mes_do_retrato",
+        )
+    ),
+    # sem série por ano: os registros vão de 1957 a hoje, esparsos nos primeiros anos, e contar registros por ano não mede se falta carga
+    "registro_de_fundos": Regra(
+        chave=("ID_Registro_Fundo", "CPF_CNPJ_Gestor"),
+        opcionais={
+            "CPF_CNPJ_Gestor": "fundo cancelado, que a CVM deixa sem gestor (99% dos casos), ou gestor pessoa física, sem CPF na base"
+        },
+        repetidas_aceitas=17,
+        porque_repetidas="linhas idênticas em todas as colunas, nas colunas que a base guarda (o diretor responsável sai na montagem); a base não corrige",
+    ),
+    "pgfn_divida": Regra(
+        chave=(
+            "cnpj",
+            "tipo_divida",
+            "regiao",
+            "tipo_devedor",
+            "tipo_situacao",
+            "situacao_inscricao",
+            "ajuizado",
+            "data_do_retrato",
+        )
     ),
 }

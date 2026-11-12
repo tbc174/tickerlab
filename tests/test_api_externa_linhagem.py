@@ -44,7 +44,8 @@ from src.portao_externo import (
 # "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR;
 # "comparables" (linha 736, PR 3) junta o setor do FCA e os números do DFP dos pares; "events" (linha 736,
 # PR 4) lista os documentos do IPE e as trocas de auditor; "links" (linha 736, PR 5) lê a rede de entidades;
-# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica
+# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica; "assets" (linha 845) lista os
+# contratos de exploração e produção da ANP da empresa
 CONJUNTOS_DO_BETA = {
     "companies",
     "financials",
@@ -57,6 +58,7 @@ CONJUNTOS_DO_BETA = {
     "events",
     "links",
     "buyers",
+    "assets",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro

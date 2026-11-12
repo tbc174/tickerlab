@@ -1,4 +1,19 @@
 {
+  "assets": {
+    "fontes": {
+      "anp-concessionarios": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)"
+    },
+    "campos": [
+      "ambiente",
+      "bacia",
+      "bid",
+      "fase",
+      "nome_fantasia",
+      "numero_do_contrato",
+      "operador",
+      "participacao_pct"
+    ]
+  },
   "buyers": {
     "fontes": {
       "cvm-fidc-base": "ODbL (dados abertos da CVM; citar a fonte)",
