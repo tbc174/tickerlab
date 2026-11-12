@@ -192,6 +192,15 @@ describe("encontrar empresas", () => {
     expect((screen.getByLabelText("CNPJ") as HTMLInputElement).value).toBe("11111111000191");
   });
 
+  it("\"Pôr na comparação\" leva o CNPJ da linha à comparação, pelo estado da navegação", async () => {
+    const { buscar } = abrir(PRIMEIRA);
+    await buscarPor(["SP"]);
+    fireEvent.click(await screen.findByRole("link", { name: "Pôr na comparação" }));
+    expect(await screen.findByRole("heading", { name: "Comparar empresas" })).toBeTruthy();
+    expect((screen.getAllByLabelText(/^CNPJ/)[0] as HTMLInputElement).value).toBe("11111111000191");
+    expect(buscar.mock.calls.map(([e]) => String(e)).some((e) => e.includes("11111111000191"))).toBe(false);
+  });
+
   it("nenhuma empresa: a frase no lugar da tabela, sem Excel", async () => {
     abrir(VAZIA);
     await buscarPor(["SP"]);
