@@ -44,7 +44,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "anp_concessionarios",
         "auditores",
         "carteiras_bloco_8",
-        "carteiras_dos_fundos",
         "cda_cotas",
         "cnpj_empresas_historico",
         "cnpj_simples_historico",
@@ -52,11 +51,9 @@ AINDA_SEM_A_MARCA = frozenset(
         "controladas",
         "cvm_fiagro",
         "debentures_assembleias",
-        "demonstracoes_como_era",
         "dmpl_como_era",
         "emissores",
-        "eventos",
-        "fca_geral",
+        "eventos",  # o `assunto` (texto livre) traz CPF: 4 linhas medidas em 12/11/2026 (revisão cruzada do #1085)
         "fidc_informe",
         "fre_capital_social",
         "fre_comites",
@@ -81,7 +78,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "processos_partes",
         "ratings",
         "release_x_oficial",
-        "rotulos_atraso",
         "securitizacao_cedente_devedor",
         "securitizacao_certificados",
         "sus_ambulatorial",
@@ -94,7 +90,15 @@ AINDA_SEM_A_MARCA = frozenset(
 # grupo 4 (linha 584; o contrato de cada uma diz). Não precisam da marca por linha.
 # sem pessoa por desenho: o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
 SEM_PESSOA_NA_MONTAGEM = frozenset(
-    {"cnpj_empresas_pj", "cnpj_estabelecimentos_pj", "entradas_de_socio_pj"}
+    {
+        "carteiras_dos_fundos",
+        "cnpj_empresas_pj",
+        "cnpj_estabelecimentos_pj",
+        "demonstracoes_como_era",
+        "entradas_de_socio_pj",
+        "fca_geral",
+        "rotulos_atraso",
+    }
 )
 COM_A_MARCA = sorted(
     nome
