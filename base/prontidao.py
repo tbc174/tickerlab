@@ -147,7 +147,7 @@ class ProntidaoDePiloto(NamedTuple):
 
 
 # As entradas são da mesa Dados (linha 784), só com as duas provas existindo e a marca de pessoa decidida:
-# as quatro abaixo passaram em `scripts.conferir_sem_pessoa` (todo CNPJ dentro da `cnpj_empresas_pj`) em 12/11/2026.
+# a marca de cada uma está decidida (pela raiz medida em `scripts.conferir_sem_pessoa` ou pela montagem sem pessoa) e o placar de qualidade de 12/11/2026 está verde.
 PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     "carteiras_dos_fundos": ProntidaoDePiloto(
         versao_maior=1,
@@ -169,6 +169,26 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    "cnpj_empresas_pj": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "cnpj_estabelecimentos_pj": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "entradas_de_socio_pj": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "trocas_de_auditor": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
@@ -176,7 +196,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 # com coluna de CNPJ, raiz ou CPF precisa da marca.
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
-# sem pessoa pela raiz (linha 789): quatro delas têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto
+# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (carteiras_dos_fundos, demonstracoes_como_era, fca_geral, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "carteiras_dos_fundos",
@@ -188,7 +208,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "rotulos_atraso",
     }
 )
-COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf")
+COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 
 
 def pessoa_decidida(
