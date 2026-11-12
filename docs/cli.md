@@ -66,6 +66,7 @@ Assim, a chave não vai em texto aberto pela rede.
 | `tickerlab prospectar --cnae ... [--uf ..] [--todas] ...` | `GET /data/v1/companies` (busca, rota da linha 794) | sim, um pedido por página |
 | `tickerlab setor` | `GET /data/v1/sectors` | não |
 | `tickerlab setor <chave> [--como-era ...]` | `GET /data/v1/sectors/{key}` | sim |
+| `tickerlab deck <cnpj>` ou `tickerlab deck --setor <chave>` `[--como-era ...] [--saida arq.pptx] [--substituir]` | `GET /data/v1/companies/{cnpj}/deck` ou `GET /data/v1/sectors/{key}/deck` (linha 782) | sim, um pedido |
 | `tickerlab catalogo` | `GET /data/v1/catalog` | não |
 | `tickerlab consumo` | `GET /data/v1/usage` | não |
 

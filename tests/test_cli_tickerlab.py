@@ -1095,6 +1095,7 @@ def test_instrucoes_do_agente(rodar):
         "novidades",
         "catalogo",
         "consumo",
+        "deck",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
         assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
@@ -2327,3 +2328,118 @@ def test_piloto_de_uma_pagina_sobrevive_ao_juntar_paginas():
     primeira = {"companies": [1], "pilot_notice": FRASE_DE_PILOTO, "sources": []}
     ultima = {"companies": [2], "sources": []}
     assert cliente.juntar_paginas(primeira, ultima)["pilot_notice"] == FRASE_DE_PILOTO
+
+
+# ---------------------------------------------------------------- deck
+
+
+def _pptx_falso() -> bytes:
+    return b"PK\x03\x04" + b"conteudo-do-deck"
+
+
+def _deck_que_responde(vistos: list, nome: str | None = None, status: int = 200):
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        if status != 200:
+            return httpx.Response(status, json={"detail": "not_available"})
+        cabecalhos = (
+            {"Content-Disposition": f'attachment; filename="{nome}"'} if nome else {}
+        )
+        return httpx.Response(200, content=_pptx_falso(), headers=cabecalhos)
+
+    return _http_falso(responder)
+
+
+def test_deck_da_empresa_grava_com_o_nome_da_api(rodar, chave, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vistos: list = []
+    http = _deck_que_responde(vistos, "tickerlab-empresa-11111111000191.pptx")
+    resultado = rodar("deck", "11111111000191", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos[0].url.path == "/data/v1/companies/11111111000191/deck"
+    assert (
+        tmp_path / "tickerlab-empresa-11111111000191.pptx"
+    ).read_bytes() == _pptx_falso()
+    assert "Deck gravado" in resultado.stdout
+
+
+def test_deck_do_setor_com_saida_e_como_era(rodar, chave, tmp_path):
+    vistos: list = []
+    alvo = tmp_path / "setor.pptx"
+    resultado = rodar(
+        "deck", "--setor", "eletricas", "--como-era", "2026-03-31", "--saida", str(alvo),
+        http=_deck_que_responde(vistos), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos[0].url.path == "/data/v1/sectors/eletricas/deck"
+    assert vistos[0].url.params["known_at"] == "2026-03-31"
+    assert alvo.read_bytes() == _pptx_falso()
+
+
+def test_deck_nome_estranho_da_api_nao_vira_caminho(
+    rodar, chave, tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    http = _deck_que_responde([], "../../fora.pptx")
+    resultado = rodar("deck", "11111111000191", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert (tmp_path / "tickerlab-empresa-11111111000191.pptx").exists()
+    assert not (tmp_path.parent.parent / "fora.pptx").exists()
+
+
+def test_deck_nao_troca_arquivo_existente_sem_substituir(rodar, chave, tmp_path):
+    alvo = tmp_path / "d.pptx"
+    alvo.write_bytes(b"antigo")
+    http = _deck_que_responde([])
+    recusa = rodar(
+        "deck", "11111111000191", "--saida", str(alvo), http=http, **_com_chave(chave)
+    )
+    assert recusa.exit_code == Saida.PEDIDO_INVALIDO and alvo.read_bytes() == b"antigo"
+    troca = rodar(
+        "deck", "11111111000191", "--saida", str(alvo), "--substituir",
+        http=http, **_com_chave(chave),
+    )  # fmt: skip
+    assert troca.exit_code == 0 and alvo.read_bytes() == _pptx_falso()
+
+
+@pytest.mark.parametrize(
+    "argumentos",
+    [
+        (),
+        ("11111111000191", "--setor", "eletricas"),
+        ("123",),
+        ("--setor", "Ruim Aqui"),
+    ],
+)
+def test_deck_pedido_mal_feito_nem_chega_a_api(rodar, chave, argumentos):
+    vistos: list = []
+    resultado = rodar(
+        "deck", *argumentos, http=_deck_que_responde(vistos), **_com_chave(chave)
+    )
+    assert resultado.exit_code != 0 and vistos == []
+
+
+def test_deck_sem_dado_e_chave_recusada_usam_os_codigos_dos_outros(
+    rodar, chave, tmp_path
+):
+    sem_dado = rodar(
+        "deck", "11111111000191", "--saida", str(tmp_path / "a.pptx"),
+        http=_deck_que_responde([], status=404), **_com_chave(chave),
+    )  # fmt: skip
+    assert sem_dado.exit_code == Saida.SEM_DADO
+    assert not (tmp_path / "a.pptx").exists()
+    sem_chave = rodar("deck", "11111111000191", http=_deck_que_responde([]))
+    assert sem_chave.exit_code == Saida.CHAVE
+
+
+def test_deck_resposta_que_nao_e_arquivo_e_fora_do_ar(rodar, chave, tmp_path):
+    http = _http_falso(lambda _p: httpx.Response(200, text="<html>"))
+    resultado = rodar(
+        "deck",
+        "11111111000191",
+        "--saida",
+        str(tmp_path / "a.pptx"),
+        http=http,
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.FORA_DO_AR

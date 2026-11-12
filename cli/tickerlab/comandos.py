@@ -39,6 +39,10 @@ PONTUACAO_DO_CNPJ = re.compile(r"[.\-/\s]")
 FORMATO_DO_CNPJ = re.compile(r"[0-9A-Z]{14}")
 # a chave do setor como a API a dá (`tickerlab setor` lista); nada além disso chega ao endereço do pedido
 FORMATO_DO_SETOR = re.compile(r"[a-z0-9_]{1,40}")
+# o nome que a API sugere para o deck; qualquer outro (ou com pasta dentro) é ignorado
+NOME_DO_DECK = re.compile(
+    r'filename="(tickerlab-(?:empresa-\d{14}|setor-[a-z0-9_]{1,40})\.pptx)"'
+)
 INSTRUCOES = {"agents": "AGENTS.md", "skill": "SKILL.md"}
 # os filtros da busca (`prospectar`): o formato de cada um, conferido antes de gastar um pedido
 # o CNAE: a subclasse inteira (7 dígitos) ou um prefixo (divisão, grupo, classe)
@@ -260,6 +264,15 @@ opcao_planilha = click.option(
     help="Grava a resposta numa planilha para o Excel: .xlsx (uma aba por tabela, mais a aba das fontes) "
     "ou .csv (separado por ponto e vírgula, um arquivo por tabela). Cada linha leva a fonte e a data.",
 )
+
+
+def _cnpj_opcional(
+    contexto: click.Context, parametro: click.Parameter, valor: str | None
+) -> str | None:
+    """O CNPJ de `deck`, que também aceita --setor no lugar dele."""
+    return None if valor is None else _cnpj(contexto, parametro, valor)
+
+
 argumento_cnpj = click.argument("cnpj", callback=_cnpj)
 
 
@@ -576,6 +589,77 @@ def fundo(
     """Cadastro, taxas e carteira do fundo (CVM); com --retorno-suposto, o custo da taxa em prazos."""
     corpo = _api(contexto).fundo(cnpj, _dia(como_era), retorno_suposto)
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+def _nome_do_deck(cabecalho: str | None, padrao: str) -> str:
+    """O nome sugerido pela API no cabeçalho, só se tiver o formato esperado; senão o padrão local."""
+    achado = NOME_DO_DECK.search(cabecalho or "")
+    return achado.group(1) if achado else padrao
+
+
+@principal.command()
+@click.argument("cnpj", required=False, callback=_cnpj_opcional)
+@click.option(
+    "--setor",
+    "chave_do_setor",
+    callback=_setor,
+    help="O deck do setor (a chave que `tickerlab setor` lista) em vez do de uma empresa.",
+)
+@opcao_como_era
+@click.option(
+    "--saida",
+    "saida",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Onde gravar o .pptx. Sem isto, grava aqui mesmo com o nome que a API sugere.",
+)
+@click.option(
+    "--substituir",
+    is_flag=True,
+    help="Troca o arquivo se ele já existir (sem isto a CLI recusa, para não apagar nada).",
+)
+@click.pass_context
+def deck(
+    contexto: click.Context,
+    cnpj: str | None,
+    chave_do_setor: str | None,
+    como_era: datetime | None,
+    saida: Path | None,
+    substituir: bool,
+) -> None:
+    """Grava o deck (.pptx) da empresa (CNPJ) ou do setor (--setor), com a fonte e a data de cada tabela.
+
+    Um dos dois: `tickerlab deck 11222333000181` ou `tickerlab deck --setor eletricas`. Gasta um pedido da
+    quota, como o JSON da mesma rota.
+    """
+    if (cnpj is None) == (chave_do_setor is None):
+        raise click.UsageError(
+            "peça o deck de uma empresa (CNPJ) ou de um setor (--setor), um dos dois."
+        )
+    api = _api(contexto)
+    if cnpj is not None:
+        conteudo, cabecalho = api.deck_da_empresa(cnpj, _dia(como_era))
+        padrao = f"tickerlab-empresa-{cnpj}.pptx"
+    else:
+        conteudo, cabecalho = api.deck_do_setor(chave_do_setor or "", _dia(como_era))
+        padrao = f"tickerlab-setor-{chave_do_setor}.pptx"
+    destino = saida or Path(_nome_do_deck(cabecalho, padrao))
+    if destino.suffix.lower() != ".pptx":
+        raise click.UsageError("--saida termina em .pptx.")
+    if destino.exists() and not substituir:
+        raise ErroDaCli(
+            f"{destino} já existe: use outro --saida ou --substituir para trocar o arquivo.",
+            Saida.PEDIDO_INVALIDO,
+        )
+    try:
+        destino.write_bytes(conteudo)
+    except OSError as erro:
+        raise ErroDaCli(
+            f"não consegui gravar o deck em {destino}: {erro.strerror or erro}",
+            Saida.ERRO,
+        ) from None
+    click.echo(
+        f"Deck gravado em {destino} (cada tabela com a fonte e a data). {formato.AVISO}"
+    )
 
 
 @principal.command()
