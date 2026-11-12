@@ -28,7 +28,7 @@ AGORA = empresas_de_mentira.AGORA
 ALFA = vinculos_de_mentira.ALFA
 DIA = vinculos_de_mentira.DIA.isoformat()
 TABELAS_DA_REDE = ("ligacoes", "entidades", "identificadores")
-TABELAS_PRONTAS = (*TABELAS_DA_REDE, "cnpj_empresas_historico")
+TABELAS_PRONTAS = (*TABELAS_DA_REDE, "cnpj_empresas_pj")
 # no dia, a um salto: a MAE, a FILHA, a VENDIDA_DEPOIS (o fim só se soube depois), a COLIGADA e a AUDITORA
 VINCULOS_NO_DIA = 5
 
@@ -104,7 +104,10 @@ def test_vinculos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert mae["from"] == {
         "entity_id": "EALFA",
         "cnpj_root": "11111111",
-        "legal_name": {"value": "ALFA LTDA", "source": "rfb-cnpj", "published_at": "2023-05-31", "observed_at": None},
+        "legal_name": {"value": "ALFA LTDA", "source": "rfb-cnpj", "published_at": "2025-03-31", "observed_at": None},
+        "registry_snapshot_month": {
+            "value": "2025-03", "source": "rfb-cnpj", "published_at": "2025-03-31", "observed_at": None,
+        },
     }  # fmt: skip
     assert mae["to"]["entity_id"] == "EMAE"
     assert mae["ownership_pct"] == {
@@ -263,17 +266,36 @@ def test_sem_a_razao_social_da_receita_a_ponta_sai_sem_nome(
     assert mae["from"] == {"entity_id": "EALFA", "cnpj_root": "11111111"}
 
 
-def test_sem_a_prontidao_do_historico_os_vinculos_saem_sem_nome(
+def test_sem_a_prontidao_da_lista_pj_os_vinculos_saem_sem_nome(
     cliente, cenario, monkeypatch
 ):
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(TABELAS_DA_REDE))
     corpo = _get(cliente, cenario, known_at=DIA).json()
     assert len(corpo["links"]) == VINCULOS_NO_DIA
     assert all(
-        "legal_name" not in v["from"] and "legal_name" not in v["to"]
+        campo not in ponta
         for v in corpo["links"]
+        for ponta in (v["from"], v["to"])
+        for campo in ("legal_name", "registry_snapshot_month")
     )
     assert "rfb-cnpj" not in {f["source"] for f in corpo["sources"]}
+
+
+def test_o_nome_das_pontas_declara_so_a_lista_sem_pessoa():
+    # linha 867: uma linha por caminho, declarando só a tabela lida; o histórico datado (com pessoa) não é
+    # lido, e exigir a prontidão dele (D10) tiraria o nome no VPS, onde ele não está
+    da_receita = [
+        linha
+        for linha in portao.regras_vigentes().linhas
+        if linha.conjunto == vinculos.CONJUNTO and linha.fonte == "rfb-cnpj"
+    ]
+    assert {linha.campo for linha in da_receita} == {
+        "razao_social",
+        "mes_do_retrato_do_cadastro",
+    }
+    assert {tabela for linha in da_receita for tabela in linha.tabelas} == {
+        "cnpj_empresas_pj"
+    }
 
 
 # ---------------------------------------------------------------- erros e consumo

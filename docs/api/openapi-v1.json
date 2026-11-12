@@ -5605,7 +5605,7 @@
         "type": "object"
       },
       "PontaDoVinculoV1": {
-        "description": "Uma ponta do vínculo: a raiz do CNPJ e a razão social que valia no dia (sem nome quando a Receita não tem).",
+        "description": "Uma ponta do vínculo: a raiz do CNPJ e a razão social do retrato mensal da Receita mais novo já público no\ndia (sem nome quando a raiz não está nele).",
         "properties": {
           "raiz_do_cnpj": {
             "anyOf": [

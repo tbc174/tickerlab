@@ -9,10 +9,12 @@ simples (a rota traduz as chaves na saída) cada ligação que valia no dia:
 - `audits`: a firma de auditoria que auditava a companhia, pelo FCA (`auditores`, fonte `cvm-hist-fca`).
 
 As outras ligações da rede (o fundo que detém o papel, quem emite o valor mobiliário, o conglomerado do BC e a
-série do regulador) não saem por aqui. Cada ponta sai com o id da rede, a raiz do CNPJ e a razão social que valia
-no dia, do histórico datado da Receita (`cnpj_empresas_historico`, o mesmo de `/companies`); o nome guardado na
-rede é o de hoje e não sai (num dia do passado, ele seria um dado do futuro). Cada campo sai no envelope, com a
-fonte e o dia em que ficou público.
+série do regulador) não saem por aqui. Cada ponta sai com o id da rede, a raiz do CNPJ e a razão social do
+retrato mensal mais novo da lista sem pessoa da Receita já público no dia (`cnpj_empresas_pj`, a mesma de
+`/companies`), com o mês dele (linha 867): é o nome daquele retrato, não o de cada dia, e a raiz que não está nele
+sai sem nome, mesmo que esteja num retrato mais velho. O histórico datado (`cnpj_empresas_historico`) não é lido:
+tem pessoa e não vai à base da API. O nome guardado na rede é o de hoje e não sai (num dia do passado, ele seria um
+dado do futuro). Cada campo sai no envelope, com a fonte e o dia em que ficou público.
 
 Sem olhar o futuro: a porta só devolve a ligação já pública no dia e esconde o fim que só se soube depois (D5:
 a ligação que acabou depois do dia ainda aparece no dia). Pessoa não sai (ADR 0108 D2.2): o CNPJ pedido só é
@@ -30,14 +32,14 @@ from base import cnpj as cnpj_
 from base.porta import Porta
 from base.porta.rede import views
 from src.api_externa.conjuntos import Permitido
+from src.api_externa.conjuntos.empresas import FONTE as RECEITA
 from src.api_externa.conjuntos.empresas import (
-    CONSTA,
     MES,
     PUBLICADO_EM,
-    RAIZ,
+    RETRATO_DO_CADASTRO,
     e_empresa,
+    retratos_de_empresa,
 )
-from src.api_externa.conjuntos.empresas import FONTE as RECEITA
 from src.api_externa.envelope import campo
 
 CONJUNTO = "links"
@@ -46,7 +48,6 @@ CODIGO_DO_TIPO_INVALIDO = "invalid_link_type"
 PROFUNDIDADE_MAXIMA = 3
 FRE, FCA = "cvm-hist-fre", "cvm-hist-fca"
 SISTEMA_DA_RAIZ = "cnpj_raiz"
-HISTORICO_DOS_NOMES = "cnpj_empresas_historico"
 NOME = "razao_social"
 
 
@@ -89,8 +90,9 @@ LIMITES = (
         "mostra um no dia. Nada aqui é recomendação de investimento."
     ),
     (
-        "O nome de cada ponta é a razão social que valia no dia, do histórico da Receita (que começa em 05/2023): "
-        "antes dele, ou numa ponta sem CNPJ, a ponta sai sem nome."
+        "O nome de cada ponta é a razão social do retrato mensal mais novo da Receita já público no dia, com o "
+        "mês dele (mes_do_retrato_do_cadastro): é o nome daquele retrato, não necessariamente o que valia no dia "
+        "exato. Antes do primeiro retrato, numa ponta sem CNPJ ou fora do retrato, a ponta sai sem nome."
     ),
     "Pessoa natural (MEI, empresário individual, sócio pessoa física) não é servida.",
 )
@@ -195,49 +197,41 @@ class LeitorDeVinculos:
             )
         return pontas
 
-    def _nomes(
-        self, raizes: set[str], como_era_em: date
-    ) -> dict[str, tuple[str, date]]:
-        """A razão social de cada raiz no retrato mais novo já público no dia, com o dia em que ele ficou
-        público; a raiz sem retrato público no dia, ou que tinha saído do arquivo, fica de fora."""
-        if (
-            not raizes
-            or not self.permitido(RECEITA, NOME, False)
-            or HISTORICO_DOS_NOMES not in views(self.porta.con)
-        ):
+    def _nomes(self, raizes: set[str], como_era_em: date) -> dict[str, dict[str, dict]]:
+        """Por raiz, a razão social (e o mês do retrato) do retrato mais novo de `cnpj_empresas_pj` já público no
+        dia, cada um no envelope; a raiz fora desse retrato, repetida nele ou sem natureza de empresa fica de
+        fora (na dúvida, não), e sem o nome liberado nada sai."""
+        if not raizes or not self.permitido(RECEITA, NOME, False):
             return {}
-        versoes = self.porta.ler(
-            HISTORICO_DOS_NOMES,
-            como_era_em=como_era_em,
-            filtros={RAIZ: sorted(raizes)},
-            colunas=[RAIZ, NOME, MES, CONSTA, PUBLICADO_EM],
-        )
-        if versoes.empty:
-            return {}
-        ultimas = versoes.sort_values([RAIZ, MES, PUBLICADO_EM]).groupby(RAIZ).tail(1)
+        servem_o_mes = self.permitido(RECEITA, RETRATO_DO_CADASTRO, False)
         nomes = {}
-        for linha in ultimas.to_dict("records"):
+        for raiz, linha in retratos_de_empresa(
+            self.porta, raizes, como_era_em, (NOME,)
+        ).items():
             nome = linha[NOME]
-            if _sim(linha[CONSTA]) and isinstance(nome, str) and nome.strip():
-                nomes[str(linha[RAIZ])] = (
-                    nome,
-                    pd.Timestamp(linha[PUBLICADO_EM]).date(),
+            if not isinstance(nome, str) or not nome.strip():
+                continue
+            publico_em = pd.Timestamp(linha[PUBLICADO_EM]).date()
+            campos = {
+                NOME: campo(nome, fonte=RECEITA, publico_em=publico_em, visto_em=None)
+            }
+            if servem_o_mes:
+                campos[RETRATO_DO_CADASTRO] = campo(
+                    str(linha[MES]), fonte=RECEITA, publico_em=publico_em, visto_em=None
                 )
+            nomes[raiz] = campos
         return nomes
 
     @staticmethod
     def _ponta(
-        ponta: _Ponta, nomes: dict[str, tuple[str, date]], fontes: set[str]
+        ponta: _Ponta, nomes: dict[str, dict[str, dict]], fontes: set[str]
     ) -> dict[str, object]:
         saida: dict[str, object] = {
             "id_na_rede": ponta.id_entidade,
             "raiz_do_cnpj": ponta.raiz,
         }
         if ponta.raiz in nomes:
-            nome, publico_em = nomes[ponta.raiz]
-            saida[NOME] = campo(
-                nome, fonte=RECEITA, publico_em=publico_em, visto_em=None
-            )
+            saida.update(nomes[ponta.raiz])
             fontes.add(RECEITA)
         return saida
 
@@ -246,7 +240,7 @@ class LeitorDeVinculos:
         linha: dict,
         servidos: tuple[str, ...],
         pontas: dict[str, _Ponta],
-        nomes: dict[str, tuple[str, date]],
+        nomes: dict[str, dict[str, dict]],
         fontes: set[str],
     ) -> dict[str, object]:
         tipo = TIPOS[linha["tipo"]]
