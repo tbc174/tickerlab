@@ -6985,7 +6985,6 @@ TABELAS: dict[str, Tabela] = {
             "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
             "contagem calculada por ela, não coluna desta tabela. "
             "**Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega)."
-            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",

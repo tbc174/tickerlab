@@ -147,7 +147,7 @@ class ProntidaoDePiloto(NamedTuple):
 
 
 # As entradas são da mesa Dados (linha 784), só com as duas provas existindo e a marca de pessoa decidida:
-# as cinco abaixo passaram em `scripts.conferir_sem_pessoa` (todo CNPJ dentro da `cnpj_empresas_pj`) em 12/11/2026.
+# as quatro abaixo passaram em `scripts.conferir_sem_pessoa` (todo CNPJ dentro da `cnpj_empresas_pj`) em 12/11/2026.
 PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     "carteiras_dos_fundos": ProntidaoDePiloto(
         versao_maior=1,
@@ -156,11 +156,6 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     ),
     "demonstracoes_como_era": ProntidaoDePiloto(
         versao_maior=3,
-        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
-        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
-    ),
-    "eventos": ProntidaoDePiloto(
-        versao_maior=1,
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
@@ -189,7 +184,6 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "cnpj_estabelecimentos_pj",
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
-        "eventos",
         "fca_geral",
         "rotulos_atraso",
     }
