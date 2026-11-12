@@ -47,6 +47,7 @@ import pandas as pd
 from base import oposicao_na_tela, receita_contato, receita_individuais, receita_pessoa
 from base.oposicao_na_tela import Opostos, SemOposicoesError
 from base.pessoas.chave import ErroSemChave
+from base.receita_contato import RaizesDeIndividual
 from base.receita_retrato import ErroDeLayout
 from scripts import carga_receita_mes as carga
 from scripts.montar_historico_do_cnpj import _arquivos, _ler, _repartir, _zips_do_mes
@@ -75,6 +76,7 @@ class Contexto(NamedTuple):
     tiradas: set[
         str
     ]  # preenchida por `individuais`, lida por `contato`: a ordem de TABELAS importa
+    individuais: RaizesDeIndividual  # toda raiz de individual e MEI (linha 859): o contato dela sem rua
 
 
 class Tabela(NamedTuple):
@@ -98,14 +100,16 @@ TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai 
     Tabela(
         INDIVIDUAIS,
         "Empresas",
-        lambda zip_, c: receita_individuais.ler_individuais(zip_, c.opostos, c.tiradas),
+        lambda zip_, c: receita_individuais.ler_individuais(
+            zip_, c.opostos, c.tiradas, c.individuais
+        ),
         ["cnpj_basico"],
         receita_individuais.MOTIVOS,
     ),
     Tabela(
         CONTATO,
         "Estabelecimentos",
-        lambda zip_, c: receita_contato.ler_contato(zip_, c.tiradas),
+        lambda zip_, c: receita_contato.ler_contato(zip_, c.tiradas, c.individuais),
         ["cnpj"],
         receita_contato.MOTIVOS,
     ),
@@ -238,7 +242,7 @@ def montar(
     trabalho = destino / TRABALHO
     shutil.rmtree(trabalho, ignore_errors=True)
     contagens, descartes = {}, {}
-    contexto = Contexto(opostos, set())
+    contexto = Contexto(opostos, set(), RaizesDeIndividual())
     try:
         for tabela in TABELAS:
             contagem, da_tabela = _preparar_tabela(
