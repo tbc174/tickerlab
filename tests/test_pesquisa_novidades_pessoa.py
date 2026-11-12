@@ -158,8 +158,8 @@ def test_cnpj_errado_ou_com_digito_colado_nao_conta(texto):
 
 def test_a_busca_de_pessoa_do_conector_e_a_de_src_dizem_o_mesmo():
     amostras = [
-        "529.982.247-25",
-        "52998224725",
+        "888.000.001-27",
+        "88800000127",
         "***.982.247-**",
         "fulano@exemplo.invalid",
         "11222333000181",

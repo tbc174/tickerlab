@@ -13,6 +13,9 @@ from base.pessoas import consulta, oposicoes, portao
 from base.receita_retrato import ParteDoQsa
 from scripts import carga_receita_mes as rc
 from scripts import oposicao_do_titular as cli
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado, meio
+
+MEIO_DO_CPF = meio(CPF_DE_TESTE)  # os seis dígitos que a Receita deixa à vista
 
 CHAVE = b"k" * 32
 MARIA = "MARIA DA SILVA"
@@ -89,7 +92,7 @@ def pastas(tmp_path):
         pasta,
         restrita,
         "2026-09",
-        (EMPRESA, MARIA, "982247"),
+        (EMPRESA, MARIA, MEIO_DO_CPF),
         (EMPRESA, JOAO, "123456"),
     )
     return pasta, restrita
@@ -139,15 +142,15 @@ def test_homonimo_se_resolve_pelos_6_digitos_do_meio(tmp_path):
         pasta,
         restrita,
         "2026-09",
-        (EMPRESA, MARIA, "982247"),
+        (EMPRESA, MARIA, MEIO_DO_CPF),
         (EMPRESA, MARIA, "111111"),
     )
     assert len(oposicoes.achar_titular(restrita, EMPRESA, MARIA, None)) == 2
-    assert len(oposicoes.achar_titular(restrita, EMPRESA, MARIA, "982247")) == 1
+    assert len(oposicoes.achar_titular(restrita, EMPRESA, MARIA, MEIO_DO_CPF)) == 1
     # CPF inteiro, se vier, só tem o meio usado (e nunca é guardado)
     assert oposicoes.achar_titular(
-        restrita, EMPRESA, MARIA, "529.982.247-25"
-    ) == oposicoes.achar_titular(restrita, EMPRESA, MARIA, "982247")
+        restrita, EMPRESA, MARIA, formatado(CPF_DE_TESTE)
+    ) == oposicoes.achar_titular(restrita, EMPRESA, MARIA, MEIO_DO_CPF)
 
 
 # --- prazo de 15 dias
@@ -199,7 +202,7 @@ def test_oposicao_vira_lapide_no_remonte(pastas):
         pasta,
         restrita,
         "2026-10",
-        (EMPRESA, MARIA, "982247"),
+        (EMPRESA, MARIA, MEIO_DO_CPF),
         (EMPRESA, JOAO, "999999"),
     )
     oposicoes.atender(pasta, restrita, date(2026, 10, 23))
@@ -212,7 +215,7 @@ def test_oposicao_vira_lapide_no_remonte(pastas):
         pasta,
         restrita,
         "2026-11",
-        (EMPRESA, MARIA, "982247"),
+        (EMPRESA, MARIA, MEIO_DO_CPF),
         (EMPRESA, JOAO, "999999"),
     )
     assert list(_pessoas(restrita)["nome"]) == [JOAO]
@@ -290,7 +293,7 @@ def test_script_registra_e_atende_sem_mostrar_nome(pastas, capsys, monkeypatch):
     )  # fmt: skip
     texto = capsys.readouterr().out
     assert saida == 0
-    assert "MARIA" not in texto and "982247" not in texto
+    assert "MARIA" not in texto and MEIO_DO_CPF not in texto
     assert "2026-11-06" in texto
     assert list(_pessoas(restrita)["nome"]) == [JOAO]
 
@@ -301,7 +304,7 @@ def test_script_com_homonimo_pede_os_6_digitos(tmp_path, capsys, monkeypatch):
         pasta,
         restrita,
         "2026-09",
-        (EMPRESA, MARIA, "982247"),
+        (EMPRESA, MARIA, MEIO_DO_CPF),
         (EMPRESA, MARIA, "111111"),
     )
     monkeypatch.setattr("sys.stdin", io.StringIO(MARIA + "\n"))
@@ -351,7 +354,7 @@ def test_script_acesso_mostra_o_papel_sem_nome_nem_cpf(pastas, capsys, monkeypat
     assert cli.main(argumentos) == 0
     texto = capsys.readouterr().out
     assert "49" in texto and "2019-03-01" in texto
-    assert "MARIA" not in texto and "982247" not in texto
+    assert "MARIA" not in texto and MEIO_DO_CPF not in texto
 
 
 def test_carga_durante_o_pedido_e_pega_pelo_conferir(pastas, capsys, monkeypatch):
@@ -365,7 +368,7 @@ def test_carga_durante_o_pedido_e_pega_pelo_conferir(pastas, capsys, monkeypatch
             pasta,
             restrita,
             "2026-10",
-            (EMPRESA, MARIA, "982247"),
+            (EMPRESA, MARIA, MEIO_DO_CPF),
             (EMPRESA, JOAO, "123456"),
         )
     assert oposicoes.restos(restrita) == 1

@@ -16,7 +16,7 @@ from base import receita_natureza as rn
 EMPRESAS = (
     '"33000167";"PETROLEO DE MENTIRA S.A.";"2046";"10";"1000,00";"05";""\n'
     '"12ABC345";"NOVA; COM PONTO E VIRGULA LTDA";"2062";"49";"0,00";"01";""\n'
-    '"11222333";"FULANO DE TAL 52998224725";"2135";"50";"5000,00";"01";""\n'
+    '"11222333";"FULANO DE TAL 88800000127";"2135";"50";"5000,00";"01";""\n'
     '"99999999";"FORA DA REDE SA";"2054";"10";"1,00";"05";""\n'
 )
 SIMPLES = (
@@ -54,7 +54,7 @@ def test_receita_so_duas_colunas():
     assert list(tabela.columns) == ["cnpj_basico", "natureza_juridica"]
     texto = tabela.astype(str).to_string()
     assert (
-        "FULANO" not in texto and "52998224725" not in texto and "VIRGULA" not in texto
+        "FULANO" not in texto and "88800000127" not in texto and "VIRGULA" not in texto
     )
     mei = rn.ler_mei(_zip("SIMPLES.CSV", SIMPLES), {"11222333"})
     assert list(mei.columns) == ["cnpj_basico", "mei"]

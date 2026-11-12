@@ -25,6 +25,7 @@ from src.banco.modelo import (
     operacoes,
 )
 from src.banco.usuarios import apagar_conta, entrar
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, no_formato
 
 HOJE = date(2026, 10, 21)
 D = Decimal
@@ -145,9 +146,9 @@ def test_exposicao_exige_valor_maior_que_zero(conexao, ana, valor):
 @pytest.mark.parametrize(
     "titular",
     [
-        "123.456.789-09",
-        "12345678909",
-        "123-456-789-09",
+        "888.000.000-46",
+        "88800000046",
+        no_formato(CPF_DE_TESTE, "ddd-ddd-ddd-dd"),
         "Maria da Silva",
         "Banco S.A.",
         "a/b",

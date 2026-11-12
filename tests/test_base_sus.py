@@ -15,13 +15,14 @@ from hypothesis import strategies as st
 
 from base import cnpj as cnpj_de_teste
 from base import dbc, sus
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, cpf_que_tambem_passa_como_cnpj
 from tests.test_base_dbc import montar_dbc
 
 HOSPITAL = "11222333000181"
 PREFEITURA = "11444777000161"
-CPF = "52998224725"  # CPF de exemplo com DVs válidos (nenhuma pessoa)
-# sorteado: com "000" na frente também passa no DV de CNPJ, e a "filial" não é 0001
-CPF_AMBIGUO = "74055068107"
+CPF = CPF_DE_TESTE  # CPF inventado com DVs válidos, montado na hora (nenhuma pessoa)
+# montado na hora: com "000" na frente também passa no DV de CNPJ, e a "filial" não é 0001
+CPF_AMBIGUO = cpf_que_tambem_passa_como_cnpj()
 COMPETENCIA = 202607
 COLETADO_EM = date(2026, 11, 5)
 

@@ -13,9 +13,10 @@ import pytest
 
 from base import receita_contato as rc
 from base.receita_retrato import ErroDeLayout
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, no_formato
 
 CPF_VALIDO = (
-    "52998224725"  # número de exemplo que fecha nos dígitos; não é de ninguém conhecido
+    "88800000127"  # número de exemplo que fecha nos dígitos; não é de ninguém conhecido
 )
 
 
@@ -111,7 +112,7 @@ def test_telefone_so_no_formato(ddd, numero, esperado):
     ("email", "motivo"),
     [
         (f"{CPF_VALIDO}@exemplo.com", rc.EMAIL_COM_CARA_DE_CPF),
-        ("529.982.247-25@exemplo.com", rc.EMAIL_COM_CARA_DE_CPF),
+        ("888.000.001-27@exemplo.com", rc.EMAIL_COM_CARA_DE_CPF),
         (f"fulano{CPF_VALIDO}x@exemplo.com", rc.EMAIL_COM_CARA_DE_CPF),
         ("11990001000@exemplo.com", rc.EMAIL_COM_CARA_DE_CPF),  # na dúvida, sai
         ("sem arroba", rc.EMAIL_FORA_DO_FORMATO),
@@ -132,7 +133,7 @@ def test_email_nao_informado_nao_conta_como_descarte():
 
 
 @pytest.mark.parametrize("campo", ["logradouro", "numero", "complemento", "bairro"])
-@pytest.mark.parametrize("cpf", [CPF_VALIDO, "529.982.247-25", "***.982.247-**"])
+@pytest.mark.parametrize("cpf", [CPF_VALIDO, "888.000.001-27", "***.982.247-**"])
 def test_cpf_escrito_no_endereco_sai(campo, cpf):
     tabela, _ = _ler(_linha(**{campo: f"CASA {cpf} FUNDOS"}))
     assert tabela.loc[0, campo] == "CASA FUNDOS"
@@ -160,8 +161,8 @@ def test_layout_com_campo_a_mais_quebra_a_leitura():
 @pytest.mark.parametrize(
     "texto",
     [
-        "CPF 529982247-25", "CPF:529982247-25", "CPF 529 982 247 25", "CPF-52998224725",
-        "CPF/52998224725", "N.52998224725", "CASA,52998224725", "529.982.247/25",
+        "CPF 888000001-27", "CPF:888000001-27", f"CPF {no_formato(CPF_DE_TESTE, 'ddd ddd ddd dd')}", "CPF-88800000127",
+        "CPF/88800000127", f"N.{CPF_DE_TESTE}", "CASA,88800000127", no_formato(CPF_DE_TESTE, "ddd.ddd.ddd/dd"),
     ],
 )  # fmt: skip
 def test_cpf_em_formatos_variados_no_complemento_sai(texto):
@@ -173,15 +174,15 @@ def test_cpf_em_formatos_variados_no_complemento_sai(texto):
 
 
 def test_cpf_no_numero_sai():
-    tabela, _ = _ler(_linha(numero="529982247-25"))
+    tabela, _ = _ler(_linha(numero="888000001-27"))
     assert pd.isna(tabela.loc[0, "numero"])
 
 
 @pytest.mark.parametrize(
     "email",
     [
-        "529_982_247_25@exemplo.com", "529/982/247/25@exemplo.com",
-        "contato@52998224725.com.br", "contato@529.982.247-25.com",
+        f"{no_formato(CPF_DE_TESTE, 'ddd_ddd_ddd_dd')}@exemplo.com", f"{no_formato(CPF_DE_TESTE, 'ddd/ddd/ddd/dd')}@exemplo.com",
+        "contato@88800000127.com.br", "contato@888.000.001-27.com",
     ],
 )  # fmt: skip
 def test_cpf_em_formatos_variados_no_email_deixa_o_email_vazio(email):

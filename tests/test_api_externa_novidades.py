@@ -135,8 +135,8 @@ def test_recorte_do_trecho_passa_adiante(cliente, chave, tmp_path, monkeypatch):
         _item(sha256="A" * 64),
         _item(trecho=""),
         _item(trecho="x" * 400),
-        _item(trecho="Sócio com CPF 529.982.247-25 entrou em 2025"),
-        _item(trecho="Sócio 52998224725 entrou em 2025"),
+        _item(trecho="Sócio com CPF 888.000.001-27 entrou em 2025"),
+        _item(trecho="Sócio 88800000127 entrou em 2025"),
         _item(trecho="O Sr. Fulano Inventado assinou o contrato em 2025"),
         _item(trecho="NOME FICTICIO | multa | 120.000,00"),  # sem CNPJ no trecho
         _item(
@@ -149,7 +149,7 @@ def test_recorte_do_trecho_passa_adiante(cliente, chave, tmp_path, monkeypatch):
         _item(trecho="11.222.333/0001-81 | tel +55 11 3456 7890 | 120"),
         _item(afirmacao="fale com fulano@exemplo.invalid"),  # e-mail em qualquer texto
         _item(posicao="coluna do Sr. Fulano"),  # marca de pessoa na posição
-        _item(afirmacao="CPF 529.982.247-25"),
+        _item(afirmacao="CPF 888.000.001-27"),
         _item(
             fonte_url="https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/cad_cia_aberta.csv"
         ),

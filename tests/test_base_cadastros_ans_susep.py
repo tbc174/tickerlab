@@ -24,7 +24,7 @@ def _cnpj(raiz: str, filial: str = "0001") -> str:
 EMPRESA = _cnpj("11222333")
 OUTRA = _cnpj("33000167")
 INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
-CPF = "12345678909"
+CPF = "88800000046"
 DIA = pd.Timestamp("2026-10-14")
 
 CABECALHO_ATIVAS = (

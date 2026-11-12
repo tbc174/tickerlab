@@ -129,7 +129,7 @@ def test_entrada_recusa_pessoa():
     com, sem = relatorios_da_cpfl()
     secoes = [
         *com.secoes,
-        re_.Secao("extra", "Extra", paragrafos=["CPF 123.456.789-09"]),
+        re_.Secao("extra", "Extra", paragrafos=["CPF 888.000.000-46"]),
     ]
     with pytest.raises(en.PessoaNaEntradaError):
         en.entrada_da_ficha(

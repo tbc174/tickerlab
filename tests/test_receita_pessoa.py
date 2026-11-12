@@ -14,6 +14,7 @@ import pytest
 from base import receita_pessoa as rp
 from base.oposicao_na_tela import Opostos
 from base.receita_retrato import ErroDeLayout
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, OUTRO_CPF_DE_TESTE, formatado, meio
 
 SEM_OPOSTOS = Opostos(frozenset(), b"k" * 32)
 SEM_REP = '"***000000**";"";"00"'
@@ -84,7 +85,7 @@ def test_toda_faixa_de_adulto_fica(faixa):
 @pytest.mark.parametrize(
     "representante",
     [
-        '"***654321**";"";"00"',
+        f'"***{meio(CPF_DE_TESTE)}**";"";"00"',
         '"***000000**";"RESPONSAVEL EXEMPLO";"00"',
         '"***000000**";"";"35"',
     ],
@@ -160,7 +161,7 @@ def test_socio_empresa_e_estrangeiro_ficam_fora():
 def test_cpf_escrito_no_nome_sai_e_o_documento_nunca_aparece():
     socios, _ = _ler(
         _linha("11222333", "2", "FULANO EXEMPLO ***123456**"),
-        _linha("11222333", "2", "BELTRANA EXEMPLO 123.456.789-09"),
+        _linha("11222333", "2", f"BELTRANA EXEMPLO {formatado(OUTRO_CPF_DE_TESTE)}"),
     )
     assert list(socios["nome_socio"]) == ["FULANO EXEMPLO", "BELTRANA EXEMPLO"]
     tudo = socios.astype(str).to_string()

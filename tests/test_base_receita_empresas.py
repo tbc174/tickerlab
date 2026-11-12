@@ -6,13 +6,14 @@ import zipfile
 import pandas as pd
 
 from base import receita_empresas as re_
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, no_formato
 
 EMPRESAS = (
     '"33000167";"PETROLEO DE MENTIRA S.A.";"2046";"10";"1000,00";"05";""\n'
     '"12ABC345";"NOVA; COM PONTO E VIRGULA LTDA";"2062";"49";"0,00";"01";""\n'
     '"11222333";"FULANO DE TAL";"2135";"50";"5000,00";"01";""\n'
     '"44444444";"BELTRANO DA SILVA";"4090";"50";"0,00";"00";""\n'
-    '"55555555";"MEI COM NATUREZA DE LTDA 52998224725";"2062";"49";"0,00";"01";""\n'
+    '"55555555";"MEI COM NATUREZA DE LTDA 88800000127";"2062";"49";"0,00";"01";""\n'
 )
 
 
@@ -43,7 +44,7 @@ def test_empresario_individual_e_grupo_4_nem_saem_do_leitor():
 
 
 def test_cpf_no_texto_da_razao_social_sai():
-    assert "52998224725" not in _empresas().to_csv()
+    assert "88800000127" not in _empresas().to_csv()
 
 
 def test_vista_deixa_de_fora_mei_e_raiz_desconhecida():
@@ -103,13 +104,13 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
         {
             "cnpj_basico": [str(n) for n in range(8)],
             "razao_social": [
-                "MARIA DE PAULA-52998224725 LTDA",
-                "JOAO DA SILVA 529982247251 LTDA",
+                "MARIA DE PAULA-88800000127 LTDA",
+                "PESSOA INVENTADA LICITACAO 529982247251 LTDA",
                 "CASA 12345678000195 LTDA",
-                "FULANO 529982247-25 LTDA",
-                "FULANO 529 982 247 25 LTDA",
-                "FULANO 529.982.247.25 LTDA",
-                "FULANO 529982247/25 LTDA",
+                "FULANO 888000001-27 LTDA",
+                f"FULANO {no_formato(CPF_DE_TESTE, 'ddd ddd ddd dd')} LTDA",
+                f"FULANO {no_formato(CPF_DE_TESTE, 'ddd.ddd.ddd.dd')} LTDA",
+                f"FULANO {no_formato(CPF_DE_TESTE, 'ddddddddd/dd')} LTDA",
                 "CASA 12.345.678/0001-95 LTDA",
             ],
             "natureza_juridica": ["2062"] * 8,
@@ -120,7 +121,7 @@ def test_numero_de_11_ou_12_digitos_solto_na_razao_social_sai_e_cnpj_fica():
     razoes = list(_empresas_pj(parte)["razao_social"])
     assert razoes == [
         "MARIA DE PAULA LTDA",
-        "JOAO DA SILVA LTDA",
+        "PESSOA INVENTADA LICITACAO LTDA",
         "CASA 12345678000195 LTDA",
         "FULANO LTDA",
         "FULANO LTDA",

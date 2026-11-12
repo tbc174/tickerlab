@@ -47,7 +47,7 @@ FILIAL = _cnpj("11222333", "0002")
 OUTRA = _cnpj("33000167")
 DISTRIBUIDORA = _cnpj("86448057")
 INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
-CPF = "12345678909"
+CPF = "88800000046"
 
 
 def _csv(linhas: list[dict[str, str]], codificacao: str) -> bytes:
