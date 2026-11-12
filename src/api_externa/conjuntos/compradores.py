@@ -12,6 +12,10 @@ tipos simples e com as chaves em português (a rota traduz na saída), as empres
 - `controls_in_sector`: a companhia aberta que, no FRE mais recente já entregue no dia, tinha uma controlada ou
   coligada no setor (`controladas`, fonte `cvm-hist-fre`).
 
+No VPS os dois últimos sinais leem as cópias reduzidas com nome próprio (`controladas_pj` e `fips_registrados`,
+linha 844, montadas e travadas por `base/recorte_dos_compradores.py`): só raízes da lista sem pessoa, sem razão
+social, gestor nem administrador. A resposta é a mesma; quando a porta tem a tabela inteira, vale a inteira.
+
 Cada comprador sai com a raiz do CNPJ, a razão social (em envelope) e, por sinal, quantas provas e até
 `EXEMPLOS_POR_SINAL` exemplos, cada campo com a fonte e o dia em que ficou público. A ordem é pelo número de
 sinais e depois pelo de entradas, não por chance de compra.
@@ -30,6 +34,7 @@ recebido pela CVM, e a versão mais nova já recebida.
 import copy
 import threading
 from collections import OrderedDict, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -54,6 +59,13 @@ ENTRADAS, CONTROLADAS, FUNDOS = (
     "controladas",
     "registro_de_fundos",
 )
+# No VPS a lista lê as cópias reduzidas, com nome próprio (linha 844, `base/recorte_dos_compradores.py`): só
+# PJ, sem razão social, gestor nem administrador. Em casa, a tabela inteira; ela vale quando as duas estão.
+CONTROLADAS_PJ, FIPS_REGISTRADOS = "controladas_pj", "fips_registrados"
+LEITURAS = {
+    CONTROLADAS: (CONTROLADAS, CONTROLADAS_PJ),
+    FUNDOS: (FUNDOS, FIPS_REGISTRADOS),
+}
 PUBLICADO_EM, MES = "publico_em", "mes_do_retrato"
 ATIVA, FIP = "02", "FIP"
 ANOS_PADRAO, ANOS_MAXIMO = 3, 10
@@ -119,7 +131,15 @@ LIMITES = (
 TAMANHO_DO_CACHE = 64
 _CACHE: OrderedDict[tuple, "CompradoresServidos"] = OrderedDict()
 _TRAVA = threading.Lock()
-TABELAS_LIDAS = (ESTABELECIMENTOS, EMPRESAS, ENTRADAS, FUNDOS, CONTROLADAS)
+TABELAS_LIDAS = (
+    ESTABELECIMENTOS,
+    EMPRESAS,
+    ENTRADAS,
+    FUNDOS,
+    FIPS_REGISTRADOS,
+    CONTROLADAS,
+    CONTROLADAS_PJ,
+)
 
 
 def zerar_o_cache() -> None:
@@ -221,6 +241,11 @@ class LeitorDeCompradores:
         self.permitido = permitido
         self.linhas_maximas = linhas_maximas
         self.tabelas = set(views(porta.con))
+        # a tabela que cada sinal lê: a inteira, se a porta a tem, ou a cópia reduzida
+        self.lida = {
+            tabela: next((t for t in opcoes if t in self.tabelas), tabela)
+            for tabela, opcoes in LEITURAS.items()
+        }
 
     def _libera(self, campos: tuple[tuple[str, str], ...]) -> bool:
         return all(self.permitido(fonte, nome, False) for fonte, nome in campos)
@@ -229,8 +254,8 @@ class LeitorDeCompradores:
         """Os sinais com todos os campos liberados pelo portão e as tabelas na porta."""
         precisa = {
             ENTROU: (ENTRADAS,),
-            FUNDO: (ENTRADAS, FUNDOS),
-            CONTROLA: (CONTROLADAS,),
+            FUNDO: (ENTRADAS, self.lida[FUNDOS]),
+            CONTROLA: (self.lida[CONTROLADAS],),
         }
         return tuple(
             s
@@ -291,7 +316,7 @@ class LeitorDeCompradores:
             pd.Timestamp(como_era_em)
             - pd.Timedelta(days=round(pedido.anos * DIAS_POR_ANO))
         ).date()
-        consulta = _Consulta(self.porta, mes, como_era_em, desde)
+        consulta = _Consulta(self.porta, mes, como_era_em, desde, self.lida)
         setor = consulta.setor(pedido.cnae, pedido.uf)
         lista = _Lista(setor)
         fontes = {RECEITA}
@@ -332,10 +357,22 @@ class LeitorDeCompradores:
 
 
 class _Consulta:
-    """As consultas à porta de um pedido: o retrato do dia, o dia e o começo da janela."""
+    """As consultas à porta de um pedido: o retrato do dia, o dia, o começo da janela e a tabela que cada
+    sinal lê (a inteira ou a cópia reduzida)."""
 
-    def __init__(self, porta: Porta, mes: str, dia: date, desde: date) -> None:
+    def __init__(
+        self,
+        porta: Porta,
+        mes: str,
+        dia: date,
+        desde: date,
+        lida: Mapping[str, str] | None = None,
+    ) -> None:
         self.porta, self.mes, self.dia, self.desde = porta, mes, dia, desde
+        self.lida = dict(lida or {})
+
+    def _da_vez(self, tabela: str) -> str:
+        return _view(self.lida.get(tabela, tabela))
 
     def _df(
         self, sql: str, parametros: dict[str, object], **tabelas: pd.DataFrame
@@ -392,7 +429,7 @@ class _Consulta:
         """Os FIPs registrados e não cancelados no dia que eram sócios de uma empresa do setor."""
         return self._df(
             "WITH fip AS (SELECT DISTINCT substr(regexp_replace(CNPJ_Fundo, '[^0-9A-Za-z]', '', 'g'), 1, 8) AS raiz "
-            f"FROM {_view(FUNDOS)} WHERE Tipo_Fundo = $fip "
+            f"FROM {self._da_vez(FUNDOS)} WHERE Tipo_Fundo = $fip "
             "AND TRY_CAST(Data_Registro AS DATE) <= CAST($dia AS DATE) "
             "AND (TRY_CAST(Data_Cancelamento AS DATE) IS NULL "
             "OR TRY_CAST(Data_Cancelamento AS DATE) > CAST($dia AS DATE))) "
@@ -408,7 +445,7 @@ class _Consulta:
         return self._df(
             "WITH c AS (SELECT *, regexp_replace(cnpj_companhia, '[^0-9A-Za-z]', '', 'g') AS cc, "
             "substr(regexp_replace(cnpj, '[^0-9A-Za-z]', '', 'g'), 1, 8) AS alvo "
-            f"FROM {_view(CONTROLADAS)} WHERE {PUBLICADO_EM} <= CAST($dia AS DATE)), "
+            f"FROM {self._da_vez(CONTROLADAS)} WHERE {PUBLICADO_EM} <= CAST($dia AS DATE)), "
             # um documento só por companhia: a referência mais recente e, nela, a versão mais nova;
             # a controlada que a versão nova tirou não sai mais
             "ultimo AS (SELECT DISTINCT cc, referencia, versao FROM c "

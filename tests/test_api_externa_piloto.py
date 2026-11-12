@@ -7,6 +7,7 @@ organização com a marca (a linha de contrato `prontidao_de_piloto`) a recebe, 
 
 import dataclasses
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -349,6 +350,21 @@ LIBERADO_PELO_PILOTO = Decisao(True, Motivo.LIBERADO_PELO_PILOTO)
 
 def test_piloto_sem_registro_aberto_nao_sai() -> None:
     assert piloto.registrar("cvm-dfp", "valor", LIBERADO_PELO_PILOTO) is False
+
+
+def test_o_json_abre_o_registro_e_o_deck_nao(banco, monkeypatch) -> None:
+    """O deck (linha 782) ainda não leva a frase: sem o registro aberto, campo de piloto não entra no `.pptx`."""
+    monkeypatch.setattr(rotas, "obter_engine", lambda: banco)
+    monkeypatch.setattr(rotas, "registrar_consumo", lambda *_a, **_k: None)
+    saiu: list[bool] = []
+
+    def ler(_conexao):
+        saiu.append(piloto.registrar("cvm-dfp", "valor", LIBERADO_PELO_PILOTO))
+        return SimpleNamespace(corpo={}, fontes=set(), linhas=1)
+
+    rotas._servido_contado(SimpleNamespace(), "financials", ler)  # o caminho do deck
+    rotas._pedido_contado(SimpleNamespace(), "financials", ler)  # o caminho do JSON
+    assert saiu == [False, True]
 
 
 def test_registro_anota_cada_caminho() -> None:

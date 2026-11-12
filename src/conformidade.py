@@ -65,7 +65,10 @@ from src.sala.documentos import apagar_arquivos_da_conta
 # Versão 13: o registro de quem entra no servidor e usa sudo vai a outro computador por 12 meses
 # (linha 207 da fila; RIPD da sala, R-S1). O texto 14 (a ficha de originação e as garantias da
 # sala, linha 194) entrou sem novo aceite: descreve o que a pessoa já anota, sem uso novo
-VERSAO_DOS_TERMOS = "2026-10-22.13"
+# Versão 14 do aceite (texto 16 da política, linha 809): o vínculo da conta com a organização e o
+# registro das consultas a dados de pessoas são usos novos de dado da conta; a organização com a
+# permissão de ver pessoas (ADR 0128, Emenda 1) e a consulta da base pelo próprio responsável
+VERSAO_DOS_TERMOS = "2026-11-11.14"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)

@@ -2097,3 +2097,19 @@ def test_dossie_exportado_so_chama_rotas_de_pj_e_nao_leva_cpf(rodar, chave, tmp_
     )
     assert not re.search(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", celulas)
     assert "não achado:" in celulas
+
+
+def test_eventos_pede_50_por_pagina_e_com_todas_deixa_o_plano_decidir(monkeypatch):
+    """Sem --todas a CLI pede a primeira página de 50 (uma companhia grande passa de mil eventos)."""
+    pedidos: list[dict] = []
+
+    def pedir(self, caminho, parametros=None):
+        pedidos.append(dict(parametros or {}))
+        return {"events": [], "next_cursor": None}
+
+    monkeypatch.setattr(cliente.ApiDoTickerlab, "pedir", pedir)
+    api_de_mentira = cliente.ApiDoTickerlab(httpx.Client(), "chave", "http://x")
+    api_de_mentira.eventos("33000167000101", None, [], False)
+    api_de_mentira.eventos("33000167000101", None, [], True)
+    assert pedidos[0]["limit"] == "50"
+    assert "limit" not in pedidos[1]

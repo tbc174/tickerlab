@@ -17,7 +17,7 @@ não entra (`como_era_em` na porta). A rotulagem de insolvência (`insolvencia`)
 
 Pessoa não sai (ADR 0108 D2.2): o CNPJ só é servido se a rede o conhece como empresa que não é pessoa
 (`empresas.e_empresa`); a troca com auditor que pode ser pessoa física a porta já esconde (`trata_como_pessoa`,
-ADR 0075). A página vai até o limite de linhas do plano; `proximo_cursor` (opaco) traz a seguinte, sem perder
+ADR 0075). A página vai até o limite de linhas do plano, ou até o `limit` do pedido quando for menor (o plano é o teto); `proximo_cursor` (opaco) traz a seguinte, sem perder
 nem repetir evento quando dois têm o mesmo dia.
 """
 
