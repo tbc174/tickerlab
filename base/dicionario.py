@@ -4260,7 +4260,7 @@ TABELAS: dict[str, Tabela] = {
             "gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado "
             "pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor "
             "responsável fica fora. "
-            "**Limites medidos em 12/11/2026:** 17 linhas são idênticas em todas as colunas, duplicadas no arquivo da CVM; o gestor fica vazio em 26679 linhas, quase todas de fundos cancelados (a CVM os deixa sem gestor) ou de gestor pessoa física. Os registros vão de 1957 a hoje, esparsos nos primeiros anos."
+            "**Limites medidos em 12/11/2026:** 17 linhas são idênticas em todas as colunas que a base guarda (o diretor responsável sai na montagem); o gestor fica vazio em 26679 linhas, quase todas de fundos cancelados (a CVM os deixa sem gestor) ou de gestor pessoa física. Os registros vão de 1957 a hoje, esparsos nos primeiros anos."
         ),
         fonte="CVM: registro de fundos e classes da CVM 175 (`registro_fundo_classe.zip`)",
         familia_da_fonte="cvm",

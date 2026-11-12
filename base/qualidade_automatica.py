@@ -263,7 +263,7 @@ REGRAS: dict[str, Regra] = {
             "CPF_CNPJ_Gestor": "fundo cancelado, que a CVM deixa sem gestor (99% dos casos), ou gestor pessoa física, sem CPF na base"
         },
         repetidas_aceitas=17,
-        porque_repetidas="linhas idênticas em todas as colunas, duplicadas no arquivo da CVM; a base não corrige",
+        porque_repetidas="linhas idênticas em todas as colunas, nas colunas que a base guarda (o diretor responsável sai na montagem); a base não corrige",
     ),
     "pgfn_divida": Regra(
         chave=(
