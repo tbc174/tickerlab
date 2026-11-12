@@ -343,7 +343,9 @@ def fundo(
     known_at: date | None = None,
     assumed_return: float | None = None,
 ) -> object:
-    """Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`."""
+    """Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.
+    O bloco pedido que a organização não tem vai em `unavailable_sections` (a carteira vazia não é "sem
+    posição"), com o aviso em `limits`."""
     numeros = _cnpj_pedido(cnpj)
     dia, retorno = _dia_pedido(known_at), _retorno_pedido(assumed_return)
     return _um_pedido(
@@ -363,7 +365,8 @@ def demonstracoes_da_empresa(
     period_end: date | None = None,
 ) -> object:
     """As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,
-    a versão e a origem; `period_end` traz só o período que termina nesse dia."""
+    a versão e a origem; `period_end` traz só o período que termina nesse dia. O documento que a organização
+    não tem vai em `unavailable_filings` (sem as linhas dele não é "não entregou"), com o aviso em `limits`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
 
@@ -775,7 +778,9 @@ def lista_de_setores(contexto: ChaveSemQuota) -> object:
 @router.get("/sectors/{key}")
 def setor(key: str, contexto: Chave, known_at: date | None = None) -> object:
     """O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem
-    são, como a última noite os deixou; `known_at` antes da noite sai `not_available`."""
+    são, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a
+    organização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,
+    com o aviso em `limits`."""
     dia = _dia_pedido(known_at)
     return _pedido_contado(
         contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)

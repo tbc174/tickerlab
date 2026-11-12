@@ -234,15 +234,18 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
-**Parte não disponível para a organização** (linhas 878, 880 e 881; `src/api_externa/nao_disponivel.py`):
+**Parte não disponível para a organização** (linhas 878, 880 a 882 e 891; `src/api_externa/nao_disponivel.py`):
 quando um pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo, os sinais
-dos compradores, os documentos das entregas, os números dos comparáveis), a parte que a organização não tem não
+dos compradores, os documentos das entregas e das demonstrações, os campos do cadastro no perfil, os números dos comparáveis, os blocos do fundo,
+as séries e a lista das companhias do setor), a parte que a organização não tem não
 some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz a lista das partes
 pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`, `unavailable_link_types`
-em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` e `unavailable_registration_fields` em `/profile`,
-`unavailable_figures` em `/comparables`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
+em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` e `unavailable_registration_fields` em
+`/profile`, `unavailable_figures` em `/comparables`, `unavailable_filings` em `/financials`, `unavailable_sections`
+em `/funds` e em `/sectors`, que traz também `unavailable_series`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
 entra na lista: nos dois casos ela não foi consultada. Os `limits` só falam das partes servidas
-e, quando há parte de fora, trazem a frase de que ela não foi consultada. Se nenhuma parte pedida está liberada,
+e, quando há parte de fora, trazem a frase de que ela não foi consultada (em `/funds`, `/financials` e
+`/sectors`, que não tinham `limits`, a lista sai vazia quando tudo foi consultado). Se nenhuma parte pedida está liberada,
 a resposta é 404 `not_available`, como o resto do contrato. Todo conjunto novo com partes segue o mesmo molde.
 
 ### Perfil (`profiles`, linha 736)
@@ -372,6 +375,10 @@ A base não guarda quando a agência publicou cada mês, então `published_at` �
 sai vazio; só existe a noite mais nova, e um `known_at` antes dela sai `not_available`. Linha sem CNPJ de
 14 dígitos não sai: nenhuma pessoa física. O lado a lado por entidade e o mercado de energia (CCEE, ONS)
 ficam fora desta versão.
+
+A série cuja fonte a organização não tem (ou cuja tabela não está pronta) vai em `unavailable_series`, com o
+nome dela, em vez de sumir; a lista das companhias barrada sai vazia e vai em `unavailable_sections`
+(`members`). O deck do setor leva o mesmo aviso nos limites.
 
 ## Mudou uma rota da `/data/v1`?
 

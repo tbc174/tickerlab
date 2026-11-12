@@ -297,7 +297,12 @@ def do_setor(corpo: dict, fontes: list[dict], gerado_em: datetime) -> Apresentac
         dossie.COLUNAS["membros"],
         onde,
     )
-    limites = [*LIMITES_DO_SETOR, *([AVISO_DO_CORTE] if corpo.get("cortada") else [])]
+    # o aviso da série ou dos membros que o portão não libera vem do corpo (linha 882), como no JSON
+    limites = [
+        *LIMITES_DO_SETOR,
+        *corpo.get("limites", []),
+        *([AVISO_DO_CORTE] if corpo.get("cortada") else []),
+    ]
     fechamento = _fechamento(fontes, limites, onde)
     return Apresentacao(
         f"Relatório do setor: {corpo['nome']}",

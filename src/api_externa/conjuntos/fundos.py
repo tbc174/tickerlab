@@ -16,8 +16,14 @@ as chaves em português (a rota traduz na saída):
 
 `permitido(fonte, campo, derivado)` é o portão (a rota o liga ao contrato e ao `portao_externo`): campo
 negado não aparece. Sem nada liberado, `None`, e a rota responde o mesmo de um fundo que não existe.
+
+O bloco que o portão não libera não some em silêncio (linha 882, `src/api_externa/nao_disponivel.py`): a
+carteira vazia leria como "o fundo não tem posição". O bloco pedido sem nenhum campo liberado (o cadastro, o
+custo da taxa quando há retorno suposto, a carteira pelas duas fontes da CDA) vai em `blocos_nao_disponiveis`,
+com o nome de fora, e os limites avisam que a resposta não diz nada sobre ele.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
@@ -25,13 +31,16 @@ from base import cnpj as cnpj_
 from base.porta import Porta
 from base.raio_x_de_fundo import (
     CADASTRO,
+    CAMPOS_DO_CADASTRO,
     CAPITAL_DO_EXEMPLO,
     PRAZOS_DO_CUSTO,
     raio_x_de_fundo,
     taxas_do_fundo,
 )
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.nomes import NOMES_DE_FORA
 from src.ferramentas.custos import custo_da_taxa
 
 CONJUNTO = "funds"
@@ -44,6 +53,21 @@ CAMPOS_DA_POSICAO = (
 CAMPOS_DO_CUSTO = ("sem_taxa", "com_taxa", "ficou_com_a_taxa", "fracao_do_resultado")
 TAXA_DE_ADMINISTRACAO = "taxa_administracao_pct_ao_ano"
 PERCENTUAL = 100
+# os blocos do fundo, na ordem da resposta; o portão libera cada um pelas próprias fontes
+CADASTRO_DO_FUNDO = "cadastro"
+CUSTO_DA_TAXA = "custo_da_taxa"
+CARTEIRA = "carteira"
+FONTES_DA_CARTEIRA = (FONTE_DA_CDA_HISTORICA, FONTE_DA_CDA_RECENTE)
+# o nome de dentro da lista dos blocos pedidos que o portão não libera
+NAO_DISPONIVEIS = "blocos_nao_disponiveis"
+LIMITE_DO_BLOCO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "blocos", "a resposta"
+)
+
+
+def limites(nao_disponiveis: Sequence[str]) -> list[str]:
+    """Os limites de um fundo: só o aviso, quando algum bloco pedido ficou de fora."""
+    return [LIMITE_DO_BLOCO_NAO_DISPONIVEL] if nao_disponiveis else []
 
 
 @dataclass(frozen=True)
@@ -149,6 +173,30 @@ class LeitorDeFundos:
             "prazos": prazos,
         }
 
+    def _blocos_pedidos(self, retorno_suposto: float | None) -> dict[str, list[str]]:
+        """Os campos que o portão libera de cada bloco pedido (o custo só é pedido com o retorno suposto);
+        a carteira conta os campos das duas fontes da CDA."""
+        blocos = {
+            CADASTRO_DO_FUNDO: [
+                nome
+                for nome in CAMPOS_DO_CADASTRO.values()
+                if self.permitido(FONTE_DO_CADASTRO, nome, False)
+            ]
+        }
+        if retorno_suposto is not None:
+            blocos[CUSTO_DA_TAXA] = [
+                nome
+                for nome in CAMPOS_DO_CUSTO
+                if self.permitido(FONTE_DO_CADASTRO, nome, True)
+            ]
+        blocos[CARTEIRA] = [
+            f"{fonte}:{nome}"
+            for fonte in FONTES_DA_CARTEIRA
+            for nome in CAMPOS_DA_POSICAO
+            if self.permitido(fonte, nome, False)
+        ]
+        return blocos
+
     def _posicao(self, linha: dict) -> tuple[dict, str] | None:
         visto_em = _dia(linha.get("visto_em"))
         fonte = FONTE_DA_CDA_RECENTE if visto_em is not None else FONTE_DA_CDA_HISTORICA
@@ -196,16 +244,21 @@ class LeitorDeFundos:
                 else self._custo(taxas, momento, retorno_suposto)
             )
             if campos:
-                corpo["cadastro"] = campos
+                corpo[CADASTRO_DO_FUNDO] = campos
                 linhas += 1
             if custo is not None:
-                corpo["custo_da_taxa"] = custo
+                corpo[CUSTO_DA_TAXA] = custo
             if campos or custo is not None:
                 fontes.add(FONTE_DO_CADASTRO)
         carteira, fontes_da_carteira = self._carteira(formatado, como_era_em)
         if not fontes and not carteira["posicoes"]:
             return None
-        corpo["carteira"] = carteira
+        corpo[CARTEIRA] = carteira
+        nao_disponiveis = nao_disponivel.nao_disponiveis(
+            self._blocos_pedidos(retorno_suposto)
+        )
+        corpo[NAO_DISPONIVEIS] = [NOMES_DE_FORA[bloco] for bloco in nao_disponiveis]
+        corpo["limites"] = limites(nao_disponiveis)
         return FundoServido(
             corpo, fontes | fontes_da_carteira, linhas + len(carteira["posicoes"])
         )

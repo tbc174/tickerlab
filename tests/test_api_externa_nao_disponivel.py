@@ -8,7 +8,16 @@ só falam do que foi servido. Os testes de cada conjunto ficam com o conjunto; a
 import pytest
 
 from src.api_externa import nao_disponivel
-from src.api_externa.conjuntos import comparaveis, compradores, eventos, ficha, vinculos
+from src.api_externa.conjuntos import (
+    comparaveis,
+    compradores,
+    demonstracoes,
+    eventos,
+    ficha,
+    fundos,
+    setores,
+    vinculos,
+)
 from src.api_externa.nomes import NOMES_DE_FORA
 
 GERAIS = ("o do dia", "o do meio", "o do fim")
@@ -80,6 +89,10 @@ def test_o_aviso_dos_eventos_continua_o_mesmo_texto_do_contrato():
         (ficha.NAO_DISPONIVEIS, "unavailable_filings"),
         (ficha.CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "unavailable_registration_fields"),
         (comparaveis.NAO_DISPONIVEIS, "unavailable_figures"),
+        (demonstracoes.NAO_DISPONIVEIS, "unavailable_filings"),
+        (fundos.NAO_DISPONIVEIS, "unavailable_sections"),
+        (setores.SERIES_NAO_DISPONIVEIS, "unavailable_series"),
+        (setores.BLOCOS_NAO_DISPONIVEIS, "unavailable_sections"),
     ],
 )
 def test_toda_lista_de_partes_de_fora_segue_o_molde_unavailable(chave, de_fora):
