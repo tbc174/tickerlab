@@ -386,7 +386,7 @@ def _envelope(fonte: str = "cvm-dfp") -> dict:
 def test_na_duvida_o_envelope_leva_a_marca() -> None:
     """Envelope com nome que não é o do campo (lista, mediana...) leva a marca se há piloto na resposta."""
     liberados = piloto.Liberados(
-        cheio={("cvm-dfp", "conta")}, piloto={("cvm-dfp", "valor")}
+        cheio={("cvm-dfp", "conta")}, piloto={("cvm-dfp", "medianas")}
     )
     corpo = {
         "medianas": [_envelope()],
@@ -398,6 +398,33 @@ def test_na_duvida_o_envelope_leva_a_marca() -> None:
     assert marcado["outra"][piloto.AVISO] == AVISO_DE_PILOTO
     assert piloto.MARCA not in marcado["conta"]
     assert marcado[piloto.AVISO] == AVISO_DE_PILOTO
+
+
+def test_campo_de_piloto_que_so_filtrou_marca_todos_os_blocos() -> None:
+    """D11.3: o campo de piloto que não virou bloco (a data que escolhe quais compradores saem) tocou blocos
+    que não se sabe quais; todos levam a marca, inclusive o da prontidão cheia."""
+    liberados = piloto.Liberados(
+        cheio={("cvm-dfp", "conta")}, piloto={("rfb-cnpj", "data_entrada")}
+    )
+    marcado = piloto.marcar({"conta": _envelope(), "lista": [_envelope()]}, liberados)
+    assert marcado["conta"][piloto.MARCA] is True
+    assert marcado["conta"][piloto.AVISO] == AVISO_DE_PILOTO
+    assert marcado["lista"][0][piloto.MARCA] is True
+    assert marcado[piloto.AVISO] == AVISO_DE_PILOTO
+
+
+def test_campo_de_piloto_dentro_do_valor_de_outro_bloco_conta_como_bloco() -> None:
+    """O bloco de piloto aninhado no valor de outro envelope é visto: a exceção da prontidão cheia vale."""
+    liberados = piloto.Liberados(
+        cheio={("cvm-dfp", "conta")}, piloto={("rfb-cnpj", "porte")}
+    )
+    corpo = {
+        "conta": _envelope(),
+        "empresa": {**_envelope("rfb-cnpj"), "valor": {"porte": _envelope("rfb-cnpj")}},
+    }
+    marcado = piloto.marcar(corpo, liberados)
+    assert piloto.MARCA not in marcado["conta"]
+    assert marcado["empresa"]["valor"]["porte"][piloto.MARCA] is True
 
 
 def test_sem_piloto_marcar_devolve_o_mesmo_corpo() -> None:

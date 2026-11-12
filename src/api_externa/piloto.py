@@ -9,6 +9,8 @@ sem o aviso é defeito P1, então tudo falha fechado:
 - liberação de piloto sem registro aberto vira negação (a rota que não marca não serve piloto);
 - com algum campo de piloto na resposta, todo envelope leva a marca, menos o que tem a fonte e o nome de um
   campo liberado pela prontidão cheia (o nome do envelope nem sempre é o do campo: na dúvida, marca);
+- se um campo de piloto não aparece como bloco próprio (serviu só de filtro ou condição), todo envelope leva
+  a marca, sem exceção;
 - o topo da resposta leva a frase também.
 """
 
@@ -89,10 +91,32 @@ def _marcar(dentro: object, nome: str | None, liberados: Liberados) -> object:
     return dentro
 
 
+def _blocos(dentro: object, nome: str | None) -> Generator[tuple[str, str | None]]:
+    """(fonte, nome) de cada envelope do corpo, no mesmo caminho que `_marcar` percorre."""
+    if isinstance(dentro, dict):
+        if _e_envelope(dentro):
+            yield dentro.get("fonte"), nome
+            yield from _blocos(dentro["valor"], None)
+            return
+        for chave, valor in dentro.items():
+            yield from _blocos(valor, str(chave))
+    elif isinstance(dentro, list | tuple):
+        for item in dentro:
+            yield from _blocos(item, nome)
+
+
 def marcar(corpo: dict, liberados: Liberados) -> dict:
-    """O corpo com a marca e a frase em todo bloco de piloto e no topo; igual se nada saiu pelo piloto."""
+    """O corpo com a marca e a frase em todo bloco de piloto e no topo; igual se nada saiu pelo piloto.
+
+    Campo de piloto que não virou bloco próprio na resposta serviu de filtro ou de condição (ex.: a data de
+    entrada que escolhe quais compradores saem): não se sabe quais blocos ele tocou, então todos levam a marca,
+    inclusive os da prontidão cheia (D11.3, leitura mais estreita)."""
     if not liberados.piloto:
         return corpo
+    if liberados.piloto - set(_blocos(corpo, None)):
+        liberados = Liberados(
+            piloto=liberados.piloto
+        )  # sem o `cheio`: nenhum bloco escapa da marca
     marcado = _marcar(corpo, None, liberados)
     assert isinstance(marcado, dict)  # dicionário entra, dicionário sai
     return marcado | {AVISO: AVISO_DE_PILOTO}
