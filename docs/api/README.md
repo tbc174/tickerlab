@@ -238,8 +238,10 @@ O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
 O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/ficha.py`):
 
-- `registration`: o cadastro na Receita, pelo mesmo leitor de `/companies/{cnpj}` (a situação, a razão
-  social, a natureza jurídica e o Simples como eram);
+- `registration`: o cadastro na Receita, pelo mesmo leitor de `/companies/{cnpj}` (a situação e o Simples
+  como eram). A razão social e a natureza saem do retrato mensal da Receita sem pessoa mais novo que já era
+  público em `known_at`, e `registry_snapshot_month` diz de que mês é esse retrato (é o retrato daquele mês,
+  não "como era" no dia);
 - `periodic_filings`: da companhia aberta, cada DFP e ITR que ela devia até o dia, da mais nova à mais
   velha, com o prazo da CVM (feriados e prorrogações), o dia da primeira entrega, os dias úteis de atraso
   e a situação: `on_time`, `gray_zone` (atraso curto, que um feriado local pode explicar), `late`,
@@ -307,9 +309,10 @@ Os vínculos de uma empresa como eram no dia (`conjuntos/vinculos.py`), lidos da
 
 Cada vínculo traz `hops` (o salto a partir da empresa pedida), `kind` (o tipo, no envelope, com a fonte e o
 dia em que ficou público), `valid_from` e, quando acabou, `valid_until`. Cada ponta sai com `entity_id` (o id
-na rede), `cnpj_root` e `legal_name`: a razão social que valia em `known_at`, do histórico datado da Receita
-(`rfb-cnpj`, o mesmo de `GET /companies/{cnpj}`, que começa em 05/2023; antes dele, ou numa ponta sem CNPJ, a
-ponta sai sem nome). Nada publicado depois de `known_at` entra, e o fim que só se soube depois do dia não aparece. `types` filtra (repetível); a
+na rede), `cnpj_root`, `legal_name` e `registry_snapshot_month`: a razão social do retrato mensal mais novo
+da lista sem pessoa da Receita já público em `known_at` (`rfb-cnpj`, o mesmo de `GET /companies/{cnpj}`) e o mês
+desse retrato. É o nome daquele retrato, não necessariamente o que valia no dia exato; antes do primeiro retrato,
+numa ponta sem CNPJ ou numa raiz que não está no retrato, a ponta sai sem nome. Nada publicado depois de `known_at` entra, e o fim que só se soube depois do dia não aparece. `types` filtra (repetível); a
 lista vai até o limite de linhas do plano (`truncated`). O fundo que detém o papel, o conglomerado do Banco
 Central e a série do regulador não saem por aqui. A ponta que é pessoa (MEI, empresário individual, sócio
 pessoa física) ou que a rede trata como pessoa não sai, nem a ligação com ela; a empresa sem vínculos não quer

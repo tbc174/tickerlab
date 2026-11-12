@@ -14,7 +14,10 @@ positivo escrito**. Um campo só sai quando, ao mesmo tempo:
    coleta limpa (ou `robots_fecha` nas condições do D5.3) e leitura dos termos em dia (D3);
 5. toda tabela de onde o campo sai (`LinhaDeDireito.tabelas`) está **pronta** (Emenda 1, D10): tem as
    provas das exigências 6, 7 e 8 da ADR 0027 em `base/prontidao.py`, a da 6 e a da 7 com até 90 dias, e
-   a versão maior do contrato é a que foi conferida.
+   a versão maior do contrato é a que foi conferida. **Exceção do D11 (Emenda 2):** para a organização com a
+   marca de piloto (`Pedido.piloto`, conferida por `autorizar`), a tabela sem a prontidão cheia sai se tem o
+   registro de piloto em dia (a 7 com até 90 dias, o dicionário escrito, a versão maior) e a marca de pessoa
+   decidida; a decisão volta `LIBERADO_PELO_PILOTO` e a rota põe o aviso no bloco. Os passos 1 a 4 não mudam.
 
 Quem nega não explica para fora (D2.2): toda negação tem o mesmo `codigo_publico`, para não revelar se
 o dado existe; o motivo (`Motivo`, lista fechada) fica para o log. Ainda sem rota pública: a B-32 (API
@@ -23,14 +26,19 @@ externa e MCP) e a N7 (chaves e quotas) chamam `decidir` antes de servir cada ca
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from enum import StrEnum
 from typing import NamedTuple
 
 from base import prontidao
 from base.arquivo.registro import TERMOS_LIDOS_EM
-from base.prontidao import Prontidao, negacao_da_prontidao
+from base.prontidao import (
+    Prontidao,
+    ProntidaoDePiloto,
+    negacao_da_prontidao,
+    negacao_do_piloto,
+)
 from src.banco.coletas import (
     COLETA_E_GUARDA,
     MOSTRAR,
@@ -93,6 +101,8 @@ class Motivo(StrEnum):
     """Por que o portão liberou ou negou: lista fechada, para o log (nunca para o cliente)."""
 
     LIBERADO = "liberado"
+    # D11: liberado pela prontidão de piloto (só a organização do piloto; o bloco leva o aviso)
+    LIBERADO_PELO_PILOTO = "liberado_pelo_piloto"
     REGRA_DO_APP = (
         "regra_do_app"  # canal do app: a resposta é a de `pode_usar` (ADR 0102)
     )
@@ -211,6 +221,9 @@ _PROVA_DAS_AGENCIAS = (
     "ADR 0108 D2.2 e D3: dados abertos da agência (ANEEL e BC em ODbL; SUSEP, ANS e Anatel em CC BY), "
     "marca vendável, revenda com atribuição"
 )
+_PROVA_DA_ANP = (
+    "ADR 0108 D2.2 e D3: dados abertos da ANP, CC BY, revenda com atribuição"
+)
 # as séries de agência dos setores do relatório (molde D): fonte e tabela do dicionário
 _SERIES_DOS_SETORES = (
     ("aneel-samp", "aneel_samp"),
@@ -251,8 +264,10 @@ def _campos(
 
 # Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
 # (D10, `base/prontidao.py`). Do CNPJ da Receita só sai `companies`: a situação cadastral e, do histórico
-# datado (linha 686, "pode 8" do Tiago em 05/11/2026), a razão social, a natureza jurídica e o Simples como
-# eram na data. As tabelas têm MEI e empresário individual, e a linha de direito vale para o campo inteiro;
+# datado (linha 686, "pode 8" do Tiago em 05/11/2026), o Simples como era na data. A razão social e a natureza
+# saem do retrato de `cnpj_empresas_pj` (sem pessoa por desenho), com o mês do retrato (linha 861): a linha
+# declara a tabela que é lida, e é nela que a qualidade (D10) se confere. As tabelas têm MEI e empresário
+# individual, e a linha de direito vale para o campo inteiro;
 # quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`). Os
 # campos do MEI não têm linha: "mei" nunca sai, e a rota não serve quem é MEI.
 DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
@@ -272,8 +287,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "companies",
-        ("cnpj_empresas_historico",),
-        ("razao_social", "natureza_juridica"),
+        ("cnpj_empresas_pj",),
+        ("razao_social", "natureza_juridica", "mes_do_retrato_do_cadastro"),
         _PROVA_RECEITA,
     ),
     *_campos(
@@ -473,8 +488,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "profiles",
-        ("cnpj_empresas_historico",),
-        ("razao_social", "natureza_juridica"),
+        ("cnpj_empresas_pj",),
+        ("razao_social", "natureza_juridica", "mes_do_retrato_do_cadastro"),
         _PROVA_RECEITA,
     ),
     *_campos(
@@ -546,9 +561,11 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         _PROVA_CVM,
     ),
     # links (linha 736, PR 5): as ligações da rede (`ligacoes`, ADR 0077) que vêm do FRE (controle, coligação e
-    # participação, `controladas`) e do FCA (auditoria, `auditores`), e a razão social de cada ponta como era no
-    # dia (o histórico datado da Receita; o nome da rede é o de hoje e não sai). A ponta que é pessoa ou que a
-    # rede trata como pessoa não sai (`conjuntos/vinculos.py`), e as outras ligações não são lidas.
+    # participação, `controladas`) e do FCA (auditoria, `auditores`), e a razão social de cada ponta com o mês do
+    # retrato, do retrato mais novo já público da lista sem pessoa da Receita (`cnpj_empresas_pj`, linha 867; o
+    # histórico datado tem pessoa e não é lido; o nome da rede é o de hoje e não sai). Uma linha por caminho,
+    # declarando só a tabela lida. A ponta que é pessoa ou que a rede trata como pessoa não sai
+    # (`conjuntos/vinculos.py`), e as outras ligações não são lidas.
     *_campos(
         ("cvm-hist-fre",),
         "links",
@@ -566,8 +583,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "links",
-        ("cnpj_empresas_historico",),
-        ("razao_social",),
+        ("cnpj_empresas_pj",),
+        ("razao_social", "mes_do_retrato_do_cadastro"),
         _PROVA_RECEITA,
     ),
     # buyers (linha 810, PR 4): quem já se mexeu num setor, só pessoa jurídica. O setor e os nomes saem das
@@ -608,6 +625,27 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("tipo", "participacao", "referencia"),
         _PROVA_CVM,
     ),
+    # assets (linha 845): os ativos físicos da empresa nas bases abertas das agências, só pessoa jurídica (a
+    # rota tira quem a rede trata como pessoa). Da ANP, a parte da empresa em cada contrato de exploração e
+    # produção (os outros sócios e o nome do sócio, `empresa`, não são lidos). As barragens (SIGBM) e a CFEM
+    # da ANM o leitor já sabe servir, mas ficam sem linha até a leitura dos termos da ANM marcar a coleta e a
+    # guarda (`src/banco/coletas.py`): sem linha, o portão nega e o bloco nem aparece.
+    *_campos(
+        ("anp-concessionarios",),
+        "assets",
+        ("anp_concessionarios",),
+        (
+            "numero_do_contrato",
+            "bid",
+            "fase",
+            "nome_fantasia",
+            "bacia",
+            "ambiente",
+            "participacao_pct",
+            "operador",
+        ),
+        _PROVA_DA_ANP,
+    ),
 )
 
 
@@ -622,6 +660,8 @@ class Pedido(NamedTuple):
     derivado: bool = (
         False  # recorte, soma ou cálculo feito por nós sobre o dado da fonte
     )
+    # D11: a organização do pedido tem a marca de piloto vigente (conferida no servidor por `autorizar`)
+    piloto: bool = False
 
 
 class Decisao(NamedTuple):
@@ -630,6 +670,11 @@ class Decisao(NamedTuple):
     libera: bool
     motivo: Motivo
     coleta: Coleta | None = None
+
+    @property
+    def piloto(self) -> bool:
+        """Liberado pela prontidão de piloto (D11): o bloco tem de levar o aviso."""
+        return self.libera and self.motivo == Motivo.LIBERADO_PELO_PILOTO
 
 
 @dataclass(frozen=True)
@@ -648,6 +693,9 @@ class Regras:
     versoes_maiores: Mapping[
         str, int
     ]  # a versão maior de hoje de cada tabela do dicionário
+    # D11: o registro de piloto e as tabelas com a marca de pessoa decidida (`base/prontidao.py`)
+    prontidao_de_piloto: Mapping[str, ProntidaoDePiloto] = field(default_factory=dict)
+    pessoa_decidida: frozenset[str] = frozenset()
 
 
 def regras_vigentes() -> Regras:
@@ -663,6 +711,8 @@ def regras_vigentes() -> Regras:
         robots_fecha_sai=ROBOTS_FECHA_SAI_PROVISORIO,
         prontidao=prontidao.registro_vigente(),
         versoes_maiores=prontidao.versoes_maiores(),
+        prontidao_de_piloto=prontidao.registro_de_piloto_vigente(),
+        pessoa_decidida=prontidao.tabelas_com_pessoa_decidida(),
     )
 
 
@@ -772,17 +822,44 @@ def _negacao_das_marcas(fonte: str, hoje: date, regras: Regras) -> Motivo | None
     return _negacao_da_leitura(fonte, respostas, hoje, regras)
 
 
+def _tabelas_do_pedido(
+    pedido: Pedido, hoje: date, regras: Regras
+) -> tuple[str, ...] | None:
+    """As tabelas de toda linha vigente do pedido; None se alguma linha não diz de que tabela sai."""
+    linhas = _linhas_do_pedido(pedido, hoje, regras)
+    if not linhas or any(not linha.tabelas for linha in linhas):
+        return None
+    return tuple(dict.fromkeys(tabela for linha in linhas for tabela in linha.tabelas))
+
+
 def _negacao_da_qualidade(pedido: Pedido, hoje: date, regras: Regras) -> Motivo | None:
     """D10: toda tabela de toda linha vigente do pedido está pronta (como na categoria, vale a mais
     restrita). Uma linha sem `tabelas` nega, mesmo que outra traga as dela."""
-    linhas = _linhas_do_pedido(pedido, hoje, regras)
-    if not linhas or any(not linha.tabelas for linha in linhas):
+    tabelas = _tabelas_do_pedido(pedido, hoje, regras)
+    if tabelas is None:
         return Motivo.SEM_TABELA
-    tabelas = dict.fromkeys(tabela for linha in linhas for tabela in linha.tabelas)
     falta = negacao_da_prontidao(
         tabelas, regras.prontidao, regras.versoes_maiores, hoje
     )
     return None if falta is None else Motivo(falta.value)
+
+
+def _libera_pelo_piloto(pedido: Pedido, hoje: date, regras: Regras) -> bool:
+    """D11: a organização é a do piloto e toda tabela do pedido tem o registro de piloto em dia, a versão
+    maior conferida e a marca de pessoa decidida. Só vale depois de o direito e as marcas liberarem."""
+    if not pedido.piloto:
+        return False
+    tabelas = _tabelas_do_pedido(pedido, hoje, regras)
+    if tabelas is None:
+        return False
+    falta = negacao_do_piloto(
+        tabelas,
+        regras.prontidao_de_piloto,
+        regras.versoes_maiores,
+        regras.pessoa_decidida,
+        hoje,
+    )
+    return falta is None
 
 
 def _decidir_no_app(pedido: Pedido) -> Decisao:
@@ -796,12 +873,17 @@ def _decidir_na_api_externa(pedido: Pedido, hoje: date, regras: Regras) -> Decis
         _negacao_absoluta(pedido, regras)
         or _negacao_da_linha(pedido, hoje, regras)
         or _negacao_das_marcas(pedido.fonte, hoje, regras)
-        or _negacao_da_qualidade(pedido, hoje, regras)
     )
     if motivo is not None:
         return Decisao(False, motivo)
+    liberado = Motivo.LIBERADO
+    da_qualidade = _negacao_da_qualidade(pedido, hoje, regras)
+    if da_qualidade is not None:
+        if not _libera_pelo_piloto(pedido, hoje, regras):
+            return Decisao(False, da_qualidade)
+        liberado = Motivo.LIBERADO_PELO_PILOTO
     respostas = _respostas_da_fonte(pedido.fonte, regras)
-    return Decisao(True, Motivo.LIBERADO, respostas.coleta if respostas else None)
+    return Decisao(True, liberado, respostas.coleta if respostas else None)
 
 
 def decidir(pedido: Pedido, hoje: date, regras: Regras | None = None) -> Decisao:

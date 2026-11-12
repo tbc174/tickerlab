@@ -7,7 +7,7 @@ ser revendida (não é parecer jurídico) e a linhagem até o arquivo original.
 
 ## `demonstracoes_como_era`
 
-Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior), com o dia em que ficou público e o dia em que foi trocado. `como_era_em(base, data)` dá a foto.
+Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior), com o dia em que ficou público e o dia em que foi trocado. `como_era_em(base, data)` dá a foto. **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
 
 - **Fonte:** CVM: dados abertos de DFP e ITR (versão mais nova) e ENET (versões anteriores, XML de cada entrega)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -265,7 +265,7 @@ Códigos de negociação informados fora do formato de ticker (a CSN informa "40
 
 ## `carteiras_dos_fundos`
 
-As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor. Fundos e posições que saíram continuam (sem viés de sobrevivência). Um Parquet por ano; quando a CVM regrava um ano, a versão anterior fica como `<ano>.v<N>`
+As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor. Fundos e posições que saíram continuam (sem viés de sobrevivência). Um Parquet por ano; quando a CVM regrava um ano, a versão anterior fica como `<ano>.v<N>` **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
 
 - **Fonte:** CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 4
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -395,7 +395,7 @@ O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_
 
 ## `cadastro_de_fundos`
 
-O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF
+O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF. **Um CNPJ pode ter várias linhas:** em 12/11/2026, de 41103 CNPJs, 5244 aparecem em mais de uma linha, e em 4805 deles com mais de um `TP_FUNDO` (o mesmo CNPJ registrado em mais de um tipo); a repetição também pode vir de o fundo trocar de gestor, auditor, custodiante, administrador ou controlador (a base não corrige); para contar fundos, conte CNPJ_FUNDO distintos
 
 - **Fonte:** CVM: cadastro de fundos (`cad_fi.csv`, `cad_fi_hist.zip`, `registro_fundo_classe.zip`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -508,7 +508,7 @@ O administrador de cada fundo da CVM ao longo do tempo (`cad_fi_hist`): uma linh
 
 ## `registro_de_fundos`
 
-O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o tipo (FIP, FII, FIDC, FIAGRO, FI...), a situação, o administrador e o gestor. É o cadastro em dia dos fundos de participação (FIP), que o `cadastro_de_fundos` antigo quase não traz mais: serve para reconhecer um fundo no quadro de sócios da Receita. Uma linha por fundo e gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor responsável fica fora
+O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o tipo (FIP, FII, FIDC, FIAGRO, FI...), a situação, o administrador e o gestor. É o cadastro em dia dos fundos de participação (FIP), que o `cadastro_de_fundos` antigo quase não traz mais: serve para reconhecer um fundo no quadro de sócios da Receita. Uma linha por fundo e gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor responsável fica fora. **Limites medidos em 12/11/2026:** 17 linhas são idênticas em todas as colunas que a base guarda (o diretor responsável sai na montagem); o gestor fica vazio em 26679 linhas, quase todas de fundos cancelados (a CVM os deixa sem gestor) ou de gestor pessoa física. Os registros vão de 1957 a hoje, esparsos nos primeiros anos.
 
 - **Fonte:** CVM: registro de fundos e classes da CVM 175 (`registro_fundo_classe.zip`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -545,6 +545,30 @@ O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o
 | `Tipo_Pessoa_Gestor` | PF ou PJ: o gestor é pessoa física ou jurídica | texto |
 | `CPF_CNPJ_Gestor` | CNPJ do gestor; vazio quando o gestor é pessoa física | texto |
 | `Gestor` | Nome do gestor; vazio quando é pessoa física | texto |
+
+## `fips_registrados`
+
+Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. Montada no envio, não fica no acervo de casa
+
+- **Fonte:** CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)
+- **Atraso de divulgação:** O de `registro_de_fundos`: um retrato do registro na data da coleta
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `CNPJ_Fundo`, `Data_Registro`
+- **Três datas:** aconteceu_em = `Data_Registro`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fips_registrados/fips_registrados.parquet`, só no VPS (montado pelo recorte, `base/recorte_dos_compradores.py`)
+- **Linhagem:** Derivada de `registro_de_fundos` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj`, CNPJ que não confere (dígito errado ou CPF completado com zeros), fundo que não é FIP ou cópia vazia.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `CNPJ_Fundo` | CNPJ do fundo (14 dígitos) | texto |
+| `Tipo_Fundo` | Tipo do fundo: sempre FIP | texto |
+| `Data_Registro` | Data do registro na CVM | data (dia) |
+| `Data_Cancelamento` | Data do cancelamento (vazio: ativo) | data (dia) |
 
 ## `painel_dos_fundos`
 
@@ -2156,7 +2180,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital informados no 
 
 ## `eventos`
 
-Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: contagem calculada por ela, não coluna desta tabela.
+Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: contagem calculada por ela, não coluna desta tabela. **Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega).
 
 - **Fonte:** CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -2710,7 +2734,7 @@ Natureza jurídica e razão social de cada empresa, versão por versão desde 05
 
 ## `cnpj_empresas_pj`
 
-Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto sai. Sem sócios. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ aberto da Receita, o retrato do mês. **Sem pessoa:** o empresário individual (213-5) e o grupo 4 (pessoas físicas) nem entram, porque a razão social deles é o nome da pessoa; CPF escrito no texto sai. Sem sócios. **Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os pisos estão em `base/cruzada_por_taxa.py`. Nesta tabela: a razão social contra a CVM; o nome no IF.data, do Banco Central, só informa (abaixo do piso). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
@@ -2742,7 +2766,7 @@ Razão social, natureza jurídica e porte de toda pessoa jurídica do CNPJ abert
 
 ## `cnpj_estabelecimentos_pj`
 
-Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, CEP...). Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Estabelecimentos (matriz e filiais) das pessoas jurídicas de `cnpj_empresas_pj`, o retrato do mês: situação cadastral, abertura, atividade (CNAE), UF e município. **Sem pessoa:** fica de fora o MEI, a raiz que `cnpj_empresas_pj` não tem e todo endereço fino (logradouro, CEP...). Telefone, e-mail e nome fantasia nunca são lidos (LGPD, ADR 0106, item 3.5). **Limite da conferência:** a Receita é a única que publica o CNPJ, então ele é conferido contra o que outro órgão cadastra do mesmo CNPJ, e só nisso: a conferência cobre os CNPJs que esse outro órgão registra, não é amostra dos ~21 milhões; MEI e pessoa física não entram. As taxas de acordo e os pisos estão em `base/cruzada_por_taxa.py`. Nesta tabela: a UF contra ANATEL, ANVISA e ANCINE, e contra o IF.data, do Banco Central. A UF se confere contra ANATEL, ANVISA e ANCINE; divergência de UF costuma ser mudança de sede ou outra filial da mesma raiz. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_empresas_pj.py`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
@@ -5268,7 +5292,7 @@ Processos judiciais que a própria companhia cita nas notas explicativas da DFP:
 
 ## `fca_geral`
 
-Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou naquele formulário. É o cadastro "como era na data" do modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje
+Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou naquele formulário. É o cadastro "como era na data" do modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
 
 - **Fonte:** CVM: dados abertos do FCA, tabela de dados gerais (`base/fca_geral.py`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -5303,7 +5327,7 @@ Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registr
 
 ## `trocas_de_auditor`
 
-Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta.
+Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta. **Limite medido em 12/11/2026:** o arquivo começa em maio de 2010 (`conhecido_em`); `efetiva_em` vai de 2001 a 2027. As trocas se concentram em 2012, 2017 e 2022, o que é compatível com o rodízio obrigatório de cinco anos; isso é leitura, não campo da fonte.
 
 - **Fonte:** CVM: dados abertos do FCA, pela tabela `auditores`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -5518,7 +5542,7 @@ Um número por linha de cada fato de `noticias_fatos`, com a conta, o período, 
 
 ## `controladas`
 
-Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco em muitas linhas, e o FRE guarda ligações antigas.
+Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco em muitas linhas, e o FRE guarda ligações antigas. **Limites medidos em 12/11/2026:** 8643 linhas não têm CNPJ (o formulário não traz CNPJ para essas investidas; só o nome as distingue); a chave se repete em 8373 linhas (866 idênticas em todas as colunas; as demais são investidas sem CNPJ com nomes diferentes ou o mesmo CNPJ com participação ou tipo diferente no mesmo documento). Quem junta por CNPJ pode receber mais de uma linha por investida.
 
 - **Fonte:** CVM: dados abertos do FRE, tabela de participação em sociedades
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -5551,9 +5575,36 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `controladas_pj`
+
+Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só a companhia e a controlada cujas raízes estão em `cnpj_empresas_pj` (sem pessoa), sem a razão social da sociedade nem o nome da companhia. Cada documento do FRE (companhia, referência e versão) tem ainda uma linha de marca, com `cnpj`, `tipo` e `participacao` vazios: assim o FRE mais recente da companhia continua o mesmo da tabela inteira, mesmo quando ele só tinha controladas fora da lista. Montada no envio, não fica no acervo de casa
+
+- **Fonte:** CVM: dados abertos do FRE, tabela de participação em sociedades (cópia reduzida de `controladas`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)
+- **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `publico_em`
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_companhia`, `referencia`, `versao`, `cnpj`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/controladas_pj/controladas_pj.parquet`, só no VPS (montado pelo recorte, `base/recorte_dos_compradores.py`)
+- **Linhagem:** Derivada de `controladas` no envio; a trava `base/recorte_dos_compradores.py::conferir_reduzidas` lê a saída e derruba o envio em coluna fora da lista, raiz fora de `cnpj_empresas_pj`, CNPJ que não confere (dígito errado; na controlada, também CPF completado com zeros), linha sem CNPJ com tipo ou participação ou cópia vazia.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_companhia` | CNPJ da companhia que informou (14 dígitos) | texto |
+| `cnpj` | CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento | texto |
+| `tipo` | controlada, coligada ou vazio (não informado, ou a linha de marca) | texto |
+| `participacao` | Participação da companhia na sociedade | pontos percentuais (66,25 = 66,25%) |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número inteiro |
+| `publico_em` | Data em que a CVM recebeu essa versão do FRE (`conhecido_em`) | data (dia) |
+
 ## `rotulos_atraso`
 
-Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030; a rota da API acrescenta `situacao_da_entrega`, campo calculado por ela, não coluna desta tabela): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o documento que a empresa devia: registrada e ativa no cadastro da CVM na data do prazo. Ficam de fora o que ela manda para pedir o registro (prazo antes do primeiro registro ou entre dois registros), o que manda depois do cancelamento e o das empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
+Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030; a rota da API acrescenta `situacao_da_entrega`, campo calculado por ela, não coluna desta tabela): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o documento que a empresa devia: registrada e ativa no cadastro da CVM na data do prazo. Ficam de fora o que ela manda para pedir o registro (prazo antes do primeiro registro ou entre dois registros), o que manda depois do cancelamento e o das empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027) **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
 
 - **Fonte:** CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -5709,7 +5760,7 @@ Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial 
 
 ## `identificadores`
 
-Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas entidades no mesmo período é conflito e não entra em nenhuma
+Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas entidades no mesmo período é conflito e não entra em nenhuma. **Limite medido em 12/11/2026:** `desde` só existe para ticker e emissor; nos registros oficiais (CNPJ, ISIN, códigos da CVM e das agências) a fonte não diz desde quando o código vale, e a coluna fica vazia (193197 de 194489 linhas).
 
 - **Fonte:** CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da empresa ↔ série
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -5739,7 +5790,7 @@ Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ 
 
 ## `ligacoes`
 
-Uma linha por relação entre duas entidades da rede (ADR 0077), com as três datas: sociedade controlada, coligada ou participada da companhia (FRE), entidade do regulador que opera para a companhia (empresa ↔ série), instituição do conglomerado do líder (IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; a publicada (sem pessoas) sai de `base/rede/vistas.py`
+Uma linha por relação entre duas entidades da rede (ADR 0077), com as três datas: sociedade controlada, coligada ou participada da companhia (FRE), entidade do regulador que opera para a companhia (empresa ↔ série), instituição do conglomerado do líder (IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; a publicada (sem pessoas) sai de `base/rede/vistas.py`. **Limite medido em 12/11/2026:** `papel` fica vazio em 25182 linhas, todas dos tipos controlada_de, participada_de, coligada_de, audita e emite, que não têm papel; ele só existe nos tipos detem, do_conglomerado_de e opera_para.
 
 - **Fonte:** CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da empresa ↔ série
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)

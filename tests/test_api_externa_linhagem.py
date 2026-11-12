@@ -44,7 +44,8 @@ from src.portao_externo import (
 # "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR;
 # "comparables" (linha 736, PR 3) junta o setor do FCA e os números do DFP dos pares; "events" (linha 736,
 # PR 4) lista os documentos do IPE e as trocas de auditor; "links" (linha 736, PR 5) lê a rede de entidades;
-# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica
+# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica; "assets" (linha 845) lista os
+# contratos de exploração e produção da ANP da empresa
 CONJUNTOS_DO_BETA = {
     "companies",
     "financials",
@@ -57,6 +58,7 @@ CONJUNTOS_DO_BETA = {
     "events",
     "links",
     "buyers",
+    "assets",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
@@ -212,6 +214,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
             continue
         if linha.tabelas == (CADASTRO,):
             colunas |= do_raio_x
+        if (linha.tabelas, linha.campo) == (
+            (empresas.LISTA_DE_EMPRESAS,),
+            empresas.RETRATO_DO_CADASTRO,
+        ):
+            # o mês do retrato de onde saíram o nome e a natureza (linha 861): é o `mes_do_retrato` da lista PJ
+            assert empresas.MES in colunas, linha
+            continue
         assert linha.campo in colunas, linha
 
 
@@ -221,6 +230,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
     servidos = {
         empresas.TABELA: empresas.CAMPOS,
         **{historico.tabela: historico.campos for historico in empresas.HISTORICOS},
+        # o nome e a natureza do retrato da lista sem pessoa, com o mês (linha 861)
+        empresas.LISTA_DE_EMPRESAS: (
+            *empresas.CAMPOS_DO_RETRATO_PJ,
+            empresas.RETRATO_DO_CADASTRO,
+        ),
     }
     # a ficha de crédito tira pessoa com a mesma trava (`empresas.e_empresa`)
     da_ficha = {
@@ -255,13 +269,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             }, linha
             continue
         if linha.conjunto == vinculos.CONJUNTO:
-            # os vínculos leem só a razão social, e só da ponta que passou pela trava da rede (MEI e quem a
-            # rede trata como pessoa saem antes, `vinculos.LeitorDeVinculos._pontas`); na tabela, a razão
-            # social do empresário individual e do MEI já vem vazia (ADR 0106)
-            assert (tabela, linha.campo) == (
-                vinculos.HISTORICO_DOS_NOMES,
-                vinculos.NOME,
-            ), linha
+            # os vínculos leem só a razão social e o mês do retrato, da lista sem pessoa (linha 867), e só da
+            # ponta que passou pela trava da rede (MEI e quem a rede trata como pessoa saem antes,
+            # `vinculos.LeitorDeVinculos._pontas`); a natureza de pessoa também não dá nome
+            assert tabela == empresas.LISTA_DE_EMPRESAS, linha
+            assert linha.campo in {vinculos.NOME, empresas.RETRATO_DO_CADASTRO}, linha
             continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha

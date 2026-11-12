@@ -64,6 +64,18 @@ def test_nova_versao_dos_termos_pede_novo_aceite(conexao, ana, monkeypatch):
     assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
 
 
+def test_versao_14_do_aceite_pede_novo_aceite_a_quem_aceitou_a_13(
+    conexao, ana, monkeypatch
+):
+    """Texto 16 da política (linha 809): o vínculo com a organização e o registro das consultas a pessoas
+    são usos novos de dado da conta, então quem aceitou a versão anterior aceita de novo."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-11.14"
+    monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2026-10-22.13")
+    conformidade.registrar_aceite(conexao, ana.id)
+    monkeypatch.undo()
+    assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
+
+
 def test_o_aceite_continua_depois_de_novo_login(conexao, ana):
     conformidade.registrar_aceite(conexao, ana.id)
     de_novo = entrar(conexao, "ana", "ana@exemplo.com", "Ana Souza")[0]
@@ -192,7 +204,7 @@ def test_texto_15_diz_os_6_digitos_do_meio_do_cpf_so_com_homonimo():
     inteiro, só os dígitos que a Receita publica, só para casar o pedido com a linha certa. Sem novo
     aceite: o parágrafo fala com o sócio da base, não com quem tem conta, e não cria uso novo.
     """
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.13"
     privacidade = conformidade.carregar_texto("privacidade")
     assert "versão 15" in privacidade
     assert "dizendo qual empresa e o seu nome como a Receita o publica" in privacidade
@@ -201,9 +213,58 @@ def test_texto_15_diz_os_6_digitos_do_meio_do_cpf_so_com_homonimo():
     assert "guardamos com a nossa resposta por 5 anos" in privacidade
 
 
+def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora():
+    """Texto 16 (11/11, linha 809; ADR 0128, Emenda 1): o nome e o contato de pessoa na tela da equipe.
+
+    A política diz o que `src/api_v1/analista_pessoas.py` e `base/receita_pessoa.py` fazem: só a organização
+    com a permissão `pessoa_na_tela`, desligada por padrão, vê o nome do sócio e o contato do estabelecimento;
+    sem CPF e sem menor; as outras portas seguem sem pessoa; a consulta fica registrada sem CNPJ nem nome.
+    """
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 16" in privacidade
+    for trecho in (
+        "consulta a base inteira num computador próprio, fora do app, inclusive pelo CPF",
+        "Nada disso aparece para contas, organizações ou terceiros.",
+        "Hoje essa cópia fica fechada: o site e a API que rodam nesse servidor não leem dados de pessoas.",
+        "**Para todas as contas, a API, a linha de comando, o site e o conector de IA**",
+        "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
+        "nunca para lhe oferecer algo como consumidor",
+        "que um membro entrou nela, só com o número interno da conta apagada, e as consultas",
+        "sem nada que aponte para a conta apagada",
+        "Para quem usa o TickerLab, pessoas aparecem nela só pela",
+        "Elas ficam guardadas como o órgão publica e não aparecem para contas, organizações ou terceiros.",
+        "a de trabalho análogo ao de escravo do MTE e a dívida ativa da União (PGFN), para conhecer",
+        "os autos de infração e os embargos do IBAMA",
+        "o que inclui o nome de pessoas físicas que aparecem neles",
+        "também passam pela rede da Cloudflare a caminho da tela",
+        "Ela é **desligada por padrão**, dada a uma organização de cada vez, conferida no servidor",
+        "o telefone, o e-mail e o endereço do estabelecimento",
+        "**Nunca**: CPF (nem o CPF mascarado como a Receita publica), menor de idade",
+        "o endereço continua só até o município e a UF",
+        "sem o CNPJ nem os nomes",
+        "(art. 7º, § 3º), e só com os dados necessários para essa finalidade (art. 10, § 1º)",
+        "conferido em 11/11/2026",
+        "**com a empresa, sobre um negócio com a própria empresa**",
+        "É proibido usar esses dados para marketing em massa",
+        "também para a organização com a permissão de ver pessoas",
+        "a lista das organizações que têm essa permissão (LGPD, art. 18, VII)",
+        "o nome da organização e desde quando você é membro",
+        "**Nunca** o CNPJ consultado nem o nome de ninguém",
+        "o vínculo com a organização",
+        "tem uma cópia no servidor alugado",
+    ):
+        assert trecho in privacidade, trecho
+    for promessa_antiga in (
+        "telefone nem e-mail de ninguém",
+        "entra no ar depois desta política",
+        "a montagem da base de empresas ficam num servidor próprio",
+    ):
+        assert promessa_antiga not in privacidade, promessa_antiga
+
+
 def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
     """Versão 13 (22/10): quem entra no servidor e usa sudo fica 12 meses, cifrado, em outro computador."""
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.13"
     privacidade = conformidade.carregar_texto("privacidade")
     assert "usa privilégios de administrador" in privacidade
     assert "guardado por **12 meses**, cifrado, em outro computador" in privacidade
@@ -252,10 +313,9 @@ def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais(
         "não consegue procurar documentos por nome nem por CPF",
         "no quadro de sócios da empresa que você consulta pelo CNPJ",
         "CPF mascarado como a Receita publica",
-        "têm um sócio em comum, sem dizer qual",
         "uma empresa** de cada vez e fica registrada",
         "legítimo interesse (LGPD, art. 7º, IX, e art. 10)",
-        "prospecção, marketing, montagem de perfil de pessoa ou revenda de listas",
+        "oferta de produto ou serviço à pessoa, montagem de perfil de pessoa ou revenda de listas",
         "não tem busca por nome de pessoa nem por CPF",
         "Fonte: Receita Federal, dados abertos do CNPJ",
         "sai da tela e da API em até 15 dias",

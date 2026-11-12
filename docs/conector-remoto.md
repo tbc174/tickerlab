@@ -113,7 +113,7 @@ caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como j
 | `empresa` | `ficha_da_empresa` |
 | `comparaveis` | `comparaveis` |
 | `demonstracoes` | `demonstracoes` |
-| `eventos` | `eventos` (tipos e `cursor`) |
+| `eventos` | `eventos` (tipos, `limite` e `cursor`) |
 | `fundo` | `fundo` |
 | `setor` | `setores` e `setor` |
 | `catalogo` e `consumo` | `o_que_posso_ver` |

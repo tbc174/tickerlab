@@ -24,6 +24,10 @@ ATRIBUICOES_DA_API = {
     "susep-ses": "Fonte: SUSEP, SES, dados abertos (CC BY)",
     "ans-beneficiarios": "Fonte: ANS, dados abertos (CC BY)",
     "anatel-acessos": "Fonte: Anatel, dados abertos (CC BY)",
+    # os ativos da empresa (linha 845)
+    "anp-concessionarios": "Fonte: ANP, dados abertos, concessionários de E&P (CC BY)",
+    "anm-sigbm-barragens": "Fonte: ANM, SIGBM, dados abertos",
+    "anm-cfem-arrecadacao": "Fonte: ANM, arrecadação da CFEM, dados abertos",
 }
 
 

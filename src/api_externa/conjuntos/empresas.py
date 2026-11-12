@@ -5,11 +5,19 @@ português (a rota traduz na saída), a situação cadastral do estabelecimento 
 novo que já era público em `como_era_em`. O retrato do mês vale pelo último dia do mês em que foi baixado (a
 porta faz o corte): o CNPJ baixado em junho e publicado em julho continua ativo até 31/07.
 
-Da empresa (a raiz do CNPJ) saem também a razão social, a natureza jurídica e a opção pelo Simples, cada uma
-da versão do histórico datado (`cnpj_empresas_historico` e `cnpj_simples_historico`, `base/cnpj_historico.py`)
-que já era pública em `como_era_em`, com a data dela no envelope ("pode 8" do Tiago em 05/11/2026). Campo sem
-versão pública na data, de raiz que tinha saído do arquivo ou de tabela que a base não tem fica de fora; a
-situação cadastral continua sendo a âncora: sem ela, a empresa não sai.
+Da empresa (a raiz do CNPJ) sai também a opção pelo Simples, da versão do histórico datado
+(`cnpj_simples_historico`, `base/cnpj_historico.py`) que já era pública em `como_era_em`, com a data dela no
+envelope ("pode 8" do Tiago em 05/11/2026). Campo sem versão pública na data, de raiz que tinha saído do arquivo
+ou de tabela que a base não tem fica de fora; a situação cadastral continua sendo a âncora: sem ela, a empresa
+não sai.
+
+A razão social e a natureza jurídica saem do retrato da lista sem pessoa (`cnpj_empresas_pj`, linha 861), na
+leitura estreita do "sem olhar o futuro": só se o retrato já era público em `como_era_em` (a porta corta pelo
+último dia do mês) e a raiz está nele uma só vez, com natureza informada que não é de pessoa. A resposta diz de
+que retrato saíram (`mes_do_retrato_do_cadastro`): é o retrato daquele mês, não "como era" no dia. Não saem
+mais do histórico datado (`cnpj_empresas_historico`): ele não está no VPS nem em casa, tem pessoa e não tem prova
+de prontidão, e o portão julga a tabela que foi lida (a Diretoria, 12/11/2026). O Simples não tem lista sem
+pessoa: sem o histórico dele, não sai.
 
 Pessoa não sai (ADR 0108 D2.2). Quando a rede conhece o CNPJ (algum identificador dela tem o CNPJ ou a raiz),
 decide ela: só sai se ela o conhece como uma só empresa que não trata como pessoa (MEI, empresário individual e
@@ -33,7 +41,7 @@ import pandas as pd
 from base import cnpj as cnpj_
 from base.cnpj import SEPARADORES
 from base.porta import Porta
-from base.porta.duckdb import nome_da_view
+from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.porta.rede import ID_DE_ENTIDADE, OUTROS_SISTEMAS, resolver, views
 from base.rede.entidades import natureza_de_pessoa
 from src.api_externa.conjuntos import Permitido
@@ -69,13 +77,15 @@ class Historico:
 
 
 HISTORICOS = (
-    Historico("cnpj_empresas_historico", ("razao_social", "natureza_juridica")),
     Historico(
         "cnpj_simples_historico",
         ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
     ),
 )
-TABELAS = (TABELA, *(historico.tabela for historico in HISTORICOS))
+# o nome e a natureza: do retrato da lista sem pessoa, com o mês dele (linha 861)
+CAMPOS_DO_RETRATO_PJ = ("razao_social", "natureza_juridica")
+RETRATO_DO_CADASTRO = "mes_do_retrato_do_cadastro"
+TABELAS = (TABELA, *(historico.tabela for historico in HISTORICOS), LISTA_DE_EMPRESAS)
 CAMPOS_DATADOS = tuple(campo for historico in HISTORICOS for campo in historico.campos)
 DATAS = ("data_situacao_cadastral", "data_opcao_simples", "data_exclusao_simples")
 SIM_OU_NAO = ("matriz", "optante_simples")
@@ -179,6 +189,48 @@ def _pela_rede(porta: Porta, cnpj: str) -> bool | None:
 
 def _view(tabela: str) -> str:
     return '"' + nome_da_view(tabela) + '"'
+
+
+def mes_do_retrato_publico(porta: Porta, como_era_em: date) -> str | None:
+    """O mês do retrato mais novo de `cnpj_empresas_pj` já público em `como_era_em`; None se a base não tem a
+    lista ou se nenhum retrato era público. A raiz só vale se estiver neste retrato: a que saiu da lista não
+    leva o nome de um retrato mais velho (P2 da revisão cruzada do #1075)."""
+    if LISTA_DE_EMPRESAS not in views(porta.con):
+        return None
+    existentes = porta.colunas(LISTA_DE_EMPRESAS)
+    (mes,) = porta.con.execute(
+        f"SELECT max({MES}) FROM {_view(LISTA_DE_EMPRESAS)} "
+        f"WHERE {condicao_como_era(existentes, LISTA_DE_EMPRESAS)}",
+        {"dia": dia_de(como_era_em)},
+    ).fetchone() or (None,)
+    return None if mes is None else str(mes)
+
+
+def retratos_de_empresa(
+    porta: Porta, raizes: Iterable[str], como_era_em: date, campos: tuple[str, ...]
+) -> dict[str, pd.Series]:
+    """Por raiz, a linha de `cnpj_empresas_pj` no retrato mais novo já público em `como_era_em` (com `campos`,
+    o mês e o dia público), só das raízes que estão nele uma só vez com natureza de empresa (na dúvida, não)."""
+    pedidas = sorted(set(raizes))
+    mes = mes_do_retrato_publico(porta, como_era_em) if pedidas else None
+    if mes is None:
+        return {}
+    linhas = porta.ler(
+        LISTA_DE_EMPRESAS,
+        como_era_em=como_era_em,
+        filtros={RAIZ: pedidas, MES: mes},
+        colunas=[
+            RAIZ,
+            *dict.fromkeys((*campos, "natureza_juridica")),
+            MES,
+            PUBLICADO_EM,
+        ],
+    )
+    return {
+        str(raiz): da_raiz.iloc[0]
+        for raiz, da_raiz in linhas.groupby(RAIZ, sort=True)
+        if _natureza_de_empresa(list(da_raiz["natureza_juridica"]))
+    }
 
 
 def _retrato_das_duas_listas(porta: Porta) -> str | None:
@@ -401,9 +453,23 @@ class LeitorDeEmpresas:
             if self.permitido(FONTE, nome, False)
         }  # fmt: skip
 
+    def _do_retrato_pj(self, raiz: str, como_era_em: date) -> dict[str, dict]:
+        """A razão social e a natureza do retrato mais novo de `cnpj_empresas_pj` já
+        público em `como_era_em`, com o mês dele; nada se a base não tem a lista, se o retrato ainda não era
+        público ou se a raiz não está nele (nem que esteja num retrato mais velho) uma só vez com natureza de
+        empresa (na dúvida, não)."""
+        linha = retratos_de_empresa(
+            self.porta, [raiz], como_era_em, CAMPOS_DO_RETRATO_PJ
+        ).get(raiz)
+        if linha is None:
+            return {}
+        linha = linha.copy()
+        linha[RETRATO_DO_CADASTRO] = linha[MES]
+        return self._servidos(linha, (*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO))
+
     def empresa(self, cnpj: str, como_era_em: date) -> EmpresaServida | None:
-        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, a
-        versão do histórico datado que valia no dia, só com o que o portão libera; None se o CNPJ não é de
+        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, o nome
+        do retrato sem pessoa e o Simples do histórico datado que valiam no dia, só com o que o portão libera; None se o CNPJ não é de
         empresa, se não há versão pública da situação, se o estabelecimento tinha saído do arquivo ou se
         nada sai."""
         normal = cnpj_.normalizar_cnpj(cnpj)
@@ -423,10 +489,12 @@ class LeitorDeEmpresas:
         if not bool(retrato[CONSTA]):
             return None  # o estabelecimento tinha saído do arquivo da Receita no dia pedido
         servidos = self._servidos(retrato, CAMPOS)
+        raiz = normal[:TAMANHO_DA_RAIZ]
         for historico in HISTORICOS:
-            versao = self._versao(historico, normal[:TAMANHO_DA_RAIZ], como_era_em)
+            versao = self._versao(historico, raiz, como_era_em)
             if versao is not None:
                 servidos |= self._servidos(versao, historico.campos)
+        servidos |= self._do_retrato_pj(raiz, como_era_em)
         if not servidos:
             return None
         corpo = {"cnpj": normal, "como_era_em": como_era_em.isoformat(), **servidos}

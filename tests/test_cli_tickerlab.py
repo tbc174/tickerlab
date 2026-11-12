@@ -1091,10 +1091,12 @@ def test_instrucoes_do_agente(rodar):
         "eventos",
         "dossie",
         "compradores",
+        "ativos",
         "vinculos",
         "novidades",
         "catalogo",
         "consumo",
+        "deck",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
         assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
@@ -2097,3 +2099,399 @@ def test_dossie_exportado_so_chama_rotas_de_pj_e_nao_leva_cpf(rodar, chave, tmp_
     )
     assert not re.search(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", celulas)
     assert "não achado:" in celulas
+
+
+def test_eventos_pede_50_por_pagina_e_com_todas_deixa_o_plano_decidir(monkeypatch):
+    """Sem --todas a CLI pede a primeira página de 50 (uma companhia grande passa de mil eventos)."""
+    pedidos: list[dict] = []
+
+    def pedir(self, caminho, parametros=None):
+        pedidos.append(dict(parametros or {}))
+        return {"events": [], "next_cursor": None}
+
+    monkeypatch.setattr(cliente.ApiDoTickerlab, "pedir", pedir)
+    api_de_mentira = cliente.ApiDoTickerlab(httpx.Client(), "chave", "http://x")
+    api_de_mentira.eventos("33000167000101", None, [], False)
+    api_de_mentira.eventos("33000167000101", None, [], True)
+    assert pedidos[0]["limit"] == "50"
+    assert "limit" not in pedidos[1]
+
+
+# ------------------------------------------------ aviso de piloto (865, D11)
+# A frase vem da API (base/prontidao.AVISO_DE_PILOTO); a CLI só mostra a que veio. Estes testes usam uma
+# frase qualquer: o que se confere é que a que chegou aparece na saída, não o texto fixo.
+
+FRASE_DE_PILOTO = (
+    "FRASE-QUALQUER-DO-PILOTO: dado de piloto, ainda sem a conferência cheia."
+)
+CNPJ_PILOTO = "11111111000191"
+
+
+def _piloto(valor: object, fonte: str = "fonte-x") -> dict:
+    return {
+        "value": valor,
+        "source": fonte,
+        "published_at": "2026-01-02",
+        "pilot": True,
+        "pilot_notice": FRASE_DE_PILOTO,
+    }
+
+
+def _resposta_fixa(corpo: dict):
+    return _http_falso(lambda _p: httpx.Response(200, json=corpo))
+
+
+def _perfil_de_piloto() -> dict:
+    return {
+        "pilot_notice": FRASE_DE_PILOTO,
+        "cnpj": {"razao": _piloto("EMPRESA EXEMPLO S.A."), "porte": _env("grande")},
+        "sources": [{"source": "fonte-x"}],
+    }
+
+
+def test_piloto_na_tela_mostra_a_frase_e_marca_o_campo(rodar, chave):
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, http=_resposta_fixa(_perfil_de_piloto()),
+        **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout  # inteira, sem truncar
+    assert (
+        "piloto" in resultado.stdout.splitlines()[0]
+        or "Aviso de piloto" in resultado.stdout
+    )
+    assert any(
+        linha.startswith("razao") and linha.rstrip().endswith("sim")
+        for linha in resultado.stdout.splitlines()
+    )
+
+
+def test_piloto_em_linhas_de_lista_marca_a_linha_e_traz_a_frase(rodar, chave):
+    corpo = {
+        "pilot_notice": FRASE_DE_PILOTO,
+        "events": [
+            {"kind": _piloto("capital"), "year": _env(2025)},
+            {"kind": _env("x")},
+        ],
+        "sources": [],
+    }
+    resultado = rodar(
+        "eventos", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert resultado.stdout.count(FRASE_DE_PILOTO) >= 1
+    assert "piloto" in resultado.stdout
+
+
+def test_piloto_no_json_passa_inteiro(rodar, chave):
+    corpo = _perfil_de_piloto()
+    resultado = rodar(
+        "empresa",
+        CNPJ_PILOTO,
+        "--json",
+        http=_resposta_fixa(corpo),
+        **_com_chave(chave),
+    )
+    saida = json.loads(resultado.stdout)
+    assert saida["pilot_notice"] == FRASE_DE_PILOTO
+    assert saida["cnpj"]["razao"]["pilot"] is True
+    assert saida["cnpj"]["razao"]["pilot_notice"] == FRASE_DE_PILOTO
+
+
+def test_piloto_na_planilha_xlsx_leva_a_marca_e_a_frase(rodar, chave, tmp_path):
+    arquivo = tmp_path / "piloto.xlsx"
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, "--planilha", str(arquivo),
+        http=_resposta_fixa(_perfil_de_piloto()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout  # a confirmação também avisa
+    abas = _abrir_xlsx(arquivo)
+    texto = json.dumps(abas, ensure_ascii=False)
+    assert FRASE_DE_PILOTO in texto
+    assert "piloto" in texto
+
+
+def test_piloto_na_planilha_csv_leva_a_marca_e_a_frase(rodar, chave, tmp_path):
+    arquivo = tmp_path / "piloto.csv"
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, "--planilha", str(arquivo),
+        http=_resposta_fixa(_perfil_de_piloto()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    texto = arquivo.read_text(encoding="utf-8-sig")
+    assert FRASE_DE_PILOTO in texto
+    assert texto.splitlines()[0].split(";")[-1] == "piloto"
+
+
+def test_piloto_marcado_sem_frase_nunca_passa_calado(rodar, chave):
+    corpo = {"cnpj": {"razao": {**_env("X"), "pilot": True}}, "sources": []}
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert "Aviso de piloto" in resultado.stdout
+
+
+def test_sem_piloto_a_saida_nao_ganha_nada(rodar, chave):
+    corpo = {"cnpj": {"razao": _env("X")}, "sources": [{"source": "fonte-x"}]}
+    resultado = rodar(
+        "empresa", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert "piloto" not in resultado.stdout.lower()
+
+
+def test_piloto_no_dossie_aparece_na_tela(rodar, chave):
+    responder, _ = _secoes_do_dossie()
+
+    def com_piloto(pedido: httpx.Request) -> httpx.Response:
+        resposta = responder(pedido)
+        corpo = json.loads(resposta.content)
+        if pedido.url.path.endswith("/comparables"):
+            corpo["pilot_notice"] = FRASE_DE_PILOTO
+            corpo["comparables"] = [{"cnpj": _piloto("22222222000191")}]
+        return httpx.Response(200, json=corpo)
+
+    resultado = rodar(
+        "dossie", CNPJ_PILOTO, http=_http_falso(com_piloto), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout
+
+
+def test_piloto_no_catalogo_aparece_na_tela(rodar, chave):
+    corpo = {
+        "pilot_notice": FRASE_DE_PILOTO,
+        "datasets": [
+            {
+                "dataset": "d",
+                "purpose": "p",
+                "fields": [{"field": "f", "source": "s", "pilot": True}],
+            }
+        ],
+        "sources": [],
+    }
+    resultado = rodar("catalogo", http=_resposta_fixa(corpo), **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert FRASE_DE_PILOTO in resultado.stdout
+
+
+def test_piloto_no_csv_da_lista_a_frase_vai_na_propria_coluna(rodar, chave, tmp_path):
+    corpo = {
+        "events": [{"kind": _piloto("capital")}, {"kind": _env("x")}],
+        "sources": [],
+    }
+    arquivo = tmp_path / "ev.csv"
+    resultado = rodar(
+        "eventos", CNPJ_PILOTO, "--planilha", str(arquivo),
+        http=_resposta_fixa(corpo), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    linhas = arquivo.read_text(encoding="utf-8-sig").splitlines()
+    assert linhas[0].split(";")[-1] == "piloto"
+    assert linhas[1].split(";")[-1] == FRASE_DE_PILOTO  # a linha marcada leva a frase
+    assert linhas[2].split(";")[-1] == ""  # a que não é de piloto, não
+
+
+def test_piloto_dentro_da_serie_do_setor_marca_a_linha_certa():
+    corpo = {
+        "market": {"hhi": _env(1)},
+        "series": [{"name": "aneel", "points": [], "total": _piloto(5)}],
+        "sources": [],
+    }
+    campos = planilha.tabelas_da_resposta(corpo)[0]
+    assert campos.cabecalho[-1] == "piloto"
+    por_nome = {linha[0]: linha[-1] for linha in campos.linhas}
+    assert por_nome["series › aneel › total"] == FRASE_DE_PILOTO
+    assert por_nome["market › hhi"] is None
+
+
+def test_piloto_no_nome_da_ponta_do_vinculo_marca_a_linha(rodar, chave):
+    ponta = {"cnpj_root": "11111111", "legal_name": _piloto("EMPRESA A")}
+    outra = {"cnpj_root": "22222222", "legal_name": _env("EMPRESA B")}
+    corpo = {
+        "links": [
+            {"hops": 1, "kind": "socio", "from": ponta, "to": outra, "share": _env(10)},
+            {"hops": 1, "kind": "socio", "from": outra, "to": outra, "share": _env(20)},
+        ],
+        "sources": [],
+    }
+    resultado = rodar(
+        "vinculos", CNPJ_PILOTO, http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    linhas = [l for l in resultado.stdout.splitlines() if l.startswith("1")]
+    assert linhas[0].rstrip().endswith("sim")
+    assert not linhas[1].rstrip().endswith("sim")
+    assert FRASE_DE_PILOTO in resultado.stdout
+
+
+def test_piloto_de_uma_pagina_sobrevive_ao_juntar_paginas():
+    primeira = {"companies": [1], "pilot_notice": FRASE_DE_PILOTO, "sources": []}
+    ultima = {"companies": [2], "sources": []}
+    assert cliente.juntar_paginas(primeira, ultima)["pilot_notice"] == FRASE_DE_PILOTO
+
+
+# ---------------------------------------------------------------- deck
+
+
+def _pptx_falso() -> bytes:
+    return b"PK\x03\x04" + b"conteudo-do-deck"
+
+
+def _deck_que_responde(vistos: list, nome: str | None = None, status: int = 200):
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        vistos.append(pedido)
+        if status != 200:
+            return httpx.Response(status, json={"detail": "not_available"})
+        cabecalhos = (
+            {"Content-Disposition": f'attachment; filename="{nome}"'} if nome else {}
+        )
+        return httpx.Response(200, content=_pptx_falso(), headers=cabecalhos)
+
+    return _http_falso(responder)
+
+
+def test_deck_da_empresa_grava_com_o_nome_da_api(rodar, chave, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    vistos: list = []
+    http = _deck_que_responde(vistos, "tickerlab-empresa-11111111000191.pptx")
+    resultado = rodar("deck", "11111111000191", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos[0].url.path == "/data/v1/companies/11111111000191/deck"
+    assert (
+        tmp_path / "tickerlab-empresa-11111111000191.pptx"
+    ).read_bytes() == _pptx_falso()
+    assert "Deck gravado" in resultado.stdout
+
+
+def test_deck_do_setor_com_saida_e_como_era(rodar, chave, tmp_path):
+    vistos: list = []
+    alvo = tmp_path / "setor.pptx"
+    resultado = rodar(
+        "deck", "--setor", "eletricas", "--como-era", "2026-03-31", "--saida", str(alvo),
+        http=_deck_que_responde(vistos), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert vistos[0].url.path == "/data/v1/sectors/eletricas/deck"
+    assert vistos[0].url.params["known_at"] == "2026-03-31"
+    assert alvo.read_bytes() == _pptx_falso()
+
+
+def test_deck_nome_estranho_da_api_nao_vira_caminho(
+    rodar, chave, tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    http = _deck_que_responde([], "../../fora.pptx")
+    resultado = rodar("deck", "11111111000191", http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert (tmp_path / "tickerlab-empresa-11111111000191.pptx").exists()
+    assert not (tmp_path.parent.parent / "fora.pptx").exists()
+
+
+def test_deck_nao_troca_arquivo_existente_sem_substituir(rodar, chave, tmp_path):
+    alvo = tmp_path / "d.pptx"
+    alvo.write_bytes(b"antigo")
+    http = _deck_que_responde([])
+    recusa = rodar(
+        "deck", "11111111000191", "--saida", str(alvo), http=http, **_com_chave(chave)
+    )
+    assert recusa.exit_code == Saida.PEDIDO_INVALIDO and alvo.read_bytes() == b"antigo"
+    troca = rodar(
+        "deck", "11111111000191", "--saida", str(alvo), "--substituir",
+        http=http, **_com_chave(chave),
+    )  # fmt: skip
+    assert troca.exit_code == 0 and alvo.read_bytes() == _pptx_falso()
+
+
+@pytest.mark.parametrize(
+    "argumentos",
+    [
+        (),
+        ("11111111000191", "--setor", "eletricas"),
+        ("123",),
+        ("--setor", "Ruim Aqui"),
+    ],
+)
+def test_deck_pedido_mal_feito_nem_chega_a_api(rodar, chave, argumentos):
+    vistos: list = []
+    resultado = rodar(
+        "deck", *argumentos, http=_deck_que_responde(vistos), **_com_chave(chave)
+    )
+    assert resultado.exit_code != 0 and vistos == []
+
+
+def test_deck_sem_dado_e_chave_recusada_usam_os_codigos_dos_outros(
+    rodar, chave, tmp_path
+):
+    sem_dado = rodar(
+        "deck", "11111111000191", "--saida", str(tmp_path / "a.pptx"),
+        http=_deck_que_responde([], status=404), **_com_chave(chave),
+    )  # fmt: skip
+    assert sem_dado.exit_code == Saida.SEM_DADO
+    assert not (tmp_path / "a.pptx").exists()
+    sem_chave = rodar("deck", "11111111000191", http=_deck_que_responde([]))
+    assert sem_chave.exit_code == Saida.CHAVE
+
+
+def test_deck_resposta_que_nao_e_arquivo_e_fora_do_ar(rodar, chave, tmp_path):
+    http = _http_falso(lambda _p: httpx.Response(200, text="<html>"))
+    resultado = rodar(
+        "deck",
+        "11111111000191",
+        "--saida",
+        str(tmp_path / "a.pptx"),
+        http=http,
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.FORA_DO_AR
+
+
+def _ativos_da_anp() -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "assets": {
+            "oil_gas_contracts": {
+                "found": True,
+                "source": "ANP",
+                "latest_published_at": "2025-06-30",
+                "coverage": "contratos de E&P vigentes",
+                "items": [{"contract": "BM-X-1", "share": _env(0.3)}],
+                "truncated": False,
+            }
+        },
+        "not_covered": ["mining_rights"],
+        "limits": ["Não achado não quer dizer que a empresa não tem o ativo."],
+        "sources": [{"source": "ANP"}],
+    }
+
+
+def test_ativos_pede_a_rota_e_mostra_o_bloco(rodar, chave):
+    pedidos: list[str] = []
+
+    def responder(pedido):
+        pedidos.append(pedido.url.path)
+        return httpx.Response(200, json=_ativos_da_anp())
+
+    resultado = rodar(
+        "ativos", "11111111000191", "--como-era", "2025-07-01",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert pedidos == ["/data/v1/companies/11111111000191/assets"]
+    assert "oil_gas_contracts" in resultado.stdout
+    assert "BM-X-1" in resultado.stdout
+    assert "mining_rights" in resultado.stdout
+
+
+def test_ativos_em_json_passa_inteiro(rodar, chave):
+    resultado = rodar(
+        "ativos", "11111111000191", "--json",
+        http=_resposta_fixa(_ativos_da_anp()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == _ativos_da_anp()
+
+
+def test_ativos_sem_chave_sai_com_o_codigo_de_chave(rodar):
+    resultado = rodar("ativos", "11111111000191")
+    assert resultado.exit_code == 3

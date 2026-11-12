@@ -20,11 +20,13 @@ import httpx
 from tickerlab import __version__
 
 PREFIXO = "/data/v1"
+ASSINATURA_DO_ZIP = b"PK"  # todo .pptx é um zip
 ESPERA_MAXIMA = (
     60  # segundos: o limite é por minuto; mais que isso não é o limite do minuto
 )
 CODIGO_DA_QUOTA_DO_MES = "monthly_quota_exceeded"
 esperar: Callable[[float], None] = time.sleep  # os testes trocam, para não dormir
+EVENTOS_POR_PAGINA = 50  # `eventos` sem --todas: uma página de 50 (a de uma Petrobras passa de mil e enche o terminal)
 PAGINAS_MAXIMAS = 100  # `prospectar --todas`: até 100 pedidos de uma vez; o resto fica no próximo cursor
 CAMINHO_DA_BUSCA = "/companies"
 
@@ -241,6 +243,32 @@ class ApiDoTickerlab:
             resposta = self._get(caminho, parametros)
         return self._corpo(resposta)
 
+    def pedir_arquivo(
+        self, caminho: str, parametros: Parametros | None = None
+    ) -> tuple[bytes, str | None]:
+        """GET de uma rota que serve um arquivo (o deck): os bytes e o nome que a API sugeriu, se vier.
+
+        Mesma chave, mesma espera do limite do minuto e mesmos erros de `pedir`.
+        """
+        resposta = self._get(caminho, parametros)
+        segundos = _espera_do_minuto(resposta)
+        if segundos is not None:
+            click.echo(
+                f"Limite de pedidos por minuto: esperando {segundos} segundos e tentando de novo...",
+                err=True,
+            )
+            esperar(segundos)
+            resposta = self._get(caminho, parametros)
+        if resposta.status_code != httpx.codes.OK:
+            raise erro_da_resposta(resposta, self.endereco)
+        if not resposta.content.startswith(ASSINATURA_DO_ZIP):
+            raise ErroDaCli(
+                f"{self.endereco} respondeu algo que não é um arquivo .pptx da API do TickerLab. "
+                "Confira TICKERLAB_API_URL.",
+                Saida.FORA_DO_AR,
+            )
+        return resposta.content, resposta.headers.get("Content-Disposition")
+
     def _get(self, caminho: str, parametros: Parametros | None) -> httpx.Response:
         try:
             resposta = self._http.get(
@@ -359,6 +387,10 @@ class ApiDoTickerlab:
             parametros["types"] = list(tipos)
         return self.pedir(f"/companies/{cnpj}/links", parametros)
 
+    def ativos(self, cnpj: str, como_era: str | None) -> dict:
+        """Os ativos da empresa por bloco (hoje, os contratos de E&P da ANP), cada bloco com a própria fonte."""
+        return self.pedir(f"/companies/{cnpj}/assets", _datas(known_at=como_era))
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:
@@ -391,10 +423,12 @@ class ApiDoTickerlab:
     def eventos(
         self, cnpj: str, como_era: str | None, tipos: Sequence[str], todas: bool
     ) -> dict:
-        """Os eventos da empresa, do mais novo ao mais velho; com `todas`, segue o cursor como a busca."""
+        """Os eventos da empresa, do mais novo ao mais velho: 50 por página; com `todas`, segue o cursor como a busca."""
         parametros: dict[str, str | Sequence[str]] = {**_datas(known_at=como_era)}
         if tipos:
             parametros["types"] = list(tipos)
+        if not todas:
+            parametros["limit"] = str(EVENTOS_POR_PAGINA)
         return self._paginas(f"/companies/{cnpj}/events", parametros, "events", todas)
 
     def _paginas(
@@ -424,6 +458,16 @@ class ApiDoTickerlab:
     def setor(self, chave: str, como_era: str | None) -> dict:
         return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
 
+    def deck_da_empresa(
+        self, cnpj: str, como_era: str | None
+    ) -> tuple[bytes, str | None]:
+        return self.pedir_arquivo(f"/companies/{cnpj}/deck", _datas(known_at=como_era))
+
+    def deck_do_setor(
+        self, chave: str, como_era: str | None
+    ) -> tuple[bytes, str | None]:
+        return self.pedir_arquivo(f"/sectors/{chave}/deck", _datas(known_at=como_era))
+
 
 def juntar_paginas(
     anterior: Mapping, seguinte: Mapping, lista: str = "companies"
@@ -435,11 +479,15 @@ def juntar_paginas(
         if _chave_da_fonte(fonte) not in vistas:
             fontes.append(fonte)
             vistas.add(_chave_da_fonte(fonte))
-    return {
+    juntada = {
         **seguinte,
         lista: [*(anterior.get(lista) or []), *(seguinte.get(lista) or [])],
         "sources": fontes,
     }
+    # o aviso de piloto de qualquer página vale para a resposta junta (a última página pode não o ter)
+    if "pilot_notice" not in juntada and "pilot_notice" in anterior:
+        juntada["pilot_notice"] = anterior["pilot_notice"]
+    return juntada
 
 
 def _chave_da_fonte(fonte: object) -> str:

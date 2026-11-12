@@ -1,4 +1,19 @@
 {
+  "assets": {
+    "fontes": {
+      "anp-concessionarios": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)"
+    },
+    "campos": [
+      "ambiente",
+      "bacia",
+      "bid",
+      "fase",
+      "nome_fantasia",
+      "numero_do_contrato",
+      "operador",
+      "participacao_pct"
+    ]
+  },
   "buyers": {
     "fontes": {
       "cvm-fidc-base": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -26,6 +41,7 @@
       "data_situacao_cadastral",
       "matriz",
       "mes_do_retrato",
+      "mes_do_retrato_do_cadastro",
       "motivo_situacao",
       "natureza_juridica",
       "optante_simples",
@@ -146,6 +162,7 @@
     "campos": [
       "aconteceu_em",
       "ate",
+      "mes_do_retrato_do_cadastro",
       "participacao",
       "razao_social",
       "tipo"
@@ -165,6 +182,7 @@
       "documento",
       "matriz",
       "mes_do_retrato",
+      "mes_do_retrato_do_cadastro",
       "motivo_situacao",
       "natureza_juridica",
       "optante_simples",
