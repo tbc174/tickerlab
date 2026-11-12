@@ -33,6 +33,7 @@ describe("dados e cobertura", () => {
       rotas: (endereco) => (endereco === ENDERECO ? respostaJson(200, DADOS) : undefined),
     });
     const grupos = await screen.findAllByRole("region", {}, { timeout: 5000 });
+    expect(screen.getByText(/só as tabelas que já passaram na conferência de prontidão/)).toBeTruthy();
     expect(grupos.map((g) => g.getAttribute("aria-label"))).toEqual(["Empresas", "Sanções"]);
     const linhas = within(grupos[0]).getAllByRole("row");
     expect(linhas).toHaveLength(3); // cabeçalho + 2 tabelas

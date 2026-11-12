@@ -27,6 +27,9 @@ export function DadosECobertura({ pagina }: { pagina: PaginaDoApp }) {
         </p>
       )}
       {pedido.estado === "erro" && <ErroDaTela erro={pedido.erro} />}
+      {pedido.estado === "pronto" && (
+        <p className="apagado">A lista mostra só as tabelas que já passaram na conferência de prontidão.</p>
+      )}
       {pedido.estado === "pronto" && pedido.dados.tabelas.length === 0 && (
         <p className="apagado">O catálogo não tem nenhuma tabela para mostrar agora.</p>
       )}
