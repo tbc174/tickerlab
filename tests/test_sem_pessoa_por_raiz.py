@@ -77,3 +77,18 @@ def test_tabela_vazia_nao_conta_como_sem_pessoa(tmp_path):
 @pytest.mark.parametrize("nome,coluna", SEM_PESSOA_PELA_RAIZ.items())
 def test_a_coluna_existe_no_dicionario(nome, coluna):
     assert coluna in TABELAS[nome].colunas
+
+
+def test_cruzar_todas_pula_a_copia_que_so_existe_no_envio(tmp_path, monkeypatch):
+    """`fips_registrados` só é montada no envio ao VPS: sem arquivo em casa, não derruba a conferência das outras."""
+    from base import sem_pessoa_por_raiz as modulo
+
+    _acervo(tmp_path, [RAIZ_PJ])
+    monkeypatch.setattr(
+        modulo,
+        "SEM_PESSOA_PELA_RAIZ",
+        {"eventos": "cnpj", "fips_registrados": "CNPJ_Fundo"},
+    )
+    assert "fips_registrados" in modulo.SO_NA_COPIA_DO_ENVIO
+    with Porta(tmp_path) as porta:
+        assert [c.tabela for c in modulo.cruzar_todas(porta)] == ["eventos"]

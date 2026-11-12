@@ -548,7 +548,7 @@ O registro de fundos da CVM 175 (`registro_fundo`): todo fundo registrado, com o
 
 ## `fips_registrados`
 
-Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. Montada no envio, não fica no acervo de casa
+Cópia reduzida de `registro_de_fundos` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. Montada no envio, não fica no acervo de casa. **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto. **Alcance da marca:** vale para esta cópia, medida montada em 12/11/2026 (4.419 linhas, 4.384 raízes, 0 fora da `cnpj_empresas_pj`, 0 CNPJ que não confere, 0 fundo que não é FIP); a tabela inteira `registro_de_fundos` segue sem a marca
 
 - **Fonte:** CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
