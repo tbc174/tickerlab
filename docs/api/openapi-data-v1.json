@@ -2553,7 +2553,7 @@
     },
     "/data/v1/companies/{cnpj}/profile": {
       "get": {
-        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista\nde entregas não diz nada sobre ele. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
+        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista\nde entregas não diz nada sobre ele. O campo do cadastro que não foi consultado (a situação cadastral, o\nSimples) vem em `unavailable_registration_fields`. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
         "operationId": "perfil_da_empresa_data_v1_companies__cnpj__profile_get",
         "parameters": [
           {

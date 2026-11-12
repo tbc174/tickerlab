@@ -234,15 +234,15 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
-**Parte não disponível para a organização** (linhas 878 e 880 a 882; `src/api_externa/nao_disponivel.py`):
+**Parte não disponível para a organização** (linhas 878, 880 a 882 e 891; `src/api_externa/nao_disponivel.py`):
 quando um pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo, os sinais
-dos compradores, os documentos das entregas e das demonstrações, os números dos comparáveis, os blocos do fundo,
+dos compradores, os documentos das entregas e das demonstrações, os campos do cadastro no perfil, os números dos comparáveis, os blocos do fundo,
 as séries e a lista das companhias do setor), a parte que a organização não tem não
 some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz a lista das partes
 pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`, `unavailable_link_types`
-em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` em `/profile`, `unavailable_figures` em
-`/comparables`, `unavailable_filings` em `/financials`, `unavailable_sections` em `/funds` e em `/sectors`, que
-traz também `unavailable_series`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
+em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` e `unavailable_registration_fields` em
+`/profile`, `unavailable_figures` em `/comparables`, `unavailable_filings` em `/financials`, `unavailable_sections`
+em `/funds` e em `/sectors`, que traz também `unavailable_series`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
 entra na lista: nos dois casos ela não foi consultada. Os `limits` só falam das partes servidas
 e, quando há parte de fora, trazem a frase de que ela não foi consultada (em `/funds`, `/financials` e
 `/sectors`, que não tinham `limits`, a lista sai vazia quando tudo foi consultado). Se nenhuma parte pedida está liberada,
@@ -265,6 +265,11 @@ O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/fic
 - `unavailable_filings` (linha 881): os documentos (`DFP`, `ITR`) que o portão não libera para a organização.
   Eles não foram consultados: a lista de entregas não diz nada sobre eles, e os `limits` avisam. Sem nenhum
   documento, `periodic_filings` não sai.
+- `unavailable_registration_fields` (linha 891): os campos do cadastro na Receita, com o nome de fora (ex.:
+  `registration_status`, `simples_nacional`), que o portão não libera para a organização ou cuja tabela a base
+  não tem. Eles não foram consultados: sem eles, `registration` não diz nada sobre a situação cadastral nem
+  sobre o Simples, e os `limits` avisam. O campo liberado que não sai porque a base não tinha versão dele no
+  dia (ex.: o Simples de uma empresa que nunca optou) não entra na lista.
 
 Sem olhar o futuro: a entrega que só aconteceu depois de `known_at` sai `not_filed`, sem a data dela, e
 os dias úteis contam até o dia pedido; a falta de um documento vale pelo prazo e só conta até o dia em

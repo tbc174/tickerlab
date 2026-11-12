@@ -1555,6 +1555,8 @@ class FichaDoCnpjV1(BaseModel):
     )
     # os documentos (DFP, ITR) que o portão não libera: não consultados, a lista de entregas não fala deles
     entregas_nao_disponiveis: list[str] = []
+    # os campos do cadastro (nome de fora) que o portão não libera: não consultados, o cadastro não fala deles
+    campos_do_cadastro_nao_disponiveis: list[str] = []
 
 
 class BlocoDaFichaV1(BaseModel):
