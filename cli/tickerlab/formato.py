@@ -34,6 +34,26 @@ def e_de_piloto(valor: object) -> bool:
     return isinstance(valor, Mapping) and valor.get(CHAVE_DO_PILOTO) is True
 
 
+def frase_do_envelope(envelope: Mapping) -> str:
+    """A frase de piloto do próprio envelope; sem ela, a linha que diz que a resposta não a trouxe."""
+    frase = envelope.get(CHAVE_DO_AVISO_DE_PILOTO)
+    return frase if isinstance(frase, str) and frase.strip() else SEM_FRASE_DE_PILOTO
+
+
+def frase_de_piloto_da_linha(linha: object) -> str | None:
+    """A frase de piloto de uma linha (de qualquer profundidade dela), ou None se a linha não é de piloto."""
+    for bloco in _percorrer(linha):
+        if e_de_piloto(bloco):
+            return frase_do_envelope(bloco)
+    return None
+
+
+def colunas_da_linha(linhas: Iterable[Mapping]) -> list[str]:
+    """As colunas de uma tabela de linhas: as chaves dos itens, sem as marcas de piloto (vão na coluna própria)."""
+    nomes = dict.fromkeys(nome for linha in linhas for nome in linha)
+    return [n for n in nomes if n not in (CHAVE_DO_PILOTO, CHAVE_DO_AVISO_DE_PILOTO)]
+
+
 def _percorrer(dado: object) -> Iterable[Mapping]:
     """Todo dicionário da resposta, de qualquer nível."""
     if isinstance(dado, Mapping):
@@ -122,10 +142,9 @@ def _data_do_envelope(envelope: Mapping) -> str:
     return celula(envelope.get("published_at"))
 
 
-def _rodape_de_piloto(envelopes: Iterable[object]) -> list[str]:
-    """Abaixo de uma tabela com dado de piloto, a frase que a API mandou (uma vez por frase)."""
-    marcados = [e for e in envelopes if e_de_piloto(e)]
-    return [f"Aviso de piloto: {f}" for f in avisos_de_piloto(marcados)]
+def _rodape_de_piloto(frases: Iterable[str | None]) -> list[str]:
+    """Abaixo de uma tabela com dado de piloto, a frase de cada linha marcada (uma vez por frase)."""
+    return [f"Aviso de piloto: {f}" for f in dict.fromkeys(f for f in frases if f)]
 
 
 def _tabela_de_campos(campos: Mapping[str, Mapping]) -> str:
@@ -138,7 +157,8 @@ def _tabela_de_campos(campos: Mapping[str, Mapping]) -> str:
         + (["sim" if e_de_piloto(env) else ""] if com_piloto else [])
         for nome, env in campos.items()
     ]
-    return "\n".join([tabela(cabecalho, corpo), *_rodape_de_piloto(campos.values())])
+    frases = [frase_de_piloto_da_linha(env) for env in campos.values()]
+    return "\n".join([tabela(cabecalho, corpo), *_rodape_de_piloto(frases)])
 
 
 def _fonte_e_data_da_linha(linha: Mapping) -> tuple[str, str]:
@@ -150,24 +170,24 @@ def _fonte_e_data_da_linha(linha: Mapping) -> tuple[str, str]:
 
 
 def _tabela_de_linhas(linhas: Sequence[Mapping]) -> str:
-    colunas = list(dict.fromkeys(nome for linha in linhas for nome in linha))
+    colunas = colunas_da_linha(linhas)
     com_fonte = any(e_envelope(v) for linha in linhas for v in linha.values())
-    com_piloto = any(e_de_piloto(v) for linha in linhas for v in linha.values())
+    frases = [frase_de_piloto_da_linha(linha) for linha in linhas]
+    com_piloto = any(frases)
     cabecalho = [
         *colunas,
         *(("fonte", "público em") if com_fonte else ()),
         *(("piloto",) if com_piloto else ()),
     ]
     corpo = []
-    for linha in linhas:
+    for linha, frase in zip(linhas, frases, strict=True):
         celulas = [celula(linha.get(nome), nome) for nome in colunas]
         if com_fonte:
             celulas += _fonte_e_data_da_linha(linha)
         if com_piloto:
-            celulas.append("sim" if any(e_de_piloto(v) for v in linha.values()) else "")
+            celulas.append("sim" if frase else "")
         corpo.append(celulas)
-    todos = [v for linha in linhas for v in linha.values()]
-    return "\n".join([tabela(cabecalho, corpo), *_rodape_de_piloto(todos)])
+    return "\n".join([tabela(cabecalho, corpo), *_rodape_de_piloto(frases)])
 
 
 def tem_listas(item: Mapping) -> bool:
@@ -290,15 +310,19 @@ def vinculos_em_linhas(corpo: Mapping) -> dict:
             continue
         resto = {k: v for k, v in vinculo.items() if k not in ("from", "to")}
         origem, destino = vinculo.get("from"), vinculo.get("to")
-        linhas.append(
-            {
-                "hops": resto.pop("hops", None),
-                "kind": resto.pop("kind", None),
-                "de": _ponta(origem),
-                "para": _ponta(destino),
-                **resto,
-            }
-        )
+        achatada = {
+            "hops": resto.pop("hops", None),
+            "kind": resto.pop("kind", None),
+            "de": _ponta(origem),
+            "para": _ponta(destino),
+            **resto,
+        }
+        # a ponta achatada em texto perderia a marca de piloto do nome: a linha a leva
+        frase = frase_de_piloto_da_linha([origem, destino])
+        if frase and frase_de_piloto_da_linha(resto) is None:
+            achatada[CHAVE_DO_PILOTO] = True
+            achatada[CHAVE_DO_AVISO_DE_PILOTO] = frase
+        linhas.append(achatada)
     return {**corpo, "links": linhas}
 
 

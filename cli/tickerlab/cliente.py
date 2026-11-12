@@ -438,11 +438,15 @@ def juntar_paginas(
         if _chave_da_fonte(fonte) not in vistas:
             fontes.append(fonte)
             vistas.add(_chave_da_fonte(fonte))
-    return {
+    juntada = {
         **seguinte,
         lista: [*(anterior.get(lista) or []), *(seguinte.get(lista) or [])],
         "sources": fontes,
     }
+    # o aviso de piloto de qualquer página vale para a resposta junta (a última página pode não o ter)
+    if "pilot_notice" not in juntada and "pilot_notice" in anterior:
+        juntada["pilot_notice"] = anterior["pilot_notice"]
+    return juntada
 
 
 def _chave_da_fonte(fonte: object) -> str:
