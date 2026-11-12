@@ -400,10 +400,12 @@ def test_pessoa_tirada_na_rota_nao_basta() -> None:
 # --- D11.3: a frase do aviso, num lugar só ---
 
 
-def test_a_frase_do_aviso_diz_que_falta_a_conferencia_cruzada() -> None:
+def test_a_frase_do_aviso_diz_que_falta_a_conferencia_com_outra_fonte() -> None:
+    """Vale para as duas frases que o Tiago escolhe (12/11): trocar o texto é mudar só a constante."""
     frase = prontidao.AVISO_DE_PILOTO
     assert "piloto" in frase.lower()
-    assert "conferência cruzada" in frase
+    assert "outra fonte" in frase
+    assert "conferid" not in frase.lower()  # o dado de piloto não está conferido
     assert prova_publicavel(frase)
 
 
