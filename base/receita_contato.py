@@ -22,8 +22,10 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import IO, NamedTuple
 
+import numpy as np
 import pandas as pd
 
+from base import cnpj
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from base.receita_retrato import CAMPOS_DO_ESTABELECIMENTO, MATRIZ, _partes
 
@@ -55,9 +57,10 @@ TELEFONE_FORA_DO_FORMATO = "telefone_fora_do_formato"
 EMAIL_FORA_DO_FORMATO = "email_fora_do_formato"
 EMAIL_COM_CARA_DE_CPF = "email_com_cara_de_cpf"
 DE_OPOSTO = "contato_de_titular_que_se_opos"  # linha 829
+ENDERECO_CORTADO = "endereco_de_individual_cortado"  # linha 859
 MOTIVOS = (
     NAO_ATIVO, TELEFONE_FORA_DO_FORMATO, EMAIL_FORA_DO_FORMATO, EMAIL_COM_CARA_DE_CPF,
-    DE_OPOSTO,
+    DE_OPOSTO, ENDERECO_CORTADO,
 )  # fmt: skip
 
 
@@ -123,17 +126,62 @@ def _contato(parte: pd.DataFrame) -> ParteDoContato:
     return ParteDoContato(fica[list(COLUNAS)].reset_index(drop=True), +descartes)
 
 
+class RaizesDeIndividual:
+    """As raízes de empresário individual e MEI do mês (milhões): números de 64 bits ordenados, não textos,
+    para a montagem do contato caber na memória e não refazer um conjunto de texto a cada parte."""
+
+    def __init__(self) -> None:
+        self._partes: list[np.ndarray] = []
+        self._ordenadas: np.ndarray | None = None
+
+    def juntar(self, raizes: pd.Series) -> None:
+        self._partes.append(cnpj.raizes_em_numeros(raizes))
+        self._ordenadas = None
+
+    def contem(self, raizes: pd.Series) -> pd.Series:
+        if self._ordenadas is None:
+            self._ordenadas = cnpj.ordenados(
+                np.concatenate(self._partes)
+                if self._partes
+                else np.array([], dtype=np.int64)
+            )
+        return pd.Series(
+            cnpj.contem(self._ordenadas, cnpj.raizes_em_numeros(raizes)),
+            index=raizes.index,
+        )
+
+
+def _so_municipio(
+    contato: ParteDoContato, raizes: RaizesDeIndividual
+) -> ParteDoContato:
+    """Empresário individual e MEI: o endereço é o da pessoa, então só o município e a UF ficam (linha 859;
+    política de privacidade, versão 16). Telefone e e-mail seguem, como a política diz."""
+    cortar = raizes.contem(contato.estabelecimentos["cnpj_basico"])
+    if not cortar.any():
+        return contato
+    estabelecimentos = contato.estabelecimentos.copy()
+    for coluna in (*ENDERECO, "cep"):
+        estabelecimentos.loc[cortar, coluna] = None
+    contato.descartes[ENDERECO_CORTADO] += int(cortar.sum())
+    return ParteDoContato(estabelecimentos, contato.descartes)
+
+
 def ler_contato(
-    arquivo_zip: Path | IO[bytes], tiradas: set[str]
+    arquivo_zip: Path | IO[bytes],
+    tiradas: set[str],
+    individuais: RaizesDeIndividual | None = None,
 ) -> Iterator[ParteDoContato]:
     """O contato dos estabelecimentos ativos de um `Estabelecimentos*.zip`, em partes, com os descartes.
 
     `estabelecimentos` tem as colunas de `COLUNAS`; o que não foi informado, ou não passou no formato, vem
     ausente. `descartes` conta os estabelecimentos que não estão ativos e os campos esvaziados, por motivo.
-    As raízes em `tiradas` (empresário individual ou MEI que pediu a oposição, linha 829) ficam de fora.
+    As raízes em `tiradas` (empresário individual ou MEI que pediu a oposição, linha 829) ficam de fora; as
+    em `individuais` (todo empresário individual e MEI) saem só com município, UF, telefones e e-mail.
     """
     for parte in _partes(arquivo_zip, CAMPOS_DO_ESTABELECIMENTO, ESTABELECIMENTO):
         contato = _contato(parte)
+        if individuais is not None:
+            contato = _so_municipio(contato, individuais)
         oposto = contato.estabelecimentos["cnpj_basico"].isin(tiradas)
         if oposto.any():
             contato.descartes[DE_OPOSTO] += int(oposto.sum())

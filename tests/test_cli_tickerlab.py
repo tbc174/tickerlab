@@ -381,8 +381,14 @@ def test_cnpj_sem_demonstracoes_sai_com_codigo_de_sem_dado(rodar, chave):
     resultado = rodar("demonstracoes", SEM_DEMONSTRACOES, **_com_chave(chave))
     assert resultado.exit_code == Saida.SEM_DADO
     assert resultado.stdout == ""
-    assert "Não há dado disponível" in resultado.stderr
-    assert "tickerlab catalogo" in resultado.stderr
+    assert "Faturamento de empresa fechada a base não tem" in resultado.stderr
+    assert "não estima" in resultado.stderr
+
+
+def test_sem_demonstracao_diz_a_mesma_frase_do_conector():
+    from conector_remoto.ferramentas import MENSAGEM_SEM_DEMONSTRACAO
+
+    assert cliente.SEM_DEMONSTRACAO == MENSAGEM_SEM_DEMONSTRACAO
 
 
 @pytest.mark.usefixtures("base_das_demonstracoes")
