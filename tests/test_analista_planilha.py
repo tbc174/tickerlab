@@ -114,6 +114,47 @@ def test_mesma_resposta_da_o_mesmo_arquivo():
     assert planilha.xlsx(_corpo()) == planilha.xlsx(_corpo())
 
 
+def _relogio_que_anda(monkeypatch):
+    """Faz o relógio de quem grava o .xlsx dar uma hora diferente a cada leitura (openpyxl e zipfile)."""
+    import datetime as modulo_datetime
+    import time
+    from types import SimpleNamespace
+
+    import openpyxl.writer.excel as escritor
+
+    leituras = iter(range(1, 10_000))
+
+    class DatetimeQueAnda(modulo_datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2030, 1, 1, tzinfo=tz) + modulo_datetime.timedelta(
+                seconds=next(leituras) * 7
+            )
+
+    monkeypatch.setattr(
+        escritor,
+        "datetime",
+        SimpleNamespace(datetime=DatetimeQueAnda, timezone=modulo_datetime.timezone),
+    )
+    monkeypatch.setattr(
+        time, "localtime", lambda *_: time.gmtime(1_900_000_000 + next(leituras) * 7)
+    )
+
+
+def test_relogios_diferentes_dao_os_mesmos_bytes(monkeypatch):
+    """O openpyxl regrava a data de modificação com o relógio ao salvar (`save_workbook`): duas gerações em
+    segundos diferentes davam bytes diferentes (teste instável do CI em 11/11/2026, linha 853)."""
+    _relogio_que_anda(monkeypatch)
+    primeira, segunda = planilha.xlsx(_corpo()), planilha.xlsx(_corpo())
+    assert primeira == segunda
+
+
+def test_a_data_de_criacao_e_a_de_modificacao_sao_fixas():
+    with zipfile.ZipFile(io.BytesIO(planilha.xlsx(_corpo()))) as arquivo:
+        propriedades = arquivo.read("docProps/core.xml").decode("utf-8")
+    assert propriedades.count("2026-01-01T00:00:00Z") == 2  # created e modified
+
+
 def test_toda_entrada_do_zip_tem_a_data_fixa():
     """O openpyxl grava a hora do relógio em cada entrada do zip: duas chamadas em segundos diferentes davam
     bytes diferentes (o teste acima falhou no CI da main em 10/11/2026)."""
