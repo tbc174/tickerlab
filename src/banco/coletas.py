@@ -616,6 +616,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "conab",
             "usda",
             "faostat",
+            "anvisa",  # dados.anvisa.gov.br: sem robots.txt (404) e CC Attribution nas fichas do dados.gov.br, lidos em 12/11/2026 (linha 860)
             "tce-pr",
             "tce-pr-pit",
             "tce-pr-despesa",
@@ -807,7 +808,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "ipea",
             "ans-demonstracoes",
             # Ficha Clara, licenças e registros (29/10): termos e robots.txt ainda não lidos
-            "anvisa",
             "mapa",
             "anm",
             "anm-cfem",  # linha 657: licença não declarada, a confirmar
@@ -815,7 +815,7 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anm-amb",
             "estban",  # linha 659: termos do BC lidos em 04/11/2026 (reprodução com fonte), a confirmar
             "ancine",
-            # preços da CMED (04/11): os termos das listas são os do portal da Anvisa, ainda não lidos
+            # preços da CMED (04/11): a lista de preços não tem ficha de licença lida; o portal da Anvisa foi lido em 12/11 só para a família anvisa
             "anvisa-cmed",
             # Ficha Clara, incentivos (29/10): termos e robots.txt ainda não lidos
             "mme",
