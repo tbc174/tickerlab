@@ -104,14 +104,14 @@
     "lei": "LEI0000000000000CPF4",
     "entity": {
      "legalName": {
-      "name": "FULANO DE TAL",
+      "name": "PESSOA INVENTADA GLEIF",
       "language": "pt"
      },
      "registeredAt": {
       "id": "RA000045",
       "other": null
      },
-     "registeredAs": "529.982.247-26",
+     "registeredAs": "999.000.003-41",
      "category": "GENERAL",
      "status": "ACTIVE",
      "legalForm": {

@@ -6,12 +6,16 @@ o CPF de alguém de verdade. O teste varre `dados_de_exemplo/` e `tests/arquivos
 `.gz`, e as colunas de `.parquet` e `.xlsx`) com duas regras escolhidas para não dar alarme falso:
 
 1. **CPF formatado** (`999.999.999-99`) em qualquer lugar, com o dígito certo. Nenhum outro dado usa essa forma.
-2. **11 dígitos seguidos** (com ou sem pontuação) com o dígito certo, **só em coluna ou chave cujo nome tem
-   "cpf"**. Um número solto de 11 dígitos (código, telefone, processo) acerta o dígito por acaso uma vez em
-   cerca de cem, e daria alarme falso; na coluna "CPF_CNPJ" ou "cgccpf" ele é um CPF.
+2. **11 dígitos seguidos** (com ou sem pontuação) com o dígito certo, **só em coluna ou chave de documento**
+   (o nome tem "cpf", "cnpj", "identificacao", "documento" ou é o "niFornecedor" do PNCP). Um número solto de
+   11 dígitos (código, telefone, processo) acerta o dígito por acaso uma vez em cerca de cem, e daria alarme
+   falso; numa coluna de documento ele é um CPF (o CNPJ tem 14 dígitos; os dados abertos da CVM e do PNCP
+   põem o CPF do devedor ou do fornecedor pessoa física na coluna do CNPJ).
 
-A mensagem de erro diz só o arquivo, a linha e a coluna, nunca o valor. Para consertar, troque o número por um
-cujo dígito não confere (por exemplo, o último dígito somado de 1): o leitor continua descartando a linha.
+A mensagem de erro diz só o arquivo, a linha e a coluna, nunca o valor. Para consertar, troque os 11 dígitos
+por uma sequência claramente inventada com o dígito que não confere (trocar só o último dígito não basta: os
+dois dígitos verificadores saem dos nove primeiros, e quem lê refaz o CPF numa conta). O leitor continua
+descartando a linha, porque a forma é a mesma.
 """
 
 from __future__ import annotations
@@ -66,8 +70,13 @@ def _decodificar(conteudo: bytes) -> str:
         return conteudo.decode("latin-1")
 
 
+COLUNA_DE_DOCUMENTO = ("cpf", "cnpj", "identificacao", "documento", "nifornecedor")
+
+
 def _coluna_de_cpf(nome: object) -> bool:
-    return "cpf" in str(nome).lower()
+    """Coluna ou chave onde um número de 11 dígitos é um CPF (ver a regra 2 acima)."""
+    nome_minusculo = str(nome).lower()
+    return any(pedaco in nome_minusculo for pedaco in COLUNA_DE_DOCUMENTO)
 
 
 def _valor_de_cpf(valor: object) -> bool:
@@ -170,8 +179,9 @@ def achados() -> list[str]:
 def test_nenhum_exemplo_guarda_cpf_valido():
     encontrados = achados()
     assert not encontrados, (
-        "CPF com dígito verificador certo nos arquivos de exemplo (troque o último dígito; o valor não é "
-        "mostrado de propósito):\n" + "\n".join(encontrados)
+        "CPF com dígito verificador certo nos arquivos de exemplo (troque os 11 dígitos por uma sequência "
+        "inventada com o dígito que não confere; o valor não é mostrado de propósito):\n"
+        + "\n".join(encontrados)
     )
 
 
@@ -211,10 +221,20 @@ def test_onze_digitos_so_contam_em_coluna_de_cpf():
     assert list(achados_no_texto("t.csv", tabela, ".csv")) == ["t.csv:3:CPF_CNPJ"]
 
 
+def test_onze_digitos_na_coluna_do_cnpj_tambem_contam():
+    """A CVM e o PNCP põem o CPF do devedor ou do fornecedor pessoa física na coluna do CNPJ."""
+    cpf = _cpf_inventado()
+    tabela = f"Tipo;CNPJ\nDevedor;{cpf}\nDevedor;{_estragado(cpf)}\n"
+    assert list(achados_no_texto("s.csv", tabela, ".csv")) == ["s.csv:2:CNPJ"]
+
+
 def test_chave_de_json_com_cpf_conta_e_as_outras_nao():
     cpf = _cpf_inventado()
-    texto = json.dumps({"dados": [{"cpf": cpf, "codigo": cpf}]})
-    assert list(achados_no_texto("p.json", texto, ".json")) == ["p.json:/dados[0]/cpf"]
+    texto = json.dumps({"dados": [{"cpf": cpf, "niFornecedor": cpf, "codigo": cpf}]})
+    assert sorted(achados_no_texto("p.json", texto, ".json")) == [
+        "p.json:/dados[0]/cpf",
+        "p.json:/dados[0]/niFornecedor",
+    ]
 
 
 def test_dentro_do_zip_e_da_planilha_tambem():
