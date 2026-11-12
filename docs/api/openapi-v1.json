@@ -1632,6 +1632,25 @@
         "title": "ClimaDaRegiaoV1",
         "type": "object"
       },
+      "ComandoDaCliV1": {
+        "description": "Um comando da CLI para copiar, com o que ele faz.",
+        "properties": {
+          "comando": {
+            "title": "Comando",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "comando"
+        ],
+        "title": "ComandoDaCliV1",
+        "type": "object"
+      },
       "ComparacaoDeEmpresasV1": {
         "description": "A resposta da comparação: o estado, as empresas na ordem do pedido (só quando pronta), as fontes e os\nlimites, sempre.",
         "properties": {
@@ -1807,6 +1826,70 @@
           "aviso"
         ],
         "title": "ComparacaoV1",
+        "type": "object"
+      },
+      "ConectarV1": {
+        "description": "O texto da página Conectar (`src/conectar.py`): conector de IA e CLI, com a chave só de exemplo.",
+        "properties": {
+          "chave_de_exemplo": {
+            "title": "Chave De Exemplo",
+            "type": "string"
+          },
+          "comandos_da_cli": {
+            "items": {
+              "$ref": "#/components/schemas/ComandoDaCliV1"
+            },
+            "title": "Comandos Da Cli",
+            "type": "array"
+          },
+          "cuidado_com_a_chave": {
+            "title": "Cuidado Com A Chave",
+            "type": "string"
+          },
+          "endereco_do_conector": {
+            "title": "Endereco Do Conector",
+            "type": "string"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "passos_no_chatgpt": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passos No Chatgpt",
+            "type": "array"
+          },
+          "passos_no_claude": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passos No Claude",
+            "type": "array"
+          },
+          "perguntas_prontas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Perguntas Prontas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "endereco_do_conector",
+          "chave_de_exemplo",
+          "passos_no_claude",
+          "passos_no_chatgpt",
+          "cuidado_com_a_chave",
+          "comandos_da_cli",
+          "perguntas_prontas",
+          "limites"
+        ],
+        "title": "ConectarV1",
         "type": "object"
       },
       "ConfiguracaoV1": {
@@ -8022,6 +8105,25 @@
           }
         },
         "summary": "Comparacao"
+      }
+    },
+    "/v1/conectar": {
+      "get": {
+        "description": "O endereço do conector, os passos, os comandos da CLI e as perguntas prontas.",
+        "operationId": "como_conectar_v1_conectar_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConectarV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Como Conectar"
       }
     },
     "/v1/configuracao": {
