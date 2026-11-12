@@ -1,8 +1,9 @@
 """A tela dos experimentos (aporte, rebalanceamento, noite e dia, virada do mês) com dados sintéticos.
 
-Sem internet: o segundo ativo do rebalanceamento vem de um dublê de `carregar_dados`.
+Sem internet: a fixture `_segundo_ativo_sintetico` troca `carregar_dados` onde a tela o usa, em todos os testes.
 """
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 
@@ -39,16 +40,14 @@ def _secao_curta() -> None:
     secao_experimentos(_dados(30), "5y", 0.0)
 
 
-def _secao_sem_segundo_ativo() -> None:
-    import telas.estrategias.experimentos as tela
-    from src.dados import DadosIndisponiveisError
-    from tests.test_experimentos_na_tela import _dados
+@pytest.fixture(autouse=True)
+def _segundo_ativo_sintetico(monkeypatch):
+    """Nenhum teste vai à rede: o segundo ativo é uma série sintética (o monkeypatch desfaz no fim)."""
 
-    def _falhar(*_args, **_kwargs):
-        raise DadosIndisponiveisError("Sem dados para o segundo ativo.")
+    def _outro(*_args, **_kwargs):
+        return _dados(600).assign(Close=lambda d: d["Close"][::-1].to_numpy())
 
-    tela.carregar_dados = _falhar
-    tela.secao_experimentos(_dados(), "5y", 0.0)
+    monkeypatch.setattr("telas.estrategias.experimentos.carregar_dados", _outro)
 
 
 def test_as_quatro_abas_aparecem_na_ordem():
@@ -83,10 +82,27 @@ def test_segundo_ativo_vazio_pede_o_ticker():
     assert any("Digite o segundo ativo." in i.value for i in app.info)
 
 
-def test_segundo_ativo_indisponivel_vira_aviso():
-    app = AppTest.from_function(_secao_sem_segundo_ativo).run()
+def test_segundo_ativo_indisponivel_vira_aviso(monkeypatch):
+    from src.dados import DadosIndisponiveisError
+
+    def _falhar(*_args, **_kwargs):
+        raise DadosIndisponiveisError("Sem dados para o segundo ativo.")
+
+    monkeypatch.setattr("telas.estrategias.experimentos.carregar_dados", _falhar)
+    app = AppTest.from_function(_secao).run()
     assert not app.exception
     assert any("Sem dados para o segundo ativo." in w.value for w in app.warning)
+
+
+def test_rebalanceamento_compara_as_regras_e_diz_a_composicao():
+    app = AppTest.from_function(_secao).run()
+    assert not app.exception
+    tabela = app.dataframe[0].value
+    assert "Rebalanceamentos" in tabela.columns
+    assert any(
+        "Carteira com 50% no ativo principal e 50% em ^GSPC" in c.value
+        for c in app.caption
+    )
 
 
 def test_noite_e_dia_mostra_a_tabela_e_a_nota_do_custo():
