@@ -1,8 +1,8 @@
 """Canal dos titulares do CNPJ: o que quem atende o privacidade@ roda no servidor de casa (ADR 0106, regra 3.8).
 
-    python -m scripts.oposicao_do_titular pedido --base <pasta> --restrita <pasta> --cnpj <CNPJ> [--meio 982247]
+    python -m scripts.oposicao_do_titular pedido --base <pasta> --restrita <pasta> --cnpj <CNPJ> [--meio 982247] [--acervo-pessoa <pasta>]
     python -m scripts.oposicao_do_titular acesso --restrita <pasta> --cnpj <CNPJ> [--meio 982247]
-    python -m scripts.oposicao_do_titular atender --base <pasta> --restrita <pasta>
+    python -m scripts.oposicao_do_titular atender --base <pasta> --restrita <pasta> [--acervo-pessoa <pasta>]
     python -m scripts.oposicao_do_titular conferir --restrita <pasta>
 
 O nome do titular, como a Receita publica, é lido da entrada (uma linha), nunca da linha de comando: assim ele
@@ -13,6 +13,11 @@ durante o pedido trouxe a pessoa de volta ao restrito; `atender` refaz a lápide
 do que se imprime traz nome, CPF ou id. Evite rodar `pedido` durante a carga mensal
 (`scripts.carga_receita_retrato`); se rodou, o `conferir` acusa e o `atender` conserta.
 
+Com `--acervo-pessoa` (a pasta `acervo_pessoa/` da tela da equipe, linha 829), `pedido` acha também o titular de
+empresário individual ou MEI (que não está no quadro de sócios) pela raiz e pelo nome, e `pedido` e `atender`
+tiram do acervo já montado o sócio, o titular e o contato da raiz dele: a oposição vale no dia, sem esperar a
+montagem do mês seguinte.
+
 Roda: cron de casa pelo oposicao-do-titular.sh (todo dia às 6h10 e 18h10).
 """
 
@@ -22,6 +27,7 @@ from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from base import oposicao_na_tela
 from base.pessoas import oposicoes
 from base.porta import pessoas as porta
 
@@ -50,9 +56,12 @@ def _ler_nome() -> str:
 
 def _achar(opcoes: argparse.Namespace) -> list[str] | None:
     """Os ids achados, ou None (com a mensagem impressa) quando não é exatamente uma pessoa."""
-    ids = oposicoes.achar_titular(
-        opcoes.restrita, opcoes.cnpj, _ler_nome(), opcoes.meio
-    )
+    nome = _ler_nome()
+    ids = oposicoes.achar_titular(opcoes.restrita, opcoes.cnpj, nome, opcoes.meio)
+    if not ids and getattr(opcoes, "acervo_pessoa", None) is not None:
+        ids = oposicao_na_tela.achar_titular_individual(
+            opcoes.acervo_pessoa, opcoes.cnpj, nome
+        )
     if not ids:
         print(NINGUEM)
         return None
@@ -69,12 +78,19 @@ def _lapide(resumo: oposicoes.Resumo, dia: date) -> str:
     )
 
 
+def _no_acervo_de_pessoa(opcoes: argparse.Namespace) -> None:
+    if getattr(opcoes, "acervo_pessoa", None) is not None:
+        ids = oposicoes.ids_opostos(opcoes.restrita)
+        oposicao_na_tela.aplicar_no_acervo(opcoes.acervo_pessoa, ids)
+
+
 def _pedido(opcoes: argparse.Namespace) -> int:
     ids = _achar(opcoes)
     if ids is None:
         return 1
     oposicoes.registrar(opcoes.restrita, ids, opcoes.pedido_em)
     resumo = oposicoes.atender(opcoes.base, opcoes.restrita, opcoes.hoje)
+    _no_acervo_de_pessoa(opcoes)
     registro = oposicoes.ler(opcoes.restrita)
     linha = registro[registro["id_pessoa"] == ids[0]].iloc[0]
     print(
@@ -86,6 +102,7 @@ def _pedido(opcoes: argparse.Namespace) -> int:
 
 def _atender(opcoes: argparse.Namespace) -> int:
     resumo = oposicoes.atender(opcoes.base, opcoes.restrita, opcoes.hoje)
+    _no_acervo_de_pessoa(opcoes)
     print(f"Todas as oposições: {_lapide(resumo, opcoes.hoje)}.")
     return 0
 
@@ -150,6 +167,12 @@ def _analisador() -> argparse.ArgumentParser:
         acao.add_argument("--hoje", type=date.fromisoformat, default=_hoje())
         if nome in ("pedido", "atender"):
             acao.add_argument("--base", type=Path, required=True)
+            acao.add_argument(
+                "--acervo-pessoa",
+                type=Path,
+                default=None,
+                help="o acervo_pessoa/ da tela",
+            )
         if nome in ("pedido", "acesso"):
             acao.add_argument("--cnpj", required=True)
             acao.add_argument("--meio", default=None, help="6 dígitos do meio do CPF")

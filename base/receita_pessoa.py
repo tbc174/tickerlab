@@ -40,6 +40,7 @@ SOCIO_COM_DOCUMENTO = {
     3: "documento",
 }  # o CPF mascarado: só para casar a oposição, nunca guardado
 COLUNAS = ("cnpj_basico", "nome_socio", "qualificacao", "data_entrada")
+COLUNAS_COM_ID = (*COLUNAS, "id_pessoa")  # o id pseudônimo, para a oposição de depois
 TIPO_PESSOA_FISICA = "2"
 FAIXAS_DE_MENOR = {"1", "2"}  # 0 a 12 anos; 13 a 20 anos
 FAIXAS_DE_ADULTO = {"3", "4", "5", "6", "7", "8", "9"}  # 21 a 30 ... mais de 80
@@ -110,9 +111,10 @@ def _sem_documento(nomes: pd.Series) -> pd.Series:
 def _socios_pf(parte: pd.DataFrame, opostos: Opostos) -> ParteDosSocios:
     parte = parte.rename(columns=SOCIO_COM_DOCUMENTO)
     motivo = _motivo_do_descarte(parte)
-    oposto = opostos.marcar(parte["documento"], parte["nome_socio"]) & (motivo == "")
+    parte["id_pessoa"] = opostos.ids_de(parte["documento"], parte["nome_socio"])
+    oposto = opostos.marcar(parte["id_pessoa"]) & (motivo == "")
     motivo = motivo.mask(oposto, OPOSTO)
-    fica = parte.loc[motivo == "", list(COLUNAS)].copy()
+    fica = parte.loc[motivo == "", list(COLUNAS_COM_ID)].copy()
     fica["cnpj_basico"] = fica["cnpj_basico"].str.strip().str.upper()
     fica["nome_socio"] = _sem_documento(fica["nome_socio"])
     fica["qualificacao"] = fica["qualificacao"].str.strip().str.zfill(2)

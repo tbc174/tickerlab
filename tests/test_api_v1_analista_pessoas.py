@@ -13,6 +13,7 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
+from base import oposicao_na_tela
 from src import auditoria
 from src.analista import pessoa
 from src.api_v1 import analista, analista_pessoas
@@ -325,3 +326,20 @@ def test_quem_se_opos_nao_aparece_para_a_organizacao_com_a_permissao(
     bia, cliente_da_bia = da_bia
     _organizacao_com(banco, dia, "Outra Exemplo", bia.id, permite=False)
     _igual_a_rota_que_nao_existe(cliente_da_bia, {"cnpj": "22333444000181"})
+
+
+def test_oposicao_registrada_hoje_some_da_tela_sem_esperar_a_montagem(
+    cliente, casa, tmp_path, monkeypatch
+):
+    destino, _ = montar_de_mentira._montar_com(tmp_path, montar_de_mentira.SEM_OPOSTOS)
+    monkeypatch.setenv(pessoa.VARIAVEL, str(destino))
+    antes = cliente.post(ROTA, json={"cnpj": "11222333000181"}).json()
+    assert [s["nome"] for s in antes["socios"]] == ["FULANA EXEMPLO"]
+
+    ids = montar_de_mentira._opostos(("***123456**", "FULANA EXEMPLO")).ids
+    oposicao_na_tela.aplicar_no_acervo(destino, set(ids))  # o que o `pedido` faz no dia
+
+    depois = cliente.post(ROTA, json={"cnpj": "11222333000181"}).json()
+    assert depois["socios"] == [] and depois["total"] == 0
+    outro = cliente.post(ROTA, json={"cnpj": "22333444000181"}).json()
+    assert [s["nome"] for s in outro["socios"]] == ["BELTRANO EXEMPLO"]

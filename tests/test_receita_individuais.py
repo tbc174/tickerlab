@@ -45,10 +45,11 @@ def _ler(*linhas: str) -> tuple[pd.DataFrame, Counter]:
 def test_individual_sai_com_a_raiz_e_o_nome_e_nada_mais():
     tabela, descartes = _ler(_linha())
     assert list(tabela.columns) == list(ri.COLUNAS)
-    assert tabela.iloc[0].to_dict() == {
-        "cnpj_basico": "11222333",
-        "titular": "FULANA EXEMPLO",
-    }
+    linha = tabela.iloc[0].to_dict()
+    assert (
+        linha.pop("id_pessoa") == ""
+    )  # razão sem CPF: sem id, a pessoa não tem como se opor
+    assert linha == {"cnpj_basico": "11222333", "titular": "FULANA EXEMPLO"}
     assert not descartes
 
 

@@ -27,7 +27,7 @@ from base.receita_retrato import _partes
 
 EMPRESARIO_INDIVIDUAL = "2135"
 CPF_MASCARADO = r"\*{2,}[\d.\-]{4,}\*{0,}"  # ***982247** e variantes
-COLUNAS = ("cnpj_basico", "titular")
+COLUNAS = ("cnpj_basico", "titular", "id_pessoa")
 
 NAO_E_INDIVIDUAL = "empresa_nao_individual"
 TITULAR_SEM_NOME = "titular_sem_nome"
@@ -86,7 +86,8 @@ def _individuais(
     )
     saida = saida.loc[com_nome]
     cpf = fica.loc[com_nome, "razao_social"].map(_cpf_da_razao)
-    oposto = opostos.marcar(cpf, saida["titular"])
+    saida["id_pessoa"] = opostos.ids_de(cpf, saida["titular"])
+    oposto = opostos.marcar(saida["id_pessoa"])
     descartes[OPOSTO] += int(oposto.sum())
     tiradas.update(
         saida.loc[oposto, "cnpj_basico"]

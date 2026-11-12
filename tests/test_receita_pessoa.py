@@ -48,8 +48,10 @@ def test_adulto_sai_so_com_as_quatro_colunas():
         "nome_socio",
         "qualificacao",
         "data_entrada",
+        "id_pessoa",  # o pseudônimo (HMAC), para a oposição de depois; nunca o CPF
     ]
     linha = socios.iloc[0]
+    assert len(linha["id_pessoa"]) == 32 and "123456" not in linha["id_pessoa"]
     assert linha["cnpj_basico"] == "11222333"
     assert linha["nome_socio"] == "FULANA EXEMPLO DA SILVA"
     assert linha["qualificacao"] == "49"

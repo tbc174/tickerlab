@@ -2,6 +2,7 @@
 telefone e e-mail aqui é inventado."""
 
 import hashlib
+import io
 import json
 import zipfile
 from datetime import UTC, datetime
@@ -10,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from base import oposicao_na_tela
 from base import receita_contato as rc
 from base import receita_individuais as ri
 from base import receita_pessoa as rp
@@ -17,6 +19,7 @@ from base.oposicao_na_tela import Opostos
 from base.pessoas import chave as chaves
 from base.pessoas import oposicoes
 from scripts import montar_acervo_pessoa as montar
+from scripts import oposicao_do_titular as cli
 from tests.test_receita_contato import _linha as _estabelecimento
 
 AGORA = datetime(2026, 11, 10, tzinfo=UTC)
@@ -103,6 +106,7 @@ def test_monta_so_os_adultos_e_conta_os_descartes(tmp_path):
         "nome_socio",
         "qualificacao",
         "data_entrada",
+        "id_pessoa",
         "mes_do_retrato",
     }
     assert set(tabela["mes_do_retrato"]) == {"2026-10"}
@@ -298,6 +302,7 @@ def test_monta_so_o_titular_do_empresario_individual_sem_cpf(tmp_path):
         {
             "cnpj_basico": "22333444",
             "titular": "BELTRANO EXEMPLO",
+            "id_pessoa": next(iter(_opostos(("52998224725", "BELTRANO EXEMPLO")).ids)),
             "mes_do_retrato": "2026-10",
         }
     ]
@@ -445,3 +450,82 @@ def test_pasta_que_existe_mas_nao_e_a_restrita_de_pessoas_nada_e_montado(
     assert montar.main([*argumentos, "--restrita", str(errada)]) == 1
     assert "SemOposicoesError" in capsys.readouterr().out
     assert not destino.exists()
+
+
+# ------------------------- a oposição de depois vale no dia, sem esperar a montagem do mês
+
+
+def _montado_sem_oposicao(tmp_path) -> Path:
+    destino, _ = _montar_com(tmp_path, SEM_OPOSTOS)
+    return destino
+
+
+def test_aplicar_no_acervo_tira_o_socio_e_e_idempotente(tmp_path):
+    destino = _montado_sem_oposicao(tmp_path)
+    ids = set(_opostos(("***123456**", "FULANA EXEMPLO")).ids)
+    assert oposicao_na_tela.aplicar_no_acervo(destino, ids) == 1
+    assert set(_tabela(destino)["nome_socio"]) == {"BELTRANO EXEMPLO"}
+    assert oposicao_na_tela.aplicar_no_acervo(destino, ids) == 0
+    assert oposicao_na_tela.aplicar_no_acervo(destino, set()) == 0
+
+
+def test_aplicar_no_acervo_tira_o_titular_e_o_contato_da_raiz(tmp_path):
+    destino = _montado_sem_oposicao(tmp_path)
+    ids = set(_opostos(("52998224725", "BELTRANO EXEMPLO")).ids)
+    assert oposicao_na_tela.aplicar_no_acervo(destino, ids) >= 2
+    assert _tabela(destino, montar.INDIVIDUAIS).empty
+    assert set(_tabela(destino, montar.CONTATO)["cnpj_basico"]) == {"11222333"}
+    assert "BELTRANO EXEMPLO" in set(
+        _tabela(destino)["nome_socio"]
+    )  # o sócio é outro id
+
+
+def test_pedido_do_dono_de_mei_acha_pela_raiz_e_pelo_nome_e_tira_do_acervo(
+    tmp_path, capsys, monkeypatch
+):
+    destino = _montado_sem_oposicao(tmp_path)
+    restrita = tmp_path / "restrita"
+    (restrita / "pessoas").mkdir(parents=True)  # sem sócios: o MEI não está no quadro
+    monkeypatch.setattr("sys.stdin", io.StringIO("Beltrano Exemplo\n"))
+    saida = cli.main(
+        [
+            "pedido",
+            "--base", str(tmp_path / "base"),
+            "--restrita", str(restrita),
+            "--cnpj", "22333444000181",
+            "--acervo-pessoa", str(destino),
+            "--pedido-em", "2026-11-11",
+            "--hoje", "2026-11-11",
+        ]
+    )  # fmt: skip
+    texto = capsys.readouterr().out
+    assert saida == 0 and "BELTRANO" not in texto.upper() and "52998224725" not in texto
+    assert _tabela(destino, montar.INDIVIDUAIS).empty
+    assert set(_tabela(destino, montar.CONTATO)["cnpj_basico"]) == {"11222333"}
+    assert len(oposicoes.ids_opostos(restrita)) == 1
+
+
+def test_atender_com_acervo_aplica_as_oposicoes_ja_registradas(tmp_path, capsys):
+    destino = _montado_sem_oposicao(tmp_path)
+    restrita = tmp_path / "restrita"
+    (restrita / "pessoas").mkdir(parents=True)
+    oposicoes.registrar(
+        restrita, list(_opostos(("***123456**", "FULANA EXEMPLO")).ids), AGORA.date()
+    )
+    saida = cli.main(
+        ["atender", "--base", str(tmp_path / "base"), "--restrita", str(restrita),
+         "--acervo-pessoa", str(destino), "--hoje", "2026-11-11"]
+    )  # fmt: skip
+    assert saida == 0
+    assert set(_tabela(destino)["nome_socio"]) == {"BELTRANO EXEMPLO"}
+
+
+def test_pedido_sem_acervo_nao_acha_o_dono_de_mei(tmp_path, capsys, monkeypatch):
+    restrita = tmp_path / "restrita"
+    (restrita / "pessoas").mkdir(parents=True)
+    monkeypatch.setattr("sys.stdin", io.StringIO("BELTRANO EXEMPLO\n"))
+    saida = cli.main(
+        ["pedido", "--base", str(tmp_path / "base"), "--restrita", str(restrita),
+         "--cnpj", "22333444000181"]
+    )  # fmt: skip
+    assert saida == 1 and cli.NINGUEM in capsys.readouterr().out

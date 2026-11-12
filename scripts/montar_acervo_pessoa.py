@@ -54,9 +54,9 @@ from scripts.montar_historico_do_cnpj import _arquivos, _ler, _repartir, _zips_d
 log = logging.getLogger("tickerlab.montar_acervo_pessoa")
 
 NOME_DA_PASTA = "acervo_pessoa"
-SOCIOS = "socios_pf"
-CONTATO = "contato"
-INDIVIDUAIS = "individuais"
+SOCIOS = oposicao_na_tela.SOCIOS
+CONTATO = oposicao_na_tela.CONTATO
+INDIVIDUAIS = oposicao_na_tela.INDIVIDUAIS
 TRABALHO = "_trabalho"
 ANTIGA = "_antiga"  # a tabela anterior, posta de lado só durante a troca
 MANIFESTO = "manifesto.json"
