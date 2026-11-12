@@ -19,11 +19,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from tickerlab.formato import AVISO, e_envelope, rotulo_do_item, tem_listas
+from tickerlab.formato import (
+    AVISO,
+    avisos_de_piloto,
+    e_de_piloto,
+    e_envelope,
+    rotulo_do_item,
+    tem_listas,
+)
 
 EXTENSOES = (".csv", ".xlsx")
 COLUNA_DA_FONTE = "fonte"
 COLUNA_DA_DATA = "publicado_em"
+COLUNA_DO_PILOTO = "piloto"
 INICIO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
 LIMITE_DO_NOME_DA_ABA = 31  # o Excel não abre aba com nome maior
 PROIBIDO_NO_NOME_DA_ABA = re.compile(r"[\[\]:*?/\\]")
@@ -61,12 +69,16 @@ def _fonte_e_data(envelopes: Sequence[Mapping]) -> list[Valor]:
 def _tabela_de_linhas(nome: str, linhas: Sequence[Mapping]) -> Tabela:
     colunas = list(dict.fromkeys(chave for linha in linhas for chave in linha))
     com_fonte = any(e_envelope(v) for linha in linhas for v in linha.values())
+    com_piloto = any(e_de_piloto(v) for linha in linhas for v in linha.values())
     extra = [COLUNA_DA_FONTE, COLUNA_DA_DATA] if com_fonte else []
+    extra += [COLUNA_DO_PILOTO] if com_piloto else []
     tabela = Tabela(nome, [*colunas, *extra])
     for linha in linhas:
         valores = [_cru(linha.get(coluna)) for coluna in colunas]
         if com_fonte:
             valores += _fonte_e_data([v for v in linha.values() if e_envelope(v)])
+        if com_piloto:
+            valores.append(any(e_de_piloto(v) for v in linha.values()))
         tabela.linhas.append(valores)
     return tabela
 
@@ -95,6 +107,25 @@ def _percorrer(
             _lista(_juntar(caminho, nome), valor, campos, tabelas)
 
 
+def _marcar_campos_de_piloto(corpo: Mapping, campos: Tabela) -> None:
+    """Acrescenta a coluna `piloto` nos campos soltos quando a API marcou algum como dado de piloto."""
+    marcados: set[str] = set()
+
+    def descer(caminho: str, dado: Mapping) -> None:
+        for nome, valor in dado.items():
+            if e_envelope(valor) and e_de_piloto(valor):
+                marcados.add(_juntar(caminho, nome))
+            elif isinstance(valor, Mapping) and not e_envelope(valor):
+                descer(_juntar(caminho, nome), valor)
+
+    descer("", corpo)
+    if not marcados:
+        return
+    campos.cabecalho.append(COLUNA_DO_PILOTO)
+    for linha in campos.linhas:
+        linha.append(linha[0] in marcados)
+
+
 def _lista(caminho: str, itens: list, campos: Tabela, tabelas: list[Tabela]) -> None:
     objetos = [item for item in itens if isinstance(item, Mapping)]
     if objetos and all(tem_listas(item) for item in objetos):
@@ -113,6 +144,7 @@ def tabelas_da_resposta(corpo: Mapping) -> list[Tabela]:
     campos = Tabela("campos", ["campo", "valor", COLUNA_DA_FONTE, COLUNA_DA_DATA])
     tabelas: list[Tabela] = []
     _percorrer("", corpo, campos, tabelas)
+    _marcar_campos_de_piloto(corpo, campos)
     return [campos, *tabelas] if campos.linhas else tabelas
 
 
@@ -129,6 +161,9 @@ def tabela_das_fontes(corpo: Mapping) -> Tabela:
                 ]
             )
     fontes.linhas.append(["aviso", AVISO, None])
+    fontes.linhas.extend(
+        ["aviso de piloto", frase, None] for frase in avisos_de_piloto(corpo)
+    )
     return fontes
 
 

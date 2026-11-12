@@ -71,6 +71,7 @@ As mensagens de erro saem na saída de erro (stderr), em português.
 2. **Cite a fonte e a data de cada número** que usar: a `source` e o `published_at` do campo (por exemplo,
    "conta 3.01 de 2025: 200,0, da DFP entregue à CVM em 15/03/2026, fonte cvm-hist-dfp"). Ao publicar ou
    repassar, inclua a frase de `attribution` de cada fonte, como a licença pede.
+   **Dado de piloto:** campo com `pilot: true` (e `pilot_notice` na resposta) ainda não passou pela conferência cheia. Repasse a frase de `pilot_notice` junto do número, como veio, sem reescrever nem tirar; a CLI a mostra na tela e nas planilhas.
 3. **Não invente número que a CLI não devolveu.** Se o dado não veio (código 5, campo ausente, lista
    cortada), diga que não veio. Não complete com estimativa sem dizer que é sua e como chegou nela.
 4. **Conta sua é sua.** Se você calcular algo a partir dos números (margem, crescimento, múltiplo), mostre a
