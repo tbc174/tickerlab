@@ -201,4 +201,21 @@ REGRAS: dict[str, Regra] = {
         repetidas_aceitas=100,
         porque_repetidas="linhas idênticas em todas as colunas, duplicadas no arquivo da CVM (cerca de 0,0005% da tabela); a base não corrige",
     ),
+    # retrato mensal da Receita: um único mês por vez, sem série por ano para comparar; vale a chave única
+    # (um estabelecimento por CNPJ de 14 dígitos) e nenhuma coluna de cadastro vazia
+    "cnpj_estabelecimentos_pj": Regra(
+        chave=(
+            "cnpj",
+            "cnpj_basico",
+            "matriz",
+            "situacao_cadastral",
+            "uf",
+            "municipio",
+            "cnae_principal",
+            "data_inicio_atividade",
+        ),
+    ),
+    "cnpj_empresas_pj": Regra(
+        chave=("cnpj_basico", "razao_social", "natureza_juridica", "porte"),
+    ),
 }
