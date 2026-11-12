@@ -38,10 +38,8 @@ COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 AINDA_SEM_A_MARCA = frozenset(
     {
         "anatel_acessos",
-        "aneel_samp",
         "anm_cfem_arrecadacao",
         "anm_sigbm_barragens",
-        "anp_concessionarios",
         "auditores",
         "carteiras_bloco_8",
         "cda_cotas",
@@ -163,6 +161,8 @@ FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
 # sem pessoa por desenho: o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
+        "aneel_samp",
+        "anp_concessionarios",
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",

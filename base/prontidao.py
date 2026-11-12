@@ -189,6 +189,16 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    "aneel_samp": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "anp_concessionarios": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
@@ -199,6 +209,8 @@ TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (carteiras_dos_fundos, demonstracoes_como_era, fca_geral, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
+        "aneel_samp",
+        "anp_concessionarios",
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
