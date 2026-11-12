@@ -20,6 +20,7 @@ import httpx
 from tickerlab import __version__
 
 PREFIXO = "/data/v1"
+ASSINATURA_DO_ZIP = b"PK"  # todo .pptx é um zip
 ESPERA_MAXIMA = (
     60  # segundos: o limite é por minuto; mais que isso não é o limite do minuto
 )
@@ -242,6 +243,32 @@ class ApiDoTickerlab:
             resposta = self._get(caminho, parametros)
         return self._corpo(resposta)
 
+    def pedir_arquivo(
+        self, caminho: str, parametros: Parametros | None = None
+    ) -> tuple[bytes, str | None]:
+        """GET de uma rota que serve um arquivo (o deck): os bytes e o nome que a API sugeriu, se vier.
+
+        Mesma chave, mesma espera do limite do minuto e mesmos erros de `pedir`.
+        """
+        resposta = self._get(caminho, parametros)
+        segundos = _espera_do_minuto(resposta)
+        if segundos is not None:
+            click.echo(
+                f"Limite de pedidos por minuto: esperando {segundos} segundos e tentando de novo...",
+                err=True,
+            )
+            esperar(segundos)
+            resposta = self._get(caminho, parametros)
+        if resposta.status_code != httpx.codes.OK:
+            raise erro_da_resposta(resposta, self.endereco)
+        if not resposta.content.startswith(ASSINATURA_DO_ZIP):
+            raise ErroDaCli(
+                f"{self.endereco} respondeu algo que não é um arquivo .pptx da API do TickerLab. "
+                "Confira TICKERLAB_API_URL.",
+                Saida.FORA_DO_AR,
+            )
+        return resposta.content, resposta.headers.get("Content-Disposition")
+
     def _get(self, caminho: str, parametros: Parametros | None) -> httpx.Response:
         try:
             resposta = self._http.get(
@@ -426,6 +453,16 @@ class ApiDoTickerlab:
 
     def setor(self, chave: str, como_era: str | None) -> dict:
         return self.pedir(f"/sectors/{chave}", _datas(known_at=como_era))
+
+    def deck_da_empresa(
+        self, cnpj: str, como_era: str | None
+    ) -> tuple[bytes, str | None]:
+        return self.pedir_arquivo(f"/companies/{cnpj}/deck", _datas(known_at=como_era))
+
+    def deck_do_setor(
+        self, chave: str, como_era: str | None
+    ) -> tuple[bytes, str | None]:
+        return self.pedir_arquivo(f"/sectors/{chave}/deck", _datas(known_at=como_era))
 
 
 def juntar_paginas(

@@ -4351,7 +4351,8 @@ TABELAS: dict[str, Tabela] = {
             "serve para reconhecer um fundo no quadro de sócios da Receita. Uma linha por fundo e "
             "gestor (o fundo com mais de um gestor repete). Fundos cancelados continuam. Sem dado "
             "pessoal: o gestor pessoa física fica só com a marca PF, sem CPF e sem nome, e o diretor "
-            "responsável fica fora"
+            "responsável fica fora. "
+            "**Limites medidos em 12/11/2026:** 17 linhas são idênticas em todas as colunas que a base guarda (o diretor responsável sai na montagem); o gestor fica vazio em 26679 linhas, quase todas de fundos cancelados (a CVM os deixa sem gestor) ou de gestor pessoa física. Os registros vão de 1957 a hoje, esparsos nos primeiros anos."
         ),
         fonte="CVM: registro de fundos e classes da CVM 175 (`registro_fundo_classe.zip`)",
         familia_da_fonte="cvm",
@@ -6951,7 +6952,8 @@ TABELAS: dict[str, Tabela] = {
             "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, "
             "resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega "
             "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
-            "contagem calculada por ela, não coluna desta tabela."
+            "contagem calculada por ela, não coluna desta tabela. "
+            "**Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega)."
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",
@@ -7779,7 +7781,8 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             'Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de '
             "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois). A troca "
-            "com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta."
+            "com auditor que pode ser pessoa física (`trata_como_pessoa`, ADR 0075) não sai da porta. "
+            "**Limite medido em 12/11/2026:** o arquivo começa em maio de 2010 (`conhecido_em`); `efetiva_em` vai de 2001 a 2027. As trocas se concentram em 2012, 2017 e 2022, o que é compatível com o rodízio obrigatório de cinco anos; isso é leitura, não campo da fonte."
         ),
         fonte="CVM: dados abertos do FCA, pela tabela `auditores`",
         familia_da_fonte="cvm",
@@ -8103,7 +8106,8 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a "
             "participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco "
-            "em muitas linhas, e o FRE guarda ligações antigas."
+            "em muitas linhas, e o FRE guarda ligações antigas. "
+            "**Limites medidos em 12/11/2026:** 8643 linhas não têm CNPJ (o formulário não traz CNPJ para essas investidas; só o nome as distingue); a chave se repete em 8373 linhas (866 idênticas em todas as colunas; as demais são investidas sem CNPJ com nomes diferentes ou o mesmo CNPJ com participação ou tipo diferente no mesmo documento). Quem junta por CNPJ pode receber mais de uma linha por investida."
         ),
         fonte="CVM: dados abertos do FRE, tabela de participação em sociedades",
         familia_da_fonte="cvm",
@@ -8520,7 +8524,8 @@ TABELAS: dict[str, Tabela] = {
             "letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). "
             "Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e "
             "ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas "
-            "entidades no mesmo período é conflito e não entra em nenhuma"
+            "entidades no mesmo período é conflito e não entra em nenhuma. "
+            "**Limite medido em 12/11/2026:** `desde` só existe para ticker e emissor; nos registros oficiais (CNPJ, ISIN, códigos da CVM e das agências) a fonte não diz desde quando o código vale, e a coluna fica vazia (193197 de 194489 linhas)."
         ),
         fonte=(
             "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da "
@@ -8570,7 +8575,8 @@ TABELAS: dict[str, Tabela] = {
             "(IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e "
             "fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado "
             "entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; "
-            "a publicada (sem pessoas) sai de `base/rede/vistas.py`"
+            "a publicada (sem pessoas) sai de `base/rede/vistas.py`. "
+            "**Limite medido em 12/11/2026:** `papel` fica vazio em 25182 linhas, todas dos tipos controlada_de, participada_de, coligada_de, audita e emite, que não têm papel; ele só existe nos tipos detem, do_conglomerado_de e opera_para."
         ),
         fonte=(
             "CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da "
