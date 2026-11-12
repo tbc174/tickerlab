@@ -74,6 +74,9 @@ FONTES_DE_CARGA_PROPRIA = {"bcb-ifdata": "ifdata_valores"}
 CARGA_PROPRIA_PELO_SCRIPT = {
     "cvm-fidc-base": ("registro_de_fundos", "scripts/carga_fidc.py")
 }
+# cópia reduzida montada no envio ao VPS a partir da tabela de carga própria (o FIP do `buyers` lê `fips_registrados`,
+# que sai do registro de fundos, `base/recorte_dos_compradores.py`): a linhagem dela cita a tabela de origem
+COPIAS_DA_CARGA_PROPRIA = {"fips_registrados": "registro_de_fundos"}
 # tabela montada na base a partir de outra que a fonte alimenta (as trocas de auditor saem dos auditores de
 # cada FCA, `base/auditores.py`): a de origem é a que está nos destinos do arquivista
 MONTADAS_DE_OUTRA_TABELA = {
@@ -175,13 +178,16 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                     linha
                 )
             elif linha.fonte in CARGA_PROPRIA_PELO_SCRIPT:
-                assert (tabela, linha.fonte) == (
+                origem = COPIAS_DA_CARGA_PROPRIA.get(tabela, tabela)
+                assert (origem, linha.fonte) == (
                     CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][0],
                     linha.fonte,
                 ), linha
                 assert (
-                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[tabela].onde
+                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[origem].onde
                 ), (linha, tabela)
+                if tabela != origem:
+                    assert f"`{origem}`" in TABELAS[tabela].linhagem, (linha, tabela)
             elif linha.fonte in FONTES_DE_CARGA_PROPRIA:
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)

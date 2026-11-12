@@ -63,11 +63,14 @@ ENTRADAS, CONTROLADAS, FUNDOS = (
     "registro_de_fundos",
 )
 # No VPS a lista lê as cópias reduzidas, com nome próprio (linha 844, `base/recorte_dos_compradores.py`): só
-# PJ, sem razão social, gestor nem administrador. Em casa, a tabela inteira; ela vale quando as duas estão.
+# PJ, sem razão social, gestor nem administrador. Cada sinal lê a primeira opção que a porta tem. O FIP só lê a
+# cópia, a tabela que o portão confere: o registro inteiro tem CNPJ_Fundo fora da lista sem pessoa e, sem a
+# cópia na porta, o sinal fica de fora (Diretoria, 12/11). O modo dono, em casa, tem a lista própria e não passa
+# por aqui. Na controlada, a inteira ainda vale quando as duas estão (linha 892, depois de 20/11).
 CONTROLADAS_PJ, FIPS_REGISTRADOS = "controladas_pj", "fips_registrados"
 LEITURAS = {
     CONTROLADAS: (CONTROLADAS, CONTROLADAS_PJ),
-    FUNDOS: (FUNDOS, FIPS_REGISTRADOS),
+    FUNDOS: (FIPS_REGISTRADOS,),
 }
 PUBLICADO_EM, MES = "publico_em", "mes_do_retrato"
 ATIVA, FIP = "02", "FIP"
@@ -279,9 +282,10 @@ class LeitorDeCompradores:
         self.permitido = permitido
         self.linhas_maximas = linhas_maximas
         self.tabelas = set(views(porta.con))
-        # a tabela que cada sinal lê: a inteira, se a porta a tem, ou a cópia reduzida
+        # a tabela que cada sinal lê: a primeira das opções de `LEITURAS` que a porta tem; sem nenhuma, a primeira
+        # (fora da porta, o sinal fica de fora: o FIP nunca cai na tabela inteira)
         self.lida = {
-            tabela: next((t for t in opcoes if t in self.tabelas), tabela)
+            tabela: next((t for t in opcoes if t in self.tabelas), opcoes[0])
             for tabela, opcoes in LEITURAS.items()
         }
 
