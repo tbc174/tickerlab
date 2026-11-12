@@ -61,6 +61,7 @@
       "icone": "mais",
       "paginas": [
         "dados_e_cobertura",
+        "conectar",
         "backtest",
         "ranking",
         "carteira",

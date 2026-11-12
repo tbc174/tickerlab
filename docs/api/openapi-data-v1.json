@@ -1433,6 +1433,199 @@
         "summary": "Comparaveis Da Empresa"
       }
     },
+    "/data/v1/companies/{cnpj}/deck": {
+      "get": {
+        "description": "O perfil da empresa (o mesmo de `/companies/{cnpj}/profile`, com o mesmo contrato `profiles`) como\ndeck `.pptx`: o cadastro e as entregas à CVM, com a fonte e o dia de cada tabela, as fontes e os\nlimites. Conta na quota como o JSON.",
+        "operationId": "deck_da_empresa_data_v1_companies__cnpj__deck_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": {}
+            },
+            "description": "o deck (.pptx)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Deck Da Empresa"
+      }
+    },
     "/data/v1/companies/{cnpj}/events": {
       "get": {
         "description": "Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à\nCVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor\n(`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o\nplano é o teto) e `next_cursor` traz a seguinte. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
@@ -3505,6 +3698,177 @@
           }
         },
         "summary": "Setor"
+      }
+    },
+    "/data/v1/sectors/{key}/deck": {
+      "get": {
+        "description": "O setor (o mesmo de `/sectors/{key}`, com o mesmo contrato `sectors` e o mesmo corte do plano) como\ndeck `.pptx`: a concentração, a parte de cada companhia e quem são, com a fonte e o dia de cada\ntabela, as fontes e os limites. Conta na quota como o JSON.",
+        "operationId": "deck_do_setor_data_v1_sectors__key__deck_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": {}
+            },
+            "description": "o deck (.pptx)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          }
+        },
+        "summary": "Deck Do Setor"
       }
     },
     "/data/v1/usage": {

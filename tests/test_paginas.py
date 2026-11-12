@@ -217,6 +217,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "painel_do_cafe",
                 "busca_por_cnpj",
                 "dados_e_cobertura",
+                "conectar",
             },
         ),
         (
@@ -317,6 +318,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "boas_vindas_beta",
         "o_que_mudou",
         "dados_e_cobertura",
+        "conectar",
     }
 
 
