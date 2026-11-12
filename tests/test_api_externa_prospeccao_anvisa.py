@@ -401,10 +401,10 @@ def test_tabela_da_anvisa_sem_prontidao_nao_sai_e_a_busca_comum_segue(cliente, c
 def test_filtro_por_campo_negado_da_anvisa_nao_serve_de_oraculo(
     cliente, cenario, monkeypatch
 ):
-    def sem_ativos(_conexao, _contexto, _conjunto):
+    def portao_sem_conjuntos(_conexao, _contexto, _conjunto):
         return lambda fonte, campo, _publico: campo != "registros_anvisa_ativos"
 
-    monkeypatch.setattr(rotas, "_portao", sem_ativos)
+    monkeypatch.setattr(rotas, "_portao", portao_sem_conjuntos)
     assert _get(cliente, cenario, cnae="2063", anvisa_active_min=1).status_code == 404
     assert _get(cliente, cenario, cnae="2063", sort="-anvisa").status_code == 404
     # o total continua liberado: filtrar por ele é permitido, e só o campo liberado sai
