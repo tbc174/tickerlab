@@ -1,0 +1,270 @@
+"""As cópias reduzidas que a lista de compradores lê na API externa (linha 844): o filtro e a trava.
+
+`controladas_pj` e `fips_registrados` saem só com as colunas listadas, só com raízes da `cnpj_empresas_pj` da
+mesma saída e sem gestor, administrador, razão social nem CPF; a trava lê a saída e derruba a montagem.
+"""
+
+from pathlib import Path
+
+import duckdb
+import pytest
+
+from base import recorte_dos_compradores as reduzidas
+from base import vitrine
+from base.contrato import catalogo
+from base.dossie import COLUNAS_DE_PESSOA
+
+LISTA = ("11000001", "13000001", "14000001")  # alvo, FIP e companhia aberta: todas PJ
+FORA = "99000001"  # raiz que a lista sem pessoa não tem (MEI, EI, fora do retrato)
+
+
+def _parquet(caminho: Path, selecao: str) -> Path:
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    duckdb.sql(f"COPY ({selecao}) TO '{caminho.as_posix()}' (FORMAT PARQUET)")
+    return caminho
+
+
+def _empresas(pasta: Path) -> list[Path]:
+    valores = ", ".join(f"('{r}')" for r in LISTA)
+    return [
+        _parquet(
+            pasta / "empresas.parquet",
+            f"SELECT * FROM (VALUES {valores}) t(cnpj_basico)",
+        )
+    ]
+
+
+def _controladas(pasta: Path) -> list[Path]:
+    """Dois FRE da aberta (o v2 tirou a controlada da lista), uma estrangeira, uma fora da lista e uma companhia
+    que a lista não tem; com as colunas de nome do arquivo de verdade."""
+    linhas = (
+        # companhia, referencia, versao, conhecido_em, cnpj, razao_social, tipo, participacao
+        "('14000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 60.0), "
+        f"('14000001000101', DATE '2024-12-31', 2, DATE '2025-06-01', '{FORA}000101', 'FULANO DE TAL', 'coligada', 20.0), "
+        "('14000001000101', DATE '2024-12-31', 2, DATE '2025-06-01', NULL, 'ESTRANGEIRA LTD', 'controlada', 100.0), "
+        "('98000001000101', DATE '2024-12-31', 1, DATE '2025-05-01', '11000001000101', 'ALVO SA', 'controlada', 51.0)"
+    )
+    return [
+        _parquet(
+            pasta / "controladas" / "2025.parquet",
+            "SELECT cnpj_companhia, 'ABERTA SA' AS companhia, referencia, versao, '123' AS id_documento, "
+            "conhecido_em, cnpj, razao_social, tipo, participacao, 2025 AS ano_do_arquivo, "
+            "'abc' AS origem_sha256, '2025-06-02' AS origem_coletada_em "
+            f"FROM (VALUES {linhas}) t(cnpj_companhia, referencia, versao, conhecido_em, cnpj, razao_social, "
+            "tipo, participacao)",
+        )
+    ]
+
+
+def _registro(pasta: Path) -> list[Path]:
+    """FIP da lista com dois gestores (um pessoa física), FIP fora da lista e FIDC da lista."""
+    linhas = (
+        "('1', '13.000.001/0001-01', 'FIP', '2020-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        "('1', '13.000.001/0001-01', 'FIP', '2020-01-01', NULL, 'PF', NULL, NULL, 'ADM SA'), "
+        f"('2', '{FORA}000101', 'FIP', '2021-01-01', NULL, 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA'), "
+        "('3', '11000001000101', 'FIDC', '2019-01-01', '2023-01-01', 'PJ', '55000001000101', 'GESTORA SA', 'ADM SA')"
+    )
+    return [
+        _parquet(
+            pasta / "fidc" / "cadastro" / "registro_fundo.parquet",
+            "SELECT ID_Registro_Fundo, CNPJ_Fundo, Tipo_Fundo, Data_Registro, Data_Cancelamento, "
+            "'FUNDO DE MENTIRA' AS Denominacao_Social, Tipo_Pessoa_Gestor, CPF_CNPJ_Gestor, Gestor, "
+            "'60000001000101' AS CNPJ_Administrador, Administrador "
+            f"FROM (VALUES {linhas}) t(ID_Registro_Fundo, CNPJ_Fundo, Tipo_Fundo, Data_Registro, "
+            "Data_Cancelamento, Tipo_Pessoa_Gestor, CPF_CNPJ_Gestor, Gestor, Administrador)",
+        )
+    ]
+
+
+def _montar(
+    tmp_path: Path,
+) -> tuple[duckdb.DuckDBPyConnection, dict[str, Path], list[Path]]:
+    con = duckdb.connect()
+    empresas = _empresas(tmp_path)
+    destinos = {
+        nome: tmp_path / "saida" / f"{nome}.parquet" for nome in reduzidas.REDUZIDAS
+    }
+    reduzidas.montar_controladas_pj(
+        con, _controladas(tmp_path), empresas, destinos["controladas_pj"]
+    )
+    reduzidas.montar_fips_registrados(
+        con, _registro(tmp_path), empresas, destinos["fips_registrados"]
+    )
+    return con, destinos, empresas
+
+
+def _linhas(arquivo: Path, consulta: str = "SELECT * FROM t") -> list[tuple]:
+    con = duckdb.connect()
+    con.execute(f"CREATE VIEW t AS SELECT * FROM '{arquivo.as_posix()}'")
+    return con.execute(consulta).fetchall()
+
+
+def _colunas(arquivo: Path) -> list[str]:
+    return [
+        c[0]
+        for c in duckdb.sql(f"DESCRIBE SELECT * FROM '{arquivo.as_posix()}'").fetchall()
+    ]
+
+
+def test_sai_so_com_as_colunas_listadas(tmp_path):
+    _, destinos, _ = _montar(tmp_path)
+    for nome, arquivo in destinos.items():
+        assert _colunas(arquivo) == list(reduzidas.COLUNAS[nome])
+        assert not set(_colunas(arquivo)) & COLUNAS_DE_PESSOA
+
+
+def test_nenhuma_coluna_de_nome_de_gestor_ou_de_administrador_na_lista():
+    for colunas in reduzidas.COLUNAS.values():
+        for coluna in colunas:
+            assert not any(p in coluna.lower() for p in reduzidas.PEDACOS_PROIBIDOS), (
+                coluna
+            )
+
+
+def test_controladas_pj_so_com_raiz_da_lista_e_a_marca_de_cada_documento(tmp_path):
+    _, destinos, _ = _montar(tmp_path)
+    linhas = _linhas(
+        destinos["controladas_pj"],
+        "SELECT cnpj_companhia, cnpj, tipo, participacao, versao, publico_em FROM t ORDER BY versao, cnpj NULLS LAST",
+    )
+    v1, v2 = "2025-05-01", "2025-06-01"
+    assert [(c, cn, ti, pa, ve, str(pu)) for c, cn, ti, pa, ve, pu in linhas] == [
+        ("14000001000101", "11000001000101", "controlada", 60.0, 1, v1),
+        ("14000001000101", None, None, None, 1, v1),  # a marca do documento v1
+        (
+            "14000001000101",
+            None,
+            None,
+            None,
+            2,
+            v2,
+        ),  # a do v2: a fora da lista e a estrangeira não saem
+    ]
+
+
+def test_o_documento_mais_novo_da_companhia_e_o_mesmo_da_tabela_inteira(tmp_path):
+    """Sem a marca, o v2 (que só tinha controladas fora da lista) sumiria e o v1 voltaria a valer."""
+    _, destinos, _ = _montar(tmp_path)
+    ultimo = "SELECT cnpj_companhia, max(versao) FROM t GROUP BY 1"
+    assert _linhas(destinos["controladas_pj"], ultimo) == [("14000001000101", 2)]
+
+
+def test_fips_registrados_so_fip_da_lista_sem_repetir_o_gestor(tmp_path):
+    _, destinos, _ = _montar(tmp_path)
+    assert _linhas(destinos["fips_registrados"]) == [
+        ("13.000.001/0001-01", "FIP", "2020-01-01", None)
+    ]
+
+
+def test_a_trava_passa_na_saida_montada_e_devolve_as_contagens(tmp_path):
+    con, destinos, empresas = _montar(tmp_path)
+    assert reduzidas.conferir_reduzidas(con, destinos, empresas) == {
+        "controladas_pj": 3,
+        "fips_registrados": 1,
+    }
+
+
+def _saida_com(
+    tmp_path: Path, nome: str, selecao: str
+) -> tuple[duckdb.DuckDBPyConnection, dict[str, Path], list[Path]]:
+    con, destinos, empresas = _montar(tmp_path)
+    _parquet(destinos[nome], selecao)
+    return con, destinos, empresas
+
+
+CONTROLADA = (
+    "SELECT '14000001000101' AS cnpj_companhia, {cnpj} AS cnpj, {tipo} AS tipo, {participacao} AS participacao, "
+    "DATE '2024-12-31' AS referencia, 1 AS versao, DATE '2025-05-01' AS publico_em"
+)
+FIP = (
+    "SELECT {cnpj} AS CNPJ_Fundo, {tipo} AS Tipo_Fundo, '2020-01-01' AS Data_Registro, "
+    "NULL AS Data_Cancelamento"
+)
+
+
+@pytest.mark.parametrize(
+    ("nome", "selecao", "erro"),
+    [
+        (
+            "controladas_pj",
+            CONTROLADA.format(
+                cnpj=f"'{FORA}000101'", tipo="'controlada'", participacao="10.0"
+            ),
+            "raiz fora da lista",
+        ),
+        (
+            "controladas_pj",
+            CONTROLADA.format(cnpj="NULL", tipo="'controlada'", participacao="100.0"),
+            "sem CNPJ",
+        ),
+        (
+            "controladas_pj",
+            CONTROLADA.replace("'14000001000101' AS", f"'{FORA}000101' AS").format(
+                cnpj="NULL", tipo="NULL", participacao="NULL"
+            ),
+            "raiz fora da lista",
+        ),
+        (
+            "controladas_pj",
+            CONTROLADA.format(
+                cnpj="'11000001000101'", tipo="'controlada'", participacao="1.0"
+            )
+            + ", 'FULANO' AS razao_social",
+            r"coluna\(s\) fora da lista",
+        ),
+        (
+            "fips_registrados",
+            FIP.format(cnpj=f"'{FORA}000101'", tipo="'FIP'"),
+            "raiz fora da lista",
+        ),
+        (
+            "fips_registrados",
+            FIP.format(cnpj="NULL", tipo="'FIP'"),
+            "raiz fora da lista",
+        ),
+        (
+            "fips_registrados",
+            FIP.format(cnpj="'13000001000101'", tipo="'FIDC'"),
+            "não é FIP",
+        ),
+        (
+            "fips_registrados",
+            FIP.format(cnpj="'13000001000101'", tipo="'FIP'") + ", 'FULANA' AS Gestor",
+            r"coluna\(s\) fora da lista",
+        ),
+        (
+            "fips_registrados",
+            FIP.format(cnpj="'13000001000101'", tipo="'FIP'")
+            + ", '12345678901' AS CPF_CNPJ_Gestor",
+            r"coluna\(s\) fora da lista",
+        ),
+    ],
+)
+def test_a_trava_derruba_a_saida_fora_da_regra(tmp_path, nome, selecao, erro):
+    con, destinos, empresas = _saida_com(tmp_path, nome, selecao)
+    with pytest.raises(reduzidas.ReduzidaComPessoa, match=erro) as achado:
+        reduzidas.conferir_reduzidas(con, destinos, empresas)
+    # a mensagem vai ao log e ao aviso do Kuma: só contagens, nunca um CNPJ ou um nome
+    assert FORA not in str(achado.value)
+    assert "FULAN" not in str(achado.value)
+
+
+def test_a_trava_falha_sem_a_lista_sem_pessoa(tmp_path):
+    con, destinos, _ = _montar(tmp_path)
+    with pytest.raises(reduzidas.ReduzidaComPessoa, match="cnpj_empresas_pj"):
+        reduzidas.conferir_reduzidas(con, destinos, [])
+
+
+def test_a_montagem_falha_sem_a_lista_sem_pessoa(tmp_path):
+    with pytest.raises(reduzidas.ReduzidaComPessoa, match="cnpj_empresas_pj"):
+        reduzidas.montar_fips_registrados(
+            duckdb.connect(), _registro(tmp_path), [], tmp_path / "f.parquet"
+        )
+
+
+def test_o_site_nao_conta_a_copia_reduzida_como_tabela_nova():
+    """A cópia reduzida é o mesmo dado da tabela de onde sai (que o catálogo já mostra): fica fora do site."""
+    assert set(reduzidas.REDUZIDAS) == vitrine.COPIAS_REDUZIDAS
+    publico = vitrine.catalogo_publico(catalogo())["tabelas"]
+    assert not set(reduzidas.REDUZIDAS) & set(publico)
+    assert set(reduzidas.ORIGEM.values()) <= set(publico)
