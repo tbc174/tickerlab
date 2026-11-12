@@ -391,6 +391,8 @@ def test_as_regras_da_marca_sao_as_do_teste_da_porta() -> None:
     assert prontidao.TABELAS_DA_REDE == porta.DA_REDE
     assert prontidao.SEM_PESSOA_NA_MONTAGEM == porta.SEM_PESSOA_NA_MONTAGEM
     assert prontidao.COLUNA_DE_CNPJ.pattern == porta.COLUNA_DE_CNPJ.pattern
+    assert prontidao.COLUNA_DE_CNPJ.flags == porta.COLUNA_DE_CNPJ.flags
+    assert prontidao.COLUNA_DE_CNPJ.search("CNPJ_Fundo")
     assert not porta.AINDA_SEM_A_MARCA & prontidao.tabelas_com_pessoa_decidida()
 
 

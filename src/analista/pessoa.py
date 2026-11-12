@@ -57,6 +57,16 @@ LIMITES_DO_CONTATO = (
 )
 
 
+INDIVIDUAIS = "individuais"
+ATRIBUICAO_DO_TITULAR = "Receita Federal, dados abertos do CNPJ (razão social do empresário individual e do MEI)"
+COLUNAS_DO_TITULAR = ["cnpj_basico", "titular", "mes_do_retrato"]
+LIMITES_DO_TITULAR = (
+    "Empresário individual e MEI: o titular é o nome da razão social no cadastro da Receita, sem o CPF, no mês do retrato.",
+    "O cadastro não traz a idade do titular. Quem pediu para sair da tela não aparece. Sem CPF e sem endereço da pessoa.",
+    "Nome igual não prova que é a mesma pessoa em duas empresas.",
+)
+
+
 class AcervoIndisponivelError(RuntimeError):
     """O acervo de pessoa não está neste servidor (sem a variável, sem a pasta) ou não pôde ser lido."""
 
@@ -79,6 +89,15 @@ class Contato:
     """O contato dos estabelecimentos ativos de uma empresa, em tipos simples, e o mês do retrato."""
 
     estabelecimentos: list[dict[str, str | bool | list[str] | None]]
+    total: int
+    mes_do_retrato: str | None
+
+
+@dataclass(frozen=True)
+class Titular:
+    """O titular do empresário individual ou do MEI, em tipos simples, e de que mês é o retrato."""
+
+    titulares: list[dict[str, str]]
     total: int
     mes_do_retrato: str | None
 
@@ -147,6 +166,23 @@ def socios_da_empresa(pasta: Path, cnpj: str) -> Socios:
     return Socios(
         [_linha(linha) for linha in linhas[:MAXIMO_DE_SOCIOS]], len(linhas), mes
     )
+
+
+def titular_da_empresa(pasta: Path, cnpj: str) -> Titular:
+    """O titular do empresário individual ou do MEI do CNPJ: só o nome, sem CPF.
+
+    `CnpjInvalidoError` se o CNPJ é inválido; `AcervoIndisponivelError` se a tabela não está neste servidor
+    ou não pôde ser lida. Empresa que não é individual (ou cujo titular se opôs): lista vazia.
+    """
+    raiz = _cnpj(cnpj)[:TAMANHO_DA_RAIZ]
+    linhas = [
+        linha
+        for linha in _linhas_da_raiz(pasta, INDIVIDUAIS, raiz, COLUNAS_DO_TITULAR)
+        if linha["titular"]
+    ]
+    linhas.sort(key=lambda t: t["titular"])
+    mes = linhas[0]["mes_do_retrato"] if linhas else None
+    return Titular([{"nome": linha["titular"]} for linha in linhas], len(linhas), mes)
 
 
 def _logradouro(linha: dict) -> str | None:

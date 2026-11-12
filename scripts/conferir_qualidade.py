@@ -37,6 +37,20 @@ def medir(p: porta.Porta, tabela: str) -> dict[str, object]:
     }
 
 
+def _juntar_com_o_do_dia(
+    destino: Path, novos: list[dict[str, object]]
+) -> list[dict[str, object]]:
+    """`--tabela` mede uma só: as outras do mesmo dia continuam no arquivo (a prova de cada uma é o registro dele)."""
+    if not destino.exists():
+        return novos
+    try:
+        antigos = json.loads(destino.read_text(encoding="utf-8"))["tabelas"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return novos
+    nomes = {r["tabela"] for r in novos}
+    return [r for r in antigos if r.get("tabela") not in nomes] + novos
+
+
 def gravar(dia: str, resultados: list[dict[str, object]]) -> Path:
     raiz = acervo.pasta_do_acervo()
     if raiz is None:
@@ -44,6 +58,7 @@ def gravar(dia: str, resultados: list[dict[str, object]]) -> Path:
     pasta = raiz / "placar" / dia
     pasta.mkdir(parents=True, exist_ok=True)
     destino = pasta / "qualidade.json"
+    resultados = _juntar_com_o_do_dia(destino, resultados)
     texto = json.dumps(
         {
             "dia": dia,
