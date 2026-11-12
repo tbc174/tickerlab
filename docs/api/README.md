@@ -234,6 +234,14 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
+**Parte não disponível para a organização** (linhas 878 e 880; `src/api_externa/nao_disponivel.py`): quando um
+pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo), a parte que a
+organização não tem não some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz
+a lista das partes pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`,
+`unavailable_link_types` em `/links`), vazia quando tudo foi consultado. Os `limits` só falam das partes servidas
+e, quando há parte de fora, trazem a frase de que ela não foi consultada. Se nenhuma parte pedida está liberada,
+a resposta é 404 `not_available`, como o resto do contrato. Todo conjunto novo com partes segue o mesmo molde.
+
 ### Perfil (`profiles`, linha 736)
 
 O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/ficha.py`):
@@ -316,7 +324,9 @@ numa ponta sem CNPJ ou numa raiz que não está no retrato, a ponta sai sem nome
 lista vai até o limite de linhas do plano (`truncated`). O fundo que detém o papel, o conglomerado do Banco
 Central e a série do regulador não saem por aqui. A ponta que é pessoa (MEI, empresário individual, sócio
 pessoa física) ou que a rede trata como pessoa não sai, nem a ligação com ela; a empresa sem vínculos não quer
-dizer que ela não tenha grupo. Pessoa e quem a rede não conhece saem `not_available`.
+dizer que ela não tenha grupo. O tipo pedido que não está disponível para a organização vem em
+`unavailable_link_types`, e os `limits` não falam da fonte dele. Pessoa e quem a rede não conhece saem
+`not_available`.
 
 ### Ficha de crédito (`credit`, linha 754)
 
