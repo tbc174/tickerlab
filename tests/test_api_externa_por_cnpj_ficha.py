@@ -346,6 +346,14 @@ def test_situacao_e_simples_barrados_vao_na_lista_e_no_aviso(pasta):
     assert set(ficha.LIMITES) <= set(corpo["limites"])
 
 
+def test_a_lista_e_o_aviso_do_leitor_de_companies_nao_entram_no_cadastro(pasta):
+    """O perfil lê o cadastro pelo leitor de `companies`, que já traz a lista e os limites dele (linha 898): eles
+    saem no topo do perfil, não dentro do bloco do cadastro."""
+    corpo = _corpo(pasta, permitido=_sem(*SIMPLES))
+    assert not set(corpo["cadastro_na_receita"]) & set(empresas.CHAVES_DO_AVISO)
+    assert corpo[CAMPOS_DE_FORA] == _de_fora(*SIMPLES)
+
+
 def test_um_campo_barrado_vai_sozinho_na_lista(pasta):
     corpo = _corpo(pasta, permitido=_sem("motivo_situacao"))
     assert "situacao_cadastral" in corpo["cadastro_na_receita"]

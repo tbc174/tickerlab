@@ -196,7 +196,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 |---|---|---|
 | `GET /data/v1/catalog` | o que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte | não |
 | `GET /data/v1/usage` | o consumo do mês da organização e o que falta da quota | não |
-| `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita (conjunto `companies`) | sim |
+| `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita, o nome e o Simples (conjunto `companies`); o campo não consultado vai em `unavailable_registration_fields` | sim |
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/comparables` | os pares da companhia aberta no mesmo grupo de setores, com os números do último DFP e a mediana de cada razão (`comparables`, ver abaixo) | sim, 1 |
@@ -234,17 +234,17 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
-**Parte não disponível para a organização** (linhas 878, 880 a 882 e 891; `src/api_externa/nao_disponivel.py`):
+**Parte não disponível para a organização** (linhas 878, 880 a 882, 891 e 898; `src/api_externa/nao_disponivel.py`):
 quando um pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo, os sinais
-dos compradores, os documentos das entregas e das demonstrações, os campos do cadastro no perfil, os números dos comparáveis, os blocos do fundo,
+dos compradores, os documentos das entregas e das demonstrações, os campos do cadastro em `/companies` e no perfil, os números dos comparáveis, os blocos do fundo,
 as séries e a lista das companhias do setor), a parte que a organização não tem não
 some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz a lista das partes
 pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`, `unavailable_link_types`
-em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` e `unavailable_registration_fields` em
-`/profile`, `unavailable_figures` em `/comparables`, `unavailable_filings` em `/financials`, `unavailable_sections`
+em `/links`, `unavailable_signals` em `/buyers`, `unavailable_registration_fields` em `/companies/{cnpj}` (e em cada
+item do lote), `unavailable_filings` e `unavailable_registration_fields` em `/profile`, `unavailable_figures` em `/comparables`, `unavailable_filings` em `/financials`, `unavailable_sections`
 em `/funds` e em `/sectors`, que traz também `unavailable_series`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
 entra na lista: nos dois casos ela não foi consultada. Os `limits` só falam das partes servidas
-e, quando há parte de fora, trazem a frase de que ela não foi consultada (em `/funds`, `/financials` e
+e, quando há parte de fora, trazem a frase de que ela não foi consultada (em `/companies`, `/funds`, `/financials` e
 `/sectors`, que não tinham `limits`, a lista sai vazia quando tudo foi consultado). Se nenhuma parte pedida está liberada,
 a resposta é 404 `not_available`, como o resto do contrato. Todo conjunto novo com partes segue o mesmo molde.
 

@@ -1089,7 +1089,7 @@
     },
     "/data/v1/companies/{cnpj}": {
       "get": {
-        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`. O campo do\ncadastro que não foi consultado (a situação, o nome, o Simples) vem em `unavailable_registration_fields`,\ncom o aviso em `limits`.",
         "operationId": "empresa_data_v1_companies__cnpj__get",
         "parameters": [
           {
