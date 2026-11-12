@@ -61,7 +61,7 @@ Assim, a chave não vai em texto aberto pela rede.
 | `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo ...]` | `GET /data/v1/companies/{cnpj}/links` (rota da linha 736) | sim |
 | `tickerlab dossie <cnpj> [--como-era ...]` | `profile`, `events`, `links` e `comparables` da empresa | sim, 4 pedidos |
 | `tickerlab eventos <cnpj> [--tipo ...] [--todas]` | `GET /data/v1/companies/{cnpj}/events` (rota da linha 736) | sim, um pedido por página |
-| `tickerlab demonstracoes <cnpj> [--como-era ...] [--periodo AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/financials` | sim |
+| `tickerlab demonstracoes <cnpj> [--como-era ...] [--periodo AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/financials` (sem dado: "faturamento de empresa fechada a base não tem", mesma frase do conector) | sim |
 | `tickerlab fundo <cnpj> [--como-era ...] [--retorno-suposto 0.12]` | `GET /data/v1/funds/{cnpj}` | sim |
 | `tickerlab prospectar --cnae ... [--uf ..] [--todas] ...` | `GET /data/v1/companies` (busca, rota da linha 794) | sim, um pedido por página |
 | `tickerlab setor` | `GET /data/v1/sectors` | não |

@@ -3,10 +3,10 @@
 // mesmo portão da ficha e da busca: o que a API negaria não aparece aqui. Os CNPJs vão no corpo do POST (e,
 // vindos da ficha, pelo estado da navegação), nunca no endereço; nada é pedido antes de a pessoa comparar.
 import { type FormEvent, useState } from "react";
-import { useLocation } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
 import { Carregando } from "../Carregando";
+import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
 import type { CampoComFonteV1, ComparacaoDeEmpresasV1, EmpresaComparadaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
@@ -203,7 +203,7 @@ function cnpjsDaNavegacao(estado: unknown): string[] {
 const completarAteOMinimo = (cnpjs: string[]) => [...cnpjs, ...Array(Math.max(0, MINIMO - cnpjs.length)).fill("")];
 
 export function CompararEmpresas({ pagina }: { pagina: PaginaDoApp }) {
-  const vindos = cnpjsDaNavegacao(useLocation().state);
+  const vindos = cnpjsDaNavegacao(useEstadoDaNavegacaoUmaVez());
   const [rascunhos, setRascunhos] = useState<string[]>(() => completarAteOMinimo(vindos));
   // com dois ou mais CNPJs vindos de outra tela, a comparação já sai; com um (da ficha), falta o segundo
   const [comparado, setComparado] = useState<{ cnpjs: string[]; vez: number } | null>(

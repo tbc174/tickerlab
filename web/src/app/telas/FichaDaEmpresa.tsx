@@ -4,12 +4,13 @@
 // não aparece aqui. Como na Busca por CNPJ, o CNPJ vai no corpo do POST, nunca no endereço, e nada é
 // pedido antes de a pessoa buscar. "Limites e cuidados" fica sempre à vista depois da busca.
 import { type FormEvent, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
 import { ErroDaApi, baixar } from "../api";
 import { Carregando } from "../Carregando";
 import { useConta } from "../conta";
+import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
 import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
@@ -303,7 +304,7 @@ function cnpjDaNavegacao(estado: unknown): string | null {
 }
 
 export function FichaDaEmpresa({ pagina }: { pagina: PaginaDoApp }) {
-  const vindo = cnpjDaNavegacao(useLocation().state);
+  const vindo = cnpjDaNavegacao(useEstadoDaNavegacaoUmaVez());
   const [rascunho, setRascunho] = useState(vindo ?? "");
   const [buscado, setBuscado] = useState<{ cnpj: string; vez: number } | null>(
     vindo === null ? null : { cnpj: vindo, vez: 1 },
