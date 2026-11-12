@@ -192,11 +192,12 @@ def pasta(tmp_path, monkeypatch):
     return base
 
 
+# o FIP: o portão confere a cópia `fips_registrados` (a tabela servida no VPS), não o registro inteiro
 TABELAS = (
     compradores.ESTABELECIMENTOS,
     compradores.EMPRESAS,
     compradores.ENTRADAS,
-    compradores.FUNDOS,
+    compradores.FIPS_REGISTRADOS,
     compradores.CONTROLADAS,
 )
 
@@ -499,7 +500,7 @@ def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
 
 
 def test_o_fundo_barrado_tira_so_o_sinal_do_fundo(cliente, cenario, monkeypatch):
-    sem_fundos = tuple(t for t in TABELAS if t != compradores.FUNDOS)
+    sem_fundos = tuple(t for t in TABELAS if t != compradores.FIPS_REGISTRADOS)
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fundos))
     corpo = _get(cliente, cenario).json()
     assert corpo["unavailable_signals"] == ["fund_stake"]
@@ -522,8 +523,14 @@ def test_a_lista_de_fora_acompanha_o_portao_mesmo_com_a_resposta_guardada(
 
 
 def _so_reduzidas(pasta) -> None:
-    """Troca as tabelas inteiras do FRE e do registro de fundos pelas cópias reduzidas, como no VPS: montadas
-    e conferidas pela mesma trava do recorte."""
+    """Troca as tabelas inteiras do FRE e do registro de fundos pelas cópias reduzidas, como no VPS."""
+    _montar_reduzidas(pasta)
+    shutil.rmtree(pasta / compradores.CONTROLADAS)
+    shutil.rmtree(pasta / "fidc")
+
+
+def _montar_reduzidas(pasta) -> None:
+    """Monta as cópias reduzidas ao lado das tabelas inteiras, conferidas pela mesma trava do recorte."""
     con = duckdb.connect()
     empresas = sorted((pasta / compradores.EMPRESAS).glob("*.parquet"))
     origens = {
@@ -542,8 +549,6 @@ def _so_reduzidas(pasta) -> None:
     for nome, destino in destinos.items():
         montar[nome](con, origens[nome], empresas, destino)
     reduzidas.conferir_reduzidas(con, destinos, empresas)
-    shutil.rmtree(pasta / compradores.CONTROLADAS)
-    shutil.rmtree(pasta / "fidc")
 
 
 def test_so_com_as_copias_reduzidas_a_resposta_e_a_mesma(cliente, cenario, pasta):
@@ -588,3 +593,62 @@ def test_na_copia_reduzida_o_portao_segue_pela_tabela_inteira(
     resposta = _get(cliente, cenario)
     assert resposta.status_code == 200
     assert ABERTA not in _raizes(resposta)
+
+
+# ---------------------------------------------------------------- o FIP lê a tabela que o portão confere
+
+
+def _so_a_inteira_prontas() -> tuple[str, ...]:
+    return (
+        *(t for t in TABELAS if t != compradores.FIPS_REGISTRADOS),
+        compradores.FUNDOS,
+    )
+
+
+def test_o_fundo_nao_sai_pela_tabela_inteira_pronta(
+    cliente, cenario, pasta, monkeypatch
+):
+    # o registro inteiro tem fundo com CNPJ fora da lista sem pessoa: pronto ou não, ele não libera o sinal
+    _montar_reduzidas(pasta)
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: _regras(*_so_a_inteira_prontas())
+    )
+    resposta = _get(cliente, cenario)
+    assert resposta.status_code == 200
+    assert _comprador(resposta, FUNDO)["signals"] == ["took_stake"]
+    assert "fund_stake" in resposta.json()["unavailable_signals"]
+
+
+def test_com_as_duas_na_porta_o_fundo_sai_da_copia_e_a_resposta_e_a_mesma(
+    cliente, cenario, pasta
+):
+    antes = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    _montar_reduzidas(pasta)
+    # a inteira deixa de dizer FIP: se a leitura fosse por ela, o sinal sumiria
+    _gravar(
+        pasta / "fidc" / "cadastro" / "registro_fundo.parquet",
+        _fundos().assign(Tipo_Fundo="FIDC"),
+    )
+    depois = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    assert depois == antes
+    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
+        "took_stake",
+        "fund_stake",
+    ]
+
+
+def test_sem_a_copia_na_porta_o_fundo_le_a_inteira_como_em_casa(
+    cliente, cenario, pasta
+):
+    # em casa (modo dono) a cópia não existe: a leitura segue pela tabela inteira, como antes
+    assert not (pasta / compradores.FIPS_REGISTRADOS).exists()
+    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
+        "took_stake",
+        "fund_stake",
+    ]
