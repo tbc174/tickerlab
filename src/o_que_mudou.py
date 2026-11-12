@@ -29,6 +29,14 @@ class Entrega:
 
 ENTREGAS: tuple[Entrega, ...] = (
     Entrega(
+        data=date(2026, 11, 12),
+        o_que=(
+            'Encontrar empresas: cada linha da lista tem o link "Pôr na comparação", que leva o CNPJ '
+            "direto para comparar empresas."
+        ),
+        pagina="encontrar_empresas",
+    ),
+    Entrega(
         data=date(2026, 11, 11),
         o_que=(
             "Ficha da empresa: agora mostra os documentos entregues à CVM, as trocas de auditor e os "
