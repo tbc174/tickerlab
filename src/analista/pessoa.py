@@ -23,6 +23,15 @@ from base import receita_codigos
 VARIAVEL = "TICKERLAB_ACERVO_PESSOA"
 SOCIOS = "socios_pf"
 CONTATO = "contato"
+INDIVIDUAIS = "individuais"
+CAMPOS_DE_ENDERECO = (
+    "tipo_logradouro",
+    "logradouro",
+    "numero",
+    "complemento",
+    "bairro",
+    "cep",
+)
 TAMANHO_DA_RAIZ = 8
 PREFIXO = (
     2  # o arquivo de cada raiz é o dos 2 primeiros caracteres (como o montador reparte)
@@ -50,7 +59,7 @@ ATRIBUICAO_DO_CONTATO = (
 LIMITES_DO_CONTATO = (
     "Endereço, telefone e e-mail como a empresa declarou à Receita no mês do retrato: podem ter mudado.",
     "Só estabelecimentos ativos. Sem nome fantasia e sem fax.",
-    "No MEI e no empresário individual, o endereço e o telefone costumam ser os da própria pessoa.",
+    "No MEI e no empresário individual o endereço aparece só até o município e a UF; o telefone costuma ser o da própria pessoa.",
     "Use só para o contato profissional com a empresa.",
 )
 
@@ -168,6 +177,20 @@ def _estabelecimento(linha: dict) -> dict[str, str | bool | list[str] | None]:
     }
 
 
+def _e_individual(pasta: Path, raiz: str) -> bool:
+    """A raiz é de empresário individual ou MEI? Sem a tabela `individuais` (acervo montado antes da
+    linha 859) o corte já veio feito da montagem, que zera o endereço no próprio dado."""
+    if not (pasta / INDIVIDUAIS).is_dir():
+        return False
+    return bool(_linhas_da_raiz(pasta, INDIVIDUAIS, raiz, ["cnpj_basico"]))
+
+
+def _so_municipio(linha: dict) -> dict:
+    """Política de privacidade, versão 16: o endereço de MEI e de empresário individual vai só até o
+    município e a UF (linha 859). Telefone e e-mail seguem."""
+    return linha | dict.fromkeys(CAMPOS_DE_ENDERECO)
+
+
 def contato_da_empresa(pasta: Path, cnpj: str) -> Contato:
     """O contato dos estabelecimentos ativos da empresa do CNPJ: o pedido primeiro, depois a matriz e as
     filiais, pela ordem do CNPJ.
@@ -179,6 +202,10 @@ def contato_da_empresa(pasta: Path, cnpj: str) -> Contato:
     linhas = _linhas_da_raiz(
         pasta, CONTATO, pedido[:TAMANHO_DA_RAIZ], COLUNAS_DO_CONTATO
     )
+    if _e_individual(
+        pasta, pedido[:TAMANHO_DA_RAIZ]
+    ):  # o corte é do servidor, nunca da tela
+        linhas = [_so_municipio(linha) for linha in linhas]
     linhas.sort(key=lambda e: (e["cnpj"] != pedido, not e["matriz"], e["cnpj"]))
     mes = linhas[0]["mes_do_retrato"] if linhas else None
     mostrados = linhas[:MAXIMO_DE_ESTABELECIMENTOS]

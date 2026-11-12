@@ -129,3 +129,10 @@ def test_layout_com_campo_a_mais_quebra_a_leitura():
                 _zip(_linha().rstrip("\n") + ';"X"\n'), SEM_OPOSTOS, set()
             )
         )
+
+
+def test_toda_raiz_de_individual_vai_para_o_contato_cortar_o_endereco_ate_a_sem_nome():
+    raizes: set[str] = set()
+    sem_nome = _linha(raiz="44555666", razao="12345")
+    list(ri.ler_individuais(_zip(_linha(), sem_nome), SEM_OPOSTOS, set(), raizes))
+    assert raizes == {"11222333", "44555666"}

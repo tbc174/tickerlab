@@ -55,9 +55,10 @@ TELEFONE_FORA_DO_FORMATO = "telefone_fora_do_formato"
 EMAIL_FORA_DO_FORMATO = "email_fora_do_formato"
 EMAIL_COM_CARA_DE_CPF = "email_com_cara_de_cpf"
 DE_OPOSTO = "contato_de_titular_que_se_opos"  # linha 829
+ENDERECO_CORTADO = "endereco_de_individual_cortado"  # linha 859
 MOTIVOS = (
     NAO_ATIVO, TELEFONE_FORA_DO_FORMATO, EMAIL_FORA_DO_FORMATO, EMAIL_COM_CARA_DE_CPF,
-    DE_OPOSTO,
+    DE_OPOSTO, ENDERECO_CORTADO,
 )  # fmt: skip
 
 
@@ -123,17 +124,33 @@ def _contato(parte: pd.DataFrame) -> ParteDoContato:
     return ParteDoContato(fica[list(COLUNAS)].reset_index(drop=True), +descartes)
 
 
+def _so_municipio(contato: ParteDoContato, raizes: set[str]) -> ParteDoContato:
+    """Empresário individual e MEI: o endereço é o da pessoa, então só o município e a UF ficam (linha 859;
+    política de privacidade, versão 16). Telefone e e-mail seguem, como a política diz."""
+    cortar = contato.estabelecimentos["cnpj_basico"].isin(raizes)
+    if not cortar.any():
+        return contato
+    estabelecimentos = contato.estabelecimentos.copy()
+    for coluna in (*ENDERECO, "cep"):
+        estabelecimentos.loc[cortar, coluna] = None
+    contato.descartes[ENDERECO_CORTADO] += int(cortar.sum())
+    return ParteDoContato(estabelecimentos, contato.descartes)
+
+
 def ler_contato(
-    arquivo_zip: Path | IO[bytes], tiradas: set[str]
+    arquivo_zip: Path | IO[bytes],
+    tiradas: set[str],
+    individuais: set[str] | None = None,
 ) -> Iterator[ParteDoContato]:
     """O contato dos estabelecimentos ativos de um `Estabelecimentos*.zip`, em partes, com os descartes.
 
     `estabelecimentos` tem as colunas de `COLUNAS`; o que não foi informado, ou não passou no formato, vem
     ausente. `descartes` conta os estabelecimentos que não estão ativos e os campos esvaziados, por motivo.
-    As raízes em `tiradas` (empresário individual ou MEI que pediu a oposição, linha 829) ficam de fora.
+    As raízes em `tiradas` (empresário individual ou MEI que pediu a oposição, linha 829) ficam de fora; as
+    em `individuais` (todo empresário individual e MEI) saem só com município, UF, telefones e e-mail.
     """
     for parte in _partes(arquivo_zip, CAMPOS_DO_ESTABELECIMENTO, ESTABELECIMENTO):
-        contato = _contato(parte)
+        contato = _so_municipio(_contato(parte), individuais or set())
         oposto = contato.estabelecimentos["cnpj_basico"].isin(tiradas)
         if oposto.any():
             contato.descartes[DE_OPOSTO] += int(oposto.sum())

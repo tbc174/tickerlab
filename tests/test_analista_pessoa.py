@@ -260,3 +260,39 @@ def test_contato_estragado_e_acervo_indisponivel(tmp_path):
 def test_os_limites_do_contato_avisam_do_mei_e_do_retrato():
     texto = " ".join(pessoa.LIMITES_DO_CONTATO).lower()
     assert "mei" in texto and "retrato" in texto and "ativos" in texto
+
+
+def _acervo_de_individuais(pasta: Path, raizes: list[str]) -> None:
+    (pasta / pessoa.INDIVIDUAIS).mkdir(parents=True)
+    tabela = pd.DataFrame(
+        {"cnpj_basico": raizes, "titular": "FULANA EXEMPLO", "id_pessoa": "x"}
+    )
+    for prefixo, parte in tabela.groupby(tabela["cnpj_basico"].str[:2]):
+        parte.to_parquet(pasta / pessoa.INDIVIDUAIS / f"{prefixo}.parquet", index=False)
+
+
+def test_contato_de_individual_sai_so_com_municipio_uf_telefone_e_email(tmp_path):
+    pasta = _acervo_de_contato(tmp_path / "acervo", CONTATOS)
+    _acervo_de_individuais(pasta, [EMPRESA[:8]])
+    for estabelecimento in pessoa.contato_da_empresa(pasta, EMPRESA).estabelecimentos:
+        assert (
+            estabelecimento["logradouro"] is None and estabelecimento["bairro"] is None
+        )
+        assert estabelecimento["cep"] is None
+        assert estabelecimento["uf"] == "SP" and estabelecimento["municipio"]
+    primeiro = pessoa.contato_da_empresa(pasta, EMPRESA).estabelecimentos[0]
+    assert primeiro["telefones"] == ["1130001000"] and primeiro["email"]
+
+
+def test_empresa_que_nao_e_individual_segue_com_o_endereco_inteiro(tmp_path):
+    pasta = _acervo_de_contato(tmp_path / "acervo", CONTATOS)
+    _acervo_de_individuais(pasta, ["22333444"])  # outra raiz é MEI; esta não
+    inteira = pessoa.contato_da_empresa(pasta, EMPRESA).estabelecimentos[0]
+    assert (
+        inteira["logradouro"] == "RUA DOS EXEMPLOS, 100"
+        and inteira["cep"] == "01001000"
+    )
+    assert (
+        pessoa.contato_da_empresa(pasta, "22333444000181").estabelecimentos[0]["cep"]
+        is None
+    )

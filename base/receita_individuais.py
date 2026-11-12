@@ -61,7 +61,10 @@ def _cpf_da_razao(razao: str) -> str:
 
 
 def _individuais(
-    parte: pd.DataFrame, opostos: Opostos, tiradas: set[str]
+    parte: pd.DataFrame,
+    opostos: Opostos,
+    tiradas: set[str],
+    raizes: set[str] | None = None,
 ) -> ParteDosIndividuais:
     parte = parte.rename(columns=EMPRESA)
     individual = (
@@ -72,6 +75,10 @@ def _individuais(
     )
     descartes: Counter[str] = Counter({NAO_E_INDIVIDUAL: int((~individual).sum())})
     fica = parte.loc[individual].copy()
+    if (
+        raizes is not None
+    ):  # toda raiz de individual, com ou sem nome: o endereço dela é da pessoa
+        raizes.update(fica["cnpj_basico"].str.strip().str.upper())
     nome = tirar_cpf_da_coluna(fica["razao_social"].str.strip())
     nome = nome.str.replace(CPF_MASCARADO, " ", regex=True)
     nome = nome.str.replace(ONZE_DIGITOS_SEPARADOS, " ", regex=True)
@@ -101,12 +108,16 @@ def _individuais(
 
 
 def ler_individuais(
-    arquivo_zip: Path | IO[bytes], opostos: Opostos, tiradas: set[str]
+    arquivo_zip: Path | IO[bytes],
+    opostos: Opostos,
+    tiradas: set[str],
+    raizes: set[str] | None = None,
 ) -> Iterator[ParteDosIndividuais]:
     """O titular dos empresários individuais de um `Empresas*.zip`, em partes, com os descartes.
 
     Quem tem oposição registrada (`opostos`) não entra, e a raiz dele vai para `tiradas`: o contato da raiz,
-    que é o da própria pessoa, também sai (`base/receita_contato.py`).
+    que é o da própria pessoa, também sai (`base/receita_contato.py`). `raizes` recebe toda raiz de empresário
+    individual e MEI, até a sem nome: o contato dela só vai até o município e a UF (linha 859).
     """
     for parte in _partes(arquivo_zip, CAMPOS_NO_ARQUIVO_DE_EMPRESAS, EMPRESA):
-        yield _individuais(parte, opostos, tiradas)
+        yield _individuais(parte, opostos, tiradas, raizes)

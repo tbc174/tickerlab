@@ -75,6 +75,9 @@ class Contexto(NamedTuple):
     tiradas: set[
         str
     ]  # preenchida por `individuais`, lida por `contato`: a ordem de TABELAS importa
+    individuais: set[
+        str
+    ]  # toda raiz de individual e MEI (linha 859): o contato dela sem rua
 
 
 class Tabela(NamedTuple):
@@ -98,14 +101,16 @@ TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai 
     Tabela(
         INDIVIDUAIS,
         "Empresas",
-        lambda zip_, c: receita_individuais.ler_individuais(zip_, c.opostos, c.tiradas),
+        lambda zip_, c: receita_individuais.ler_individuais(
+            zip_, c.opostos, c.tiradas, c.individuais
+        ),
         ["cnpj_basico"],
         receita_individuais.MOTIVOS,
     ),
     Tabela(
         CONTATO,
         "Estabelecimentos",
-        lambda zip_, c: receita_contato.ler_contato(zip_, c.tiradas),
+        lambda zip_, c: receita_contato.ler_contato(zip_, c.tiradas, c.individuais),
         ["cnpj"],
         receita_contato.MOTIVOS,
     ),
@@ -238,7 +243,7 @@ def montar(
     trabalho = destino / TRABALHO
     shutil.rmtree(trabalho, ignore_errors=True)
     contagens, descartes = {}, {}
-    contexto = Contexto(opostos, set())
+    contexto = Contexto(opostos, set(), set())
     try:
         for tabela in TABELAS:
             contagem, da_tabela = _preparar_tabela(

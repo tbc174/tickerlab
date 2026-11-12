@@ -173,3 +173,41 @@ def test_o_log_nao_leva_cnpj_nem_contato(cliente, casa, caplog):
     assert "11222333" not in texto and "exemplo" not in texto
     assert "1130001000" not in texto
     assert "contato da ficha: pronta" in texto
+
+
+# ------------------------------------------- individual e MEI: endereço só até município e UF (linha 859)
+
+
+def _virar_individual(acervo) -> None:
+    acervo_de_mentira._acervo_de_individuais(acervo, [EMPRESA[:8]])
+
+
+def test_organizacao_com_a_permissao_nao_recebe_a_rua_de_individual(
+    cliente, casa, acervo
+):
+    _virar_individual(acervo)
+    resposta = cliente.post(ROTA, json={"cnpj": EMPRESA})
+    assert resposta.status_code == 200, resposta.text
+    for e in resposta.json()["estabelecimentos"]:
+        assert e["logradouro"] is None and e["bairro"] is None and e["cep"] is None
+        assert e["municipio"] and e["uf"]
+    assert "DOS EXEMPLOS" not in resposta.text and "01001000" not in resposta.text
+
+
+def test_duas_organizacoes_so_a_com_a_permissao_recebe_e_sem_a_rua_de_individual(
+    cliente, casa, acervo, da_bia, banco, dia
+):
+    bia, cliente_da_bia = da_bia
+    dos_socios._organizacao_com(banco, dia, "Outra Exemplo", bia.id, permite=False)
+    _virar_individual(acervo)
+    corpo = {"cnpj": EMPRESA}
+    assert cliente.post(ROTA, json=corpo).json()["estabelecimentos"][0]["cep"] is None
+    _igual_a_rota_que_nao_existe(cliente_da_bia, corpo)
+
+
+def test_conta_sem_organizacao_nao_ve_nem_o_municipio_de_individual(
+    cliente, acervo, monkeypatch
+):
+    _virar_individual(acervo)
+    _nao_le_nada(monkeypatch)
+    _igual_a_rota_que_nao_existe(cliente, {"cnpj": EMPRESA})
