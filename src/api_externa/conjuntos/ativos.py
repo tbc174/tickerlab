@@ -148,20 +148,32 @@ FORA_DA_ROTA = {
     ROYALTIES: "Mineração: royalties (CFEM da ANM) ainda não saem por esta rota.",
 }
 
+# os limites que valem para a resposta inteira; os de cada bloco (`LIMITES_DO_BLOCO`) só entram quando o bloco
+# sai, para a resposta não falar de fonte que ela não entrega (revisão cruzada, 12/11)
 LIMITES = (
     "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra.",
     (
-        "A ANP e a ANM reescrevem os arquivos sem dizer o que saiu: um contrato encerrado ou uma barragem "
-        "descaracterizada pode continuar na última versão que a base viu. Não achar a empresa quer dizer que "
-        "a fonte não a lista na base como era no dia; não quer dizer que ela não tenha o ativo."
-    ),
-    (
-        "A soma da CFEM em 12 meses e a última competência são conta do TickerLab sobre as linhas da ANM, pela "
-        "competência do recolhimento (não pelo dia do pagamento)."
+        "Não achar a empresa quer dizer que a fonte não a lista na base como era no dia; não quer dizer que ela "
+        "não tenha o ativo."
     ),
     "Nada aqui é avaliação dos ativos nem recomendação de investimento.",
     "Pessoa natural (MEI, empresário individual) não é servida.",
 )
+
+LIMITES_DO_BLOCO = {
+    PETROLEO_E_GAS: (
+        "A ANP reescreve o arquivo dos contratos sem dizer o que saiu: um contrato encerrado pode continuar na "
+        "última versão que a base viu."
+    ),
+    BARRAGENS: (
+        "A ANM reescreve o arquivo do SIGBM sem dizer o que saiu: uma barragem descaracterizada pode continuar "
+        "na última versão que a base viu."
+    ),
+    ROYALTIES: (
+        "A soma da CFEM em 12 meses e a última competência são conta do TickerLab sobre as linhas da ANM, pela "
+        "competência do recolhimento (não pelo dia do pagamento)."
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -251,6 +263,13 @@ class _Processo:
         self.soma += valor or 0.0
         self.ultima = max(self.ultima, indice)
         self.publico_em = max(self.publico_em, publico_em)
+
+
+def limites(liberados: Iterable[str]) -> list[str]:
+    """Os limites da resposta: os gerais e, depois do primeiro, os de cada bloco que o portão libera."""
+    servidos = set(liberados)
+    dos_blocos = [frase for tipo, frase in LIMITES_DO_BLOCO.items() if tipo in servidos]
+    return [LIMITES[0], *dos_blocos, *LIMITES[1:]]
 
 
 def nao_coberto(liberados: Iterable[str]) -> list[str]:
@@ -471,7 +490,7 @@ class LeitorDeAtivos:
             corpo[tipo] = bloco.corpo
             linhas += bloco.linhas
         corpo["nao_coberto"] = nao_coberto(liberados)
-        corpo["limites"] = list(LIMITES)
+        corpo["limites"] = limites(liberados)
         # a fonte de todo bloco servido vai na atribuição, ache ou não a empresa: o "não achou" e o dia do
         # dado mais novo também são da base dela
         fontes = {ORIGENS[tipo].fonte for tipo in liberados}

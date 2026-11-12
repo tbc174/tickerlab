@@ -614,12 +614,12 @@ def eventos_da_empresa(
 def ativos_da_empresa(
     cnpj: str, contexto: Chave, known_at: date | None = None
 ) -> object:
-    """Os ativos físicos da empresa como eram em `known_at`, um bloco por base aberta de agência: os contratos
-    de exploração e produção de petróleo e gás da ANP (`oil_gas_contracts`), as barragens de mineração do
-    SIGBM (`mining_dams`) e a CFEM recolhida por processo minerário (`mining_royalties`). Cada bloco diz se
-    achou a empresa, a fonte e o dia do dado mais novo; `not_covered` diz o que a rota não traz. A lista vai
-    até o limite de linhas do plano (`truncated`). MEI, empresário individual e o que não é empresa saem
-    `not_available`."""
+    """Os ativos físicos da empresa como eram em `known_at`, um bloco por base aberta de agência. Hoje sai um
+    bloco: os contratos de exploração e produção de petróleo e gás da ANP (`oil_gas_contracts`), com a parte
+    da empresa em cada um. Mineração (barragens e royalties da ANM) ainda não sai, e `not_covered` diz isso.
+    O bloco diz se achou a empresa, a fonte e o dia do dado mais novo; `not_covered` diz o que a rota não
+    traz. A lista vai até o limite de linhas do plano (`truncated`). MEI, empresário individual e o que não é
+    empresa saem `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(

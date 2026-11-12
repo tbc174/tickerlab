@@ -89,7 +89,11 @@ def test_contratos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert resposta.status_code == 200
     corpo = resposta.json()
     assert corpo["cnpj"] == ALFA and corpo["known_at"] == DIA
-    assert corpo["limits"] == list(ativos.LIMITES)
+    assert corpo["limits"] == [
+        ativos.LIMITES[0],
+        ativos.LIMITES_DO_BLOCO[ativos.PETROLEO_E_GAS],
+        *ativos.LIMITES[1:],
+    ]
     assert corpo["not_covered"][-len(ativos.NAO_COBERTO) :] == list(ativos.NAO_COBERTO)
     bloco = corpo["oil_gas_contracts"]
     assert bloco["found"] is True and bloco["truncated"] is False
@@ -127,6 +131,8 @@ def test_a_anm_fica_sem_linha_de_direito_ate_a_leitura_dos_termos(cliente, cenar
         ativos.FORA_DA_ROTA[ativos.ROYALTIES],
     ]
     assert not any("petróleo" in frase for frase in corpo["not_covered"])
+    # nem os limites falam da ANM (a resposta não anuncia fonte que não entrega)
+    assert not any("ANM" in frase or "CFEM" in frase for frase in corpo["limits"])
 
 
 def test_known_at_no_passado_nao_mostra_o_que_veio_depois(cliente, cenario):

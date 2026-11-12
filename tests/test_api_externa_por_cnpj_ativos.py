@@ -257,7 +257,11 @@ def test_empresa_que_nenhuma_base_tem_sai_com_achou_falso(pasta):
     assert servido.corpo["nao_coberto"] == list(
         ativos.NAO_COBERTO
     )  # os três blocos saem
-    assert servido.corpo["limites"] == list(ativos.LIMITES)
+    assert servido.corpo["limites"] == [
+        ativos.LIMITES[0],
+        *ativos.LIMITES_DO_BLOCO.values(),
+        *ativos.LIMITES[1:],
+    ]
     # a fonte vai na atribuição mesmo sem achar: o "não achou" também é da base dela
     assert servido.fontes == {ANP, SIGBM, CFEM}
 
@@ -363,10 +367,17 @@ def test_bloco_que_o_portao_nao_libera_nao_aparece(pasta):
         ativos.FORA_DA_ROTA[ativos.ROYALTIES],
         *ativos.NAO_COBERTO,
     ]
+    # os limites não falam do bloco que não sai: nada da ANM nem da CFEM
+    assert servido.corpo["limites"] == [
+        ativos.LIMITES[0],
+        ativos.LIMITES_DO_BLOCO[ativos.PETROLEO_E_GAS],
+        *ativos.LIMITES[1:],
+    ]
 
 
-def test_toda_origem_tem_a_frase_de_fora_da_rota():
+def test_toda_origem_tem_a_frase_de_fora_da_rota_e_o_limite():
     assert set(ativos.FORA_DA_ROTA) == set(ativos.ORIGENS)
+    assert set(ativos.LIMITES_DO_BLOCO) == set(ativos.ORIGENS)
 
 
 def test_sem_nenhum_bloco_liberado_nada_sai(pasta):
