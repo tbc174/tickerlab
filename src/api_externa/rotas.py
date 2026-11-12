@@ -280,7 +280,8 @@ def _servido_contado(
 ) -> Servido:
     """O que a leitura serviu, já contado no consumo (a recusa conta como negada); 404 se nada sai. O JSON
     e o deck passam por aqui: o mesmo portão, a mesma quota e a mesma conta de linhas. O registro do piloto é
-    de quem chama: o JSON o abre e marca o corpo; o deck não o abre, e campo de piloto não sai nele (D11)."""
+    de quem chama (D11): o JSON o abre e marca o corpo; o deck o abre e põe a frase em todo slide. Quem não o
+    abre não recebe campo de piloto."""
     with obter_engine().begin() as conexao:
         servido = ler(conexao)
         # o 404 sai depois do `with` para o consumo não voltar atrás
@@ -294,14 +295,29 @@ def _servido_contado(
     return servido
 
 
+def _deck_contado(
+    contexto: ContextoDaChave,
+    conjunto: str,
+    ler: Callable[[sa.Connection], Servido | None],
+) -> tuple[Servido, piloto.Liberados]:
+    """O que a leitura serviu para o deck, com o registro do piloto aberto (o mesmo dado do JSON)."""
+    with piloto.anotar() as liberados:
+        servido = _servido_contado(contexto, conjunto, ler)
+    return servido, liberados
+
+
 def _arquivo_do_deck(
     servido: Servido,
+    liberados: piloto.Liberados,
     montar: Callable[[dict, list[dict], datetime], Apresentacao],
     nome: str,
 ) -> Response:
-    """O deck do corpo servido como arquivo para baixar; `nome` só com o que a rota já validou."""
+    """O deck do corpo servido como arquivo para baixar; `nome` só com o que a rota já validou. Com dado de
+    piloto na resposta, todo slide leva a frase (D11.3)."""
     agora = acesso.agora().astimezone(deck.FUSO)
     apresentacao = montar(servido.corpo, fontes_da_resposta(servido.fontes), agora)
+    if liberados.piloto:
+        apresentacao = deck.com_aviso_de_piloto(apresentacao)
     return Response(
         content=deck.em_arquivo(apresentacao, agora),
         media_type=deck.TIPO_DO_ARQUIVO,
@@ -547,7 +563,7 @@ def deck_da_empresa(
     limites. Conta na quota como o JSON."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
-    servido = _servido_contado(
+    servido, liberados = _deck_contado(
         contexto,
         ficha.CONJUNTO,
         _pela_porta(
@@ -556,7 +572,9 @@ def deck_da_empresa(
             ).ficha(numeros, dia)
         ),
     )
-    return _arquivo_do_deck(servido, deck.da_empresa, f"tickerlab-empresa-{numeros}")
+    return _arquivo_do_deck(
+        servido, liberados, deck.da_empresa, f"tickerlab-empresa-{numeros}"
+    )
 
 
 @router.get("/sectors/{key}/deck", response_class=Response, responses=DO_DECK)
@@ -565,12 +583,15 @@ def deck_do_setor(key: str, contexto: Chave, known_at: date | None = None) -> Re
     deck `.pptx`: a concentração, a parte de cada companhia e quem são, com a fonte e o dia de cada
     tabela, as fontes e os limites. Conta na quota como o JSON."""
     dia = _dia_pedido(known_at)
-    servido = _servido_contado(
+    servido, liberados = _deck_contado(
         contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)
     )
     # o nome do arquivo sai da chave que o leitor achou na lista do relatório, nunca do endereço cru
     return _arquivo_do_deck(
-        servido, deck.do_setor, f"tickerlab-setor-{servido.corpo['setor']}"
+        servido,
+        liberados,
+        deck.do_setor,
+        f"tickerlab-setor-{servido.corpo['setor']}",
     )
 
 
