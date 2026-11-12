@@ -98,6 +98,7 @@ ROTULOS_NAO_DISPONIVEIS = {
     "unavailable_signals": "sinais de comprador",
     "unavailable_filings": "entregas à CVM",
     "unavailable_figures": "números dos comparáveis",
+    "unavailable_registration_fields": "campos do cadastro na Receita",
 }
 
 
