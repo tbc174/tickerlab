@@ -58,6 +58,14 @@ CASOS = [
         id="prospectar",
     ),
     pytest.param(
+        ["prospectar", "--uf", "SP", "--cnae", "2063100", "--anvisa-tipo", "cosmeticos",
+         "--anvisa-ativos-min", "200", "--anvisa-total-min", "250", "--ordenar-por", "anvisa", "--por-pagina", "20"],
+        "buscar_empresas",
+        {"uf": ["SP"], "cnae": ["2063100"], "anvisa_tipo": "cosmeticos", "anvisa_ativos_min": 200,
+         "anvisa_total_min": 250, "ordenar_por": "anvisa", "limite": 20},
+        id="prospectar_por_registros_na_anvisa",
+    ),
+    pytest.param(
         ["empresa", CNPJ, "--como-era", UM_DIA],
         "ficha_da_empresa",
         {"cnpj": CNPJ, "como_era_em": UM_DIA},

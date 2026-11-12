@@ -1303,6 +1303,79 @@ def test_prospectar_traduz_os_filtros_para_a_api(rodar, chave):
     assert pedido.headers["Authorization"] == f"Bearer {chave}"
 
 
+def test_prospectar_traduz_os_registros_da_anvisa_para_a_api(rodar, chave):
+    """Linha 860: tipo, mínimos e ordem da Anvisa seguem com os nomes da API; a ordem decresce (mais registros
+    primeiro)."""
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar", "--uf", "SP", "--anvisa-tipo", "produtos_saude", "--anvisa-ativos-min", "200",
+        "--anvisa-total-min", "250", "--ordenar-por", "anvisa",
+        http=http, **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    assert {n: v for n, v in pedido.url.params.items()} == {
+        "state": "SP",
+        "anvisa_type": "health_products",
+        "anvisa_active_min": "200",
+        "anvisa_total_min": "250",
+        "sort": "-anvisa",
+    }
+
+
+def test_prospectar_so_com_o_minimo_da_anvisa_conta_como_filtro(rodar, chave):
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar", "--anvisa-ativos-min", "50", http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    assert dict(pedido.url.params.items()) == {
+        "anvisa_active_min": "50"
+    }  # o tipo padrão é da API
+
+
+def test_prospectar_so_ordenar_nao_conta_como_filtro(rodar, chave):
+    """A ordem não filtra: sem outro filtro a CLI recusa antes de gastar um pedido da quota."""
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar", "--ordenar-por", "anvisa", http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.USO
+    assert "pelo menos um filtro" in resultado.output
+    assert pedidos == []
+
+
+@pytest.mark.parametrize("opcao", ["--anvisa-ativos-min", "--anvisa-total-min"])
+@pytest.mark.parametrize("valor", ["0", "-3", "10000001", "muitos"])
+def test_prospectar_recusa_minimo_da_anvisa_fora_da_faixa(rodar, chave, opcao, valor):
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar", "--uf", "SP", opcao, valor, http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.USO
+    assert pedidos == []
+
+
+@pytest.mark.parametrize(
+    "tipo", ["medicamentos", "alimentos", "afe", "cbpf", "cosmetics"]
+)
+def test_prospectar_recusa_tipo_da_anvisa_que_a_api_nao_serve(rodar, chave, tipo):
+    """Medicamentos, alimentos, AFE e CBPF esperam a licença de cada ficha; o tipo em inglês não vale na CLI."""
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar",
+        "--uf",
+        "SP",
+        "--anvisa-tipo",
+        tipo,
+        http=http,
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == Saida.USO
+    assert pedidos == []
+
+
 def test_prospectar_mostra_a_pagina_com_fonte_e_avisa_que_ha_mais(rodar, chave):
     http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA)
     resultado = rodar("prospectar", "--cnae", "35", http=http, **_com_chave(chave))

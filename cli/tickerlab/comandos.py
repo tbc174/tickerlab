@@ -65,6 +65,17 @@ PORTES = {
     "nao_informado": "not_informed",
 }
 POR_PAGINA_MAXIMO = 100
+# os registros na Anvisa (linha 860): o tipo em português na CLI e em inglês na API; "todos" é a soma dos tipos
+# que a API serve (cosméticos, saneantes e produtos para saúde)
+TIPOS_DA_ANVISA = {
+    "cosmeticos": "cosmetics",
+    "produtos_saude": "health_products",
+    "saneantes": "sanitizers",
+    "todos": "products",
+}
+REGISTROS_MAXIMOS = 10_000_000  # o teto da API para o mínimo de registros
+# a ordem da busca: só a de registros na Anvisa, do que tem mais para o que tem menos (o "-" é decrescente)
+ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}
 # os tipos de evento como a CLI os recebe e como a API os chama
 TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
 # os tipos de vínculo como a CLI os recebe e como a API os chama
@@ -167,6 +178,10 @@ class FiltrosDaBusca:
     aberta_depois: datetime | None = None
     aberta_antes: datetime | None = None
     so_matriz: bool = False
+    anvisa_tipo: str | None = None
+    anvisa_ativos_min: int | None = None
+    anvisa_total_min: int | None = None
+    ordenar_por: str | None = None
 
     def para_a_api(self) -> dict[str, str | list[str]]:
         """Os filtros com os nomes da API; erro de uso se não há nenhum além da situação."""
@@ -181,6 +196,9 @@ class FiltrosDaBusca:
             "opened_after": _dia(self.aberta_depois),
             "opened_before": _dia(self.aberta_antes),
             "head_office": "true" if self.so_matriz else None,
+            "anvisa_type": TIPOS_DA_ANVISA.get(self.anvisa_tipo or ""),
+            "anvisa_active_min": _inteiro(self.anvisa_ativos_min),
+            "anvisa_total_min": _inteiro(self.anvisa_total_min),
         }
         filtros: dict[str, str | list[str]] = {
             **{nome: valores for nome, valores in listas.items() if valores},
@@ -193,11 +211,17 @@ class FiltrosDaBusca:
             )
         if self.situacao:
             filtros["registration_status"] = list(self.situacao)
+        if self.ordenar_por:  # a ordem não filtra: não conta como filtro
+            filtros["sort"] = ORDENS_DA_BUSCA[self.ordenar_por]
         return filtros
 
 
 def _dia(valor: datetime | None) -> str | None:
     return None if valor is None else valor.date().isoformat()
+
+
+def _inteiro(valor: int | None) -> str | None:
+    return None if valor is None else str(valor)
 
 
 def _api(contexto: click.Context) -> ApiDoTickerlab:
@@ -770,6 +794,27 @@ def setor(
     "--so-matriz", is_flag=True, help="Só a matriz de cada empresa, sem as filiais."
 )
 @click.option(
+    "--anvisa-tipo",
+    type=click.Choice(list(TIPOS_DA_ANVISA)),
+    help="Tipo de registro na Anvisa que as opções abaixo contam: cosmeticos, saneantes, produtos_saude ou "
+    "todos (a soma dos três; é o que vale se você der só o mínimo).",
+)
+@click.option(
+    "--anvisa-ativos-min",
+    type=click.IntRange(1, REGISTROS_MAXIMOS),
+    help="Só empresas com pelo menos este número de registros ativos na Anvisa. É sinal de porte, não faturamento.",
+)
+@click.option(
+    "--anvisa-total-min",
+    type=click.IntRange(1, REGISTROS_MAXIMOS),
+    help="Só empresas com pelo menos este número de registros na Anvisa, ativos ou não.",
+)
+@click.option(
+    "--ordenar-por",
+    type=click.Choice(list(ORDENS_DA_BUSCA)),
+    help="Ordena em vez de por CNPJ: anvisa põe primeiro quem tem mais registros ativos na Anvisa.",
+)
+@click.option(
     "--por-pagina",
     type=click.IntRange(1, POR_PAGINA_MAXIMO),
     help=f"Empresas por página (até {POR_PAGINA_MAXIMO}; sem ela, o padrão da API).",
@@ -794,7 +839,10 @@ def prospectar(
 ) -> None:
     """Empresas por atividade, lugar, porte e idade, do cadastro da Receita (só empresa, nunca pessoa).
 
-    Pelo menos um filtro além da situação. A resposta vem em páginas, por ordem de CNPJ: sem --todas, só a
+    Pelo menos um filtro além da situação. Os registros na Anvisa (cosméticos, saneantes e produtos para saúde)
+    entram como sinal de porte de empresa fechada: --anvisa-ativos-min 200 --anvisa-tipo cosmeticos, com a fonte
+    e o dia do retrato em cada empresa; não é faturamento. A resposta vem em páginas, por ordem de CNPJ (ou de
+    registros, com --ordenar-por anvisa): sem --todas, só a
     primeira (e o aviso de que há mais). Com --planilha lista.xlsx, a lista vai para o Excel, com a fonte e
     a data de cada linha. Não traz sócio, contato nem endereço: para a ficha de uma empresa,
     `tickerlab empresa`.

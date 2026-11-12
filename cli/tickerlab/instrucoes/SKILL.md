@@ -40,7 +40,9 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab prospectar --cnae 3511 --uf SP [--porte demais] [--aberta-antes AAAA-MM-DD] --json`: empresas do
      cadastro da Receita por atividade, lugar, porte e idade (pelo menos um filtro além da situação; os filtros
      repetem, até 50 valores; `--municipio` é o nome ou o código da Receita, não o do IBGE; só empresa, sem sócio
-     nem contato). `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
+     nem contato). `--anvisa-tipo cosmeticos --anvisa-ativos-min 200` filtra pelo número de registros na Anvisa, um sinal
+     de porte (não é faturamento) com fonte e dia do retrato; `--ordenar-por anvisa` põe quem tem mais registros
+     primeiro. `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
    - `tickerlab setor --json`: os setores disponíveis (não gasta a quota); `tickerlab setor <chave> --json`:
      mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
      antes de concluir sobre concentração).

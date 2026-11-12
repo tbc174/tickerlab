@@ -57,6 +57,16 @@ LIMITE_PADRAO_DA_BUSCA = 50
 ESPERA_PADRAO_S = 60
 # o nome em português (o mesmo da CLI) -> o tipo de evento da API
 TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
+# os registros na Anvisa (linha 860): o nome em português (o mesmo da CLI) -> o tipo da API; "todos" é a soma dos
+# tipos que a API serve (cosméticos, saneantes e produtos para saúde)
+TIPOS_DA_ANVISA = {
+    "cosmeticos": "cosmetics",
+    "produtos_saude": "health_products",
+    "saneantes": "sanitizers",
+    "todos": "products",
+}
+REGISTROS_MAXIMOS_DA_ANVISA = 10_000_000  # o teto da API para o mínimo de registros
+ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}  # mais registros primeiro
 # o nome em português (o mesmo da CLI, linha 773) -> o tipo de vínculo da API
 TIPOS_DE_VINCULO = {
     "controlada": "subsidiary_of",
@@ -279,6 +289,37 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
                 description="true = só a matriz; false = só as filiais; vazio = todas."
             ),
         ] = None,
+        anvisa_tipo: Annotated[
+            Literal["cosmeticos", "produtos_saude", "saneantes", "todos"] | None,
+            Field(
+                description=(
+                    "Tipo de registro na Anvisa que os mínimos abaixo contam: cosmeticos, produtos_saude, "
+                    "saneantes ou todos (a soma dos três; vale se você der só o mínimo)."
+                )
+            ),
+        ] = None,
+        anvisa_ativos_min: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=REGISTROS_MAXIMOS_DA_ANVISA,
+                description="Só empresas com pelo menos este número de registros ativos na Anvisa.",
+            ),
+        ] = None,
+        anvisa_total_min: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=REGISTROS_MAXIMOS_DA_ANVISA,
+                description="Só empresas com pelo menos este número de registros na Anvisa, ativos ou não.",
+            ),
+        ] = None,
+        ordenar_por: Annotated[
+            Literal["anvisa"] | None,
+            Field(
+                description="Em vez de por CNPJ: 'anvisa' põe primeiro quem tem mais registros ativos na Anvisa."
+            ),
+        ] = None,
         limite: Annotated[
             int,
             Field(
@@ -299,7 +340,10 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         """Acha empresas brasileiras por filtros do cadastro da Receita (CNAE, UF, município, porte,
         natureza jurídica, data de abertura). Pelo menos um filtro. Devolve razão social, CNAE, UF,
         município, porte e data de abertura, cada valor com a fonte e o dia em que ficou público.
-        Só pessoa jurídica: sem sócio, contato ou endereço."""
+        Os registros na Anvisa (cosméticos, saneantes, produtos para saúde) servem de sinal de porte da
+        empresa fechada: com anvisa_ativos_min ou anvisa_total_min a busca traz a contagem de cada empresa,
+        com a fonte e o dia do retrato; é sinal de porte, não faturamento. Só pessoa jurídica: sem sócio,
+        contato ou endereço."""
         return await pedidos.pedir(
             "buscar_empresas",
             "/companies",
@@ -309,6 +353,9 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
                 "opened_before": _dia(aberta_antes_de), "opened_after": _dia(aberta_depois_de),
                 "head_office": so_matriz, "limit": limite, "cursor": cursor,
                 "known_at": _dia(como_era_em),
+                "anvisa_type": TIPOS_DA_ANVISA.get(anvisa_tipo or ""),
+                "anvisa_active_min": anvisa_ativos_min, "anvisa_total_min": anvisa_total_min,
+                "sort": ORDENS_DA_BUSCA.get(ordenar_por or ""),
             },
         )  # fmt: skip
 
