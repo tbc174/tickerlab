@@ -17,8 +17,8 @@ matriz, capital social (mínimo e máximo) e número mínimo de estabelecimentos
 além da situação: ninguém baixa a base inteira. Ordem por CNPJ (padrão), por capital social ou por número de
 estabelecimentos, crescente ou decrescente (`-` na frente), sempre com o CNPJ como desempate; cursor opaco
 (o último CNPJ da página, e o valor da ordenação quando ela não é por CNPJ) e `limite` (padrão 50, no máximo 100 e o que o plano deixa por resposta).
-**Registros na Anvisa (linha 860):** `anvisa_type` (cosméticos, produtos para saúde, saneantes, alimentos,
-medicamentos, a soma dos produtos, autorização de funcionamento ou certificado de boas práticas),
+**Registros na Anvisa (linha 860):** `anvisa_type` (cosméticos, produtos para saúde, saneantes ou a soma
+desses três; medicamentos, alimentos, AFE e CBPF só entram quando a licença de cada um for lida),
 `anvisa_active_min` e `anvisa_total_min` filtram, e `sort=anvisa` ordena, pela contagem de registros da
 empresa na tabela `anvisa_por_empresa`, no retrato mais novo já público em `como_era_em` (por dia, não por
 mês). Empresa sem registro vale 0. **É sinal de porte, não faturamento**, e a resposta diz isso.
