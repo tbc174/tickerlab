@@ -184,11 +184,6 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
-    "registro_de_fundos": ProntidaoDePiloto(
-        versao_maior=1,
-        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
-        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
-    ),
     "trocas_de_auditor": ProntidaoDePiloto(
         versao_maior=1,
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
@@ -213,7 +208,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "rotulos_atraso",
     }
 )
-COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf")
+COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 
 
 def pessoa_decidida(

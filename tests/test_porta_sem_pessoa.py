@@ -31,7 +31,7 @@ DE_PESSOA = (RAIZ_DO_MEI, RAIZ_SEM_MARCA, NOME_FICTICIO, PESSOA)
 
 # a rede não tem a marca por linha: a porta a filtra pela `trata_como_pessoa` das entidades
 DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
-COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf")
+COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 # Inventário de 10/11/2026 (linha 787): consultáveis com coluna de CNPJ e sem a marca de pessoa. A maior
 # parte é de quem tem registro na CVM ou no BCB, mas nenhuma foi conferida; a fila 789 confere uma a uma
 # (marca na montagem, sai da consulta em lote ou fica aqui com o motivo). Só encolhe.
@@ -92,6 +92,11 @@ AINDA_SEM_A_MARCA = frozenset(
 FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
     {
         "achados_de_qualidade",
+        "registro_de_fundos",
+        "cadastro_de_fundos",
+        "fips_registrados",
+        "cadastro_gestor_hist",
+        "cadastro_admin_hist",
         "amostra_painel",
         "anatel_outorgas",
         "ancine_agentes",
