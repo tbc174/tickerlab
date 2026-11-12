@@ -162,6 +162,7 @@
     "campos": [
       "aconteceu_em",
       "ate",
+      "mes_do_retrato_do_cadastro",
       "participacao",
       "razao_social",
       "tipo"
