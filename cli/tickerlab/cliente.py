@@ -18,6 +18,7 @@ import click
 import httpx
 
 from tickerlab import __version__
+from tickerlab.formato import nao_disponiveis
 
 PREFIXO = "/data/v1"
 ASSINATURA_DO_ZIP = b"PK"  # todo .pptx é um zip
@@ -347,6 +348,13 @@ class ApiDoTickerlab:
                     }
                 )
                 continue
+            for rotulo, valores in nao_disponiveis(resposta).items():
+                lacunas.append(
+                    {
+                        "section": nome,
+                        "reason": f"não disponível para a organização, não foi consultado ({rotulo}: {', '.join(valores)})",
+                    }
+                )
             fontes += resposta.pop("sources", None) or []
             limites += resposta.pop("limits", None) or []
             corpo[nome] = resposta
