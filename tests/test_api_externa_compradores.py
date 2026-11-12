@@ -188,6 +188,13 @@ def pasta(tmp_path, monkeypatch):
     _gravar(base / compradores.ENTRADAS / "parte.parquet", _entradas())
     _gravar(base / "fidc" / "cadastro" / "registro_fundo.parquet", _fundos())
     _gravar(base / compradores.CONTROLADAS / "2025.parquet", _controladas())
+    # o FIP só sai da cópia reduzida (a do VPS), montada do registro inteiro pela mesma função do recorte
+    reduzidas.montar_fips_registrados(
+        duckdb.connect(),
+        [base / "fidc" / "cadastro" / "registro_fundo.parquet"],
+        sorted((base / compradores.EMPRESAS).glob("*.parquet")),
+        base / compradores.FIPS_REGISTRADOS / f"{compradores.FIPS_REGISTRADOS}.parquet",
+    )
     monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
     return base
 
@@ -643,12 +650,20 @@ def test_com_as_duas_na_porta_o_fundo_sai_da_copia_e_a_resposta_e_a_mesma(
     ]
 
 
-def test_sem_a_copia_na_porta_o_fundo_le_a_inteira_como_em_casa(
-    cliente, cenario, pasta
-):
-    # em casa (modo dono) a cópia não existe: a leitura segue pela tabela inteira, como antes
-    assert not (pasta / compradores.FIPS_REGISTRADOS).exists()
-    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
-        "took_stake",
-        "fund_stake",
-    ]
+def test_por_chave_so_com_a_tabela_inteira_o_fundo_e_recusado(cliente, cenario, pasta):
+    # sem a cópia na porta, o FIP nunca sai do registro inteiro (que tem CNPJ_Fundo fora da lista sem pessoa),
+    # nem com a inteira pronta: o sinal vem como não disponível e nada do registro de fundos vai na resposta
+    shutil.rmtree(pasta / compradores.FIPS_REGISTRADOS)
+    assert (pasta / "fidc" / "cadastro" / "registro_fundo.parquet").exists()
+    for prontas in (TABELAS, (*TABELAS, compradores.FUNDOS)):
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                rotas, "regras_da_api", lambda prontas=prontas: _regras(*prontas)
+            )
+            resposta = _get(cliente, cenario)
+        corpo = resposta.json()
+        assert resposta.status_code == 200
+        assert "fund_stake" in corpo["unavailable_signals"]
+        assert all("fund_stake" not in c["signals"] for c in corpo["buyers"])
+        assert "cvm-fidc-base" not in {f["source"] for f in corpo["sources"]}
+        assert _comprador(resposta, FUNDO)["signals"] == ["took_stake"]

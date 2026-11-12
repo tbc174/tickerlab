@@ -590,8 +590,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     # buyers (linha 810, PR 4): quem já se mexeu num setor, só pessoa jurídica. O setor e os nomes saem das
     # duas tabelas sem pessoa do CNPJ (linha 584); as entradas, da tabela de sócios PJ (só sócio do tipo 1);
     # o FIP, do registro de fundos da CVM; a controlada, do FRE. A linha vale para o campo inteiro. O FIP confere
-    # a cópia `fips_registrados` (linha 844), a tabela que a lista lê quando está na porta: o registro inteiro
-    # tem CNPJ_Fundo fora da lista sem pessoa e não tem a marca (Diretoria, 12/11, ADR 0108 D11).
+    # a cópia `fips_registrados` (linha 844), a única tabela de onde a lista lê o FIP: o registro inteiro tem
+    # CNPJ_Fundo fora da lista sem pessoa e não tem a marca (Diretoria, 12/11, ADR 0108 D11).
     *_campos(
         ("rfb-cnpj",),
         "buyers",
