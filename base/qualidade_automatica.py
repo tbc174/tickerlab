@@ -221,6 +221,13 @@ REGRAS: dict[str, Regra] = {
     # ---- tabelas do roteiro de M&A (linha 784, piloto D11): chave = a do dicionário; primeira medida de 12/11/2026
     "rotulos_atraso": Regra(chave=("cnpj", "documento", "referencia"), periodo="prazo"),
     "cnpj_situacao_cadastral": Regra(chave=("cnpj", "mes_do_retrato")),
+    "susep_seguros": Regra(
+        chave=("competencia", "coenti", "cogrupo", "coramo", "visto_em"),
+        periodo="competencia",
+        opcionais={
+            "coramo": "2 linhas de 1995 (grupo 99999 de uma só entidade) chegam da SUSEP sem o ramo"
+        },
+    ),
     "eventos": Regra(
         chave=("protocolo", "versao"),
         periodo="publicado_em",
