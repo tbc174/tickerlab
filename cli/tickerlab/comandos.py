@@ -503,7 +503,8 @@ def vinculos(
 @click.option(
     "--todas",
     is_flag=True,
-    help="Segue as páginas até o fim e junta tudo numa resposta (cada página é um pedido da quota).",
+    help="Segue as páginas até o fim e junta tudo numa resposta (cada página é um pedido da quota). Sem ela, "
+    "só os 50 eventos mais novos.",
 )
 @opcao_planilha
 @opcao_json
