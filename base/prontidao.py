@@ -189,6 +189,11 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    "eventos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
@@ -204,6 +209,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "cnpj_estabelecimentos_pj",
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
+        "eventos",
         "fca_geral",
         "rotulos_atraso",
     }

@@ -2180,7 +2180,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital informados no 
 
 ## `eventos`
 
-Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: contagem calculada por ela, não coluna desta tabela. **Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega).
+Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: contagem calculada por ela, não coluna desta tabela. **Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega). **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto **CPF no assunto:** o CPF que a empresa escreve no texto do assunto é trocado por asteriscos na montagem (contagem em 12/11/2026: 5 linhas no acervo antes, 0 depois, 0 na cópia servida); o texto livre fora disso não é coberto pela marca.
 
 - **Fonte:** CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)

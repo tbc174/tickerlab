@@ -53,7 +53,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "debentures_assembleias",
         "dmpl_como_era",
         "emissores",
-        "eventos",  # o `assunto` (texto livre) traz CPF: 4 linhas medidas em 12/11/2026 (revisão cruzada do #1085)
         "fidc_informe",
         "fre_capital_social",
         "fre_comites",
@@ -168,6 +167,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "cnpj_estabelecimentos_pj",
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
+        "eventos",
         "fca_geral",
         "rotulos_atraso",
     }
