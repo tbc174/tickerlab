@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from base import qualidade_automatica as qa
+from base.dicionario import _contrato_de
 from base.porta import Porta
 from base.qualidade_automatica import REGRAS, Regra, avaliar, sem_explicacao
 from scripts import conferir_qualidade
@@ -173,3 +174,17 @@ def test_medir_uma_tabela_nao_apaga_as_outras_do_dia(monkeypatch, tmp_path):
 
 def _resultado(tabela: str, vermelho: bool = False) -> dict[str, object]:
     return {"tabela": tabela, "linhas": 1, "vermelho": vermelho, "achados": []}
+
+
+def test_ans_beneficiarios_tem_a_chave_do_contrato_e_acusa_repetida_e_vazio():
+    """Linha 877: a regra usa a chave do dicionário; linha repetida ou chave vazia deixa a tabela vermelha."""
+    regra = REGRAS["ans_beneficiarios"]
+    assert regra.chave == _contrato_de("ans_beneficiarios")["chaves"]
+    assert regra.periodo == "competencia" and regra.valor == "beneficiarios"
+    assert avaliar(regra, _perfil(vazios_na_chave={"cd_operadora": 0}), 2026) == []
+    achados = avaliar(
+        regra,
+        _perfil(repetidas=1, vazios_na_chave={"cd_operadora": 2}),
+        2026,
+    )
+    assert len(sem_explicacao(achados)) == 2
