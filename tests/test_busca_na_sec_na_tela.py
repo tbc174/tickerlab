@@ -89,7 +89,8 @@ def test_sem_email_de_contato_a_busca_avisa_e_nao_chama_a_sec(monkeypatch):
     assert "busca_na_sec_feita" not in app.session_state
 
 
-def test_limite_de_buscas_por_visita_recusa_a_sexta(monkeypatch, com_contato):
+@pytest.mark.usefixtures("com_contato")
+def test_limite_de_buscas_por_visita_recusa_a_sexta(monkeypatch):
     def nao_deve_chamar(*args, **kwargs):
         raise AssertionError("passou do limite e buscou mesmo assim")
 
@@ -102,7 +103,8 @@ def test_limite_de_buscas_por_visita_recusa_a_sexta(monkeypatch, com_contato):
     assert app.session_state["buscas_na_sec"] == limite
 
 
-def test_busca_feita_conta_na_visita_e_guarda_a_mensagem(monkeypatch, com_contato):
+@pytest.mark.usefixtures("com_contato")
+def test_busca_feita_conta_na_visita_e_guarda_a_mensagem(monkeypatch):
     chamadas = []
 
     def falsa(motor, cliente, ticker, mapa, agora):
@@ -118,7 +120,8 @@ def test_busca_feita_conta_na_visita_e_guarda_a_mensagem(monkeypatch, com_contat
     assert "entra na coleta diária" in mensagem
 
 
-def test_busca_recusada_mostra_o_motivo_sem_gastar_uma_busca(monkeypatch, com_contato):
+@pytest.mark.usefixtures("com_contato")
+def test_busca_recusada_mostra_o_motivo_sem_gastar_uma_busca(monkeypatch):
     def recusa(*args, **kwargs):
         raise coleta_sec.BuscaRecusada("Limite da hora atingido.")
 
@@ -128,7 +131,8 @@ def test_busca_recusada_mostra_o_motivo_sem_gastar_uma_busca(monkeypatch, com_co
     assert "buscas_na_sec" not in app.session_state
 
 
-def test_sec_fora_do_ar_avisa_sem_gastar_uma_busca(monkeypatch, com_contato):
+@pytest.mark.usefixtures("com_contato")
+def test_sec_fora_do_ar_avisa_sem_gastar_uma_busca(monkeypatch):
     def cai(*args, **kwargs):
         raise coleta_sec.requests.ConnectionError("sem rede")
 
