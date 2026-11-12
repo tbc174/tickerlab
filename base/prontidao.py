@@ -201,7 +201,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 # com coluna de CNPJ, raiz ou CPF precisa da marca.
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
-# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (carteiras_dos_fundos, demonstracoes_como_era, fca_geral, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três não têm CNPJ de pessoa na montagem
+# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (carteiras_dos_fundos, demonstracoes_como_era, eventos, fca_geral, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "carteiras_dos_fundos",
