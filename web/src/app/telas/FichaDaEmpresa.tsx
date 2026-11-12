@@ -19,6 +19,7 @@ import { ErroDaTela } from "./ErroDaTela";
 import { EventosDaFicha } from "./EventosDaFicha";
 import { VinculosDaFicha } from "./VinculosDaFicha";
 import { SociosDaFicha } from "./SociosDaFicha";
+import { TitularDaFicha } from "./TitularDaFicha";
 
 const NOME_DA_PLANILHA = "ficha-da-empresa-tickerlab.xlsx"; // sem o CNPJ: o nome do arquivo não carrega dado
 export const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
@@ -271,6 +272,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
       </div>
       <Cadastro ficha={ficha} />
       <SociosDaFicha rota={rota} cnpj={cnpj} />
+      <TitularDaFicha rota={rota} cnpj={cnpj} />
       <ContatoDaFicha rota={rota} cnpj={cnpj} />
       <Entregas entregas={ficha.entregas} />
       <EventosDaFicha rota={rota} cnpj={cnpj} />
