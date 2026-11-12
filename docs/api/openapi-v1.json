@@ -3301,6 +3301,14 @@
             "title": "Cadastro Na Receita",
             "type": "object"
           },
+          "campos_do_cadastro_nao_disponiveis": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Campos Do Cadastro Nao Disponiveis",
+            "type": "array"
+          },
           "cnpj": {
             "title": "Cnpj",
             "type": "string"

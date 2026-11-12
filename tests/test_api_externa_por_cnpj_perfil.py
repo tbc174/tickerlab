@@ -334,3 +334,71 @@ def test_entregas_sem_prontidao_dizem_que_os_dois_documentos_nao_foram_consultad
         "periodic" in limite or "entregas cobrem" in limite
         for limite in corpo["limits"]
     )
+
+
+# ---------------------------------------------------------------- campo do cadastro não disponível (linha 891)
+
+# o caso do ensaio da noite: a situação e o Simples sem prontidão (fora do registro), o nome e as entregas prontos
+SEM_SITUACAO_NEM_SIMPLES = (empresas.LISTA_DE_EMPRESAS, ficha.TABELA_DAS_ENTREGAS)
+SITUACAO_E_SIMPLES_DE_FORA = [
+    "registration_status",
+    "registration_status_date",
+    "registration_status_reason",
+    "head_office",
+    "snapshot_month",
+    "simples_nacional",
+    "simples_nacional_since",
+    "simples_nacional_until",
+]
+
+
+@pytest.fixture
+def duas_sem_situacao(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `profiles`, outra só com o de `companies`; a situação e o Simples
+    sem prontidão."""
+    ator = aj.admin(banco)
+    com_perfil = aj.organizacao(banco, ator, "Organização com perfil")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem perfil")
+    aj.contrato(banco, ator, com_perfil, conjunto=ficha.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _regras(SEM_SITUACAO_NEM_SIMPLES)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_perfil).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_com_tudo_liberado_nenhum_campo_do_cadastro_vem_de_fora(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_registration_fields"] == []
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in corpo["limits"]
+
+
+def test_situacao_e_simples_sem_prontidao_vem_como_nao_disponiveis_com_o_aviso(
+    duas_sem_situacao,
+):
+    cliente, com_perfil, _so_de_companies = duas_sem_situacao
+    resposta = cliente.get(ROTA, headers=aj.bearer(com_perfil))
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert "legal_name" in corpo["registration"]
+    assert "registration_status" not in corpo["registration"]
+    assert corpo["unavailable_registration_fields"] == SITUACAO_E_SIMPLES_DE_FORA
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limits"]
+    assert (
+        "unavailable_registration_fields"
+        in ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    )
+    assert corpo["unavailable_filings"] == []
+
+
+def test_sem_o_contrato_a_outra_organizacao_recebe_404_sem_a_lista_do_cadastro(
+    duas_sem_situacao,
+):
+    cliente, _com_perfil, so_de_companies = duas_sem_situacao
+    resposta = cliente.get(ROTA, headers=aj.bearer(so_de_companies))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
