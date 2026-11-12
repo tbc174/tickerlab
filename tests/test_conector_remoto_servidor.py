@@ -445,6 +445,29 @@ def test_eventos_traduz_os_tipos_e_passa_o_cursor_e_a_data():
     assert erro  # tipo fora da lista nem chega à API
 
 
+def test_eventos_pede_50_por_pagina_e_aceita_ate_100():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/events": httpx.Response(200, json={"events": []})
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        aj.chamar_ok(cliente, aj.CHAVE_DE_MENTIRA, "eventos", cnpj="11111111000191")
+        aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "eventos", cnpj="11111111000191", limite=100
+        )
+        erros = [
+            aj.chamar(
+                cliente, aj.CHAVE_DE_MENTIRA, "eventos", cnpj="11111111000191", limite=n
+            )[0]
+            for n in (0, 101)
+        ]
+    pagina_padrao, pagina_cheia = [
+        p.url.params.get("limit") for p in pedidos if p.url.path.endswith("/events")
+    ]
+    assert (pagina_padrao, pagina_cheia) == ("50", "100")
+    assert erros == [True, True]  # fora de 1 a 100 nem chega à API
+
+
 # a forma da resposta de `/companies/{cnpj}/links` (nomes de `src/api_externa/nomes.py`), com dados de mentira
 VINCULOS_DA_API = {
     "cnpj": "11111111000191",

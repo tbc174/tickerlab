@@ -250,8 +250,10 @@ def _campos(
 
 # Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
 # (D10, `base/prontidao.py`). Do CNPJ da Receita só sai `companies`: a situação cadastral e, do histórico
-# datado (linha 686, "pode 8" do Tiago em 05/11/2026), a razão social, a natureza jurídica e o Simples como
-# eram na data. As tabelas têm MEI e empresário individual, e a linha de direito vale para o campo inteiro;
+# datado (linha 686, "pode 8" do Tiago em 05/11/2026), o Simples como era na data. A razão social e a natureza
+# saem do retrato de `cnpj_empresas_pj` (sem pessoa por desenho), com o mês do retrato (linha 861): a linha
+# declara a tabela que é lida, e é nela que a qualidade (D10) se confere. As tabelas têm MEI e empresário
+# individual, e a linha de direito vale para o campo inteiro;
 # quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`). Os
 # campos do MEI não têm linha: "mei" nunca sai, e a rota não serve quem é MEI.
 DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
@@ -271,8 +273,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "companies",
-        ("cnpj_empresas_historico",),
-        ("razao_social", "natureza_juridica"),
+        ("cnpj_empresas_pj",),
+        ("razao_social", "natureza_juridica", "mes_do_retrato_do_cadastro"),
         _PROVA_RECEITA,
     ),
     *_campos(
@@ -463,8 +465,8 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "profiles",
-        ("cnpj_empresas_historico",),
-        ("razao_social", "natureza_juridica"),
+        ("cnpj_empresas_pj",),
+        ("razao_social", "natureza_juridica", "mes_do_retrato_do_cadastro"),
         _PROVA_RECEITA,
     ),
     *_campos(

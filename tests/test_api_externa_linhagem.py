@@ -214,6 +214,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
             continue
         if linha.tabelas == (CADASTRO,):
             colunas |= do_raio_x
+        if (linha.tabelas, linha.campo) == (
+            (empresas.LISTA_DE_EMPRESAS,),
+            empresas.RETRATO_DO_CADASTRO,
+        ):
+            # o mês do retrato de onde saíram o nome e a natureza (linha 861): é o `mes_do_retrato` da lista PJ
+            assert empresas.MES in colunas, linha
+            continue
         assert linha.campo in colunas, linha
 
 
@@ -223,6 +230,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
     servidos = {
         empresas.TABELA: empresas.CAMPOS,
         **{historico.tabela: historico.campos for historico in empresas.HISTORICOS},
+        # o nome e a natureza do retrato da lista sem pessoa, com o mês (linha 861)
+        empresas.LISTA_DE_EMPRESAS: (
+            *empresas.CAMPOS_DO_RETRATO_PJ,
+            empresas.RETRATO_DO_CADASTRO,
+        ),
     }
     # a ficha de crédito tira pessoa com a mesma trava (`empresas.e_empresa`)
     da_ficha = {

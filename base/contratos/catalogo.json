@@ -1369,6 +1369,48 @@
       "frequencia": "Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
       "atraso": "Do dia: é um retrato do registro na data da coleta"
     },
+    "fips_registrados": {
+      "tabela": "fips_registrados",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "CNPJ_Fundo": {
+          "descricao": "CNPJ do fundo (14 dígitos)",
+          "unidade": "texto"
+        },
+        "Tipo_Fundo": {
+          "descricao": "Tipo do fundo: sempre FIP",
+          "unidade": "texto"
+        },
+        "Data_Registro": {
+          "descricao": "Data do registro na CVM",
+          "unidade": "data (dia)"
+        },
+        "Data_Cancelamento": {
+          "descricao": "Data do cancelamento (vazio: ativo)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "CNPJ_Fundo",
+        "Data_Registro"
+      ],
+      "datas": {
+        "aconteceu_em": "Data_Registro"
+      },
+      "sinonimos_de_tempo": {
+        "Data_Registro": "aconteceu_em",
+        "Data_Cancelamento": "ate"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+      "atraso": "O de `registro_de_fundos`: um retrato do registro na data da coleta"
+    },
     "painel_dos_fundos": {
       "tabela": "painel_dos_fundos",
       "modulo": "credito_e_fidc",
@@ -7301,6 +7343,118 @@
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
       "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+    },
+    "anvisa_por_empresa": {
+      "tabela": "anvisa_por_empresa",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia",
+          "unidade": "data (dia)"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Sempre falso: a raiz com alguma linha de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "cosmeticos_total": {
+          "descricao": "Registros de cosméticos da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "cosmeticos_ativos": {
+          "descricao": "Registros de cosméticos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "produtos_saude_total": {
+          "descricao": "Registros de produtos para saúde da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "produtos_saude_ativos": {
+          "descricao": "Registros de produtos para saúde da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "saneantes_total": {
+          "descricao": "Registros de saneantes da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "saneantes_ativos": {
+          "descricao": "Registros de saneantes da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "alimentos_total": {
+          "descricao": "Registros de alimentos da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "alimentos_ativos": {
+          "descricao": "Registros de alimentos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "medicamentos_total": {
+          "descricao": "Registros de medicamentos da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "medicamentos_ativos": {
+          "descricao": "Registros de medicamentos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "produtos_total": {
+          "descricao": "Registros de produtos (a soma dos cinco tipos de produto) da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "produtos_ativos": {
+          "descricao": "Registros de produtos (a soma dos cinco tipos de produto) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "afe_total": {
+          "descricao": "Registros de autorizações de funcionamento (AFE) da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "afe_ativos": {
+          "descricao": "Registros de autorizações de funcionamento (AFE) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "cbpf_total": {
+          "descricao": "Registros de certificados de boas práticas de fabricação (CBPF) da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "cbpf_ativos": {
+          "descricao": "Registros de certificados de boas práticas de fabricação (CBPF) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico",
+        "disponivel_em"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em",
+        "coletado_em": "montado_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-29",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)",
+      "atraso": "A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A `anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim do mês esconderia um dado que a base já tinha na véspera",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "pgfn_divida": {
       "tabela": "pgfn_divida",
@@ -14994,6 +15148,63 @@
       "pessoa": false,
       "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`"
+    },
+    "controladas_pj": {
+      "tabela": "controladas_pj",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_companhia": {
+          "descricao": "CNPJ da companhia que informou (14 dígitos)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "controlada, coligada ou vazio (não informado, ou a linha de marca)",
+          "unidade": "texto"
+        },
+        "participacao": {
+          "descricao": "Participação da companhia na sociedade",
+          "unidade": "pontos percentuais (66,25 = 66,25%)"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número inteiro"
+        },
+        "publico_em": {
+          "descricao": "Data em que a CVM recebeu essa versão do FRE (`conhecido_em`)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj_companhia",
+        "referencia",
+        "versao",
+        "cnpj"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "publico_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "publico_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `publico_em`"
     },
     "rotulos_atraso": {
       "tabela": "rotulos_atraso",
