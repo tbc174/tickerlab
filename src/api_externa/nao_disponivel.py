@@ -7,6 +7,8 @@ bloco que falta leria como "a empresa não tem". O padrão, em todo conjunto:
 - a resposta traz a lista das partes pedidas que o portão não libera, com o nome de fora
   `unavailable_<o que>` (por dentro, `<o que>_nao_disponiveis`), vazia quando tudo foi servido;
 - os limites (`limits`) só falam das partes servidas e, quando há parte de fora, trazem o aviso de `aviso`;
+- a parte conta como de fora quando o portão não a libera ou quando a base não tem a tabela dela: nos dois
+  casos ela não foi consultada;
 - quando nenhuma parte pedida é liberada, a resposta é 404 `not_available`, como o resto do contrato.
 """
 
@@ -33,17 +35,27 @@ def aviso(chave: str, o_que: str, resposta: str) -> str:
 
 def limites(
     gerais: Sequence[str],
-    das_partes: Mapping[str, str],
+    das_partes: Mapping[str, str | tuple[str, ...]],
     servidas: Iterable[str],
     nao_disponiveis: Sequence[str],
     aviso: str,
+    *,
+    antes: int = 1,
 ) -> list[str]:
-    """Os limites da resposta: o primeiro geral (o do `known_at`), as frases das partes servidas (na ordem de
-    `das_partes`, sem repetir a frase que vale para mais de uma), o aviso quando alguma parte ficou de fora e o
-    resto dos gerais. A frase de uma parte que não foi servida não entra: a resposta não afirma o que não
-    consultou."""
+    """Os limites da resposta: os `antes` primeiros gerais (o do `known_at` e o que descreve o pedido), as
+    frases das partes servidas (na ordem de `das_partes`, sem repetir a frase que vale para mais de uma; uma
+    parte pode ter mais de uma frase), o aviso quando alguma parte ficou de fora e o resto dos gerais. A frase
+    de uma parte que não foi servida não entra: a resposta não afirma o que não consultou."""
     servidas_ = set(servidas)
     frases = dict.fromkeys(
-        frase for parte, frase in das_partes.items() if parte in servidas_
+        frase
+        for parte, da_parte in das_partes.items()
+        if parte in servidas_
+        for frase in ((da_parte,) if isinstance(da_parte, str) else da_parte)
     )
-    return [*gerais[:1], *frases, *([aviso] if nao_disponiveis else []), *gerais[1:]]
+    return [
+        *gerais[:antes],
+        *frases,
+        *([aviso] if nao_disponiveis else []),
+        *gerais[antes:],
+    ]

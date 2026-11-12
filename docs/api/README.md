@@ -234,11 +234,14 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
-**Parte não disponível para a organização** (linhas 878 e 880; `src/api_externa/nao_disponivel.py`): quando um
-pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo), a parte que a
-organização não tem não some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz
-a lista das partes pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`,
-`unavailable_link_types` em `/links`), vazia quando tudo foi consultado. Os `limits` só falam das partes servidas
+**Parte não disponível para a organização** (linhas 878, 880 e 881; `src/api_externa/nao_disponivel.py`):
+quando um pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo, os sinais
+dos compradores, os documentos das entregas, os números dos comparáveis), a parte que a organização não tem não
+some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz a lista das partes
+pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`, `unavailable_link_types`
+em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` em `/profile`, `unavailable_figures` em
+`/comparables`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
+entra na lista: nos dois casos ela não foi consultada. Os `limits` só falam das partes servidas
 e, quando há parte de fora, trazem a frase de que ela não foi consultada. Se nenhuma parte pedida está liberada,
 a resposta é 404 `not_available`, como o resto do contrato. Todo conjunto novo com partes segue o mesmo molde.
 
@@ -254,7 +257,11 @@ O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/fic
   velha, com o prazo da CVM (feriados e prorrogações), o dia da primeira entrega, os dias úteis de atraso
   e a situação: `on_time`, `gray_zone` (atraso curto, que um feriado local pode explicar), `late`,
   `severely_late` ou `not_filed`. Vem de `rotulos_atraso` (o índice das entregas da DFP e do ITR), pela
-  mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`).
+  mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`). Com algum documento consultado, a
+  lista sai sempre, vazia quando a base não conhece entrega da empresa;
+- `unavailable_filings` (linha 881): os documentos (`DFP`, `ITR`) que o portão não libera para a organização.
+  Eles não foram consultados: a lista de entregas não diz nada sobre eles, e os `limits` avisam. Sem nenhum
+  documento, `periodic_filings` não sai.
 
 Sem olhar o futuro: a entrega que só aconteceu depois de `known_at` sai `not_filed`, sem a data dela, e
 os dias úteis contam até o dia pedido; a falta de um documento vale pelo prazo e só conta até o dia em
@@ -278,7 +285,10 @@ Os pares de uma companhia aberta como eram no dia (`conjuntos/comparaveis.py`):
   positivo). Par é quem tem DFP de um exercício que terminou até 18 meses antes do dia; os pares vêm da
   maior receita para a menor e são cortados no limite de linhas do plano (`truncated`);
 - `peer_medians`: a mediana de cada razão entre todos os pares (sem a empresa pedida), só quando pelo
-  menos 8 pares a têm.
+  menos 8 pares a têm;
+- `unavailable_figures` (linha 881): os números e as razões, com o nome de fora, que o portão não libera para a
+  organização. Eles somem dos pares e das medianas, e os `limits` avisam: a mediana que falta por isso não quer
+  dizer que faltaram pares.
 
 Cada número traz o dia da entrega do DFP; o cadastro, o dia da entrega do FCA. Número que a base não tem
 some, nunca vira zero. EBITDA, dívida líquida, as razões e o grupo de setores são contas nossas; o portão

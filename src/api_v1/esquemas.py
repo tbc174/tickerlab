@@ -1553,6 +1553,8 @@ class FichaDoCnpjV1(BaseModel):
     entregas: list[dict[str, CampoComFonteV1]] | None = (
         None  # só da companhia aberta (DFP e ITR)
     )
+    # os documentos (DFP, ITR) que o portão não libera: não consultados, a lista de entregas não fala deles
+    entregas_nao_disponiveis: list[str] = []
 
 
 class BlocoDaFichaV1(BaseModel):
