@@ -408,6 +408,9 @@ def busca_de_empresas(
     capital_min: float | None = None,
     capital_max: float | None = None,
     branches_min: int | None = None,
+    anvisa_type: str | None = None,
+    anvisa_active_min: int | None = None,
+    anvisa_total_min: int | None = None,
     sort: str | None = None,
     cursor: str | None = None,
     limit: int | None = None,
@@ -416,8 +419,12 @@ def busca_de_empresas(
     """Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),
     UF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,
     `capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que
-    valia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,
-    por CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um
+    valia em `known_at`. Registros na Anvisa: `anvisa_active_min` e `anvisa_total_min` (de 1 em diante)
+    filtram pela contagem do tipo `anvisa_type` (`cosmetics`, `health_products`, `sanitizers`; sem tipo,
+    `products`, a soma desses três; medicamentos e alimentos entram quando a licença deles for lida); a
+    contagem sai em `anvisa_registrations_active` e `anvisa_registrations_total`, com fonte e dia do retrato.
+    `sort` ordena por `capital`, `branches` ou `anvisa` (registros ativos; `-` na frente é decrescente); sem
+    ele, por CNPJ. Capital, estabelecimentos e registros são sinais aproximados de porte, não faturamento. Pelo menos um
     filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
     dia = _dia_pedido(known_at)
     try:
@@ -426,7 +433,8 @@ def busca_de_empresas(
             legal_nature=legal_nature, registration_status=registration_status,
             opened_before=opened_before, opened_after=opened_after, head_office=head_office,
             cursor=cursor, limit=limit, capital_min=capital_min, capital_max=capital_max,
-            branches_min=branches_min, sort=sort,
+            branches_min=branches_min, sort=sort, anvisa_type=anvisa_type,
+            anvisa_active_min=anvisa_active_min, anvisa_total_min=anvisa_total_min,
         )  # fmt: skip
     except prospeccao.FiltroInvalido as erro:
         raise _recusa(erro.codigo) from erro
