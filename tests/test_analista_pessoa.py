@@ -1,10 +1,12 @@
 """O leitor do acervo de pessoa da tela da equipe (linha 808). Todo nome aqui é inventado."""
 
+import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from base import receita_contato
 from src.analista import pessoa
 
 EMPRESA = "11222333000181"
@@ -158,9 +160,16 @@ CONTATOS = [
 ]
 
 
-def _acervo_de_contato(pasta: Path, linhas: list[dict], **colunas_a_mais) -> Path:
+def _acervo_de_contato(
+    pasta: Path, linhas: list[dict], corte: bool = True, **colunas_a_mais
+) -> Path:
+    """`corte`: o manifesto traz a marca da montagem que cortou o endereço de individual (linha 859)."""
     tabela = pd.DataFrame(linhas).assign(mes_do_retrato=MES, **colunas_a_mais)
     (pasta / pessoa.CONTATO).mkdir(parents=True)
+    descartes = {receita_contato.ENDERECO_CORTADO: 0} if corte else {}
+    (pasta / pessoa.MANIFESTO).write_text(
+        json.dumps({"descartes": descartes}), encoding="utf-8"
+    )
     for prefixo, parte in tabela.groupby(tabela["cnpj_basico"].str[:2]):
         parte.to_parquet(pasta / pessoa.CONTATO / f"{prefixo}.parquet", index=False)
     return pasta
@@ -260,3 +269,45 @@ def test_contato_estragado_e_acervo_indisponivel(tmp_path):
 def test_os_limites_do_contato_avisam_do_mei_e_do_retrato():
     texto = " ".join(pessoa.LIMITES_DO_CONTATO).lower()
     assert "mei" in texto and "retrato" in texto and "ativos" in texto
+
+
+def test_acervo_sem_o_corte_do_endereco_de_individual_esta_indisponivel(tmp_path):
+    pasta = _acervo_de_contato(tmp_path / "acervo", CONTATOS, corte=False)
+    with pytest.raises(pessoa.AcervoIndisponivelError):
+        pessoa.contato_da_empresa(pasta, EMPRESA)
+
+
+def test_acervo_com_manifesto_estragado_esta_indisponivel(tmp_path):
+    pasta = _acervo_de_contato(tmp_path / "acervo", CONTATOS)
+    (pasta / pessoa.MANIFESTO).write_text("{", encoding="utf-8")
+    with pytest.raises(pessoa.AcervoIndisponivelError):
+        pessoa.contato_da_empresa(pasta, EMPRESA)
+
+
+def test_individual_sai_so_com_municipio_uf_telefone_e_email_e_empresa_comum_inteira(
+    tmp_path,
+):
+    sem_rua = dict.fromkeys(  # como a montagem grava a raiz de individual
+        ("tipo_logradouro", "logradouro", "numero", "complemento", "bairro", "cep")
+    )
+    mei = "33444555000181"
+    pasta = _acervo_de_contato(
+        tmp_path / "acervo", [_contato(EMPRESA), _contato(mei) | sem_rua]
+    )
+    inteira = pessoa.contato_da_empresa(pasta, EMPRESA).estabelecimentos[0]
+    assert (
+        inteira["logradouro"] == "RUA DOS EXEMPLOS, 100"
+        and inteira["cep"] == "01001000"
+    )
+    do_mei = pessoa.contato_da_empresa(pasta, mei).estabelecimentos[0]
+    assert (
+        do_mei["logradouro"] is None
+        and do_mei["bairro"] is None
+        and do_mei["cep"] is None
+    )
+    assert (
+        do_mei["uf"] == "SP"
+        and do_mei["municipio"]
+        and do_mei["telefones"]
+        and do_mei["email"]
+    )
