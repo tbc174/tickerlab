@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 
 from openpyxl import Workbook
 from openpyxl.cell.cell import TYPE_STRING
+from openpyxl.writer.excel import ExcelWriter
 
 COLUNA_DA_FONTE = "fonte"
 COLUNA_DA_DATA = "publicado_em"
@@ -162,9 +163,20 @@ def xlsx(corpo: Mapping) -> bytes:
                     celula.data_type = (
                         TYPE_STRING  # o openpyxl leria "=..." como fórmula
                     )
+    return _com_data_fixa(_gravar_sem_relogio(pasta))
+
+
+def _gravar_sem_relogio(pasta: Workbook) -> bytes:
+    """O .xlsx da pasta com a data de modificação que ela já tem (`DATA_FIXA`).
+
+    O `Workbook.save` do openpyxl passa por `save_workbook`, que troca `properties.modified` pela hora do
+    relógio: duas gerações em segundos diferentes davam bytes diferentes (teste instável, linha 853). O
+    `ExcelWriter` grava a pasta sem essa troca.
+    """
     saida = io.BytesIO()
-    pasta.save(saida)
-    return _com_data_fixa(saida.getvalue())
+    with zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as arquivo:
+        ExcelWriter(pasta, arquivo).save()
+    return saida.getvalue()
 
 
 def _com_data_fixa(conteudo: bytes) -> bytes:

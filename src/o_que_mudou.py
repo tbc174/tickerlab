@@ -37,6 +37,14 @@ ENTREGAS: tuple[Entrega, ...] = (
         pagina="dados_e_cobertura",
     ),
     Entrega(
+        data=date(2026, 11, 12),
+        o_que=(
+            'Encontrar empresas: cada linha da lista tem o link "Pôr na comparação", que leva o CNPJ da linha '
+            "para a tela de comparar empresas, já preenchido."
+        ),
+        pagina="encontrar_empresas",
+    ),
+    Entrega(
         data=date(2026, 11, 11),
         o_que=(
             "Ficha da empresa: agora mostra os documentos entregues à CVM, as trocas de auditor e os "
