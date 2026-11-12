@@ -60,6 +60,7 @@
       "frase": "Regras testadas no passado, com custos, e o que você acompanha: teses, carteira, alertas, juros e inflação.",
       "icone": "mais",
       "paginas": [
+        "dados_e_cobertura",
         "backtest",
         "ranking",
         "carteira",

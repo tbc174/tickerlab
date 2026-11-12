@@ -67,6 +67,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/analista/comparar",
         "/v1/analista/comparar/planilha",
         "/v1/o-que-mudou",
+        "/v1/dados-e-cobertura",
     }
 
 

@@ -216,6 +216,7 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
         from src.api_v1.base_tabelas import router as router_das_tabelas_da_base
         from src.api_v1.compartilhados import router as router_compartilhados
         from src.api_v1.conta import router as router_da_conta
+        from src.api_v1.dados_e_cobertura import router as router_dos_dados
         from src.api_v1.entrada import router as router_da_entrada
         from src.api_v1.estudos import router as router_dos_estudos
         from src.api_v1.ferramentas import router as router_das_ferramentas
@@ -255,6 +256,7 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
             router_do_analista,
             router_das_pessoas,
             router_do_que_mudou,
+            router_dos_dados,
         ):
             nova.include_router(rotas)
             nova.include_router(rotas, prefix="/api")
