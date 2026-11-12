@@ -248,7 +248,10 @@ def _campos(
 # Os campos do beta, um conjunto por rota (D7, nomes de fora). Nenhum sai antes de a tabela estar pronta
 # (D10, `base/prontidao.py`). Do CNPJ da Receita só sai `companies`: a situação cadastral e, do histórico
 # datado (linha 686, "pode 8" do Tiago em 05/11/2026), a razão social, a natureza jurídica e o Simples como
-# eram na data. As tabelas têm MEI e empresário individual, e a linha de direito vale para o campo inteiro;
+# eram na data. Sem o histórico na base, a razão social e a natureza saem do retrato de `cnpj_empresas_pj`
+# (sem pessoa por desenho), com o mês do retrato (linha 861): por isso as duas tabelas estão na linha, e a
+# qualidade (D10) pede as duas prontas. As tabelas têm MEI e empresário individual, e a linha de direito
+# vale para o campo inteiro;
 # quem tira por linha quem é pessoa (ADR 0106) é a rota (`src/api_externa/conjuntos/empresas.py`). Os
 # campos do MEI não têm linha: "mei" nunca sai, e a rota não serve quem é MEI.
 DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
@@ -268,8 +271,15 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "companies",
-        ("cnpj_empresas_historico",),
+        ("cnpj_empresas_historico", "cnpj_empresas_pj"),
         ("razao_social", "natureza_juridica"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "companies",
+        ("cnpj_empresas_pj",),
+        ("mes_do_retrato_do_cadastro",),
         _PROVA_RECEITA,
     ),
     *_campos(
@@ -460,8 +470,15 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("rfb-cnpj",),
         "profiles",
-        ("cnpj_empresas_historico",),
+        ("cnpj_empresas_historico", "cnpj_empresas_pj"),
         ("razao_social", "natureza_juridica"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_empresas_pj",),
+        ("mes_do_retrato_do_cadastro",),
         _PROVA_RECEITA,
     ),
     *_campos(

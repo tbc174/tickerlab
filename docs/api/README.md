@@ -239,7 +239,9 @@ O contrato traz, rota a rota, os códigos que cada uma pode dar.
 O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/ficha.py`):
 
 - `registration`: o cadastro na Receita, pelo mesmo leitor de `/companies/{cnpj}` (a situação, a razão
-  social, a natureza jurídica e o Simples como eram);
+  social, a natureza jurídica e o Simples como eram). Onde o histórico datado do nome não está, a razão
+  social e a natureza saem do retrato mensal da Receita sem pessoa, só se ele já era público em `known_at`, e
+  `registry_snapshot_month` diz de que mês é esse retrato (é o retrato daquele mês, não "como era" no dia);
 - `periodic_filings`: da companhia aberta, cada DFP e ITR que ela devia até o dia, da mais nova à mais
   velha, com o prazo da CVM (feriados e prorrogações), o dia da primeira entrega, os dias úteis de atraso
   e a situação: `on_time`, `gray_zone` (atraso curto, que um feriado local pode explicar), `late`,

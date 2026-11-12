@@ -724,3 +724,160 @@ def test_lote_que_passa_da_quota_volta_inteiro(cliente, cenario, banco):
 def test_o_conjunto_e_o_do_catalogo():
     assert empresas.CONJUNTO == "companies"
     assert acesso is not None
+
+
+# ---------------------------------------------------------------- sem o histórico: o retrato da lista sem pessoa
+# (linha 861) O VPS não tem `cnpj_empresas_historico`: a razão social e a natureza vêm do retrato de
+# `cnpj_empresas_pj` (só PJ, sem MEI nem empresário individual), só se o retrato já era público no dia, e a
+# resposta diz de que mês ele é. O retrato de 2025-06 (baixado em 21/06) vale pelo último dia do mês: 30/06.
+RETRATO_PJ = "2025-06"
+# fmt: off
+LISTA_PJ = [
+    (EMPRESA[:8], "BETA COMERCIO LTDA", "2062", "05", RETRATO_PJ, "2025-06-21"),
+]
+# fmt: on
+
+
+def _lista_pj(linhas=LISTA_PJ) -> pd.DataFrame:
+    tabela = pd.DataFrame(
+        list(linhas),
+        columns=[
+            "cnpj_basico", "razao_social", "natureza_juridica", "porte", "mes_do_retrato", "disponivel_em",
+        ],
+    )  # fmt: skip
+    tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
+    return tabela.assign(**_CARIMBOS)
+
+
+def _base_sem_historico(
+    tmp_path,
+    monkeypatch,
+    nome: str = "sem_historico_pj",
+    lista=LISTA_PJ,
+    historicos=False,
+):
+    base = tmp_path / nome
+    _gravar_base(base, _retratos(), historicos=historicos)
+    if lista is not None:
+        (base / empresas.LISTA_DE_EMPRESAS).mkdir(parents=True)
+        _lista_pj(lista).to_parquet(
+            base / empresas.LISTA_DE_EMPRESAS / "00.parquet", index=False
+        )
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    return aj.cliente_da_api(monkeypatch, AGORA)
+
+
+def test_sem_o_historico_o_nome_vem_do_retrato_pj_com_o_mes(
+    tmp_path, cenario, monkeypatch
+):
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    corpo = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert corpo["legal_name"] == {
+        "value": "BETA COMERCIO LTDA",
+        "source": "rfb-cnpj",
+        "published_at": "2025-06-30",  # o retrato vale pelo último dia do mês
+        "observed_at": None,
+    }
+    assert corpo["legal_nature_code"]["value"] == "2062"
+    # a resposta diz de que retrato o nome saiu (não é "como era": é o retrato daquele mês)
+    assert corpo["registry_snapshot_month"]["value"] == RETRATO_PJ
+    assert corpo["registry_snapshot_month"]["published_at"] == "2025-06-30"
+    # o Simples não tem lista sem pessoa: sem o histórico dele, não sai
+    assert not {
+        "simples_nacional",
+        "simples_nacional_since",
+        "simples_nacional_until",
+    } & set(corpo)
+
+
+@pytest.mark.parametrize("dia", ["2025-01-31", "2025-06-21", "2025-06-29"])
+def test_retrato_pj_ainda_nao_publico_no_dia_nao_sai(
+    tmp_path, cenario, monkeypatch, dia
+):
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    corpo = _get(cliente, cenario, known_at=dia).json()
+    assert (
+        corpo["registration_status"]["value"] == "02"
+    )  # a situação de jan/2025 já valia
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        corpo
+    )
+
+
+def test_com_dois_retratos_vale_o_mais_novo_ja_publico(tmp_path, cenario, monkeypatch):
+    # o retrato de maio já é público em 15/06; o de junho (outro nome) ainda não: sai o de maio, com o mês dele
+    dois = [
+        (EMPRESA[:8], "BETA COMERCIO LTDA", "2062", "05", "2025-05", "2025-05-21"),
+        (EMPRESA[:8], "BETA NOVA LTDA", "2062", "05", RETRATO_PJ, "2025-06-21"),
+    ]
+    cliente = _base_sem_historico(tmp_path, monkeypatch, "dois_retratos", lista=dois)
+    em_junho = _get(cliente, cenario, known_at="2025-06-15").json()
+    assert em_junho["legal_name"]["value"] == "BETA COMERCIO LTDA"
+    assert em_junho["registry_snapshot_month"]["value"] == "2025-05"
+    depois = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert depois["legal_name"]["value"] == "BETA NOVA LTDA"
+    assert depois["registry_snapshot_month"]["value"] == RETRATO_PJ
+
+
+def test_sem_o_historico_cortar_o_futuro_nao_muda_o_passado(
+    tmp_path, cenario, monkeypatch
+):
+    dia = "2025-06-29"
+    inteira = _get(
+        _base_sem_historico(tmp_path, monkeypatch), cenario, known_at=dia
+    ).json()
+    sem_o_retrato = _base_sem_historico(tmp_path, monkeypatch, "cortada", lista=None)
+    assert _get(sem_o_retrato, cenario, known_at=dia).json() == inteira
+
+
+def test_com_o_historico_o_retrato_pj_nao_e_usado(tmp_path, cenario, monkeypatch):
+    cliente = _base_sem_historico(tmp_path, monkeypatch, historicos=True)
+    # o histórico manda, mesmo no dia em que ele não tem versão pública e o retrato tem
+    assert (
+        _get(cliente, cenario, known_at="2025-07-31").json()["legal_name"]["value"]
+        == "ALFA HOLDING S.A."
+    )
+    antes = _get(cliente, cenario, known_at="2023-05-30").json()
+    assert (
+        "legal_name" not in antes
+        or antes["legal_name"]["value"] != "BETA COMERCIO LTDA"
+    )
+    assert (
+        "registry_snapshot_month"
+        not in _get(cliente, cenario, known_at="2025-07-31").json()
+    )
+
+
+@pytest.mark.parametrize(
+    "lista",
+    [
+        # a rede diz empresa, mas o retrato diz empresário individual (natureza de pessoa): nada do retrato sai
+        [(EMPRESA[:8], "NOME FICTICIO", "2135", "01", RETRATO_PJ, "2025-06-21")],
+        # natureza vazia conta como pessoa
+        [(EMPRESA[:8], "BETA COMERCIO LTDA", None, "05", RETRATO_PJ, "2025-06-21")],
+        # a raiz duas vezes no mesmo retrato: na dúvida, não
+        [*LISTA_PJ, (EMPRESA[:8], "GAMA LTDA", "2062", "05", RETRATO_PJ, "2025-06-21")],
+        # a raiz não está na lista
+        [("99999999", "BETA COMERCIO LTDA", "2062", "05", RETRATO_PJ, "2025-06-21")],
+    ],
+    ids=["natureza_de_pessoa", "natureza_vazia", "raiz_repetida", "fora_da_lista"],
+)
+def test_retrato_pj_duvidoso_nao_da_nome(tmp_path, cenario, monkeypatch, lista):
+    cliente = _base_sem_historico(tmp_path, monkeypatch, lista=lista)
+    corpo = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert corpo["registration_status"]["value"] == "08"
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        corpo
+    )
+
+
+def test_sem_o_historico_nada_de_pessoa_sai(tmp_path, cenario, monkeypatch):
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    for corpo in (
+        _get(cliente, cenario, known_at="2025-07-31").json(),
+        _post(
+            cliente, cenario, {"cnpjs": [EMPRESA, MEI, EMPRESARIO_INDIVIDUAL]}
+        ).json(),
+    ):
+        conferir_sem_pessoas(corpo, set())
+        assert not aj.chaves_de(corpo) & COLUNAS_DE_PESSOA

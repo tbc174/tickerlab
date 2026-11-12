@@ -103,6 +103,8 @@ NOMES_DE_FORA: Mapping[str, str] = {
     # companies: o histórico datado do nome, da natureza jurídica e do Simples (linha 686)
     "razao_social": "legal_name",
     "natureza_juridica": "legal_nature_code",
+    # sem o histórico, o nome e a natureza vêm do retrato da lista sem pessoa: de que mês (linha 861)
+    "mes_do_retrato_do_cadastro": "registry_snapshot_month",
     "optante_simples": "simples_nacional",
     "data_opcao_simples": "simples_nacional_since",
     "data_exclusao_simples": "simples_nacional_until",
