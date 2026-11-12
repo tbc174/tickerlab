@@ -48,6 +48,7 @@ from pathlib import Path
 import duckdb
 
 from base import recorte_dos_compradores
+from base.cpf_no_texto import tem_cpf_valido
 from base.dicionario import TABELAS
 from base.dossie import (
     COLUNAS_DE_PESSOA,
@@ -319,6 +320,38 @@ def conferir_sem_pessoa_do_cnpj(
         )
 
 
+# texto escrito por quem entrega o documento (o assunto de um fato relevante): pode trazer o CPF de uma pessoa
+# (linha 884). As colunas que o recorte confere; coluna que o arquivo não tem é ignorada.
+TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
+    "eventos": ("assunto",),
+    "insolvencia": ("assunto",),
+    "debentures_assembleias": ("assunto",),
+    "ma_candidatos": ("assunto",),
+    "ratings": ("evidencia", "outras_notas", "nota_original"),
+    "noticias_fatos": ("trecho",),
+}
+_CANDIDATO_A_CPF_SQL = r"(^|\D)\d{3}[. ]?\d{3}[. ]?\d{3}[- ]?\d{2}($|\D)"
+
+
+def conferir_sem_cpf_no_texto(
+    con: duckdb.DuckDBPyConnection, nome: str, arquivo: Path
+) -> None:
+    """Na saída de uma tabela com texto livre: nenhum número de CPF que confere. Diz só a coluna e a contagem."""
+    fonte = f"read_parquet({_aspas(arquivo.as_posix())})"
+    presentes = set(_colunas_do_arquivo(con, arquivo))
+    for coluna in TEXTOS_LIVRES.get(nome, ()):
+        if coluna not in presentes:
+            continue
+        candidatos = con.execute(
+            f"SELECT {coluna} FROM {fonte} WHERE regexp_matches({coluna}, '{_CANDIDATO_A_CPF_SQL}')"
+        ).fetchall()
+        achadas = sum(tem_cpf_valido(c[0]) for c in candidatos)
+        if achadas:
+            raise RecorteErro(
+                f"{nome}: {arquivo.name} saiu com CPF no texto da coluna {coluna} ({achadas} linha(s))"
+            )
+
+
 def tirar_raizes_de_mei(
     con: duckdb.DuckDBPyConnection, saida: Path, tabelas: tuple[str, ...]
 ) -> int:
@@ -566,6 +599,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
                 igual, tirou = recortar_arquivo(con, nome, origem, destino)
                 conferir_saida(con, nome, destino)
                 conferir_sem_pessoa_do_cnpj(con, nome, destino)
+                conferir_sem_cpf_no_texto(con, nome, destino)
                 copiados += igual
                 recortados += not igual
                 tiradas += tirou
