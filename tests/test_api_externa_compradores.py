@@ -16,6 +16,7 @@ import pytest
 
 from base import prontidao
 from base import recorte_dos_compradores as reduzidas
+from base.cnpj import digitos_verificadores
 from base.porta import Porta
 from base.prontidao import Prontidao, Prova
 from src import portao_externo as portao
@@ -93,6 +94,11 @@ ENTRADAS = [
 # fmt: on
 
 
+def _cnpj(raiz: str) -> str:
+    """O CNPJ da matriz com o dígito verificador certo (a cópia reduzida só leva CNPJ que confere)."""
+    return f"{raiz}0001{digitos_verificadores(f'{raiz}0001')}"
+
+
 def _estabelecimentos() -> pd.DataFrame:
     tabela = pd.DataFrame(
         ESTABELECIMENTOS,
@@ -147,7 +153,7 @@ def _entradas() -> pd.DataFrame:
 def _fundos() -> pd.DataFrame:
     return pd.DataFrame({
         "ID_Registro_Fundo": ["1", "2"],
-        "CNPJ_Fundo": [f"{FUNDO[:2]}.{FUNDO[2:5]}.{FUNDO[5:]}/0001-00", f"{FUNDADORA}000100"],
+        "CNPJ_Fundo": [f"{FUNDO[:2]}.{FUNDO[2:5]}.{FUNDO[5:]}/0001-{_cnpj(FUNDO)[-2:]}", _cnpj(FUNDADORA)],
         "Tipo_Fundo": ["FIP", "FIP"],
         "Data_Registro": pd.to_datetime(["2020-01-01", "2015-01-01"]).date,
         "Data_Cancelamento": [None, pd.Timestamp("2020-01-01").date()],  # o FIP cancelado não conta
@@ -158,12 +164,12 @@ def _fundos() -> pd.DataFrame:
 def _controladas() -> pd.DataFrame:
     # a versão 2 do FRE de 2025 só chega em 20/10/2026; a do RJ é de um FRE antigo, que o de 2025 substitui
     return pd.DataFrame({
-        "cnpj_companhia": [f"{ABERTA}000100"] * 3,
+        "cnpj_companhia": [_cnpj(ABERTA)] * 3,
         "referencia": pd.to_datetime(["2025-12-31", "2025-12-31", "2020-12-31"]).date,
         "versao": [1, 2, 1],
         "conhecido_em": pd.to_datetime(["2026-05-30", "2026-10-20", "2021-05-30"]).date,
         "origem_coletada_em": pd.to_datetime(["2026-06-01", "2026-10-21", "2021-06-01"]).date,
-        "cnpj": [f"{ALVO_SP}000100", f"{ALVO_SP}000100", f"{ALVO_RJ}000100"],
+        "cnpj": [_cnpj(ALVO_SP), _cnpj(ALVO_SP), _cnpj(ALVO_RJ)],
         "tipo": ["controlada", "controlada", "coligada"],
         "participacao": [60.0, 70.0, 20.0],
     }).assign(**CARIMBOS)  # fmt: skip
@@ -360,7 +366,7 @@ def test_como_era_antes_da_versao_nova_do_fre_e_do_retrato_de_outubro(cliente, c
 
 def test_versao_nova_do_fre_sem_a_controlada_tira_o_sinal(cliente, cenario, pasta):
     # a versão 2 do FRE de 2025 já não traz a controlada do setor: vale a versão mais nova da companhia
-    fre = _controladas().iloc[:2].assign(cnpj=[f"{ALVO_SP}000100", f"{FORA}000100"])
+    fre = _controladas().iloc[:2].assign(cnpj=[_cnpj(ALVO_SP), _cnpj(FORA)])
     _gravar(pasta / compradores.CONTROLADAS / "2025.parquet", fre)
     assert ABERTA not in _raizes(_get(cliente, cenario))
     assert ABERTA in _raizes(_get(cliente, cenario, known_at="2026-10-15"))
@@ -484,9 +490,7 @@ def test_na_copia_reduzida_a_versao_nova_sem_a_controlada_tambem_tira_o_sinal(
     # marca do documento vai, e a versão 1 não volta a valer
     sem_lista = "99000099"
     assert sem_lista not in NOMES
-    fre = (
-        _controladas().iloc[:2].assign(cnpj=[f"{ALVO_SP}000100", f"{sem_lista}000100"])
-    )
+    fre = _controladas().iloc[:2].assign(cnpj=[_cnpj(ALVO_SP), _cnpj(sem_lista)])
     _gravar(pasta / compradores.CONTROLADAS / "2025.parquet", fre)
     _so_reduzidas(pasta)
     assert ABERTA not in _raizes(_get(cliente, cenario))
