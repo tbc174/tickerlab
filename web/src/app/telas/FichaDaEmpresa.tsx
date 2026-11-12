@@ -112,7 +112,11 @@ function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
   );
 }
 
-function Entregas({ entregas }: { entregas: Record<string, CampoComFonteV1>[] | null | undefined }) {
+function Entregas({ ficha }: { ficha: FichaDoCnpjV1 }) {
+  const entregas = ficha.entregas;
+  // o documento barrado (DFP, ITR) não foi consultado: a lista vazia (ou curta) não pode parecer "não entregou"
+  // cada documento vai no masculino plural ("os documentos ITR"): a frase concorda com um ou com vários
+  const naoConsultados = (ficha.entregas_nao_disponiveis ?? []).map((documento) => `os documentos ${documento}`);
   const colunas = [...new Set((entregas ?? []).flatMap((entrega) => Object.keys(entrega)))];
   return (
     <section className="secao-do-relatorio" aria-labelledby="entregas-da-ficha">
@@ -148,11 +152,19 @@ function Entregas({ entregas }: { entregas: Record<string, CampoComFonteV1>[] | 
             </tbody>
           </table>
         </div>
+      ) : naoConsultados.length > 0 ? (
+        <p className="apagado">Nenhuma entrega dos documentos consultados.</p>
       ) : (
         <p className="apagado">
           Sem entregas nesta ficha: só as companhias do cadastro de companhias abertas da CVM têm entregas na base.
         </p>
       )}
+      {naoConsultados.length > 0 ? (
+        <p>
+          Não consultados, por ainda não estarem liberados para a tela: {naoConsultados.join(" e ")}. A falta deles
+          aqui não quer dizer que a empresa não os tenha entregado.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -274,7 +286,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
       <SociosDaFicha rota={rota} cnpj={cnpj} />
       <TitularDaFicha rota={rota} cnpj={cnpj} />
       <ContatoDaFicha rota={rota} cnpj={cnpj} />
-      <Entregas entregas={ficha.entregas} />
+      <Entregas ficha={ficha} />
       <EventosDaFicha rota={rota} cnpj={cnpj} />
       <VinculosDaFicha rota={rota} cnpj={cnpj} />
       {dados.fontes.length > 0 ? <Fontes fontes={dados.fontes} /> : null}

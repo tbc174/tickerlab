@@ -996,6 +996,8 @@ export interface FichaDoCnpjV1 {
   como_era_em: string; // AAAA-MM-DD
   cadastro_na_receita: Record<string, CampoComFonteV1>;
   entregas?: Record<string, CampoComFonteV1>[] | null; // só da companhia aberta (DFP e ITR)
+  entregas_nao_disponiveis?: string[]; // documentos (DFP, ITR) que o portão não libera: não consultados (linha 897)
+  campos_do_cadastro_nao_disponiveis?: string[]; // campos do cadastro que o portão não libera (linhas 891 e 897)
 }
 
 /** A ficha da empresa (tela do analista, POST /v1/analista/ficha): o estado decide o que a tela mostra. */
@@ -1052,6 +1054,7 @@ export interface VinculosDaEmpresaV1 {
   como_era_em: string | null; // AAAA-MM-DD
   vinculos: VinculoDaEmpresaV1[];
   cortada: boolean;
+  tipos_de_vinculo_nao_disponiveis?: string[]; // tipos que o portão não libera: não foram consultados (linha 889)
   fontes: FonteDaFichaV1[];
   limites: string[];
 }

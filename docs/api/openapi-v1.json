@@ -7438,6 +7438,13 @@
             "title": "Limites",
             "type": "array"
           },
+          "tipos_de_vinculo_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tipos De Vinculo Nao Disponiveis",
+            "type": "array"
+          },
           "vinculos": {
             "items": {
               "$ref": "#/components/schemas/VinculoDaEmpresaV1"
@@ -7451,6 +7458,7 @@
           "como_era_em",
           "vinculos",
           "cortada",
+          "tipos_de_vinculo_nao_disponiveis",
           "fontes",
           "limites"
         ],

@@ -122,6 +122,34 @@ describe("ficha da empresa", () => {
     expect(within(entregas).getByText(/Sem entregas nesta ficha/)).toBeTruthy();
   });
 
+  it("documento não liberado não vira 'sem entregas' (linha 897)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, entregas: [], entregas_nao_disponiveis: ["DFP", "ITR"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
+    expect(within(entregas).queryByText(/Sem entregas nesta ficha/)).toBeNull();
+    expect(within(entregas).getByText("Nenhuma entrega dos documentos consultados.")).toBeTruthy();
+    // dois documentos
+    expect(
+      within(entregas).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os documentos DFP e os documentos ITR. A falta deles aqui não quer dizer que a empresa não os tenha entregado.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um documento não liberado, a tabela que vem leva o aviso do outro", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, entregas_nao_disponiveis: ["ITR"] } }));
+    await verFicha(CNPJ);
+    const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
+    expect(within(entregas).getByRole("table")).toBeTruthy();
+    // um documento só: a frase concorda
+    expect(within(entregas).getByText(/liberados para a tela: os documentos ITR\. A falta deles/)).toBeTruthy();
+  });
+
   it("dado ainda não liberado: é estado da tela, sem alerta de erro e com os limites à vista", async () => {
     abrir(() => respostaJson(200, NAO_LIBERADA));
     await verFicha(CNPJ);
