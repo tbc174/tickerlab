@@ -166,7 +166,7 @@ class TestCnesPeloDbc:
         assert linha["disponivel_em"].date() == date(2026, 9, 15)
 
     def test_cpf_de_pessoa_fisica_nao_entra(self):
-        conteudo = montar_dbc(CAMPOS, [_registro("1234567", "12345678909", pf_pj="1")])
+        conteudo = montar_dbc(CAMPOS, [_registro("1234567", "88800000046", pf_pj="1")])
         tabela = cnes.tabela_do_dbc(conteudo, 202608)
         assert tabela.iloc[0]["cnpj"] == ""
         assert tabela.iloc[0]["razao_social"] == ""

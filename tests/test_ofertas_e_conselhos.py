@@ -47,7 +47,7 @@ def _com_pessoas() -> bytes:
     cabecalho = linhas[0].rstrip("\r\n").split(";")
     campos = linhas[-1].rstrip("\r\n").split(";")
     campos[cabecalho.index("Nome_Vendedor")] = "JOAO FICTICIO DA SILVA"
-    campos[cabecalho.index("CNPJ_Ofertante")] = "123.456.789-09"
+    campos[cabecalho.index("CNPJ_Ofertante")] = "888.000.000-46"
     campos[cabecalho.index("Nome_Ofertante")] = "MARIA FICTICIA SOUZA"
     arquivos[ofertas.ANTIGAS] = "".join([*linhas, ";".join(campos) + "\r\n"]).encode(
         "latin-1"
@@ -230,7 +230,7 @@ def test_cpf_no_meio_de_um_texto_vira_vazio():
     linhas = arquivos[ofertas.RESOLUCAO_160].decode("latin-1").splitlines(keepends=True)
     cabecalho = linhas[0].rstrip("\r\n").split(";")
     campos = linhas[1].rstrip("\r\n").split(";")
-    campos[cabecalho.index("Gestor")] = "GESTORA FICTICIA, SOCIO 123.456.789-09"
+    campos[cabecalho.index("Gestor")] = "GESTORA FICTICIA, SOCIO 888.000.000-46"
     linhas[1] = ";".join(campos) + "\r\n"
     arquivos[ofertas.RESOLUCAO_160] = "".join(linhas).encode("latin-1")
     saida = io.BytesIO()

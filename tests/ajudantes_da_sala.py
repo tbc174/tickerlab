@@ -12,9 +12,13 @@ from fpdf import FPDF
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, TextStringObject
 
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
+
 # um CPF válido (os dígitos verificadores batem) e o mesmo número com o último dígito errado
-CPF_VALIDO = "529.982.247-25"
-CPF_INVALIDO = "529.982.247-26"
+CPF_VALIDO = formatado(CPF_DE_TESTE)
+CPF_INVALIDO = (
+    CPF_VALIDO[:-2] + f"{(int(CPF_VALIDO[-2:]) + 1) % 100:02d}"
+)  # o mesmo, com o dígito trocado
 
 _TIPOS_DO_XLSX = (
     '<?xml version="1.0" encoding="UTF-8"?>'

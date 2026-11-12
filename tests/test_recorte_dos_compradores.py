@@ -14,6 +14,7 @@ from base import vitrine
 from base.contrato import catalogo
 from base.controladas import cnpj14
 from base.dossie import COLUNAS_DE_PESSOA
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, cpf_que_tambem_passa_como_cnpj
 
 
 def _completado(cpf: str) -> str:
@@ -24,9 +25,9 @@ def _completado(cpf: str) -> str:
 
 
 # um CPF (inventado, de dígitos que conferem) completado pelo `cnpj14`: o dígito do CNPJ não confere
-CPF_COMPLETADO = _completado("12345678909")
+CPF_COMPLETADO = _completado(CPF_DE_TESTE)
 # outro CPF inventado cuja forma completada também passa no dígito do CNPJ (1 em cada ~70 CPFs passa)
-CPF_QUE_PASSA = _completado("47823085909")
+CPF_QUE_PASSA = _completado(cpf_que_tambem_passa_como_cnpj())
 # raiz da lista, 14 caracteres, dígito verificador que não confere
 DV_ERRADO = "11000001000101"
 # alvo, FIP e companhia aberta (PJ) e as raízes dos dois CPFs: a lista nunca deveria ter, mas a trava não confia

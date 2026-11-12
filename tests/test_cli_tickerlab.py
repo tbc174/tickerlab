@@ -2542,7 +2542,7 @@ def test_campo_unavailable_de_outra_rota_sai_pelo_proprio_nome(rodar, chave):
         "vinculos", "11111111000191", http=_resposta_fixa(corpo), **_com_chave(chave)
     )
     assert resultado.exit_code == 0, resultado.output
-    assert "link types: auditor" in resultado.stdout
+    assert "tipos de vínculo: auditor" in resultado.stdout
 
 
 def _ativos_da_anp() -> dict:
@@ -2594,3 +2594,21 @@ def test_ativos_em_json_passa_inteiro(rodar, chave):
 def test_ativos_sem_chave_sai_com_o_codigo_de_chave(rodar):
     resultado = rodar("ativos", "11111111000191")
     assert resultado.exit_code == 3
+
+
+@pytest.mark.parametrize(
+    ("comando", "campo", "valor", "rotulo"),
+    [
+        ("compradores", "unavailable_signals", "fund_partner", "sinais de comprador"),
+        ("empresa", "unavailable_filings", "ITR", "entregas à CVM"),
+        ("comparaveis", "unavailable_figures", "ebitda", "números dos comparáveis"),
+    ],
+)
+def test_rotulos_dos_campos_nao_disponiveis(
+    rodar, chave, comando, campo, valor, rotulo
+):
+    corpo = {campo: [valor], "sources": []}
+    args = ["--cnae", "47113"] if comando == "compradores" else ["11111111000191"]
+    resultado = rodar(comando, *args, http=_resposta_fixa(corpo), **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert f"{rotulo}: {valor}" in resultado.stdout
