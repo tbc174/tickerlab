@@ -46,6 +46,23 @@
     "url": "dados-e-cobertura"
   },
   {
+    "area": "ajuda",
+    "chave": "conectar",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "ConectarV1",
+      "rota": "/v1/conectar"
+    },
+    "descricao": "Ligue o TickerLab ao Claude ou ao ChatGPT e use a CLI: endereço do conector, passos, comandos e perguntas prontas para copiar.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Conectar",
+    "url": "conectar"
+  },
+  {
     "area": "ativo",
     "chave": "relatorio",
     "contrato": null,

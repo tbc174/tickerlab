@@ -231,6 +231,18 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
+        "conectar",
+        "Conectar",
+        GRUPO_TOPO,
+        ":material/cable:",
+        "Ligue o TickerLab ao Claude ou ao ChatGPT e use a CLI: endereço do conector, passos, comandos e "
+        "perguntas prontas para copiar.",
+        area=AREA_AJUDA,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/conectar", (), "ConectarV1"),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "relatorio",
         "Gerar relatório",
         GRUPO_TOPO,

@@ -1186,6 +1186,7 @@ def openapi_v1() -> dict:
     from fastapi import FastAPI
 
     from src.api_v1.analista import router as router_do_analista
+    from src.api_v1.conectar import router as router_do_conectar
     from src.api_v1.conta import router as router_da_conta
     from src.api_v1.dados_e_cobertura import router as router_dos_dados
     from src.api_v1.entrada import router as router_da_entrada
@@ -1198,6 +1199,7 @@ def openapi_v1() -> dict:
     app.include_router(router_da_entrada)
     app.include_router(router_do_que_mudou)
     app.include_router(router_dos_dados)
+    app.include_router(router_do_conectar)
     return app.openapi()
 
 

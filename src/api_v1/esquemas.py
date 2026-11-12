@@ -1866,3 +1866,23 @@ class DadosECoberturaV1(BaseModel):
     """O que a base serve de verdade (`GET /v1/base/tabelas` sem as colunas), na ordem do catálogo."""
 
     tabelas: list[TabelaDaCoberturaV1]
+
+
+class ComandoDaCliV1(BaseModel):
+    """Um comando da CLI para copiar, com o que ele faz."""
+
+    titulo: str
+    comando: str
+
+
+class ConectarV1(BaseModel):
+    """O texto da página Conectar (`src/conectar.py`): conector de IA e CLI, com a chave só de exemplo."""
+
+    endereco_do_conector: str
+    chave_de_exemplo: str
+    passos_no_claude: list[str]
+    passos_no_chatgpt: list[str]
+    cuidado_com_a_chave: str
+    comandos_da_cli: list[ComandoDaCliV1]
+    perguntas_prontas: list[str]
+    limites: list[str]

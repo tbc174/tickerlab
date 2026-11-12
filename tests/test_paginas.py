@@ -230,7 +230,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "o_que_mudou",
             },
         ),
-        ("ajuda", {"guia", "termos", "privacidade", "trade", "dados_e_cobertura"}),
+        ("ajuda", {"guia", "termos", "privacidade", "trade", "dados_e_cobertura", "conectar"}),
     ],
 )
 def test_cada_area_tem_as_paginas_do_mapa(area, chaves):
@@ -316,6 +316,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "boas_vindas_beta",
         "o_que_mudou",
         "dados_e_cobertura",
+        "conectar",
     }
 
 
