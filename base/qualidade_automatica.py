@@ -260,7 +260,7 @@ REGRAS: dict[str, Regra] = {
         ),
         periodo="competencia",
         opcionais={
-            "nucleo_ceg": "Núcleo do CEG da usina, quando há (só a geração distribuída tem)"
+            "nucleo_ceg": "a fonte deixa em branco o CEG de algumas usinas da opção de energia Geração (2023 a 2026); as demais linhas trazem 0"
         },
     ),
     "anp_concessionarios": Regra(

@@ -158,7 +158,7 @@ FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
 )
 # Sem pessoa por construção: a montagem nem deixa entrar o empresário individual (213-5) nem o
 # grupo 4 (linha 584; o contrato de cada uma diz). Não precisam da marca por linha.
-# sem pessoa por desenho: o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
+# sem pessoa por desenho (aneel_samp e anp_concessionarios: pela raiz do CNPJ, medida à parte): o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "aneel_samp",
