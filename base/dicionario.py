@@ -4431,6 +4431,10 @@ TABELAS: dict[str, Tabela] = {
             "linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM "
             "não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. "
             "Montada no envio, não fica no acervo de casa"
+            + _SEM_PESSOA_PELA_RAIZ
+            + ". **Alcance da marca:** vale para esta cópia, medida montada em 12/11/2026 (4.419 linhas, 4.384 "
+            "raízes, 0 fora da `cnpj_empresas_pj`, 0 CNPJ que não confere, 0 fundo que não é FIP); a tabela "
+            "inteira `registro_de_fundos` segue sem a marca"
         ),
         fonte="CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)",
         familia_da_fonte="cvm",

@@ -92,7 +92,6 @@ FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
         "achados_de_qualidade",
         "registro_de_fundos",
         "cadastro_de_fundos",
-        "fips_registrados",
         "cadastro_gestor_hist",
         "cadastro_admin_hist",
         "amostra_painel",
@@ -169,6 +168,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
         "fca_geral",
+        "fips_registrados",
         "rotulos_atraso",
     }
 )
