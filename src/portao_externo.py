@@ -207,6 +207,9 @@ _PROVA_DAS_AGENCIAS = (
     "ADR 0108 D2.2 e D3: dados abertos da agência (ANEEL e BC em ODbL; SUSEP, ANS e Anatel em CC BY), "
     "marca vendável, revenda com atribuição"
 )
+_PROVA_DA_ANP = (
+    "ADR 0108 D2.2 e D3: dados abertos da ANP, CC BY, revenda com atribuição"
+)
 # as séries de agência dos setores do relatório (molde D): fonte e tabela do dicionário
 _SERIES_DOS_SETORES = (
     ("aneel-samp", "aneel_samp"),
@@ -596,6 +599,27 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("controladas",),
         ("tipo", "participacao", "referencia"),
         _PROVA_CVM,
+    ),
+    # assets (linha 845): os ativos físicos da empresa nas bases abertas das agências, só pessoa jurídica (a
+    # rota tira quem a rede trata como pessoa). Da ANP, a parte da empresa em cada contrato de exploração e
+    # produção (os outros sócios e o nome do sócio, `empresa`, não são lidos). As barragens (SIGBM) e a CFEM
+    # da ANM o leitor já sabe servir, mas ficam sem linha até a leitura dos termos da ANM marcar a coleta e a
+    # guarda (`src/banco/coletas.py`): sem linha, o portão nega e o bloco nem aparece.
+    *_campos(
+        ("anp-concessionarios",),
+        "assets",
+        ("anp_concessionarios",),
+        (
+            "numero_do_contrato",
+            "bid",
+            "fase",
+            "nome_fantasia",
+            "bacia",
+            "ambiente",
+            "participacao_pct",
+            "operador",
+        ),
+        _PROVA_DA_ANP,
     ),
 )
 

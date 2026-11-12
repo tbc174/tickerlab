@@ -29,6 +29,7 @@ from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organiz
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
+    ativos,
     comparaveis,
     compradores,
     credito,
@@ -606,6 +607,29 @@ def eventos_da_empresa(
             _portao(conexao, contexto, eventos.CONJUNTO),
             do_plano if limit is None else min(limit, do_plano),
         ).eventos(numeros, dia, tipos, cursor),
+    )
+
+
+@router.get("/companies/{cnpj}/assets")
+def ativos_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """Os ativos físicos da empresa como eram em `known_at`, um bloco por base aberta de agência. Hoje sai um
+    bloco: os contratos de exploração e produção de petróleo e gás da ANP (`oil_gas_contracts`), com a parte
+    da empresa em cada um. Mineração (barragens e royalties da ANM) ainda não sai, e `not_covered` diz isso.
+    O bloco diz se achou a empresa, a fonte e o dia do dado mais novo; `not_covered` diz o que a rota não
+    traz. A lista vai até o limite de linhas do plano (`truncated`). MEI, empresário individual e o que não é
+    empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    return _um_pedido(
+        contexto,
+        ativos.CONJUNTO,
+        lambda conexao, porta: ativos.LeitorDeAtivos(
+            porta,
+            _portao(conexao, contexto, ativos.CONJUNTO),
+            acesso.linhas_por_resposta(contexto),
+        ).ativos(numeros, dia),
     )
 
 
