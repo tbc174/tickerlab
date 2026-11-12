@@ -64,6 +64,18 @@ def test_nova_versao_dos_termos_pede_novo_aceite(conexao, ana, monkeypatch):
     assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
 
 
+def test_versao_14_do_aceite_pede_novo_aceite_a_quem_aceitou_a_13(
+    conexao, ana, monkeypatch
+):
+    """Texto 16 da política (linha 809): o vínculo com a organização e o registro das consultas a pessoas
+    são usos novos de dado da conta, então quem aceitou a versão anterior aceita de novo."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-11.14"
+    monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2026-10-22.13")
+    conformidade.registrar_aceite(conexao, ana.id)
+    monkeypatch.undo()
+    assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
+
+
 def test_o_aceite_continua_depois_de_novo_login(conexao, ana):
     conformidade.registrar_aceite(conexao, ana.id)
     de_novo = entrar(conexao, "ana", "ana@exemplo.com", "Ana Souza")[0]
@@ -192,7 +204,7 @@ def test_texto_15_diz_os_6_digitos_do_meio_do_cpf_so_com_homonimo():
     inteiro, só os dígitos que a Receita publica, só para casar o pedido com a linha certa. Sem novo
     aceite: o parágrafo fala com o sócio da base, não com quem tem conta, e não cria uso novo.
     """
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.13"
     privacidade = conformidade.carregar_texto("privacidade")
     assert "versão 15" in privacidade
     assert "dizendo qual empresa e o seu nome como a Receita o publica" in privacidade
@@ -211,6 +223,9 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
     privacidade = conformidade.carregar_texto("privacidade")
     assert "versão 16" in privacidade
     for trecho in (
+        "consulta a base inteira num computador próprio, fora do app, inclusive pelo CPF",
+        "Nada disso aparece para contas, organizações ou terceiros.",
+        "Hoje essa cópia fica fechada: o site e a API que rodam nesse servidor não leem dados de pessoas.",
         "**Para todas as contas, a API, a linha de comando, o site e o conector de IA**",
         "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
         "nunca para lhe oferecer algo como consumidor",
@@ -243,7 +258,7 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
 
 def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
     """Versão 13 (22/10): quem entra no servidor e usa sudo fica 12 meses, cifrado, em outro computador."""
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-22.13"
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-10-22.13"
     privacidade = conformidade.carregar_texto("privacidade")
     assert "usa privilégios de administrador" in privacidade
     assert "guardado por **12 meses**, cifrado, em outro computador" in privacidade
