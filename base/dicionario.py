@@ -803,6 +803,95 @@ def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
     }
 
 
+_NOME_DO_TIPO_DA_ANVISA = {
+    "cosmeticos": "cosméticos",
+    "produtos_saude": "produtos para saúde",
+    "saneantes": "saneantes",
+    "alimentos": "alimentos",
+    "medicamentos": "medicamentos",
+    "produtos": "produtos (a soma dos cinco tipos de produto)",
+    "afe": "autorizações de funcionamento (AFE)",
+    "cbpf": "certificados de boas práticas de fabricação (CBPF)",
+}
+
+
+def _colunas_da_anvisa_por_empresa() -> dict[str, tuple[str, str]]:
+    """As colunas de contagem de `anvisa_por_empresa`: o total e os ativos de cada tipo."""
+    colunas: dict[str, tuple[str, str]] = {}
+    for tipo, nome in _NOME_DO_TIPO_DA_ANVISA.items():
+        colunas[f"{tipo}_total"] = (
+            f"Registros de {nome} da empresa, em vigor ou não",
+            NUMERO,
+        )
+        colunas[f"{tipo}_ativos"] = (
+            f"Registros de {nome} da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+            NUMERO,
+        )
+    return colunas
+
+
+def _tabela_da_anvisa_por_empresa() -> dict[str, Tabela]:
+    """Registros da Anvisa contados por empresa (linha 860, `base/anvisa_porte.py`): o sinal de porte de empresa
+    fechada na busca de prospecção."""
+    return {
+        "anvisa_por_empresa": Tabela(
+            descricao=(
+                "Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, "
+                "saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas "
+                "práticas): o total e os que estão em vigor, uma linha por raiz de CNPJ e por retrato do "
+                "arquivo da Anvisa. **É um sinal de porte, uma aproximação, não faturamento:** um registro "
+                "não diz quanto a empresa vende, e empresa pequena pode ter muitos produtos. **Sem "
+                "pessoa:** só pessoa jurídica; a raiz que tem qualquer linha de empresário individual, MEI, "
+                "natureza do grupo 4 ou CNPJ que a Receita guardada não tem sai inteira, nos totais e nos "
+                "ativos. Cada registro conta uma vez (a versão mais nova vista até o retrato), o que saiu "
+                "do arquivo não conta, e situação vazia ou fora do vocabulário nunca conta como ativa. "
+                "Medicamento com apresentações de situações diferentes ('Ativo / Inativo') conta como "
+                "ativo. O retrato mais antigo é de 2026-10-29 (o arquivista começou ali): antes disso a "
+                "base não viu a Anvisa."
+            ),
+            fonte=(
+                "Anvisa: dados abertos, consultas de empresas e de produtos, contados de "
+                "`anvisa_registros` (`scripts/montar_anvisa_por_empresa.py`)"
+            ),
+            familia_da_fonte="anvisa",
+            frequencia="Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)",
+            atraso=(
+                "Herda a de `anvisa_registros`: a fonte publica o estado de hoje sem dizer desde quando, e a "
+                "porta, como nas outras fontes de governo, só mostra o retrato a partir do último dia do mês "
+                "dele"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/anvisa_por_empresa/anvisa_por_empresa.parquet` (servidor de "
+                "casa, `scripts/montar_anvisa_por_empresa.py`)"
+            ),
+            linhagem=(
+                "Derivada de `anvisa_registros`; o manifesto lista o SHA-256 de cada cadastro lido. "
+                + COM_VERSAO_DO_CODIGO
+            ),
+            colunas={
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "disponivel_em": (
+                    (
+                        "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até "
+                        "ele). A porta só o mostra a partir do último dia do mês"
+                    ),
+                    DATA,
+                ),
+                "trata_como_pessoa": (
+                    (
+                        "Sempre falso: a raiz com alguma linha de pessoa já saiu na montagem. Fica para a "
+                        "porta recusar uma linha que um dia vier diferente (ADR 0075)"
+                    ),
+                    SIM_OU_NAO,
+                ),
+                **_colunas_da_anvisa_por_empresa(),
+                "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+                "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+            },
+        ),
+    }
+
+
 def _tabelas_das_sancoes() -> dict[str, Tabela]:
     """As sanções por CNPJ (`base/sancoes.py`): uma tabela por família de licença, para a marca da CGU
     (só uso interno) não se misturar com a da ANS (vende com atribuição)."""
@@ -7074,6 +7163,7 @@ TABELAS: dict[str, Tabela] = {
     **_historicos_do_cnpj(),
     **_tabelas_sem_pessoa_do_cnpj(),
     **_tabela_de_entradas_de_socio_pj(),
+    **_tabela_da_anvisa_por_empresa(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -9452,6 +9542,7 @@ _CONTRATO = {
     "processos_datajud_movimentos": _contrato(modulo="governo_e_sancoes", chaves=("numero_processo", "grau", "aconteceu_em", "movimento_codigo", "complementos"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_DATAJUD),
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "anvisa_por_empresa": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj_basico", "disponivel_em"), datas={"publico_em": "disponivel_em", "coletado_em": "montado_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -9715,6 +9806,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "anvisa_registros": {
         "pasta": "anvisa_registros",
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "anvisa_por_empresa": {
+        "pasta": "anvisa_por_empresa",
+        "nao_nulas": ("cnpj_basico", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+        "faixas": {c: _SEM_NEGATIVO for c in _colunas_da_anvisa_por_empresa()},
     },
     "antt_rntrc": {
         "pasta": "antt_rntrc",
