@@ -508,6 +508,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "ans_operadoras",
             "susep_cadastro",
             "anvisa_registros",
+            "anvisa_por_empresa",
             "anp_concessionarios",
             "antt_rntrc",
             "mapa_sipeagro",

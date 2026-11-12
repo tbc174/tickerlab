@@ -730,16 +730,23 @@ def test_so_e_consultavel_a_tabela_que_diz_o_dia_publico_e_separa_a_pessoa(clien
 
 
 @pytest.mark.parametrize(
-    "nome", ["entradas_de_socio_pj", "cnpj_situacao_cadastral", "controladas_pj"]
+    "nome",
+    [
+        "entradas_de_socio_pj",
+        "cnpj_situacao_cadastral",
+        "controladas_pj",
+        "anvisa_por_empresa",
+    ],
 )
 def test_a_que_so_a_api_externa_serve_nao_sai_na_consulta_aberta(cliente, nome):
-    """Linhas 810, 841 e 844 (Diretoria, 11 e 12/11/2026): as entradas de sócio PJ, a situação cadastral e a
-    cópia reduzida das controladas vão ao VPS só para a API externa, atrás do portão e da prontidão; a
-    consulta aberta dá o mesmo 404 e nem a lista as mostra."""
+    """Linhas 810, 841, 844 e 860 (Diretoria, 11 e 12/11/2026): as entradas de sócio PJ, a situação cadastral, a
+    cópia reduzida das controladas e a contagem de registros da Anvisa vão ao VPS só para a API externa, atrás do
+    portão e da prontidão; a consulta aberta dá o mesmo 404 e nem a lista as mostra."""
     assert {
         "entradas_de_socio_pj",
         "cnpj_situacao_cadastral",
         "controladas_pj",
+        "anvisa_por_empresa",
     } == SO_PELA_API_EXTERNA
     assert not pode_consultar(nome)
     assert cliente.get(f"{ROTA}/{nome}").json() == {

@@ -120,6 +120,7 @@ ARQUIVOS: dict[str, str] = {
     "processos": "processos/*.parquet",
     "processos_partes": "processos_partes/*.parquet",
     "anvisa_registros": "anvisa_registros/*.parquet",
+    "anvisa_por_empresa": "anvisa_por_empresa/*.parquet",
     "antt_rntrc": "antt_rntrc/*.parquet",
     "mapa_sipeagro": "mapa_sipeagro/*.parquet",
     "anatel_outorgas": "anatel_outorgas/*.parquet",

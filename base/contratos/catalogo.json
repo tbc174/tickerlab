@@ -7344,6 +7344,118 @@
       "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
       "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
     },
+    "anvisa_por_empresa": {
+      "tabela": "anvisa_por_empresa",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Dia do arquivo da Anvisa que este retrato conta (só o que a base tinha visto até ele), que é o dia em que o arquivista o viu. A porta o mostra desde esse dia",
+          "unidade": "data (dia)"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Sempre falso: a raiz com alguma linha de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "cosmeticos_total": {
+          "descricao": "Registros de cosméticos da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "cosmeticos_ativos": {
+          "descricao": "Registros de cosméticos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "produtos_saude_total": {
+          "descricao": "Registros de produtos para saúde da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "produtos_saude_ativos": {
+          "descricao": "Registros de produtos para saúde da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "saneantes_total": {
+          "descricao": "Registros de saneantes da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "saneantes_ativos": {
+          "descricao": "Registros de saneantes da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "alimentos_total": {
+          "descricao": "Registros de alimentos da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "alimentos_ativos": {
+          "descricao": "Registros de alimentos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "medicamentos_total": {
+          "descricao": "Registros de medicamentos da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "medicamentos_ativos": {
+          "descricao": "Registros de medicamentos da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "produtos_total": {
+          "descricao": "Registros de produtos (a soma dos cinco tipos de produto) da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "produtos_ativos": {
+          "descricao": "Registros de produtos (a soma dos cinco tipos de produto) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "afe_total": {
+          "descricao": "Registros de autorizações de funcionamento (AFE) da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "afe_ativos": {
+          "descricao": "Registros de autorizações de funcionamento (AFE) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "cbpf_total": {
+          "descricao": "Registros de certificados de boas práticas de fabricação (CBPF) da empresa, em vigor ou não",
+          "unidade": "número inteiro"
+        },
+        "cbpf_ativos": {
+          "descricao": "Registros de certificados de boas práticas de fabricação (CBPF) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo)",
+          "unidade": "número inteiro"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_basico",
+        "disponivel_em"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em",
+        "coletado_em": "montado_em"
+      },
+      "sinonimos_de_tempo": {
+        "disponivel_em": "publico_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-29",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (um retrato por dia de arquivo da Anvisa que o arquivista guardou)",
+      "atraso": "A fonte publica o estado de hoje sem dizer desde quando. **Por dia, não por mês** (decisão da Diretoria, 12/11/2026, só para esta tabela): o retrato vale desde o dia em que o arquivista viu o arquivo (`visto_em`), nunca desde a data de referência da Anvisa nem um dia antes. A `anvisa_registros`, de que ela deriva, continua por mês (contrato publicado; mudar pede versão maior). Motivo: a contagem é nossa, feita sobre o que o arquivista já guardou, e esperar o fim do mês esconderia um dado que a base já tinha na véspera",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
     "pgfn_divida": {
       "tabela": "pgfn_divida",
       "modulo": "governo_e_sancoes",

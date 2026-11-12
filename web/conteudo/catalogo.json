@@ -2556,6 +2556,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Anvisa",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-11-06",
       "licenca": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
       "modulos": [
@@ -2607,17 +2618,6 @@
         "governo_e_sancoes"
       ],
       "orgao": "Ancine",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Anvisa",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -2900,7 +2900,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 34,
-    "tabelas": 121,
+    "tabelas": 122,
     "temas": [
       {
         "chave": "cvm",
@@ -2962,7 +2962,7 @@
           "Ancine",
           "Ministério da Saúde (DATASUS)"
         ],
-        "tabelas": 13,
+        "tabelas": 14,
         "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
         "titulo": "Licenças e registros nas agências"
       },
@@ -3005,7 +3005,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 57
+      "tabelas": 58
     },
     {
       "chave": "credito_e_fidc",
@@ -7967,6 +7967,17 @@
       "tabela": "entradas_de_socio_pj"
     },
     {
+      "atraso": "A fonte publica o estado de hoje sem dizer desde quando",
+      "consultavel": false,
+      "frase": "Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas práticas).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Anvisa",
+      "situacao": "licenciada",
+      "tabela": "anvisa_por_empresa"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -8864,6 +8875,6 @@
     "fontes": 46,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 158
+    "tabelas": 159
   }
 }
