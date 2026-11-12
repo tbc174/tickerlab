@@ -145,3 +145,14 @@ def test_o_recorte_ve_cpf_separado_por_espaco_nao_separavel_e_quebra_de_linha(tm
     )
     with pytest.raises(envio.RecorteErro, match="CPF no texto"):
         envio.conferir_sem_cpf_no_texto(duckdb.connect(), "eventos", arquivo)
+
+
+def test_os_leitores_de_ratings_e_de_rotulos_ja_entregam_o_assunto_sem_cpf():
+    from base import ratings, rotulos
+
+    conteudo = _zip_do_ipe_com_cpf()
+    for leitor in (ratings.ler_ipe_bruto, rotulos._ler_ipe_bruto):
+        bruto = leitor(conteudo)
+        assert len(bruto) > 0
+        assert quantos_com_cpf_valido(bruto["Assunto"]) == 0
+        assert bruto["Assunto"].str.contains(MARCA, regex=False).all()
