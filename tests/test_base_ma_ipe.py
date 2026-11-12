@@ -13,6 +13,7 @@ from src import acervo
 from src import versao_do_codigo as vc
 from src.banco.coletas import Marca, registrar
 from src.banco.conexao import criar_engine, migrar_para
+from tests.ajudantes_de_cpf import cpf_que_confere, formatado
 from tests.test_ratings import _linha, _zip
 
 FATO = ("Fato Relevante", "")
@@ -216,7 +217,12 @@ def test_referencia_depois_da_entrega_nao_tira_a_tabela_do_contrato(tmp_path):
 def test_cpf_no_assunto_nao_vai_para_os_candidatos():
     """O CPF (inventado, com verificadores que conferem) que a empresa escreve no assunto vira a marca."""
     tabela = _candidatos(
-        _linha(*FATO, "Incorporação da Beta pelo sócio CPF 123.456.789-09 hoje")
+        _linha(
+            *FATO,
+            "Incorporação da Beta pelo sócio CPF "
+            + formatado(cpf_que_confere("888777666"))
+            + " hoje",
+        )
     )
     assert (
         tabela.iloc[0]["assunto"]
