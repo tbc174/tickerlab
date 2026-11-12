@@ -164,6 +164,8 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "dias_uteis_de_atraso": "business_days_late",
     "situacao_da_entrega": "filing_status",
     "entregas_nao_disponiveis": "unavailable_filings",
+    # o campo do cadastro que o portão não libera no perfil (linha 891)
+    "campos_do_cadastro_nao_disponiveis": "unavailable_registration_fields",
     # comparables: os pares da companhia aberta (linha 736, PR 3), com os números do último DFP
     "grupo_de_setores": "sector_group",
     "empresa_pedida": "subject_company",

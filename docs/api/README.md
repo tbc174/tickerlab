@@ -239,8 +239,8 @@ quando um pedido junta partes que o portão libera uma a uma (os tipos de evento
 dos compradores, os documentos das entregas, os números dos comparáveis), a parte que a organização não tem não
 some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz a lista das partes
 pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`, `unavailable_link_types`
-em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` em `/profile`, `unavailable_figures` em
-`/comparables`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
+em `/links`, `unavailable_signals` em `/buyers`, `unavailable_filings` e `unavailable_registration_fields` em `/profile`,
+`unavailable_figures` em `/comparables`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
 entra na lista: nos dois casos ela não foi consultada. Os `limits` só falam das partes servidas
 e, quando há parte de fora, trazem a frase de que ela não foi consultada. Se nenhuma parte pedida está liberada,
 a resposta é 404 `not_available`, como o resto do contrato. Todo conjunto novo com partes segue o mesmo molde.
@@ -262,6 +262,11 @@ O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/fic
 - `unavailable_filings` (linha 881): os documentos (`DFP`, `ITR`) que o portão não libera para a organização.
   Eles não foram consultados: a lista de entregas não diz nada sobre eles, e os `limits` avisam. Sem nenhum
   documento, `periodic_filings` não sai.
+- `unavailable_registration_fields` (linha 891): os campos do cadastro na Receita, com o nome de fora (ex.:
+  `registration_status`, `simples_nacional`), que o portão não libera para a organização ou cuja tabela a base
+  não tem. Eles não foram consultados: sem eles, `registration` não diz nada sobre a situação cadastral nem
+  sobre o Simples, e os `limits` avisam. O campo liberado que não sai porque a base não tinha versão dele no
+  dia (ex.: o Simples de uma empresa que nunca optou) não entra na lista.
 
 Sem olhar o futuro: a entrega que só aconteceu depois de `known_at` sai `not_filed`, sem a data dela, e
 os dias úteis contam até o dia pedido; a falta de um documento vale pelo prazo e só conta até o dia em

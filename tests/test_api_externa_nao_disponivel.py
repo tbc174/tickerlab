@@ -78,6 +78,7 @@ def test_o_aviso_dos_eventos_continua_o_mesmo_texto_do_contrato():
         (vinculos.NAO_DISPONIVEIS, "unavailable_link_types"),
         (compradores.NAO_DISPONIVEIS, "unavailable_signals"),
         (ficha.NAO_DISPONIVEIS, "unavailable_filings"),
+        (ficha.CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "unavailable_registration_fields"),
         (comparaveis.NAO_DISPONIVEIS, "unavailable_figures"),
     ],
 )
