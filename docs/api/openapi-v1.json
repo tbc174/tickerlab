@@ -2936,6 +2936,13 @@
               }
             ],
             "title": "Proximo Cursor"
+          },
+          "tipos_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tipos Nao Disponiveis",
+            "type": "array"
           }
         },
         "required": [
@@ -2944,6 +2951,7 @@
           "eventos",
           "cortada",
           "proximo_cursor",
+          "tipos_nao_disponiveis",
           "fontes",
           "limites"
         ],

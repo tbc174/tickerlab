@@ -1608,6 +1608,8 @@ class EventosDaEmpresaV1(BaseModel):
     eventos: list[EventoDaEmpresaV1]
     cortada: bool
     proximo_cursor: str | None
+    # os tipos que o portão não libera para a tela: não foram consultados, a lista não diz nada sobre eles
+    tipos_nao_disponiveis: list[str]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
 
@@ -1627,8 +1629,10 @@ def de_eventos_do_analista(
         eventos=[_evento_do_analista(linha) for linha in corpo.get("eventos", [])],
         cortada=bool(corpo.get("cortada", False)),
         proximo_cursor=corpo.get("proximo_cursor"),
+        tipos_nao_disponiveis=list(corpo.get("tipos_nao_disponiveis", [])),
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
-        limites=list(limites),
+        # com eventos servidos, os limites do corpo (só dos tipos servidos); sem eles, o texto fixo
+        limites=list(corpo.get("limites", limites)),
     )
 
 
