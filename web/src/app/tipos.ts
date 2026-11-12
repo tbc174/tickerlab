@@ -1027,6 +1027,7 @@ export interface EventosDaEmpresaV1 {
   eventos: EventoDaEmpresaV1[];
   cortada: boolean;
   proximo_cursor: string | null; // abre a página seguinte
+  tipos_nao_disponiveis?: string[]; // tipos que o portão não libera: não foram consultados (linha 878)
   fontes: FonteDaFichaV1[];
   limites: string[];
 }
