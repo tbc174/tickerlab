@@ -340,17 +340,22 @@ def _cabecalho_csv(colunas: list[str]) -> bytes:
     return _linha_csv([*colunas, *COLUNAS_DA_ORIGEM], BOM)
 
 
+def tabelas_abertas() -> list[dict[str, object]]:
+    """As tabelas da lista pública (as mesmas de `GET /v1/base/tabelas`), para quem precisa delas por dentro."""
+    return [
+        entrada
+        for entrada in _lista()
+        if regras.pode_consultar_aberto(str(entrada["tabela"]))
+    ]
+
+
 # --- as rotas -------------------------------------------------------------------------------------
 @router.get("")
 def listar(request: Request) -> JSONResponse:
     """As tabelas que podem ser consultadas e exportadas, com colunas, chaves, fonte e licença."""
     return JSONResponse(
         {
-            "tabelas": [
-                entrada
-                for entrada in _lista()
-                if regras.pode_consultar_aberto(str(entrada["tabela"]))
-            ],
+            "tabelas": tabelas_abertas(),
             "limite_maximo": LIMITE_MAXIMO,
             "teto_do_csv": TETO_DO_CSV,
         },

@@ -18,6 +18,8 @@ import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
 import { MapaDoCafe } from "./telas/MapaDoCafe";
 import { MeusDados } from "./telas/MeusDados";
+import { Conectar } from "./telas/Conectar";
+import { DadosECobertura } from "./telas/DadosECobertura";
 import { OQueMudou } from "./telas/OQueMudou";
 import { PainelDoCafe } from "./telas/PainelDoCafe";
 import { Planos } from "./telas/Planos";
@@ -49,6 +51,8 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   encontrar_empresas: (pagina) => <EncontrarEmpresas pagina={pagina} />,
   comparar_empresas: (pagina) => <CompararEmpresas pagina={pagina} />,
   o_que_mudou: (pagina) => <OQueMudou pagina={pagina} />,
+  dados_e_cobertura: (pagina) => <DadosECobertura pagina={pagina} />,
+  conectar: (pagina) => <Conectar pagina={pagina} />,
   relatorio_do_setor: (pagina) => <RelatorioDoSetor pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
