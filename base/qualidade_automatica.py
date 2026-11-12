@@ -221,6 +221,7 @@ REGRAS: dict[str, Regra] = {
     # ---- tabelas do roteiro de M&A (linha 784, piloto D11): chave = a do dicionário; primeira medida de 12/11/2026
     "rotulos_atraso": Regra(chave=("cnpj", "documento", "referencia"), periodo="prazo"),
     "cnpj_situacao_cadastral": Regra(chave=("cnpj", "mes_do_retrato")),
+    "cnpj_situacao_especial": Regra(chave=("cnpj", "mes_do_retrato")),
     "susep_seguros": Regra(
         chave=("competencia", "coenti", "cogrupo", "coramo", "visto_em"),
         periodo="competencia",
@@ -312,6 +313,12 @@ REGRAS: dict[str, Regra] = {
         },
         repetidas_aceitas=17,
         porque_repetidas="linhas idênticas em todas as colunas, nas colunas que a base guarda (o diretor responsável sai na montagem); a base não corrige",
+    ),
+    # cópia reduzida que vai ao VPS (linha 844): uma linha por fundo e registro; montada no envio, medida na cópia montada
+    "fips_registrados": Regra(
+        chave=("CNPJ_Fundo", "Data_Registro"),
+        repetidas_aceitas=2,
+        porque_repetidas="2 pares de fundo e data de registro (4 linhas) vêm da CVM com duas datas de cancelamento diferentes; são registros distintos na origem e a base não escolhe um",
     ),
     "pgfn_divida": Regra(
         chave=(
