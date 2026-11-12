@@ -1,0 +1,57 @@
+{
+  "tabela": "controladas_pj",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj_companhia": {
+      "descricao": "CNPJ da companhia que informou (14 dígitos)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da sociedade (14 dígitos); vazio só na linha de marca do documento",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "controlada, coligada ou vazio (não informado, ou a linha de marca)",
+      "unidade": "texto"
+    },
+    "participacao": {
+      "descricao": "Participação da companhia na sociedade",
+      "unidade": "pontos percentuais (66,25 = 66,25%)"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE",
+      "unidade": "número inteiro"
+    },
+    "publico_em": {
+      "descricao": "Data em que a CVM recebeu essa versão do FRE (`conhecido_em`)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj_companhia",
+    "referencia",
+    "versao",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "publico_em"
+  },
+  "sinonimos_de_tempo": {
+    "referencia": "referencia",
+    "publico_em": "publico_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada envio do recorte ao VPS (`scripts/montar_recorte_da_api.py --degrau 4`)",
+  "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `publico_em`"
+}

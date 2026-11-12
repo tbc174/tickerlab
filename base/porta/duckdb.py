@@ -59,6 +59,7 @@ ARQUIVOS: dict[str, str] = {
     "cadastro_gestor_hist": "fidc/cadastro/hist_gestor.parquet",
     "cadastro_admin_hist": "fidc/cadastro/hist_admin.parquet",
     "registro_de_fundos": "fidc/cadastro/registro_fundo.parquet",
+    "fips_registrados": "fips_registrados/*.parquet",  # só no VPS (linha 844)
     "painel_dos_fundos": "fundos/painel_*/*.parquet",  # os dois: o por empresa não tem `emissor`
     "cobertura_dos_fundos": "fundos/cobertura.parquet",
     "buracos_dos_fundos": "fundos/buracos.parquet",
@@ -174,6 +175,7 @@ ARQUIVOS: dict[str, str] = {
     "noticias_fatos": "noticias_fatos/*.parquet",
     "noticias_numeros": "noticias_numeros/*.parquet",
     "controladas": "controladas/*.parquet",
+    "controladas_pj": "controladas_pj/*.parquet",  # só no VPS (linha 844)
     "rotulos_atraso": "rotulos_atraso/rotulos_atraso.parquet",
     "colunas_atraso": "colunas_atraso/colunas_atraso.parquet",
     "empresa_serie": "empresa_serie/empresa_serie.parquet",
