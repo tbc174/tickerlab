@@ -6,11 +6,17 @@ mesmo desenho do deck do app (`src/apresentacao_pptx.py`). Assim o arquivo nunca
 da mesma chave não teria. Cada tabela leva embaixo a fonte e o dia em que o dado ficou público; o fim do
 deck tem as fontes (licença e atribuição) e os limites.
 
+Dado de piloto (ADR 0108, Emenda 2, D11.3; linha 875): se a resposta tem algum campo liberado pela prontidão
+de piloto, todo slide leva a frase `base.prontidao.AVISO_DE_PILOTO` ao lado da fonte e da data, e o slide dos
+limites também (`com_aviso_de_piloto`). É a mesma leitura mais estreita do JSON: o campo de piloto pode ter
+escolhido ou ordenado as linhas de outra tabela, então nenhum slide fica sem a frase.
+
 Cuidados do arquivo: o texto vem de dado público (nome de companhia, avisos da ficha da noite) e passa
 por `_limpo` (caractere de controle quebraria o XML do `.pptx`) e por `tirar_cpf`; cada tabela mostra no
 máximo `LINHAS_POR_TABELA` linhas e o deck no máximo `SLIDES_NO_MAXIMO` slides (o resto sai no JSON).
 """
 
+import dataclasses
 import re
 from collections.abc import Callable, Iterable
 from datetime import date, datetime
@@ -19,6 +25,7 @@ from zoneinfo import ZoneInfo
 from base import cnpj as cnpj_da_base
 from base import receita_codigos
 from base.pessoas.sem_cpf import tirar_cpf
+from base.prontidao import AVISO_DE_PILOTO
 from src import dossie
 from src.api_externa.conjuntos import ficha
 from src.apresentacao import (
@@ -369,6 +376,26 @@ def da_empresa(corpo: dict, fontes: list[dict], gerado_em: datetime) -> Apresent
         f"CNPJ {cnpj}",
         AVISO_DO_DECK,
         tuple(_no_maximo(slides, fechamento, onde)),
+    )
+
+
+# --- o dado de piloto ----------------------------------------------------------------------------
+
+
+def _slide_com_aviso(slide: Slide) -> Slide:
+    """A frase primeiro nas notas (a letra miúda da fonte e da data), para a caixa nunca a esconder."""
+    topicos = (
+        (*slide.topicos, AVISO_DE_PILOTO) if slide.tipo == LIMITES else slide.topicos
+    )
+    return dataclasses.replace(
+        slide, notas=(AVISO_DE_PILOTO, *slide.notas), topicos=topicos
+    )
+
+
+def com_aviso_de_piloto(deck: Apresentacao) -> Apresentacao:
+    """O deck com a frase do piloto em todo slide e nos limites (D11.3: bloco de piloto sem o aviso é P1)."""
+    return dataclasses.replace(
+        deck, slides=tuple(_slide_com_aviso(slide) for slide in deck.slides)
     )
 
 

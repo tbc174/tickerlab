@@ -41,7 +41,7 @@ import pandas as pd
 from base import cnpj as cnpj_
 from base.cnpj import SEPARADORES
 from base.porta import Porta
-from base.porta.duckdb import nome_da_view
+from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.porta.rede import ID_DE_ENTIDADE, OUTROS_SISTEMAS, resolver, views
 from base.rede.entidades import natureza_de_pessoa
 from src.api_externa.conjuntos import Permitido
@@ -189,6 +189,48 @@ def _pela_rede(porta: Porta, cnpj: str) -> bool | None:
 
 def _view(tabela: str) -> str:
     return '"' + nome_da_view(tabela) + '"'
+
+
+def mes_do_retrato_publico(porta: Porta, como_era_em: date) -> str | None:
+    """O mês do retrato mais novo de `cnpj_empresas_pj` já público em `como_era_em`; None se a base não tem a
+    lista ou se nenhum retrato era público. A raiz só vale se estiver neste retrato: a que saiu da lista não
+    leva o nome de um retrato mais velho (P2 da revisão cruzada do #1075)."""
+    if LISTA_DE_EMPRESAS not in views(porta.con):
+        return None
+    existentes = porta.colunas(LISTA_DE_EMPRESAS)
+    (mes,) = porta.con.execute(
+        f"SELECT max({MES}) FROM {_view(LISTA_DE_EMPRESAS)} "
+        f"WHERE {condicao_como_era(existentes, LISTA_DE_EMPRESAS)}",
+        {"dia": dia_de(como_era_em)},
+    ).fetchone() or (None,)
+    return None if mes is None else str(mes)
+
+
+def retratos_de_empresa(
+    porta: Porta, raizes: Iterable[str], como_era_em: date, campos: tuple[str, ...]
+) -> dict[str, pd.Series]:
+    """Por raiz, a linha de `cnpj_empresas_pj` no retrato mais novo já público em `como_era_em` (com `campos`,
+    o mês e o dia público), só das raízes que estão nele uma só vez com natureza de empresa (na dúvida, não)."""
+    pedidas = sorted(set(raizes))
+    mes = mes_do_retrato_publico(porta, como_era_em) if pedidas else None
+    if mes is None:
+        return {}
+    linhas = porta.ler(
+        LISTA_DE_EMPRESAS,
+        como_era_em=como_era_em,
+        filtros={RAIZ: pedidas, MES: mes},
+        colunas=[
+            RAIZ,
+            *dict.fromkeys((*campos, "natureza_juridica")),
+            MES,
+            PUBLICADO_EM,
+        ],
+    )
+    return {
+        str(raiz): da_raiz.iloc[0]
+        for raiz, da_raiz in linhas.groupby(RAIZ, sort=True)
+        if _natureza_de_empresa(list(da_raiz["natureza_juridica"]))
+    }
 
 
 def _retrato_das_duas_listas(porta: Porta) -> str | None:
@@ -414,21 +456,14 @@ class LeitorDeEmpresas:
     def _do_retrato_pj(self, raiz: str, como_era_em: date) -> dict[str, dict]:
         """A razão social e a natureza do retrato mais novo de `cnpj_empresas_pj` já
         público em `como_era_em`, com o mês dele; nada se a base não tem a lista, se o retrato ainda não era
-        público ou se a raiz não está nele uma só vez com natureza de empresa (na dúvida, não)."""
-        if LISTA_DE_EMPRESAS not in views(self.porta.con):
+        público ou se a raiz não está nele (nem que esteja num retrato mais velho) uma só vez com natureza de
+        empresa (na dúvida, não)."""
+        linha = retratos_de_empresa(
+            self.porta, [raiz], como_era_em, CAMPOS_DO_RETRATO_PJ
+        ).get(raiz)
+        if linha is None:
             return {}
-        linhas = self.porta.ler(
-            LISTA_DE_EMPRESAS,
-            como_era_em=como_era_em,
-            filtros={RAIZ: raiz},
-            colunas=[*CAMPOS_DO_RETRATO_PJ, MES, PUBLICADO_EM],
-        )
-        if linhas.empty:
-            return {}
-        do_mes = linhas[linhas[MES] == linhas[MES].max()]
-        if not _natureza_de_empresa(list(do_mes["natureza_juridica"])):
-            return {}
-        linha = do_mes.iloc[0].copy()
+        linha = linha.copy()
         linha[RETRATO_DO_CADASTRO] = linha[MES]
         return self._servidos(linha, (*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO))
 

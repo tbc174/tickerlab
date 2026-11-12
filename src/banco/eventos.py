@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime
 import pandas as pd
 import sqlalchemy as sa
 
+from base.cpf_no_texto import mascarar_cpf
 from src.banco.modelo import eventos, eventos_versoes, tickers_dos_emissores
 from src.eventos import FONTE_IPE
 from src.links_das_fontes import link_da_fonte
@@ -144,7 +145,7 @@ def gravar_eventos(
             "empresa": l.empresa[:200],
             "categoria": l.categoria[:160],
             "tipo": (l.tipo or "")[:300],
-            "assunto": l.assunto or "",
+            "assunto": mascarar_cpf(l.assunto),
             "rotulo": l.rotulo[:60],
             "tema": l.tema,
             "materialidade": int(l.materialidade),

@@ -175,6 +175,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     # events: os documentos do IPE e as trocas de auditor (linha 736, PR 4)
     "eventos": "events",
     "tipo_de_evento": "event_type",
+    "tipos_nao_disponiveis": "unavailable_event_types",
     "protocolo": "filing_id",
     "categoria": "category",
     "link": "document_url",

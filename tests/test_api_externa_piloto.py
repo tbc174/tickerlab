@@ -246,18 +246,20 @@ def test_tabela_sem_a_marca_de_pessoa_decidida_nunca_sai(duas, monkeypatch) -> N
     assert _get(cliente, chaves["piloto"]).status_code == 404
 
 
-def test_com_a_marca_de_pessoa_do_dicionario_as_demonstracoes_nao_saem_hoje(
+def test_com_a_marca_de_pessoa_do_dicionario_as_demonstracoes_saem_pelo_piloto(
     duas, monkeypatch
 ) -> None:
-    """As demonstrações ainda estão no inventário sem a marca (fila 789): com a regra de verdade, nem o piloto."""
+    """Com a regra de verdade da marca (fila 784), as demonstrações têm a marca decidida e saem pelo piloto; uma
+    tabela que ainda está no inventário sem a marca não (a regra, e não o teste, é quem decide)."""
     cliente, chaves, _ator, _org = duas
     monkeypatch.setattr(
         rotas,
         "regras_da_api",
         lambda: _regras(pessoa_decidida=prontidao.tabelas_com_pessoa_decidida()),
     )
-    assert TABELA not in prontidao.tabelas_com_pessoa_decidida()
-    assert _get(cliente, chaves["piloto"]).status_code == 404
+    assert TABELA in prontidao.tabelas_com_pessoa_decidida()
+    assert "cnpj_simples_historico" not in prontidao.tabelas_com_pessoa_decidida()
+    assert _get(cliente, chaves["piloto"]).status_code == 200
 
 
 # ---------------------------------------------------------------- um campo pronto e outro só de piloto
@@ -353,8 +355,8 @@ def test_piloto_sem_registro_aberto_nao_sai() -> None:
     assert piloto.registrar("cvm-dfp", "valor", LIBERADO_PELO_PILOTO) is False
 
 
-def test_o_json_abre_o_registro_e_o_deck_nao(banco, monkeypatch) -> None:
-    """O deck (linha 782) ainda não leva a frase: sem o registro aberto, campo de piloto não entra no `.pptx`."""
+def test_quem_nao_abre_o_registro_nao_recebe_piloto(banco, monkeypatch) -> None:
+    """O `_servido_contado` não abre o registro: quem chama abre (o JSON e, desde a linha 875, o deck)."""
     monkeypatch.setattr(rotas, "obter_engine", lambda: banco)
     monkeypatch.setattr(rotas, "registrar_consumo", lambda *_a, **_k: None)
     saiu: list[bool] = []
@@ -363,9 +365,10 @@ def test_o_json_abre_o_registro_e_o_deck_nao(banco, monkeypatch) -> None:
         saiu.append(piloto.registrar("cvm-dfp", "valor", LIBERADO_PELO_PILOTO))
         return SimpleNamespace(corpo={}, fontes=set(), linhas=1)
 
-    rotas._servido_contado(SimpleNamespace(), "financials", ler)  # o caminho do deck
+    rotas._servido_contado(SimpleNamespace(), "financials", ler)  # sem registro
     rotas._pedido_contado(SimpleNamespace(), "financials", ler)  # o caminho do JSON
-    assert saiu == [False, True]
+    rotas._deck_contado(SimpleNamespace(), "financials", ler)  # o caminho do deck
+    assert saiu == [False, True, True]
 
 
 def test_registro_anota_cada_caminho() -> None:

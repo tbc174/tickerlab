@@ -31,6 +31,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base import cnpj as cnpjs
+from base.cpf_no_texto import mascarar_coluna
 from base.parquet import LINHAGEM, gravar_se_mudou
 from base.pgfn import pessoas_pela_receita
 from base.publicacao import dia_da_coleta
@@ -167,7 +168,8 @@ def _ler_ipe_bruto(conteudo_do_zip: bytes) -> pd.DataFrame:
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         nome = next(n for n in arquivo.namelist() if "ipe_cia_aberta" in n)
         with arquivo.open(nome) as csv:
-            return pd.read_csv(csv, sep=";", encoding="latin-1", dtype=str).fillna("")
+            bruto = pd.read_csv(csv, sep=";", encoding="latin-1", dtype=str).fillna("")
+            return bruto.assign(Assunto=mascarar_coluna(bruto["Assunto"]))
 
 
 def _texto(linha: pd.Series, coluna: str) -> str:

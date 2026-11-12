@@ -309,8 +309,11 @@ def test_piloto_com_a_qualidade_o_dicionario_e_a_versao_libera() -> None:
     assert _negacao_do_piloto() is None
 
 
-def test_o_registro_de_piloto_e_vazio_e_separado_do_cheio() -> None:
-    assert prontidao.PRONTIDAO_DE_PILOTO == {}
+def test_o_registro_de_piloto_so_tem_tabela_com_a_marca_de_pessoa_e_e_separado_do_cheio() -> (
+    None
+):
+    assert set(prontidao.PRONTIDAO_DE_PILOTO) <= prontidao.tabelas_com_pessoa_decidida()
+    assert not set(prontidao.PRONTIDAO_DE_PILOTO) & set(PRONTIDAO)
     assert prontidao.PRONTIDAO_DE_PILOTO is not PRONTIDAO
 
 
@@ -458,8 +461,14 @@ def test_no_ensaio_do_piloto_a_prova_vai_so_para_o_registro_de_piloto() -> None:
     assert prontidao.registro_vigente(ENSAIO_DO_PILOTO, HOJE) is PRONTIDAO
     piloto = prontidao.registro_de_piloto_vigente(ENSAIO_DO_PILOTO, HOJE)
     assert set(piloto) == set(versoes_maiores())
-    (prova,) = {registro.qualidade for registro in piloto.values()}
-    assert prova is not None and prova.prova == prontidao.PROVA_DE_ENSAIO
+    de_ensaio = {
+        nome: registro.qualidade
+        for nome, registro in piloto.items()
+        if nome not in prontidao.PRONTIDAO_DE_PILOTO
+    }
+    assert de_ensaio and {p.prova for p in de_ensaio.values() if p} == {
+        prontidao.PROVA_DE_ENSAIO
+    }
 
 
 def test_o_ensaio_comum_nao_enche_o_registro_de_piloto() -> None:

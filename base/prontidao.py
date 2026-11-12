@@ -146,16 +146,47 @@ class ProntidaoDePiloto(NamedTuple):
     dicionario: Prova | None  # exigência 8 escrita
 
 
-# As entradas são da mesa Dados (linha 784); nenhuma tabela está no piloto ainda.
-PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {}
+# As entradas são da mesa Dados (linha 784), só com as duas provas existindo e a marca de pessoa decidida:
+# as quatro abaixo passaram em `scripts.conferir_sem_pessoa` (todo CNPJ dentro da `cnpj_empresas_pj`) em 12/11/2026.
+PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
+    "carteiras_dos_fundos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "demonstracoes_como_era": ProntidaoDePiloto(
+        versao_maior=3,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "fca_geral": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+    "rotulos_atraso": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
+        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
+    ),
+}
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
 # marca por linha (a porta a filtra pelas entidades), a montagem de três tabelas já tira a pessoa, e só tabela
 # com coluna de CNPJ, raiz ou CPF precisa da marca.
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
+# sem pessoa pela raiz (linha 789): quatro delas têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto
 SEM_PESSOA_NA_MONTAGEM = frozenset(
-    {"cnpj_empresas_pj", "cnpj_estabelecimentos_pj", "entradas_de_socio_pj"}
+    {
+        "carteiras_dos_fundos",
+        "cnpj_empresas_pj",
+        "cnpj_estabelecimentos_pj",
+        "demonstracoes_como_era",
+        "entradas_de_socio_pj",
+        "fca_geral",
+        "rotulos_atraso",
+    }
 )
 COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf")
 

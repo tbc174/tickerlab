@@ -15,7 +15,7 @@ import pytest
 from base import prontidao
 from base.dossie import COLUNAS_DE_PESSOA, conferir_sem_pessoas
 from base.porta import Porta
-from base.prontidao import Prontidao, Prova
+from base.prontidao import Prontidao, ProntidaoDePiloto, Prova
 from src import portao_externo as portao
 from src.api_externa import acesso, rotas
 from src.api_externa.conjuntos import empresas, eventos
@@ -91,6 +91,7 @@ def test_eventos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert corpo["cnpj"] == ALFA and corpo["known_at"] == DIA
     assert corpo["truncated"] is False and corpo["next_cursor"] is None
     assert corpo["limits"] == list(eventos.LIMITES)
+    assert corpo["unavailable_event_types"] == []
     lista = corpo["events"]
     assert [e["event_type"] for e in lista] == [
         "auditor_change", "ipe_filing", "ipe_filing", "ipe_filing",
@@ -178,6 +179,93 @@ def test_eventos_sem_prontidao_de_uma_tabela_saem_so_da_outra(
     corpo = _get(cliente, cenario, known_at=DIA).json()
     assert {e["event_type"] for e in corpo["events"]} == {"ipe_filing"}
     assert {f["source"] for f in corpo["sources"]} == {"cvm-hist-ipe"}
+    # a troca de auditor não some em silêncio (linha 878)
+    assert corpo["unavailable_event_types"] == ["auditor_change"]
+    assert eventos.LIMITE_DO_TIPO_NAO_DISPONIVEL in corpo["limits"]
+
+
+# ---------------------------------------------------------------- o tipo barrado (linha 878)
+
+
+def _regras_do_piloto() -> portao.Regras:
+    """Como no ensaio da 739: as trocas de auditor só pelo registro de piloto; os documentos do IPE barrados."""
+    prova = Prova(AGORA.date(), "conferida no teste", "teste")
+    versoes = prontidao.versoes_maiores()
+    vigentes = portao.regras_vigentes()
+    return dataclasses.replace(
+        vigentes,
+        prontidao={},
+        prontidao_de_piloto={
+            "trocas_de_auditor": ProntidaoDePiloto(
+                versoes["trocas_de_auditor"], prova, prova
+            )
+        },
+        pessoa_decidida=vigentes.pessoa_decidida | {"trocas_de_auditor"},
+    )
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações com o contrato de `events`; só a primeira tem a marca de piloto."""
+    ator = aj.admin(banco)
+    do_piloto = aj.organizacao(banco, ator, "Organização do piloto")
+    comum = aj.organizacao(banco, ator, "Organização comum")
+    for org in (do_piloto, comum):
+        aj.contrato(banco, ator, org, conjunto=eventos.CONJUNTO)
+    with banco.begin() as conexao:
+        cb.conceder_direito(
+            conexao, organizacao_id=do_piloto.id, conjunto=cb.CONJUNTO_DO_PILOTO, finalidade="analise",
+            vigente_desde=date(2026, 11, 1), ator_id=ator.id, agora=AGORA,
+        )  # fmt: skip
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_do_piloto)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, do_piloto).valor,
+        aj.chave(banco, ator, comum).valor,
+    )
+
+
+def test_o_tipo_barrado_vem_como_nao_disponivel_e_nao_como_lista_vazia(duas):
+    cliente, do_piloto, _comum = duas
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(do_piloto)
+    )
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert [e["event_type"] for e in corpo["events"]] == ["auditor_change"]
+    assert corpo["unavailable_event_types"] == ["ipe_filing"]
+    # os limites não dizem que os documentos do IPE foram servidos
+    assert eventos.LIMITE_DO_TIPO_NAO_DISPONIVEL in corpo["limits"]
+    assert eventos.LIMITES_DO_TIPO[eventos.DOCUMENTO_DO_IPE] not in corpo["limits"]
+    assert {f["source"] for f in corpo["sources"]} == {"cvm-hist-fca"}
+
+
+def test_antes_da_troca_a_lista_vazia_vem_com_o_tipo_barrado(duas):
+    cliente, do_piloto, _comum = duas
+    corpo = cliente.get(
+        _rota(), params={"known_at": "2025-05-01"}, headers=aj.bearer(do_piloto)
+    ).json()
+    assert corpo["events"] == []
+    assert corpo["unavailable_event_types"] == ["ipe_filing"]
+
+
+def test_so_o_tipo_barrado_pedido_da_404(duas):
+    cliente, do_piloto, _comum = duas
+    resposta = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": ["ipe_filing"]},
+        headers=aj.bearer(do_piloto),
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_a_organizacao_sem_o_tipo_liberado_recebe_404(duas):
+    cliente, _do_piloto, comum = duas
+    resposta = cliente.get(_rota(), params={"known_at": DIA}, headers=aj.bearer(comum))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
 
 
 # ---------------------------------------------------------------- sem pessoa
