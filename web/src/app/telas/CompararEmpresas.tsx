@@ -11,7 +11,10 @@ import { formatarData } from "../formatar";
 import type { CampoComFonteV1, ComparacaoDeEmpresasV1, EmpresaComparadaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { Erro } from "../pecas/Erro";
-import { BaixarPlanilha, Fontes, Limites, TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
+import { Baixar } from "../pecas/Baixar";
+import { Fontes } from "../pecas/Fonte";
+import { Limites } from "../pecas/Limites";
+import { TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
 
 const MINIMO = 2;
 const MAXIMO = 5;
@@ -163,7 +166,7 @@ function Comparacao({ dados, rota, cnpjs }: { dados: ComparacaoDeEmpresasV1; rot
       <p className="apagado">Como a base conhecia em {formatarData(dados.como_era_em ?? "")}</p>
       {algumaPronta ? (
         <div className="acoes-da-ficha">
-          <BaixarPlanilha rota={rota} corpo={{ cnpjs }} nome={NOME_DA_PLANILHA} />
+          <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={{ cnpjs }} nome={NOME_DA_PLANILHA} />
         </div>
       ) : (
         <p className="apagado" role="note">
