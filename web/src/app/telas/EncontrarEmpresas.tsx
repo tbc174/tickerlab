@@ -7,14 +7,14 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, baixar, pedir } from "../api";
-import { Carregando } from "../Carregando";
+import { Carregando } from "../pecas/Carregando";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type { BuscaDeEmpresasV1, CampoComFonteV1, EmpresaDaBuscaV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const NOME_DA_PLANILHA = "empresas-tickerlab.xlsx";
 const SETORES_MAXIMOS = 3; // o mesmo teto da rota (src/analista/busca.py)
@@ -233,7 +233,7 @@ function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota:
 function Resultado({ rota, filtros }: { rota: string; filtros: Filtros }) {
   const pedido = usarPedido<BuscaDeEmpresasV1>(rota, {}, filtros);
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Procurando empresas…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   const dados = pedido.dados;
   return (
     <>
@@ -396,7 +396,7 @@ export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
     <section>
       <CabecalhoDaTela pagina={pagina} />
       {opcoes.estado === "carregando" && <Carregando tipo="painel" rotulo="Abrindo o formulário…" />}
-      {opcoes.estado === "erro" && <ErroDaTela erro={opcoes.erro} />}
+      {opcoes.estado === "erro" && <Erro erro={opcoes.erro} />}
       {opcoes.estado === "pronto" && (
         <Formulario opcoes={opcoes.dados} aoBuscar={(filtros) => setBuscado({ filtros, vez: (buscado?.vez ?? 0) + 1 })} />
       )}

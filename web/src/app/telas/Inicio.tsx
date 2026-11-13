@@ -3,7 +3,7 @@ import type { PaginaDoApp } from "../../conteudo";
 import { FundoDoApp } from "../FundoDoApp";
 import { TELAS_DO_APP, temTelaPronta } from "../rotas";
 import type { PulseV1 } from "../tipos";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 import { AcontecimentosNovos } from "./workspace/Acontecimentos";
 import { EstrategiasAcompanhadas } from "./workspace/Estrategias";
 import { usarPulse } from "./workspace/usarPulse";
@@ -45,7 +45,7 @@ function Workspace() {
     return (
       <section className="cartao-do-workspace" aria-labelledby="titulo-do-workspace">
         <h2 id="titulo-do-workspace">Seu Workspace</h2>
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       </section>
     );
   }
