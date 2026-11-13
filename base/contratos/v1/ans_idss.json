@@ -1,0 +1,103 @@
+{
+  "tabela": "ans_idss",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da operadora (14 dígitos com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres)",
+      "unidade": "texto"
+    },
+    "registro_operadora": {
+      "descricao": "Registro da operadora na ANS",
+      "unidade": "texto"
+    },
+    "modalidade": {
+      "descricao": "Modalidade (Medicina de Grupo, Cooperativa Médica...), como a ANS escreve",
+      "unidade": "texto"
+    },
+    "indice": {
+      "descricao": "O índice: `IDSS` ou uma dimensão dele (`IDQS`, `IDGA`, `IDSM`, `IDGR`...)",
+      "unidade": "texto"
+    },
+    "ano_avaliacao": {
+      "descricao": "Ano da avaliação, como está no nome da coluna da ANS",
+      "unidade": "número inteiro"
+    },
+    "ano_base": {
+      "descricao": "Ano base (o ano avaliado)",
+      "unidade": "número inteiro"
+    },
+    "valor": {
+      "descricao": "Nota de 0 a 1; vazia quando a ANS publica a faixa",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "faixa": {
+      "descricao": "Faixa da nota (`0,40 a 0,59`), só de 2009 a 2011",
+      "unidade": "texto"
+    },
+    "id_na_fonte": {
+      "descricao": "Identificador da linha no arquivo da fonte",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada nota saiu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "disponivel_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-10-25",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Três arquivos, republicados inteiros; o mais novo ganha um ano por ano (o arquivista olha toda semana)",
+  "atraso": "A ANS publica a avaliação de um ano (ano base) no ano seguinte; o arquivo não diz o dia",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}
