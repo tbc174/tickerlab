@@ -274,7 +274,7 @@ def test_texto_17_diz_que_a_idade_do_titular_de_mei_e_de_individual_nao_e_conhec
     for trecho in (
         "do microempreendedor individual e do empresário individual a Receita não publica a idade",
         "é quase sempre um emancipado, de 16 ou 17 anos (art. 5º, parágrafo único)",
-        "a empresa que era dos pais ou que herdou (art. 974)",
+        "a empresa que já era dele, dos pais ou que herdou (art. 974)",
         "A exceção é o menor, ou o adulto interditado, que continua, com representante ou assistido e com autorização do juiz",
         "O TickerLab não tem como reconhecer nenhum deles.",
         "escreva para privacidade@tickerlab.com.br: o nome sai da tela em até 15 dias",
