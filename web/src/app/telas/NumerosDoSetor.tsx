@@ -7,7 +7,7 @@ import { Erro } from "../pecas/Erro";
 import { Fonte } from "../pecas/Fonte";
 import { Tabela, type Coluna } from "../pecas/Tabela";
 import { Vazio } from "../pecas/Vazio";
-import { formatarMes } from "../formatar";
+import { formatarData, formatarMes } from "../formatar";
 import type { AberturasPorAnoV1, EmpresasPorUfV1, PerfilDoSetorV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 
@@ -80,6 +80,10 @@ function Numeros({ dados }: { dados: PerfilDoSetorV1 }) {
       ) : (
         <>
           <Barras itens={dados.aberturas_por_ano} />
+          <p className="apagado">
+            O último ano está incompleto: conta só até {dados.como_era_em ? formatarData(dados.como_era_em) : "o dia da consulta"}, e o
+            retrato do cadastro vai até {retrato ?? "a data dele"}. Empresas já baixadas entram, e quem mudou de atividade conta no ano em que abriu.
+          </p>
           <Tabela
             legenda="Aberturas de empresas do setor por ano"
             colunas={COLUNAS_DE_ABERTURAS}

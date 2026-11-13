@@ -168,6 +168,7 @@ describe("quem já se mexeu no setor", () => {
     expect(within(numeros).getAllByText(/Receita Federal \(cadastro do CNPJ\) · dado de out\/2026/).length).toBeGreaterThan(0);
     expect(within(numeros).getByText(/MEI e empresário individual não entram/)).toBeTruthy();
     expect(within(numeros).getByText(/A soma das UFs pode passar do total/)).toBeTruthy();
+    expect(within(numeros).getByText(/O último ano está incompleto: conta só até/)).toBeTruthy();
     const pedidos = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DO_PERFIL);
     expect(JSON.parse(String(pedidos[0][1]?.body))).toEqual({ cnae: "6201501" });
   });
