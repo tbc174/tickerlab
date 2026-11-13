@@ -58,6 +58,10 @@ const reaisDe = (campo: CampoComFonteV1 | null | undefined) =>
 const comNome = (campo: CampoComFonteV1 | null, nome: string | null) =>
   nome ? `${nome} (${textoDe(campo)})` : textoDe(campo);
 
+/** O nome da Receita ou, sem ele, o CNPJ: a caixa de escolha nunca fica sem nome próprio. */
+const nomeOuCnpj = (empresa: EmpresaDaBuscaV1) =>
+  empresa.razao_social?.valor ? String(empresa.razao_social.valor) : cnpjComPontuacao(empresa.cnpj);
+
 /** A coluna de seleção + as colunas da lista. O CNPJ vai no estado da navegação, nunca no endereço. */
 function colunasDaLista(
   selecionados: string[],
@@ -74,7 +78,7 @@ function colunasDaLista(
             type="checkbox"
             checked={marcada}
             disabled={!marcada && selecionados.length >= MAXIMO_NA_COMPARACAO}
-            aria-label={`Escolher ${textoDe(empresa.razao_social)} para comparar`}
+            aria-label={`Escolher ${nomeOuCnpj(empresa)} para comparar`}
             onChange={() => alternarEmpresa(empresa)}
           />
         );
@@ -187,7 +191,6 @@ function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota:
         <span className="apagado"> · como a base conhecia em {formatarData(primeira.como_era_em ?? "")}</span>
       </p>
       <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={filtros} nome={NOME_DA_PLANILHA} />
-      <BandejaDeComparacao escolhidas={escolhidas} aoLimpar={() => setEscolhidas([])} />
       <Tabela
         legenda="Empresas encontradas"
         legendaEscondida
@@ -199,6 +202,7 @@ function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota:
         chaveDaLinha={(empresa) => empresa.cnpj}
       />
       <DeOndeVem empresas={empresas} />
+      <BandejaDeComparacao escolhidas={escolhidas} aoLimpar={() => setEscolhidas([])} />
       {cursor === null ? null : (
         <button type="button" className="botao" disabled={carregando} onClick={carregarMais}>
           Carregar mais
