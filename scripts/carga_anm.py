@@ -151,22 +151,26 @@ def manter_a_data_da_primeira_coleta(
     return resultado
 
 
-def _raizes_da_tabela(base: Path, tabela: str) -> frozenset[str]:
-    """As raízes (`cnpj_basico`) dos arquivos atuais de uma tabela da base; sem arquivo, recusa."""
+def _arquivos_atuais(base: Path, tabela: str) -> dict[str, Path]:
+    """Os arquivos atuais (sem as versões `.vN`) de uma tabela da base, pelo nome; sem arquivo, recusa."""
     pasta = base / tabela
-    arquivos = [
-        a for a in pasta.glob("*.parquet") if not ARQUIVO_VERSIONADO.search(a.name)
-    ]
+    arquivos = {
+        a.name: a
+        for a in pasta.glob("*.parquet")
+        if not ARQUIVO_VERSIONADO.search(a.name)
+    }
     if not arquivos:
         raise FileNotFoundError(
             f"sem a {tabela} em {pasta}: não dá para conferir quem é pessoa"
         )
-    raizes: set[str] = set()
-    for arquivo in arquivos:
-        raizes.update(
-            pd.read_parquet(arquivo, columns=["cnpj_basico"])["cnpj_basico"].astype(str)
-        )
-    return frozenset(raizes)
+    return arquivos
+
+
+def _raizes_do_arquivo(arquivo: Path | None) -> set[str]:
+    if arquivo is None:
+        return set()
+    coluna = pd.read_parquet(arquivo, columns=["cnpj_basico"])["cnpj_basico"]
+    return set(coluna.astype(str))
 
 
 def raizes_de_empresa(base: Path) -> frozenset[str]:
@@ -174,8 +178,16 @@ def raizes_de_empresa(base: Path) -> frozenset[str]:
 
     A de empresas só tira empresário individual pela natureza; MEI com natureza de empresa só sai
     na de estabelecimentos (opção pelo Simples). Por isso vale a interseção, como no recorte da API
-    (`montar_recorte_da_api.tirar_raizes_de_mei`)."""
-    return _raizes_da_tabela(base, TABELA_PJ) & _raizes_da_tabela(base, TABELA_ESTAB)
+    (`montar_recorte_da_api.tirar_raizes_de_mei`). Os dois lados dividem os arquivos pelos 2 primeiros
+    caracteres da raiz: cruza arquivo a arquivo, para não guardar as duas listas inteiras na memória."""
+    empresas = _arquivos_atuais(base, TABELA_PJ)
+    estabelecimentos = _arquivos_atuais(base, TABELA_ESTAB)
+    raizes: set[str] = set()
+    for nome, arquivo in empresas.items():
+        raizes |= _raizes_do_arquivo(arquivo) & _raizes_do_arquivo(
+            estabelecimentos.get(nome)
+        )
+    return frozenset(raizes)
 
 
 def so_empresa(
