@@ -132,6 +132,9 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     # lote 1 das 300 pelo CNPJ (linha 904): em casa até o pode do envio ao VPS (linha 908)
     "fip_informe", "fii_informe_mensal", "fii_ativos", "fii_administradores",
     "aneel_inadimplencia", "aneel_indicadores_comerciais", "ans_idss",
+    # linha 904 (lote 2): titulares do INPI só com empresa; ficam em casa até o "pode" da Diretoria
+    "inpi_marcas_titulares", "inpi_patentes_depositantes", "inpi_desenhos_depositantes",
+    "inpi_programas_titulares",
 })  # fmt: skip
 
 

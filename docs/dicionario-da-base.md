@@ -4379,6 +4379,138 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `inpi_marcas_titulares`
+
+Titulares de marcas depositadas no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, marcas (`MARCAS_DEPOSITANTES.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_marcas_titulares/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `inpi_patentes_depositantes`
+
+Depositantes de patentes no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, patentes (`PATENTES_DEPOSITANTES.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_patentes_depositantes/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `inpi_desenhos_depositantes`
+
+Depositantes de desenhos industriais no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, desenhos industriais (`DI_DEPOSITANTES.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_desenhos_depositantes/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `inpi_programas_titulares`
+
+Titulares de registros de programas de computador no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, programas de computador (`PROG_COMP_TITULAR.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_programas_titulares/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `cvm_fiagro`
 
 O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês, taxas e a carteira por tipo de ativo (imóveis rurais, CRA, CRI, LCA, LCI). Uma linha por classe, mês e versão do informe: o reenvio traz `versao` maior e não apaga a anterior (quem quer o vigente fica com a maior). Contato, nome do administrador e do gestor e as subclasses ficam de fora; administrador e gestor entram só pelo CNPJ. Só classe com CNPJ de dígito certo. A CVM só mantém os meses recentes: a história daqui em diante é a do acervo

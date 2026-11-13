@@ -1906,3 +1906,106 @@ class ConectarV1(BaseModel):
     comandos_da_cli: list[ComandoDaCliV1]
     perguntas_prontas: list[str]
     limites: list[str]
+
+
+class ExemploDeProvaV1(BaseModel):
+    """Um exemplo de prova: a empresa do setor onde o movimento aconteceu, a UF dela e os campos do sinal
+    (data de entrada, tipo, participação...), cada um com fonte e dia. `ainda_socio` só vale para a entrada."""
+
+    empresa_do_setor: PontaDoVinculoV1
+    uf: str | None
+    ainda_socio: bool | None = None
+    campos: dict[str, CampoComFonteV1]
+
+
+class ProvaDoSinalV1(BaseModel):
+    """As provas de um sinal: quantas são e até cinco exemplos."""
+
+    quantas: int
+    exemplos: list[ExemploDeProvaV1]
+
+
+class CompradorDoSetorV1(BaseModel):
+    """Quem já se mexeu no setor: a raiz do CNPJ, o nome do retrato da Receita, os sinais (pelo nome de dentro:
+    `entrou_como_socio`, `fundo_socio`, `controla_no_setor`) e as provas de cada um. Só pessoa jurídica."""
+
+    raiz_do_cnpj: str | None
+    razao_social: CampoComFonteV1 | None
+    sinais: list[str]
+    provas: dict[str, ProvaDoSinalV1]
+
+
+class SetorPedidoV1(BaseModel):
+    """O setor pedido: o CNAE, a UF (se houver), a janela em anos e quantas empresas ativas ele tem."""
+
+    cnae_principal: str
+    uf: str | None
+    anos: int
+    desde: date
+    empresas_ativas: int
+
+
+class CompradoresDoSetorV1(BaseModel):
+    """Quem já se mexeu num setor, na tela (linha 903, PR D): o estado, a lista, as fontes e os limites,
+    sempre. Movimento passado, não intenção de compra."""
+
+    estado: str  # "pronta" ou "nao_liberada", como a ficha
+    como_era_em: date | None
+    setor: SetorPedidoV1 | None
+    compradores: list[CompradorDoSetorV1]
+    total_de_compradores: int
+    cortada: bool
+    # os sinais que o portão não libera: não foram consultados, a lista não diz nada sobre eles
+    sinais_nao_disponiveis: list[str]
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def _exemplo_do_analista(exemplo: dict) -> ExemploDeProvaV1:
+    alvo = exemplo["empresa_do_setor"]
+    campos = {
+        nome: valor
+        for nome, valor in exemplo.items()
+        if nome not in ("empresa_do_setor", "uf", "ainda_socio")
+    }
+    return ExemploDeProvaV1(
+        empresa_do_setor=_ponta_do_analista(alvo),
+        uf=exemplo.get("uf"),
+        ainda_socio=exemplo.get("ainda_socio"),
+        campos=campos,  # type: ignore[arg-type]
+    )
+
+
+def _comprador_do_analista(comprador: dict) -> CompradorDoSetorV1:
+    provas = {
+        sinal: ProvaDoSinalV1(
+            quantas=prova["quantas"],
+            exemplos=[_exemplo_do_analista(e) for e in prova["exemplos"]],
+        )
+        for sinal, prova in comprador["provas"].items()
+    }
+    return CompradorDoSetorV1(
+        raiz_do_cnpj=comprador.get("raiz_do_cnpj"),
+        razao_social=comprador.get("razao_social"),
+        sinais=list(provas),
+        provas=provas,
+    )
+
+
+def de_compradores_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> CompradoresDoSetorV1:
+    corpo = resposta.corpo or {}
+    return CompradoresDoSetorV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        setor=SetorPedidoV1.model_validate(corpo["setor"])
+        if "setor" in corpo
+        else None,
+        compradores=[_comprador_do_analista(c) for c in corpo.get("compradores", [])],
+        total_de_compradores=int(corpo.get("total_de_compradores", 0)),
+        cortada=bool(corpo.get("cortada", False)),
+        sinais_nao_disponiveis=list(corpo.get("sinais_nao_disponiveis", [])),
+        fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
+        limites=list(corpo.get("limites", limites)),
+    )
