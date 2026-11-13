@@ -196,7 +196,10 @@ class LeitorDeVinculos:
         self.linhas_maximas = linhas_maximas
 
     def _servidos(self, tipo: TipoDeVinculo) -> tuple[str, ...]:
-        """Os campos da ligação que o portão libera; sem o `tipo`, a ligação não sai."""
+        """Os campos da ligação que o portão libera; sem o `tipo`, a ligação não sai. Sem a tabela de ligações
+        na base nada foi consultado: o tipo vai em `tipos_de_vinculo_nao_disponiveis` (linha 917)."""
+        if "ligacoes" not in views(self.porta.con):
+            return ()
         servidos = tuple(c for c in tipo.campos if self.permitido(tipo.fonte, c, False))
         return servidos if "tipo" in servidos else ()
 
