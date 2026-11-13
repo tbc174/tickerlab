@@ -110,12 +110,19 @@
   .busca-do-topo :is(.rotulo-da-busca, kbd) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .busca-do-topo .icone { width: 20px; height: 20px; }
   .topo .tema-escolha { margin-left: 0; }
+  /* alvo de toque de 44 px em cada tema (o desenho continua com 18 px); a moldura perde o respiro para caber */
+  .topo .tema-escolha { gap: 0; padding: 0; }
+  .topo .tema-escolha button { align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
   /* em tela estreita o nome da marca não cabe ao lado da busca, do tema e da conta: fica só o símbolo */
   @media (max-width: 480px) { .topo .marca > span:not(.simbolo) { display: none; } }
   .novidades-no-topo { display: none; }
   .app-atual-no-topo { display: none; }
   .nome-da-conta { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .topo .faixa { gap: var(--e2); }
+  /* abaixo de 375 px o topo aperta os vãos para os 44 px caberem; até 350 px (telas de 320 px) o alvo fica em
+     36 px, o maior que cabe numa linha sem cortar a marca nem a busca */
+  @media (max-width: 374px) { .topo .faixa, .topo .conta-no-topo { gap: var(--e1); } }
+  @media (max-width: 350px) { .topo .tema-escolha button { min-width: 36px; min-height: 36px; } }
 }
 .conta-no-topo { display: inline-flex; align-items: center; gap: var(--e3); font-size: .92rem; color: var(--apagado); }
 /* a lista "Todas as telas": no celular sobe de baixo, como uma folha; no computador abre no meio da tela */
