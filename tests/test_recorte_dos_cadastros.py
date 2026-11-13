@@ -18,6 +18,7 @@ from base.porta.duckdb import ARQUIVOS
 from scripts import carga_cadastros
 from scripts import montar_recorte_da_api as envio
 from src.credito import sinais as si
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
 
 RAIZ_PJ, RAIZ_OUTRA, RAIZ_MEI, RAIZ_FORA = (
     "11000001",
@@ -333,7 +334,7 @@ def test_a_saida_certa_passa_e_devolve_as_contagens(tmp_path):
         ({"trata_como_pessoa": "NULL::BOOLEAN"}, "como pessoa ou sem a marca"),
         ({"cnpj_basico": f"'{RAIZ_OUTRA}'"}, "raiz diferente da do CNPJ"),
         ({"cnpj": "NULL::VARCHAR"}, "CNPJ que não confere"),
-        ({"lei": "'123.456.789-09'"}, "cara de CPF"),
+        ({"lei": f"'{formatado(CPF_DE_TESTE)}'"}, "cara de CPF"),
         ({"nome": "'FULANO DE MENTIRA'"}, "1 coluna"),
     ],
 )
@@ -368,8 +369,8 @@ def test_a_trava_pega_a_chave_da_lista_suja_que_nao_e_impressao_digital(tmp_path
 
 
 def test_cpf_inteiro_so_pega_o_valor_que_e_um_cpf_que_confere():
-    assert recorte.cpf_inteiro("123.456.789-09")
-    assert recorte.cpf_inteiro("12345678909")
+    assert recorte.cpf_inteiro(formatado(CPF_DE_TESTE))
+    assert recorte.cpf_inteiro(CPF_DE_TESTE)
     assert not recorte.cpf_inteiro("12345678900")  # dígito errado
     assert not recorte.cpf_inteiro("654321-E")
     assert not recorte.cpf_inteiro(_cnpj(RAIZ_PJ))
