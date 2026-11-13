@@ -2739,6 +2739,102 @@
         "title": "EscalaDoGraficoV1",
         "type": "object"
       },
+      "EstadoDoChatV1": {
+        "description": "Se a conta pode perguntar agora e, se não, por quê; com a cota, os limites e o que dizer na tela.",
+        "properties": {
+          "caracteres_da_pergunta": {
+            "title": "Caracteres Da Pergunta",
+            "type": "integer"
+          },
+          "caracteres_do_historico": {
+            "title": "Caracteres Do Historico",
+            "type": "integer"
+          },
+          "como_funciona": {
+            "title": "Como Funciona",
+            "type": "string"
+          },
+          "exemplos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exemplos",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "mensagem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensagem"
+          },
+          "perguntas_hoje": {
+            "title": "Perguntas Hoje",
+            "type": "integer"
+          },
+          "perguntas_no_historico": {
+            "title": "Perguntas No Historico",
+            "type": "integer"
+          },
+          "perguntas_no_mes": {
+            "title": "Perguntas No Mes",
+            "type": "integer"
+          },
+          "perguntas_por_dia": {
+            "title": "Perguntas Por Dia",
+            "type": "integer"
+          },
+          "perguntas_por_mes": {
+            "title": "Perguntas Por Mes",
+            "type": "integer"
+          },
+          "pode_perguntar": {
+            "title": "Pode Perguntar",
+            "type": "boolean"
+          },
+          "situacao": {
+            "enum": [
+              "desligado",
+              "sem_organizacao",
+              "sem_chave",
+              "pausado",
+              "cota_do_dia",
+              "cota_do_mes",
+              "pronto"
+            ],
+            "title": "Situacao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "situacao",
+          "pode_perguntar",
+          "mensagem",
+          "perguntas_hoje",
+          "perguntas_por_dia",
+          "perguntas_no_mes",
+          "perguntas_por_mes",
+          "caracteres_da_pergunta",
+          "perguntas_no_historico",
+          "caracteres_do_historico",
+          "como_funciona",
+          "exemplos",
+          "limites"
+        ],
+        "title": "EstadoDoChatV1",
+        "type": "object"
+      },
       "EstrategiaAcompanhadaV1": {
         "description": "Um backtest salvo com a ficha \"Foi sorte?\" e o veredito dela refeito com os preços de\nhoje.",
         "properties": {
@@ -5556,6 +5652,29 @@
         "title": "PedidoDeSimulacaoV1",
         "type": "object"
       },
+      "PedidoDoChatV1": {
+        "properties": {
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/TrocaAnteriorV1"
+            },
+            "maxItems": 4,
+            "title": "Historico",
+            "type": "array"
+          },
+          "pergunta": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Pergunta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta"
+        ],
+        "title": "PedidoDoChatV1",
+        "type": "object"
+      },
       "PedidoDosEventosV1": {
         "properties": {
           "cnpj": {
@@ -7280,6 +7399,27 @@
         "title": "TermometroDaConabV1",
         "type": "object"
       },
+      "TrocaAnteriorV1": {
+        "description": "Uma pergunta e a resposta de antes, que a tela reenvia para o modelo ter o contexto.",
+        "properties": {
+          "pergunta": {
+            "maxLength": 2000,
+            "title": "Pergunta",
+            "type": "string"
+          },
+          "resposta": {
+            "maxLength": 4000,
+            "title": "Resposta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta",
+          "resposta"
+        ],
+        "title": "TrocaAnteriorV1",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -8012,6 +8152,62 @@
           }
         },
         "summary": "Busca Por Cnpj Em Pdf"
+      }
+    },
+    "/v1/chat": {
+      "post": {
+        "description": "A resposta do chat, um evento JSON por linha (`application/x-ndjson`).",
+        "operationId": "perguntar_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoChatV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perguntar"
+      }
+    },
+    "/v1/chat/estado": {
+      "get": {
+        "description": "O estado do chat para a tela \"Perguntar\": a primeira recusa que a pergunta ouviria, ou \"pronto\".\n\nA ordem é a de `POST /v1/chat`. Com o chat desligado a tela ainda abre, para dizer que ele não foi\nligado e o que vai fazer.",
+        "operationId": "estado_do_chat_v1_chat_estado_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoDoChatV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Estado Do Chat"
       }
     },
     "/v1/commodities/cafe/mapa": {

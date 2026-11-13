@@ -88,6 +88,7 @@ src/api_externa/conjuntos/empresas.py: unused variable 'CAMPOS_DATADOS' (60% con
 src/api_v1/analista_pessoas.py: unused variable 'bairro' (60% confidence)
 src/api_v1/analista_pessoas.py: unused variable 'entrou_em' (60% confidence)
 src/api_v1/analista_pessoas.py: unused variable 'telefones' (60% confidence)
+src/api_v1/chat.py: unused variable 'pode_perguntar' (60% confidence)
 src/api_v1/compartilhados.py: unused variable 'model_config' (60% confidence)
 src/api_v1/compartilhados.py: unused variable 'titulo_do_veredito' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'alem_do_maximo' (60% confidence)
