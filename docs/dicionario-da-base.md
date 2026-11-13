@@ -2870,6 +2870,145 @@ Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `receita_dirbi`
+
+Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de Incentivos, Renúncias, Benefícios e Imunidades de Natureza Tributária), por mês, código do regime e tributo, um Parquet por ano. **O valor é o que a empresa declarou, não o que foi efetivamente usufruído**, e a linha marcada `em_verificacao` ainda pode mudar. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`). Linha com CNPJ mascarado, CPF ou de dígito errado sai e é contada na montagem.
+
+- **Fonte:** Receita Federal do Brasil, dados abertos da DIRBI (`renuncia-por-regime-AAAA.zip`), lida por `base/receita_renuncias.py`
+- **Licença:** Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (a Receita regrava o arquivo do ano inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que o arquivo foi modificado na Receita, que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `ano`, `mes`, `codigo_in`, `tributo`
+- **Três datas:** aconteceu_em = `mes`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-09-08 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_dirbi/<ano>.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `municipio` | Município do estabelecimento, como a Receita informa | texto |
+| `uf` | Unidade da federação do estabelecimento | texto |
+| `cnae` | CNAE do estabelecimento, como a Receita informa | texto |
+| `ano` | Ano da declaração | ano |
+| `mes` | Mês da declaração (1 a 12) | número inteiro |
+| `codigo_in` | Código do benefício na instrução normativa da DIRBI | texto |
+| `tributo` | Tributo a que o benefício se refere | texto |
+| `valor` | Valor declarado do benefício, em reais (vazio: não informado) | reais (R$) |
+| `em_verificacao` | Verdadeiro quando a Receita marca o valor como 'em verificação' (pode mudar) | verdadeiro ou falso |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_ecf_renuncia`
+
+Incentivos de IRPJ e CSLL que a empresa declarou na ECF (Escrituração Contábil Fiscal), uma linha por CNPJ, SCP e período da escrituração, com a forma de tributação e cada benefício em reais. **É o que a empresa declarou**; quando o mesmo período aparece mais de uma vez com valores diferentes, fica a linha mais preenchida. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Receita Federal do Brasil, dados abertos da ECF (`renuncia-irpj-csll-ecf.csv`), lida por `base/receita_renuncias.py`
+- **Licença:** Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Anual (a Receita regrava o arquivo inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que o arquivo foi modificado na Receita, que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `cod_scp`, `dt_ini`, `dt_fin`
+- **Três datas:** aconteceu_em = `dt_fin`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-09-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_ecf_renuncia/receita_ecf_renuncia.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `cod_scp` | Código da sociedade em conta de participação (SCP) da escrituração, quando há | texto |
+| `dt_ini` | Primeiro dia do período da escrituração | data (dia) |
+| `dt_fin` | Último dia do período da escrituração | data (dia) |
+| `forma_trib` | Forma de tributação do lucro, código da ECF | texto |
+| `forma_apur` | Forma de apuração, código da ECF | texto |
+| `qualif_pj` | Qualificação da pessoa jurídica, código da ECF | texto |
+| `sit_especial` | Situação especial da escrituração, código da ECF | texto |
+| `cnae` | CNAE informado na escrituração | texto |
+| `cod_nat` | Natureza jurídica, código da ECF | texto |
+| `horario_eleitoral_deducao_lalur` | Benefício `horario_eleitoral_deducao_lalur` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `prouni_universidade_para_todos` | Benefício `prouni_universidade_para_todos` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_isencao_proj_ind_agric` | Benefício `sudam_sudene_isencao_proj_ind_agric` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_isencao_proj_tec_dig` | Benefício `sudam_sudene_isencao_proj_tec_dig` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_reducao_75_proj_setor_priorit` | Benefício `sudam_sudene_reducao_75_proj_setor_priorit` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_red_escal_setor_prior_proj_ind_agric` | Benefício `sudam_sudene_red_escal_setor_prior_proj_ind_agric` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `padis` | Benefício `padis` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_red_reinv` | Benefício `sudam_sudene_red_reinv` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `finor` | Benefício `finor` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `finam` | Benefício `finam` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pronac_deducao_ir` | Benefício `pronac_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pat_deducao_ir` | Benefício `pat_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `atividade_audiov_deducao_ir` | Benefício `atividade_audiov_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `fundos_direitos_crianca_adolescente` | Benefício `fundos_direitos_crianca_adolescente` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `fundos_idoso` | Benefício `fundos_idoso` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `incentivo_desporto` | Benefício `incentivo_desporto` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pronon_deducao_ir` | Benefício `pronon_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pronas_pcd_deducao_ir` | Benefício `pronas_pcd_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `empresa_cidada_deducao_ir` | Benefício `empresa_cidada_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `rota_2030_deducao_ir` | Benefício `rota_2030_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `prouni_deducao_csll` | Benefício `prouni_deducao_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `rota_2030_deducao_csll` | Benefício `rota_2030_deducao_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `perse_irpj` | Benefício `perse_irpj` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `perse_csll` | Benefício `perse_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `exercicio` | Ano-calendário da escrituração | ano |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `sigsif_habilitados`
+
+A quem o Ministério da Agricultura habilitou exportar, para que país, em que área e produto (Serviço de Inspeção Federal, SIGSIF): uma linha por país, área, SIF e produto. **O CNPJ vem do número do SIF, pelo cadastro dos estabelecimentos registrados no SIF, e só entra quando o SIF tem um CNPJ só**; a habilitação sem CNPJ achado não entra (a montagem conta quantas). **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`). O nome do estabelecimento da fonte não é guardado.
+
+- **Fonte:** Ministério da Agricultura e Pecuária (MAPA), dados abertos do Serviço de Inspeção Federal (SIGSIF), licença CC BY (citar o MAPA); lido por `base/sigsif.py`
+- **Licença:** CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Variável (o MAPA regrava o arquivo inteiro quando atualiza)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o arquivo foi modificado no portal do MAPA, que é o `disponivel_em`. As datas da fonte (validade, ocorrência, suspensão) ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `pais`, `area`, `sif`, `produto`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-02 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sigsif_habilitados/sigsif_habilitados.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `pais` | País para o qual o estabelecimento está habilitado a exportar | texto |
+| `area` | Área da habilitação (carne, leite, pescado, ovos, mel...) | texto |
+| `sif` | Número do SIF (Serviço de Inspeção Federal), sem zeros à esquerda | texto |
+| `uf` | Unidade da federação do estabelecimento | texto |
+| `municipio` | Município do estabelecimento, como o MAPA informa | texto |
+| `produto` | Produto da habilitação, como o MAPA descreve | texto |
+| `dt_validade` | Fim da validade da habilitação (vazio: a fonte não informa) | data (dia) |
+| `dt_ocorrencia` | Data da ocorrência registrada pelo MAPA (vazio: nenhuma) | data (dia) |
+| `dt_suspensao` | Data da suspensão da habilitação (vazio: nunca suspensa) | data (dia) |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não os serve.

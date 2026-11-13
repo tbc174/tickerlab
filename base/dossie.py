@@ -149,6 +149,10 @@ SO_PELA_API_EXTERNA = frozenset(
         "cnpj_situacao_cadastral",
         "controladas_pj",
         "anvisa_por_empresa",
+        # linha 904 (lote 3 das 300 tabelas): montadas só de PJ, mas novas
+        "receita_dirbi",
+        "receita_ecf_renuncia",
+        "sigsif_habilitados",
     }
 )
 COLUNAS_DE_PESSOA = frozenset(

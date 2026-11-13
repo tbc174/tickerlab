@@ -2567,6 +2567,28 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MAPA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-09-08",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Receita Federal (renúncias)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-11-06",
       "licenca": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
       "modulos": [
@@ -2778,17 +2800,6 @@
     },
     {
       "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "MAPA",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
       "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
       "modulos": [
         "governo_e_sancoes"
@@ -2899,8 +2910,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 34,
-    "tabelas": 122,
+    "orgaos": 35,
+    "tabelas": 125,
     "temas": [
       {
         "chave": "cvm",
@@ -2962,8 +2973,8 @@
           "Ancine",
           "Ministério da Saúde (DATASUS)"
         ],
-        "tabelas": 14,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "tabelas": 15,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -2988,10 +2999,11 @@
           "TCE-RS",
           "Banco Central",
           "SEFAZ-PE",
-          "Governo do ES"
+          "Governo do ES",
+          "Receita Federal (renúncias)"
         ],
-        "tabelas": 14,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "tabelas": 16,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
         "titulo": "Dinheiro público e capital de fora"
       }
     ]
@@ -3005,7 +3017,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 58
+      "tabelas": 61
     },
     {
       "chave": "credito_e_fidc",
@@ -7978,6 +7990,39 @@
       "tabela": "anvisa_por_empresa"
     },
     {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de Incentivos, Renúncias, Benefícios e Imunidades de Natureza Tributária), por mês, código do regime e tributo.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-09-08",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal (renúncias)",
+      "situacao": "licenciada",
+      "tabela": "receita_dirbi"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Incentivos de IRPJ e CSLL que a empresa declarou na ECF (Escrituração Contábil Fiscal), uma linha por CNPJ, SCP e período da escrituração, com a forma de tributação e cada benefício em reais.",
+      "frequencia": "Anual",
+      "historico_desde": "2026-09-19",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal (renúncias)",
+      "situacao": "licenciada",
+      "tabela": "receita_ecf_renuncia"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "A quem o Ministério da Agricultura habilitou exportar, para que país, em que área e produto (Serviço de Inspeção Federal, SIGSIF): uma linha por país, área, SIF e produto.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-02",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MAPA",
+      "situacao": "licenciada",
+      "tabela": "sigsif_habilitados"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -8872,9 +8917,9 @@
   "totais": {
     "familias": 133,
     "familias_em_uso": 46,
-    "fontes": 46,
+    "fontes": 47,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 159
+    "tabelas": 162
   }
 }
