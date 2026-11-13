@@ -12,8 +12,9 @@ import { Carregando } from "../Carregando";
 import { useConta } from "../conta";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
-import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
+import type { BlocoDaFichaV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
+import { cnpjComPontuacao, nomeDoCampo, SEM_VALOR, textoDoValor } from "./valoresDaFicha";
 import { ContatoDaFicha } from "./ContatoDaFicha";
 import { ErroDaTela } from "./ErroDaTela";
 import { EventosDaFicha } from "./EventosDaFicha";
@@ -22,56 +23,8 @@ import { SociosDaFicha } from "./SociosDaFicha";
 import { TitularDaFicha } from "./TitularDaFicha";
 
 const NOME_DA_PLANILHA = "ficha-da-empresa-tickerlab.xlsx"; // sem o CNPJ: o nome do arquivo não carrega dado
+export { cnpjComPontuacao, textoDoValor };
 export const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
-const SEM_VALOR = "—";
-
-// o nome de cada campo na tela; campo novo sem nome aparece com a chave, nunca some
-const NOMES_DOS_CAMPOS: Record<string, string> = {
-  razao_social: "Razão social",
-  situacao_cadastral: "Situação cadastral",
-  data_situacao_cadastral: "Data da situação",
-  motivo_situacao: "Motivo da situação (código da Receita)",
-  natureza_juridica: "Natureza jurídica (código da Receita)",
-  matriz: "Matriz",
-  optante_simples: "Optante pelo Simples",
-  data_opcao_simples: "Entrou no Simples em",
-  data_exclusao_simples: "Saiu do Simples em",
-  mes_do_retrato: "Mês do cadastro",
-  mes_do_retrato_do_cadastro: "Mês do retrato do cadastro",
-  documento: "Documento",
-  referencia: "Referência",
-  prazo: "Prazo",
-  primeira_entrega: "Primeira entrega",
-  dias_uteis_de_atraso: "Dias úteis de atraso",
-  situacao_da_entrega: "Situação da entrega",
-};
-
-// os cinco códigos do dicionário de dados do CNPJ (base/receita_codigos.py)
-const SITUACOES_CADASTRAIS: Record<string, string> = {
-  "01": "Nula",
-  "02": "Ativa",
-  "03": "Suspensa",
-  "04": "Inapta",
-  "08": "Baixada",
-};
-
-// a regra do TickerLab sobre o índice da CVM (src/api_externa/conjuntos/ficha.py)
-const SITUACOES_DA_ENTREGA: Record<string, string> = {
-  on_time: "No prazo",
-  late: "Atrasou",
-  gray_zone: "Atraso curto (um feriado local pode explicar)",
-  severely_late: "Atraso grave",
-  not_filed: "Não entregue",
-};
-
-const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
-const MES_ISO = /^(\d{4})-(\d{2})$/;
-const CNPJ_SO_DIGITOS = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/;
-
-/** "02429144000193" → "02.429.144/0001-93", como o analista digita; outro formato sai como veio. */
-export const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, "$1.$2.$3/$4-$5");
-
-const nomeDoCampo = (chave: string) => NOMES_DOS_CAMPOS[chave] ?? chave;
 
 // a lista dos campos do cadastro não consultados vem com o nome de fora da API (src/api_externa/nomes.py);
 // a tela os mostra pelo nome da tabela acima. Campo sem par aparece com o nome de fora, nunca some; o
@@ -99,16 +52,6 @@ const juntarEmLista = (itens: string[]) =>
 function camposNaoConsultados(deFora: string[]): string {
   const nomes = deFora.map((nome) => `“${nomeDoCampo(CHAVE_DO_CAMPO_DE_FORA[nome] ?? nome)}”`);
   return `os dados ${nomes.length === 1 ? "do campo" : "dos campos"} ${juntarEmLista(nomes)}`;
-}
-
-export function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): string {
-  if (valor === null) return SEM_VALOR;
-  if (typeof valor === "boolean") return valor ? "Sim" : "Não";
-  const texto = String(valor);
-  if (chave === "situacao_cadastral") return SITUACOES_CADASTRAIS[texto.padStart(2, "0")] ?? `código ${texto}`;
-  if (chave === "situacao_da_entrega") return SITUACOES_DA_ENTREGA[texto] ?? texto;
-  if (DATA_ISO.test(texto)) return formatarData(texto);
-  return texto.replace(MES_ISO, "$2/$1"); // "2026-09" → "09/2026" (o mês do cadastro)
 }
 
 function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {

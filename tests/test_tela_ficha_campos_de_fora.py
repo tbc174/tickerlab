@@ -20,16 +20,19 @@ TELA = (
     / "telas"
     / "FichaDaEmpresa.tsx"
 )
+VALORES = TELA.with_name(
+    "valoresDaFicha.ts"
+)  # onde moram os rótulos (a tela os importa)
 PAR = re.compile(r'^\s*(\w+):\s*"([^"]*)",', re.MULTILINE)
 
 
-def _objeto(nome: str) -> dict[str, str]:
+def _objeto(nome: str, arquivo: Path = TELA) -> dict[str, str]:
     """Os pares `chave: "valor"` do objeto `const NOME: Record<string, string> = {...}` da tela."""
-    texto = TELA.read_text(encoding="utf-8")
+    texto = arquivo.read_text(encoding="utf-8")
     achado = re.search(
         rf"const {nome}: Record<string, string> = \{{(.*?)\n\}};", texto, re.DOTALL
     )
-    assert achado, f"{nome} não achado em {TELA.name}"
+    assert achado, f"{nome} não achado em {arquivo.name}"
     return dict(PAR.findall(achado.group(1)))
 
 
@@ -41,7 +44,7 @@ def test_o_mapa_da_tela_tem_todo_campo_que_a_lista_pode_trazer():
 
 
 def test_todo_campo_do_mapa_tem_rotulo_na_tela():
-    rotulos = _objeto("NOMES_DOS_CAMPOS")
+    rotulos = _objeto("NOMES_DOS_CAMPOS", VALORES)
     sem_rotulo = [
         chave
         for chave in _objeto("CHAVE_DO_CAMPO_DE_FORA").values()
@@ -52,6 +55,6 @@ def test_todo_campo_do_mapa_tem_rotulo_na_tela():
 
 def test_o_mes_do_retrato_do_cadastro_tem_o_rotulo_aprovado():
     assert (
-        _objeto("NOMES_DOS_CAMPOS")["mes_do_retrato_do_cadastro"]
+        _objeto("NOMES_DOS_CAMPOS", VALORES)["mes_do_retrato_do_cadastro"]
         == "Mês do retrato do cadastro"
     )
