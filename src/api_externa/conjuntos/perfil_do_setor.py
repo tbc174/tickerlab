@@ -132,16 +132,12 @@ class LeitorDoPerfilDoSetor:
         self.tabelas = set(views(porta.con))
 
     def perfil(self, cnae: str, como_era_em: date) -> PerfilServido | None:
-        """O perfil do CNAE (só dígitos, já conferido por `cnae_do_parametro`) como era no dia; None se o
-        portão não libera o CNAE, se a porta não tem as tabelas ou se ainda não havia retrato público."""
-        if (
-            not self.permitido(RECEITA, CNAE, True)
-            or not {
-                ESTABELECIMENTOS,
-                EMPRESAS,
-            }
-            <= self.tabelas
-        ):
+        """O perfil do CNAE como era no dia; None se o portão não libera o CNAE, se a porta não tem as tabelas
+        ou se ainda não havia retrato público. O CNAE é conferido aqui de novo (`cnae_do_parametro`): um CNAE
+        vazio ou curto casaria com o país inteiro; fora da forma, `PedidoInvalido("invalid_cnae")`."""
+        cnae = cnae_do_parametro(cnae)
+        tabelas = {ESTABELECIMENTOS, EMPRESAS}
+        if not self.permitido(RECEITA, CNAE, True) or not tabelas <= self.tabelas:
             return None
         mes = mes_do_retrato(self.porta, como_era_em)
         if mes is None:
@@ -170,7 +166,12 @@ class LeitorDoPerfilDoSetor:
         return PerfilServido(corpo, {RECEITA})
 
     def _uma(self, sql: str, parametros: dict[str, object]) -> list[tuple]:
-        return self.porta.con.execute(sql, parametros).fetchall()
+        """Uma consulta num cursor próprio: a conexão da porta é dividida entre as threads do servidor."""
+        cursor = self.porta.con.cursor()
+        try:
+            return cursor.execute(sql, parametros).fetchall()
+        finally:
+            cursor.close()
 
     def _publico_em(self, mes: str) -> str | None:
         (achado,) = self._uma(

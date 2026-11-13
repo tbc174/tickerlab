@@ -316,3 +316,11 @@ def test_cnae_fora_da_forma_e_recusado(cnae):
     with pytest.raises(compradores.PedidoInvalido) as erro:
         perfil.cnae_do_parametro(cnae)
     assert erro.value.codigo == "invalid_cnae"
+
+
+@pytest.mark.parametrize("cnae", ["", "6", "620"])
+def test_o_leitor_confere_o_cnae_mesmo_chamado_direto(porta, cnae):
+    """Um CNAE curto passado direto ao leitor casaria com o país inteiro: o leitor recusa."""
+    leitor = perfil.LeitorDoPerfilDoSetor(porta, _permitido(*PRONTAS))
+    with pytest.raises(compradores.PedidoInvalido):
+        leitor.perfil(cnae, DIA)
