@@ -106,7 +106,10 @@ NAO_E_SAIDA: dict[tuple[str, str], str] = {
     ): "regex que classifica o nome da parte; não é texto exibido",
     ("src/raio_x.py", "seguro"): "regex do setor 'Seguro' (nome de setor), não é juízo",
     **{
-        (arquivo, "seguro"): "id da fonte e do pacote da ANTT (seguro de responsabilidade civil): nome do produto, não juízo"
+        (
+            arquivo,
+            "seguro",
+        ): "id da fonte e do pacote da ANTT (seguro de responsabilidade civil): nome do produto, não juízo"
         for arquivo in (
             "base/antt_cadastros.py",
             "base/arquivo/destinos.py",
