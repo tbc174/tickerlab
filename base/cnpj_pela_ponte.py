@@ -18,11 +18,8 @@ Sem Streamlit; pandas só.
 """
 
 from collections.abc import Mapping
-from pathlib import Path
 
 import pandas as pd
-
-from base.parquet import arquivos_atuais, ler_tabela, origem_de_tabela
 
 CHAVE_AUXILIAR = "_chave_da_ponte"
 CNPJ_E_RAIZ = {
@@ -37,6 +34,12 @@ SO_A_RAIZ = {
 def _normal(serie: pd.Series) -> pd.Series:
     """A chave sem espaços e sem zeros à esquerda (o registro da ANS e o código da SUSEP vêm com e sem eles)."""
     return serie.astype("string").str.strip().str.lstrip("0")
+
+
+def _datas(serie: pd.Series) -> pd.Series:
+    """Datas na mesma unidade (ns): a ponte gravada com data pura volta como `datetime64[s]` e o `merge_asof`
+    recusa unidades diferentes."""
+    return pd.to_datetime(serie).astype("datetime64[ns]")
 
 
 def _usavel(ponte: pd.DataFrame) -> pd.Series:
@@ -70,7 +73,7 @@ def com_cnpj_da_ponte(
     esquerda = pd.DataFrame(
         {
             CHAVE_AUXILIAR: _normal(tabela[chave]),
-            "disponivel_em": pd.to_datetime(tabela["disponivel_em"]),
+            "disponivel_em": _datas(tabela["disponivel_em"]),
         },
         index=tabela.index,
     )
@@ -79,7 +82,7 @@ def com_cnpj_da_ponte(
     direita = pd.DataFrame(
         {
             CHAVE_AUXILIAR: _normal(ponte[chave_da_ponte]),
-            "disponivel_em": pd.to_datetime(ponte["disponivel_em"]),
+            "disponivel_em": _datas(ponte["disponivel_em"]),
             "_usavel": _usavel(ponte),
             **{nova: ponte[velha].astype("string") for nova, velha in saida.items()},
         }
@@ -88,8 +91,8 @@ def com_cnpj_da_ponte(
         direita[CHAVE_AUXILIAR].notna() & direita["disponivel_em"].notna()
     ]
     ligada = pd.merge_asof(
-        esquerda[valida].sort_values("disponivel_em"),
-        direita.sort_values("disponivel_em"),
+        esquerda[valida].sort_values("disponivel_em", kind="stable"),
+        direita.sort_values("disponivel_em", kind="stable"),
         on="disponivel_em",
         by=CHAVE_AUXILIAR,
         direction="backward",
@@ -101,18 +104,3 @@ def com_cnpj_da_ponte(
         resultado.iloc[posicoes, coluna] = ligada[nova].to_numpy()
     contagem["ligadas"] = int(resultado[next(iter(saida))].notna().sum())
     return resultado, contagem
-
-
-def ler_ponte(
-    pasta: Path, raiz: Path
-) -> tuple[pd.DataFrame | None, list[dict[str, str]]]:
-    """A ponte gravada em `pasta` (todos os Parquets atuais, sem as versões guardadas) e as origens dela.
-
-    `None` e nenhuma origem quando a pasta ainda não existe (a ponte não foi montada). As origens são as
-    tabelas da ponte (`origem_de_tabela`, caminho a partir de `raiz`): a tabela que usa a ponte se refaz quando
-    a ponte muda, e a linhagem dela chega aos originais pela ponte (série 4)."""
-    arquivos = arquivos_atuais(pasta) if pasta.is_dir() else []
-    if not arquivos:
-        return None, []
-    ponte = pd.concat([ler_tabela(a) for a in arquivos], ignore_index=True)
-    return ponte, [origem_de_tabela(arquivo, raiz) for arquivo in arquivos]

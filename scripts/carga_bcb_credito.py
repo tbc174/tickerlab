@@ -46,6 +46,7 @@ import sqlalchemy as sa
 from base import bcb_ifdata, bcb_scr, cnpj_pela_ponte
 from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela
 from base.publicacao import dia_da_coleta
+from scripts import carga_ponte
 from src import acervo, rede
 from src.banco.coletas import (
     coletas_guardadas,
@@ -153,6 +154,14 @@ def _valores_com_raiz(
     """Os valores do tipo com `cnpj_basico`, a raiz do CNPJ que o cadastro do IF.data dá ao código da
     instituição (linha 904, lote 4; `base/cnpj_pela_ponte.py`). Sem cadastro gravado, a coluna sai vazia."""
     valores = _valores_do_tipo(coletas)
+    if ponte is not None and not ponte.empty:
+        # a instituição individual tem a raiz do próprio código; o líder só vale para os códigos de conglomerado
+        propria = (
+            ponte["cod_inst"]
+            .astype("string")
+            .where(ponte["cod_inst"].astype("string").str.fullmatch(r"\d{8}"))
+        )
+        ponte = ponte.assign(cnpj_raiz=propria.fillna(ponte["cnpj_raiz"]))
     com_raiz, contagem = cnpj_pela_ponte.com_cnpj_da_ponte(
         valores,
         "cod_inst",
@@ -178,7 +187,7 @@ def _gravar_valores_do_tipo(
     if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
         return VAZIO
     ponte, origens_da_ponte = (
-        cnpj_pela_ponte.ler_ponte(pasta / "ifdata" / "cadastro", pasta)
+        carga_ponte.ler_ponte(pasta / "ifdata" / "cadastro", pasta)
         if pasta
         else (None, [])
     )

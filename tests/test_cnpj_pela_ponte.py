@@ -166,3 +166,38 @@ def test_carga_sem_ponte_na_base_deixa_as_colunas_vazias(tmp_path):
     )
     assert montar()["cnpj"].isna().all()
     assert origens == []
+
+
+def test_datas_em_unidades_diferentes_ligam_sem_erro():
+    """A ponte gravada com data pura volta como datetime64[s]; os fatos vêm em [us] (revisão cruzada)."""
+    ponte = _ponte(("123", "11.222.333/0001-81", "2020-01-31", True, False))
+    ponte["disponivel_em"] = ponte["disponivel_em"].astype("datetime64[s]")
+    fatos = _fatos(("123", "2026-01-31"))
+    fatos["disponivel_em"] = fatos["disponivel_em"].astype("datetime64[us]")
+    saida, contagem = com_cnpj_da_ponte(fatos, "cd_operadora", ponte, SAIDA)
+    assert list(saida["cnpj"]) == ["11.222.333/0001-81"]
+    assert contagem["ligadas"] == 1
+
+
+def test_ifdata_individual_fica_com_a_propria_raiz_e_nao_a_do_lider(monkeypatch):
+    from scripts import carga_bcb_credito as carga
+
+    cadastro = pd.DataFrame(
+        {
+            "cod_inst": ["60701190", "C0080099"],
+            "cnpj_raiz": [
+                "60872504",
+                "60872504",
+            ],  # com líder, o cadastro dá a raiz do líder
+            "disponivel_em": pd.to_datetime(["2026-01-01"] * 2),
+        }
+    )
+    valores = pd.DataFrame(
+        {
+            "cod_inst": ["60701190", "C0080099"],
+            "disponivel_em": pd.to_datetime(["2026-05-01"] * 2),
+        }
+    )
+    monkeypatch.setattr(carga, "_valores_do_tipo", lambda _coletas: valores)
+    saida = carga._valores_com_raiz({}, cadastro)
+    assert list(saida["cnpj_basico"]) == ["60701190", "60872504"]

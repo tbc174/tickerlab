@@ -54,6 +54,7 @@ from base.setoriais import (
     revisoes,
     susep,
 )
+from scripts import carga_ponte
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
@@ -284,7 +285,7 @@ def _com_cnpj_da_ponte(
     origens com a ponte: a tabela se refaz quando a ponte muda. Sem ponte na base, as colunas saem vazias."""
     if not revisada.ponte:
         return montar, origens
-    ponte, origens_da_ponte = cnpj_pela_ponte.ler_ponte(base / revisada.ponte, base)
+    ponte, origens_da_ponte = carga_ponte.ler_ponte(base / revisada.ponte, base)
 
     def com_cnpj() -> pd.DataFrame:
         tabela, contagem = cnpj_pela_ponte.com_cnpj_da_ponte(
