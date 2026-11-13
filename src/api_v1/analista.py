@@ -380,7 +380,7 @@ def compradores_do_setor(
                 hoje=hoje(),
                 regras=rotas_da_api_externa.regras_da_api(),
             )
-        except setor.PedidoInvalido as erro:
+        except ValueError as erro:  # PedidoInvalido é um ValueError
             raise HTTPException(status_code=422, detail=SETOR_INVALIDO) from erro
     log.info(
         "setor do analista: %s", resposta.estado

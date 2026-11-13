@@ -81,6 +81,10 @@ def test_nenhum_nome_de_campo_de_quem_programa_na_resposta(cliente):
     dados = _pedir(cliente).json()
     assert any("o dia da consulta" in limite for limite in dados["limites"])
     assert "não intenção de compra" in dados["limites"][0]
+    texto_dos_limites = " ".join(dados["limites"])
+    assert "valia no dia da consulta" in texto_dos_limites
+    assert "depois do dia da consulta" in texto_dos_limites
+    assert "para esta organização" not in texto_dos_limites
 
 
 def test_so_pessoa_juridica_e_a_pessoa_fora_da_lista_nao_sai(cliente):

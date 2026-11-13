@@ -40,10 +40,16 @@ def limites_da_tela(limites: list[str]) -> list[str]:
     """Os limites do leitor sem o nome de campo para quem programa: `known_at` vira "o dia da consulta" e o
     aviso da parte não disponível fala do campo da tela (`sinais_nao_disponiveis`, como na API)."""
     de_fora = nao_disponivel.NOMES_DE_FORA[AVISO_DA_API]
-    return [
-        limite.replace("known_at", DIA_DA_CONSULTA).replace(de_fora, AVISO_DA_API)
-        for limite in limites
-    ]
+    return [_frase_da_tela(limite.replace(de_fora, AVISO_DA_API)) for limite in limites]
+
+
+def _frase_da_tela(limite: str) -> str:
+    """Troca o `known_at` por "o dia da consulta" com a preposição certa e tira o "para esta organização",
+    que esta tela não usa (o portão é o da API, sem contrato de organização)."""
+    limite = limite.replace("em known_at", "no dia da consulta")
+    limite = limite.replace("de known_at", "do dia da consulta")
+    limite = limite.replace("known_at", DIA_DA_CONSULTA)
+    return limite.replace(" para esta organização", "")
 
 
 def compradores(
