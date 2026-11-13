@@ -65,6 +65,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da Finep\b", "Finep"),
     (r"empregadores do MTE", "MTE"),
     (r"do IBAMA\b", "IBAMA"),
+    (r"\bINPI\b", "INPI"),
     (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
     (r"Receita", "Receita Federal"),
@@ -503,7 +504,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "Licenças e registros nas agências",
         "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
         "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
-        "a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
+        "patentes, desenhos e programas de computador no INPI.",
         (
             "ans_operadoras",
             "susep_cadastro",
@@ -519,6 +521,10 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cmed_precos",
             "ancine_agentes",
             "cnes_estabelecimentos",
+            "inpi_marcas_titulares",
+            "inpi_patentes_depositantes",
+            "inpi_desenhos_depositantes",
+            "inpi_programas_titulares",
         ),
     ),
     TemaDoCnpj(

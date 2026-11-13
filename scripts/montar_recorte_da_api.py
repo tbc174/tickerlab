@@ -114,6 +114,12 @@ FICAM_EM_CASA = (
     "aneel_inadimplencia",
     "aneel_indicadores_comerciais",
     "ans_idss",
+    # linha 904 (lote 2): titulares do INPI só com empresa; o envio ao VPS pede o "pode" da Diretoria e a leitura da
+    # licença (CC Atribuição-SemDerivações 3.0, a confirmar para tabela derivada)
+    "inpi_marcas_titulares",
+    "inpi_patentes_depositantes",
+    "inpi_desenhos_depositantes",
+    "inpi_programas_titulares",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

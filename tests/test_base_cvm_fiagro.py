@@ -88,3 +88,17 @@ def test_zip_sem_informe_da_classe_devolve_tabela_vazia():
     tabela, contagem = cvm_fiagro.ler_mes(saida.getvalue())
     assert list(tabela.columns) == cvm_fiagro.COLUNAS
     assert contagem["linhas"] == 0
+
+
+def test_comando_sem_zip_guardado_sai_com_1_e_com_resumo_sai_com_0(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    from scripts import carga_cvm_fiagro
+
+    pasta = str(tmp_path / "b")
+    assert carga_cvm_fiagro.main(["--pasta", pasta]) == 1
+    monkeypatch.setattr(
+        cvm_fiagro, "montar", lambda *_a, **_k: {"informe": {"na_tabela": 3}}
+    )
+    assert carga_cvm_fiagro.main(["--pasta", pasta]) == 0
