@@ -372,4 +372,8 @@ REGRAS: dict[str, Regra] = {
             2014: "em 2014 começam o conglomerado prudencial (tipo 1) e os relatórios 7 a 14 (carteira de crédito)"
         },
     ),
+    # Anvisa por empresa (linha 860, piloto D11): uma linha por raiz de CNPJ e por retrato (um por dia de arquivo
+    # da Anvisa). Sem coluna de ano nem de valor na regra: a tabela tem um retrato só até a Anvisa publicar outro,
+    # e a escala da contagem não se compara entre retratos de dias seguidos.
+    "anvisa_por_empresa": Regra(chave=("cnpj_basico", "disponivel_em")),
 }
