@@ -213,6 +213,10 @@ class LinhaDeDireito(NamedTuple):
 BETA_COMECA_EM = date(2026, 11, 3)
 _PROVA_CVM = "ADR 0108 D2.2 e D3: dados abertos da CVM, ODbL, revenda com atribuição"
 _PROVA_RECEITA = "ADR 0108 D2.2 e D3: dados abertos do CNPJ da Receita, CC BY, revenda com atribuição"
+_PROVA_ANVISA = (
+    "ADR 0108 D2.2 e D3: dados abertos da Anvisa, CC BY, revenda com atribuição; contagem por empresa "
+    "(linha 860), só pessoa jurídica"
+)
 _PROVA_DAS_AGENCIAS = (
     "ADR 0108 D2.2 e D3: dados abertos da agência (ANEEL e BC em ODbL; SUSEP, ANS e Anatel em CC BY), "
     "marca vendável, revenda com atribuição"
@@ -323,6 +327,15 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "matriz",
         ),
         _PROVA_RECEITA,
+    ),
+    # prospecting, registros na Anvisa (linha 860): a contagem por empresa, só pessoa jurídica (a tabela
+    # `anvisa_por_empresa` não carrega raiz nenhuma que tenha tido linha de pessoa); sinal de porte, não receita.
+    *_campos(
+        ("anvisa-produtos",),
+        "prospecting",
+        ("anvisa_por_empresa",),
+        ("registros_anvisa_total", "registros_anvisa_ativos"),
+        _PROVA_ANVISA,
     ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),
@@ -576,7 +589,9 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     ),
     # buyers (linha 810, PR 4): quem já se mexeu num setor, só pessoa jurídica. O setor e os nomes saem das
     # duas tabelas sem pessoa do CNPJ (linha 584); as entradas, da tabela de sócios PJ (só sócio do tipo 1);
-    # o FIP, do registro de fundos da CVM; a controlada, do FRE. A linha vale para o campo inteiro.
+    # o FIP, do registro de fundos da CVM; a controlada, do FRE. A linha vale para o campo inteiro. O FIP confere
+    # a cópia `fips_registrados` (linha 844), a única tabela de onde a lista lê o FIP: o registro inteiro tem
+    # CNPJ_Fundo fora da lista sem pessoa e não tem a marca (Diretoria, 12/11, ADR 0108 D11).
     *_campos(
         ("rfb-cnpj",),
         "buyers",
@@ -601,7 +616,7 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     *_campos(
         ("cvm-fidc-base",),
         "buyers",
-        ("registro_de_fundos",),
+        ("fips_registrados",),
         ("Tipo_Fundo",),
         _PROVA_CVM,
     ),

@@ -6,6 +6,7 @@ fora do ar (503), os três estados e a planilha. A porta e as regras do portão 
 (`src/api_externa/rotas.py`): os testes trocam as mesmas funções que os testes de lá.
 """
 
+import dataclasses
 import io
 import logging
 import shutil
@@ -17,7 +18,7 @@ from base.porta import Porta
 from src import paginas
 from src.analista import leitura
 from src.api_externa import rotas as rotas_da_api_externa
-from src.api_externa.conjuntos import empresas
+from src.api_externa.conjuntos import empresas, ficha
 from src.api_v1 import analista
 from src.banco.usuarios import mudar_plano
 from tests import test_analista_leitura as leitura_de_mentira
@@ -129,6 +130,80 @@ def test_entregas_sem_prontidao_saem_sem_o_bloco(cliente, monkeypatch):
     dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
     assert dados["estado"] == leitura.PRONTA
     assert dados["ficha"]["entregas"] is None
+    # linha 897: o bloco não consultado é dito, não some em silêncio
+    assert dados["ficha"]["entregas_nao_disponiveis"] == ["DFP", "ITR"]
+    assert leitura.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in dados["limites"]
+    assert not any(
+        frase in dados["limites"] for frase in ficha.LIMITES_DO_DOCUMENTO["DFP"]
+    )
+
+
+def _sem_a_fonte(fonte: str):
+    """As regras da tela sem nenhuma linha de direito da fonte no perfil (o documento barrado para a tela)."""
+    regras = leitura_de_mentira._regras()
+    linhas = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == ficha.CONJUNTO and linha.fonte == fonte)
+    )
+    return dataclasses.replace(regras, linhas=linhas)
+
+
+def test_itr_barrado_vem_listado_e_os_limites_dizem_que_nao_foi_consultado(
+    cliente, monkeypatch
+):
+    """Linha 897: a tela trocava os limites por um texto fixo que falava dos dois documentos; com o ITR
+    barrado, a lista só com DFP lia como "a companhia não entregou ITR"."""
+    regras = _sem_a_fonte(ficha.FONTES_DAS_ENTREGAS["ITR"])
+    monkeypatch.setattr(rotas_da_api_externa, "regras_da_api", lambda: regras)
+    dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert dados["estado"] == leitura.PRONTA
+    assert dados["ficha"]["entregas_nao_disponiveis"] == ["ITR"]
+    assert dados["ficha"]["entregas"]
+    assert {e["documento"]["valor"] for e in dados["ficha"]["entregas"]} == {"DFP"}
+    assert leitura.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in dados["limites"]
+    assert dados["limites"] != list(leitura.LIMITES)
+    assert not any("unavailable_" in l or "known_at" in l for l in dados["limites"])
+
+
+def test_os_dois_documentos_servidos_nada_fica_de_fora(cliente):
+    dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert dados["ficha"]["entregas_nao_disponiveis"] == []
+    assert dados["limites"] == list(leitura.LIMITES)
+    assert leitura.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL not in dados["limites"]
+
+
+def test_simples_barrado_vem_listado_e_os_limites_dizem_que_nao_foi_consultado(
+    cliente, monkeypatch
+):
+    """Linha 897 com a 891: o Simples sem prontidão sumia do cadastro em silêncio e lia como "a empresa não é
+    optante"; a tela diz que não foi consultado, com a chave que o corpo dela leva."""
+    tabelas = tuple(
+        t for t in leitura_de_mentira.TABELAS_DA_FICHA if t != "cnpj_simples_historico"
+    )
+    regras = leitura_de_mentira._regras(tabelas)
+    monkeypatch.setattr(rotas_da_api_externa, "regras_da_api", lambda: regras)
+    dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert dados["estado"] == leitura.PRONTA
+    assert dados["ficha"]["campos_do_cadastro_nao_disponiveis"] == [
+        "simples_nacional",
+        "simples_nacional_since",
+        "simples_nacional_until",
+    ]
+    assert "optante_simples" not in dados["ficha"]["cadastro_na_receita"]
+    assert leitura.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in dados["limites"]
+    assert (
+        ficha.CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS
+        in leitura.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    )
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in dados["limites"]
+    assert not any("unavailable_" in l or "known_at" in l for l in dados["limites"])
+
+
+def test_com_tudo_servido_nenhum_campo_do_cadastro_fica_de_fora(cliente):
+    dados = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()
+    assert dados["ficha"]["campos_do_cadastro_nao_disponiveis"] == []
+    assert leitura.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in dados["limites"]
 
 
 # ---------------------------------------------------------------- pedido, acesso e base

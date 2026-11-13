@@ -25,6 +25,9 @@ SEM_PESSOA_PELA_RAIZ: dict[str, str] = {
     "fca_geral": "cnpj",
     "demonstracoes_como_era": "cnpj",
     "carteiras_dos_fundos": "cnpj_fundo",
+    "aneel_samp": "cnpj",
+    "anp_concessionarios": "cnpj",
+    "fips_registrados": "CNPJ_Fundo",
 }
 
 
@@ -58,7 +61,15 @@ def cruzar(porta: Porta, tabela: str, coluna: str) -> Cruzamento:
     return Cruzamento(tabela, int(total), int(fora))
 
 
+# cópias montadas só no envio ao VPS: não ficam no acervo de casa, a prova delas é a trava
+# `recorte_dos_compradores.conferir_reduzidas` sobre a cópia montada
+SO_NA_COPIA_DO_ENVIO = frozenset({"fips_registrados"})
+
+
 def cruzar_todas(porta: Porta) -> list[Cruzamento]:
+    """Uma contagem por tabela de `SEM_PESSOA_PELA_RAIZ` que existe nesta base (as cópias do envio ficam de fora)."""
     return [
-        cruzar(porta, nome, coluna) for nome, coluna in SEM_PESSOA_PELA_RAIZ.items()
+        cruzar(porta, nome, coluna)
+        for nome, coluna in SEM_PESSOA_PELA_RAIZ.items()
+        if nome not in SO_NA_COPIA_DO_ENVIO
     ]

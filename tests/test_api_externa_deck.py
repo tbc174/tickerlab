@@ -124,6 +124,8 @@ def test_deck_do_setor_tem_so_o_que_o_portao_libera(setor, monkeypatch):
     texto = _textos(resposta.content)
     assert "HHI (pontos)" not in texto and "aneel-samp" not in texto
     assert "CPFL ENERGIA S.A." in texto  # os membros, da CVM, continuam
+    # e o deck diz, como o JSON, que a série não foi consultada (linha 882)
+    assert "unavailable_series" in texto
 
 
 def test_deck_do_setor_sem_pessoa_fisica(setor, noite):

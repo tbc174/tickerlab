@@ -117,6 +117,11 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "porte": "size",
     "capital_social": "share_capital",
     "n_estabelecimentos": "active_establishments",
+    # registros na Anvisa (linha 860)
+    "registros_anvisa_total": "anvisa_registrations_total",
+    "registros_anvisa_ativos": "anvisa_registrations_active",
+    "anvisa_tipo": "anvisa_type",
+    "anvisa_aviso": "anvisa_notice",
     "cnae_principal": "cnae_code",
     "uf": "state_code",
     "municipio": "municipality",
@@ -158,11 +163,15 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "primeira_entrega": "first_filed_on",
     "dias_uteis_de_atraso": "business_days_late",
     "situacao_da_entrega": "filing_status",
+    "entregas_nao_disponiveis": "unavailable_filings",
+    # o campo do cadastro que o portão não libera no perfil (linha 891)
+    "campos_do_cadastro_nao_disponiveis": "unavailable_registration_fields",
     # comparables: os pares da companhia aberta (linha 736, PR 3), com os números do último DFP
     "grupo_de_setores": "sector_group",
     "empresa_pedida": "subject_company",
     "pares": "peers",
     "medianas_dos_pares": "peer_medians",
+    "numeros_nao_disponiveis": "unavailable_figures",
     "exercicio": "fiscal_year_end",
     "receita": "revenue",
     "ebitda": "ebitda",
@@ -197,6 +206,10 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "compradores": "buyers",
     "total_de_compradores": "total_buyers",
     "sinais": "signals",
+    "sinais_nao_disponiveis": "unavailable_signals",
+    # o que o portão não libera em fundos e setores (linha 882)
+    "series_nao_disponiveis": "unavailable_series",
+    "blocos_nao_disponiveis": "unavailable_sections",
     "provas": "evidence",
     "quantas": "count",
     "exemplos": "examples",

@@ -74,12 +74,17 @@ FONTES_DE_CARGA_PROPRIA = {"bcb-ifdata": "ifdata_valores"}
 CARGA_PROPRIA_PELO_SCRIPT = {
     "cvm-fidc-base": ("registro_de_fundos", "scripts/carga_fidc.py")
 }
+# cópia reduzida montada no envio ao VPS a partir da tabela de carga própria (o FIP do `buyers` lê `fips_registrados`,
+# que sai do registro de fundos, `base/recorte_dos_compradores.py`): a linhagem dela cita a tabela de origem
+COPIAS_DA_CARGA_PROPRIA = {"fips_registrados": "registro_de_fundos"}
 # tabela montada na base a partir de outra que a fonte alimenta (as trocas de auditor saem dos auditores de
 # cada FCA, `base/auditores.py`): a de origem é a que está nos destinos do arquivista
 MONTADAS_DE_OUTRA_TABELA = {
     "trocas_de_auditor": "auditores",
     # as entradas de sócio PJ saem do quadro de sócios, cortado pelas raízes da lista sem pessoa (linha 810)
     "entradas_de_socio_pj": "cnpj_estabelecimentos_pj",
+    # a contagem de registros por empresa sai dos registros da Anvisa, um a um (linha 860)
+    prospeccao.ANVISA: "anvisa_registros",
 }
 # a rede de entidades (ADR 0077, `base/rede/montar.py`) é montada de várias tabelas; a de cada fonte que sai em
 # `links` é a que está nos destinos do arquivista: as controladas do FRE e os auditores do FCA
@@ -173,13 +178,16 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                     linha
                 )
             elif linha.fonte in CARGA_PROPRIA_PELO_SCRIPT:
-                assert (tabela, linha.fonte) == (
+                origem = COPIAS_DA_CARGA_PROPRIA.get(tabela, tabela)
+                assert (origem, linha.fonte) == (
                     CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][0],
                     linha.fonte,
                 ), linha
                 assert (
-                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[tabela].onde
+                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[origem].onde
                 ), (linha, tabela)
+                if tabela != origem:
+                    assert f"`{origem}`" in TABELAS[tabela].linhagem, (linha, tabela)
             elif linha.fonte in FONTES_DE_CARGA_PROPRIA:
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
@@ -211,6 +219,17 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
         if linha.conjunto == comparaveis.CONJUNTO and linha.campo not in colunas:
             # conta nossa sobre as colunas da tabela: o grupo do setor, o fim do exercício, as somas e razões
             assert set(comparaveis.ORIGEM_DAS_CONTAS[linha.campo]) <= colunas, linha
+            continue
+        if (
+            linha.conjunto == prospeccao.CONJUNTO
+            and linha.campo in prospeccao.CAMPOS_DA_ANVISA
+        ):
+            # soma nossa das colunas `<tipo>_total` e `<tipo>_ativos` dos tipos servidos (linha 860)
+            sufixo = linha.campo.removeprefix("registros_anvisa_")
+            tipos = {
+                t for prefixos in prospeccao.TIPOS_DA_ANVISA.values() for t in prefixos
+            }
+            assert {f"{t}_{sufixo}" for t in tipos} <= colunas, linha
             continue
         if linha.tabelas == (CADASTRO,):
             colunas |= do_raio_x

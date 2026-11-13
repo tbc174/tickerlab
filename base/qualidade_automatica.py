@@ -221,6 +221,14 @@ REGRAS: dict[str, Regra] = {
     # ---- tabelas do roteiro de M&A (linha 784, piloto D11): chave = a do dicionário; primeira medida de 12/11/2026
     "rotulos_atraso": Regra(chave=("cnpj", "documento", "referencia"), periodo="prazo"),
     "cnpj_situacao_cadastral": Regra(chave=("cnpj", "mes_do_retrato")),
+    "cnpj_situacao_especial": Regra(chave=("cnpj", "mes_do_retrato")),
+    "susep_seguros": Regra(
+        chave=("competencia", "coenti", "cogrupo", "coramo", "visto_em"),
+        periodo="competencia",
+        opcionais={
+            "coramo": "2 linhas de 1995 (grupo 99999 de uma só entidade) chegam da SUSEP sem o ramo"
+        },
+    ),
     "eventos": Regra(
         chave=("protocolo", "versao"),
         periodo="publicado_em",
@@ -242,6 +250,30 @@ REGRAS: dict[str, Regra] = {
         },
     ),
     "fca_geral": Regra(chave=("cnpj", "referencia", "versao"), periodo="referencia"),
+    "aneel_samp": Regra(
+        chave=(
+            "competencia",
+            "cnpj",
+            "tipo_de_mercado",
+            "modalidade_tarifaria",
+            "subgrupo_tarifario",
+            "classe_de_consumo",
+            "subclasse_de_consumo",
+            "detalhe_do_consumidor",
+            "nucleo_ceg",
+            "posto_tarifario",
+            "opcao_de_energia",
+            "detalhe_do_mercado",
+            "visto_em",
+        ),
+        periodo="competencia",
+        opcionais={
+            "nucleo_ceg": "a fonte deixa em branco o CEG de algumas usinas da opção de energia Geração (2023 a 2026); as demais linhas trazem 0"
+        },
+    ),
+    "anp_concessionarios": Regra(
+        chave=("numero_do_contrato", "cnpj", "visto_em"), periodo="disponivel_em"
+    ),
     "entidades": Regra(chave=("id_entidade",)),
     "ligacoes": Regra(
         chave=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"),
@@ -282,6 +314,12 @@ REGRAS: dict[str, Regra] = {
         repetidas_aceitas=17,
         porque_repetidas="linhas idênticas em todas as colunas, nas colunas que a base guarda (o diretor responsável sai na montagem); a base não corrige",
     ),
+    # cópia reduzida que vai ao VPS (linha 844): uma linha por fundo e registro; montada no envio, medida na cópia montada
+    "fips_registrados": Regra(
+        chave=("CNPJ_Fundo", "Data_Registro"),
+        repetidas_aceitas=2,
+        porque_repetidas="2 pares de fundo e data de registro (4 linhas) vêm da CVM com duas datas de cancelamento diferentes; são registros distintos na origem e a base não escolhe um",
+    ),
     "pgfn_divida": Regra(
         chave=(
             "cnpj",
@@ -310,5 +348,28 @@ REGRAS: dict[str, Regra] = {
         ),
         periodo="competencia",
         valor="beneficiarios",
+    ),
+    # estrita (Diretoria, 12/11/2026, linha 877): nenhuma linha repetida aceita. A resposta do BC de 2025-09
+    # veio com cada linha ~3 vezes e a carga de 14/10 gravou assim: a tabela fica vermelha até essa data-base
+    # ser refeita. Sem `visto_em` na chave: os arquivos de 14/10 não têm a coluna que o contrato 2.0.0 pede;
+    # quando todos a tiverem, ela entra na chave (a revisão do BC é linha nova da mesma chave).
+    "ifdata_valores": Regra(
+        chave=(
+            "data_base",
+            "tipo_instituicao",
+            "cod_inst",
+            "relatorio",
+            "grupo",
+            "conta",
+            "coluna",
+        ),
+        periodo="data_base",
+        valor="saldo",
+        opcionais={
+            "grupo": "só alguns relatórios do IF.data dividem as linhas em grupos; nos outros a fonte deixa o grupo vazio"
+        },
+        saltos_explicados={
+            2014: "em 2014 começam o conglomerado prudencial (tipo 1) e os relatórios 7 a 14 (carteira de crédito)"
+        },
     ),
 }

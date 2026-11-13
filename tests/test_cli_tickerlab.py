@@ -2602,6 +2602,12 @@ def test_ativos_sem_chave_sai_com_o_codigo_de_chave(rodar):
         ("compradores", "unavailable_signals", "fund_partner", "sinais de comprador"),
         ("empresa", "unavailable_filings", "ITR", "entregas à CVM"),
         ("comparaveis", "unavailable_figures", "ebitda", "números dos comparáveis"),
+        (
+            "empresa",
+            "unavailable_registration_fields",
+            "simples_nacional",
+            "campos do cadastro na Receita",
+        ),
     ],
 )
 def test_rotulos_dos_campos_nao_disponiveis(

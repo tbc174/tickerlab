@@ -343,7 +343,9 @@ def fundo(
     known_at: date | None = None,
     assumed_return: float | None = None,
 ) -> object:
-    """Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`."""
+    """Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.
+    O bloco pedido que a organização não tem vai em `unavailable_sections` (a carteira vazia não é "sem
+    posição"), com o aviso em `limits`."""
     numeros = _cnpj_pedido(cnpj)
     dia, retorno = _dia_pedido(known_at), _retorno_pedido(assumed_return)
     return _um_pedido(
@@ -363,7 +365,8 @@ def demonstracoes_da_empresa(
     period_end: date | None = None,
 ) -> object:
     """As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,
-    a versão e a origem; `period_end` traz só o período que termina nesse dia."""
+    a versão e a origem; `period_end` traz só o período que termina nesse dia. O documento que a organização
+    não tem vai em `unavailable_filings` (sem as linhas dele não é "não entregou"), com o aviso em `limits`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
 
@@ -408,6 +411,9 @@ def busca_de_empresas(
     capital_min: float | None = None,
     capital_max: float | None = None,
     branches_min: int | None = None,
+    anvisa_type: str | None = None,
+    anvisa_active_min: int | None = None,
+    anvisa_total_min: int | None = None,
     sort: str | None = None,
     cursor: str | None = None,
     limit: int | None = None,
@@ -416,8 +422,12 @@ def busca_de_empresas(
     """Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),
     UF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,
     `capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que
-    valia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,
-    por CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um
+    valia em `known_at`. Registros na Anvisa: `anvisa_active_min` e `anvisa_total_min` (de 1 em diante)
+    filtram pela contagem do tipo `anvisa_type` (`cosmetics`, `health_products`, `sanitizers`; sem tipo,
+    `products`, a soma desses três; medicamentos e alimentos entram quando a licença deles for lida); a
+    contagem sai em `anvisa_registrations_active` e `anvisa_registrations_total`, com fonte e dia do retrato.
+    `sort` ordena por `capital`, `branches` ou `anvisa` (registros ativos; `-` na frente é decrescente); sem
+    ele, por CNPJ. Capital, estabelecimentos e registros são sinais aproximados de porte, não faturamento. Pelo menos um
     filtro; 50 por página (máximo 100); `next_cursor` traz a seguinte."""
     dia = _dia_pedido(known_at)
     try:
@@ -426,7 +436,8 @@ def busca_de_empresas(
             legal_nature=legal_nature, registration_status=registration_status,
             opened_before=opened_before, opened_after=opened_after, head_office=head_office,
             cursor=cursor, limit=limit, capital_min=capital_min, capital_max=capital_max,
-            branches_min=branches_min, sort=sort,
+            branches_min=branches_min, sort=sort, anvisa_type=anvisa_type,
+            anvisa_active_min=anvisa_active_min, anvisa_total_min=anvisa_total_min,
         )  # fmt: skip
     except prospeccao.FiltroInvalido as erro:
         raise _recusa(erro.codigo) from erro
@@ -454,7 +465,9 @@ def compradores_do_setor(
     com estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se
     dada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas
     com controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por
-    sinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra."""
+    sinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal
+    que não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em
+    `unavailable_signals`: a lista não diz nada sobre ele."""
     dia = _dia_pedido(known_at)
     try:
         pedido = compradores.pedido_dos_parametros(cnae, state, years, limit)
@@ -519,7 +532,9 @@ def lote_de_empresas(pedido: LoteDeEmpresas, contexto: Chave) -> object:
 @router.get("/companies/{cnpj}")
 def empresa(cnpj: str, contexto: Chave, known_at: date | None = None) -> object:
     """A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais
-    novo já público); MEI, empresário individual e o que não é empresa saem `not_available`."""
+    novo já público); MEI, empresário individual e o que não é empresa saem `not_available`. O campo do
+    cadastro que não foi consultado (a situação, o nome, o Simples) vem em `unavailable_registration_fields`,
+    com o aviso em `limits`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(
@@ -537,7 +552,10 @@ def perfil_da_empresa(
 ) -> object:
     """O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)
     e, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a
-    situação da entrega. MEI, empresário individual e o que não é empresa saem `not_available`."""
+    situação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista
+    de entregas não diz nada sobre ele. O campo do cadastro que não foi consultado (a situação cadastral, o
+    Simples) vem em `unavailable_registration_fields`. MEI, empresário individual e o que não é empresa saem
+    `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(
@@ -693,8 +711,9 @@ def comparaveis_da_empresa(
 ) -> object:
     """Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores
     (pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida
-    líquida e as razões), e a mediana de cada razão entre os pares. Empresa sem FCA no dia, MEI,
-    empresário individual e o que não é empresa saem `not_available`."""
+    líquida e as razões), e a mediana de cada razão entre os pares. O número ou a razão que o portão não
+    libera para a organização vem em `unavailable_figures`: os pares e as medianas não dizem nada sobre ele.
+    Empresa sem FCA no dia, MEI, empresário individual e o que não é empresa saem `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(
@@ -761,7 +780,9 @@ def lista_de_setores(contexto: ChaveSemQuota) -> object:
 @router.get("/sectors/{key}")
 def setor(key: str, contexto: Chave, known_at: date | None = None) -> object:
     """O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem
-    são, como a última noite os deixou; `known_at` antes da noite sai `not_available`."""
+    são, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a
+    organização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,
+    com o aviso em `limits`."""
     dia = _dia_pedido(known_at)
     return _pedido_contado(
         contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)

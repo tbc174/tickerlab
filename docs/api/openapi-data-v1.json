@@ -141,7 +141,7 @@
   "paths": {
     "/data/v1/buyers": {
       "get": {
-        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra.",
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal\nque não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em\n`unavailable_signals`: a lista não diz nada sobre ele.",
         "operationId": "compradores_do_setor_data_v1_buyers_get",
         "parameters": [
           {
@@ -490,7 +490,7 @@
     },
     "/data/v1/companies": {
       "get": {
-        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,\n`capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que\nvalia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,\npor CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um\nfiltro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
+        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,\n`capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que\nvalia em `known_at`. Registros na Anvisa: `anvisa_active_min` e `anvisa_total_min` (de 1 em diante)\nfiltram pela contagem do tipo `anvisa_type` (`cosmetics`, `health_products`, `sanitizers`; sem tipo,\n`products`, a soma desses três; medicamentos e alimentos entram quando a licença deles for lida); a\ncontagem sai em `anvisa_registrations_active` e `anvisa_registrations_total`, com fonte e dia do retrato.\n`sort` ordena por `capital`, `branches` ou `anvisa` (registros ativos; `-` na frente é decrescente); sem\nele, por CNPJ. Capital, estabelecimentos e registros são sinais aproximados de porte, não faturamento. Pelo menos um\nfiltro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
         "operationId": "busca_de_empresas_data_v1_companies_get",
         "parameters": [
           {
@@ -667,6 +667,54 @@
                 }
               ],
               "title": "Branches Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_active_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Active Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_total_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Total Min"
             }
           },
           {
@@ -1041,7 +1089,7 @@
     },
     "/data/v1/companies/{cnpj}": {
       "get": {
-        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`. O campo do\ncadastro que não foi consultado (a situação, o nome, o Simples) vem em `unavailable_registration_fields`,\ncom o aviso em `limits`.",
         "operationId": "empresa_data_v1_companies__cnpj__get",
         "parameters": [
           {
@@ -1435,7 +1483,7 @@
     },
     "/data/v1/companies/{cnpj}/comparables": {
       "get": {
-        "description": "Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores\n(pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida\nlíquida e as razões), e a mediana de cada razão entre os pares. Empresa sem FCA no dia, MEI,\nempresário individual e o que não é empresa saem `not_available`.",
+        "description": "Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores\n(pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida\nlíquida e as razões), e a mediana de cada razão entre os pares. O número ou a razão que o portão não\nlibera para a organização vem em `unavailable_figures`: os pares e as medianas não dizem nada sobre ele.\nEmpresa sem FCA no dia, MEI, empresário individual e o que não é empresa saem `not_available`.",
         "operationId": "comparaveis_da_empresa_data_v1_companies__cnpj__comparables_get",
         "parameters": [
           {
@@ -2069,7 +2117,7 @@
     },
     "/data/v1/companies/{cnpj}/financials": {
       "get": {
-        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia.",
+        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia. O documento que a organização\nnão tem vai em `unavailable_filings` (sem as linhas dele não é \"não entregou\"), com o aviso em `limits`.",
         "operationId": "demonstracoes_da_empresa_data_v1_companies__cnpj__financials_get",
         "parameters": [
           {
@@ -2505,7 +2553,7 @@
     },
     "/data/v1/companies/{cnpj}/profile": {
       "get": {
-        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista\nde entregas não diz nada sobre ele. O campo do cadastro que não foi consultado (a situação cadastral, o\nSimples) vem em `unavailable_registration_fields`. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
         "operationId": "perfil_da_empresa_data_v1_companies__cnpj__profile_get",
         "parameters": [
           {
@@ -3219,7 +3267,7 @@
     },
     "/data/v1/funds/{cnpj}": {
       "get": {
-        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.",
+        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.\nO bloco pedido que a organização não tem vai em `unavailable_sections` (a carteira vazia não é \"sem\nposição\"), com o aviso em `limits`.",
         "operationId": "fundo_data_v1_funds__cnpj__get",
         "parameters": [
           {
@@ -3724,7 +3772,7 @@
     },
     "/data/v1/sectors/{key}": {
       "get": {
-        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`.",
+        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a\norganização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,\ncom o aviso em `limits`.",
         "operationId": "setor_data_v1_sectors__key__get",
         "parameters": [
           {

@@ -18,7 +18,9 @@ social, gestor nem administrador. A resposta é a mesma; quando a porta tem a ta
 
 Cada comprador sai com a raiz do CNPJ, a razão social (em envelope) e, por sinal, quantas provas e até
 `EXEMPLOS_POR_SINAL` exemplos, cada campo com a fonte e o dia em que ficou público. A ordem é pelo número de
-sinais e depois pelo de entradas, não por chance de compra.
+sinais e depois pelo de entradas, não por chance de compra. O sinal que não foi consultado (o portão não o libera
+ou a porta não tem a tabela dele) não some em silêncio (linha 881, `src/api_externa/nao_disponivel.py`): ele vai
+em `sinais_nao_disponiveis`, com o nome de fora, e os limites só falam dos sinais consultados.
 
 **Sem pessoa:** o setor sai da lista sem pessoa da Receita (`cnpj_estabelecimentos_pj` e `cnpj_empresas_pj`,
 linha 584), e todo comprador tem de estar em `cnpj_empresas_pj` no mesmo retrato; quem não está (MEI, empresário
@@ -34,7 +36,7 @@ recebido pela CVM, e a versão mais nova já recebida.
 import copy
 import threading
 from collections import OrderedDict, defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -48,6 +50,7 @@ from base.porta.duckdb import (
     nome_da_view,
 )
 from base.porta.rede import views
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
 
@@ -60,11 +63,14 @@ ENTRADAS, CONTROLADAS, FUNDOS = (
     "registro_de_fundos",
 )
 # No VPS a lista lê as cópias reduzidas, com nome próprio (linha 844, `base/recorte_dos_compradores.py`): só
-# PJ, sem razão social, gestor nem administrador. Em casa, a tabela inteira; ela vale quando as duas estão.
+# PJ, sem razão social, gestor nem administrador. Cada sinal lê a primeira opção que a porta tem. O FIP só lê a
+# cópia, a tabela que o portão confere: o registro inteiro tem CNPJ_Fundo fora da lista sem pessoa e, sem a
+# cópia na porta, o sinal fica de fora (Diretoria, 12/11). O modo dono, em casa, tem a lista própria e não passa
+# por aqui. Na controlada, a inteira ainda vale quando as duas estão (linha 892, depois de 20/11).
 CONTROLADAS_PJ, FIPS_REGISTRADOS = "controladas_pj", "fips_registrados"
 LEITURAS = {
     CONTROLADAS: (CONTROLADAS, CONTROLADAS_PJ),
-    FUNDOS: (FUNDOS, FIPS_REGISTRADOS),
+    FUNDOS: (FIPS_REGISTRADOS,),
 }
 PUBLICADO_EM, MES = "publico_em", "mes_do_retrato"
 ATIVA, FIP = "02", "FIP"
@@ -97,7 +103,10 @@ CAMPOS_DO_SETOR = (
     (RECEITA, "uf"),
 )
 
-LIMITES = (
+SINAIS = (ENTROU, FUNDO, CONTROLA)
+
+# os limites que valem para toda resposta; os de cada sinal só entram quando o sinal foi consultado
+LIMITES_GERAIS = (
     (
         "Isto mostra movimentos passados, não intenção de compra: holding de família, reorganização e aumento "
         "de capital também entram, e entrar como sócio não é aquisição. A ordem é pelo número de sinais, não "
@@ -109,20 +118,52 @@ LIMITES = (
         "pessoa física não saem."
     ),
     (
-        "Entradas como sócio: do quadro de sócios da Receita, que a base acompanha desde 05/2023 (antes disso, "
-        "só quem ainda era sócio naquele mês). Não contam quem entrou até a abertura da empresa nem a entrada "
-        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum)."
-    ),
-    (
-        "Fundo sócio: FIP registrado na CVM e não cancelado no dia, sócio de uma empresa do setor. Controlada "
-        "no setor: o FRE mais recente da companhia aberta já entregue no dia, com o tipo e a participação que "
-        "ela informou, sem correção nossa."
-    ),
-    (
         "Ainda fora: os atos de concentração do CADE e o fôlego do comprador (caixa, dívida, ofertas). Cada "
         "campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra."
     ),
 )
+LIMITES_DO_SINAL = {
+    ENTROU: (
+        "Entradas como sócio: do quadro de sócios da Receita, que a base acompanha desde 05/2023 (antes disso, "
+        "só quem ainda era sócio naquele mês). Não contam quem entrou até a abertura da empresa nem a entrada "
+        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum)."
+    ),
+    FUNDO: (
+        "Fundo sócio: FIP registrado na CVM e não cancelado no dia, sócio de uma empresa do setor no quadro de "
+        "sócios da Receita."
+    ),
+    CONTROLA: (
+        "Controlada no setor: o FRE mais recente da companhia aberta já entregue no dia, com o tipo e a "
+        "participação que ela informou, sem correção nossa."
+    ),
+}
+# o nome de dentro da lista dos sinais que o portão não libera (ou cuja tabela a base não tem)
+NAO_DISPONIVEIS = "sinais_nao_disponiveis"
+LIMITE_DO_SINAL_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "sinais", "a lista de compradores"
+)
+GERAIS_ANTES_DOS_SINAIS = (
+    2  # o aviso de que não é intenção de compra e o recorte do setor
+)
+
+
+def limites(
+    sinais_servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()
+) -> list[str]:
+    """Os limites de uma resposta: os gerais, a frase de cada sinal consultado e, quando algum sinal ficou
+    de fora, o aviso de que a lista não diz nada sobre ele."""
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DO_SINAL,
+        sinais_servidos,
+        nao_disponiveis,
+        LIMITE_DO_SINAL_NAO_DISPONIVEL,
+        antes=GERAIS_ANTES_DOS_SINAIS,
+    )
+
+
+# os limites com todos os sinais consultados
+LIMITES = tuple(limites(SINAIS))
 
 
 # A resposta de um pedido só depende do pedido, do dia, do teto de linhas, de quais sinais o portão libera
@@ -241,9 +282,10 @@ class LeitorDeCompradores:
         self.permitido = permitido
         self.linhas_maximas = linhas_maximas
         self.tabelas = set(views(porta.con))
-        # a tabela que cada sinal lê: a inteira, se a porta a tem, ou a cópia reduzida
+        # a tabela que cada sinal lê: a primeira das opções de `LEITURAS` que a porta tem; sem nenhuma, a primeira
+        # (fora da porta, o sinal fica de fora: o FIP nunca cai na tabela inteira)
         self.lida = {
-            tabela: next((t for t in opcoes if t in self.tabelas), tabela)
+            tabela: next((t for t in opcoes if t in self.tabelas), opcoes[0])
             for tabela, opcoes in LEITURAS.items()
         }
 
@@ -259,7 +301,7 @@ class LeitorDeCompradores:
         }
         return tuple(
             s
-            for s in (ENTROU, FUNDO, CONTROLA)
+            for s in SINAIS
             if self._libera(CAMPOS_DO_SINAL[s]) and set(precisa[s]) <= self.tabelas
         )
 
@@ -312,6 +354,7 @@ class LeitorDeCompradores:
         mes = self._mes_do_retrato(como_era_em)
         if mes is None:
             return None
+        nao_disponiveis = [s for s in SINAIS if s not in sinais]
         desde = (
             pd.Timestamp(como_era_em)
             - pd.Timedelta(days=round(pedido.anos * DIAS_POR_ANO))
@@ -351,7 +394,8 @@ class LeitorDeCompradores:
             "compradores": compradores,
             "total_de_compradores": lista.total(nomes),
             "cortada": lista.total(nomes) > len(compradores),
-            "limites": list(LIMITES),
+            NAO_DISPONIVEIS: [NOME_DE_FORA[s] for s in nao_disponiveis],
+            "limites": limites(sinais, nao_disponiveis),
         }
         return CompradoresServidos(corpo, fontes, len(compradores))
 

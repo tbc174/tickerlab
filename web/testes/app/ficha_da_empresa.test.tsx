@@ -122,6 +122,119 @@ describe("ficha da empresa", () => {
     expect(within(entregas).getByText(/Sem entregas nesta ficha/)).toBeTruthy();
   });
 
+  it("documento não liberado não vira 'sem entregas' (linha 897)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, entregas: [], entregas_nao_disponiveis: ["DFP", "ITR"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
+    expect(within(entregas).queryByText(/Sem entregas nesta ficha/)).toBeNull();
+    expect(within(entregas).getByText("Nenhuma entrega dos documentos consultados.")).toBeTruthy();
+    // dois documentos
+    expect(
+      within(entregas).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os documentos DFP e os documentos ITR. A falta deles aqui não quer dizer que a empresa não os tenha entregado.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um documento não liberado, a tabela que vem leva o aviso do outro", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, entregas_nao_disponiveis: ["ITR"] } }));
+    await verFicha(CNPJ);
+    const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
+    expect(within(entregas).getByRole("table")).toBeTruthy();
+    // um documento só: a frase concorda
+    expect(within(entregas).getByText(/liberados para a tela: os documentos ITR\. A falta deles/)).toBeTruthy();
+  });
+
+  it("campo do cadastro não liberado aparece na seção, pelo nome da tela (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: {
+          ...PRONTA.ficha!,
+          campos_do_cadastro_nao_disponiveis: ["simples_nacional", "simples_nacional_since", "legal_name"],
+        },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    // vários campos
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados dos campos “Optante pelo Simples”, “Entrou no Simples em” e “Razão social”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um campo do cadastro não liberado, a frase concorda; campo sem nome na tela aparece como veio", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["registration_status_reason"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados do campo “Motivo da situação (código da Receita)”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+    cleanup();
+    abrir(() =>
+      respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["campo_novo"] } }),
+    );
+    await verFicha(CNPJ);
+    const outro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(outro).getByText(/liberados para a tela: os dados do campo “campo_novo”\./)).toBeTruthy();
+  });
+
+  it("o mês do retrato do cadastro tem nome na tela, na linha 'Não consultados' (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["registry_snapshot_month"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados do campo “Mês do retrato do cadastro”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("o mês do retrato do cadastro tem nome na tabela", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: {
+          ...PRONTA.ficha!,
+          cadastro_na_receita: {
+            ...PRONTA.ficha!.cadastro_na_receita,
+            mes_do_retrato_do_cadastro: campo("2026-08", "rfb-cnpj", "2026-09-30"),
+          },
+        },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(cadastro).getByRole("row", { name: /Mês do retrato do cadastro/ }).textContent).toContain("08/2026");
+    expect(within(cadastro).queryByText("mes_do_retrato_do_cadastro")).toBeNull();
+  });
+
+  it("cadastro todo consultado não leva a linha 'Não consultados'", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: [] } }));
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(cadastro).queryByText(/Não consultados/)).toBeNull();
+  });
+
   it("dado ainda não liberado: é estado da tela, sem alerta de erro e com os limites à vista", async () => {
     abrir(() => respostaJson(200, NAO_LIBERADA));
     await verFicha(CNPJ);
