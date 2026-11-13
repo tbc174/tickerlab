@@ -873,8 +873,16 @@ def test_csv_que_nunca_e_lido_fecha_a_porta_e_devolve_a_vaga(
 
 
 # --- as 15 da linha 842 -------------------------------------------------------------------------
+# as 7 do lote 1 das 300 pelo CNPJ (linha 904): fechadas até o pode do envio ao VPS (linha 908)
+LOTE_1_DA_904 = {
+    "fip_informe", "fii_informe_mensal", "fii_ativos", "fii_administradores",
+    "aneel_inadimplencia", "aneel_indicadores_comerciais", "ans_idss",
+}  # fmt: skip
+
+
 def test_as_15_da_linha_842_estao_no_dicionario():
-    assert len(FECHADAS_ATE_A_PRONTIDAO) == 19  # +4 do INPI (linha 904, lote 2)
+    assert FECHADAS_ATE_A_PRONTIDAO >= LOTE_1_DA_904
+    assert len(FECHADAS_ATE_A_PRONTIDAO - LOTE_1_DA_904) == 19  # 15 + 4 do INPI (linha 904, lote 2)
     assert set(TABELAS) >= FECHADAS_ATE_A_PRONTIDAO
 
 

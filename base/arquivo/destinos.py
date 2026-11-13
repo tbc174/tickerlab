@@ -240,12 +240,12 @@ _REGULADORES_PLANEJADAS = {
     "ccee-risco-hidrologico": _planejada(
         "hidreletricas/gsf", "GSF e repasse do risco hidrológico por usina e mês"
     ),
-    "aneel-fiscalizacao": _planejada(
-        "distribuidoras/ficha",
-        "indicadores gerenciais e autos de infração por distribuidora",
-    ),
-    # das pastas da ANS no lote, só as penalidades viram tabela; o resto segue só no acervo
-    "ans-qualidade": _tabela("ans_penalidades"),
+    # dos indicadores gerenciais (INDGER), só os comerciais viram tabela (linha 904); os técnicos
+    # (subestações, linhas, alimentadores) e os autos de infração (trazem CPF) seguem só no acervo
+    "aneel-fiscalizacao": _tabela("aneel_indicadores_comerciais"),
+    "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
+    # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
+    "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),
 }
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
@@ -545,14 +545,18 @@ DESTINOS: dict[str, Destino] = {
         for f in lote_cvm.fontes()
     },
     "cvm-securitizadoras-ots": _tabela(*_INFORME_DE_SECURITIZACAO),
+    # linha 904 (lote 1 das 300 pelo CNPJ): `base/cvm_fip_fii.py`
+    "cvm-fip-trimestral": _tabela("fip_informe"),
+    "cvm-fip-quadrimestral": _tabela("fip_informe"),
+    "cvm-fii-administradores": _tabela("fii_administradores"),
     "cvm-fundos-informe-diario": _planejada(
         "cvm-lote-2/cota-por-fundo",
         "cota, patrimônio e captação diária de cada fundo 555",
     ),
-    "cvm-fii-mensal": _planejada("cvm-lote-2/tela-de-fii", "informe mensal dos FII"),
-    "cvm-fii-trimestral": _planejada(
-        "cvm-lote-2/tela-de-fii", "informe trimestral dos FII"
-    ),
+    "cvm-fii-mensal": _tabela("fii_informe_mensal"),
+    # do informe trimestral, só os ativos viram tabela: a parte geral repete o mensal, e imóveis e
+    # terrenos trazem endereço
+    "cvm-fii-trimestral": _tabela("fii_ativos"),
     "cvm-fii-anual": _planejada("cvm-lote-2/tela-de-fii", "informe anual dos FII"),
     "cvm-fii-demonstracoes": _planejada(
         "cvm-lote-2/tela-de-fii", "demonstrações dos FII"

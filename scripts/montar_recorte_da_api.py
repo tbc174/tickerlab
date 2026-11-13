@@ -105,6 +105,15 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
+    # lote 1 das 300 pelo CNPJ (linha 904): têm a marca de pessoa por linha, mas o envio ao VPS pede o pode da
+    # Diretoria com a prova de zero pessoa da 1ª carga (linha 908). Até lá, ficam em casa.
+    "fip_informe",
+    "fii_informe_mensal",
+    "fii_ativos",
+    "fii_administradores",
+    "aneel_inadimplencia",
+    "aneel_indicadores_comerciais",
+    "ans_idss",
     # linha 904 (lote 2): titulares do INPI só com empresa; o envio ao VPS pede o "pode" da Diretoria e a leitura da
     # licença (CC Atribuição-SemDerivações 3.0, a confirmar para tabela derivada)
     "inpi_marcas_titulares",

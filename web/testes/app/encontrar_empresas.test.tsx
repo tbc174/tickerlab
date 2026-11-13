@@ -73,6 +73,13 @@ const SEGUNDA: BuscaDeEmpresasV1 = {
   cortada: false,
   proximo_cursor: null,
 };
+const DUAS: BuscaDeEmpresasV1 = {
+  ...PRIMEIRA,
+  empresas: [empresa("11111111000191", "EMPRESA ALFA S.A."), empresa("33333333000191", "EMPRESA GAMA LTDA")],
+  cortada: false,
+  proximo_cursor: null,
+};
+const SEIS: [string, string][] = [1, 2, 3, 4, 5, 6].map((n) => [`${n}${n}${n}${n}${n}${n}${n}${n}000191`, `EMPRESA N${n} LTDA`]);
 const VAZIA: BuscaDeEmpresasV1 = { ...PRIMEIRA, empresas: [], cortada: false, proximo_cursor: null };
 const NAO_LIBERADA: BuscaDeEmpresasV1 = { ...OPCOES, estado: "nao_liberada" };
 const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
@@ -205,13 +212,51 @@ describe("encontrar empresas", () => {
     expect((screen.getByLabelText("CNPJ") as HTMLInputElement).value).toBe("11111111000191");
   });
 
-  it("\"Pôr na comparação\" leva o CNPJ da linha à comparação, pelo estado da navegação", async () => {
-    const { buscar } = abrir(PRIMEIRA);
+  it("a bandeja Comparar acompanha a escolha e leva os CNPJs à comparação pelo estado da navegação", async () => {
+    const { buscar } = abrir(DUAS);
     await buscarPor(["SP"]);
-    fireEvent.click(await screen.findByRole("link", { name: "Pôr na comparação" }));
+    expect(screen.queryByRole("region", { name: "Comparar" })).toBeNull();
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Escolher EMPRESA ALFA S.A. para comparar" }));
+    const bandeja = screen.getByRole("region", { name: "Comparar" });
+    expect(within(bandeja).getByText(/EMPRESA ALFA S\.A\./)).toBeTruthy();
+    expect(within(bandeja).getByText(/escolha ao menos mais 1/)).toBeTruthy();
+    expect((within(bandeja).getByRole("button", { name: "Comparar" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Escolher EMPRESA GAMA LTDA para comparar" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Comparar" })).getByRole("button", { name: "Comparar" }));
     expect(await screen.findByRole("heading", { name: "Comparar empresas" })).toBeTruthy();
     expect((screen.getAllByLabelText(/^CNPJ/)[0] as HTMLInputElement).value).toBe("11111111000191");
+    expect((screen.getAllByLabelText(/^CNPJ/)[1] as HTMLInputElement).value).toBe("33333333000191");
     expect(buscar.mock.calls.map(([e]) => String(e)).some((e) => e.includes("11111111000191"))).toBe(false);
+  });
+
+  it("a escolha para em cinco empresas e \"Limpar a escolha\" esvazia a bandeja", async () => {
+    abrir({ ...PRIMEIRA, empresas: SEIS.map(([c, n]) => empresa(c, n)), proximo_cursor: null });
+    await buscarPor(["SP"]);
+    for (const [, nome] of SEIS.slice(0, 5)) {
+      fireEvent.click(await screen.findByRole("checkbox", { name: `Escolher ${nome} para comparar` }));
+    }
+    expect((screen.getByRole("checkbox", { name: `Escolher ${SEIS[5][1]} para comparar` }) as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Limpar a escolha" }));
+    expect(screen.queryByRole("region", { name: "Comparar" })).toBeNull();
+  });
+
+  it("os filtros viram etiquetas que se tiram com um clique; sem filtro nenhum, volta ao começo", async () => {
+    const { buscar } = abrir(PRIMEIRA);
+    await buscarPor(["Comércio", "SP"], "10");
+    const etiquetas = await screen.findByRole("list", { name: "Filtros em uso" });
+    expect(within(etiquetas).getAllByRole("listitem").map((i) => i.textContent)).toEqual([
+      "Setor: Comércio ×",
+      "Estado: SP ×",
+      "Idade mínima: 10 anos ×",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Tirar o filtro Estado: SP" }));
+    await waitFor(() => expect(corpos(buscar)[2]).toEqual({ setores: ["G"], ufs: [], idade_minima: 10 }));
+    // o formulário acompanha: o campo do estado ficou desmarcado
+    expect((screen.getByRole("checkbox", { name: "SP" }) as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Tirar o filtro Setor: Comércio" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tirar o filtro Idade mínima: 10 anos" }));
+    expect(await screen.findByText(/Escolha ao menos um filtro/)).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
   });
 
   it("nenhuma empresa: a frase no lugar da tabela, sem Excel", async () => {
