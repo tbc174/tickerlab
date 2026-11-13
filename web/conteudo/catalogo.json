@@ -163,6 +163,11 @@
         "bcb-leiloes-selic",
         "bcb-tarifas-instituicao",
         "bcb-cosif",
+        "bcb-supervisionadas",
+        "bcb-cooperativas",
+        "bcb-correspondentes",
+        "bcb-filiais-de-consorcio",
+        "bcb-regimes-especiais",
         "bcb-sgs-selic-meta",
         "bcb-focus-selic-anual",
         "bcb-relatorio-anual",
@@ -213,7 +218,9 @@
         "antt-pedagio",
         "antt-siade",
         "antt-autos-de-transito",
-        "antt-rntrc"
+        "antt-rntrc",
+        "antt-operadores-multimodais",
+        "antt-seguro-de-responsabilidade-civil"
       ],
       "familia": "antt",
       "licencas": [
@@ -2407,6 +2414,20 @@
       "tabelas": 13
     },
     {
+      "historico_desde": "2010-01-01",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "modulos": [
+        "credito_e_fidc",
+        "governo_e_sancoes",
+        "macro",
+        "mercado_e_empresas"
+      ],
+      "orgao": "Banco Central",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 11
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "modulos": [
@@ -2430,20 +2451,6 @@
       "tabelas": 6
     },
     {
-      "historico_desde": "2010-01-01",
-      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
-      "modulos": [
-        "credito_e_fidc",
-        "governo_e_sancoes",
-        "macro",
-        "mercado_e_empresas"
-      ],
-      "orgao": "Banco Central",
-      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 6
-    },
-    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "modulos": [
@@ -2451,6 +2458,18 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANTT",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 4
@@ -2553,18 +2572,6 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANTT",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
     },
     {
       "historico_desde": "2026-10-14",
@@ -2934,7 +2941,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 31,
-    "tabelas": 145,
+    "tabelas": 152,
     "temas": [
       {
         "chave": "cvm",
@@ -2973,13 +2980,14 @@
           "CGU",
           "ANS",
           "ANEEL",
+          "Banco Central",
           "MTE",
           "IBAMA",
           "CNJ",
           "CVM"
         ],
-        "tabelas": 12,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 13,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2990,6 +2998,7 @@
           "Anvisa",
           "ANP",
           "ANTT",
+          "Banco Central",
           "MAPA",
           "ANEEL",
           "Anatel",
@@ -2999,8 +3008,8 @@
           "Ministério da Saúde (DATASUS)",
           "INPI"
         ],
-        "tabelas": 21,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI.",
+        "tabelas": 27,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3039,7 +3048,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 73
+      "tabelas": 80
     },
     {
       "chave": "governo_e_sancoes",
@@ -5776,6 +5785,55 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-supervisionadas",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-cooperativas",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-correspondentes",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-filiais-de-consorcio",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-regimes-especiais",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "antt-operadores-multimodais",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "antt-seguro-de-responsabilidade-civil",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
     },
     {
       "id": "bcb-sgs-selic-meta",
@@ -8574,6 +8632,83 @@
       "tabela": "aneel_termos_de_notificacao"
     },
     {
+      "atraso": "O Banco Central não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As entidades que o Banco Central supervisiona (bancos, cooperativas, administradoras de consórcio, instituições de pagamento...), por CNPJ: a situação, o tipo.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_supervisionadas"
+    },
+    {
+      "atraso": "O Banco Central não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As cooperativas de crédito autorizadas pelo Banco Central, por CNPJ: classe (singular, central, confederação), tipo (atividade profissional, livre admissão...) e categoria.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_cooperativas"
+    },
+    {
+      "atraso": "O Banco Central não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os correspondentes no País que instituições financeiras contratam, pela raiz do CNPJ do correspondente e do contratante: tipo, município.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_correspondentes"
+    },
+    {
+      "atraso": "O Banco Central não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As filiais das administradoras de consórcio, pela raiz do CNPJ da administradora: município, unidade da federação e o dia de início da filial.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_filiais_de_consorcio"
+    },
+    {
+      "atraso": "O Banco Central não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os regimes especiais que o Banco Central decretou em instituições (liquidação extrajudicial, intervenção, RAET), por CNPJ: o tipo, a unidade da federação e o dia de início.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_regimes_especiais"
+    },
+    {
+      "atraso": "A ANTT não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os operadores de transporte multimodal habilitados na ANTT, por CNPJ e certificado: unidade da federação, país de origem, número do certificado (COTM).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_operadores_multimodais"
+    },
+    {
+      "atraso": "A ANTT não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As apólices de seguro de responsabilidade civil que os transportadores registram na ANTT, por CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-16",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_seguros_de_transportadores"
+    },
+    {
       "atraso": null,
       "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
@@ -9141,6 +9276,6 @@
     "fontes": 49,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 179
+    "tabelas": 186
   }
 }

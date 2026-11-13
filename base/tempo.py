@@ -126,6 +126,13 @@ _POR_TABELA: dict[tuple[str, str], str] = {
         )
         for coluna in colunas
     },
+    # linha 904 (lote 3): início de filial e de regime especial são fatos; a vigência do certificado e o fim da
+    # apólice são prazos (`ate`); o início da apólice é o dia em que ela passou a valer
+    ("bcb_filiais_de_consorcio", "inicio_em"): "aconteceu_em",
+    ("bcb_regimes_especiais", "inicio_em"): "aconteceu_em",
+    ("antt_operadores_multimodais", "vigencia_ate"): "ate",
+    ("antt_seguros_de_transportadores", "inicio_da_apolice"): "aconteceu_em",
+    ("antt_seguros_de_transportadores", "fim_da_apolice"): "ate",
 }  # fmt: skip
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160
