@@ -194,6 +194,16 @@ describe("a busca do topo (Ctrl K)", () => {
     expect(within(busca()).getAllByRole("link").length).toBeGreaterThan(1);
   });
 
+  it("o clique no espaço interno da janela não fecha a busca; fora da caixa, fecha", async () => {
+    await noRisco();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    busca().getBoundingClientRect = () => new DOMRect(100, 50, 400, 300);
+    fireEvent.click(busca(), { clientX: 110, clientY: 60 }); // a margem de dentro: ainda é o dialog
+    expect(busca().open).toBe(true);
+    fireEvent.click(busca(), { clientX: 20, clientY: 20 }); // o fundo escuro
+    expect(busca().open).toBe(false);
+  });
+
   it("Ctrl K e Cmd K abrem a busca em qualquer tela", async () => {
     await noRisco();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });

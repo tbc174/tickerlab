@@ -8,7 +8,7 @@ export interface Dialogo {
   fechar(): void;
   /** Para o `onClose` do dialog: o Esc fecha sem passar pelo `fechar`. */
   aoFechar(): void;
-  /** Para o `onClick` do dialog: o fundo escuro em volta é o próprio dialog, e tocar nele fecha. */
+  /** Para o `onClick` do dialog: o fundo escuro em volta é o próprio dialog, e tocar nele (fora da caixa) fecha. */
   aoClicarNoFundo(evento: MouseEvent<HTMLDialogElement>): void;
 }
 
@@ -33,7 +33,16 @@ export function useDialogo(): Dialogo {
   const aoFechar = useCallback(() => setAberto(false), []);
   const aoClicarNoFundo = useCallback(
     (evento: MouseEvent<HTMLDialogElement>) => {
-      if (evento.target === evento.currentTarget) fechar();
+      if (evento.target !== evento.currentTarget) return;
+      // o espaço interno da janela (a margem entre o campo e a lista) também é o próprio dialog: só o clique
+      // fora da caixa é no fundo, senão um clique no vão fecharia a busca e apagaria o que foi digitado
+      const caixa = evento.currentTarget.getBoundingClientRect();
+      const dentro =
+        evento.clientX > caixa.left &&
+        evento.clientX < caixa.right &&
+        evento.clientY > caixa.top &&
+        evento.clientY < caixa.bottom;
+      if (!dentro) fechar();
     },
     [fechar],
   );
