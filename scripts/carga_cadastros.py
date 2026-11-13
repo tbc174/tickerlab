@@ -11,7 +11,8 @@ o arquivista já guardou no acervo (não baixa nada). Só pessoa jurídica com C
 nome e CPF nunca (ADR 0075); empresário individual e MEI ficam marcados em `trata_como_pessoa`, pela
 Receita guardada (sem ela, todos marcados). Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<cadastro>.parquet`.
 Feita para o servidor de casa (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR
-0055). Saída 0 tudo certo; 1 nenhuma das tabelas pedidas tem arquivo guardado.
+0055). Saída 0 quando ao menos uma das pedidas foi montada (a que não tem arquivo guardado sai
+em aviso no log); 1 quando nenhuma tem. A pasta de saída resolvida vai para o log.
 
 Roda: manual no servidor de casa, com o "pode" da Diretoria (linha 915; o agendamento fica para depois de
 20/11/2026).
@@ -64,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
+    log.info("Pasta de saída: %s", pasta.resolve())
     pedidas = [t for t in MODULOS if t in (opcoes.tabela or MODULOS)]
     montadas = 0
     with obter_engine().connect() as conexao:
