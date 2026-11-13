@@ -502,6 +502,12 @@
       ]
     }
   },
+  "base": {
+    "fontes": 49,
+    "ligadas_pelo_cnpj": 145,
+    "orgaos": 37,
+    "tabelas": 179
+  },
   "comparacao": {
     "atalhos": [
       {

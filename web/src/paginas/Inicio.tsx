@@ -8,7 +8,7 @@
 // Relatórios, Novidades e Dados.
 import type { ReactNode } from "react";
 import { BuscaDaBase } from "../site/BuscaDaBase";
-import { baseEmNumeros, catalogo } from "../conteudo";
+import { baseEmNumeros, catalogo, paginasDoApp } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { Cruzamentos } from "../site/Cruzamentos";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
@@ -351,6 +351,103 @@ function Conector() {
   );
 }
 
+// A demonstração da conversa (linha 903, PR E): pergunta e resposta fixas, escritas aqui. Nenhum modelo de IA
+// roda no site público. As empresas são inventadas e ditas inventadas; a ferramenta e os filtros citados são
+// os que o conector registra (há teste). O botão "Entrar para perguntar" só aparece quando a tela existe.
+const EMPRESAS_DA_DEMONSTRACAO: [string, string, string, string][] = [
+  ["Exemplo Alfa Embalagens Ltda.", "Joinville", "1998", "Demais"],
+  ["Exemplo Beta Plásticos Ltda.", "Blumenau", "2004", "Demais"],
+  ["Exemplo Gama Embalagens S.A.", "Criciúma", "2009", "Pequeno porte"],
+];
+const PERGUNTAR = paginasDoApp.find((p) => p.chave === "perguntar");
+
+function DemonstracaoDaConversa() {
+  return (
+    <section className="faixa secao v2-demonstracao" id="demonstracao" aria-labelledby="titulo-demonstracao">
+      <p className="olho">Demonstração</p>
+      <h2 id="titulo-demonstracao">A pergunta em português, a resposta com a fonte</h2>
+      <p className="subtitulo">
+        Uma conversa gravada, para mostrar o formato da resposta. As empresas abaixo são inventadas, e
+        nenhuma IA roda nesta página.
+      </p>
+      <div className="v2-conversa" role="group" aria-label="Conversa de demonstração">
+        <p className="v2-fala v2-fala-pergunta">
+          Fabricantes de embalagens plásticas em Santa Catarina, abertas antes de 2011.
+        </p>
+        <div className="v2-fala v2-fala-resposta">
+          <p>Três empresas ativas neste exemplo. Em cada linha, o cadastro da Receita:</p>
+          <div className="v2-conversa-tabela">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Empresa (inventada)</th>
+                  <th scope="col">Município</th>
+                  <th scope="col">Abertura</th>
+                  <th scope="col">Porte na Receita</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EMPRESAS_DA_DEMONSTRACAO.map(([nome, municipio, abertura, porte]) => (
+                  <tr key={nome}>
+                    <th scope="row">{nome}</th>
+                    <td>{municipio}</td>
+                    <td>{abertura}</td>
+                    <td>{porte}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <dl className="v2-conversa-notas">
+            <div>
+              <dt>Fonte</dt>
+              <dd>Receita Federal, cadastro de CNPJ. A resposta de verdade traz a data do retrato usado.</dd>
+            </div>
+            <div>
+              <dt>Como cheguei aqui</dt>
+              <dd>
+                <code>buscar_empresas</code> com CNAE 2222-6, UF SC, situação ativa e abertura antes de
+                01/01/2011.
+              </dd>
+            </div>
+            <div>
+              <dt>O que a base não tem</dt>
+              <dd>Faturamento de empresa fechada. O porte é o declarado à Receita.</dd>
+            </div>
+          </dl>
+        </div>
+        <p className="v2-fala v2-fala-pergunta">Qual o faturamento da primeira?</p>
+        <div className="v2-fala v2-fala-resposta">
+          <p>
+            A base não tem faturamento de empresa fechada. Da primeira, dá para abrir a ficha: o cadastro e a
+            conferência nas bases oficiais, cada uma com a fonte e a data.
+          </p>
+        </div>
+      </div>
+      <p className="v2-conversa-rodape">
+        A conversa usa as mesmas ferramentas do conector e da CLI, só de leitura. Pessoa física não entra na
+        resposta. Confira a fonte antes de usar.
+      </p>
+      <p className="atalhos">
+        {PERGUNTAR ? (
+          <a className="botao primario" href={linkDoApp(PERGUNTAR.url)}>
+            Entrar para perguntar
+          </a>
+        ) : (
+          <>
+            <a className="botao primario" href="#conector">
+              Perguntar pelo conector
+            </a>
+            <a className="botao secundario" href={linkDoApp()}>
+              Entrar no app
+            </a>
+          </>
+        )}
+      </p>
+    </section>
+  );
+}
+
 /** Os quatro números da base, cada um com a conta recolhida ao lado. */
 function PainelDaBase() {
   const { totais, ligado_pelo_cnpj: ligado } = catalogo;
@@ -492,6 +589,7 @@ export function Inicio() {
       <Comandos />
       <ParaOAgente />
       <Conector />
+      <DemonstracaoDaConversa />
       <BasePorTras />
       <LigadoPeloCnpj />
       <Cruzamentos />

@@ -65,6 +65,25 @@
 .telas-do-app { list-style: none; padding: 0; display: grid; gap: var(--e4);
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .telas-do-app a { font-weight: 700; }
+/* o Início (linha 903, PR E): a pergunta sobre o fundo, os passos numerados e os dois painéis */
+.pergunta-do-inicio { display: flex; flex-direction: column; gap: var(--e2); margin: var(--e4) 0 0; }
+.pergunta-do-inicio label { font-size: var(--t-1); font-weight: 700; }
+.pergunta-do-inicio-linha { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.pergunta-do-inicio input { flex: 1 1 14rem; min-width: 0; min-height: 44px; padding: var(--e2) var(--e3); border-radius: 8px;
+  border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit;
+  font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 16px; }
+.pergunta-do-inicio .botao { min-height: 44px; }
+.pergunta-do-inicio p { margin: 0; font-size: var(--t-1); }
+.numero-do-passo { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.paineis-do-inicio { display: grid; gap: var(--e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  margin: var(--e5) 0; }
+.painel-do-inicio { padding: var(--e4) var(--e5); border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
+.painel-do-inicio h2 { margin: 0 0 var(--e3); font-size: var(--t0); }
+.painel-do-inicio .numeros { grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); margin: 0 0 var(--e3); }
+.painel-do-inicio p { margin: var(--e2) 0 0; font-size: var(--t-1); }
+.novidades-do-inicio { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--e2); }
+.novidades-do-inicio li { display: flex; flex-wrap: wrap; gap: var(--e1) var(--e3); align-items: baseline; }
+.novidades-do-inicio .apagado { font-size: var(--t-1); font-variant-numeric: tabular-nums; }
 .aviso-do-app { max-width: 40rem; }
 .rodape-do-app { padding-block: var(--e5) var(--e7); border-top: 1px solid var(--linha); font-size: .88rem; }
 /* abas embaixo, só no celular (ADR 0066): ao alcance do polegar, toque de 44 px, acima da barra do iPhone */
