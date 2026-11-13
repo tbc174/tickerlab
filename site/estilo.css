@@ -846,6 +846,23 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-travas dt { font-weight: 700; }
 .v2-travas dd { margin: .1rem 0 0; color: var(--apagado); font-size: .95rem; }
 .v2-base-faixa { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+/* a demonstração da conversa (linha 903, PR E): pergunta à direita, resposta à esquerda, tudo texto fixo */
+.v2-conversa { display: grid; gap: .9rem; max-width: 52rem; margin-top: 1.75rem; }
+.v2-fala { margin: 0; padding: .9rem 1.1rem; border: 1px solid var(--linha); border-radius: 16px; background: var(--superficie); color: var(--texto); }
+.v2-fala p { margin: 0; max-width: none; }
+.v2-fala-pergunta { justify-self: end; max-width: min(100%, 34rem); border-color: var(--azul-texto); border-bottom-right-radius: 4px;
+  background: color-mix(in srgb, var(--azul) 12%, var(--superficie)); }
+.v2-fala-resposta { display: grid; gap: .8rem; min-width: 0; border-bottom-left-radius: 4px; }
+.v2-conversa-tabela { overflow-x: auto; }
+.v2-conversa-tabela table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.v2-conversa-tabela th, .v2-conversa-tabela td { padding: .45rem .7rem .45rem 0; text-align: left; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+.v2-conversa-tabela thead th { font-size: .78rem; font-weight: 700; color: var(--apagado); }
+.v2-conversa-tabela tbody th { font-weight: 600; }
+.v2-conversa-notas { display: grid; gap: .5rem; margin: 0; font-size: .92rem; }
+.v2-conversa-notas dt { font-size: .78rem; font-weight: 700; color: var(--apagado); }
+.v2-conversa-notas dd { margin: 0; }
+.v2-conversa-notas code { font-size: .86rem; font-weight: 600; color: var(--azul-texto); }
+.v2-conversa-rodape { max-width: 52rem; margin: 1rem 0 0; color: var(--apagado); font-size: .92rem; }
 .v2-janelas { padding-block: 0 clamp(2.5rem, 6vw, 4rem); }
 .v2-janelas p { max-width: 46rem; margin: 0; color: var(--apagado); }
 @media (max-width: 860px) {

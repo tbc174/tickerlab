@@ -5,11 +5,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { baseEmNumeros, catalogo, fatosDaBase, vitrine } from "../../src/conteudo";
+import { baseEmNumeros, catalogo, fatosDaBase, paginasDoApp, vitrine } from "../../src/conteudo";
 import { renderizar } from "../../src/entry-server";
 import { css } from "../../src/estilo";
 import { DADOS } from "../../src/paginas/Inicio";
-import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API } from "../../src/site/textos";
+import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../../src/site/textos";
 
 const html = renderizar("index.html");
 const semTags = (texto: string) => texto.replace(/<[^>]+>/g, "");
@@ -121,6 +121,46 @@ describe("página inicial da CLI e do conector de M&A e análise de investimento
     for (const nome of citados) {
       if (nome === "prompts do conector") expect(prompts).toContain("def registrar_prompts(");
       else expect(ferramentas, nome).toMatch(new RegExp(`async def ${nome}\\(`));
+    }
+  });
+
+  it("a demonstração da conversa vem depois do conector, dita gravada, com fonte e sem pessoa nem promessa", () => {
+    // linha 903, PR E: texto fixo, nenhuma chamada a modelo no site público
+    const secao = trecho('<section class="faixa secao v2-demonstracao"', "</section>");
+    const texto = semTags(secao);
+    expect(html.indexOf('id="conector"')).toBeLessThan(html.indexOf('id="demonstracao"'));
+    expect(html.indexOf('id="demonstracao"')).toBeLessThan(html.indexOf('id="titulo-da-base"'));
+    for (const dito of ["Demonstração", "conversa gravada", "inventadas", "nenhuma IA roda nesta página"])
+      expect(texto, dito).toContain(dito);
+    for (const parte of ["Fonte", "Como cheguei aqui", "O que a base não tem", "Receita Federal"])
+      expect(texto, parte).toContain(parte);
+    // toda empresa da tabela é dita de exemplo
+    const empresas = [...secao.matchAll(/<th scope="row">([^<]+)<\/th>/g)].map((m) => m[1]);
+    expect(empresas.length).toBeGreaterThanOrEqual(3);
+    for (const nome of empresas) expect(nome).toMatch(/^Exemplo /);
+    expect(secao).not.toMatch(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2}/); // nem CNPJ nem CPF
+    expect(texto).not.toMatch(/R\$|recomend|oportunidade|mais dados que|rentabilidade|retorno/i);
+    expect(secao).not.toMatch(/<script|<form|<input|fetch\(/);
+  });
+
+  it("a demonstração só cita ferramenta e filtro que o conector registra", () => {
+    const ferramentas = readFileSync(join(RAIZ, "conector_remoto", "ferramentas.py"), "utf8");
+    const secao = trecho('<section class="faixa secao v2-demonstracao"', "</section>");
+    const citadas = [...secao.matchAll(/<code>([^<]+)<\/code>/g)].map((m) => m[1]);
+    expect(citadas).toEqual(["buscar_empresas"]);
+    expect(ferramentas).toMatch(/async def buscar_empresas\(/);
+    for (const filtro of ["cnae:", "uf:", "situacao_cadastral:", "aberta_antes_de:"]) expect(ferramentas, filtro).toContain(filtro);
+  });
+
+  it("o botão da demonstração: Entrar para perguntar só quando a tela Perguntar existe", () => {
+    const secao = trecho('<section class="faixa secao v2-demonstracao"', "</section>");
+    const perguntar = paginasDoApp.find((p) => p.chave === "perguntar");
+    if (perguntar) {
+      expect(secao).toContain(`href="${linkDoApp(perguntar.url)}">Entrar para perguntar</a>`);
+    } else {
+      expect(secao).not.toContain("Entrar para perguntar");
+      expect(secao).toContain('href="#conector">Perguntar pelo conector</a>');
+      expect(secao).toContain(`href="${linkDoApp()}">Entrar no app</a>`);
     }
   });
 
