@@ -17,8 +17,9 @@ Quatro fontes do arquivista, um arquivo de titulares cada (o endereço termina n
   país e o estado nunca são lidos para a tabela. **CPF completado com zeros** (`000` + CPF, que o INPI guarda
   com 14 posições e fecha o DV do CNPJ quando o CPF começa com `00`; achado da revisão cruzada de 13/11/2026):
   o documento que começa com `000` e cujos 11 últimos dígitos são um CPF válido fica de fora. Perde-se, de
-  quebra, a filial (não a matriz `0001`) de raiz `000xxxxx`; na dúvida, pessoa. A matriz fica porque o Banco do Brasil e
-  outras raízes `000xxxxx` fecham o DV de CPF por acaso (1,7 mil linhas de marca): um CPF cai em `0001` uma vez em dez mil. Inventores, autores, procuradores e representantes legais
+  quebra, as filiais (não a matriz `0001`) de raízes `000xxxxx`, que também fecham como CPF; na dúvida, pessoa. A
+  matriz fica porque o Banco do Brasil e outras raízes `000xxxxx` fecham o DV de CPF (1,7 mil linhas de marca): só
+  1.395 números de CPF no país passam por essa exceção, e cada um é idêntico ao CNPJ da matriz de uma raiz `000xxxxx`. Inventores, autores, procuradores e representantes legais
   nem têm tabela: o arquivista já apaga nome e documento de quem não é CNPJ (`filtrar_titulares`), e a
   raiz de MEI e de empresário individual ainda fica com `trata_como_pessoa` (`base/cadastros_em_retrato.py`),
   que a porta não serve. Raiz que a Receita guardada não tem conta como pessoa.
