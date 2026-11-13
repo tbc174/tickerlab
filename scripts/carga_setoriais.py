@@ -33,6 +33,7 @@ from typing import NamedTuple
 import pandas as pd
 import sqlalchemy as sa
 
+from base import cnpj_pela_ponte
 from base.commodities import cftc_cot
 from base.parquet import gravar_com_versoes, gravar_se_mudou
 from base.setoriais import (
@@ -103,6 +104,7 @@ class Revisada(NamedTuple):
         False  # sem data própria: o 1º valor vale desde o dia da coleta que o trouxe
     )
     fonte_dos_originais: str = ""  # tabela de apoio de outra fonte: de quem são os originais (vazio: a própria chave)
+    ponte: str = ""  # tabela da base (cadastro da fonte) que liga o código da fonte ao CNPJ (linha 904, lote 4)
 
 
 def _ano_do_samp(url: str) -> str | None:
@@ -132,12 +134,12 @@ REVISADAS = {
     ans.FONTE: Revisada(
         "ans", ans.CHAVE, ans.CARIMBOS, lambda url: "ans" if url == ans.URL else None,
         lambda c, _: ans.ler(c), ans.FONTE_DA_LIGACAO, "cd_operadora",
-        lambda t: t["beneficiarios"], por_ano=True,
+        lambda t: t["beneficiarios"], por_ano=True, ponte="ans_operadoras",
     ),
     susep.FONTE: Revisada(
         "susep", susep.CHAVE, (), lambda url: "susep" if url.endswith("#" + susep.ARQUIVO) else None,
         lambda c, _: susep.ler(c), susep.FONTE, "coenti", lambda t: t["premio_direto"],
-        por_ano=True,
+        por_ano=True, ponte="susep_cadastro",
     ),
     ons_restricao.FONTE: Revisada(
         "ons_restricao", list(ons_restricao.CHAVE), ons_restricao.CARIMBOS, ons_restricao.destino,
@@ -272,6 +274,28 @@ def _coletas(
     return origens, montar
 
 
+def _com_cnpj_da_ponte(
+    montar: Callable[[], pd.DataFrame],
+    origens: list[dict[str, str]],
+    revisada: Revisada,
+    base: Path,
+) -> tuple[Callable[[], pd.DataFrame], list[dict[str, str]]]:
+    """A montagem acrescida de `cnpj` e `cnpj_basico` pela ponte da fonte (`base/cnpj_pela_ponte.py`), e as
+    origens com a ponte: a tabela se refaz quando a ponte muda. Sem ponte na base, as colunas saem vazias."""
+    if not revisada.ponte:
+        return montar, origens
+    ponte, origens_da_ponte = cnpj_pela_ponte.ler_ponte(base / revisada.ponte, base)
+
+    def com_cnpj() -> pd.DataFrame:
+        tabela, contagem = cnpj_pela_ponte.com_cnpj_da_ponte(
+            montar(), revisada.coluna_da_ligacao, ponte, cnpj_pela_ponte.CNPJ_E_RAIZ
+        )
+        log.info("%s: CNPJ pela ponte %s", revisada.pasta, contagem)
+        return tabela
+
+    return com_cnpj, [*origens, *origens_da_ponte]
+
+
 def _buracos_da_revisada(
     tabela: pd.DataFrame,
     fonte: str,
@@ -345,6 +369,7 @@ def carregar_revisada(
     partes = []
     for url in urls:
         origens, montar = _coletas(conexao, url, revisada)
+        montar, origens = _com_cnpj_da_ponte(montar, origens, revisada, base)
         if revisada.por_ano:
             tabela = _gravar_por_ano(montar, pasta, origens, revisada.chave)
         else:

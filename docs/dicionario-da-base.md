@@ -1238,7 +1238,7 @@ Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidad
 - **Chaves:** `competencia`, `cd_operadora`, `modalidade`, `cobertura`, `vigencia_do_plano`, `contratacao`, `financiamento`, `visto_em`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ans/<ano>.parquet` (`scripts/carga_setoriais.py`)
 - **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do arquivo usada (uma por revisão) e a versão do código.
 
@@ -1255,6 +1255,8 @@ Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidad
 | `base_de` | O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto | data (dia) |
 | `disponivel_em` | Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista) | data (dia) |
 | `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+| `cnpj` | CNPJ da operadora, pelo registro, no cadastro `ans_operadoras` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o registro, quando a operadora é pessoa (MEI, empresário individual) ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915) | texto |
+| `cnpj_basico` | Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio | texto |
 
 ## `fre_conselho`
 
@@ -1831,7 +1833,7 @@ Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por 
 
 ## `susep_seguros`
 
-Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)
+Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O CNPJ vem do cadastro da SUSEP (`susep_cadastro`), pelo código da seguradora, quando ele está montado na base (linha 915); a igualdade entre o `coenti` do SES e o código FIP do cadastro ainda não foi conferida em dado real. Os códigos que a B13 não liga continuam nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)
 
 - **Fonte:** SUSEP: SES, base de dados completa (`Ses_seguros.csv` de dentro do ZIP)
 - **Licença:** CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas
@@ -1842,7 +1844,7 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 - **Chaves:** `competencia`, `coenti`, `cogrupo`, `coramo`, `visto_em`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/susep/<ano>.parquet` (`scripts/carga_setoriais.py`)
 - **Linhagem:** O `<ano>.json` guarda o endereço (`zip#Ses_seguros.csv`) e o SHA-256 de cada baixada usada e a versão do código.
 
@@ -1871,6 +1873,8 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 | `consorciosefundos` | Consórcios e fundos no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista) | data (dia) |
 | `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+| `cnpj` | CNPJ da seguradora, pelo código da SUSEP (`coenti` igual ao código do cadastro, sem contar zeros à esquerda), no cadastro `susep_cadastro` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o código (entidade estrangeira não tem CNPJ), quando é pessoa ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915) | texto |
+| `cnpj_basico` | Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio | texto |
 
 ## `amostra_painel`
 
@@ -1956,7 +1960,7 @@ Balanço, resultado, capital, segmentação e carteira de crédito de cada banco
 - **Chaves:** `data_base`, `tipo_instituicao`, `cod_inst`, `relatorio`, `grupo`, `conta`, `coluna`, `visto_em`
 - **Três datas:** aconteceu_em = `data_base`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 2.0.0
+- **Versão do contrato:** 2.1.0
 - **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/valores/tipo_<t>/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)
 - **Linhagem:** O `<AAAAMM>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada resposta da API (no acervo e no registro de coletas, fonte `bcb-ifdata`, com a data da coleta) e a versão do código que gravou.
 
@@ -1974,6 +1978,7 @@ Balanço, resultado, capital, segmentação e carteira de crédito de cada banco
 | `saldo` | Valor da linha | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o número era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois | data (dia) |
 | `visto_em` | Dia (São Paulo) em que o arquivista baixou a resposta que trouxe este valor; vazio se não havia o dia (acervo desligado) | data (dia) |
+| `cnpj_basico` | Raiz (8 dígitos) do CNPJ da instituição ou do líder do conglomerado, pelo cadastro do IF.data (`ifdata_cadastro`, linha 904, lote 4): a do cadastro que já era público quando o número saiu. É só a raiz, porque o conglomerado não tem um CNPJ inteiro; vazia onde o cadastro não a traz e enquanto o cadastro não estiver gravado | texto |
 
 ## `ifdata_cadastro`
 

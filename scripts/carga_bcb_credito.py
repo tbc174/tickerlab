@@ -43,7 +43,7 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
-from base import bcb_ifdata, bcb_scr
+from base import bcb_ifdata, bcb_scr, cnpj_pela_ponte
 from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela
 from base.publicacao import dia_da_coleta
 from src import acervo, rede
@@ -146,21 +146,46 @@ def _valores_do_tipo(
     return pd.concat(partes, ignore_index=True)
 
 
+def _valores_com_raiz(
+    coletas: dict[str, list[tuple[pd.Timestamp, bytes]]],
+    ponte: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """Os valores do tipo com `cnpj_basico`, a raiz do CNPJ que o cadastro do IF.data dá ao código da
+    instituição (linha 904, lote 4; `base/cnpj_pela_ponte.py`). Sem cadastro gravado, a coluna sai vazia."""
+    valores = _valores_do_tipo(coletas)
+    com_raiz, contagem = cnpj_pela_ponte.com_cnpj_da_ponte(
+        valores,
+        "cod_inst",
+        ponte,
+        cnpj_pela_ponte.SO_A_RAIZ,
+        chave_da_ponte="cod_inst",
+    )
+    log.info("ifdata_valores: raiz pelo cadastro %s", contagem)
+    return com_raiz
+
+
 def _gravar_valores_do_tipo(
     conexao: sa.Connection,
     destino: Path,
     lidos: list[tuple[str, bytes]],
     forcar: bool = False,
+    pasta: Path | None = None,
 ) -> str:
-    """Os relatórios de um tipo de instituição numa data-base (`VAZIO` se o BC não mandou linha)."""
+    """Os relatórios de um tipo de instituição numa data-base (`VAZIO` se o BC não mandou linha).
+    `pasta` é a da base: dela vem o cadastro que dá a raiz do CNPJ."""
     coletas = {u: _coletas_do_relatorio(conexao, u, c) for u, c in lidos}
     origens = [_origem(u, c) for u, guardadas in coletas.items() for _, c in guardadas]
     if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
         return VAZIO
+    ponte, origens_da_ponte = (
+        cnpj_pela_ponte.ler_ponte(pasta / "ifdata" / "cadastro", pasta)
+        if pasta
+        else (None, [])
+    )
     return gravar_com_versoes(
-        lambda: _valores_do_tipo(coletas),
+        lambda: _valores_com_raiz(coletas, ponte),
         destino,
-        origens,
+        [*origens, *origens_da_ponte],
         ORDEM_DOS_VALORES,
         forcar=forcar,
     )
@@ -173,8 +198,9 @@ def _destino_dos_valores(pasta: Path, tipo: int, data_base: int) -> Path:
 def carregar_ifdata_data(
     conexao: sa.Connection, data_base: int, pasta: Path, de_novo: bool
 ) -> str:
-    """Os 15 relatórios de cada tipo de instituição e o cadastro de uma data-base."""
-    resultados = []
+    """Os 15 relatórios de cada tipo de instituição e o cadastro de uma data-base. O cadastro é gravado antes
+    dos valores: dele vem a raiz do CNPJ de cada instituição (`cnpj_basico`, linha 904)."""
+    lidos_por_tipo: dict[int, list[tuple[str, bytes]]] = {}
     for tipo in bcb_ifdata.tipos_da_data(data_base):
         lidos = []
         for relatorio in bcb_ifdata.RELATORIOS:
@@ -182,10 +208,15 @@ def carregar_ifdata_data(
             conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
             if conteudo is not None:
                 lidos.append((url, conteudo))
-        destino = _destino_dos_valores(pasta, tipo, data_base)
-        resultados.append(_gravar_valores_do_tipo(conexao, destino, lidos))
-    if all(r == VAZIO for r in resultados):
+        lidos_por_tipo[tipo] = lidos
+    sem_valores = all(
+        bcb_ifdata.ler_valores(c).empty
+        for lidos in lidos_por_tipo.values()
+        for _, c in lidos
+    )
+    if sem_valores:
         return "sem dados (ainda não publicada?)"
+    resultados = []
     url = bcb_ifdata.endereco_do_cadastro(data_base)
     conteudo = _obter(conexao, url, baixar_ifdata, de_novo, PAUSA_IFDATA)
     if conteudo is not None:
@@ -200,6 +231,9 @@ def carregar_ifdata_data(
                 ORDEM_DO_CADASTRO,
             )
         )
+    for tipo, lidos in lidos_por_tipo.items():
+        destino = _destino_dos_valores(pasta, tipo, data_base)
+        resultados.append(_gravar_valores_do_tipo(conexao, destino, lidos, pasta=pasta))
     return f"{resultados.count(GRAVADO)} gravadas, {resultados.count(IGUAL)} iguais"
 
 
@@ -225,7 +259,11 @@ def refazer_valores_da_data(
         raise RespostaGuardadaFaltandoError(faltando)
     resultados = [
         _gravar_valores_do_tipo(
-            conexao, _destino_dos_valores(pasta, tipo, data_base), lidos, forcar
+            conexao,
+            _destino_dos_valores(pasta, tipo, data_base),
+            lidos,
+            forcar,
+            pasta,
         )
         for tipo, lidos in lidos_por_tipo.items()
     ]
