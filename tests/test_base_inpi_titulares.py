@@ -43,20 +43,67 @@ INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
 CPF = "88800000551"
 FISICA_COM_14 = _cnpj("55666777")  # o INPI marca "F" com 14 dígitos em 8 mil desenhos
 
+
+def _cpf_com_zeros() -> str:
+    """ "000" + um CPF inventado que começa com 00: fecha o DV do CNPJ (achado da revisão cruzada, 13/11/2026)."""
+    for i in range(1, 10**7):
+        nove = f"00{i:07d}"
+        d1 = (
+            sum(int(c) * p for c, p in zip(nove, range(10, 1, -1), strict=True))
+            * 10
+            % 11
+        ) % 10
+        d2 = (
+            sum(
+                int(c) * p
+                for c, p in zip(nove + str(d1), range(11, 1, -1), strict=True)
+            )
+            * 10
+            % 11
+        ) % 10
+        cpf = f"{nove}{d1}{d2}"
+        doc = "000" + cpf
+        if cnpjs.cpf_confere(cpf) and cnpjs.dv_confere(doc) and doc[8:12] != "0001":
+            return doc
+    raise AssertionError
+
+
+CPF_COM_ZEROS = _cpf_com_zeros()
+
+
+def _matriz_de_raiz_com_zeros() -> str:
+    """Empresa inventada de raiz `000xxxxx` e filial 0001 cujo DV fecha também como CPF (como a do Banco do Brasil)."""
+    for i in range(1, 10**5):
+        doc = _cnpj(f"000{i:05d}")
+        if cnpjs.cpf_confere(doc[3:]):
+            return doc
+    raise AssertionError
+
+
+MATRIZ_COM_ZEROS = _matriz_de_raiz_com_zeros()
+
 MARCAS, PATENTES, DESENHOS, PROGRAMAS = ARQUIVOS
 
 
-def _csv(arquivo: Titulares, *linhas: tuple[str, str, str]) -> bytes:
-    """(número, documento, tipo de pessoa) → o CSV de titulares, com as colunas que o INPI manda."""
+def _csv(arquivo: Titulares, *linhas: tuple[str, ...]) -> bytes:
+    """(número, documento, tipo de pessoa[, data de fim da titularidade]) → o CSV de titulares, com as colunas que o INPI manda."""
+    linhas = tuple((*linha, "") if len(linha) == 3 else linha for linha in linhas)  # type: ignore[assignment]
     if arquivo is MARCAS:
         cabecalho = "codigo_interno,numero_inpi,nome,cnpj_cpf_titular,tipo_pfpj_titular,estado,pais"
-        corpo = [f"1,{n},{NOME_DE_MENTIRA},{d},{t},SP,Brasil" for n, d, t in linhas]
+        corpo = [f"1,{n},{NOME_DE_MENTIRA},{d},{t},SP,Brasil" for n, d, t, _ in linhas]
     elif arquivo is PROGRAMAS:
         cabecalho = "codigo_interno,numero_inpi,nome_titular,data_inicio_titular,data_fim_titular,cnpj_cpf_titular,pais,estado"
-        corpo = [f"1,{n},{NOME_DE_MENTIRA},2020-01-01,,{d},BR,SP" for n, d, _ in linhas]
+        corpo = [
+            f"1,{n},{NOME_DE_MENTIRA},2020-01-01,{f},{d},BR,SP" for n, d, _, f in linhas
+        ]
     else:
         cabecalho = "codigo_interno,numero_inpi,ordem,depositante,cgccpfdepositante,tipopessoadepositante,pais,estado"
-        corpo = [f"1,{n},1,{NOME_DE_MENTIRA},{d},{t},BR,SP" for n, d, t in linhas]
+        corpo = [f"1,{n},1,{NOME_DE_MENTIRA},{d},{t},BR,SP" for n, d, t, _ in linhas]
+        if arquivo is PATENTES:
+            cabecalho += ",data_inicio_depositante,data_fim_depositante"
+            corpo = [
+                f"{c},2020-01-01,{f}" for c, (*_, f) in zip(corpo, linhas, strict=True)
+            ]
     return ("\n".join([cabecalho, *corpo]) + "\n").encode()
 
 
@@ -84,22 +131,78 @@ def test_so_cnpj_de_empresa_entra_e_nem_o_cpf_nem_o_nome_vazam(arquivo):
             ("900000004", EMPRESA, tipo_pj),  # outro pedido: outra linha
             ("900000005", "", tipo_pj),  # titular sem documento (estrangeiro)
             ("900000006", FISICA_COM_14, tipo_pf),
+            (
+                "900000007",
+                CPF_COM_ZEROS,
+                tipo_pj,
+            ),  # CPF completado com zeros que fecha o DV do CNPJ
+            (
+                "900000008",
+                MATRIZ_COM_ZEROS,
+                tipo_pj,
+            ),  # empresa que também fecha como CPF: entra
         ),
         arquivo,
     )
-    esperadas = ["900000001", "900000004"]
+    esperadas = ["900000001", "900000004", "900000008"]
     if arquivo is PROGRAMAS:  # sem tipo de pessoa: só o documento decide
-        esperadas = ["900000001", "900000004", "900000006"]
+        esperadas = ["900000001", "900000004", "900000006", "900000008"]
     assert list(tabela["numero_inpi"]) == esperadas
     assert tabela["id_na_fonte"].iloc[0] == f"900000001|{EMPRESA}"
-    assert contagem["linhas"] == 7
+    assert contagem["linhas"] == 9
     assert contagem["id_repetido"] == 1
     assert contagem["sem_cnpj_valido"] == 3  # CPF, DV errado e vazio
     assert contagem["tipo_pessoa_fisica"] == (0 if arquivo is PROGRAMAS else 1)
+    assert contagem["cpf_com_zeros"] == 1
+    assert "900000007" not in set(tabela["numero_inpi"])
+    assert (
+        CPF_COM_ZEROS not in tabela["cnpj"].str.replace(r"\D", "", regex=True).tolist()
+    )
     tudo = tabela.astype(str).to_csv() + " ".join(tabela.columns)
     assert NOME_DE_MENTIRA not in tudo
     assert CPF not in tudo.replace(".", "").replace("-", "")
     assert set(tabela.columns) == {"id_na_fonte", "cnpj", "cnpj_basico", "numero_inpi"}
+
+
+@pytest.mark.parametrize("arquivo", [PATENTES, PROGRAMAS], ids=lambda a: a.tabela)
+def test_titularidade_com_data_de_fim_nao_entra(arquivo):
+    tipo = "pessoa jurídica" if arquivo is PATENTES else ""
+    tabela, contagem = inpi_titulares.ler_retrato(
+        _csv(
+            arquivo,
+            ("900000001", EMPRESA, tipo, ""),
+            ("900000002", EMPRESA, tipo, "2025-06-30"),  # transferiu o pedido
+        ),
+        arquivo,
+    )
+    assert list(tabela["numero_inpi"]) == ["900000001"]
+    assert contagem["titularidade_encerrada"] == 1
+
+
+def test_titular_que_transfere_o_pedido_ganha_consta_falso(banco, tmp_path):
+    """Patentes: no retrato seguinte a empresa A ganha a data de fim; a tabela deixa de mostrá-la como atual."""
+    tipo = "pessoa jurídica"
+    _coletar(
+        banco, PATENTES, _csv(PATENTES, ("900000001", EMPRESA, tipo, "")), PRIMEIRO_DIA
+    )
+    _coletar(
+        banco,
+        PATENTES,
+        _csv(
+            PATENTES,
+            ("900000001", EMPRESA, tipo, "2026-11-05"),
+            ("900000001", OUTRA, tipo, ""),
+        ),
+        SEGUNDO_DIA,
+    )
+    pasta = tmp_path / "base"
+    with banco.connect() as conexao:
+        inpi_titulares.montar(conexao, pasta, AGORA, pessoas=set())
+    gravada = pd.read_parquet(pasta / PATENTES.tabela / "titulares.parquet")
+    antigo = gravada[gravada["id_na_fonte"] == f"900000001|{EMPRESA}"]
+    assert list(antigo["consta"]) == [True, False]
+    novo = gravada[gravada["id_na_fonte"] == f"900000001|{OUTRA}"]
+    assert list(novo["consta"]) == [True]
 
 
 def test_arquivo_grande_lido_em_pedacos_da_o_mesmo_resultado(monkeypatch):

@@ -8299,7 +8299,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Titulares de marcas depositadas no INPI.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -8310,7 +8310,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Depositantes de patentes no INPI.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -8321,7 +8321,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Depositantes de desenhos industriais no INPI.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -8332,7 +8332,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Titulares de registros de programas de computador no INPI.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",

@@ -14,10 +14,18 @@ Quatro fontes do arquivista, um arquivo de titulares cada (o endereço termina n
 - **Só pessoa jurídica com CNPJ de DV certo** (ADR 0075). Entra a linha cujo documento tem 14 posições e fecha
   o DV, **e** cujo tipo de pessoa do arquivo não diz "pessoa física" (o INPI marca 8 mil depositantes de
   desenho como `F` com 14 dígitos: na dúvida, ficam fora). O CPF, o nome (do titular ou do depositante), o
-  país e o estado nunca são lidos para a tabela, e inventores, autores, procuradores e representantes legais
+  país e o estado nunca são lidos para a tabela. **CPF completado com zeros** (`000` + CPF, que o INPI guarda
+  com 14 posições e fecha o DV do CNPJ quando o CPF começa com `00`; achado da revisão cruzada de 13/11/2026):
+  o documento que começa com `000` e cujos 11 últimos dígitos são um CPF válido fica de fora. Perde-se, de
+  quebra, a filial (não a matriz `0001`) de raiz `000xxxxx`; na dúvida, pessoa. A matriz fica porque o Banco do Brasil e
+  outras raízes `000xxxxx` fecham o DV de CPF por acaso (1,7 mil linhas de marca): um CPF cai em `0001` uma vez em dez mil. Inventores, autores, procuradores e representantes legais
   nem têm tabela: o arquivista já apaga nome e documento de quem não é CNPJ (`filtrar_titulares`), e a
   raiz de MEI e de empresário individual ainda fica com `trata_como_pessoa` (`base/cadastros_em_retrato.py`),
   que a porta não serve. Raiz que a Receita guardada não tem conta como pessoa.
+- **Só o titular vigente**: nos arquivos de patentes e de programas a linha traz a data de fim da titularidade
+  (`data_fim_depositante`, `data_fim_titular`); a linha com a data preenchida não entra. Quando a titularidade
+  acaba (transferência), a linha some do retrato e a tabela grava `consta` falso, em vez de mostrar o titular
+  antigo como atual.
 - **Chave**: número do processo no INPI + CNPJ (a mesma empresa aparece mais de uma vez em um pedido quando
   é cotitular em ordens diferentes; fica uma linha).
 - **Sem olhar o futuro** (`disponivel_no_dia`): os arquivos de titulares não têm data de publicação (a data
@@ -44,6 +52,7 @@ from base import cadastros_em_retrato
 from base import cnpj as cnpjs
 from base import retratos as motor
 
+FILIAL_DA_MATRIZ = "0001"  # matriz de raiz `000xxxxx` (o Banco do Brasil, por exemplo) fecha o DV de CPF por acaso
 PEDACO = 500_000  # linhas lidas de cada vez (o arquivo de marcas tem milhões)
 VALORES = ["numero_inpi", "consta"]
 COLUNAS = ["id_na_fonte", "cnpj", "cnpj_basico", "numero_inpi"]
@@ -58,6 +67,9 @@ class Titulares:
     termina_em: str
     documento: str
     tipo_de_pessoa: str | None
+    fim: str | None = (
+        None  # coluna da data de fim da titularidade, quando o arquivo traz
+    )
 
 
 ARQUIVOS = (
@@ -74,6 +86,7 @@ ARQUIVOS = (
         "PATENTES_DEPOSITANTES.csv",
         "cgccpfdepositante",
         "tipopessoadepositante",
+        "data_fim_depositante",
     ),
     Titulares(
         "inpi_desenhos_depositantes",
@@ -88,6 +101,7 @@ ARQUIVOS = (
         "PROG_COMP_TITULAR.csv",
         "cnpj_cpf_titular",
         None,
+        "data_fim_titular",
     ),
 )
 
@@ -96,6 +110,18 @@ def _e_pessoa_fisica(tipo: pd.Series) -> pd.Series:
     """O tipo diz pessoa física: "PESSOA FÍSICA", "pessoa física" ou só "F"."""
     minusculo = tipo.str.strip().str.lower()
     return minusculo.str.startswith("pessoa f") | minusculo.eq("f")
+
+
+def _cpf_com_zeros(cnpj: pd.Series) -> pd.Series:
+    """O "CNPJ" é `000` + um CPF válido: CPF completado com zeros, que fecha o DV do CNPJ quando começa com `00`."""
+    return cnpj.map(
+        lambda c: (
+            isinstance(c, str)
+            and c.startswith("000")
+            and c[8:12] != FILIAL_DA_MATRIZ
+            and cnpjs.cpf_confere(c[3:])
+        )
+    ).astype(bool)
 
 
 def _pedacos(conteudo: bytes, colunas: list[str]) -> Iterator[pd.DataFrame]:
@@ -120,7 +146,13 @@ def _so_empresas(
         if arquivo.tipo_de_pessoa
         else pd.Series(False, index=pedaco.index)
     )
-    dentro = valido & ~fisica
+    cpf = valido & _cpf_com_zeros(cnpj)
+    encerrada = (
+        pedaco[arquivo.fim].str.strip().ne("")
+        if arquivo.fim
+        else pd.Series(False, index=pedaco.index)
+    )
+    dentro = valido & ~fisica & ~cpf & ~encerrada
     tabela = pd.DataFrame(
         {"cnpj": cnpj[dentro], "numero_inpi": pedaco.loc[dentro, "numero_inpi"]}
     )
@@ -128,6 +160,8 @@ def _so_empresas(
         "linhas": len(pedaco),
         "sem_cnpj_valido": int((~valido).sum()),
         "tipo_pessoa_fisica": int((valido & fisica).sum()),
+        "cpf_com_zeros": int((cpf & ~fisica).sum()),
+        "titularidade_encerrada": int((valido & ~fisica & ~cpf & encerrada).sum()),
     }
     return tabela, contagem
 
@@ -139,8 +173,16 @@ def ler_retrato(
     colunas = ["numero_inpi", arquivo.documento]
     if arquivo.tipo_de_pessoa:
         colunas.append(arquivo.tipo_de_pessoa)
+    if arquivo.fim:
+        colunas.append(arquivo.fim)
     achados: list[pd.DataFrame] = []
-    contagem = {"linhas": 0, "sem_cnpj_valido": 0, "tipo_pessoa_fisica": 0}
+    contagem = {
+        "linhas": 0,
+        "sem_cnpj_valido": 0,
+        "tipo_pessoa_fisica": 0,
+        "cpf_com_zeros": 0,
+        "titularidade_encerrada": 0,
+    }
     for pedaco in _pedacos(conteudo, colunas):
         tabela, parcial = _so_empresas(pedaco, arquivo)
         achados.append(tabela)

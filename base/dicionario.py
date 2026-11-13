@@ -2243,8 +2243,9 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
                 "Depositantes de patentes no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de "
                 "cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): "
                 "o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam "
-                "ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o "
-                "arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
+                "ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e "
+                "o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o "
+                "dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
                 "Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada)."
             ),
             "INPI: dados abertos, patentes (`PATENTES_DEPOSITANTES.csv`)",
@@ -2289,8 +2290,9 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
                 "Titulares de registros de programas de computador no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de "
                 "cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): "
                 "o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam "
-                "ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o "
-                "arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
+                "ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e "
+                "o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o "
+                "dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
                 "Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada)."
             ),
             "INPI: dados abertos, programas de computador (`PROG_COMP_TITULAR.csv`)",
