@@ -1,6 +1,7 @@
-// Página inicial do posicionamento v3 (ADR 0127, linha 774 da fila): a TickerLab é uma CLI de M&A e
-// análise de investimento para o analista e o agente de IA dele. A ordem da página é a do que nos
-// propomos a fazer: a assinatura com a CLI à vista, o que dá para pedir, como o agente a usa, a base
+// Página inicial do posicionamento v3 (ADR 0127, linha 774 da fila): a TickerLab é uma CLI e um conector
+// MCP de M&A e análise de investimento para o analista e o agente de IA dele. O conector tem o mesmo peso
+// da CLI (Tiago, 13/11/2026, linha 901). A ordem da página é a do que nos propomos a fazer: a assinatura
+// com a CLI à vista, o que dá para pedir, como o agente a usa, o conector no Claude e no ChatGPT, a base
 // por trás (números do catálogo e da medição, nunca digitados), o que ela liga pelo CNPJ, os
 // cruzamentos, as quatro regras e, por último, as outras janelas da mesma base (as análises abertas,
 // o app e a API). O estudo do dia, as novidades e a lista de fontes saíram da inicial: continuam em
@@ -21,15 +22,15 @@ export const DADOS = {
   ferramenta: true,
   titulo: "TickerLab",
   descricao:
-    "CLI de M&A e análise de investimento para o analista e o agente de IA dele: cada número de " +
-    "fonte pública brasileira, com data, fonte e caminho até o original.",
+    "CLI e conector MCP de M&A e análise de investimento para o analista e a IA dele: cada número de " +
+    "fonte pública, com data, fonte e caminho até o original.",
 };
 
 // o pedaço da assinatura em destaque no título
 const DESTAQUE_DO_TITULO = "M&A e análise de investimento";
 const SUBTITULO =
-  "Você pede; o seu agente de IA roda a tickerlab e devolve a análise com a fonte e a data de " +
-  "cada número.";
+  "Você pede; o seu agente de IA roda a tickerlab no terminal, ou o Claude consulta o conector, e " +
+  "devolve a análise com a fonte e a data de cada número.";
 // o ativo continua o mesmo da ADR 0099: a coleta auditável
 const O_QUE_HA_POR_TRAS =
   "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
@@ -88,6 +89,77 @@ const TRAVAS_DO_AGENTE: [string, string][] = [
   ["Nada é recomendação de investimento", "As instruções pedem que ele descreva, compare e calcule; a decisão é sua."],
   ["Sem dado de pessoa física", "A API não serve sócio pessoa física, CPF, MEI nem empresário individual."],
   ["A chave é segredo", "Ela nunca passa pelo chat nem pelo histórico do terminal."],
+];
+
+// O conector MCP (conector_remoto/, docs/guia-do-analista-conector.md): as perguntas e as ferramentas que
+// as respondem. Só nomes de ferramenta que existem; o teste do conector confere contra o registro.
+const PERGUNTAS_DO_CONECTOR: [string, string, string][] = [
+  [
+    "Triagem antes da reunião",
+    "ficha_da_empresa · eventos · vinculos",
+    "O cadastro, o que aconteceu com a empresa e as participações que a base tiver, cada ponto com a fonte e a data.",
+  ],
+  [
+    "Alvos num setor e numa UF",
+    "buscar_empresas",
+    "Empresas pela atividade, UF, porte e idade, página por página. Só a empresa: sem sócio, contato nem endereço.",
+  ],
+  [
+    "Quem já se mexeu no setor",
+    "compradores_do_setor",
+    "Empresas, FIPs e companhias abertas que entraram no setor como sócias: movimento passado, não intenção de compra.",
+  ],
+  [
+    "Comparáveis e demonstrações",
+    "comparaveis · demonstracoes",
+    "Os pares da companhia aberta na CVM, com a mediana, e as demonstrações como estavam públicas na data pedida.",
+  ],
+  [
+    "Setor e fundo",
+    "setores · setor · fundo",
+    "As séries da agência reguladora do setor e o cadastro, as taxas e a carteira de um fundo.",
+  ],
+  [
+    "Fluxos prontos",
+    "prompts do conector",
+    "Triagem, alvos, compradores, comparáveis e dossiê: você escolhe o fluxo no Claude e preenche o CNPJ ou o setor.",
+  ],
+];
+
+const PASSOS_DO_CONECTOR: [string, ReactNode][] = [
+  [
+    "Peça a chave",
+    <>
+      Cada pessoa tem a sua, entregue por quem administra o TickerLab na organização. O acesso está em
+      beta fechado, sem cobrança:{" "}
+      <a href={COMO_PEDIR_A_CHAVE} rel="noopener">
+        como pedir
+      </a>
+      .
+    </>,
+  ],
+  [
+    "Adicione o conector",
+    <>
+      No Claude, em Configurações, um conector personalizado com o endereço que vem com a chave. No
+      ChatGPT, o mesmo conector, em Apps e conectores.
+    </>,
+  ],
+  [
+    "Ligue com a sua chave",
+    <>
+      Abre uma página do TickerLab; você cola a chave ali, não no chat. O assistente recebe um acesso
+      que vence sozinho e para quando a chave é revogada.
+    </>,
+  ],
+];
+
+const TRAVAS_DO_CONECTOR: [string, string][] = [
+  ["Só leitura", "Nenhuma ferramenta escreve, envia ou baixa nada de fora."],
+  ["As mesmas regras da CLI", "Cada comando de leitura da CLI tem uma ferramenta no conector, com o mesmo pedido à API; um teste falha se um lado ficar para trás."],
+  ["Fonte e data em cada número", "As instruções do conector pedem à IA que cite a fonte e a data e liste à parte o que faltou."],
+  ["Sem dado de pessoa física", "O conector recusa a resposta que trouxer sócio pessoa física, CPF ou contato."],
+  ["A chave não vai ao chat", "Ela só é colada na página do TickerLab, e a organização pode revogá-la."],
 ];
 
 const PASSOS_PARA_COMECAR: [string, ReactNode][] = [
@@ -170,6 +242,9 @@ function Heroi() {
             <a className="botao secundario" href="#comandos">
               Ver os comandos
             </a>
+            <a className="botao secundario" href="#conector">
+              Usar no Claude
+            </a>
           </div>
           <AvisoDeAcesso />
         </div>
@@ -222,6 +297,49 @@ function ParaOAgente() {
         </ol>
         <dl className="v2-travas">
           {TRAVAS_DO_AGENTE.map(([titulo, texto]) => (
+            <div key={titulo}>
+              <dt>{titulo}</dt>
+              <dd>{texto}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+/** O conector MCP: as mesmas consultas da CLI dentro do Claude e do ChatGPT, com o mesmo peso dela. */
+function Conector() {
+  return (
+    <section className="faixa secao v2-comandos v2-conector" id="conector" aria-labelledby="titulo-conector">
+      <p className="olho">Conector MCP</p>
+      <h2 id="titulo-conector">No Claude e no ChatGPT, sem terminal</h2>
+      <p className="subtitulo">
+        O MCP é o padrão aberto que liga uma IA a uma fonte de dados. Com o conector, você pergunta em
+        português, na conversa, e a IA consulta a mesma base da CLI, sem instalar nada.
+      </p>
+      <div className="grade tres">
+        {PERGUNTAS_DO_CONECTOR.map(([titulo, ferramentas, texto]) => (
+          <article key={titulo} className="cartao v2-comando">
+            <h3>{titulo}</h3>
+            <p className="v2-comando-linha">
+              <code>{ferramentas}</code>
+            </p>
+            <p>{texto}</p>
+          </article>
+        ))}
+      </div>
+      <div className="v2-agente-colunas">
+        <ol className="v2-passos-da-cli">
+          {PASSOS_DO_CONECTOR.map(([titulo, texto]) => (
+            <li key={titulo}>
+              <strong>{titulo}</strong>
+              <span>{texto}</span>
+            </li>
+          ))}
+        </ol>
+        <dl className="v2-travas">
+          {TRAVAS_DO_CONECTOR.map(([titulo, texto]) => (
             <div key={titulo}>
               <dt>{titulo}</dt>
               <dd>{texto}</dd>
@@ -305,7 +423,7 @@ function PainelDaBase() {
   );
 }
 
-/** A base que a CLI consulta: os números medidos e a busca aberta, numa faixa escura só. */
+/** A base que a CLI e o conector consultam: os números medidos e a busca aberta, numa faixa escura só. */
 function BasePorTras() {
   return (
     <div className="escura v2-base-fundo">
@@ -314,7 +432,8 @@ function BasePorTras() {
           <p className="olho">A base por trás</p>
           <h2 id="titulo-base-por-tras">Toda resposta sai de uma fonte pública, com a data</h2>
           <p className="subtitulo">
-            A CLI consulta a base que coletamos dos órgãos públicos. Experimente sem chave: busque
+            A CLI e o conector consultam a base que coletamos dos órgãos públicos. Experimente sem
+            chave: busque
             uma companhia aberta e veja a fonte ao lado de cada número.
           </p>
           <div data-busca-base>
@@ -354,7 +473,8 @@ function OutrasJanelas() {
         Sem terminal
       </h2>
       <p>
-        A mesma base abre pelo <a href={linkDoApp()}>app</a>, com a sua conta, e pela{" "}
+        A mesma base abre pelo <a href="#conector">conector</a>, no Claude e no ChatGPT, pelo{" "}
+        <a href={linkDoApp()}>app</a>, com a sua conta, e pela{" "}
         <a href={URL_DA_API} rel="noopener">
           TickerLab Data
         </a>
@@ -371,6 +491,7 @@ export function Inicio() {
       <Heroi />
       <Comandos />
       <ParaOAgente />
+      <Conector />
       <BasePorTras />
       <LigadoPeloCnpj />
       <Cruzamentos />
@@ -380,7 +501,8 @@ export function Inicio() {
       <ChamadaFinal
         titulo="Comece pela chave"
         subtitulo={
-          "O acesso à CLI e à API está em beta fechado, sem cobrança. A documentação é aberta e " +
+          "O acesso à CLI, ao conector e à API está em beta fechado, sem cobrança. A documentação é " +
+          "aberta e " +
           "diz como pedir a chave da sua organização."
         }
       >

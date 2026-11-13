@@ -95,6 +95,35 @@ describe("página inicial da CLI de M&A e análise de investimento", () => {
       expect(texto, trava).toContain(trava);
   });
 
+  it("o conector MCP tem o mesmo peso da CLI: no herói, num botão e numa seção própria", () => {
+    // Tiago, 13/11/2026 (linha 901): o MCP é produto principal junto com a CLI
+    const heroi = trecho('<section class="heroi faixa"', "</section>");
+    expect(semTags(heroi)).toContain("ou o Claude consulta o conector");
+    expect(heroi).toContain('href="#conector">Usar no Claude</a>');
+    expect(DADOS.descricao).toMatch(/CLI e conector MCP/);
+    const secao = trecho('<section class="faixa secao v2-comandos v2-conector"', "</section>");
+    const texto = semTags(secao);
+    expect(secao).toContain('id="conector"');
+    expect(texto).toContain("No Claude e no ChatGPT");
+    expect(secao.split("<li>").length - 1).toBe(3);
+    for (const trava of ["Só leitura", "As mesmas regras da CLI", "Sem dado de pessoa física", "A chave não vai ao chat"])
+      expect(texto, trava).toContain(trava);
+    // o endereço do conector vem com a chave: a página não o publica
+    expect(texto).not.toMatch(/mcp\.tickerlab|https?:\/\/[^\s"]*\/mcp/);
+  });
+
+  it("os cartões do conector só citam ferramentas e prompts que o conector registra", () => {
+    const ferramentas = readFileSync(join(RAIZ, "conector_remoto", "ferramentas.py"), "utf8");
+    const prompts = readFileSync(join(RAIZ, "conector_remoto", "prompts.py"), "utf8");
+    const secao = trecho('<section class="faixa secao v2-comandos v2-conector"', "</section>");
+    const citados = [...secao.matchAll(/<code>([^<]+)<\/code>/g)].flatMap((m) => m[1].split(" · "));
+    expect(citados.length).toBeGreaterThanOrEqual(10);
+    for (const nome of citados) {
+      if (nome === "prompts do conector") expect(prompts).toContain("def registrar_prompts(");
+      else expect(ferramentas, nome).toMatch(new RegExp(`async def ${nome}\\(`));
+    }
+  });
+
   it("a descrição da página fala com quem analisa e cabe no Google", () => {
     expect(DADOS.descricao.length).toBeLessThanOrEqual(160);
     expect(DADOS.descricao).toMatch(/fonte/);
