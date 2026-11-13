@@ -82,7 +82,7 @@ Guia completo: [`docs/cli.md`](docs/cli.md) e [`docs/api/README.md`](docs/api/RE
 
 Contados no repositório em 10/11/2026.
 
-| 159 tabelas | 133 fontes públicas | 584 arquivos oficiais | 46 páginas no app | 14 ferramentas grátis |
+| 112 tabelas | 133 fontes públicas | 584 arquivos oficiais | 46 páginas no app | 14 ferramentas grátis |
 |:---:|:---:|:---:|:---:|:---:|
 | no catálogo da base, com contrato versionado | na página Dados do site, 46 já em uso numa tela, relatório ou API | acompanhados pelo arquivista | no mapa de `src/paginas.py` | calculadoras e simuladores no site |
 

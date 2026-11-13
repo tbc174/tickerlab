@@ -60,9 +60,8 @@ def _catalogo_falso() -> dict:
 
 def _catalogo_real() -> dict:
     """O catálogo como o site o vê (sem as tabelas só internas)."""
-    return vitrine.catalogo_publico(
-        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
-    )
+    contrato = json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    return vitrine.catalogo_publico(contrato, montadas=frozenset(contrato["tabelas"]))
 
 
 # --- fontes --------------------------------------------------------------------------------------
@@ -944,13 +943,6 @@ def test_ligado_pelo_cnpj_conta_tabelas_e_orgaos_do_catalogo():
     }
 
 
-def test_tema_com_tabela_fora_do_catalogo_acusa():
-    tema = vitrine.TemaDoCnpj("x", "X", "X.", ("sumiu",))
-
-    with pytest.raises(ValueError, match="sumiu"):
-        vitrine.ligado_pelo_cnpj({"tabelas": {}}, (tema,))
-
-
 def test_tema_com_tabela_sem_cnpj_acusa():
     tema = vitrine.TemaDoCnpj("x", "X", "X.", ("b",))
     catalogo = {"tabelas": {"b": _com_colunas("b", "macro", BCB, "data")}}
@@ -1004,3 +996,78 @@ def test_temas_do_cnpj_sem_numero_digitado_nem_conversa_interna():
             assert not re.search(r"\d", texto), tema.chave
             assert not re.search(r"\w+_\w+|\bADR\b|servidor", texto), tema.chave
         assert tema.texto.endswith("."), tema.chave
+
+
+# --- só conta tabela montada (linha 916) ----------------------------------------------------------
+def _contrato_inteiro() -> dict:
+    return json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+
+
+def test_a_lista_das_montadas_so_tem_tabela_do_contrato():
+    montadas = vitrine.tabelas_montadas()
+
+    assert montadas
+    assert montadas <= set(_contrato_inteiro()["tabelas"])
+
+
+def test_catalogo_publico_so_conta_tabela_montada():
+    contrato = _contrato_inteiro()
+    nova = next(iter(contrato["tabelas"]))
+    publico = vitrine.catalogo_publico(contrato, montadas=frozenset({nova}))
+
+    assert set(publico["tabelas"]) <= {nova}
+    padrao = vitrine.catalogo_publico(contrato)
+    assert set(padrao["tabelas"]) <= vitrine.tabelas_montadas()
+    # tabela nova do contrato não conta até entrar na lista
+    assert len(padrao["tabelas"]) < len(contrato["tabelas"])
+
+
+def test_tabela_nova_do_catalogo_nao_infla_o_numero():
+    contrato = _contrato_inteiro()
+    modelo = next(iter(contrato["tabelas"].values()))
+    contrato["tabelas"]["tabela_prometida_sem_arquivo"] = {
+        **modelo,
+        "tabela": "tabela_prometida_sem_arquivo",
+    }
+
+    publico = vitrine.catalogo_publico(contrato)
+
+    assert "tabela_prometida_sem_arquivo" not in publico["tabelas"]
+
+
+def test_nome_de_tabela_dos_temas_existe_no_contrato():
+    contrato = set(_contrato_inteiro()["tabelas"])
+    nomes = {n for tema in vitrine.TEMAS_DO_CNPJ for n in tema.tabelas}
+
+    assert nomes <= contrato, sorted(nomes - contrato)
+
+
+def test_cartao_do_tema_conta_so_as_tabelas_montadas_e_some_sem_nenhuma():
+    cnpj = _com_colunas("a", "governo_e_sancoes", PGFN, "cnpj")
+    catalogo = {"tabelas": {"a": cnpj}}
+    temas = (
+        vitrine.TemaDoCnpj("um", "Um", "Um.", ("a", "ainda_sem_arquivo")),
+        vitrine.TemaDoCnpj("dois", "Dois", "Dois.", ("sem_arquivo_nenhuma",)),
+    )
+
+    ligado = vitrine.ligado_pelo_cnpj(catalogo, temas)
+
+    assert [t["chave"] for t in ligado["temas"]] == ["um"]
+    assert ligado["temas"][0]["tabelas"] == 1
+
+
+def test_gravar_tabelas_montadas_guarda_nomes_ordenados_e_a_data(tmp_path):
+    from scripts import gravar_tabelas_montadas as gravador
+
+    destino = tmp_path / "montadas.json"
+    gravador.gravar({"conferido_em": "2026-11-13", "tabelas": ["a", "b"]}, destino)
+
+    assert vitrine.tabelas_montadas(destino) == frozenset({"a", "b"})
+
+
+def test_as_que_existem_fora_da_porta_estao_na_lista_de_fora_da_porta():
+    from base.porta.duckdb import FORA_DA_PORTA
+    from scripts import gravar_tabelas_montadas as gravador
+
+    assert set(FORA_DA_PORTA) >= gravador.EXISTEM_FORA_DA_PORTA
+    assert vitrine.tabelas_montadas() >= gravador.EXISTEM_FORA_DA_PORTA

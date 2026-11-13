@@ -170,10 +170,14 @@ export function dadosDoGuia(guia: Guia) {
   };
 }
 
-function tabelaDoCatalogo(nome: string): TabelaDaBase {
-  const tabela = catalogo.tabelas.find((t) => t.tabela === nome);
-  if (!tabela) throw new Error(`Tabela fora do catálogo: ${nome}`);
-  return tabela;
+// O catálogo público só tem tabela montada (linha 916): a que ainda não tem arquivo some do guia, em vez
+// de prometer um dado que a base não entrega. O guia nunca fica sem nenhuma (conferido no build).
+function tabelasDoCatalogo(nomes: string[]): TabelaDaBase[] {
+  const achadas = nomes
+    .map((nome) => catalogo.tabelas.find((t) => t.tabela === nome))
+    .filter((t): t is TabelaDaBase => t !== undefined);
+  if (achadas.length === 0) throw new Error(`Guia sem nenhuma tabela montada: ${nomes.join(", ")}`);
+  return achadas;
 }
 
 // o catálogo traz 2010 (padrão da CVM) para as ofertas, que começam em 1989 e 2023: a data real está na frase
@@ -200,14 +204,13 @@ export function GuiaDeBusca({ guia }: { guia: Guia }) {
 
       <h2 id={ancora(TITULO_TABELAS)}>{TITULO_TABELAS}</h2>
       <ul>
-        {guia.tabelas.map((nome) => {
-          const t = tabelaDoCatalogo(nome);
+        {tabelasDoCatalogo(guia.tabelas).map((t) => {
           return (
-            <li key={nome}>
+            <li key={t.tabela}>
               {t.frase}{" "}
               <small>
                 Fonte: {t.orgao}; atualização: {t.frequencia.toLowerCase()}
-                {SEM_DESDE.has(nome) ? "." : `; histórico desde ${desde(t.historico_desde)}.`}
+                {SEM_DESDE.has(t.tabela) ? "." : `; histórico desde ${desde(t.historico_desde)}.`}
               </small>
             </li>
           );
