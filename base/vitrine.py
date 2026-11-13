@@ -68,6 +68,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bINPI\b", "INPI"),
     (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
+    (r"Receita \(DIRBI", "Receita Federal (renúncias)"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),
     (r"da CGU\b", "CGU"),
@@ -502,7 +503,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "licencas",
         "Licenças e registros nas agências",
-        "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
+        "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, "
         "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
         "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
         "patentes, desenhos e programas de computador no INPI.",
@@ -514,6 +515,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "anp_concessionarios",
             "antt_rntrc",
             "mapa_sipeagro",
+            "sigsif_habilitados",
             "anatel_outorgas",
             "anm_titulos",
             "anm_sigbm_barragens",
@@ -538,7 +540,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
         "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
-        "Pernambuco, a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento "
+        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento "
         "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
@@ -555,6 +557,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sefaz_pe_beneficios",
             "sefaz_pe_ordem_cronologica",
             "es_ordem_cronologica",
+            "receita_dirbi",
+            "receita_ecf_renuncia",
         ),
     ),
 )
