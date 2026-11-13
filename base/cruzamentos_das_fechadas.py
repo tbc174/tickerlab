@@ -7,8 +7,10 @@ um lugar só. Nenhum nome de empresa, sócio ou pessoa entra na medição: só c
 **Definições** (escritas antes de medir; valem para todos os cartões):
 
 - **Empresa fechada:** a raiz de CNPJ que está na lista sem pessoa da Receita (`cnpj_empresas_pj`, linha 584: sem
-  MEI, sem empresário individual e sem as naturezas de pessoa física) no retrato que valia no dia e que nunca
-  entregou o formulário cadastral à CVM (`fca_geral`) até o dia;
+  MEI, sem empresário individual e sem as naturezas de pessoa física) no retrato que valia no dia, com natureza
+  jurídica de sociedade empresária privada (grupo 2 da tabela da Receita, sem empresa pública nem sociedade de
+  economia mista: associação, fundação, condomínio e órgão público ficam de fora) e que nunca entregou o
+  formulário cadastral à CVM (`fca_geral`) até o dia;
 - **segue ativa:** tem ao menos um estabelecimento em situação ativa (`02`) no mesmo retrato;
 - **12 meses:** do dia da medição menos 12 meses (exclusive) até o dia (inclusive);
 - **porte médio:** a Receita não tem "médio"; o mais perto que as colunas fecham é o porte `demais` (acima do
@@ -24,7 +26,8 @@ um lugar só. Nenhum nome de empresa, sócio ou pessoa entra na medição: só c
 - só pessoa jurídica: as tabelas que também guardam pessoa (BNDES, Finep, RDE-IED) só contam a linha com a marca
   `trata_como_pessoa` falsa e a raiz que está na lista sem pessoa da Receita; na PGFN e no INPI, só CNPJ de 14
   dígitos;
-- contagem abaixo de `MINIMO_DA_CONTAGEM` (a parte ou o todo) derruba o cartão;
+- contagem abaixo de `MINIMO_DA_CONTAGEM` (a parte, o todo ou o que sobra do todo) derruba o cartão
+  (`motivo_da_contagem`), na medição e de novo ao ler a fotografia;
 - **sem olhar o futuro:** cada tabela só entra com o que já era público no dia (`publico_em`); a versão que vale
   é a mais nova já vista no dia (arquivista e históricos do CNPJ).
 """
@@ -56,6 +59,8 @@ FILIAIS_NA_JANELA = 3
 BNDES_DESDE = date(2015, 1, 1)
 DIGITOS_DO_CNPJ = 14
 DIGITOS_DA_RAIZ = 8
+GRUPO_DAS_EMPRESAS = "2"  # 1º dígito da natureza jurídica: entidades empresariais
+NATUREZAS_DO_ESTADO = ("2011", "2038")  # empresa pública e sociedade de economia mista
 RECUPERACAO_JUDICIAL = "recuperacao_judicial"
 
 EMPRESAS, ESTABELECIMENTOS = "cnpj_empresas_pj", "cnpj_estabelecimentos_pj"
@@ -379,7 +384,8 @@ def _montar_a_base(
     raiz_da_cvm = _raiz_de_cnpj("cnpj")
     cursor.execute(
         "CREATE OR REPLACE TEMP TABLE fechadas AS SELECT cnpj_basico AS raiz, any_value(porte) AS porte "
-        f"FROM {_v(EMPRESAS)} e WHERE mes_do_retrato = $mes AND NOT EXISTS (SELECT 1 FROM {_v(FCA)} "
+        f"FROM {_v(EMPRESAS)} e WHERE mes_do_retrato = $mes AND {_natureza_privada('natureza_juridica')} "
+        f"AND NOT EXISTS (SELECT 1 FROM {_v(FCA)} "
         f"WHERE publico_em <= CAST($dia AS DATE) AND {raiz_da_cvm} = e.cnpj_basico) GROUP BY 1",
         {k: parametros[k] for k in ("mes", "dia")},
     )
@@ -389,6 +395,12 @@ def _montar_a_base(
         "AND cnpj_basico IN (SELECT raiz FROM fechadas)",
         {"mes": parametros["mes"]},
     )
+
+
+def _natureza_privada(coluna: str) -> str:
+    """Sociedade empresária privada: natureza do grupo 2, fora as do Estado."""
+    estado = ", ".join(f"'{n}'" for n in NATUREZAS_DO_ESTADO)
+    return f"left(trim({coluna}), 1) = '{GRUPO_DAS_EMPRESAS}' AND trim({coluna}) NOT IN ({estado})"
 
 
 def _parametros_usados(sql: str, parametros: Mapping[str, object]) -> dict[str, object]:
@@ -402,9 +414,20 @@ def _medir_um(
     sql = molde.sql()
     linha = cursor.execute(sql, _parametros_usados(sql, parametros)).fetchone()
     todo, parte = (0, 0) if linha is None else (int(linha[0] or 0), int(linha[1] or 0))
-    if min(todo, parte) < MINIMO_DA_CONTAGEM:
-        return CartaoCaido(molde.chave, f"contagem abaixo de {MINIMO_DA_CONTAGEM}")
+    motivo = motivo_da_contagem(todo, parte)
+    if motivo is not None:
+        return CartaoCaido(molde.chave, motivo)
     return CartaoMedido(molde.chave, parte=parte, todo=todo)
+
+
+def motivo_da_contagem(todo: int, parte: int) -> str | None:
+    """Por que a contagem não pode sair (None: pode). Além da parte e do todo, o que sobra do todo também
+    conta: com todo 105 e parte 100, dá para saber que só 5 empresas ficaram de fora."""
+    if parte > todo:
+        return "a parte é maior que o todo"
+    if min(todo, parte) < MINIMO_DA_CONTAGEM or 0 < todo - parte < MINIMO_DA_CONTAGEM:
+        return f"contagem abaixo de {MINIMO_DA_CONTAGEM}"
+    return None
 
 
 def doze_meses_antes(dia: date) -> date:
@@ -460,10 +483,16 @@ def de_pe_o_bastante(medicao: MedicaoDasFechadas) -> bool:
 
 
 def fechadas_da_fotografia(dados: Mapping) -> MedicaoDasFechadas:
-    """A medição gravada de volta; campo a mais ou a menos é erro."""
+    """A medição gravada de volta; campo a mais ou a menos é erro, e cartão com contagem que não poderia
+    sair (fotografia editada à mão, por exemplo) também."""
+    cartoes = tuple(CartaoMedido(**c) for c in dados["cartoes"])
+    for cartao in cartoes:
+        motivo = motivo_da_contagem(cartao.todo, cartao.parte)
+        if motivo is not None:
+            raise ValueError(f"cartão {cartao.chave} na fotografia: {motivo}")
     return MedicaoDasFechadas(
         medido_em=dados["medido_em"],
-        cartoes=tuple(CartaoMedido(**c) for c in dados["cartoes"]),
+        cartoes=cartoes,
         caidos=tuple(CartaoCaido(**c) for c in dados["caidos"]),
     )
 

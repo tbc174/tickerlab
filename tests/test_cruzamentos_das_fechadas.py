@@ -2,7 +2,7 @@
 
 Base de mentira, sem internet; as raízes são de ninguém. A porta é a de verdade (`base.porta.Porta`) sobre
 parquets numa pasta do teste, com os mesmos apelidos de data que o servidor usa. Riscos: contar companhia
-aberta, empresa baixada ou linha de pessoa; olhar o futuro (retrato, entrada de sócia, contrato ou lista da
+aberta, empresa baixada, associação, empresa do Estado ou linha de pessoa; olhar o futuro (retrato, entrada de sócia, contrato ou lista da
 PGFN ainda não públicos no dia); sair número com contagem abaixo do mínimo; e um cartão de tabela sem
 licença ou fora da porta ficar de pé.
 """
@@ -36,7 +36,9 @@ def cnpj(numero: int, ordem: str = "0001") -> str:
     return f"{r(numero)}{ordem}00"
 
 
-ABERTA, BAIXADA, SO_NO_FUTURO = 4, 5, 16
+ABERTA, BAIXADA, SO_NO_FUTURO, ASSOCIACAO, EMPRESA_PUBLICA = 4, 5, 16, 17, 18
+# natureza jurídica fora da sociedade empresária privada: ativas, mas não são empresa fechada
+NATUREZAS = {ASSOCIACAO: "3999", EMPRESA_PUBLICA: "2011"}
 # raiz: (situação, CNAE da matriz, porte)
 EMPRESAS = {
     1: ("02", TI, "micro"),
@@ -54,9 +56,15 @@ EMPRESAS = {
     13: ("02", TI, "micro"),
     14: ("02", TI, "micro"),
     15: ("02", TI, "micro"),
+    ASSOCIACAO: ("02", TI, "micro"),
+    EMPRESA_PUBLICA: ("02", INDUSTRIA, "demais"),
 }
 ATIVAS_FECHADAS = len(
-    [n for n, (s, *_) in EMPRESAS.items() if s == "02" and n != ABERTA]
+    [
+        n
+        for n, (s, *_) in EMPRESAS.items()
+        if s == "02" and n != ABERTA and n not in NATUREZAS
+    ]
 )
 # filiais: raiz, ordem, início de atividade
 FILIAIS = [
@@ -108,16 +116,23 @@ def _estabelecimentos() -> pd.DataFrame:
 
 def _empresas() -> pd.DataFrame:
     linhas = [
-        (r(n), porte, "2026-10", "2026-10-20") for n, (_, _, porte) in EMPRESAS.items()
+        (r(n), porte, NATUREZAS.get(n, "2062"), "2026-10", "2026-10-20")
+        for n, (_, _, porte) in EMPRESAS.items()
     ]
-    linhas.append((r(SO_NO_FUTURO), "demais", "2026-11", FUTURO))
+    linhas.append((r(SO_NO_FUTURO), "demais", "2062", "2026-11", FUTURO))
     tabela = pd.DataFrame(
-        linhas, columns=["cnpj_basico", "porte", "mes_do_retrato", "disponivel_em"]
+        linhas,
+        columns=[
+            "cnpj_basico",
+            "porte",
+            "natureza_juridica",
+            "mes_do_retrato",
+            "disponivel_em",
+        ],
     )
     tabela["disponivel_em"] = tabela["disponivel_em"].map(_dia)
     return tabela.assign(
         razao_social="EMPRESA DE TESTE LTDA",
-        natureza_juridica="2062",
         capital_social=1_000_000.0,
         n_estabelecimentos=1,
         **CARIMBOS,
@@ -143,17 +158,26 @@ def _fca() -> pd.DataFrame:
 
 def _simples() -> pd.DataFrame:
     linhas = [
-        (1, "2025-09", "2025-09-15", True), (1, "2026-09", "2026-09-15", False),  # saiu
-        (2, "2025-09", "2025-09-15", True),  # continua
-        (3, "2025-09", "2025-09-15", True), (3, "2026-11", FUTURO, False),  # a saída ainda não é pública
-        (ABERTA, "2025-09", "2025-09-15", True), (ABERTA, "2026-09", "2026-09-15", False),
-        (BAIXADA, "2025-09", "2025-09-15", True), (BAIXADA, "2026-09", "2026-09-15", False),
+        (1, "2025-09", "2025-09-15", True, True), (1, "2026-09", "2026-09-15", False, True),  # saiu
+        # continua: a linha mais nova não consta no retrato e não vale como saída
+        (2, "2025-09", "2025-09-15", True, True), (2, "2026-09", "2026-09-15", False, False),
+        (3, "2025-09", "2025-09-15", True, True), (3, "2026-11", FUTURO, False, True),  # saída do futuro
+        (ABERTA, "2025-09", "2025-09-15", True, True), (ABERTA, "2026-09", "2026-09-15", False, True),
+        (BAIXADA, "2025-09", "2025-09-15", True, True), (BAIXADA, "2026-09", "2026-09-15", False, True),
+        (ASSOCIACAO, "2025-09", "2025-09-15", True, True),
+        (ASSOCIACAO, "2026-09", "2026-09-15", False, True),
     ]  # fmt: skip
     tabela = pd.DataFrame(
-        [(r(n), m, _dia(d), o) for n, m, d, o in linhas],
-        columns=["cnpj_basico", "mes_do_retrato", "disponivel_em", "optante_simples"],
+        [(r(n), m, _dia(d), o, c) for n, m, d, o, c in linhas],
+        columns=[
+            "cnpj_basico",
+            "mes_do_retrato",
+            "disponivel_em",
+            "optante_simples",
+            "consta",
+        ],
     )
-    return tabela.assign(consta=True, optante_mei=False, **CARIMBOS)
+    return tabela.assign(optante_mei=False, **CARIMBOS)
 
 
 def _socias() -> pd.DataFrame:
@@ -241,30 +265,46 @@ def _rde() -> pd.DataFrame:
 
 def _inpi(*numeros: int) -> pd.DataFrame:
     linhas = [(f"i{n}", "2026-10-14", True, False, cnpj(n)) for n in numeros]
+    linhas += [
+        ("i9a", "2026-10-14", False, False, cnpj(9)),  # saiu da fonte: não conta
+        ("i9b", "2026-10-14", True, True, cnpj(9)),  # marcada como pessoa: não conta
+    ]  # fmt: skip
     return _arquivista(linhas, numero_inpi="BR000")
 
 
 def _pgfn() -> pd.DataFrame:
     linhas = [
-        ("2024-12-31", "2025-01-10", 13, "2020-01-01"),
+        ("2024-12-31", "2025-01-10", cnpj(13), "2020-01-01", False),
         (
             "2024-12-31",
             "2025-01-10",
-            2,
+            cnpj(2),
             "2024-09-01",
-        ),  # inscrita menos de 12 meses antes da RJ
-        ("2026-09-30", "2026-10-10", 6, "2020-01-01"),
-        ("2026-09-30", "2026-10-10", 12, "2021-01-01"),
-        ("2026-09-30", "2026-10-10", 2, "2024-09-01"),
-        ("2026-10-31", FUTURO, 7, "2020-01-01"),  # retrato ainda não público
+            False,
+        ),  # inscrita < 12 meses antes da RJ
+        ("2026-09-30", "2026-10-10", cnpj(6), "2020-01-01", False),
+        ("2026-09-30", "2026-10-10", cnpj(12), "2021-01-01", False),
+        ("2026-09-30", "2026-10-10", cnpj(2), "2024-09-01", False),
+        # a 13 tem AFE ativa e não deve: um documento de 11 dígitos que começa pela raiz dela não é CNPJ,
+        # e a linha marcada como pessoa também não conta
+        ("2026-09-30", "2026-10-10", f"{r(13)}123", "2021-01-01", False),
+        ("2026-09-30", "2026-10-10", cnpj(13), "2021-01-01", True),
+        (
+            "2026-10-31",
+            FUTURO,
+            cnpj(7),
+            "2020-01-01",
+            False,
+        ),  # retrato ainda não público
     ]
     tabela = pd.DataFrame(
-        [(pd.Timestamp(d).date(), _dia(p), cnpj(n), pd.Timestamp(i).date()) for d, p, n, i in linhas],
-        columns=["data_do_retrato", "disponivel_em", "cnpj", "primeira_inscricao"],
+        [(pd.Timestamp(d).date(), _dia(p), c, pd.Timestamp(i).date(), pessoa)
+         for d, p, c, i, pessoa in linhas],
+        columns=["data_do_retrato", "disponivel_em", "cnpj", "primeira_inscricao", "trata_como_pessoa"],
     )  # fmt: skip
     tabela["cnpj_basico"] = tabela["cnpj"].str[:8]
     return tabela.assign(
-        trata_como_pessoa=False, tipo_devedor="principal", valor_consolidado=1000.0,
+        tipo_devedor="principal", valor_consolidado=1000.0,
         origem_coletada_em=pd.Timestamp("2026-10-10"), **CARIMBOS,
     )  # fmt: skip
 
@@ -366,7 +406,8 @@ ESPERADO = {
         2,
         1,
     ),  # 13 e 2 tinham lista pública; só a 13 devia havia 12 meses
-    "industria_e_marca": (2, 1),  # 8 e 9 (a 10 é pequena, a 11 é varejo); a 8 tem marca
+    # 8 e 9 (a 10 é pequena, a 11 é varejo, a 18 é empresa pública); a 8 tem marca (as da 9 não valem)
+    "industria_e_marca": (2, 1),
     "finep_e_patente": (2, 1),  # 6 e 10 têm Finep; a 10 tem patente
 }
 
@@ -520,6 +561,33 @@ def test_a_fotografia_volta_igual(porta):
                 "cartoes": [{"chave": "x", "parte": 1}],
             }
         )
+
+
+@pytest.mark.parametrize(
+    "todo, parte, cai",
+    [
+        (20, 10, False),
+        (20, 20, False),  # todas: o que sobra é zero, nada aponta para ninguém
+        (20, 9, True),  # parte abaixo do mínimo
+        (9, 9, True),  # todo abaixo do mínimo
+        (105, 100, True),  # sobram 5: o complemento também aponta para poucas empresas
+        (110, 100, False),
+        (10, 11, True),  # parte maior que o todo é erro
+    ],
+)
+def test_motivo_da_contagem(todo, parte, cai):
+    assert (fechadas.motivo_da_contagem(todo, parte) is not None) is cai
+
+
+@pytest.mark.parametrize("todo, parte", [(105, 100), (20, 9), (10, 11)])
+def test_a_fotografia_com_contagem_que_nao_sai_e_recusada(todo, parte):
+    gravada = {
+        "medido_em": "2026-11-14",
+        "cartoes": [{"chave": "tres_filiais", "parte": parte, "todo": todo}],
+        "caidos": [],
+    }
+    with pytest.raises(ValueError, match="tres_filiais"):
+        fechadas.fechadas_da_fotografia(gravada)
 
 
 def test_o_minimo_de_cartoes_de_pe():

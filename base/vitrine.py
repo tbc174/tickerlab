@@ -1437,9 +1437,10 @@ def _fato_do_parecer(parecer: ParecerEInsolvencia, data: str) -> Fato:
 # --- os cartões de empresa fechada (linha 925): o texto de cada um sai daqui, e só daqui ----------------
 
 FECHADA_E_ATIVA = (
-    "Empresa fechada é a que está no cadastro do CNPJ sem MEI, sem empresário individual e sem as naturezas de "
-    "pessoa física, e nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao "
-    "menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem."
+    "Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, "
+    "sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da "
+    "medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. "
+    "Contagens abaixo de 10 não saem."
 )
 RECEITA_DO_CNPJ = "Receita Federal: cadastro do CNPJ"
 DOZE_MESES = "nos 12 meses até o dia da medição"
@@ -1523,8 +1524,9 @@ MOLDES_DOS_FATOS: Mapping[str, MoldeDoFato] = {
         "Banco Central: registros de investimento estrangeiro direto (RDE-IED)",
         (fechadas.RDE, fechadas.EMPRESAS),
         "Ao menos uma linha de registro de investimento estrangeiro direto (efetuado ou já encerrado) na lista "
-        "aberta do Banco Central, como a base a viu até o dia. O registro diz que houve investimento de fora, "
-        "não quanto nem se ele continua.",
+        "aberta do Banco Central, como a base a viu até o dia. A série vai de nov/2011 a dez/2022, quando o "
+        "Banco Central parou de publicá-la. O registro diz que houve investimento de fora, não quanto nem se "
+        "ele continua.",
     ),
     "tres_niveis": _molde(
         False,
