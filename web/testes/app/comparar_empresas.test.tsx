@@ -136,6 +136,18 @@ describe("comparar empresas", () => {
     expect((screen.getByLabelText("CNPJ 4") as HTMLInputElement).value).toBe("quinto");
   });
 
+  it("duas empresas prontas: o que uma não tem é dito na célula, e a coluna traz o nome", async () => {
+    const SEM_UF: EmpresaComparadaV1 = { ...MODELO, cnpj: OUTRA, razao_social: campo("OUTRA EMPRESA LTDA"), uf: null, entregas_conhecidas: null, entregas_com_atraso: null };
+    abrir(() => respostaJson(200, { ...PRONTA, empresas: [MODELO, SEM_UF] }));
+    await comparar(EMPRESA, OUTRA);
+    const linha = await screen.findByRole("row", { name: /^UF/ });
+    expect(linha.textContent).toContain("MG");
+    expect(linha.textContent).toContain("Não temos");
+    expect(linha.textContent).not.toContain("—");
+    expect(screen.getByRole("columnheader", { name: /OUTRA EMPRESA LTDA/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Encontre empresas/ })).toBeTruthy();
+  });
+
   it("pronta: os CNPJs vão no corpo, uma coluna por empresa, cada valor com a fonte e a data", async () => {
     const { buscar } = abrir(() => respostaJson(200, PRONTA));
     await comparar("02.429.144/0001-93", OUTRA);
@@ -145,11 +157,11 @@ describe("comparar empresas", () => {
     expect(pedido?.method).toBe("POST");
     expect(JSON.parse(String(pedido?.body))).toEqual({ cnpjs: ["02.429.144/0001-93", OUTRA] });
     const cabecalhos = within(tabela).getAllByRole("columnheader").map((c) => c.textContent);
-    expect(cabecalhos).toEqual(["Campo", "02.429.144/0001-93", "11.222.333/0001-81 · não disponível"]);
+    expect(cabecalhos).toEqual(["Campo", "EMPRESA MODELO S.A.02.429.144/0001-93", "11.222.333/0001-81 · não disponível"]);
     const razao = within(tabela).getByRole("row", { name: /Razão social/ });
     expect(razao.textContent).toContain("EMPRESA MODELO S.A.");
     expect(razao.textContent).toContain("rfb-cnpj · 30/09/2026");
-    expect(razao.textContent).toContain("—"); // a empresa não disponível fica sem valor, sem motivo
+    expect(razao.textContent).toContain("Não disponível"); // a empresa fora da base diz que não está disponível, sem motivo
     const linha = (nome: RegExp) => within(tabela).getByRole("row", { name: nome }).textContent ?? "";
     expect(linha(/Situação cadastral/)).toContain("Ativa");
     expect(linha(/Porte/)).toContain("Demais");
