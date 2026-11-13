@@ -117,7 +117,7 @@ const PERGUNTAS_DO_CONECTOR: [string, string, string][] = [
   [
     "Setor e fundo",
     "setores · setor · fundo",
-    "As séries da agência reguladora do setor e o cadastro, as taxas e a carteira de um fundo.",
+    "As séries de mercado do setor, a concentração e a fatia de cada empresa, e o cadastro, as taxas e a carteira de um fundo.",
   ],
   [
     "Fluxos prontos",
@@ -141,7 +141,7 @@ const PASSOS_DO_CONECTOR: [string, ReactNode][] = [
   [
     "Adicione o conector",
     <>
-      No Claude, em Configurações, um conector personalizado com o endereço que vem com a chave. No
+      No Claude, em Configurações, um conector personalizado com o endereço que quem administra passa junto com a chave. No
       ChatGPT, o mesmo conector, em Apps e conectores.
     </>,
   ],

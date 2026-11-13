@@ -108,8 +108,8 @@ describe("página inicial da CLI de M&A e análise de investimento", () => {
     expect(secao.split("<li>").length - 1).toBe(3);
     for (const trava of ["Só leitura", "As mesmas regras da CLI", "Sem dado de pessoa física", "A chave não vai ao chat"])
       expect(texto, trava).toContain(trava);
-    // o endereço do conector vem com a chave: a página não o publica
-    expect(texto).not.toMatch(/mcp\.tickerlab|https?:\/\/[^\s"]*\/mcp/);
+    // o endereço do conector vem com a chave: nenhuma parte da página o publica
+    expect(html).not.toMatch(/mcp\.tickerlab|https?:\/\/[^\s"]*\/mcp/);
   });
 
   it("os cartões do conector só citam ferramentas e prompts que o conector registra", () => {
