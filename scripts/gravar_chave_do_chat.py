@@ -5,9 +5,9 @@ pagos, e por isso o chat não a lê. Este script:
 
 - pede a chave no terminal, sem eco (`getpass`); ela nunca é impressa, nem vai para log ou para o
   histórico do shell;
-- confere só o formato (não vazia, sem espaço nem quebra de linha), nunca o valor;
-- grava no `.env` com permissão 600, de uma vez só (arquivo temporário e troca), e mantém as outras
-  linhas do arquivo;
+- confere só o formato (não vazia; só letras, números, `-` e `_`), nunca o valor;
+- grava no `.env` que já existe (nunca num link nem num arquivo novo na pasta errada), com
+  permissão 600, de uma vez só (arquivo temporário e troca), mantendo as outras linhas, o dono e o grupo;
 - recusa trocar uma chave que já existe sem `--trocar`;
 - **não liga o chat**: `TICKERLAB_CHAT` fica como estava (ligar é outro passo, só do Tiago).
 
@@ -19,9 +19,14 @@ Só usa a biblioteca padrão do Python, para rodar direto no VPS, fora do contê
 Roda: manual, pelo Tiago no VPS (ao pôr a chave do chat e ao trocá-la).
 """
 
+# o python3 do sistema no VPS pode ser mais velho que o do contêiner: `X | None` sem avaliar
+from __future__ import annotations
+
 import argparse
+import contextlib
 import getpass
 import os
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -36,6 +41,8 @@ DESCRICAO = (
     "Grava a chave do modelo do chat no .env (sem eco, permissão 600). Não liga o chat."
 )
 PROXIMO_PASSO = "docker compose up -d --force-recreate tickerlab-api"
+# letras, números, "-" e "_": fecha a porta a quebra de linha, "#" e "$" (que o compose interpreta)
+FORMATO_DA_CHAVE = re.compile(r"[A-Za-z0-9_-]+")
 
 
 class ChaveRecusada(ValueError):
@@ -47,20 +54,36 @@ def conferir_chave(texto: str) -> str:
     limpo = texto.strip()
     if not limpo:
         raise ChaveRecusada("a chave veio vazia")
-    if any(caractere.isspace() for caractere in limpo):
-        raise ChaveRecusada("a chave tem espaço ou quebra de linha no meio")
+    if not FORMATO_DA_CHAVE.fullmatch(limpo):
+        raise ChaveRecusada(
+            "a chave tem caractere que não é letra, número, '-' ou '_' (espaço, quebra de linha...)"
+        )
     return limpo
 
 
 def _e_a_linha_da_chave(linha: str) -> bool:
-    return linha.startswith(f"{VARIAVEL}=")
+    """Reconhece a variável também com espaço antes, `export ` ou espaço antes do `=`."""
+    nome = linha.strip().removeprefix("export ").split("=", 1)[0].strip()
+    return "=" in linha and nome == VARIAVEL
+
+
+def _conferir_o_arquivo(arquivo: Path) -> None:
+    """Só grava num `.env` que já existe e é arquivo de verdade (nem link, nem pasta errada)."""
+    if arquivo.is_symlink():
+        raise FileExistsError(
+            f"{arquivo.absolute()} é um link; rode apontando para o arquivo de verdade."
+        )
+    if not arquivo.is_file():
+        raise FileExistsError(
+            f"{arquivo.absolute()} não existe. Rode na pasta do servidor (a que tem o .env)."
+        )
 
 
 def gravar(arquivo: Path, chave: str, *, trocar: bool) -> None:
     """Grava a chave no arquivo com permissão 600, sem mexer nas outras linhas."""
-    linhas = (
-        arquivo.read_text(encoding="utf-8").splitlines() if arquivo.exists() else []
-    )
+    _conferir_o_arquivo(arquivo)
+    original = arquivo.stat()
+    linhas = arquivo.read_text(encoding="utf-8").splitlines()
     if any(_e_a_linha_da_chave(linha) for linha in linhas) and not trocar:
         raise FileExistsError(
             f"{arquivo} já tem a {VARIAVEL}. Para trocá-la, rode de novo com --trocar."
@@ -72,6 +95,11 @@ def gravar(arquivo: Path, chave: str, *, trocar: bool) -> None:
     descritor = os.open(temporario, os.O_WRONLY | os.O_CREAT | os.O_EXCL, PERMISSAO)
     with os.fdopen(descritor, "w", encoding="utf-8") as saida:
         saida.write(conteudo)
+    # o dono e o grupo do .env de antes: rodar com sudo não tira o arquivo do usuário do deploy;
+    # sem sudo, o arquivo já é de quem roda e a troca de dono é recusada sem mudar nada
+    if hasattr(os, "chown"):
+        with contextlib.suppress(PermissionError):
+            os.chown(temporario, original.st_uid, original.st_gid)
     os.replace(temporario, arquivo)
     os.chmod(arquivo, PERMISSAO)
 
@@ -94,7 +122,7 @@ def principal(
         print(f"Nada foi gravado: {erro}", file=sys.stderr)
         return 1
     print(
-        f"Chave do chat gravada em {opcoes.arquivo} (permissão 600). O chat continua como estava: "
+        f"Chave do chat gravada em {opcoes.arquivo.absolute()} (permissão 600). O chat continua como estava: "
         f"{VARIAVEL_DE_LIGAR} não foi mexida. Para a API ler a chave: {PROXIMO_PASSO}"
     )
     return 0

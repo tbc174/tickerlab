@@ -44,6 +44,7 @@ def test_grava_a_chave_sem_mostrar_e_mantem_as_outras_linhas(tmp_path, capsys):
 
 def test_nao_liga_o_chat(tmp_path):
     arquivo = tmp_path / ".env"
+    arquivo.write_text("OUTRA=1\n", encoding="utf-8")
     assert principal(["--arquivo", str(arquivo)], _colar(CHAVE)) == 0
     assert VARIAVEL_DE_LIGAR not in arquivo.read_text(encoding="utf-8")
     # e não mexe na chave de ligar quando ela já existe, desligada
@@ -54,6 +55,7 @@ def test_nao_liga_o_chat(tmp_path):
 
 def test_nao_grava_a_chave_geral(tmp_path):
     arquivo = tmp_path / ".env"
+    arquivo.write_text("OUTRA=1\n", encoding="utf-8")
     assert principal(["--arquivo", str(arquivo)], _colar(CHAVE)) == 0
     assert not any(
         linha.startswith("ANTHROPIC_API_KEY=")
@@ -94,7 +96,7 @@ def test_formato_ruim_nao_grava_nada_e_nao_mostra_o_valor(tmp_path, capsys, cola
     assert arquivo.read_text(encoding="utf-8") == "OUTRA=1\n"
     erro = capsys.readouterr().err
     assert "Nada foi gravado" in erro
-    for pedaco in ("espaco", "com-tab", "metade", "outra"):
+    for pedaco in ("espaco", "com-tab", "metade", "outra", "cifrao", "comentario"):
         assert pedaco not in erro
 
 
@@ -111,3 +113,38 @@ def test_pede_a_chave_sem_eco_por_padrao():
 
     assert principal.__defaults__ == (None, getpass.getpass)
     assert gravar_chave_do_chat.getpass is getpass
+
+
+@pytest.mark.parametrize(
+    "jeito",
+    [f"  {VARIAVEL}=velha", f"export {VARIAVEL}=velha", f"{VARIAVEL} = velha"],
+)
+def test_reconhece_a_chave_escrita_de_outro_jeito_e_nao_a_deixa_para_tras(
+    tmp_path, jeito
+):
+    arquivo = tmp_path / ".env"
+    arquivo.write_text(f"OUTRA=1\n{jeito}\n", encoding="utf-8")
+    assert principal(["--arquivo", str(arquivo)], _colar(CHAVE)) == 1
+    assert principal(["--arquivo", str(arquivo), "--trocar"], _colar(CHAVE)) == 0
+    texto = arquivo.read_text(encoding="utf-8")
+    assert "velha" not in texto
+    assert _linhas_da_chave(arquivo) == [f"{VARIAVEL}={CHAVE}"]
+
+
+def test_sem_o_env_na_pasta_nao_cria_um_solto(tmp_path, capsys):
+    arquivo = tmp_path / ".env"
+    assert principal(["--arquivo", str(arquivo)], _colar(CHAVE)) == 1
+    assert not arquivo.exists()
+    erro = capsys.readouterr().err
+    assert "não existe" in erro and CHAVE not in erro
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="link simbólico do Linux (o VPS)")
+def test_nao_troca_um_link_por_arquivo(tmp_path):
+    destino = tmp_path / "env-de-verdade"
+    destino.write_text("OUTRA=1\n", encoding="utf-8")
+    arquivo = tmp_path / ".env"
+    arquivo.symlink_to(destino)
+    assert principal(["--arquivo", str(arquivo)], _colar(CHAVE)) == 1
+    assert arquivo.is_symlink()
+    assert destino.read_text(encoding="utf-8") == "OUTRA=1\n"
