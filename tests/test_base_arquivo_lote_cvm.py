@@ -108,8 +108,15 @@ def test_as_grandes_sao_pesadas_e_o_resto_nao():
     assert {f.grupo for f in lote.fontes()} <= {"semanal", "mensal"}
 
 
-# fontes do lote que já viraram tabela na base (informe mensal de CRI/CRA/OTS, B-16)
-JA_NA_BASE = {"cvm-securitizadoras-ots"}
+# fontes do lote que já viraram tabela na base (informe mensal de CRI/CRA/OTS, B-16; FIP e FII, linha 904)
+JA_NA_BASE = {
+    "cvm-securitizadoras-ots",
+    "cvm-fip-trimestral",
+    "cvm-fip-quadrimestral",
+    "cvm-fii-administradores",
+    "cvm-fii-mensal",
+    "cvm-fii-trimestral",
+}
 
 
 def test_toda_fonte_nova_tem_licenca_conhecida_e_destino_planejado():
@@ -122,7 +129,6 @@ def test_toda_fonte_nova_tem_licenca_conhecida_e_destino_planejado():
         assert destinos.DESTINOS[f.id].porque
 
 
-def test_informe_diario_e_fii_apontam_para_o_lote_2():
+def test_informe_diario_e_fii_anual_apontam_para_o_lote_2():
     assert "cota-por-fundo" in destinos.DESTINOS["cvm-fundos-informe-diario"].onde
-    for id_ in ("cvm-fii-mensal", "cvm-fii-trimestral", "cvm-fii-anual"):
-        assert "tela-de-fii" in destinos.DESTINOS[id_].onde
+    assert "tela-de-fii" in destinos.DESTINOS["cvm-fii-anual"].onde
