@@ -162,6 +162,11 @@ def tabela_das_fontes(corpo: Mapping) -> Tabela:
                 ]
             )
     fontes.linhas.append(["aviso", AVISO, None])
+    aviso_da_anvisa = corpo.get("anvisa_notice")
+    if isinstance(
+        aviso_da_anvisa, str
+    ):  # registro na Anvisa é sinal de porte, não faturamento
+        fontes.linhas.append(["aviso da Anvisa", aviso_da_anvisa, None])
     fontes.linhas.extend(
         ["aviso de piloto", frase, None] for frase in avisos_de_piloto(corpo)
     )
