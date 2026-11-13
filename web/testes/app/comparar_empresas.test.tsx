@@ -142,7 +142,7 @@ describe("comparar empresas", () => {
     await comparar(EMPRESA, OUTRA);
     const linha = await screen.findByRole("row", { name: /^UF/ });
     expect(linha.textContent).toContain("MG");
-    expect(linha.textContent).toContain("Não temos");
+    expect(linha.textContent).toContain("Sem dado nesta consulta");
     expect(linha.textContent).not.toContain("—");
     expect(screen.getByRole("columnheader", { name: /OUTRA EMPRESA LTDA/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Encontre empresas/ })).toBeTruthy();

@@ -20,7 +20,7 @@ import { TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaD
 const MINIMO = 2;
 const MAXIMO = 5;
 const NOME_DA_PLANILHA = "comparacao-de-empresas-tickerlab.xlsx"; // sem CNPJ: o nome do arquivo não carrega dado
-const NAO_TEMOS = "Não temos";
+const NAO_TEMOS = "Sem dado nesta consulta"; // a API de comparar não separa "a empresa não tem" de "campo barrado": a frase não afirma nenhum dos dois
 const REAIS = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const INTEIRO = new Intl.NumberFormat("pt-BR");
 
