@@ -87,12 +87,14 @@ ORGAOS: tuple[tuple[str, str], ...] = (
 )
 # A conta "N órgãos públicos" da página inicial e do Início do app (linha 927) só conta órgão ou entidade
 # pública. Ficam de fora as fontes que não são do Estado: associação civil ou fundação privada (CCEE, ONS,
-# GLEIF, Internet Archive, MapBiomas), as assessorias de M&A e a imprensa. Elas continuam na lista de fontes
-# e nos cartões dos temas, com o nome; só não entram neste número. Na dúvida, a fonte fica de fora.
+# GLEIF, Internet Archive, MapBiomas), organismo internacional (FAO), as assessorias de M&A e a imprensa.
+# Elas continuam na lista de fontes e nos cartões dos temas, com o nome; só não entram neste número. Na
+# dúvida, a fonte fica de fora.
 ORGAOS_QUE_NAO_SAO_PUBLICOS: frozenset[str] = frozenset(
     {
         "Assessorias de M&A",
         "CCEE",
+        "FAO",
         "ONS",
         "GLEIF",
         "Internet Archive",
@@ -101,11 +103,12 @@ ORGAOS_QUE_NAO_SAO_PUBLICOS: frozenset[str] = frozenset(
     }
 )
 # o mesmo órgão com mais de um nome em `ORGAOS` (uma licença por conjunto de dados) conta uma vez só; a CMED
-# é uma câmara cuja secretaria é da Anvisa, e por isso conta com ela
+# é uma câmara cuja secretaria é da Anvisa, e por isso conta com ela; o INMET é um instituto do MAPA
 MESMO_ORGAO: dict[str, str] = {
     "Receita Federal (renúncias)": "Receita Federal",
     "Receita Federal (transações)": "Receita Federal",
     "CMED (Anvisa)": "Anvisa",
+    "INMET": "MAPA",
 }
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {

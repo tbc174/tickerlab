@@ -193,6 +193,24 @@ def test_as_listas_da_conta_de_orgaos_so_citam_nomes_que_existem():
     )
 
 
+# os nomes de `ORGAOS` que alguém já conferiu serem órgão ou entidade pública (linha 927)
+ORGAOS_PUBLICOS_CONFERIDOS = frozenset(
+    {
+        "ANAC", "ANEEL", "ANM", "ANP", "ANS", "ANTT", "Anatel", "Ancine", "Anvisa", "BNDES", "Banco Central",
+        "CFTC", "CGU", "CNJ", "CONAB", "CVM", "Finep", "Governo do ES", "IBAMA", "INPI", "MAPA", "MDIC", "MME",
+        "MTE", "Ministério da Saúde (DATASUS)", "PGFN", "Receita Federal", "SEF-MG", "SEFAZ-PE", "SUSEP",
+        "Sefa-PR", "TCE-CE", "TCE-PE", "TCE-RS", "TCE-SP", "Tesouro Nacional", "USDA",
+    }
+)  # fmt: skip
+
+
+def test_nome_novo_de_orgao_obriga_a_decidir_se_entra_na_conta():
+    """Fonte nova em `ORGAOS` não entra na conta sozinha: ou vai para uma das listas, ou para cá, conferida."""
+    nomes = {orgao for _, orgao in vitrine.ORGAOS}
+
+    assert set(vitrine.orgaos_publicos(sorted(nomes))) == ORGAOS_PUBLICOS_CONFERIDOS
+
+
 def test_a_conta_de_orgaos_do_catalogo_real_so_tem_orgao_publico():
     catalogo = vitrine.catalogo_publico(_catalogo_real())
     ligadas = vitrine.tabelas_ligadas_pelo_cnpj(catalogo)
