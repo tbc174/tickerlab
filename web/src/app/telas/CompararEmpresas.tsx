@@ -4,13 +4,13 @@
 // vindos da ficha, pelo estado da navegação), nunca no endereço; nada é pedido antes de a pessoa comparar.
 import { type FormEvent, useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
-import { Carregando } from "../Carregando";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
+import { Carregando } from "../pecas/Carregando";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
 import type { CampoComFonteV1, ComparacaoDeEmpresasV1, EmpresaComparadaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 import { BaixarPlanilha, Fontes, Limites, TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
 
 const MINIMO = 2;
@@ -180,7 +180,7 @@ function Resultado({ pagina, cnpjs }: { pagina: PaginaDoApp; cnpjs: string[] }) 
   const rota = pagina.contrato?.rota ?? "";
   const pedido = usarPedido<ComparacaoDeEmpresasV1>(rota, {}, { cnpjs });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Pondo as empresas lado a lado…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   return (
     <>
       <Comparacao dados={pedido.dados} rota={rota} cnpjs={cnpjs} />

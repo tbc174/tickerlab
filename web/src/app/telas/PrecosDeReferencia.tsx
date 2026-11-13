@@ -6,7 +6,7 @@ import { formatarDecimal, formatarMes } from "../formatar";
 import { GraficoDeLinha, type Serie } from "../graficos/GraficoDeLinha";
 import type { PontoDoSpreadV1, PrecoDeReferenciaV1, PrecosDeReferenciaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 const CHAVE_DO_ROBUSTA = "cafe-robusta"; // o spread vem logo depois dele, como no Streamlit
@@ -95,7 +95,7 @@ export function PrecosDeReferencia({ pagina }: { pagina: PaginaDoApp }) {
           Lendo os preços do Banco Mundial e do FMI…
         </p>
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Resultado dados={pedido.dados} />
       )}

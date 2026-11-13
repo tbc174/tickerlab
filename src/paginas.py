@@ -113,6 +113,43 @@ NO_COMECO_DA_AREA = (
 )
 
 
+# --- O menu do app novo (plano de 13/11/2026, linha 903): sete itens, nesta ordem -------------------
+# As áreas acima continuam dizendo de onde cada página é (o olho do cabeçalho, a folha "Todas as
+# telas"); o menu é só o caminho principal. Página que sai do menu não muda de endereço.
+@dataclass(frozen=True)
+class ItemDoMenu:
+    chave: str
+    rotulo: str
+    icone: str  # o nome do desenho em web/src/app/Icone.tsx
+    # a primeira é a tela que o item abre; com as outras abertas, o item também fica marcado
+    paginas: tuple[str, ...]
+    secundario: bool = (
+        False  # depois do divisor: sobre a base e a ligação, não o caminho da análise
+    )
+    novo: bool = False  # ganha o selo "Novo" ao lado do rótulo
+
+
+MENU_DO_APP = (
+    ItemDoMenu("inicio", "Início", "inicio", ("inicio",)),
+    ItemDoMenu("perguntar", "Perguntar", "perguntar", ("perguntar",), novo=True),
+    ItemDoMenu(
+        "empresas",
+        "Empresas",
+        "empresas",
+        ("encontrar_empresas", "ficha_da_empresa", "comparar_empresas"),
+    ),
+    ItemDoMenu("setores", "Setores", "setores", ("relatorio_do_setor",)),
+    ItemDoMenu("monitorar", "Monitorar", "monitorar", ("monitorar",)),
+    ItemDoMenu(
+        "dados", "Dados e cobertura", "dados", ("dados_e_cobertura",), secundario=True
+    ),
+    ItemDoMenu("conectar", "Conectar", "conectar", ("conectar",), secundario=True),
+)
+# Páginas do menu que ainda não existem: o item fica fora do menu até a página nascer com tela (o
+# menu não mostra linha que não abre). Quem criar a página tira a chave daqui; há teste que cobra.
+PAGINAS_DO_MENU_QUE_AINDA_VEM = frozenset({"perguntar", "monitorar"})
+
+
 # --- Contrato de cada página (preparação 3 da ADR 0044; ADR 0048) ---------------------------
 # O que a tela recebe (entradas) e qual rota da API devolve o que ela mostra (resposta). Uma tela nova
 # (React) é montada a partir daqui; há teste que confere cada contrato contra a API de verdade.
