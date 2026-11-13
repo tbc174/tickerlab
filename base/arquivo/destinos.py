@@ -249,6 +249,14 @@ _REGULADORES_PLANEJADAS = {
         "aneel_termos_de_notificacao",
     ),
     "aneel-agentes": _tabela("aneel_agentes"),
+    # lote 3 das 300 tabelas pelo CNPJ (linha 904): cadastros do Banco Central e da ANTT, só pessoa jurídica
+    "bcb-supervisionadas": _tabela("bcb_supervisionadas"),
+    "bcb-cooperativas": _tabela("bcb_cooperativas"),
+    "bcb-correspondentes": _tabela("bcb_correspondentes"),
+    "bcb-filiais-de-consorcio": _tabela("bcb_filiais_de_consorcio"),
+    "bcb-regimes-especiais": _tabela("bcb_regimes_especiais"),
+    "antt-operadores-multimodais": _tabela("antt_operadores_multimodais"),
+    "antt-seguro-de-responsabilidade-civil": _tabela("antt_seguros_de_transportadores"),
     "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
     # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
     "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),

@@ -895,8 +895,8 @@ LOTE_1_DA_904 = {
 def test_as_15_da_linha_842_estao_no_dicionario():
     assert FECHADAS_ATE_A_PRONTIDAO >= LOTE_1_DA_904
     assert (
-        len(FECHADAS_ATE_A_PRONTIDAO - LOTE_1_DA_904) == 22
-    )  # 15 + 4 do INPI + 3 da ANEEL (linha 904, lote 2)
+        len(FECHADAS_ATE_A_PRONTIDAO - LOTE_1_DA_904) == 29
+    )  # 15 + 4 do INPI + 3 da ANEEL (lote 2) + 7 do BCB e da ANTT (lote 3), linha 904
     assert set(TABELAS) >= FECHADAS_ATE_A_PRONTIDAO
 
 
