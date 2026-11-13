@@ -26,9 +26,10 @@ ARQUIVOS = {
 }
 
 
-RAIZES_DO_EXEMPLO = frozenset(
-    anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)["cnpj"].str[:8]
-) | frozenset(anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)["cnpj"].str[:8])
+RAIZES_DO_EXEMPLO = (
+    frozenset(anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)["cnpj"].str[:8])
+    | frozenset(anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)["cnpj"].str[:8])
+) - {""}
 
 
 def _download(arquivos: dict[str, bytes]):
@@ -176,19 +177,53 @@ def test_o_cadastro_mineiro_continua_com_a_licenca_propria():
     )
 
 
-def test_cfem_e_sigbm_so_gravam_raiz_que_esta_na_lista_de_empresas(tmp_path: Path):
-    """Empresário individual e MEI (fora da `cnpj_empresas_pj`) são pessoa: a linha não entra."""
-    todas = sorted(RAIZES_DO_EXEMPLO)
-    assert len(todas) >= 2
-    fica = frozenset(todas[:1])
+def test_cfem_so_grava_raiz_da_lista_e_sigbm_deixa_a_barragem_sem_cnpj(tmp_path: Path):
+    """Empresário individual e MEI (fora das listas) são pessoa: o CFEM tira a linha; a barragem fica sem CNPJ e sem nome."""
+    cfem_inteiro = anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)
+    sigbm_inteiro = anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)
+    fica = frozenset(sorted(RAIZES_DO_EXEMPLO)[:1])
+    assert len(RAIZES_DO_EXEMPLO) >= 2
     _carregar("cfem", tmp_path, PRIMEIRA, raizes=fica)
     _carregar("sigbm", tmp_path, PRIMEIRA, raizes=fica)
-    for arquivo in (
-        tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet",
-        tmp_path / "anm_sigbm_barragens" / "barragens.parquet",
-    ):
-        tabela = ler_tabela(arquivo)
-        assert set(tabela["cnpj"].str[:8]) <= fica
+    cfem = ler_tabela(tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet")
+    assert 0 < len(cfem) < len(cfem_inteiro)
+    assert set(cfem["cnpj"].str[:8]) == fica
+    barragens = ler_tabela(tmp_path / "anm_sigbm_barragens" / "barragens.parquet")
+    assert len(barragens) == len(sigbm_inteiro)
+    com_cnpj = barragens[barragens["cnpj"] != ""]
+    assert len(com_cnpj) > 0
+    assert set(com_cnpj["cnpj"].str[:8]) == fica
+    sem_cnpj = barragens[barragens["cnpj"] == ""]
+    assert len(sem_cnpj) > len(sigbm_inteiro[sigbm_inteiro["cnpj"] == ""])
+    assert (sem_cnpj["empreendedor"] == "").all()
+    assert (sem_cnpj["cnpj_raiz"] == "").all()
+
+
+def test_so_empresa_conta_o_que_saiu():
+    tabela = pd.DataFrame(
+        {
+            "cnpj": ["11111111000100", "22222222000100", ""],
+            "cnpj_raiz": ["11111111", "22222222", ""],
+            "empreendedor": ["A", "B", ""],
+        }
+    )
+    cfem = carga_anm.so_empresa(tabela, frozenset({"11111111"}))
+    assert list(cfem["cnpj"]) == ["11111111000100"]
+    assert cfem.attrs["fora_da_pj"] == 2
+    barragens = carga_anm.so_empresa(tabela, frozenset({"11111111"}), descartar=False)
+    assert list(barragens["empreendedor"]) == ["A", "", ""]
+    assert barragens.attrs["fora_da_pj"] == 1
+
+
+def test_mudou_a_lista_de_empresas_a_tabela_refaz(tmp_path: Path):
+    """A lista entra na origem: o mesmo CSV com outra lista não devolve `igual` e não guarda pessoa antiga."""
+    todas = RAIZES_DO_EXEMPLO
+    _carregar("cfem", tmp_path, PRIMEIRA, raizes=todas)
+    menos = frozenset(sorted(todas)[:1])
+    resultado = _carregar("cfem", tmp_path, PRIMEIRA, raizes=menos)
+    assert set(resultado.values()) == {"gravado"}
+    cfem = ler_tabela(tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet")
+    assert set(cfem["cnpj"].str[:8]) == menos
 
 
 def test_cfem_e_sigbm_recusam_gravar_sem_a_lista_de_empresas(tmp_path: Path):
@@ -199,13 +234,17 @@ def test_cfem_e_sigbm_recusam_gravar_sem_a_lista_de_empresas(tmp_path: Path):
     assert not (tmp_path / "anm_sigbm_barragens").exists()
 
 
-def test_raizes_de_empresa_le_a_tabela_e_ignora_as_versoes_antigas(tmp_path: Path):
-    pasta = tmp_path / "cnpj_empresas_pj"
-    pasta.mkdir()
-    pd.DataFrame({"cnpj_basico": ["11111111", "22222222"]}).to_parquet(
-        pasta / "00.parquet"
-    )
-    pd.DataFrame({"cnpj_basico": ["99999999"]}).to_parquet(pasta / "00.v1.parquet")
-    assert carga_anm.raizes_de_empresa(tmp_path) == {"11111111", "22222222"}
+def test_raizes_de_empresa_e_a_intersecao_das_duas_listas_sem_as_versoes_antigas(
+    tmp_path: Path,
+):
+    for tabela, raizes in (
+        ("cnpj_empresas_pj", ["11111111", "22222222"]),
+        ("cnpj_estabelecimentos_pj", ["22222222", "33333333"]),
+    ):
+        pasta = tmp_path / tabela
+        pasta.mkdir()
+        pd.DataFrame({"cnpj_basico": raizes}).to_parquet(pasta / "00.parquet")
+        pd.DataFrame({"cnpj_basico": ["99999999"]}).to_parquet(pasta / "00.v1.parquet")
+    assert carga_anm.raizes_de_empresa(tmp_path) == {"22222222"}
     with pytest.raises(FileNotFoundError):
         carga_anm.raizes_de_empresa(tmp_path / "outra")

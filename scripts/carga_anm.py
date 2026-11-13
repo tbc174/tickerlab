@@ -8,9 +8,9 @@ Lê os CSV de https://dadosabertos.anm.gov.br (`base/anm.py`) e grava, com manif
 (`base/parquet.py::gravar_com_versoes`):
 - `anm_cfem_arrecadacao/<faixa>.parquet`: um arquivo por faixa de anos da ANM (`2022_2026`...), só pessoa
   jurídica com CNPJ completo (pessoa física e documento mascarado são descartados e contados no log) e só
-  de raiz que está na `cnpj_empresas_pj` (empresário individual e MEI são pessoa: saem e são contados);
+  de raiz que está na `cnpj_empresas_pj` e `cnpj_estabelecimentos_pj` (empresário individual e MEI são pessoa: saem e são contados);
 - `anm_sigbm_barragens/barragens.parquet`: uma linha por barragem, com a categoria de risco e o dano potencial
-  como a ANM declarou, só de empreendedor com raiz na `cnpj_empresas_pj`;
+  como a ANM declarou; empreendedor de raiz fora das duas listas fica sem CNPJ e sem nome;
 - `anm_amb_producao_bruta`, `anm_amb_producao_beneficiada` e `anm_amb_agua_mineral` (`atual.parquet`): o
   Anuário, série setorial sem CNPJ.
 
@@ -59,6 +59,7 @@ SEPARADOR = "\x1f"
 Leitor = Callable[[bytes, date], pd.DataFrame]
 GRUPOS_COM_CNPJ = frozenset({"cfem", "sigbm"})
 TABELA_PJ = "cnpj_empresas_pj"
+TABELA_ESTAB = "cnpj_estabelecimentos_pj"
 ARQUIVO_VERSIONADO = re.compile(r"\.v\d+\.parquet$")
 
 
@@ -150,15 +151,15 @@ def manter_a_data_da_primeira_coleta(
     return resultado
 
 
-def raizes_de_empresa(base: Path) -> frozenset[str]:
-    """As raízes de CNPJ da `cnpj_empresas_pj` desta base (a lista limpa de empresário individual)."""
-    pasta = base / TABELA_PJ
+def _raizes_da_tabela(base: Path, tabela: str) -> frozenset[str]:
+    """As raízes (`cnpj_basico`) dos arquivos atuais de uma tabela da base; sem arquivo, recusa."""
+    pasta = base / tabela
     arquivos = [
         a for a in pasta.glob("*.parquet") if not ARQUIVO_VERSIONADO.search(a.name)
     ]
     if not arquivos:
         raise FileNotFoundError(
-            f"sem a {TABELA_PJ} em {pasta}: não dá para conferir quem é pessoa"
+            f"sem a {tabela} em {pasta}: não dá para conferir quem é pessoa"
         )
     raizes: set[str] = set()
     for arquivo in arquivos:
@@ -168,13 +169,40 @@ def raizes_de_empresa(base: Path) -> frozenset[str]:
     return frozenset(raizes)
 
 
-def so_empresa(tabela: pd.DataFrame, raizes: frozenset[str]) -> pd.DataFrame:
-    """Só as linhas cujo CNPJ tem 14 dígitos e raiz na lista de empresas; conta as que saíram."""
+def raizes_de_empresa(base: Path) -> frozenset[str]:
+    """Raízes que estão nas duas listas sem pessoa: `cnpj_empresas_pj` e `cnpj_estabelecimentos_pj`.
+
+    A de empresas só tira empresário individual pela natureza; MEI com natureza de empresa só sai
+    na de estabelecimentos (opção pelo Simples). Por isso vale a interseção, como no recorte da API
+    (`montar_recorte_da_api.tirar_raizes_de_mei`)."""
+    return _raizes_da_tabela(base, TABELA_PJ) & _raizes_da_tabela(base, TABELA_ESTAB)
+
+
+def so_empresa(
+    tabela: pd.DataFrame, raizes: frozenset[str], descartar: bool = True
+) -> pd.DataFrame:
+    """Tira da tabela o que é de CNPJ fora da lista de empresas; conta o que saiu em `fora_da_pj`.
+
+    `descartar`: a linha inteira sai (CFEM). Sem ele (barragens) a linha fica, sem CNPJ, raiz nem nome
+    do empreendedor, como o leitor já faz com o documento incompleto."""
     cnpj = tabela["cnpj"].astype(str)
-    fica = (cnpj.str.len() == 14) & cnpj.str[:8].isin(raizes)
-    saida = tabela[fica].reset_index(drop=True)
-    saida.attrs = {**tabela.attrs, "fora_da_pj": int((~fica).sum())}
+    completo = cnpj.str.len() == 14
+    fora = completo & ~cnpj.str[:8].isin(raizes)
+    if descartar:
+        saida = tabela[completo & ~fora].reset_index(drop=True)
+        conta = int((~(completo & ~fora)).sum())
+    else:
+        saida = tabela.copy()
+        saida.loc[fora, ["cnpj", "cnpj_raiz", "empreendedor"]] = ""
+        saida = saida.reset_index(drop=True)
+        conta = int(fora.sum())
+    saida.attrs = {**tabela.attrs, "fora_da_pj": conta}
     return saida
+
+
+def hash_das_raizes(raizes: frozenset[str]) -> str:
+    """Impressão digital da lista de raízes: entra na origem, para a tabela refazer se a lista mudar."""
+    return hashlib.sha256("\n".join(sorted(raizes)).encode()).hexdigest()
 
 
 def carregar(
@@ -195,15 +223,17 @@ def carregar(
         )
     conteudo = baixar_arquivo(tabela.url)
     origem = {"url": tabela.url, "sha256": hashlib.sha256(conteudo).hexdigest()}
+    if raizes is not None and tabela.grupo in GRUPOS_COM_CNPJ:
+        origem["raizes_sha256"] = hash_das_raizes(raizes)
     destino = saida / tabela.nome
     arquivo = destino.with_suffix(".parquet")
 
     def montar() -> pd.DataFrame:
         lida = tabela.leitor(conteudo, coletado_em)
         if raizes is not None and tabela.grupo in GRUPOS_COM_CNPJ:
-            lida = so_empresa(lida, raizes)
+            lida = so_empresa(lida, raizes, descartar=tabela.grupo == "cfem")
             log.info(
-                "%s: %d linhas de fora da lista de empresas (pessoa ou sem CNPJ) descartadas",
+                "%s: %d linhas de fora da lista de empresas (pessoa ou sem CNPJ) tiradas ou sem CNPJ",
                 tabela.fonte,
                 lida.attrs["fora_da_pj"],
             )
@@ -262,11 +292,13 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     pedidas = tabelas_pedidas(opcoes.faixa, opcoes.so, hoje)
-    raizes = (
-        raizes_de_empresa(base_da_pj)
-        if any(t.grupo in GRUPOS_COM_CNPJ for t in pedidas)
-        else None
-    )
+    raizes = None
+    if any(t.grupo in GRUPOS_COM_CNPJ for t in pedidas):
+        try:
+            raizes = raizes_de_empresa(base_da_pj)
+        except (OSError, KeyError, ValueError) as erro:
+            log.error("sem a lista de empresas: %s", erro)
+            return 1
     falhas = 0
     for tabela in pedidas:
         try:
