@@ -46,6 +46,21 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
 }
+# o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
+TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
+    "buscar_empresas": "Buscar empresas por setor, UF, porte e idade",
+    "ficha_da_empresa": "Ficha da empresa",
+    "comparaveis": "Comparáveis de uma companhia aberta",
+    "demonstracoes": "Demonstrações de uma companhia aberta",
+    "eventos": "Eventos de uma empresa",
+    "fundo": "Fundo de investimento",
+    "vinculos": "Participações e auditor de uma empresa",
+    "compradores_do_setor": "Quem já se mexeu no setor",
+    "novidades": "Fontes novas provadas pela pesquisa",
+    "setores": "Setores acompanhados",
+    "setor": "Séries e concentração de um setor",
+    "o_que_posso_ver": "O que a sua chave pode ver",
+}
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
 _PONTUACAO_DO_CNPJ = re.compile(r"[\s./-]")
@@ -229,7 +244,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
     pedidos = Pedidos(cliente)
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["buscar_empresas"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def buscar_empresas(
         cnae: Annotated[
             list[str] | None,
@@ -312,11 +331,17 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             },
         )  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["ficha_da_empresa"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def ficha_da_empresa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
         """A ficha de uma empresa: o cadastro na Receita (razão social, situação, abertura, CNAE,
         porte, natureza jurídica, Simples) e, se for companhia aberta, as entregas de DFP e ITR à
-        CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público."""
+        CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do
+        cadastro que a base não consultou vem em `unavailable_registration_fields`, e o DFP ou ITR não
+        consultado em `unavailable_filings`, com o aviso em `limits`: diga que falta, sem supor o valor."""
         numeros = cnpj_do_pedido(cnpj)
         dia: dict[str, ParametroDaApi] = {"known_at": _dia(como_era_em)}
         acesso = acesso_do_pedido()
@@ -327,7 +352,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
                 return pedidos.entregar(resposta, "ficha_da_empresa")
         return await pedidos.pedir("ficha_da_empresa", f"/companies/{numeros}", dia)
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["comparaveis"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def comparaveis(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
         """As companhias abertas comparáveis à pedida (mesmo grupo de setores na CVM), cada uma com
         receita, EBITDA, lucro, dívida líquida e as razões do último DFP entregue, e a mediana dos
@@ -339,7 +368,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             {"known_at": _dia(como_era_em)},
         )
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["demonstracoes"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def demonstracoes(
         cnpj: Cnpj,
         como_era_em: ComoEraEm = None,
@@ -365,13 +398,21 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["setores"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def setores() -> str:
         """A lista de setores que o TickerLab acompanha, com a chave de cada um (para a ferramenta
         `setor`)."""
         return await pedidos.pedir("setores", "/sectors")
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["setor"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def setor(
         chave: Annotated[
             str,
@@ -391,7 +432,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             "setor", f"/sectors/{chave}", {"known_at": _dia(como_era_em)}
         )
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["o_que_posso_ver"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def o_que_posso_ver() -> str:
         """O que a chave do analista pode consultar (conjuntos, campos, fontes e licenças) e o
         consumo do mês da organização, com os limites do plano."""
@@ -409,7 +454,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
 def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A ferramenta das novidades da pesquisa (linha 830)."""
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["novidades"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def novidades(
         dias: Annotated[
             int | None,
@@ -438,7 +487,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
     """Eventos, vínculos, compradores do setor e fundo (à parte, para a
     `registrar_ferramentas` não crescer demais); chamada no meio dela, para a ordem da lista ficar."""
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["eventos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def eventos(
         cnpj: Cnpj,
         tipos: Annotated[
@@ -482,7 +535,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "known_at": _dia(como_era_em),
         })  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["vinculos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def vinculos(
         cnpj: Cnpj,
         profundidade: Annotated[
@@ -517,7 +574,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
         })  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["compradores_do_setor"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def compradores_do_setor(
         cnae: Annotated[
             str,
@@ -565,7 +626,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "known_at": _dia(como_era_em),
         })  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["fundo"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def fundo(
         cnpj: Cnpj,
         como_era_em: ComoEraEm = None,
