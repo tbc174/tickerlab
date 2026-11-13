@@ -7,7 +7,8 @@ avisos.
 Antes de qualquer chamada ao modelo, nesta ordem:
 
 1. `TICKERLAB_CHAT=1`; sem ela, 503 "Chat não disponível." e nada sai (ligar em produção é só do Tiago);
-2. a chave do modelo presente e o modelo com preço na tabela (`src/chat/custo.py`); senão o mesmo 503;
+2. a chave do modelo só do chat (`ANTHROPIC_API_KEY_CHAT`, nunca a geral) e o modelo com preço na tabela
+   (`src/chat/custo.py`); senão o mesmo 503;
 3. a conta numa organização ativa com uma chave da API ativa (o contrato dela diz o que as ferramentas
    veem, e o consumo fica na conta dessa chave); senão 403;
 4. as ferramentas abertas (o catálogo da organização respondeu);
@@ -54,6 +55,17 @@ from src.chat.custo import (
     tem_preco,
     teto_em_microdolares,
 )
+from src.chat.estado import (
+    MENSAGEM_COTA_DO_DIA,
+    MENSAGEM_COTA_DO_MES,
+    MENSAGEM_DESLIGADO,
+    MENSAGEM_PAUSADO,
+    MENSAGEM_SEM_CHAVE,
+    MENSAGEM_SEM_ORGANIZACAO,
+    FatosDoChat,
+    Situacao,
+    estado_para_a_tela,
+)
 from src.chat.ferramentas import (
     CaixaDeFerramentas,
     FerramentasIndisponiveis,
@@ -70,15 +82,9 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
 MILISSEGUNDOS_POR_SEGUNDO = 1000
 ERRO = perguntas_do_chat.ERRO
-MENSAGEM_DESLIGADO = "Chat não disponível."
-MENSAGEM_SEM_ORGANIZACAO = "O chat é da equipe de uma organização com contrato no TickerLab: a sua conta não está numa."
-MENSAGEM_SEM_CHAVE = "A organização não tem uma chave da API ativa: quem administra a conta cria uma na página da organização."
 MENSAGEM_FERRAMENTAS = (
     "As consultas do chat não responderam agora; tente de novo em instantes."
 )
-MENSAGEM_COTA_DO_DIA = "Você chegou ao limite de perguntas de hoje; ele volta amanhã."
-MENSAGEM_COTA_DO_MES = "Você chegou ao limite de perguntas do mês; ele volta no dia 1º."
-MENSAGEM_PAUSADO = "O chat está pausado até o fim do mês: o TickerLab chegou ao teto de gasto do mês com o modelo."
 MENSAGEM_DE_ERRO = (
     "A resposta parou por um erro do nosso lado; a pergunta pode ser feita de novo."
 )
@@ -339,6 +345,78 @@ async def perguntar(pedido: PedidoDoChatV1, conta: Conta) -> StreamingResponse:
         _resposta(conversa, pergunta, pedido.pergunta, historico),
         media_type="application/x-ndjson",
     )
+
+
+class EstadoDoChatV1(BaseModel):
+    """Se a conta pode perguntar agora e, se não, por quê; com a cota, os limites e o que dizer na tela."""
+
+    situacao: Situacao
+    pode_perguntar: bool
+    mensagem: str | None
+    perguntas_hoje: int
+    perguntas_por_dia: int
+    perguntas_no_mes: int
+    perguntas_por_mes: int
+    caracteres_da_pergunta: int
+    perguntas_no_historico: int
+    caracteres_do_historico: int
+    como_funciona: str
+    exemplos: list[str]
+    limites: list[str]
+
+
+def _chat_configurado() -> bool:
+    """A chave de ligar, a chave do modelo e o modelo com preço: o que a rota de perguntar confere primeiro."""
+    return (
+        chat.chat_ligado()
+        and chat.tem_chave_do_modelo()
+        and tem_preco(chat.modelo_do_chat())
+    )
+
+
+def _fatos_da_conta(
+    usuario_id: uuid.UUID, momento: datetime, limites: LimitesDoChat
+) -> FatosDoChat:
+    """O que a pergunta desta conta ouviria agora; só leitura, nada é gravado nem reservado."""
+    ligado = _chat_configurado()
+    with obter_engine().connect() as conexao:
+        organizacao_id = organizacao_da_conta(conexao, usuario_id)
+        tem_chave = (
+            organizacao_id is not None
+            and contexto_da_organizacao(conexao, organizacao_id, agora=momento)
+            is not None
+        )
+        hoje = perguntas_do_chat.perguntas_desde(
+            conexao, usuario_id, perguntas_do_chat.inicio_do_dia(momento)
+        )
+        no_mes = perguntas_do_chat.perguntas_desde(
+            conexao, usuario_id, perguntas_do_chat.inicio_do_mes(momento)
+        )
+        reserva = limites.reserva_por_pergunta_em_microdolares
+        gasto = perguntas_do_chat.gasto_do_mes(
+            conexao, momento, reserva_em_microdolares=reserva
+        )
+    return FatosDoChat(
+        ligado=ligado,
+        tem_organizacao=organizacao_id is not None,
+        tem_chave_da_api=tem_chave,
+        perguntas_hoje=hoje,
+        perguntas_no_mes=no_mes,
+        # só se o teto pausou: o gasto em dinheiro não sai da rota
+        pausado=gasto + reserva > teto_em_microdolares(limites),
+    )
+
+
+@router.get("/chat/estado", response_model=EstadoDoChatV1)
+async def estado_do_chat(conta: Conta) -> dict[str, object]:
+    """O estado do chat para a tela "Perguntar": a primeira recusa que a pergunta ouviria, ou "pronto".
+
+    A ordem é a de `POST /v1/chat`. Com o chat desligado a tela ainda abre, para dizer que ele não foi
+    ligado e o que vai fazer.
+    """
+    limites = LIMITES_DO_CHAT
+    fatos = await run_in_threadpool(_fatos_da_conta, conta.id, agora(), limites)
+    return estado_para_a_tela(fatos, limites)
 
 
 def _instrucoes_de_hoje(momento: datetime) -> str:

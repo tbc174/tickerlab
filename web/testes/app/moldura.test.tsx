@@ -32,12 +32,12 @@ afterEach(() => {
 describe("abas embaixo no celular (os itens do menu, linha 903)", () => {
   const folha = () => document.querySelector<HTMLDialogElement>("dialog.folha-mais")!;
 
-  it("Início, Empresas, Setores e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
+  it("Início, Perguntar, Empresas, Setores e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
     abrirApp("/");
     await noInicio();
     const nav = abas();
     const nomes = [...nav.querySelectorAll(":scope > :is(a, button)")].map((el) => el.textContent);
-    expect(nomes).toEqual(["Início", "Empresas", "Setores", "Mais"]);
+    expect(nomes).toEqual(["Início", "Perguntar", "Empresas", "Setores", "Mais"]);
     expect(within(nav).getByRole("button", { name: "Mais" }).getAttribute("aria-haspopup")).toBe("dialog");
     // a folha fica fora da barra (a barra é fixa e borrada: um filho fixo dela ficaria preso nela)
     expect(nav.contains(folha())).toBe(false);

@@ -1,7 +1,8 @@
 """O modelo de verdade do chat (linha 903): uma volta pelo SDK oficial da Anthropic, com streaming.
 
 Só é criado pela rota com o chat ligado e a chave presente; os testes usam um dublê de `Modelo` e nunca
-chegam aqui com rede. A chave (`ANTHROPIC_API_KEY`) é lida pelo próprio SDK, do ambiente.
+chegam aqui com rede. A chave é a do chat (`ANTHROPIC_API_KEY_CHAT`), entregue ao SDK de forma explícita:
+sem ela o cliente não é criado, para o SDK nunca cair sozinho na geral (`ANTHROPIC_API_KEY`).
 
 Escolhas (padrões da skill `claude-api`, 13/11/2026): pensamento adaptativo, esforço médio (respostas de
 consulta a dados, não de raciocínio longo), streaming com `eager_input_streaming` nas ferramentas e cache
@@ -17,6 +18,7 @@ from typing import Any
 import anthropic
 
 from src.bcb import FUSO
+from src.chat import chave_do_modelo
 from src.chat.conversa import (
     ChamadaDeFerramenta,
     FimDoTurno,
@@ -77,6 +79,10 @@ def chamadas_da_resposta(conteudo: Sequence[object]) -> tuple[ChamadaDeFerrament
     )
 
 
+class SemChaveDoChat(RuntimeError):
+    """O modelo foi chamado sem a chave do chat no ambiente (a mensagem nunca leva valor de chave)."""
+
+
 class ModeloDaAnthropic:
     """O `Modelo` da conversa sobre o SDK; o cliente é criado na primeira volta."""
 
@@ -93,7 +99,11 @@ class ModeloDaAnthropic:
 
     def _cliente_do_sdk(self) -> anthropic.AsyncAnthropic:
         if self._cliente is None:
-            self._cliente = anthropic.AsyncAnthropic()
+            chave = chave_do_modelo()
+            if chave is None:
+                # a rota confere antes; sem a chave do chat, nunca a geral do ambiente
+                raise SemChaveDoChat("o chat não tem a chave própria do modelo")
+            self._cliente = anthropic.AsyncAnthropic(api_key=chave)
         return self._cliente
 
     async def turno(self, pedido: PedidoAoModelo) -> AsyncIterator[ParteDoTurno]:
