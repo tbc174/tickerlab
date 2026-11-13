@@ -30,9 +30,16 @@ onde ela não está, qualquer CNPJ, decidem as listas sem pessoa da Receita do r
 duas (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem MEI) e a raiz em
 `cnpj_empresas_pj` (sem empresário individual nem grupo 4), com a natureza informada (a natureza vazia conta
 como pessoa, como na rede desde a linha 787). Sem a rede nem as duas listas, nada sai.
+
+O campo que o portão da organização não libera, ou cuja tabela a base não tem, não some em silêncio (linha 898,
+no molde do perfil da linha 891, `src/api_externa/nao_disponivel.py`): ele vai em
+`campos_do_cadastro_nao_disponiveis`, com o nome de fora, e os limites avisam que o cadastro nesta resposta não
+diz nada sobre ele. Sem a lista, a resposta só com a situação leria como "a empresa não tem Simples". O campo
+liberado que falta porque a base não tem a versão do dia (a raiz que saiu do arquivo do Simples) não entra: ele
+foi consultado. A lista só é montada para a empresa que sai: o `not_available` continua sem dizer nada.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -44,8 +51,10 @@ from base.porta import Porta
 from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.porta.rede import ID_DE_ENTIDADE, OUTROS_SISTEMAS, resolver, views
 from base.rede.entidades import natureza_de_pessoa
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.nomes import NOMES_DE_FORA
 
 CONJUNTO = "companies"
 TABELA = "cnpj_situacao_cadastral"
@@ -89,6 +98,24 @@ TABELAS = (TABELA, *(historico.tabela for historico in HISTORICOS), LISTA_DE_EMP
 CAMPOS_DATADOS = tuple(campo for historico in HISTORICOS for campo in historico.campos)
 DATAS = ("data_situacao_cadastral", "data_opcao_simples", "data_exclusao_simples")
 SIM_OU_NAO = ("matriz", "optante_simples")
+# cada campo do cadastro com a tabela de onde sai: a mesma da linha de direito que o portão julga
+TABELA_DO_CAMPO_DO_CADASTRO = {
+    **dict.fromkeys(CAMPOS, TABELA),
+    **{nome: historico.tabela for historico in HISTORICOS for nome in historico.campos},
+    **dict.fromkeys((*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO), LISTA_DE_EMPRESAS),
+}  # fmt: skip
+# o nome de dentro da lista dos campos do cadastro que o portão não libera (ou sem a tabela na base)
+CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS = "campos_do_cadastro_nao_disponiveis"
+LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "campos", "o cadastro nesta resposta"
+)
+# o que o leitor põe no corpo além do cadastro: quem lê só o cadastro (o perfil) separa por aqui
+CHAVES_DO_AVISO = (CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "limites")
+
+
+def limites(campos_de_fora: Sequence[str]) -> list[str]:
+    """Os limites do cadastro: só o aviso, quando algum campo ficou de fora."""
+    return [LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL] if campos_de_fora else []
 
 
 @dataclass(frozen=True)
@@ -425,6 +452,7 @@ class LeitorDeEmpresas:
     def __init__(self, porta: Porta, permitido: Permitido) -> None:
         self.porta = porta
         self.permitido = permitido
+        self._de_fora: tuple[str, ...] | None = None  # o mesmo para todo CNPJ do pedido
 
     def _versao(
         self, historico: Historico, raiz: str, como_era_em: date
@@ -467,6 +495,19 @@ class LeitorDeEmpresas:
         linha[RETRATO_DO_CADASTRO] = linha[MES]
         return self._servidos(linha, (*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO))
 
+    def campos_de_fora(self) -> list[str]:
+        """Os campos do cadastro que o portão não libera ou cuja tabela a base não tem, na ordem do cadastro:
+        não foram consultados. O que falta por não haver versão no dia não entra: foi consultado. Não depende do
+        CNPJ: a conta é feita uma vez por leitor (o lote de 100 não lê o catálogo da base 100 vezes)."""
+        if self._de_fora is None:
+            existem = views(self.porta.con)
+            self._de_fora = tuple(
+                nome
+                for nome, tabela in TABELA_DO_CAMPO_DO_CADASTRO.items()
+                if tabela not in existem or not self.permitido(FONTE, nome, False)
+            )
+        return list(self._de_fora)
+
     def empresa(self, cnpj: str, como_era_em: date) -> EmpresaServida | None:
         """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, o nome
         do retrato sem pessoa e o Simples do histórico datado que valiam no dia, só com o que o portão libera; None se o CNPJ não é de
@@ -497,5 +538,14 @@ class LeitorDeEmpresas:
         servidos |= self._do_retrato_pj(raiz, como_era_em)
         if not servidos:
             return None
-        corpo = {"cnpj": normal, "como_era_em": como_era_em.isoformat(), **servidos}
+        de_fora = self.campos_de_fora()
+        corpo = {
+            "cnpj": normal,
+            "como_era_em": como_era_em.isoformat(),
+            **servidos,
+            CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS: [
+                NOMES_DE_FORA[nome] for nome in de_fora
+            ],
+            "limites": limites(de_fora),
+        }
         return EmpresaServida(corpo, {FONTE}, 1)

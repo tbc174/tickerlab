@@ -532,7 +532,9 @@ def lote_de_empresas(pedido: LoteDeEmpresas, contexto: Chave) -> object:
 @router.get("/companies/{cnpj}")
 def empresa(cnpj: str, contexto: Chave, known_at: date | None = None) -> object:
     """A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais
-    novo já público); MEI, empresário individual e o que não é empresa saem `not_available`."""
+    novo já público); MEI, empresário individual e o que não é empresa saem `not_available`. O campo do
+    cadastro que não foi consultado (a situação, o nome, o Simples) vem em `unavailable_registration_fields`,
+    com o aviso em `limits`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
     return _um_pedido(

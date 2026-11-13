@@ -41,7 +41,6 @@ from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido, empresas
 from src.api_externa.conjuntos.empresas import LeitorDeEmpresas
 from src.api_externa.envelope import campo
-from src.api_externa.nomes import NOMES_DE_FORA
 
 CONJUNTO = "profiles"
 TABELA_DAS_ENTREGAS = "rotulos_atraso"
@@ -86,18 +85,10 @@ NAO_DISPONIVEIS = "entregas_nao_disponiveis"
 LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL = nao_disponivel.aviso(
     NAO_DISPONIVEIS, "documentos", "a lista de entregas"
 )
-# cada campo do cadastro na Receita com a tabela de onde sai: a mesma da linha de direito que o portão julga
-TABELA_DO_CAMPO_DO_CADASTRO = {
-    **dict.fromkeys(empresas.CAMPOS, empresas.TABELA),
-    **{nome: historico.tabela for historico in empresas.HISTORICOS for nome in historico.campos},
-    **dict.fromkeys(
-        (*empresas.CAMPOS_DO_RETRATO_PJ, empresas.RETRATO_DO_CADASTRO), empresas.LISTA_DE_EMPRESAS
-    ),
-}  # fmt: skip
-# o nome de dentro da lista dos campos do cadastro que o portão não libera (ou sem a tabela na base)
-CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS = "campos_do_cadastro_nao_disponiveis"
-LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL = nao_disponivel.aviso(
-    CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "campos", "o cadastro nesta resposta"
+# a lista e o aviso dos campos do cadastro de fora são os de `companies` (linha 898): um lugar só
+CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS = empresas.CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS
+LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL = (
+    empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
 )
 
 
@@ -236,16 +227,6 @@ class LeitorDeFicha:
             for documento, fonte in FONTES_DAS_ENTREGAS.items()
         }
 
-    def _campos_do_cadastro_de_fora(self) -> list[str]:
-        """Os campos do cadastro que o portão não libera ou cuja tabela a base não tem, na ordem do cadastro:
-        não foram consultados. O que falta por não haver versão no dia não entra: foi consultado."""
-        existem = views(self.porta.con)
-        return [
-            nome
-            for nome, tabela in TABELA_DO_CAMPO_DO_CADASTRO.items()
-            if tabela not in existem or not self.permitido(empresas.FONTE, nome, False)
-        ]
-
     def _entregas(self, normal: str, como_era_em: date) -> tuple[list[dict], set[str]]:
         """As entregas que a base conhecia no dia, da mais nova à mais velha, só dos documentos com campo
         liberado (a entrega sem nenhum campo liberado não sai); a lista vazia é a empresa sem entrega."""
@@ -275,7 +256,7 @@ class LeitorDeFicha:
             "cadastro_na_receita": {
                 nome: valor
                 for nome, valor in cadastro.corpo.items()
-                if nome not in CHAVES_DO_PEDIDO
+                if nome not in (*CHAVES_DO_PEDIDO, *empresas.CHAVES_DO_AVISO)
             }
         }
         fontes = set(cadastro.fontes)
@@ -289,14 +270,13 @@ class LeitorDeFicha:
             blocos["entregas"] = entregas
             fontes |= fontes_das_entregas
             linhas += len(entregas)
-        campos_de_fora = self._campos_do_cadastro_de_fora()
+        # a lista do cadastro vem pronta do leitor de `companies`, já com o nome de fora
+        campos_de_fora = cadastro.corpo[CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS]
         corpo = {
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),
             **blocos,
-            CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS: [
-                NOMES_DE_FORA[nome] for nome in campos_de_fora
-            ],
+            CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS: campos_de_fora,
             NAO_DISPONIVEIS: nao_disponiveis,
             "limites": limites(servidos, nao_disponiveis, campos_de_fora),
         }

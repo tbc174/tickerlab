@@ -619,6 +619,136 @@ def test_campo_sem_direito_nao_aparece(cliente, cenario, monkeypatch):
     assert corpo["registration_status"]["value"] == "08"
 
 
+# ---------------------------------------------------------------- o campo não disponível (linha 898)
+
+LISTA_DE_FORA = "unavailable_registration_fields"
+SIMPLES_DE_FORA = [
+    "simples_nacional",
+    "simples_nacional_since",
+    "simples_nacional_until",
+]
+NOME_DE_FORA = ["legal_name", "legal_nature_code", "registry_snapshot_month"]
+
+
+def _so_a_situacao_pronta():
+    return _regras_das_empresas((TABELA,))
+
+
+def test_com_tudo_liberado_a_lista_sai_vazia_e_os_limites_tambem(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo[LISTA_DE_FORA] == []
+    assert corpo["limits"] == []
+
+
+def test_historico_e_lista_sem_prontidao_vao_na_lista_com_o_aviso(
+    cliente, cenario, monkeypatch
+):
+    """O caso do piloto: sem a lista, a resposta só com a situação leria como "a empresa não tem Simples"."""
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    corpo = _get(cliente, cenario).json()
+    assert corpo["registration_status"]["value"] == "08"
+    assert corpo[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    assert corpo["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+    # o aviso cita o nome de fora da lista, o mesmo da resposta, e só fala desta resposta
+    assert (
+        f"{LISTA_DE_FORA} não estão disponíveis para esta organização"
+        in empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    )
+    assert empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL.endswith(
+        "o cadastro nesta resposta não diz nada sobre eles."
+    )
+
+
+def test_um_campo_sem_direito_vai_sozinho_na_lista(cliente, cenario, monkeypatch):
+    regras = _regras_das_empresas()
+    sem_o_motivo = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == "companies" and linha.campo == "motivo_situacao")
+    )
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: dataclasses.replace(regras, linhas=sem_o_motivo)
+    )
+    corpo = _get(cliente, cenario).json()
+    assert corpo[LISTA_DE_FORA] == ["registration_status_reason"]
+    assert corpo["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+
+
+def test_base_sem_as_tabelas_conta_os_campos_delas_como_nao_consultados(
+    tmp_path, cenario, monkeypatch
+):
+    base = tmp_path / "sem_historico"
+    _gravar_base(base, _retratos(), historicos=False)
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    corpo = _get(aj.cliente_da_api(monkeypatch, AGORA), cenario).json()
+    assert corpo[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    assert corpo["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+
+
+def test_campo_consultado_sem_versao_no_dia_nao_vai_na_lista(
+    tmp_path, cenario, monkeypatch
+):
+    """A lista está na base e liberada, mas o retrato dela ainda não era público: o nome foi consultado e não
+    veio; só o Simples, sem a tabela, conta como não consultado."""
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    corpo = _get(cliente, cenario, known_at="2025-01-31").json()
+    assert "legal_name" not in corpo
+    assert corpo[LISTA_DE_FORA] == SIMPLES_DE_FORA
+
+
+def test_duas_organizacoes_cada_uma_ve_so_o_que_o_contrato_dela_da(
+    banco, cenario, monkeypatch
+):
+    """A organização com o contrato de `companies` recebe a lista; a outra, com contrato de outro conjunto, recebe
+    o 404 de sempre, sem a lista nem o aviso."""
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    com_contrato = _get(cliente, cenario).json()
+    assert com_contrato[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    ator = aj.admin(banco)
+    outra = aj.organizacao(banco, ator)
+    chave = aj.chave(banco, ator, outra)
+    aj.contrato(banco, ator, outra, conjunto="financials")
+    resposta = cliente.get(ROTA, headers=aj.bearer(chave.valor))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_empresa_que_nao_sai_nao_ganha_a_lista(cliente, cenario, monkeypatch):
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    resposta = _get(cliente, cenario, f"/data/v1/companies/{MEI}")
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_o_lote_le_o_catalogo_da_base_uma_vez_so(pasta, monkeypatch):
+    """A lista não depende do CNPJ: o leitor a conta uma vez por pedido (revisão cruzada da linha 898)."""
+    chamadas = []
+
+    def views_contadas(con):
+        chamadas.append(con)
+        return views_de_verdade(con)
+
+    views_de_verdade = empresas.views
+    monkeypatch.setattr(empresas, "views", views_contadas)
+    with Porta(pasta) as porta:
+        leitor = empresas.LeitorDeEmpresas(porta, lambda fonte, campo, derivado: True)
+        primeira = leitor.campos_de_fora()
+        assert leitor.campos_de_fora() == primeira
+    assert len(chamadas) == 1
+
+
+def test_lote_leva_a_lista_e_o_aviso_em_cada_item_que_sai(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    corpo = _post(cliente, cenario, {"cnpjs": [EMPRESA, MEI]}).json()
+    empresa_, mei = corpo["items"]
+    assert empresa_[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    assert empresa_["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+    assert set(mei) == {"cnpj", "status"}
+
+
 # ---------------------------------------------------------------- erros e consumo
 
 
@@ -865,7 +995,9 @@ def test_sem_o_historico_cortar_o_futuro_nao_muda_o_passado(
     inteira = _get(
         _base_sem_historico(tmp_path, monkeypatch), cenario, known_at=dia
     ).json()
-    sem_o_retrato = _base_sem_historico(tmp_path, monkeypatch, "cortada", lista=None)
+    # cortar o futuro tira as linhas, não a tabela: o único retrato da lista ainda não era público no dia, e a
+    # lista fica vazia (sem a tabela, o nome conta como não consultado: `unavailable_registration_fields`)
+    sem_o_retrato = _base_sem_historico(tmp_path, monkeypatch, "cortada", lista=[])
     assert _get(sem_o_retrato, cenario, known_at=dia).json() == inteira
 
 
