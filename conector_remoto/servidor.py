@@ -51,6 +51,7 @@ from conector_remoto.oauth import (
     VerificadorDoProvedor,
 )
 from conector_remoto.pagina import CAMINHO, MAXIMO_DO_CORPO, nova_pagina
+from conector_remoto.prompts import registrar_prompts
 from conector_remoto.selo import TAMANHO_DA_CHAVE, Selador
 from conector_remoto.uso import Resultado, registrar_chamada
 
@@ -231,7 +232,7 @@ def criar_provedor(
 def criar_servidor(
     configuracao: Configuracao, provedor: ProvedorOAuth, cliente: ClienteDaApi
 ) -> ServidorDoConector:
-    """O servidor MCP com a entrada por token (OAuth ou chave direta) e as ferramentas."""
+    """O servidor MCP com a entrada por token (OAuth ou chave direta), as ferramentas e os prompts."""
     servidor = ServidorDoConector(
         NOME,
         instructions=INSTRUCOES,
@@ -243,6 +244,7 @@ def criar_servidor(
         ),
     )
     registrar_ferramentas(servidor, cliente)
+    registrar_prompts(servidor, ORIENTACAO_DO_DOSSIE)
 
     @servidor.custom_route("/saude", methods=["GET"])
     async def saude(_pedido: Request) -> Response:

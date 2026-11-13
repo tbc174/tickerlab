@@ -124,8 +124,30 @@ quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Ho
 `compradores_do_setor`, que chama `/buyers` (conjunto `buyers`, linha 810): `cnae` (classe ou subclasse),
 `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data.
 
+Cada ferramenta tem um título (`title`, em `TITULOS_DAS_FERRAMENTAS`), que é o que o analista vê no
+cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico (`buscar_empresas`) não muda,
+porque é o que as instruções, os prompts e o ensaio citam. Ferramenta nova precisa de título: o teste do
+servidor falha sem ele.
+
 O comparar de duas a cinco empresas ainda não tem rota na API externa. Entra pelo mesmo caminho: rota na
 API, comando na CLI e ferramenta aqui, com a paridade cobrando.
+
+## Prompts
+
+Além das ferramentas, o conector oferece cinco prompts (`conector_remoto/prompts.py`, linha 901), um para
+cada fluxo da casa de M&A: `triagem_de_cnpj`, `alvos_no_setor`, `compradores_no_setor`,
+`comparaveis_da_empresa` e `dossie_da_empresa`. O analista escolhe o prompt no cliente e preenche os
+argumentos. O prompt só monta o pedido, que leva às ferramentas, e não lê a base nem a API: o dado continua
+saindo só pelas ferramentas, com o portão por conjunto e o filtro de pessoa delas.
+
+- **Argumentos:** são conferidos antes de entrar no pedido (CNPJ, CNAE, UF, data e anos). Argumento fora da
+  forma vira erro de parâmetro (`-32602`) com uma frase nossa, que não repete o que foi digitado.
+- **Dossiê:** usa a mesma orientação das instruções (`ORIENTACAO_DO_DOSSIE`), um lugar só para ela.
+- **Fecho comum:** todo prompt termina com o mesmo pedido de fonte e data, de lacunas à parte e de nenhum
+  dado de pessoa física.
+- **Testes:** o teste confere que cada prompt cita só ferramentas que existem.
+- **Clientes:** o Claude aceita prompts (documentação de conectores, lida em 13/11/2026). Se o ChatGPT os
+  mostra não está confirmado, e nada do roteiro depende deles.
 
 ## Em produção
 
