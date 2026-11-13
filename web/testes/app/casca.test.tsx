@@ -20,11 +20,15 @@ const topo = () => document.querySelector<HTMLElement>("header.topo")!;
 const folha = () => document.querySelector<HTMLDialogElement>("dialog.folha-mais")!;
 const busca = () => document.querySelector<HTMLDialogElement>("dialog.busca-global")!;
 const campoDaBusca = () => busca().querySelector("input")!;
-/** Abre a busca pelo atalho e espera o campo existir: com a máquina ocupada (o CI), o miolo da janela pode
- * aparecer um instante depois da tecla. */
+/** Abre a busca pelo atalho. O atalho é ligado num efeito do React, que roda um instante depois de a casca
+ * aparecer na tela: com a máquina ocupada (o CI), a tecla dada logo depois do título chegava antes do ouvinte
+ * e se perdia, e esperar o campo não adiantava. Por isso a tecla se repete até a busca abrir (com ela aberta,
+ * o atalho não faz nada). */
 const abrirABusca = async () => {
-  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-  await waitFor(() => expect(busca().querySelector("input")).not.toBeNull());
+  await waitFor(() => {
+    if (busca().querySelector("input") === null) fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(busca().querySelector("input")).not.toBeNull();
+  });
 };
 /** Abre uma tela que nunca termina de carregar (a casca é o que interessa aqui). */
 const abrirTela = (caminho: string) => abrirApp(caminho, { rotas: () => new Promise(() => {}) as never });
