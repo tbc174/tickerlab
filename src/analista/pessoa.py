@@ -62,7 +62,11 @@ ATRIBUICAO_DO_TITULAR = "Receita Federal, dados abertos do CNPJ (razão social d
 COLUNAS_DO_TITULAR = ["cnpj_basico", "titular", "mes_do_retrato"]
 LIMITES_DO_TITULAR = (
     "Empresário individual e MEI: o titular é o nome da razão social no cadastro da Receita, sem o CPF, no mês do retrato.",
-    "O cadastro não traz a idade do titular. Quem pediu para sair da tela não aparece. Sem CPF e sem endereço da pessoa.",
+    (
+        "O arquivo da Receita não traz a idade do titular de MEI e de empresário individual: um titular com menos de 18 anos "
+        "(emancipado ou, mais raro, menor que continua a empresa da família) não é reconhecido. Quem pedir sai da tela. Sem CPF e "
+        "sem endereço da pessoa."
+    ),
     "Nome igual não prova que é a mesma pessoa em duas empresas.",
 )
 
