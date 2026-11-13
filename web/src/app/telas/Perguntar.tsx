@@ -9,7 +9,7 @@
 // Pessoa física não aparece aqui: as ferramentas do chat são as do conector, pelo caminho sem pessoa.
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { ErroDaApi, pedirEmLinhas } from "../api";
+import { ErroDaApi, pedir, pedirEmLinhas } from "../api";
 import {
   type Troca,
   cnpjsDaConversa,
@@ -241,12 +241,12 @@ function Exemplos({ exemplos, escolher }: { exemplos: string[]; escolher(texto: 
   );
 }
 
-function Conversa({ estado }: { estado: EstadoDoChatV1 }) {
+function Conversa({ estado, rotaDoEstado }: { estado: EstadoDoChatV1; rotaDoEstado: string }) {
   const token = useConta()?.token ?? null;
   const [trocas, setTrocas] = useState<Troca[]>([]);
   const [texto, setTexto] = useState("");
   const [feitasAqui, setFeitasAqui] = useState(0);
-  // a recusa que a pergunta ouviu (cota, teto): vale até a tela abrir de novo
+  // a recusa da cota (do dia ou do mês) que a pergunta ouviu: vale até a tela abrir de novo
   const [recusa, setRecusa] = useState<string | null>(null);
   const proximoId = useRef(1);
   const cancelar = useRef<AbortController | null>(null);
@@ -294,8 +294,19 @@ function Conversa({ estado }: { estado: EstadoDoChatV1 }) {
     } catch (falha) {
       if (controle.signal.aborted) return;
       const mensagem = falha instanceof ErroDaApi ? falha.message : NAO_CHEGOU;
-      if (falha instanceof ErroDaApi && falha.tipo === "limite") setRecusa(mensagem);
       mudar(id, (t) => comEvento(t, { tipo: "erro", mensagem }));
+      if (falha instanceof ErroDaApi && falha.tipo === "limite") void conferirACota(token, mensagem);
+    }
+  }
+
+  // um 429 pode ser a cota (vale até amanhã ou o mês que vem) ou o limite por minuto da conta (passa
+  // sozinho): só o estado do servidor diz qual, e a caixa só trava quando ele diz que não dá mais
+  async function conferirACota(sessao: string, mensagem: string) {
+    try {
+      const agora = await pedir<EstadoDoChatV1>(rotaDoEstado, sessao, SEM_PARAMETROS);
+      if (!agora.pode_perguntar) setRecusa(agora.mensagem ?? mensagem);
+    } catch {
+      // sem o estado (o próprio limite por minuto, a rede), a caixa fica livre: a próxima pergunta diz
     }
   }
 
@@ -378,7 +389,7 @@ export function Perguntar({ pagina }: { pagina: PaginaDoApp }) {
     <section className="tela-do-chat">
       {pedido.estado === "carregando" ? <Carregando tipo="lista" rotulo="Abrindo o chat…" /> : null}
       {pedido.estado === "erro" ? <Erro erro={pedido.erro} /> : null}
-      {pedido.estado === "pronto" ? <Conversa estado={pedido.dados} /> : null}
+      {pedido.estado === "pronto" ? <Conversa estado={pedido.dados} rotaDoEstado={pagina.contrato?.rota ?? ""} /> : null}
     </section>
   );
 }

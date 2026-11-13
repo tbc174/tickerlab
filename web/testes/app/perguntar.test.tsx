@@ -180,15 +180,46 @@ describe("tela Perguntar", () => {
   });
 
   it("cota acabada (429): mostra a recusa e trava a caixa", async () => {
-    abrirChat(PRONTO, () =>
-      respostaJson(429, { detail: "Você chegou ao limite de perguntas de hoje; ele volta amanhã." }),
-    );
+    const COTA = "Você chegou ao limite de perguntas de hoje; ele volta amanhã.";
+    let pedidosDoEstado = 0;
+    abrirApp("/perguntar", {
+      rotas: (endereco) => {
+        if (endereco === ROTA_DO_ESTADO) {
+          pedidosDoEstado += 1;
+          // na abertura ainda dá; depois da recusa, o servidor diz que a cota acabou
+          return respostaJson(200, pedidosDoEstado === 1 ? PRONTO : { ...PRONTO, pode_perguntar: false, mensagem: COTA });
+        }
+        if (endereco === ROTA_DA_PERGUNTA) return respostaJson(429, { detail: COTA });
+        return undefined;
+      },
+    });
     await perguntar("Pergunta?");
     await waitFor(() => expect(screen.getAllByRole("alert").length).toBeGreaterThan(0), { timeout: 5000 });
-    expect(screen.getAllByText("Você chegou ao limite de perguntas de hoje; ele volta amanhã.").length).toBeGreaterThan(0);
-    expect((screen.getByRole("textbox", { name: "Sua pergunta" }) as HTMLTextAreaElement).disabled).toBe(true);
+    expect(screen.getAllByText(COTA).length).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect((screen.getByRole("textbox", { name: "Sua pergunta" }) as HTMLTextAreaElement).disabled).toBe(true),
+    );
     // a pergunta recusada não conta na cota da tela
     expect(screen.getByLabelText("Cota e teto").textContent).toContain("Hoje: 2 de 20");
+  });
+
+  it("limite por minuto (429 sem a cota acabada): mostra a mensagem e não trava a caixa", async () => {
+    let pedidosDoEstado = 0;
+    abrirApp("/perguntar", {
+      rotas: (endereco) => {
+        if (endereco === ROTA_DO_ESTADO) {
+          pedidosDoEstado += 1;
+          return respostaJson(200, PRONTO);
+        }
+        if (endereco === ROTA_DA_PERGUNTA) return respostaJson(429, { detail: "Muitos pedidos: espere um minuto." });
+        return undefined;
+      },
+    });
+    await perguntar("Pergunta?");
+    expect(await screen.findByText("Muitos pedidos: espere um minuto.", {}, { timeout: 5000 })).toBeTruthy();
+    await waitFor(() => expect(pedidosDoEstado).toBe(2));
+    await new Promise((fim) => setTimeout(fim, 50)); // a resposta do estado já foi lida
+    expect((screen.getByRole("textbox", { name: "Sua pergunta" }) as HTMLTextAreaElement).disabled).toBe(false);
   });
 
   it("chat desligado na hora da pergunta (503): mostra a mensagem do servidor", async () => {
