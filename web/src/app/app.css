@@ -425,9 +425,9 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .barras-do-setor {
   display: flex;
   align-items: flex-end;
-  gap: 4px;
+  gap: var(--e1);
   height: 80px;
-  margin: 0.5rem 0 1rem;
+  margin: var(--e2) 0 var(--e4);
 }
 .barra-do-setor {
   flex: 1;
