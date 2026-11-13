@@ -150,6 +150,56 @@ describe("ficha da empresa", () => {
     expect(within(entregas).getByText(/liberados para a tela: os documentos ITR\. A falta deles/)).toBeTruthy();
   });
 
+  it("campo do cadastro não liberado aparece na seção, pelo nome da tela (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: {
+          ...PRONTA.ficha!,
+          campos_do_cadastro_nao_disponiveis: ["simples_nacional", "simples_nacional_since", "legal_name"],
+        },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    // vários campos
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados dos campos “Optante pelo Simples”, “Entrou no Simples em” e “Razão social”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um campo do cadastro não liberado, a frase concorda; campo sem nome na tela aparece como veio", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["registration_status_reason"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados do campo “Motivo da situação (código da Receita)”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+    cleanup();
+    abrir(() =>
+      respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["campo_novo"] } }),
+    );
+    await verFicha(CNPJ);
+    const outro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(outro).getByText(/liberados para a tela: os dados do campo “campo_novo”\./)).toBeTruthy();
+  });
+
+  it("cadastro todo consultado não leva a linha 'Não consultados'", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: [] } }));
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(cadastro).queryByText(/Não consultados/)).toBeNull();
+  });
+
   it("dado ainda não liberado: é estado da tela, sem alerta de erro e com os limites à vista", async () => {
     abrir(() => respostaJson(200, NAO_LIBERADA));
     await verFicha(CNPJ);

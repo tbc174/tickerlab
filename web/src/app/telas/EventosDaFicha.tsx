@@ -21,7 +21,7 @@ const NOME_DO_TIPO: Record<string, string> = {
 // no plural, para o aviso dos tipos que o portão não libera (linha 878)
 const TIPOS_NO_PLURAL: Record<string, string> = {
   ipe_filing: "os documentos à CVM",
-  auditor_change: "as trocas de auditor",
+  auditor_change: "os eventos de troca de auditor", // no masculino plural: "Não consultados... A falta deles"
 };
 const LINK_SEGURO = /^https:\/\//;
 
@@ -146,8 +146,8 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
       )}
       {dados.estado === "pronta" && naoConsultados.length > 0 ? (
         <p>
-          Não consultados: {naoConsultados.join(" e ")} ainda não estão liberados para a tela; a falta deles aqui
-          não quer dizer que a empresa não tenha.
+          Não consultados, por ainda não estarem liberados para a tela: {naoConsultados.join(" e ")}. A falta deles
+          aqui não quer dizer que a empresa não tenha.
         </p>
       ) : null}
       {cursor !== null ? (
