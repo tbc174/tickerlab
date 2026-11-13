@@ -193,6 +193,41 @@ describe("ficha da empresa", () => {
     expect(within(outro).getByText(/liberados para a tela: os dados do campo “campo_novo”\./)).toBeTruthy();
   });
 
+  it("o mês do retrato do cadastro tem nome na tela, na linha 'Não consultados' (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["registry_snapshot_month"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados do campo “Mês do retrato do cadastro”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("o mês do retrato do cadastro tem nome na tabela", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: {
+          ...PRONTA.ficha!,
+          cadastro_na_receita: {
+            ...PRONTA.ficha!.cadastro_na_receita,
+            mes_do_retrato_do_cadastro: campo("2026-08", "rfb-cnpj", "2026-09-30"),
+          },
+        },
+      }),
+    );
+    await verFicha(CNPJ);
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(cadastro).getByRole("row", { name: /Mês do retrato do cadastro/ }).textContent).toContain("08/2026");
+    expect(within(cadastro).queryByText("mes_do_retrato_do_cadastro")).toBeNull();
+  });
+
   it("cadastro todo consultado não leva a linha 'Não consultados'", async () => {
     abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: [] } }));
     await verFicha(CNPJ);

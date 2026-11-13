@@ -37,6 +37,7 @@ const NOMES_DOS_CAMPOS: Record<string, string> = {
   data_opcao_simples: "Entrou no Simples em",
   data_exclusao_simples: "Saiu do Simples em",
   mes_do_retrato: "Mês do cadastro",
+  mes_do_retrato_do_cadastro: "Mês do retrato do cadastro",
   documento: "Documento",
   referencia: "Referência",
   prazo: "Prazo",
@@ -73,7 +74,8 @@ export const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, 
 const nomeDoCampo = (chave: string) => NOMES_DOS_CAMPOS[chave] ?? chave;
 
 // a lista dos campos do cadastro não consultados vem com o nome de fora da API (src/api_externa/nomes.py);
-// a tela os mostra pelo nome da tabela acima. Campo sem par aparece com o nome de fora, nunca some
+// a tela os mostra pelo nome da tabela acima. Campo sem par aparece com o nome de fora, nunca some; o
+// teste tests/test_tela_ficha_campos_de_fora.py confere este mapa contra a API e os rótulos acima
 const CHAVE_DO_CAMPO_DE_FORA: Record<string, string> = {
   registration_status: "situacao_cadastral",
   registration_status_date: "data_situacao_cadastral",
