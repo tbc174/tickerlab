@@ -72,6 +72,33 @@ export const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, 
 
 const nomeDoCampo = (chave: string) => NOMES_DOS_CAMPOS[chave] ?? chave;
 
+// a lista dos campos do cadastro não consultados vem com o nome de fora da API (src/api_externa/nomes.py);
+// a tela os mostra pelo nome da tabela acima. Campo sem par aparece com o nome de fora, nunca some
+const CHAVE_DO_CAMPO_DE_FORA: Record<string, string> = {
+  registration_status: "situacao_cadastral",
+  registration_status_date: "data_situacao_cadastral",
+  registration_status_reason: "motivo_situacao",
+  head_office: "matriz",
+  snapshot_month: "mes_do_retrato",
+  simples_nacional: "optante_simples",
+  simples_nacional_since: "data_opcao_simples",
+  simples_nacional_until: "data_exclusao_simples",
+  legal_name: "razao_social",
+  legal_nature_code: "natureza_juridica",
+  registry_snapshot_month: "mes_do_retrato_do_cadastro",
+};
+
+/** "A", "A e B", "A, B e C". */
+const juntarEmLista = (itens: string[]) =>
+  itens.length < 2 ? itens.join("") : `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}`;
+
+/** Os campos não consultados na voz da tela, no masculino plural ("os dados do campo “X”" ou "os dados dos
+ * campos “X” e “Y”"): a frase "Não consultados... A falta deles" concorda com um campo ou com vários. */
+function camposNaoConsultados(deFora: string[]): string {
+  const nomes = deFora.map((nome) => `“${nomeDoCampo(CHAVE_DO_CAMPO_DE_FORA[nome] ?? nome)}”`);
+  return `os dados ${nomes.length === 1 ? "do campo" : "dos campos"} ${juntarEmLista(nomes)}`;
+}
+
 export function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): string {
   if (valor === null) return SEM_VALOR;
   if (typeof valor === "boolean") return valor ? "Sim" : "Não";
@@ -83,6 +110,8 @@ export function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): st
 }
 
 function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
+  // o campo barrado não foi consultado: a tabela sem ele não pode parecer "a empresa não tem" (linha 899)
+  const deFora = ficha.campos_do_cadastro_nao_disponiveis ?? [];
   return (
     <section className="secao-do-relatorio" aria-labelledby="cadastro-da-ficha">
       <h2 id="cadastro-da-ficha">Cadastro na Receita</h2>
@@ -108,6 +137,12 @@ function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
           </tbody>
         </table>
       </div>
+      {deFora.length > 0 ? (
+        <p>
+          Não consultados, por ainda não estarem liberados para a tela: {camposNaoConsultados(deFora)}. A falta deles
+          aqui não quer dizer que a empresa não tenha.
+        </p>
+      ) : null}
     </section>
   );
 }
