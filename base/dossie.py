@@ -138,6 +138,9 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "inpi_programas_titulares",
     # linha 904 (lote 2, ANEEL): em casa (o original dos agentes trouxe CPF), fora do VPS
     "aneel_agentes", "aneel_autos_de_infracao", "aneel_termos_de_notificacao",
+    # linha 904 (lote 3): cadastros do Banco Central e da ANTT; em casa até o pode do envio ao VPS
+    "bcb_supervisionadas", "bcb_cooperativas", "bcb_correspondentes", "bcb_filiais_de_consorcio",
+    "bcb_regimes_especiais", "antt_operadores_multimodais", "antt_seguros_de_transportadores",
 })  # fmt: skip
 
 

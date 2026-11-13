@@ -3299,6 +3299,294 @@ _FISCALIZACAO_DE_FORA = (
 )
 
 
+_ONDE_DOS_CADASTROS_DO_BCB = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/bcb_cadastros.py`)"
+_ONDE_DOS_CADASTROS_DA_ANTT = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/antt_cadastros.py`)"
+_DO_BACEN_SEM_NOME = "Só a linha com CNPJ de dígito certo (o CPF sai); o nome, o nome fantasia e o nome reduzido ficam de fora"
+_DAS_LISTAS_DO_BACEN = {
+    "cnpj": ("CNPJ da entidade (14 dígitos com máscara)", TEXTO),
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+    "codigo_sisbacen": (
+        "Código da entidade no Sisbacen, como o Banco Central escreve",
+        TEXTO,
+    ),
+    "uf": ("Nome da unidade da federação da sede, como o Banco Central escreve", TEXTO),
+    "municipio_ibge": ("Código IBGE do município da sede (7 dígitos)", TEXTO),
+    "sigla": ("Sigla da entidade; vazia quando o Banco Central não tem", TEXTO),
+    "situacao_codigo": ("Código da situação da entidade", TEXTO),
+    "situacao": (
+        "Situação da entidade, como o Banco Central escreve (autorizada em atividade, paralisada...)",
+        TEXTO,
+    ),
+}
+
+
+def _tabelas_dos_cadastros_do_bcb() -> dict[str, Tabela]:
+    """Entidades supervisionadas, cooperativas de crédito, correspondentes, filiais de consórcio e regimes
+    especiais do Banco Central (`base/bcb_cadastros.py`: lote 3 das 300 tabelas pelo CNPJ). ODbL; a leitura
+    está no PR."""
+    do_dia = {
+        "familia_da_fonte": "bcb",
+        "frequencia": "A posição de cada dia de coleta do arquivista (uma por mês), sem apagar as anteriores",
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    inteiro = {
+        "familia_da_fonte": "bcb",
+        "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    atraso = "O Banco Central não escreve a data de publicação; a linha vale desde o dia do arquivo"
+    return {
+        "bcb_supervisionadas": Tabela(
+            descricao=(
+                "As entidades que o Banco Central supervisiona (bancos, cooperativas, administradoras de "
+                "consórcio, instituições de pagamento...), por CNPJ: a situação, o tipo, a natureza jurídica e o "
+                "município da sede, na posição de cada dia de coleta. "
+                + _DO_BACEN_SEM_NOME
+            ),
+            fonte="Banco Central: dados abertos (Olinda, BcBase, entidades supervisionadas) (`base/bcb_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DO_BCB.format(
+                pasta="bcb_supervisionadas", arquivo="supervisionadas"
+            ),
+            colunas={
+                **_DAS_LISTAS_DO_BACEN,
+                "tipo_codigo": ("Código do tipo de entidade supervisionada", TEXTO),
+                "tipo": (
+                    "Tipo de entidade supervisionada, como o Banco Central escreve",
+                    TEXTO,
+                ),
+                "natureza_codigo": ("Código da natureza jurídica", TEXTO),
+                "natureza": ("Natureza jurídica, como o Banco Central escreve", TEXTO),
+                "esfera_publica": (
+                    "Indicador de esfera pública, como o Banco Central escreve",
+                    TEXTO,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **do_dia,
+        ),
+        "bcb_cooperativas": Tabela(
+            descricao=(
+                "As cooperativas de crédito autorizadas pelo Banco Central, por CNPJ: classe (singular, central, "
+                "confederação), tipo (atividade profissional, livre admissão...) e categoria, na posição de cada "
+                "dia de coleta. Soma `bcb_supervisionadas` com o que só a lista de cooperativas diz. "
+                + _DO_BACEN_SEM_NOME
+            ),
+            fonte="Banco Central: dados abertos (Olinda, BcBase, cooperativas) (`base/bcb_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DO_BCB.format(
+                pasta="bcb_cooperativas", arquivo="cooperativas"
+            ),
+            colunas={
+                **_DAS_LISTAS_DO_BACEN,
+                "classe_codigo": ("Código da classe da cooperativa", TEXTO),
+                "classe": (
+                    "Classe da cooperativa (singular, central, confederação)",
+                    TEXTO,
+                ),
+                "tipo_da_cooperativa_codigo": ("Código do tipo da cooperativa", TEXTO),
+                "tipo_da_cooperativa": (
+                    "Tipo da cooperativa (atividade profissional, livre admissão...)",
+                    TEXTO,
+                ),
+                "categoria_codigo": ("Código da categoria da cooperativa", TEXTO),
+                "categoria": (
+                    "Categoria da cooperativa (capital e empréstimo, crédito rural...)",
+                    TEXTO,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **do_dia,
+        ),
+        "bcb_correspondentes": Tabela(
+            descricao=(
+                "Os correspondentes no País que instituições financeiras contratam, pela raiz do CNPJ do "
+                "correspondente e do contratante: tipo, município, serviços que presta (incisos da norma) e a "
+                "ordem que o Banco Central numera. Só a raiz de 8 dígitos (a fonte não traz o CNPJ inteiro); o "
+                "nome do correspondente e o do contratante ficam de fora"
+            ),
+            fonte="Banco Central: dados abertos (Olinda, Informes_Correspondentes) (`base/bcb_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DO_BCB.format(
+                pasta="bcb_correspondentes", arquivo="correspondentes"
+            ),
+            colunas={
+                "cnpj_basico": ("Raiz do CNPJ do correspondente (8 caracteres)", TEXTO),
+                "cnpj_basico_contratante": (
+                    "Raiz do CNPJ da instituição que contratou o correspondente (8 caracteres)",
+                    TEXTO,
+                ),
+                "tipo": (
+                    "Tipo do ponto (sede, filial...), como o Banco Central escreve",
+                    TEXTO,
+                ),
+                "ordem": (
+                    "Número de ordem que o Banco Central dá ao ponto do correspondente",
+                    TEXTO,
+                ),
+                "municipio_ibge": (
+                    "Código IBGE do município do ponto (7 dígitos)",
+                    TEXTO,
+                ),
+                "uf": ("Sigla da unidade da federação do ponto", TEXTO),
+                "servicos": (
+                    "Serviços que o correspondente presta, como incisos da norma do Banco Central",
+                    TEXTO,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **inteiro,
+        ),
+        "bcb_filiais_de_consorcio": Tabela(
+            descricao=(
+                "As filiais das administradoras de consórcio, pela raiz do CNPJ da administradora: município, "
+                "unidade da federação e o dia de início da filial. O endereço, o CEP e o telefone ficam de fora"
+            ),
+            fonte="Banco Central: dados abertos (Olinda, Informes_FiliaisAdministradorasConsorcios) (`base/bcb_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DO_BCB.format(
+                pasta="bcb_filiais_de_consorcio", arquivo="filiais"
+            ),
+            colunas={
+                "cnpj_basico": (
+                    "Raiz do CNPJ da administradora de consórcio (8 caracteres)",
+                    TEXTO,
+                ),
+                "municipio_ibge": (
+                    "Código IBGE do município da filial (7 dígitos)",
+                    TEXTO,
+                ),
+                "uf": ("Sigla da unidade da federação da filial", TEXTO),
+                "inicio_em": (
+                    "Dia em que a filial começou, como o Banco Central escreve",
+                    DATA,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **inteiro,
+        ),
+        "bcb_regimes_especiais": Tabela(
+            descricao=(
+                "Os regimes especiais que o Banco Central decretou em instituições (liquidação extrajudicial, "
+                "intervenção, RAET), por CNPJ: o tipo, a unidade da federação e o dia de início. Só a "
+                "instituição com CNPJ de dígito certo; o nome, o endereço, o contato e o liquidante ficam de fora"
+            ),
+            fonte="Banco Central: dados abertos (Olinda, regimes_especiais) (`base/bcb_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DO_BCB.format(
+                pasta="bcb_regimes_especiais", arquivo="regimes"
+            ),
+            colunas={
+                "cnpj": ("CNPJ da instituição (14 dígitos com máscara)", TEXTO),
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+                "tipo": (
+                    "Tipo do regime especial, como o Banco Central escreve",
+                    TEXTO,
+                ),
+                "uf": ("Sigla da unidade da federação da instituição", TEXTO),
+                "inicio_em": ("Dia em que o regime começou", DATA),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **inteiro,
+        ),
+    }
+
+
+def _tabelas_dos_cadastros_da_antt() -> dict[str, Tabela]:
+    """Operadores de transporte multimodal e seguro de responsabilidade civil dos transportadores da ANTT
+    (`base/antt_cadastros.py`: lote 3 das 300 tabelas pelo CNPJ). CC BY: citar a ANTT."""
+    comum = {
+        "familia_da_fonte": "antt",
+        "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    atraso = (
+        "A ANTT não escreve a data de publicação; a linha vale desde o dia do arquivo"
+    )
+    do_operador = {
+        "cnpj": ("CNPJ da empresa (14 dígitos com máscara)", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+    }
+    return {
+        "antt_operadores_multimodais": Tabela(
+            descricao=(
+                "Os operadores de transporte multimodal habilitados na ANTT, por CNPJ e certificado: unidade da "
+                "federação, país de origem, número do certificado (COTM), fim da vigência e se aderiram ao "
+                "decreto 1.563/95. Só CNPJ de dígito certo (o operador estrangeiro de CNPJ de fachada e o CPF "
+                "saem); a razão social, o logradouro, o CEP e o e-mail ficam de fora"
+            ),
+            fonte="ANTT: dados abertos, operadores de transporte multimodal (`base/antt_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DA_ANTT.format(
+                pasta="antt_operadores_multimodais", arquivo="multimodais"
+            ),
+            colunas={
+                **do_operador,
+                "uf": ("Sigla da unidade da federação do operador", TEXTO),
+                "pais_de_origem": (
+                    "País de origem do operador, como a ANTT escreve",
+                    TEXTO,
+                ),
+                "cotm": (
+                    "Número do certificado de operador de transporte multimodal (COTM)",
+                    TEXTO,
+                ),
+                "vigencia_ate": ("Dia em que a vigência do certificado termina", DATA),
+                "adesao_ao_decreto_1563_95": (
+                    "Verdadeiro se o operador aderiu ao decreto 1.563/95",
+                    SIM_OU_NAO,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **comum,
+        ),
+        "antt_seguros_de_transportadores": Tabela(
+            descricao=(
+                "As apólices de responsabilidade civil que os transportadores registram na ANTT, por "
+                "CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos, "
+                "quantos assentos e quantos endossos. Uma linha por apólice; a placa de cada veículo e o nome do "
+                "segurado nunca entram. Só CNPJ de dígito certo (o CPF sai)"
+            ),
+            fonte="ANTT: dados abertos, responsabilidade civil dos transportadores (`base/antt_cadastros.py`)",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_DA_ANTT.format(
+                pasta="antt_seguros_de_transportadores", arquivo="seguros"
+            ),
+            colunas={
+                **do_operador,
+                "cnpj_basico_seguradora": (
+                    "Raiz do CNPJ da seguradora (8 caracteres)",
+                    TEXTO,
+                ),
+                "numero_da_apolice": ("Número da apólice", TEXTO),
+                "inicio_da_apolice": (
+                    "Dia em que a apólice passou a valer (o mais antigo entre os endossos)",
+                    DATA,
+                ),
+                "fim_da_apolice": (
+                    "Dia em que a apólice termina (o mais novo entre os endossos)",
+                    DATA,
+                ),
+                "registrada_em": (
+                    "Dia em que a ANTT registrou a apólice (o mais antigo entre os endossos)",
+                    DATA,
+                ),
+                "veiculos": (
+                    "Quantos veículos a apólice cobre (cada placa conta uma vez)",
+                    NUMERO,
+                ),
+                "assentos": (
+                    "Soma dos assentos dos veículos; vazia quando a ANTT não informa",
+                    NUMERO,
+                ),
+                "endossos": ("Quantos endossos a apólice teve", NUMERO),
+                **_carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO),
+            },
+            **comum,
+        ),
+    }
+
+
 def _tabelas_da_fiscalizacao_da_aneel() -> dict[str, Tabela]:
     """Agentes do setor elétrico, autos de infração e termos de notificação da ANEEL
     (`base/aneel_fiscalizacao.py`: lote 2 das 300 tabelas pelo CNPJ)."""
@@ -8458,6 +8746,8 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_fip_e_fii(),
     **_tabelas_da_aneel_e_do_idss(),
     **_tabelas_da_fiscalizacao_da_aneel(),
+    **_tabelas_dos_cadastros_do_bcb(),
+    **_tabelas_dos_cadastros_da_antt(),
     **_tabelas_do_cnes(),
     **_tabelas_do_sus(),
     **_tabelas_dos_tces(),
@@ -10683,6 +10973,9 @@ _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista nest
 _FUNDOS_E_REGULADORES = "2026-10-25"  # FIP, FII, ANEEL (indicadores) e ANS (IDSS) entraram no arquivista neste dia (linha 904)
 # agentes e fiscalização (autos e termos): fontes do lote 2; a 1ª baixada foi a rodada avulsa de 13/11/2026
 _AGENTES_E_TERMOS_DA_ANEEL = "2026-11-13"
+# linha 904 (lote 3): a 1ª coleta do arquivista dessas fontes (as do Banco Central e da ANTT); a posição de cada dia
+# vale desde o dia do arquivo, nunca antes
+_CADASTROS_DO_BCB_E_DA_ANTT = "2026-11-16"
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
@@ -10937,6 +11230,14 @@ _CONTRATO = {
         historico_desde=_AGENTES_E_TERMOS_DA_ANEEL,
         granularidade_do_publico_em="dia",
     ),
+    # linha 904 (lote 3): cadastros do Banco Central (ODbL) e da ANTT (CC BY)
+    "bcb_supervisionadas": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    "bcb_cooperativas": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    "bcb_correspondentes": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    "bcb_filiais_de_consorcio": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    "bcb_regimes_especiais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    "antt_operadores_multimodais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    "antt_seguros_de_transportadores": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_da_apolice", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
     "ans_idss": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
     "gleif_ponte": _contrato(modulo=_ME, pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="dia"),
     "financiamentos_finep": _contrato(
@@ -11280,6 +11581,35 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "aneel_termos_de_notificacao": {
         "pasta": "aneel_termos_de_notificacao",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_do_termo"),
+    },
+    "bcb_supervisionadas": {
+        "pasta": "bcb_supervisionadas",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "situacao"),
+    },
+    "bcb_cooperativas": {
+        "pasta": "bcb_cooperativas",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "situacao"),
+    },
+    "bcb_correspondentes": {
+        "pasta": "bcb_correspondentes",
+        "nao_nulas": ("id_na_fonte", "cnpj_basico", "cnpj_basico_contratante", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "bcb_filiais_de_consorcio": {
+        "pasta": "bcb_filiais_de_consorcio",
+        "nao_nulas": ("id_na_fonte", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "bcb_regimes_especiais": {
+        "pasta": "bcb_regimes_especiais",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "tipo"),
+    },
+    "antt_operadores_multimodais": {
+        "pasta": "antt_operadores_multimodais",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "cotm"),
+    },
+    "antt_seguros_de_transportadores": {
+        "pasta": "antt_seguros_de_transportadores",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_da_apolice"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("veiculos", "assentos", "endossos")},
     },
     "ans_idss": {
         "pasta": "ans_idss",
