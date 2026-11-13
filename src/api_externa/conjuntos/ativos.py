@@ -456,6 +456,8 @@ class LeitorDeAtivos:
         de fora (o da CFEM fica se ao menos uma das contas sai)."""
         liberados = {}
         for tipo, origem in ORIGENS.items():
+            if origem.tabela not in views(self.porta.con):
+                continue  # sem arquivo na base não foi consultado: entra em `nao_coberto` (linha 917)
             campos = self._servidos(origem)
             if campos or (tipo == ROYALTIES and any(self._contas_da_cfem())):
                 liberados[tipo] = campos
