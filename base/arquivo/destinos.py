@@ -529,6 +529,12 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_PATENTES_SO_ARQUIVO)
         for f in lote_patentes.fontes()
     },
+    # linha 904 (lote 2): depois dos lotes acima, que também listam estas fontes como "só arquivo"
+    "tcu-inidoneos": _tabela("tcu_inidoneos"),
+    "inpi-marcas": _tabela("inpi_marcas_titulares"),
+    "inpi-patentes-partes": _tabela("inpi_patentes_depositantes"),
+    "inpi-desenhos": _tabela("inpi_desenhos_depositantes"),
+    "inpi-programas": _tabela("inpi_programas_titulares"),
     # lote acervos históricos (rodada 4, linha 292): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ACERVOS_SO_ARQUIVO)

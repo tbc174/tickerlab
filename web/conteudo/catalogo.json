@@ -1489,7 +1489,7 @@
       "orgao": "INPI (patentes e marcas)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -1584,7 +1584,7 @@
       "orgao": "TCU (Tribunal de Contas da União)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2443,6 +2443,17 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "INPI",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
       "modulos": [
         "mercado_e_empresas"
@@ -2876,6 +2887,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "TCU",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "modulos": [
@@ -2899,8 +2921,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 34,
-    "tabelas": 122,
+    "orgaos": 36,
+    "tabelas": 127,
     "temas": [
       {
         "chave": "cvm",
@@ -2940,11 +2962,12 @@
           "ANS",
           "MTE",
           "IBAMA",
+          "TCU",
           "CNJ",
           "CVM"
         ],
-        "tabelas": 10,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 11,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, os licitantes inidôneos do TCU, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2960,10 +2983,11 @@
           "ANM",
           "CMED (Anvisa)",
           "Ancine",
-          "Ministério da Saúde (DATASUS)"
+          "Ministério da Saúde (DATASUS)",
+          "INPI"
         ],
-        "tabelas": 14,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "tabelas": 18,
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3005,7 +3029,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 58
+      "tabelas": 63
     },
     {
       "chave": "credito_e_fidc",
@@ -8288,6 +8312,61 @@
     {
       "atraso": null,
       "consultavel": true,
+      "frase": "Licitantes declaradas inidôneas pelo TCU, só pessoa jurídica, uma linha por empresa e processo: o número do processo, a deliberação (acórdão) e as datas do acórdão.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "TCU",
+      "situacao": "licenciada",
+      "tabela": "tcu_inidoneos"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Titulares de marcas depositadas no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_marcas_titulares"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Depositantes de patentes no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_patentes_depositantes"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Depositantes de desenhos industriais no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_desenhos_depositantes"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Titulares de registros de programas de computador no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_programas_titulares"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
       "frase": "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês.",
       "frequencia": "Mensal",
       "historico_desde": "2025-10-01",
@@ -8871,10 +8950,10 @@
   ],
   "totais": {
     "familias": 133,
-    "familias_em_uso": 46,
-    "fontes": 46,
+    "familias_em_uso": 48,
+    "fontes": 48,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 159
+    "tabelas": 164
   }
 }
