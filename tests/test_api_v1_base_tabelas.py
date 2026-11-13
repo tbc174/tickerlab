@@ -739,6 +739,9 @@ def test_so_e_consultavel_a_tabela_que_diz_o_dia_publico_e_separa_a_pessoa(clien
         "receita_dirbi",
         "receita_ecf_renuncia",
         "sigsif_habilitados",
+        "sigsif_estabelecimentos",
+        "receita_transacoes_individual",
+        "receita_transacoes_adesao",
     ],
 )
 def test_a_que_so_a_api_externa_serve_nao_sai_na_consulta_aberta(cliente, nome):
@@ -753,6 +756,9 @@ def test_a_que_so_a_api_externa_serve_nao_sai_na_consulta_aberta(cliente, nome):
         "receita_dirbi",
         "receita_ecf_renuncia",
         "sigsif_habilitados",
+        "sigsif_estabelecimentos",
+        "receita_transacoes_individual",
+        "receita_transacoes_adesao",
     } == SO_PELA_API_EXTERNA
     assert not pode_consultar(nome)
     assert cliente.get(f"{ROTA}/{nome}").json() == {

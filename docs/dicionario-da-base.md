@@ -3010,6 +3010,116 @@ A quem o Ministério da Agricultura habilitou exportar, para que país, em que �
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sigsif_estabelecimentos`
+
+Quem tem registro no Serviço de Inspeção Federal (SIF) do Ministério da Agricultura, em que município e categoria: uma linha por CNPJ, número do SIF, área, categoria e município. **A razão social da fonte não é guardada** e o registro de CPF não entra. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Ministério da Agricultura e Pecuária (MAPA), dados abertos do Serviço de Inspeção Federal (SIGSIF), licença CC BY (citar o MAPA); lido por `base/sigsif.py`
+- **Licença:** CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Variável (o MAPA regrava o arquivo inteiro quando atualiza)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o arquivo foi modificado no portal do MAPA, que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `nr_sif`, `area_categoria`, `categoria_classe`, `municipio`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-02 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sigsif_estabelecimentos/sigsif_estabelecimentos.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3b.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `nr_sif` | Número do SIF (Serviço de Inspeção Federal) | texto |
+| `situacao` | Situação do registro no SIF, como o MAPA informa | texto |
+| `municipio` | Município do estabelecimento, como o MAPA informa | texto |
+| `uf` | Unidade da federação do estabelecimento | texto |
+| `area_categoria` | Área e categoria do registro (carnes, leite, pescado...) | texto |
+| `categoria_classe` | Classe da categoria do registro (abate, industrialização...) | texto |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_transacoes_individual`
+
+Acordos de transação tributária individual deferidos pela Receita (Procuradoria-Geral da Fazenda Nacional e Receita): uma linha por CNPJ e processo, com a dívida transacionada, a redução e o saldo devedor. **O nome do contribuinte da fonte não é guardado.** **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Receita Federal do Brasil, dados abertos de transação tributária (`transacoes-individual.csv`), lida por `base/receita_transacoes.py`
+- **Licença:** Transações da Receita: sem licença escrita; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Variável (a Receita regrava o arquivo inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que a página do arquivo diz 'Atualizado em', que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `processo`
+- **Três datas:** aconteceu_em = `data_acordo`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-07-28 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_transacoes_individual/receita_transacoes_individual.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3b.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `processo` | Número do processo administrativo do acordo | texto |
+| `data_acordo` | Mês do acordo (a fonte só traz mês e ano; vale o dia 1) | data (dia) |
+| `divida_transacionada` | Dívida transacionada, em reais | reais (R$) |
+| `reducao` | Redução concedida sobre a dívida, em reais | reais (R$) |
+| `divida_com_reducao` | Dívida depois da redução, em reais | reais (R$) |
+| `creditos_pf_bcn` | Créditos de prejuízo fiscal e base negativa usados, em reais (vazio: nenhum) | reais (R$) |
+| `saldo_devedor` | Saldo devedor do acordo, em reais | reais (R$) |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_transacoes_adesao`
+
+Adesões às modalidades de transação tributária (por exemplo a de pequeno valor e as dos editais), um pedido por linha, com a dívida, a redução, os créditos usados e o número de parcelas. **A chave é o `hash_linha`** (conteúdo da linha): a fonte não numera os pedidos, e linhas idênticas ficam todas, numeradas no hash. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Receita Federal do Brasil, dados abertos de transação tributária (`transacoes-adesao.csv`), lida por `base/receita_transacoes.py`
+- **Licença:** Transações da Receita: sem licença escrita; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Variável (a Receita regrava o arquivo inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que a página do arquivo diz 'Atualizado em', que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `hash_linha`
+- **Três datas:** aconteceu_em = `data_requerimento`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-11 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_transacoes_adesao/receita_transacoes_adesao.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3b.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `modalidade` | Modalidade de transação a que o pedido aderiu, como a Receita descreve | texto |
+| `data_requerimento` | Dia do requerimento da adesão | data (dia) |
+| `divida_sem_reducao` | Dívida antes da redução, em reais | reais (R$) |
+| `reducao` | Redução da dívida concedida pela transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_pf_proprio` | Crédito de prejuízo fiscal próprio usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_pf_terceiros` | Crédito de prejuízo fiscal de terceiros usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_bcn_proprio` | Crédito de base negativa da CSLL próprio usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_bcn_terceiros` | Crédito de base negativa da CSLL de terceiros usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `parcelas` | Número de parcelas | número inteiro |
+| `hash_linha` | SHA-256 do conteúdo da linha (a chave: a fonte não numera os pedidos) | texto |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pgfn_divida`
 
 Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa` e a porta não os serve.
