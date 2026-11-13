@@ -5046,7 +5046,7 @@ As empresas cadastradas como agentes do setor elétrico na ANEEL, por CNPJ: se o
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
-- **Histórico desde:** 2026-11-14 (`publico_em` por dia)
+- **Histórico desde:** 2026-11-13 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/aneel_agentes/agentes.parquet` (servidor de casa, `base/aneel_fiscalizacao.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
@@ -5135,7 +5135,7 @@ Os termos de notificação da fiscalização da ANEEL e das agências estaduais 
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `lavrado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
-- **Histórico desde:** 2026-11-14 (`publico_em` por dia)
+- **Histórico desde:** 2026-11-13 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/aneel_termos_de_notificacao/termos.parquet` (servidor de casa, `base/aneel_fiscalizacao.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).

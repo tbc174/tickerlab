@@ -10681,8 +10681,8 @@ _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no a
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
 _FUNDOS_E_REGULADORES = "2026-10-25"  # FIP, FII, ANEEL (indicadores) e ANS (IDSS) entraram no arquivista neste dia (linha 904)
-# agentes e termos de notificação: fontes do lote 2 (13/11/2026); a 1ª baixada vem depois do merge
-_AGENTES_E_TERMOS_DA_ANEEL = "2026-11-14"
+# agentes e fiscalização (autos e termos): fontes do lote 2; a 1ª baixada foi a rodada avulsa de 13/11/2026
+_AGENTES_E_TERMOS_DA_ANEEL = "2026-11-13"
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
