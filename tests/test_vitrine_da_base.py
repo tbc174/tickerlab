@@ -12,6 +12,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
+from base import cruzamentos_das_fechadas as fechadas
 from base import vitrine
 from base.contrato import PASTA
 from base.dicionario import TABELAS
@@ -859,13 +860,105 @@ def test_fatos_da_base_vem_da_fotografia():
     fotografia = json.loads(
         vitrine.FOTOGRAFIA_DOS_CRUZAMENTOS.read_text(encoding="utf-8")
     )
+    das_fechadas = fotografia.pop(vitrine.CHAVE_DAS_FECHADAS, None)
     fatos = exp.conteudo()["fatos_da_base"]
 
     cruzamentos = vitrine.cruzamentos_da_fotografia(fotografia)
-    assert fatos["fatos"] == [asdict(f) for f in vitrine.fatos_agregados(cruzamentos)]
-    for fato in vitrine.fatos_agregados(cruzamentos):
-        assert len(fato.texto) <= vitrine.LIMITE_DO_FATO, fato.chave
-    assert fatos["medido_em_curto"] == vitrine.dia_e_mes(fotografia["medido_em"])
+    medicao = (
+        None if das_fechadas is None else fechadas.fechadas_da_fotografia(das_fechadas)
+    )
+    assert fatos["grupos"] == vitrine.grupos_dos_fatos(cruzamentos, medicao)
+    for grupo in fatos["grupos"]:
+        for fato in grupo["fatos"]:
+            assert len(fato["texto"]) <= vitrine.LIMITE_DO_FATO, fato["chave"]
+    medido_em = cruzamentos.medido_em if medicao is None else medicao.medido_em
+    assert fatos["medido_em_curto"] == vitrine.dia_e_mes(medido_em)
+    assert f"medidas em {fatos['medido_em_curto']}" in fatos["subtitulo"]
+
+
+# --- os cartões de empresa fechada (linha 925) --------------------------------------------------------
+
+_MOLDES_COM_TEXTO = [m.chave for m in fechadas.MOLDES if m.sql is not None]
+
+
+def _medicao_das_fechadas(*chaves: str) -> fechadas.MedicaoDasFechadas:
+    return fechadas.MedicaoDasFechadas(
+        medido_em="2026-11-14",
+        cartoes=tuple(fechadas.CartaoMedido(c, parte=1234, todo=98765) for c in chaves),
+        caidos=(fechadas.CartaoCaido("tce_e_sancao", "sancoes_cgu: só uso interno"),),
+    )
+
+
+def test_todo_cartao_medivel_tem_texto_e_so_ele():
+    assert set(vitrine.MOLDES_DOS_FATOS) == set(_MOLDES_COM_TEXTO)
+
+
+@pytest.mark.parametrize("chave", _MOLDES_COM_TEXTO)
+def test_o_cartao_da_fechada_tem_fonte_data_e_conta_sem_palavra_proibida(chave):
+    fato = vitrine.fato_da_fechada(
+        fechadas.CartaoMedido(chave, parte=1234, todo=98765), "2026-11-14"
+    )
+    assert fato.numero in {"1.234", "1,2%"}
+    assert fato.fonte and fato.tabelas and fato.data == "2026-11-14"
+    assert vitrine.FECHADA_E_ATIVA in fato.como_foi_calculado
+    assert len(fato.texto) <= vitrine.LIMITE_DO_FATO
+    for texto in (fato.texto, fato.fonte, fato.como_foi_calculado):
+        assert not PROIBIDAS_NOS_FATOS.search(texto), texto
+        assert not re.search(r"\bpre[çc]o\b|R\$|garant[ei] (retorno|lucro)", texto), (
+            texto
+        )
+    assert "98.765" in fato.texto
+    conferir_sem_pessoas(asdict(fato), set())
+
+
+def test_os_grupos_poem_as_fechadas_primeiro_e_as_abertas_por_ultimo():
+    medicao = _medicao_das_fechadas("finep_e_patente", "saiu_do_simples", "tres_niveis")
+    grupos = vitrine.grupos_dos_fatos(_cruzamentos(), medicao)
+    assert [g["chave"] for g in grupos] == [
+        "crescendo",
+        "se_mexeu",
+        "fora_do_balanco",
+        "abertas",
+    ]
+    assert [[f["chave"] for f in g["fatos"]] for g in grupos] == [
+        ["saiu_do_simples"],
+        ["tres_niveis"],
+        ["finep_e_patente"],
+        ["lucros", "parecer"],
+    ]
+    assert all(f["data"] == "2026-11-14" for g in grupos[:-1] for f in g["fatos"])
+
+
+def test_sem_a_medicao_das_fechadas_ficam_so_as_abertas():
+    grupos = vitrine.grupos_dos_fatos(_cruzamentos(), None)
+    assert [g["chave"] for g in grupos] == ["abertas"]
+
+
+def test_fatos_da_base_le_as_fechadas_da_fotografia(tmp_path):
+    """O script grava a medição das fechadas na chave dela do `fatos.json`, e a página a lê de volta."""
+    from scripts.medir_base_para_o_site import fatos_com_as_fechadas, gravar
+
+    medicao = _medicao_das_fechadas(*_MOLDES_COM_TEXTO)
+    arquivo = tmp_path / "fatos.json"
+    gravar(fatos_com_as_fechadas(_cruzamentos(), medicao), arquivo)
+    fatos = vitrine.fatos_da_base(arquivo)
+    assert [g["chave"] for g in fatos["grupos"]] == [
+        *(g.chave for g in fechadas.GRUPOS),
+        "abertas",
+    ]
+    assert fatos["medido_em_curto"] == vitrine.dia_e_mes("2026-11-14")
+    assert fatos["subtitulo"].startswith(
+        "Contagens de empresas fechadas e de companhias abertas"
+    )
+    assert "medidas em" in fatos["subtitulo"]
+
+
+def test_fatos_da_base_sem_as_fechadas_mantem_o_paragrafo_das_abertas(tmp_path):
+    arquivo = tmp_path / "fatos.json"
+    arquivo.write_text(json.dumps(asdict(_cruzamentos())), encoding="utf-8")
+    fatos = vitrine.fatos_da_base(arquivo)
+    assert [g["chave"] for g in fatos["grupos"]] == ["abertas"]
+    assert fatos["subtitulo"].startswith("Contagens das companhias abertas")
 
 
 def test_fotografia_dos_cruzamentos_volta_igual():

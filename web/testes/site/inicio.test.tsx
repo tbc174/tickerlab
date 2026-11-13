@@ -216,20 +216,25 @@ describe("página inicial da CLI e do conector de M&A e análise de investimento
     expect([...lugares].sort((a, b) => a - b)).toEqual(lugares);
   });
 
-  it("os cruzamentos: cada fato com o número, a fonte e a conta recolhida, sem nome de empresa", () => {
+  it("os cruzamentos: as fechadas por pergunta, as abertas por último, cada fato com o número, a fonte e a conta", () => {
     const secao = trecho('<section class="faixa secao v2-cruzamentos" id="cruzamentos"', "</section>");
-    expect(semTags(secao)).toContain(`medidas em ${fatosDaBase.medido_em_curto}`);
+    expect(semTags(secao)).toContain(esc(fatosDaBase.subtitulo));
+    expect(fatosDaBase.subtitulo).toContain(`medidas em ${fatosDaBase.medido_em_curto}`);
+    const chaves = fatosDaBase.grupos.map((g) => g.chave);
+    const ordem = ["crescendo", "se_mexeu", "diligencia", "antes", "fora_do_balanco", "abertas"];
+    expect(chaves.every((c) => ordem.includes(c))).toBe(true);
+    expect([...chaves].sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b))).toEqual(chaves);
+    const abertas = fatosDaBase.grupos[fatosDaBase.grupos.length - 1];
+    expect(abertas.chave).toBe("abertas");
+    expect(abertas.fatos.map((f) => f.chave)).toEqual(["lucros", "parecer"]);
+    const fatos = fatosDaBase.grupos.flatMap((g) => g.fatos);
     const cartoes = secao.split('<article class="cartao v2-fato"').slice(1);
-    expect(fatosDaBase.fatos.map((f) => f.chave)).toEqual([
-      "lucros",
-      "auditor",
-      "atraso",
-      "remuneracao",
-      "dividendo",
-      "parecer",
-    ]);
-    expect(cartoes).toHaveLength(fatosDaBase.fatos.length);
-    fatosDaBase.fatos.forEach((fato, i) => {
+    expect(cartoes).toHaveLength(fatos.length);
+    fatosDaBase.grupos.forEach((grupo) => {
+      expect(grupo.fatos.length, grupo.chave).toBeGreaterThan(0);
+      expect(semTags(secao), grupo.chave).toContain(esc(grupo.pergunta));
+    });
+    fatos.forEach((fato, i) => {
       const texto = semTags(cartoes[i]);
       expect(texto, fato.chave).toContain(fato.numero);
       expect(texto, fato.chave).toContain(esc(fato.texto));
