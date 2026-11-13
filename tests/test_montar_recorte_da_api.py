@@ -11,6 +11,7 @@ from base.dicionario import TABELAS
 from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
 from base.porta.duckdb import ARQUIVOS
 from scripts import montar_recorte_da_api as envio
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
 
 
 def _parquet(caminho: Path, selecao: str) -> None:
@@ -59,6 +60,7 @@ def test_tabela_nova_que_a_porta_libera_nao_entra_sozinha():
     """Se a porta passar a mostrar uma tabela, alguém decide: degrau 2 ou fica em casa."""
     decididas = {
         *envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.REDE_SO_PJ, *envio.FICAM_EM_CASA,
+        *envio.LOTES_DAS_300,
     }  # fmt: skip
     novas = sorted(n for n in TABELAS if pode_consultar(n) and n not in decididas)
     assert novas == []
@@ -708,3 +710,82 @@ def test_reduzida_com_pessoa_na_saida_derruba_o_envio(tmp_path, monkeypatch):
     _empresas_controladas_e_fundos(base)
     with pytest.raises(envio.RecorteErro, match="fora da lista"):
         envio.montar(base, tmp_path / "saida", COM_REDUZIDAS)
+
+
+# --- os lotes 1 e 2 das 300 pelo CNPJ (linha 904): só no degrau 6, pela cópia por arquivo -----------------------
+
+
+def test_os_lotes_das_300_so_vao_pelo_degrau_6():
+    """O cron diário (degrau 2) não os manda: o envio pede o pode da Diretoria com a prova de zero pessoa."""
+    lotes = set(envio.LOTES_DAS_300)
+    assert len(envio.LOTES_DAS_300) == len(lotes) == 10
+    for degrau in (1, 2, 3, 4, 5):
+        assert not lotes & set(envio.tabelas_do_degrau(degrau))
+    assert envio.tabelas_do_degrau(6) == (
+        *envio.tabelas_do_degrau(5),
+        *envio.LOTES_DAS_300,
+    )
+    assert envio._argumentos(["--degrau", "6"]).degrau == 6
+    assert not lotes & set(envio.FICAM_EM_CASA)
+    # os INPI do lote 2 seguem em casa (licença a confirmar para tabela derivada)
+    assert "inpi_marcas_titulares" in envio.FICAM_EM_CASA
+    envio.conferir_a_lista(envio.LOTES_DAS_300)
+
+
+def test_os_lotes_das_300_tem_marca_de_pessoa_por_linha_e_texto_conferido():
+    for nome in envio.LOTES_DAS_300:
+        assert not TABELAS[nome].pessoa, nome
+        assert TABELAS[nome].linhas_de_pessoa == "trata_como_pessoa", nome
+        for coluna in envio.TEXTOS_LIVRES.get(nome, ()):
+            assert coluna in TABELAS[nome].colunas, (nome, coluna)
+    # toda coluna com nome de fundo, de emissor ou de administrador passa pela conferência de CPF
+    for nome in envio.LOTES_DAS_300:
+        com_nome = {
+            c
+            for c in TABELAS[nome].colunas
+            if c in ("emissor", "razao_social", "nome_comercial")
+            or c.startswith("nome_")
+        }
+        assert com_nome <= set(envio.TEXTOS_LIVRES.get(nome, ())), nome
+
+
+def _ativos_dos_fii(base: Path, emissor_da_empresa: str) -> None:
+    # três linhas: uma de pessoa (MEI emissor), uma sem marca (na dúvida é pessoa) e uma de empresa
+    _parquet(
+        base / "fii_ativos" / "2026.parquet",
+        "SELECT * FROM (VALUES "
+        "('11000001000101', 'EMISSOR PESSOA', true), "
+        "('11000002000101', 'EMISSOR SEM MARCA', NULL), "
+        f"('11000003000101', '{emissor_da_empresa}', false)"
+        ") t(cnpj, emissor, trata_como_pessoa)",
+    )
+
+
+def test_ativos_dos_fii_saem_so_com_a_linha_de_empresa(tmp_path):
+    base = tmp_path / "base"
+    _ativos_dos_fii(base, "EMPRESA EMISSORA SA")
+    saida = tmp_path / "saida"
+    resultados = envio.montar(base, saida, ("fii_ativos",))
+    lidas = duckdb.sql(
+        f"SELECT cnpj, emissor, trata_como_pessoa FROM '{(saida / 'fii_ativos/2026.parquet').as_posix()}'"
+    ).fetchall()
+    assert lidas == [("11000003000101", "EMPRESA EMISSORA SA", False)]
+    assert resultados[0].linhas_tiradas == 2
+    assert envio.obrigatorias_sem_arquivo(resultados) == []
+
+
+def test_cpf_no_nome_do_emissor_derruba_o_envio(tmp_path):
+    base = tmp_path / "base"
+    _ativos_dos_fii(base, f"EMISSOR {formatado(CPF_DE_TESTE)}")
+    with pytest.raises(envio.RecorteErro, match="CPF no texto da coluna emissor"):
+        envio.montar(base, tmp_path / "saida", ("fii_ativos",))
+
+
+def test_tabela_dos_lotes_sem_arquivo_na_base_e_falha(tmp_path):
+    base = tmp_path / "base"
+    base.mkdir()
+    resultados = envio.montar(base, tmp_path / "saida", ("aneel_agentes",))
+    assert envio.obrigatorias_sem_arquivo(resultados) == ["aneel_agentes"]
+    # tabela do degrau 2 sem arquivo não derruba (a porta responde que não tem)
+    outras = envio.montar(base, tmp_path / "saida2", ("pgfn_divida",))
+    assert envio.obrigatorias_sem_arquivo(outras) == []
