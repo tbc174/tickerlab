@@ -1,14 +1,17 @@
 """Termos de embargo do IBAMA (linha 227 da fila; fonte `ibama-embargos`): o arquivo principal
-(`termo_embargo`, um termo por linha), um retrato inteiro a cada baixada (`base/retratos.py` junta os
+(`termo_de_embargo.csv`, um termo por linha), um retrato inteiro a cada baixada (`base/retratos.py` junta os
 retratos numa tabela que só cresce).
 
-- **Formato** (conferido em 04/11/2026 no arquivo guardado): `;`, Latin-1, 50 colunas. Aqui entram só as
+- **Formato** (conferido em 04/11/2026 no arquivo guardado; de novo em 13/11/2026, linha 914): `;`, 51
+  colunas. O arquivo vem em UTF-8 com BOM e o cabeçalho entre aspas; lido como Latin-1, o BOM grudava
+  no 1º cabeçalho e o `SEQ_TAD` sumia. Sem BOM, Latin-1. Aqui entram só as
   que dizem quem, onde, quando e em que situação; geometria da área (`GEOM_AREA_EMBARGADA`), texto livre
   e dados do fiscal ficam de fora. Os outros arquivos do pacote (anexos, enquadramento, polígonos,
   decisões) são tabelas filhas e não entram aqui.
 - **Só pessoa jurídica com CNPJ de DV certo** (ADR 0075): `CPF_CNPJ_EMBARGADO` de 11 dígitos (CPF) sai e
   o nome do embargado vai junto; documento que não fecha o DV também sai. Tudo é contado.
-- **Uma linha por `SEQ_TAD`** dentro de um retrato; repetida, fica a primeira.
+- **Uma linha por `SEQ_TAD`** dentro de um retrato; repetida, fica a primeira. Termo sem `SEQ_TAD` (há
+  milhares no arquivo) fica pelo número do termo (`TAD <NUM_TAD>`), para não virar um id vazio só.
 - **Data do embargo**: o arquivo traz anos impossíveis (`2925-09-25`, `2090-03-16`); data fora de
   1980 até o dia do retrato vira vazia, nunca é corrigida a olho.
 - **Sem olhar o futuro** (`disponivel_no_primeiro`): o embargo vale desde a data dele (ato público),
@@ -17,6 +20,7 @@ retratos numa tabela que só cresce).
 Sem Streamlit; pandas só.
 """
 
+import codecs
 import io
 from collections.abc import Collection
 from datetime import datetime
@@ -33,6 +37,8 @@ from base import retratos as motor
 FONTE = "ibama-embargos"
 SEPARADOR = ";"
 CODIFICACAO = "latin-1"
+BOM_DO_UTF8 = codecs.BOM_UTF8
+PREFIXO_DO_ID_PELO_NUMERO = "TAD "
 PRIMEIRO_ANO_VALIDO = pd.Timestamp("1980-01-01")
 COLUNAS_DA_FONTE = {
     "SEQ_TAD": "id_na_fonte",
@@ -68,6 +74,11 @@ def _data(serie: pd.Series, dia: pd.Timestamp) -> pd.Series:
     return datas.where((datas >= PRIMEIRO_ANO_VALIDO) & (datas <= dia))
 
 
+def _codificacao(conteudo: bytes) -> str:
+    """Com BOM, UTF-8 (o `-sig` tira o BOM, e o cabeçalho entre aspas volta a ser lido); sem, Latin-1."""
+    return "utf-8-sig" if conteudo.startswith(BOM_DO_UTF8) else CODIFICACAO
+
+
 def ler_retrato(
     conteudo: bytes, dia: pd.Timestamp
 ) -> tuple[pd.DataFrame, dict[str, int]]:
@@ -76,7 +87,8 @@ def ler_retrato(
     bruta = pd.read_csv(
         io.BytesIO(conteudo),
         sep=SEPARADOR,
-        encoding=CODIFICACAO,
+        encoding=_codificacao(conteudo),
+        encoding_errors="replace",
         dtype=str,
         keep_default_na=False,
         usecols=lambda c: c in COLUNAS_DA_FONTE,
@@ -92,6 +104,12 @@ def ler_retrato(
     cnpj = bruta["documento"].map(cnpjs.completo)
     valido = cnpj.map(lambda c: isinstance(c, str) and cnpjs.dv_confere(c)).astype(bool)
     tabela = bruta[valido].assign(cnpj=cnpj[valido])
+    sem_seq = tabela["id_na_fonte"].eq("")
+    tabela = tabela.assign(
+        id_na_fonte=tabela["id_na_fonte"].mask(
+            sem_seq, PREFIXO_DO_ID_PELO_NUMERO + tabela["numero_do_termo"]
+        )
+    )
     repetido = tabela["id_na_fonte"].duplicated(keep="first")
     tabela = tabela[~repetido]
     pronta = pd.DataFrame(
@@ -112,6 +130,7 @@ def ler_retrato(
         "pessoa_fisica": int(fora.sum()),
         "cnpj_invalido": int((~valido & ~fora).sum()),
         "id_repetido": int(repetido.sum()),
+        "id_pelo_numero_do_termo": int(sem_seq.sum()),
     }
     return pronta, contagem
 
@@ -141,7 +160,9 @@ CADASTROS = (
         juntar=juntar_retratos,
         colunas=tuple(COLUNAS),
         datas=tuple(DATAS),
-        url_termina_em="/termo_embargo.csv",
+        # o nome real do arquivo principal (conferido no acervo em 13/11/2026, linha 914); os irmãos
+        # (`termo_de_embargo_anexo.csv`, `termo_embargo_itens.csv`...) não terminam assim
+        url_termina_em="/termo_de_embargo.csv",
     ),
 )
 
