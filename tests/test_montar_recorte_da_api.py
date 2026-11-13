@@ -518,6 +518,29 @@ def test_anvisa_sobe_no_degrau_2_so_pela_api_externa():
     envio.conferir_a_lista(("anvisa_por_empresa",))
 
 
+def test_anvisa_linha_marcada_como_pessoa_nao_sai_mesmo_de_raiz_pj(tmp_path):
+    """Revisão cruzada (P2): a marca de pessoa tira a linha, ainda que a raiz esteja em `cnpj_empresas_pj`."""
+    base = tmp_path / "base"
+    _empresas_e_anvisa(base, "('00000000')")
+    _parquet(
+        base / "anvisa_por_empresa" / "anvisa_por_empresa.parquet",
+        "SELECT cnpj_basico, DATE '2026-11-12' AS disponivel_em, (cnpj_basico = '00000000') AS trata_como_pessoa, "
+        "300 AS cosmeticos_total, 250 AS cosmeticos_ativos "
+        "FROM (VALUES ('00000000'), ('11111111')) t(cnpj_basico)",
+    )
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('11111111', 'EMPRESA SA', '2038', 'demais')",
+        "('00000000'), ('11111111')",
+    )
+    envio.montar(base, tmp_path / "saida", COM_ANVISA)
+    arquivo = tmp_path / "saida" / "anvisa_por_empresa" / "anvisa_por_empresa.parquet"
+    assert duckdb.sql(f"SELECT cnpj_basico FROM '{arquivo.as_posix()}'").fetchall() == [
+        ("11111111",)
+    ]
+
+
 def test_anvisa_so_de_raiz_pj_sai_inteira(tmp_path):
     base = tmp_path / "base"
     _empresas_e_anvisa(base, "('00000000')")
