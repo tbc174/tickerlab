@@ -14,6 +14,10 @@ dele veria pela API. Só os filtros que quem não programa entende:
   um nem outro.
 
 Sempre a matriz ativa (uma linha por empresa).
+
+Enquanto as tabelas do CNPJ só têm a prontidão de piloto (D11), a busca sai só para a conta de uma organização
+com a marca de piloto (`piloto=True`, conferido no servidor pela rota), e o corpo leva o aviso de piloto em
+cada campo e no topo (`src/api_externa/piloto.py`), como na API.
 """
 
 from collections.abc import Mapping
@@ -23,6 +27,7 @@ from datetime import date, timedelta
 from base import cnae, cnes, receita_codigos
 from base.porta import Porta
 from src.analista import leitura
+from src.api_externa import piloto as piloto_
 from src.api_externa.conjuntos import prospeccao
 from src.api_externa.envelope import fontes_da_resposta
 from src.portao_externo import Regras
@@ -185,18 +190,15 @@ def busca_da_api(filtros: Filtros, hoje: date) -> prospeccao.Busca:
     )
 
 
-def buscar(
-    porta: Porta, filtros: Filtros, *, hoje: date, regras: Regras | None = None
+def _pagina(
+    porta: Porta, filtros: Filtros, hoje: date, regras: Regras | None, piloto: bool
 ) -> leitura.Resposta:
-    """Uma página da busca no retrato público hoje.
-
-    Estados: `sem_filtro` (nada lido); `nao_liberada` (o portão não deixa sair a razão social ou algum campo
-    que filtra, decidido sem consultar a base, ou ainda não há retrato público); `pronta`, com o corpo do
-    leitor da API. `FiltroInvalido` se o pedido está fora do que a tela oferece (a rota responde 422)."""
-    if filtros.vazio():
-        return leitura.Resposta(SEM_FILTRO)
+    """Uma página com filtro, ainda sem o aviso de piloto: quem chama abre o registro (`piloto_.anotar`) em
+    volta e marca o corpo com ele."""
     busca = busca_da_api(filtros, hoje)
-    permitido = leitura.permitido_na_tela(prospeccao.CONJUNTO, hoje, regras)
+    permitido = leitura.permitido_na_tela(
+        prospeccao.CONJUNTO, hoje, regras, piloto=piloto
+    )
     precisa = {"razao_social", *busca.campos_filtrados()}
     if not all(permitido(prospeccao.FONTE, campo, False) for campo in precisa):
         return leitura.Resposta(leitura.NAO_LIBERADA)
@@ -213,36 +215,73 @@ def buscar(
     )
 
 
-def para_planilha(
-    porta: Porta, filtros: Filtros, *, hoje: date, regras: Regras | None = None
+def buscar(
+    porta: Porta,
+    filtros: Filtros,
+    *,
+    hoje: date,
+    regras: Regras | None = None,
+    piloto: bool = False,
 ) -> leitura.Resposta:
-    """A busca para o Excel: as páginas seguidas, até `PAGINAS_DA_PLANILHA`, com os nomes ao lado dos
-    códigos; `cortada` diz se ficou empresa de fora. Os mesmos estados de `buscar`."""
-    resposta = buscar(porta, filtros, hoje=hoje, regras=regras)
+    """Uma página da busca no retrato público hoje.
+
+    Estados: `sem_filtro` (nada lido); `nao_liberada` (o portão não deixa sair a razão social ou algum campo
+    que filtra, decidido sem consultar a base, ou ainda não há retrato público); `pronta`, com o corpo do
+    leitor da API. `FiltroInvalido` se o pedido está fora do que a tela oferece (a rota responde 422).
+
+    `piloto`: a conta é de uma organização com a marca de piloto (D11). O que sair pelo piloto leva o aviso
+    em cada campo e no topo do corpo (`piloto_.AVISO`)."""
+    if filtros.vazio():
+        return leitura.Resposta(SEM_FILTRO)
+    with piloto_.anotar() as liberados:
+        resposta = _pagina(porta, filtros, hoje, regras, piloto)
     if resposta.corpo is None:
         return resposta
-    empresas = list(resposta.corpo["empresas"])
-    fontes = {fonte["fonte"]: fonte for fonte in resposta.fontes}
-    corpo = resposta.corpo
-    for _ in range(PAGINAS_DA_PLANILHA - 1):
-        if not corpo["cortada"]:
-            break
-        seguinte = buscar(
-            porta,
-            replace(filtros, cursor=corpo["proximo_cursor"]),
-            hoje=hoje,
-            regras=regras,
-        )
-        if seguinte.corpo is None:
-            break
-        corpo = seguinte.corpo
-        empresas += corpo["empresas"]
-        fontes |= {fonte["fonte"]: fonte for fonte in seguinte.fontes}
+    return replace(resposta, corpo=piloto_.marcar(resposta.corpo, liberados))
+
+
+def para_planilha(
+    porta: Porta,
+    filtros: Filtros,
+    *,
+    hoje: date,
+    regras: Regras | None = None,
+    piloto: bool = False,
+) -> leitura.Resposta:
+    """A busca para o Excel: as páginas seguidas, até `PAGINAS_DA_PLANILHA`, com os nomes ao lado dos
+    códigos; `cortada` diz se ficou empresa de fora. Os mesmos estados e o mesmo aviso de piloto de `buscar`."""
+    if filtros.vazio():
+        return leitura.Resposta(SEM_FILTRO)
+    with piloto_.anotar() as liberados:
+        resposta = _pagina(porta, filtros, hoje, regras, piloto)
+        if resposta.corpo is None:
+            return resposta
+        empresas = list(resposta.corpo["empresas"])
+        fontes = {fonte["fonte"]: fonte for fonte in resposta.fontes}
+        corpo = resposta.corpo
+        for _ in range(PAGINAS_DA_PLANILHA - 1):
+            if not corpo["cortada"]:
+                break
+            seguinte = _pagina(
+                porta,
+                replace(filtros, cursor=corpo["proximo_cursor"]),
+                hoje,
+                regras,
+                piloto,
+            )
+            if seguinte.corpo is None:
+                break
+            corpo = seguinte.corpo
+            empresas += corpo["empresas"]
+            fontes |= {fonte["fonte"]: fonte for fonte in seguinte.fontes}
     junta = {
         "como_era_em": resposta.corpo["como_era_em"],
         "empresas": [legivel(empresa) for empresa in empresas],
         "cortada": corpo["cortada"],
     }
     return leitura.Resposta(
-        leitura.PRONTA, junta, [fontes[f] for f in sorted(fontes)], len(empresas)
+        leitura.PRONTA,
+        piloto_.marcar(junta, liberados),
+        [fontes[f] for f in sorted(fontes)],
+        len(empresas),
     )

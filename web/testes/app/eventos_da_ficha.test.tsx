@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { EventosDaEmpresaV1, FichaDaEmpresaV1 } from "../../src/app/tipos";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { abrirAba, abrirApp, respostaJson } from "./ajudantes";
 
 const CNPJ = "02.429.144/0001-93";
 const ROTA_DA_FICHA = "/api/v1/analista/ficha";
@@ -69,7 +69,7 @@ function abrir(eventos: (corpo: unknown) => Response) {
 async function verFicha() {
   fireEvent.change(await screen.findByLabelText("CNPJ"), { target: { value: CNPJ } });
   fireEvent.click(screen.getByRole("button", { name: "Ver a ficha" }));
-  await screen.findByRole("region", { name: "Cadastro na Receita" });
+  await abrirAba("Eventos");
 }
 
 describe("eventos da ficha", () => {
@@ -173,7 +173,7 @@ describe("eventos da ficha", () => {
   it("se o pedido falha, a ficha segue sem a seção", async () => {
     abrir(() => respostaJson(503, { detail: "A base não está disponível agora." }));
     await verFicha();
-    expect(screen.getByRole("region", { name: "Cadastro na Receita" })).toBeTruthy();
+    expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
   });
 });

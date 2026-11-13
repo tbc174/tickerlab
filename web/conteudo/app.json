@@ -20,6 +20,7 @@
       "icone": "inicio",
       "paginas": [
         "inicio",
+        "perguntar",
         "pulse"
       ],
       "rotulo": "Início"
@@ -868,6 +869,78 @@
       }
     ]
   },
+  "menu": [
+    {
+      "chave": "inicio",
+      "icone": "inicio",
+      "novo": false,
+      "paginas": [
+        "inicio"
+      ],
+      "rotulo": "Início",
+      "secundario": false
+    },
+    {
+      "chave": "perguntar",
+      "icone": "perguntar",
+      "novo": true,
+      "paginas": [
+        "perguntar"
+      ],
+      "rotulo": "Perguntar",
+      "secundario": false
+    },
+    {
+      "chave": "empresas",
+      "icone": "empresas",
+      "novo": false,
+      "paginas": [
+        "encontrar_empresas",
+        "ficha_da_empresa",
+        "comparar_empresas"
+      ],
+      "rotulo": "Empresas",
+      "secundario": false
+    },
+    {
+      "chave": "setores",
+      "icone": "setores",
+      "novo": false,
+      "paginas": [
+        "relatorio_do_setor"
+      ],
+      "rotulo": "Setores",
+      "secundario": false
+    },
+    {
+      "chave": "monitorar",
+      "icone": "monitorar",
+      "novo": false,
+      "paginas": [],
+      "rotulo": "Monitorar",
+      "secundario": false
+    },
+    {
+      "chave": "dados",
+      "icone": "dados",
+      "novo": false,
+      "paginas": [
+        "dados_e_cobertura"
+      ],
+      "rotulo": "Dados e cobertura",
+      "secundario": true
+    },
+    {
+      "chave": "conectar",
+      "icone": "conectar",
+      "novo": false,
+      "paginas": [
+        "conectar"
+      ],
+      "rotulo": "Conectar",
+      "secundario": true
+    }
+  ],
   "painel": {
     "frase_do_cvar": "Perda média nos piores dias (CVaR {confianca}%): {cvar}. Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o passado, não um limite de perda.",
     "itens": [

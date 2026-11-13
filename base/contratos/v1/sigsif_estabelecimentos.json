@@ -1,0 +1,88 @@
+{
+  "tabela": "sigsif_estabelecimentos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ do estabelecimento (14 caracteres, com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "nr_sif": {
+      "descricao": "Número do SIF (Serviço de Inspeção Federal)",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação do registro no SIF, como o MAPA informa",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município do estabelecimento, como o MAPA informa",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Unidade da federação do estabelecimento",
+      "unidade": "texto"
+    },
+    "area_categoria": {
+      "descricao": "Área e categoria do registro (carnes, leite, pescado...)",
+      "unidade": "texto"
+    },
+    "categoria_classe": {
+      "descricao": "Classe da categoria do registro (abate, industrialização...)",
+      "unidade": "texto"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "nr_sif",
+    "area_categoria",
+    "categoria_classe",
+    "municipio"
+  ],
+  "datas": {
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-02",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Variável (o MAPA regrava o arquivo inteiro quando atualiza)",
+  "atraso": "A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o arquivo foi modificado no portal do MAPA, que é o `disponivel_em`",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

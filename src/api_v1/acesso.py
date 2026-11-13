@@ -264,6 +264,9 @@ ROTAS_DA_CONTA = frozenset(
         # molde D: a lista de setores só pede login (ajuda a página "Relatório do setor", que tem o
         # contrato de /v1/relatorio-setor; é ele que diz o plano das seções da base)
         "/v1/setores",
+        # o chat de IA (linha 903): pede login e uma organização com chave ativa, conferidas na própria
+        # rota (src/api_v1/chat.py); o plano da conta não muda o que ele vê, o contrato da organização sim
+        "/v1/chat",
     }
 )
 
@@ -281,6 +284,8 @@ ROTAS_DE_ARQUIVO = {
     "/v1/analista/ficha/pessoas": "/v1/analista/ficha",
     "/v1/analista/ficha/eventos": "/v1/analista/ficha",
     "/v1/analista/ficha/vinculos": "/v1/analista/ficha",
+    # quem já se mexeu no setor (linha 903, PR D): o plano é o da ficha, o mesmo recurso (Dossiê da base)
+    "/v1/analista/setor/compradores": "/v1/analista/ficha",
     "/v1/analista/ficha/contato": "/v1/analista/ficha",
     "/v1/analista/ficha/titular": "/v1/analista/ficha",
     "/v1/analista/empresas/planilha": "/v1/analista/empresas",

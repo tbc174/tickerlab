@@ -161,6 +161,50 @@ def test_trocar_de_area_nao_muda_endereco_nem_grupo_do_streamlit(chave, url, gru
     assert len({p.url for p in paginas.PAGINAS}) == len(paginas.PAGINAS)
 
 
+def test_menu_do_app_tem_sete_itens_na_ordem_do_plano():
+    """Plano de 13/11/2026 (linha 903): o menu é o caminho principal, em sete itens."""
+    assert [i.rotulo for i in paginas.MENU_DO_APP] == [
+        "Início",
+        "Perguntar",
+        "Empresas",
+        "Setores",
+        "Monitorar",
+        "Dados e cobertura",
+        "Conectar",
+    ]
+    chaves = [i.chave for i in paginas.MENU_DO_APP]
+    assert len(set(chaves)) == len(chaves)
+    assert [i.chave for i in paginas.MENU_DO_APP if i.secundario] == [
+        "dados",
+        "conectar",
+    ]
+
+
+def test_menu_do_app_so_aponta_para_pagina_que_existe_ou_que_ainda_vem():
+    """Chave errada num item não passa calada; e a página que nasceu sai da lista de espera."""
+    for item in paginas.MENU_DO_APP:
+        assert item.paginas, item.chave
+        for chave in item.paginas:
+            existe = chave in paginas.POR_CHAVE
+            espera = chave in paginas.PAGINAS_DO_MENU_QUE_AINDA_VEM
+            assert existe != espera, chave
+    do_menu = {c for i in paginas.MENU_DO_APP for c in i.paginas}
+    assert do_menu >= paginas.PAGINAS_DO_MENU_QUE_AINDA_VEM
+
+
+def test_nenhuma_pagina_fica_em_dois_itens_do_menu():
+    todas = [c for i in paginas.MENU_DO_APP for c in i.paginas]
+    assert len(set(todas)) == len(todas)
+
+
+def test_pagina_do_menu_nao_e_de_administracao_e_abre_no_app_novo():
+    """O item abre a primeira página: ela precisa de endereço próprio e não pode ser só de admin."""
+    for item in paginas.MENU_DO_APP:
+        for chave in item.paginas:
+            if chave in paginas.POR_CHAVE:
+                assert not paginas.POR_CHAVE[chave].somente_admin, chave
+
+
 def test_paginas_da_area_ativo_na_ordem_das_abas():
     """A ordem das abas da página do ativo (PR 3): as análises, depois "Comparar com…" e o relatório."""
     chaves = [p.chave for p in paginas.paginas_da_area("ativo")]
@@ -182,7 +226,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
 @pytest.mark.parametrize(
     ("area", "chaves"),
     [
-        ("inicio", {"inicio", "pulse"}),
+        ("inicio", {"inicio", "pulse", "perguntar"}),
         (
             "empresas",
             {
@@ -319,6 +363,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "o_que_mudou",
         "dados_e_cobertura",
         "conectar",
+        "perguntar",
     }
 
 
@@ -354,12 +399,14 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
             "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
             "/v1/analista/ficha/eventos",  # os eventos herdam o acesso da ficha e a tela os pede com o CNPJ dela
             "/v1/analista/ficha/vinculos",  # os vínculos herdam o acesso da ficha e a tela os pede com o CNPJ dela
+            "/v1/analista/setor/compradores",  # quem se mexeu no setor herda o acesso da ficha (mesmo recurso)
             "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
             "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
             "/v1/relatorio-setor/pdf",
             "/v1/relatorio-setor/apresentacao",
             "/v1/relatorio-empresa/apresentacao",
             "/v1/relatorio-empresa/markdown",
+            "/v1/chat",  # a pergunta herda o acesso da página Perguntar (o estado é o contrato dela)
             "/v1/eu",
             "/v1/conta",
             "/v1/sair",

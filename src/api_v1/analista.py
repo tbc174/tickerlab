@@ -12,6 +12,10 @@ Nada aqui lê a base por outro caminho: a porta e as regras do portão são as d
 (`src/api_externa/rotas.py`, `abrir_porta` e `regras_da_api`), e a leitura é a do leitor da API
 (`src/analista/leitura.py`). Assim a tela mostra só o que a API mostraria.
 
+A busca de empresas vale também pela prontidão de piloto (D11): para a conta que é membro de uma organização
+com a marca de piloto vigente (`membros.e_do_piloto`, conferido aqui, no servidor, a cada pedido), e a
+resposta e a planilha levam o aviso de piloto. Para as outras contas nada muda: `nao_liberada`.
+
 É POST porque o CNPJ vai no corpo, não no endereço (não vai para o log de acesso); o log do app grava só o
 estado da resposta, e o nome do arquivo da planilha não leva o CNPJ.
 """
@@ -27,10 +31,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from base.porta import Porta
-from src.analista import busca, comparacao, eventos, leitura, planilha, vinculos
+from src.analista import busca, comparacao, eventos, leitura, planilha, setor, vinculos
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
+from src.banco import membros_da_organizacao as membros
 from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
@@ -228,18 +233,30 @@ def vinculos_da_empresa(
     return esquemas.de_vinculos_do_analista(resposta, vinculos.LIMITES)
 
 
+def _e_do_piloto(conta: Usuario, dia: date) -> bool:
+    """A conta é membro de uma organização com a marca de piloto no dia? Conferido no servidor, a cada pedido."""
+    with obter_engine().connect() as banco:
+        return membros.e_do_piloto(banco, conta.id, dia)
+
+
 def _busca_do_pedido(
-    pedido: PedidoDaBuscaV1, *, para_planilha: bool
+    conta: Usuario, pedido: PedidoDaBuscaV1, *, para_planilha: bool
 ) -> leitura.Resposta:
     filtros = pedido.filtros()
     # o formulário abre com este pedido: as opções saem sem abrir a base
     if filtros.vazio():
         return leitura.Resposta(busca.SEM_FILTRO)
     ler = busca.para_planilha if para_planilha else busca.buscar
+    dia = hoje()
+    piloto = _e_do_piloto(conta, dia)
     with _porta() as porta:
         try:
             resposta = ler(
-                porta, filtros, hoje=hoje(), regras=rotas_da_api_externa.regras_da_api()
+                porta,
+                filtros,
+                hoje=dia,
+                regras=rotas_da_api_externa.regras_da_api(),
+                piloto=piloto,
             )
         except busca.FiltroInvalido as erro:
             raise HTTPException(status_code=422, detail=FILTRO_INVALIDO) from erro
@@ -249,19 +266,22 @@ def _busca_do_pedido(
 
 @router.post("/empresas")
 def encontrar_empresas(
-    _conta: Conta, pedido: PedidoDaBuscaV1
+    conta: Conta, pedido: PedidoDaBuscaV1
 ) -> esquemas.BuscaDeEmpresasV1:
     """Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia
     em que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o
-    portão ainda não libera sai `nao_liberada`."""
-    return esquemas.de_busca_do_analista(_busca_do_pedido(pedido, para_planilha=False))
+    portão ainda não libera sai `nao_liberada`. O que sai pela prontidão de piloto, só para a conta de
+    organização com a marca, vem com `aviso_de_piloto`."""
+    return esquemas.de_busca_do_analista(
+        _busca_do_pedido(conta, pedido, para_planilha=False)
+    )
 
 
 @router.post("/empresas/planilha", response_class=Response)
-def encontrar_empresas_em_planilha(_conta: Conta, pedido: PedidoDaBuscaV1) -> Response:
+def encontrar_empresas_em_planilha(conta: Conta, pedido: PedidoDaBuscaV1) -> Response:
     """A mesma busca em Excel (mesmo acesso, mesmo plano): até dez páginas, com os nomes ao lado dos códigos,
-    a aba das fontes e o aviso."""
-    resposta = _busca_do_pedido(pedido, para_planilha=True)
+    a aba das fontes e o aviso; dado de piloto leva o aviso de piloto em cada linha e nas fontes."""
+    resposta = _busca_do_pedido(conta, pedido, para_planilha=True)
     if resposta.corpo is None:
         raise HTTPException(status_code=404, detail=BUSCA_INDISPONIVEL)
     corpo = resposta.corpo | {"fontes": resposta.fontes}
@@ -325,3 +345,44 @@ def comparar_empresas_em_planilha(
             "Cache-Control": "no-store",
         },
     )
+
+
+SETOR_INVALIDO = (
+    "Setor inválido: use o CNAE com 5 ou 7 dígitos, a UF com 2 letras e de 1 a 10 anos."
+)
+TAMANHO_MAXIMO_DO_CNAE = 16  # com pontuação e espaços; o resto é erro de quem chama
+
+
+class PedidoDoSetorV1(BaseModel):
+    # sem limite aqui: o 422 do FastAPI repetiria o texto pedido (os limites ficam na rota)
+    cnae: str
+    uf: str | None = None
+    anos: int | None = None
+
+
+@router.post("/setor/compradores")
+def compradores_do_setor(
+    _conta: Conta, pedido: PedidoDoSetorV1
+) -> esquemas.CompradoresDoSetorV1:
+    """Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa
+    ativa do CNAE, os FIPs sócios e as companhias abertas com controlada no setor, cada campo com fonte e dia.
+    Mesmo leitor e mesmo portão da API externa, sem o contrato da organização; movimento passado, não intenção
+    de compra. O sinal que o portão não libera vem em `sinais_nao_disponiveis`."""
+    if len(pedido.cnae) > TAMANHO_MAXIMO_DO_CNAE or len(pedido.uf or "") > 2:
+        raise HTTPException(status_code=422, detail=SETOR_INVALIDO)
+    with _porta() as porta:
+        try:
+            resposta = setor.compradores(
+                porta,
+                pedido.cnae,
+                pedido.uf,
+                pedido.anos,
+                hoje=hoje(),
+                regras=rotas_da_api_externa.regras_da_api(),
+            )
+        except ValueError as erro:  # PedidoInvalido é um ValueError
+            raise HTTPException(status_code=422, detail=SETOR_INVALIDO) from erro
+    log.info(
+        "setor do analista: %s", resposta.estado
+    )  # só o estado, nunca o setor pedido
+    return esquemas.de_compradores_do_analista(resposta, ())

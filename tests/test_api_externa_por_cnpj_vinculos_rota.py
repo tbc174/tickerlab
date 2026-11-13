@@ -295,11 +295,10 @@ def test_o_tipo_barrado_vem_como_nao_disponivel_e_os_limites_nao_falam_dele(duas
     assert "cvm-hist-fca" not in {f["source"] for f in corpo["sources"]}
 
 
-def test_a_lista_vazia_com_o_tipo_barrado_diz_o_que_nao_foi_consultado(duas, pasta):
+def test_a_lista_vazia_com_o_tipo_barrado_diz_o_que_nao_foi_consultado(duas):
     cliente, com_links, _so_de_companies = duas
-    (pasta / "rede" / "ligacoes.parquet").unlink()
     corpo = cliente.get(
-        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_links)
+        _rota(), params={"known_at": "2018-01-01"}, headers=aj.bearer(com_links)
     ).json()
     assert corpo["links"] == []
     assert corpo["unavailable_link_types"] == ["audits"]
@@ -431,3 +430,13 @@ def test_cnpj_invalido_da_400(cliente, cenario):
 
 def test_sem_chave_da_401(cliente, cenario):
     assert cliente.get(_rota()).status_code == 401
+
+
+def test_sem_a_tabela_de_ligacoes_a_rota_da_404(duas, pasta):
+    """Tabela fora da porta não é "sem vínculos" (linha 917)."""
+    cliente, com_links, _so_de_companies = duas
+    (pasta / "rede" / "ligacoes.parquet").unlink()
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_links)
+    )
+    assert resposta.status_code == 404

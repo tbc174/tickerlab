@@ -434,7 +434,17 @@ def test_cnpj_invalido_e_erro_de_quem_chama(pasta):
         _ler(pasta, cnpj="123")
 
 
-def test_sem_as_tabelas_a_empresa_sai_sem_eventos(tmp_path):
+def test_sem_as_tabelas_nada_foi_consultado_e_a_rota_nao_serve(tmp_path):
+    """Tabela fora da porta não é "empresa sem eventos" (linha 917): sem nenhum tipo consultado, sem resposta."""
     base = tmp_path / "base"
     _gravar_rede(base)
-    assert _corpo(base)["eventos"] == []
+    assert _ler(base) is None
+
+
+def test_tabela_fora_da_porta_vai_em_tipos_nao_disponiveis(pasta):
+    import shutil
+
+    shutil.rmtree(pasta / "trocas_de_auditor")
+    corpo = _corpo(pasta)
+    assert corpo["tipos_nao_disponiveis"]
+    assert corpo["eventos"]

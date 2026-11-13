@@ -226,16 +226,37 @@ class CompradoresServidos:
     linhas: int = 0
 
 
-def pedido_dos_parametros(
-    cnae: str, state: str | None, years: int | None, limit: int | None
-) -> PedidoDeCompradores:
-    """Os parâmetros da rota (como o cliente escreve) viram o pedido; `PedidoInvalido` fora da forma."""
+def cnae_do_parametro(cnae: str) -> str:
+    """O CNAE como o cliente escreve (com ponto, traço, barra ou espaço) vira só os dígitos da classe (5) ou da
+    subclasse (7); `PedidoInvalido("invalid_cnae")` fora da forma."""
     digitos = "".join(c for c in cnae if c not in ".-/ ")
     if (
         not (digitos.isascii() and digitos.isdigit())
         or len(digitos) not in TAMANHOS_DO_CNAE
     ):
         raise PedidoInvalido("invalid_cnae")
+    return digitos
+
+
+def mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
+    """O retrato da Receita mais novo já público no dia, o mesmo mês nas duas tabelas sem pessoa do CNPJ
+    (None se alguma ainda não tinha retrato público)."""
+    meses = []
+    for tabela in (ESTABELECIMENTOS, EMPRESAS):
+        condicao = condicao_como_era(porta.colunas(tabela), tabela)
+        achado = porta.con.execute(
+            f"SELECT max({MES}) FROM {_view(tabela)} WHERE {condicao}",
+            {"dia": dia_de(como_era_em)},
+        ).fetchone()
+        meses.append(None if achado is None else achado[0])
+    return None if None in meses else min(meses)
+
+
+def pedido_dos_parametros(
+    cnae: str, state: str | None, years: int | None, limit: int | None
+) -> PedidoDeCompradores:
+    """Os parâmetros da rota (como o cliente escreve) viram o pedido; `PedidoInvalido` fora da forma."""
+    digitos = cnae_do_parametro(cnae)
     uf = (state or "").strip().upper() or None
     if uf is not None and uf not in UFS:
         raise PedidoInvalido("invalid_state")
@@ -305,18 +326,6 @@ class LeitorDeCompradores:
             if self._libera(CAMPOS_DO_SINAL[s]) and set(precisa[s]) <= self.tabelas
         )
 
-    def _mes_do_retrato(self, como_era_em: date) -> str | None:
-        """O retrato mais novo já público no dia, o mesmo mês nas duas tabelas da Receita."""
-        meses = []
-        for tabela in (ESTABELECIMENTOS, EMPRESAS):
-            condicao = condicao_como_era(self.porta.colunas(tabela), tabela)
-            achado = self.porta.con.execute(
-                f"SELECT max({MES}) FROM {_view(tabela)} WHERE {condicao}",
-                {"dia": dia_de(como_era_em)},
-            ).fetchone()
-            meses.append(None if achado is None else achado[0])
-        return None if None in meses else min(meses)
-
     def compradores(
         self, pedido: PedidoDeCompradores, como_era_em: date
     ) -> CompradoresServidos | None:
@@ -351,7 +360,7 @@ class LeitorDeCompradores:
     def _montar(
         self, pedido: PedidoDeCompradores, como_era_em: date, sinais: tuple[str, ...]
     ) -> CompradoresServidos | None:
-        mes = self._mes_do_retrato(como_era_em)
+        mes = mes_do_retrato(self.porta, como_era_em)
         if mes is None:
             return None
         nao_disponiveis = [s for s in SINAIS if s not in sinais]

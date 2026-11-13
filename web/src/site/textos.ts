@@ -16,7 +16,7 @@ export const AVISO =
   "fonte e a sua data, e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.";
 
 // a assinatura institucional do manual de identidade
-export const ASSINATURA = "A CLI de M&A e análise de investimento no Brasil.";
+export const ASSINATURA = "A CLI e o conector de M&A e análise de investimento no Brasil.";
 
 /** Endereço de uma página do app, com os parâmetros na ordem dada (sem codificar, como antes). */
 export function linkDoApp(pagina = "", parametros: Record<string, string> = {}): string {

@@ -9,7 +9,7 @@ import { BaixarMeusDados, mensagemDe } from "../BaixarMeusDados";
 import { useConta } from "../conta";
 import type { MeusLinksV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 function Links({ inicial }: { inicial: MeusLinksV1 }) {
@@ -98,7 +98,7 @@ export function MeusDados({ pagina }: { pagina: PaginaDoApp }) {
           Lendo os seus links…
         </p>
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Links inicial={pedido.dados} />
       )}

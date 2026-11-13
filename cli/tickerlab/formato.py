@@ -343,14 +343,42 @@ def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
     return f"{topo}\n\n{resposta_de_dado(resto)}"
 
 
+SEPARADOR_DE_BLOCOS = "\n\n"
+CAMPOS_DA_ANVISA = ("anvisa_registrations_total", "anvisa_registrations_active")
+
+
+def _aviso_da_anvisa(corpo: Mapping) -> str | None:
+    """O aviso de que registro na Anvisa é sinal de porte (inteiro, sem o corte das células) e o dia do
+    retrato de onde saiu cada contagem: a coluna "público em" da tabela é a da Receita, não a da Anvisa."""
+    aviso = corpo.get("anvisa_notice")
+    if not isinstance(aviso, str):
+        return None
+    dias: set[str] = set()
+    for empresa in corpo.get("companies") or []:
+        for nome in CAMPOS_DA_ANVISA:
+            campo = empresa.get(nome) if isinstance(empresa, Mapping) else None
+            if isinstance(campo, Mapping) and campo.get("published_at"):
+                dias.add(str(campo["published_at"]))
+    dias = sorted(dias)
+    if not dias:
+        return aviso
+    return f"{aviso} Retrato da Anvisa de {', '.join(sorted(dias))} (fonte: anvisa-produtos)."
+
+
 def prospeccao(corpo: Mapping) -> str:
     """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
-    return _paginada(
-        corpo,
+    aviso = _aviso_da_anvisa(corpo)
+    resto = {c: v for c, v in corpo.items() if c != "anvisa_notice"}
+    texto = _paginada(
+        resto,
         "companies",
         "empresas",
         "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...).",
     )
+    if aviso is None:
+        return texto
+    topo, _, depois = texto.partition(SEPARADOR_DE_BLOCOS)
+    return SEPARADOR_DE_BLOCOS.join([topo, f"Atenção: {aviso}", depois])
 
 
 def _ponta(ponta: object) -> str:
