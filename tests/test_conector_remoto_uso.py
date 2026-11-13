@@ -24,7 +24,9 @@ ID_DA_CHAVE = "tld_abcdefgh"
 @pytest.fixture
 def linhas(caplog):
     """As linhas de uso gravadas no teste, já lidas do JSON."""
-    caplog.set_level(logging.INFO, logger=uso.registro_de_uso.name)
+    caplog.set_level(
+        logging.INFO, logger="conector_remoto"
+    )  # o uso e os demais registros do conector
 
     def ler() -> list[dict]:
         return [
@@ -50,6 +52,18 @@ def registro_limpo():
     uso.registro_de_uso.propagate = antes[2]
 
 
+def _do_conector(caplog) -> str:
+    """O texto gravado pelos registros do conector.
+
+    O httpx e o SDK do MCP também registram em INFO (a URL com o CNPJ, o nome da ferramenta recusada); no
+    contêiner a raiz fica em WARNING e eles não saem, mas na suíte inteira outro teste pode baixar a raiz para
+    INFO. A medida aqui é a do conector.
+    """
+    return "\n".join(
+        r.getMessage() for r in caplog.records if r.name.startswith("conector_remoto")
+    )
+
+
 def _conector(rotas=None, conjuntos=None):
     argumentos = {"conjuntos": conjuntos} if conjuntos else {}
     return aj.conector(aj.api_de_mentira(rotas or {}, **argumentos))
@@ -69,9 +83,9 @@ def test_chamada_que_deu_certo_vira_uma_linha_so_com_os_campos_da_medida(
     assert linha["chave"] == ID_DA_CHAVE
     assert isinstance(linha["duracao_ms"], int) and linha["duracao_ms"] >= 0
     # nem o argumento, nem a resposta, nem a chave inteira
-    assert CNPJ not in caplog.text
-    assert "ALFA" not in caplog.text
-    assert aj.CHAVE_DE_MENTIRA not in caplog.text
+    assert CNPJ not in _do_conector(caplog)
+    assert "ALFA" not in _do_conector(caplog)
+    assert aj.CHAVE_DE_MENTIRA not in _do_conector(caplog)
 
 
 def test_erro_da_api_vira_resultado_erro_sem_a_mensagem(linhas):
@@ -93,7 +107,7 @@ def test_parametro_invalido_nao_leva_o_que_foi_digitado_ao_log(linhas, caplog):
     assert erro
     (linha,) = linhas()
     assert linha["resultado"] == "erro"
-    assert digitado not in caplog.text
+    assert digitado not in _do_conector(caplog)
 
 
 def test_ferramenta_que_a_chave_nao_ve_vira_recusada(linhas):
@@ -114,7 +128,7 @@ def test_nome_inventado_vira_desconhecida_e_nao_vai_ao_log(linhas, caplog):
     (linha,) = linhas()
     assert linha["ferramenta"] == uso.FERRAMENTA_DESCONHECIDA
     assert linha["resultado"] == "recusada"
-    assert inventado not in caplog.text
+    assert inventado not in _do_conector(caplog)
 
 
 def test_lista_de_ferramentas_nao_conta_como_chamada(linhas):
