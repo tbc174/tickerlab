@@ -4,7 +4,8 @@ O contêiner `tickerlab-api` de produção não tinha `<acervo>/base`: sem ela a
 `/v1/base/tabelas` respondem 503. Este script monta, a partir da base de casa, uma cópia **só do que a API
 serve**, em degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
 aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843; `--degrau 4`: mais as cópias reduzidas
-da lista de compradores, linha 844; `--degrau 5`: mais as cópias reduzidas dos cinco cadastros, linha 915), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
+da lista de compradores, linha 844; `--degrau 5`: mais as cópias reduzidas dos cinco cadastros, linha 915;
+`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
 
 Lista de permissão (Diretoria, 10/11/2026, ADR 0101 Emenda 4): só vai a tabela escrita em `DEGRAU_1` ou
 `DEGRAU_2_ACRESCENTA`, e só a coluna que o dicionário (`base/dicionario.py`) conhece, menos as
@@ -29,11 +30,17 @@ pessoa no dicionário e também não passam pela cópia por arquivo: vão no deg
 `base/recorte_dos_cadastros.py` (só a linha de pessoa jurídica, só raízes da `cnpj_empresas_pj` da mesma saída, sem
 nome nem texto livre), com o mesmo nome de tabela que a API lê. O envio do degrau 5 pede o pode da Diretoria.
 
+As tabelas do lote 1 das 300 pelo CNPJ (FIP, FII, indicadores da ANEEL e IDSS da ANS, linha 904) têm a marca de
+pessoa por linha e vão pela cópia por arquivo, como as do degrau 2, sem o nome do emissor dos ativos dos FII
+(`COLUNAS_FORA_DO_RECORTE`) e com os textos que trazem nome conferidos sem CPF (`TEXTOS_LIVRES`). Só no degrau 6: o cron segue no degrau 2, e o envio pede o pode da Diretoria com a prova de zero
+pessoa. Tabela do degrau 6 sem arquivo na base derruba a montagem.
+
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
     python -m scripts.montar_recorte_da_api --degrau 3 --base <acervo>/base --saida /tmp/base-api-rede
     python -m scripts.montar_recorte_da_api --degrau 4 --base <acervo>/base --saida /tmp/base-api-compradores
     python -m scripts.montar_recorte_da_api --degrau 5 --base <acervo>/base --saida /tmp/base-api-cadastros
+    python -m scripts.montar_recorte_da_api --degrau 6 --base <acervo>/base --saida /tmp/base-api-lotes
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -105,23 +112,14 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
-    # lote 1 das 300 pelo CNPJ (linha 904): têm a marca de pessoa por linha, mas o envio ao VPS pede o pode da
-    # Diretoria com a prova de zero pessoa da 1ª carga (linha 908). Até lá, ficam em casa.
-    "fip_informe",
-    "fii_informe_mensal",
-    "fii_ativos",
-    "fii_administradores",
-    "aneel_inadimplencia",
-    "aneel_indicadores_comerciais",
-    "ans_idss",
     # linha 904 (lote 2): titulares do INPI só com empresa; o envio ao VPS pede o "pode" da Diretoria e a leitura da
     # licença (CC Atribuição-SemDerivações 3.0, a confirmar para tabela derivada)
     "inpi_marcas_titulares",
     "inpi_patentes_depositantes",
     "inpi_desenhos_depositantes",
     "inpi_programas_titulares",
-    # linha 904 (lote 2, ANEEL): agentes, autos de infração e termos de notificação só com CNPJ; o envio ao VPS pede
-    # o "pode" da Diretoria com a prova de zero pessoa da 1ª carga (ODbL da ANEEL, citar)
+    # linha 904 (lote 2, ANEEL): agentes, autos de infração e termos de notificação. O original dos agentes trouxe uma
+    # linha de CPF: a Diretoria (13/11/2026 17h10) fez de `bruto/aneel-agentes` fonte de pessoa, e as três ficam em casa.
     "aneel_agentes",
     "aneel_autos_de_infracao",
     "aneel_termos_de_notificacao",
@@ -170,6 +168,24 @@ DEGRAU_2_ACRESCENTA = (
     # confere cada raiz na saída. Pode da Diretoria, 13/11/2026 01h55 (Emenda 4), linha 860.
     "anvisa_por_empresa",
 )  # fmt: skip
+# O lote 1 das 300 pelo CNPJ (linha 904): a linha com a marca de pessoa (`trata_como_pessoa`: empresário individual,
+# MEI, natureza do grupo 4 ou raiz que a Receita guardada não tem; nos ativos dos FII, também a raiz do emissor), ou
+# sem marca, não sai; o nome do emissor também não (`COLUNAS_FORA_DO_RECORTE`), e os textos com nome são conferidos
+# sem CPF (`TEXTOS_LIVRES`). Só no degrau 6: saíram de FICAM_EM_CASA com a prova de zero pessoa da 1ª carga
+# (13/11/2026); o envio pede o pode da Diretoria.
+LOTE_1_DAS_300 = (
+    "fip_informe",
+    "fii_informe_mensal",
+    "fii_ativos",
+    "fii_administradores",
+    "aneel_inadimplencia",
+    "aneel_indicadores_comerciais",
+    "ans_idss",
+)
+# Colunas que o dicionário conhece mas não saem de casa. O nome do emissor dos ativos dos FII só entra com o CNPJ de DV
+# certo, mas na linha de pessoa seria o nome dela: a Diretoria (13/11/2026) pediu a prova por contagem ou o corte, e
+# a leitura mais estreita é o corte (o `cnpj_emissor` fica, e o nome da empresa vem da `cnpj_empresas_pj`).
+COLUNAS_FORA_DO_RECORTE: dict[str, tuple[str, ...]] = {"fii_ativos": ("emissor",)}
 # A rede só PJ (linha 843; desenho aceito pela Diretoria em 11/11/2026): só no degrau 3, inteira, pelo filtro e pela
 # trava de `base/rede/recorte_so_pj.py`, nunca pela cópia por arquivo.
 REDE_SO_PJ = recorte_so_pj.REDE
@@ -205,7 +221,8 @@ class Resultado:
 
 def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
     """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta; 3 = o 2 + a rede só PJ; 4 = o 3 + as cópias
-    reduzidas da lista de compradores; 5 = o 4 + as cópias reduzidas dos cinco cadastros), na ordem da lista."""
+    reduzidas da lista de compradores; 5 = o 4 + as cópias reduzidas dos cinco cadastros; 6 = o 5 + os lotes das
+    300 pelo CNPJ (lote 1)), na ordem da lista."""
     if degrau == 1:
         return DEGRAU_1
     if degrau == 2:
@@ -216,7 +233,9 @@ def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
         return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA, *REDE_SO_PJ, *REDUZIDAS)
     if degrau == 5:
         return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA, *REDE_SO_PJ, *REDUZIDAS, *CADASTROS)
-    raise RecorteErro(f"degrau {degrau} não existe (1 a 5)")
+    if degrau == 6:
+        return (*tabelas_do_degrau(5), *LOTE_1_DAS_300)
+    raise RecorteErro(f"degrau {degrau} não existe (1 a 6)")
 
 
 def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
@@ -255,8 +274,9 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
 
 
 def colunas_permitidas(nome: str, colunas: list[str]) -> list[str]:
-    """As colunas do arquivo que podem sair: as que o dicionário da tabela conhece, sem as de pessoa."""
+    """As colunas do arquivo que podem sair: as que o dicionário da tabela conhece, sem as de pessoa nem as cortadas."""
     tabela = TABELAS[nome]
+    cortadas = COLUNAS_FORA_DO_RECORTE.get(nome, ())
     conhecidas = {
         *tabela.colunas,
         *tabela.datas.values(),
@@ -267,6 +287,7 @@ def colunas_permitidas(nome: str, colunas: list[str]) -> list[str]:
         c
         for c in colunas
         if c not in COLUNAS_DE_PESSOA
+        and c not in cortadas
         and (c in conhecidas or c.startswith(PREFIXO_DA_LINHAGEM))
     ]
 
@@ -336,7 +357,9 @@ def recortar_arquivo(
 def conferir_saida(con: duckdb.DuckDBPyConnection, nome: str, arquivo: Path) -> None:
     """Lê o arquivo que vai sair e falha se tiver coluna de pessoa ou linha de pessoa."""
     colunas = _colunas_do_arquivo(con, arquivo)
-    proibidas = sorted(set(colunas) & COLUNAS_DE_PESSOA)
+    proibidas = sorted(
+        set(colunas) & (COLUNAS_DE_PESSOA | set(COLUNAS_FORA_DO_RECORTE.get(nome, ())))
+    )
     if proibidas:
         raise RecorteErro(
             f"{nome}: {arquivo.name} saiu com coluna de pessoa {proibidas}"
@@ -379,6 +402,11 @@ TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
     "ma_candidatos": ("assunto",),
     "ratings": ("evidencia", "outras_notas", "nota_original"),
     "noticias_fatos": ("trecho",),
+    # lote 1 das 300 (linha 904): nomes de fundo, de ativo e de administrador
+    "fip_informe": ("nome_do_fundo",),
+    "fii_informe_mensal": ("nome_do_fundo",),
+    "fii_ativos": ("nome_do_ativo",),
+    "fii_administradores": ("razao_social", "nome_comercial", "motivo_do_cancelamento"),
 }
 _CANDIDATO_A_CPF_SQL = (
     r"(^|\D)\d{3}[.\s\x{00A0}]?\d{3}[.\s\x{00A0}]?\d{3}[-\s\x{00A0}]?\d{2}($|\D)"
@@ -778,7 +806,7 @@ def comando_ssh_padrao() -> list[str]:
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Recorte da base para o VPS (linha 739)")
-    p.add_argument("--degrau", type=int, choices=(1, 2, 3, 4, 5), required=True)
+    p.add_argument("--degrau", type=int, choices=(1, 2, 3, 4, 5, 6), required=True)
     p.add_argument(
         "--base", type=Path, help="<acervo>/base (padrão: o acervo do ambiente)"
     )
@@ -791,6 +819,14 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
         help="manda o recorte ao VPS (receber-base-api)",
     )
     return p.parse_args(argv)
+
+
+def obrigatorias_sem_arquivo(resultados: list[Resultado]) -> list[str]:
+    """As tabelas que não podem sair sem arquivo: o núcleo e o lote 1 das 300 (sem elas a montagem falha)."""
+    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300)
+    return [
+        r.tabela for r in resultados if r.arquivos == 0 and r.tabela in obrigatorias
+    ]
 
 
 def _exigir_saida_vazia(saida: Path) -> None:
@@ -822,9 +858,7 @@ def main(argv: list[str] | None = None) -> int:
                 "%s: %d arquivo(s), %d iguais, %d recortados, %d linha(s) de pessoa fora, %.1f MB",
                 r.tabela, r.arquivos, r.copiados, r.recortados, r.linhas_tiradas, r.bytes_enviados / 1e6,
             )  # fmt: skip
-        vazias = [
-            r.tabela for r in resultados if r.arquivos == 0 and r.tabela in DEGRAU_1
-        ]
+        vazias = obrigatorias_sem_arquivo(resultados)
         if vazias:
             print(f"FALHAS: sem arquivo na base: {', '.join(vazias)}")
             return 1

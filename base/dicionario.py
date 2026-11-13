@@ -10971,8 +10971,8 @@ _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no a
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
 _FUNDOS_E_REGULADORES = "2026-10-25"  # FIP, FII, ANEEL (indicadores) e ANS (IDSS) entraram no arquivista neste dia (linha 904)
-# agentes e termos de notificação: fontes do lote 2 (13/11/2026); a 1ª baixada vem depois do merge
-_AGENTES_E_TERMOS_DA_ANEEL = "2026-11-14"
+# agentes e fiscalização (autos e termos): fontes do lote 2; a 1ª baixada foi a rodada avulsa de 13/11/2026
+_AGENTES_E_TERMOS_DA_ANEEL = "2026-11-13"
 # linha 904 (lote 3): a 1ª coleta do arquivista dessas fontes (as do Banco Central e da ANTT); a posição de cada dia
 # vale desde o dia do arquivo, nunca antes
 _CADASTROS_DO_BCB_E_DA_ANTT = "2026-11-16"

@@ -13812,7 +13812,7 @@
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"
       },
-      "historico_desde": "2026-11-14",
+      "historico_desde": "2026-11-13",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
@@ -14100,7 +14100,7 @@
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"
       },
-      "historico_desde": "2026-11-14",
+      "historico_desde": "2026-11-13",
       "granularidade_do_publico_em": "dia",
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
