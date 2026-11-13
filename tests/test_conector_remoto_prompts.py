@@ -11,6 +11,7 @@ from mcp.types import INVALID_PARAMS
 
 from conector_remoto import ferramentas, prompts, servidor
 from tests import ajudantes_do_conector as aj
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
 
 CNPJ = "11111111000191"
 PROMPTS = {
@@ -104,7 +105,10 @@ def test_dossie_usa_a_mesma_orientacao_das_instrucoes():
 @pytest.mark.parametrize(
     ("nome", "argumentos"),
     [
-        ("triagem_de_cnpj", {"cnpj": "123.456.789-09"}),  # forma de CPF, de ninguém
+        (
+            "triagem_de_cnpj",
+            {"cnpj": formatado(CPF_DE_TESTE)},
+        ),  # forma de CPF, de ninguém
         ("dossie_da_empresa", {"cnpj": "../companies"}),
         ("comparaveis_da_empresa", {"cnpj": CNPJ, "como_era_em": "ontem"}),
         ("alvos_no_setor", {"cnae": "energia", "uf": "SP"}),
