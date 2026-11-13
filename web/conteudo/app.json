@@ -20,6 +20,7 @@
       "icone": "inicio",
       "paginas": [
         "inicio",
+        "perguntar",
         "pulse"
       ],
       "rotulo": "Início"
@@ -502,10 +503,10 @@
     }
   },
   "base": {
-    "fontes": 46,
-    "ligadas_pelo_cnpj": 122,
-    "orgaos": 34,
-    "tabelas": 159
+    "fontes": 49,
+    "ligadas_pelo_cnpj": 142,
+    "orgaos": 37,
+    "tabelas": 176
   },
   "comparacao": {
     "atalhos": [
@@ -889,7 +890,9 @@
       "chave": "perguntar",
       "icone": "perguntar",
       "novo": true,
-      "paginas": [],
+      "paginas": [
+        "perguntar"
+      ],
       "rotulo": "Perguntar",
       "secundario": false
     },

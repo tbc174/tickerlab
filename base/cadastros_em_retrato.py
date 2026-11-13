@@ -53,6 +53,8 @@ class Cadastro:
     achar: Achador | None = (
         None  # quando o cadastro não é um arquivo por retrato (o GLEIF: páginas)
     )
+    # as raízes que marcam a linha como de pessoa (os ativos dos FII: o fundo e o emissor)
+    raizes_de_pessoa: tuple[str, ...] = ("cnpj_basico",)
 
 
 def _do_endereco_mais_novo(
@@ -89,17 +91,31 @@ def como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
     return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
 
 
-def raizes(tabela: pd.DataFrame) -> pd.Series:
-    return tabela["cnpj_basico"].dropna().drop_duplicates().astype(str)
+def raizes(
+    tabela: pd.DataFrame, colunas: tuple[str, ...] = ("cnpj_basico",)
+) -> pd.Series:
+    return (
+        pd.concat([tabela[c] for c in colunas], ignore_index=True)
+        .dropna()
+        .drop_duplicates()
+        .astype(str)
+    )
 
 
-def de_pessoa(tabela: pd.DataFrame, pessoas: np.ndarray) -> pd.Series:
-    """Para cada linha, se a raiz do CNPJ é de pessoa (sem CNPJ: falso)."""
-    com_cnpj = tabela["cnpj_basico"].notna()
+def de_pessoa(
+    tabela: pd.DataFrame,
+    pessoas: np.ndarray,
+    colunas: tuple[str, ...] = ("cnpj_basico",),
+) -> pd.Series:
+    """Para cada linha, se alguma das raízes em `colunas` é de pessoa (sem CNPJ: falso)."""
     resposta = pd.Series(False, index=tabela.index)
-    if com_cnpj.any():
-        raizes = tabela.loc[com_cnpj, "cnpj_basico"].astype(str)
-        resposta[com_cnpj] = cnpjs.contem(pessoas, cnpjs.raizes_em_numeros(raizes))
+    for coluna in colunas:
+        com_cnpj = tabela[coluna].notna()
+        if com_cnpj.any():
+            achadas = tabela.loc[com_cnpj, coluna].astype(str)
+            resposta[com_cnpj] |= cnpjs.contem(
+                pessoas, cnpjs.raizes_em_numeros(achadas)
+            )
     return resposta
 
 
@@ -109,7 +125,7 @@ def _para_gravar(
     datas = [*cadastro.datas, "visto_em", "disponivel_em"]
     return (
         tabela.assign(
-            trata_como_pessoa=de_pessoa(tabela, pessoas),
+            trata_como_pessoa=de_pessoa(tabela, pessoas, cadastro.raizes_de_pessoa),
             **{c: pd.to_datetime(tabela[c]).dt.date for c in datas},
             consta=tabela["consta"].astype(bool),
             montado_em=agora.isoformat(),
@@ -152,7 +168,10 @@ def montar(
         tabela, pulados = cadastro.juntar(_lidos(achados, cadastro, contagem))
         if pessoas is None:
             sabidas = pessoas_pela_receita(
-                conexao, cnpjs.ordenados(cnpjs.raizes_em_numeros(raizes(tabela)))
+                conexao,
+                cnpjs.ordenados(
+                    cnpjs.raizes_em_numeros(raizes(tabela, cadastro.raizes_de_pessoa))
+                ),
             )
         else:
             sabidas = como_numeros(pessoas)

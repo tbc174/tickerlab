@@ -439,3 +439,64 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .bandeja-de-comparacao { position: sticky; bottom: var(--e3); z-index: 2; margin: var(--e3) 0; padding: var(--e3) var(--e4);
   border: 1px solid var(--linha-forte); border-radius: var(--e2); background: var(--superficie); }
 .bandeja-de-comparacao p { margin: 0 0 var(--e2); }
+
+/* Tela de Setor: as aberturas por ano em barras (a tabela embaixo diz os números) */
+.barras-do-setor {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e1);
+  height: 80px;
+  margin: var(--e2) 0 var(--e4);
+}
+.barra-do-setor {
+  flex: 1;
+  background: var(--azul-texto);
+  opacity: 0.75;
+  border-radius: 2px 2px 0 0;
+/* Perguntar (linha 903): a conversa na coluna principal e "Nesta conversa" ao lado; no celular, uma coluna só,
+   com a caixa da pergunta presa embaixo */
+.grade-do-chat { display: grid; gap: var(--e5); margin-top: var(--e4); }
+@media (min-width: 761px) { .grade-do-chat { grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; } }
+.coluna-do-chat { display: flex; flex-direction: column; gap: var(--e3); min-width: 0; }
+.trocas-do-chat { display: flex; flex-direction: column; gap: var(--e5); margin: 0; padding: 0; list-style: none; }
+.bolha-da-pergunta { margin: 0 0 var(--e3) auto; max-width: 80%; width: fit-content; padding: var(--e3) var(--e4);
+  border-radius: 14px; background: color-mix(in srgb, var(--azul) 14%, var(--superficie)); border: 1px solid var(--linha-forte); white-space: pre-wrap; overflow-wrap: anywhere; }
+.resposta-do-chat { min-width: 0; overflow-wrap: anywhere; }
+/* a tabela rola de lado: a palavra não se parte no meio da célula */
+.resposta-do-chat .tabela-rolavel { overflow-wrap: normal; }
+.resposta-do-chat th { white-space: nowrap; }
+.resposta-do-chat > .olho { margin: 0 0 var(--e2); }
+.resposta-do-chat h2 { font-size: var(--t2); }
+.resposta-do-chat h3, .resposta-do-chat h4 { font-size: var(--t1); }
+.caixas-do-chat { display: grid; gap: var(--e3); margin-top: var(--e4); }
+@media (min-width: 1101px) { .caixas-do-chat { grid-template-columns: 1fr 1fr; } }
+.caixa-do-chat { padding: var(--e3) var(--e4); border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
+.caixa-do-chat h3 { margin: 0 0 var(--e2); font-size: var(--t0); }
+.caixa-do-chat ul, .caixa-do-chat ol { margin: 0; padding-left: var(--e5); }
+.caixa-do-chat p { margin: 0 0 var(--e2); }
+.caixa-das-lacunas { border-color: color-mix(in srgb, var(--atencao) 45%, transparent); }
+.caixa-das-lacunas h3 { color: var(--atencao); }
+.consultas-do-chat { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: var(--t-1); }
+.consultas-do-chat li + li { margin-top: var(--e1); }
+.consultas-do-chat .consulta-titulo { font-family: inherit; font-weight: 700; }
+.consultas-do-chat .consulta-filtros { display: block; color: var(--apagado); }
+.consultas-do-chat .selo-do-app { margin-left: var(--e2); }
+.chat-parado ul { margin: 0; }
+.exemplos-do-chat { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.exemplos-do-chat p { flex-basis: 100%; margin: 0; }
+.exemplos-do-chat .botao { text-align: left; white-space: normal; }
+.caixa-da-pergunta { display: flex; gap: var(--e2); align-items: end; padding: var(--e2); border: 1px solid var(--linha-forte);
+  border-radius: var(--raio); background: var(--superficie); }
+.caixa-da-pergunta textarea { flex: 1; min-width: 0; resize: vertical; border: 0; background: transparent; color: var(--texto); font: inherit; padding: var(--e2); }
+.caixa-da-pergunta textarea:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; border-radius: 6px; }
+.caixa-da-pergunta textarea:disabled { cursor: not-allowed; }
+.cota-do-chat { margin: 0; font-size: var(--t-1); color: var(--apagado); }
+.lateral-do-chat { display: flex; flex-direction: column; gap: var(--e4); font-size: .9rem; }
+.lateral-do-chat h2 { margin: 0; font-size: var(--t1); }
+.lateral-do-chat h3 { margin: 0 0 var(--e1); font-size: var(--t0); }
+.lateral-do-chat ul { margin: 0; padding-left: var(--e4); }
+@media (max-width: 760px) {
+  .bolha-da-pergunta { max-width: 92%; }
+  /* presa logo acima das abas do celular (fixas, ~4,5rem com a margem segura) */
+  .caixa-da-pergunta { position: sticky; bottom: calc(4.5rem + env(safe-area-inset-bottom)); z-index: 2; }
+}

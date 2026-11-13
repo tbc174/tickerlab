@@ -1192,3 +1192,122 @@ export interface BuscaDeEmpresasV1 {
   // a frase fixa quando a resposta saiu pela prontidão de piloto (D11): vale para todos os campos dela
   aviso_de_piloto?: string | null;
 }
+
+// Perguntar (linha 903): o estado do chat para a tela (GET /v1/chat/estado) e os eventos da resposta em linhas
+// (POST /v1/chat, NDJSON, src/chat/conversa.py). O gasto em dinheiro não vem: só se o teto do mês pausou o chat.
+export type SituacaoDoChat =
+  | "desligado"
+  | "sem_organizacao"
+  | "sem_chave"
+  | "pausado"
+  | "cota_do_dia"
+  | "cota_do_mes"
+  | "pronto";
+
+export interface EstadoDoChatV1 {
+  situacao: SituacaoDoChat;
+  pode_perguntar: boolean;
+  mensagem: string | null;
+  perguntas_hoje: number;
+  perguntas_por_dia: number;
+  perguntas_no_mes: number;
+  perguntas_por_mes: number;
+  caracteres_da_pergunta: number;
+  perguntas_no_historico: number;
+  caracteres_do_historico: number;
+  como_funciona: string;
+  exemplos: string[];
+  limites: string[];
+}
+
+/** Uma fonte que a consulta usou, tirada pelo código do JSON da ferramenta (src/chat/fontes.py). */
+export interface FonteDaConsulta {
+  fonte: string;
+  atribuicao: string | null;
+  licenca: string | null;
+  publicado_em: string | null; // AAAA-MM-DD, a mais nova entre os valores
+}
+
+/** Uma consulta do "Como cheguei aqui": a ferramenta, os filtros, se deu certo, quanto demorou e as fontes. */
+export interface ConsultaDoChat {
+  nome: string;
+  titulo: string;
+  filtros: Record<string, string | number | boolean>;
+  ok: boolean;
+  duracao_ms: number;
+  fontes: FonteDaConsulta[];
+}
+
+export type EventoDoChat =
+  | { tipo: "ferramenta"; nome: string; titulo: string; filtros: Record<string, string | number | boolean> }
+  | { tipo: "texto"; texto: string }
+  | { tipo: "recomeco" }
+  | { tipo: "fim"; como_cheguei_aqui: ConsultaDoChat[]; avisos: string[]; aviso_final: string }
+  | { tipo: "erro"; mensagem: string };
+
+/** Um exemplo de movimento num setor: a empresa do setor, a UF e os campos do sinal (cada um com fonte e dia). */
+export interface ExemploDeProvaV1 {
+  empresa_do_setor: PontaDoVinculoV1;
+  uf: string | null;
+  ainda_socio: boolean | null;
+  campos: Record<string, CampoComFonteV1>;
+}
+
+export interface ProvaDoSinalV1 {
+  quantas: number;
+  exemplos: ExemploDeProvaV1[];
+}
+
+/** Quem já se mexeu no setor (só pessoa jurídica): a raiz do CNPJ, o nome, os sinais e as provas. */
+export interface CompradorDoSetorV1 {
+  raiz_do_cnpj: string | null;
+  razao_social: CampoComFonteV1 | null;
+  sinais: string[]; // entrou_como_socio, fundo_socio, controla_no_setor
+  provas: Record<string, ProvaDoSinalV1>;
+}
+
+export interface SetorPedidoV1 {
+  cnae_principal: string;
+  uf: string | null;
+  anos: number;
+  desde: string;
+  empresas_ativas: number;
+}
+
+/** `POST /v1/analista/setor/compradores`: movimento passado no setor, não intenção de compra. */
+export interface CompradoresDoSetorV1 {
+  estado: "pronta" | "nao_liberada";
+  como_era_em: string | null;
+  setor: SetorPedidoV1 | null;
+  compradores: CompradorDoSetorV1[];
+  total_de_compradores: number;
+  cortada: boolean;
+  sinais_nao_disponiveis: string[];
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
+
+export interface EmpresasPorUfV1 {
+  uf: string;
+  empresas_ativas: number;
+}
+
+export interface AberturasPorAnoV1 {
+  ano: number;
+  aberturas: number;
+}
+
+/** `POST /v1/analista/setor/perfil`: só contagens. Bloco `null` = não consultado (nunca zero). */
+export interface PerfilDoSetorV1 {
+  estado: "pronta" | "nao_liberada";
+  cnae_principal: string | null;
+  como_era_em: string | null;
+  data_do_retrato: string | null; // AAAA-MM
+  publico_em: string | null;
+  empresas_ativas: number | null;
+  por_uf: EmpresasPorUfV1[] | null;
+  aberturas_por_ano: AberturasPorAnoV1[] | null;
+  blocos_nao_disponiveis: string[];
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}

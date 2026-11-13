@@ -226,7 +226,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
 @pytest.mark.parametrize(
     ("area", "chaves"),
     [
-        ("inicio", {"inicio", "pulse"}),
+        ("inicio", {"inicio", "pulse", "perguntar"}),
         (
             "empresas",
             {
@@ -363,6 +363,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "o_que_mudou",
         "dados_e_cobertura",
         "conectar",
+        "perguntar",
     }
 
 
@@ -398,12 +399,15 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
             "/v1/analista/ficha/planilha",  # a planilha herda o contrato da ficha
             "/v1/analista/ficha/eventos",  # os eventos herdam o acesso da ficha e a tela os pede com o CNPJ dela
             "/v1/analista/ficha/vinculos",  # os vínculos herdam o acesso da ficha e a tela os pede com o CNPJ dela
+            "/v1/analista/setor/compradores",  # quem se mexeu no setor herda o acesso da ficha (mesmo recurso)
+            "/v1/analista/setor/perfil",  # os números do setor herdam o acesso da ficha (mesmo recurso)
             "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
             "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
             "/v1/relatorio-setor/pdf",
             "/v1/relatorio-setor/apresentacao",
             "/v1/relatorio-empresa/apresentacao",
             "/v1/relatorio-empresa/markdown",
+            "/v1/chat",  # a pergunta herda o acesso da página Perguntar (o estado é o contrato dela)
             "/v1/eu",
             "/v1/conta",
             "/v1/sair",
