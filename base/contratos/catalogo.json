@@ -7490,6 +7490,10 @@
           "descricao": "Mês da declaração (1 a 12)",
           "unidade": "número inteiro"
         },
+        "periodo": {
+          "descricao": "Primeiro dia do mês da declaração (`ano` e `mes` juntos, como data)",
+          "unidade": "data (dia)"
+        },
         "codigo_in": {
           "descricao": "Código do benefício na instrução normativa da DIRBI",
           "unidade": "texto"
@@ -7539,12 +7543,12 @@
         "tributo"
       ],
       "datas": {
-        "aconteceu_em": "mes",
+        "aconteceu_em": "periodo",
         "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "mes": "referencia",
+        "periodo": "a_conferir",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"

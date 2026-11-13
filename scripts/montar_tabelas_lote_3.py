@@ -212,7 +212,14 @@ def montar_habilitados(
         dados["registrados_sem_cnpj_descartados"] = cadastro.attrs[
             "descartadas_sem_cnpj"
         ]
-        data = _modificado_em(origem, habilitados.name)
+        # o CNPJ vem do cadastro e a habilitação do outro arquivo: a linha vale desde o mais novo dos dois
+        data = max(
+            _modificado_em(origem, habilitados.name),
+            _modificado_em(origem, registrados.name),
+        )
+        # SIF que também aparece numa linha sem CNPJ (CPF) não tem dono único: fica sem CNPJ e sai da tabela
+        ambiguos = cadastro.attrs["sifs_sem_cnpj"]
+        cadastro = cadastro[~cadastro["nr_sif"].isin(ambiguos)]
         lido = sigsif.ler_habilitados(habilitados.read_bytes(), cadastro, data)
         tabela, contagem = derivadas.habilitados_para_a_base(lido, descobrir)
         dados.update(contagem)
@@ -247,6 +254,11 @@ def _pessoas_pela_receita(conexao: Connection) -> derivadas.DescobrirPessoas:
         return pessoas_pela_receita(conexao, raizes)
 
     return descobrir
+
+
+def _vazia(dados: dict[str, object]) -> bool:
+    """Montou e ficou sem linha. Quando a versão guardada é igual, a montagem nem roda e não há contagem."""
+    return "linhas_na_tabela" in dados and not dados["linhas_na_tabela"]
 
 
 def _faltam(pasta: Path, nomes: list[str]) -> list[str]:
@@ -300,16 +312,14 @@ def main(argv: list[str] | None = None) -> int:
             for ano, dados in dirbi.items():
                 log.info("%s %s: %s", derivadas.TABELA_DIRBI, ano, dados)
             log.info("%s: %s", derivadas.TABELA_ECF, ecf)
-            vazias += [
-                f"DIRBI {a}" for a, d in dirbi.items() if not d["linhas_na_tabela"]
-            ]
-            vazias += [] if ecf["linhas_na_tabela"] else ["ECF"]
+            vazias += [f"DIRBI {a}" for a, d in dirbi.items() if _vazia(d)]
+            vazias += ["ECF"] if _vazia(ecf) else []
         if opcoes.sigsif:
             hab = montar_habilitados(
                 opcoes.sigsif, saida, descobrir, agora, versao, opcoes.forcar
             )
             log.info("%s: %s", derivadas.TABELA_HABILITADOS, hab)
-            vazias += [] if hab["linhas_na_tabela"] else ["habilitados"]
+            vazias += ["habilitados"] if _vazia(hab) else []
     if vazias:
         log.error(
             "tabela vazia (sem a Receita guardada toda raiz conta como pessoa): %s",

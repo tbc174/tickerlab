@@ -2882,7 +2882,7 @@ Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cnpj`, `ano`, `mes`, `codigo_in`, `tributo`
-- **Três datas:** aconteceu_em = `mes`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Três datas:** aconteceu_em = `periodo`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-09-08 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/receita_dirbi/<ano>.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
@@ -2897,6 +2897,7 @@ Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de
 | `cnae` | CNAE do estabelecimento, como a Receita informa | texto |
 | `ano` | Ano da declaração | ano |
 | `mes` | Mês da declaração (1 a 12) | número inteiro |
+| `periodo` | Primeiro dia do mês da declaração (`ano` e `mes` juntos, como data) | data (dia) |
 | `codigo_in` | Código do benefício na instrução normativa da DIRBI | texto |
 | `tributo` | Tributo a que o benefício se refere | texto |
 | `valor` | Valor declarado do benefício, em reais (vazio: não informado) | reais (R$) |

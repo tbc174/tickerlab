@@ -1005,6 +1005,10 @@ def _tabelas_de_renuncia_da_receita() -> dict[str, Tabela]:
                 "cnae": ("CNAE do estabelecimento, como a Receita informa", TEXTO),
                 "ano": ("Ano da declaração", "ano"),
                 "mes": ("Mês da declaração (1 a 12)", NUMERO),
+                "periodo": (
+                    "Primeiro dia do mês da declaração (`ano` e `mes` juntos, como data)",
+                    DATA,
+                ),
                 "codigo_in": (
                     "Código do benefício na instrução normativa da DIRBI",
                     TEXTO,
@@ -9883,7 +9887,7 @@ _CONTRATO = {
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anvisa_por_empresa": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj_basico", "disponivel_em"), datas={"publico_em": "disponivel_em", "coletado_em": "montado_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="dia"),  # por dia (12/11/2026, Diretoria): público desde o dia em que o arquivista viu o arquivo; a anvisa_registros fica em "mes"
-    "receita_dirbi": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "ano", "mes", "codigo_in", "tributo"), datas={"aconteceu_em": "mes", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-08", granularidade_do_publico_em="dia"),  # linha 904: só PJ; o arquivo do ano sai inteiro e vale desde o dia em que a Receita o regravou
+    "receita_dirbi": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "ano", "mes", "codigo_in", "tributo"), datas={"aconteceu_em": "periodo", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-08", granularidade_do_publico_em="dia"),  # linha 904: só PJ; o arquivo do ano sai inteiro e vale desde o dia em que a Receita o regravou
     "receita_ecf_renuncia": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "cod_scp", "dt_ini", "dt_fin"), datas={"aconteceu_em": "dt_fin", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-19", granularidade_do_publico_em="dia"),  # linha 904: só PJ
     "sigsif_habilitados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("pais", "area", "sif", "produto"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-02", granularidade_do_publico_em="dia"),  # linha 904: só PJ, CNPJ pelo número do SIF
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),

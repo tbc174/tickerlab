@@ -36,8 +36,8 @@ LINHAGEM = ("origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codi
 COLUNAS_DO_CNPJ = ("cnpj", "cnpj_basico")
 
 COLUNAS_DO_DIRBI = (
-    *COLUNAS_DO_CNPJ, "municipio", "uf", "cnae", "ano", "mes", "codigo_in", "tributo", "valor",
-    "em_verificacao",
+    *COLUNAS_DO_CNPJ, "municipio", "uf", "cnae", "ano", "mes", "periodo", "codigo_in", "tributo",
+    "valor", "em_verificacao",
 )  # fmt: skip
 CHAVE_DO_DIRBI = ("cnpj", "ano", "mes", "codigo_in", "tributo")
 
@@ -136,6 +136,10 @@ def dirbi_para_a_base(
     """O DIRBI lido por `receita_renuncias.ler_dirbi`, só de pessoa jurídica e sem o nome empresarial."""
     pj, contagem = separar_pessoa_juridica(lido, descobrir)
     pj = _sem_categoria(pj)
+    # a porta lê `aconteceu_em` como data: o número do mês sozinho viraria vazio
+    pj["periodo"] = pd.to_datetime(
+        {"year": pj["ano"], "month": pj["mes"], "day": 1}
+    ).dt.date
     pj["trata_como_pessoa"] = pj["trata_como_pessoa"].astype(bool)
     pronta = pj[[*COLUNAS_DO_DIRBI, "trata_como_pessoa", "disponivel_em"]]
     return pronta.astype({"ano": "int16", "mes": "int16"}), contagem

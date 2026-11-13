@@ -124,6 +124,7 @@ def test_dirbi_nao_grava_nome_e_so_leva_pessoa_juridica():
     ]
     assert "nome" not in tabela.columns
     assert len(tabela) == 2 and set(tabela["mes"]) == {1, 2}
+    assert set(tabela["periodo"]) == {date(2026, 1, 1), date(2026, 2, 1)}
     assert contagem["pessoa_ou_fora_da_receita"] == 1
     assert not tabela.duplicated(list(derivadas.CHAVE_DO_DIRBI)).any()
     assert not any(isinstance(t, pd.CategoricalDtype) for t in tabela.dtypes), (
@@ -341,3 +342,48 @@ def test_sem_a_receita_as_tres_tabelas_ficam_vazias_sem_quebrar():
         sigsif.ler_habilitados(_habilitados("100"), cadastro, DIA), _tudo_pessoa
     )
     assert dirbi.empty and ecf.empty and hab.empty
+
+
+def test_habilitado_vale_desde_o_mais_novo_dos_dois_arquivos(tmp_path):
+    """O CNPJ vem do cadastro (outro arquivo): a linha não pode valer antes de o cadastro existir assim."""
+    pasta = tmp_path / "s"
+    pasta.mkdir()
+    _pasta_do_sigsif(pasta)
+    datas = {"registrados.csv": "2026-11-10", "habilitados.csv": "2026-11-02"}
+    (pasta / montagem.MODIFICADOS).write_text(json.dumps(datas), encoding="utf-8")
+    saida = tmp_path / "base"
+    agora = pd.Timestamp("2026-11-13T12:00:00Z")
+
+    montagem.montar_habilitados(pasta, saida, _descobrir(MEI), agora, "v1")
+
+    lidas = pd.read_parquet(saida / "sigsif_habilitados" / "sigsif_habilitados.parquet")
+    assert set(lidas["disponivel_em"]) == {date(2026, 11, 10)}
+
+
+def test_sif_dividido_entre_cpf_e_cnpj_nao_entra(tmp_path):
+    pasta = tmp_path / "s"
+    pasta.mkdir()
+    (pasta / "registrados.csv").write_bytes(
+        _registrados(
+            (cnpjs.formatar(EMPRESA), "100"),
+            ("123.456.789-09", "100"),
+            (cnpjs.formatar(OUTRA), "300"),
+        )
+    )
+    (pasta / "habilitados.csv").write_bytes(_habilitados("100", "300"))
+    datas = {"registrados.csv": DIA.isoformat(), "habilitados.csv": DIA.isoformat()}
+    (pasta / montagem.MODIFICADOS).write_text(json.dumps(datas), encoding="utf-8")
+    saida = tmp_path / "base"
+
+    montagem.montar_habilitados(
+        pasta, saida, _descobrir(), pd.Timestamp("2026-11-13T12:00:00Z"), "v1"
+    )
+
+    lidas = pd.read_parquet(saida / "sigsif_habilitados" / "sigsif_habilitados.parquet")
+    assert set(lidas["cnpj"]) == {cnpjs.formatar(OUTRA)}
+
+
+def test_vazia_so_quando_montou_e_nao_deixou_linha():
+    assert montagem._vazia({"linhas_na_tabela": 0})
+    assert not montagem._vazia({"linhas_na_tabela": 3})
+    assert not montagem._vazia({"gravou": IGUAL})
