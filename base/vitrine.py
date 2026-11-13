@@ -218,18 +218,33 @@ TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
 COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
 
 
-def catalogo_publico(catalogo: dict) -> dict:
+# A lista das tabelas com arquivo conferido no acervo (linha 916, Diretoria 13/11/2026). O CI não vê o
+# acervo, então a lista é gravada no repositório por `scripts/gravar_tabelas_montadas.py` (roda no servidor
+# de casa, com a data). Tabela nova do catálogo NÃO conta até entrar nela: o número público é o do que
+# existe de verdade, não o do que está prometido no contrato.
+TABELAS_MONTADAS_ARQUIVO = Path(__file__).parent / "tabelas_montadas.json"
+
+
+def tabelas_montadas(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> frozenset[str]:
+    """Os nomes das tabelas que o acervo tinha montadas na data da lista."""
+    return frozenset(json.loads(arquivo.read_text(encoding="utf-8"))["tabelas"])
+
+
+def catalogo_publico(catalogo: dict, montadas: frozenset[str] | None = None) -> dict:
     """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
     DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
     no dicionário do repositório, mas o site não anuncia dado que não pode sair em tela, relatório,
     API nem exportação. As cópias reduzidas (`COPIAS_REDUZIDAS`) também ficam de fora: a tabela de onde
-    saem já está no catálogo."""
+    saem já está no catálogo. E só conta tabela montada (`tabelas_montadas`): a que está no contrato
+    mas ainda sem arquivo no acervo não entra no número nem na lista."""
     internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
+    existentes = tabelas_montadas() if montadas is None else montadas
     tabelas = {
         nome: tabela
         for nome, tabela in catalogo["tabelas"].items()
         if tabela["licenca"] not in internas
         and nome not in TABELAS_SO_INTERNAS | COPIAS_REDUZIDAS
+        and nome in existentes
     }
     return {**catalogo, "tabelas": tabelas}
 
@@ -652,23 +667,30 @@ def ligado_pelo_cnpj(
     ligadas = tabelas_ligadas_pelo_cnpj(catalogo)
     cartoes = []
     for tema in temas:
-        fora = [t for t in tema.tabelas if t not in catalogo["tabelas"]]
-        if fora:
-            raise ValueError(
-                f"tema {tema.chave} com tabela fora do catálogo: {', '.join(fora)}"
-            )
-        sem_cnpj = [t for t in tema.tabelas if t not in ligadas]
+        # o catálogo público só tem tabela montada (`catalogo_publico`): o cartão conta as que existem e
+        # some quando nenhuma existe. O nome errado de tabela se pega no teste contra o contrato inteiro.
+        presentes = [t for t in tema.tabelas if t in catalogo["tabelas"]]
+        if not presentes:
+            continue
+        sem_cnpj = [t for t in presentes if t not in ligadas]
         if sem_cnpj:
             raise ValueError(
                 f"tema {tema.chave} com tabela sem coluna de CNPJ: {', '.join(sem_cnpj)}"
+            )
+        texto = tema.texto
+        if len(presentes) < len(tema.tabelas):
+            # o texto do tema descreve o desenho inteiro; quando só parte está montada, diz isso (linha 916)
+            texto += (
+                f" Hoje estão montadas {len(presentes)} de {len(tema.tabelas)} tabelas deste tema;"
+                " o texto acima descreve o que o tema prevê, não só o que já está na base."
             )
         cartoes.append(
             {
                 "chave": tema.chave,
                 "titulo": tema.titulo,
-                "texto": tema.texto,
-                "orgaos": _orgaos(catalogo, tema.tabelas),
-                "tabelas": len(tema.tabelas),
+                "texto": texto,
+                "orgaos": _orgaos(catalogo, presentes),
+                "tabelas": len(presentes),
             }
         )
     return {

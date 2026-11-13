@@ -94,7 +94,7 @@ describe("página Dados", () => {
   it("cada tabela consultável tem o botão Consultar e o link do CSV; as outras ficam só no app", () => {
     const html = pagina();
     const consultaveis = catalogo.tabelas.filter((t) => t.consultavel);
-    expect(consultaveis.length).toBeGreaterThan(50);
+    expect(consultaveis.length).toBeGreaterThan(40);
     expect(consultaveis.length).toBeLessThan(catalogo.tabelas.length);
     expect(html.match(/data-consultar="/g)?.length).toBe(consultaveis.length);
     for (const t of consultaveis) {
