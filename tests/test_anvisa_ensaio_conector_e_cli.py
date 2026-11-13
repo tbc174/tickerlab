@@ -168,3 +168,37 @@ def test_planilha_leva_o_aviso_da_anvisa_e_o_dia_do_retrato_na_linha(
     assert any("não faturamento" in texto for texto in textos)
     # a coluna "público em" traz o dia da Receita e o da Anvisa, juntos
     assert any(DIA_DO_RETRATO in texto for texto in textos)
+
+
+def test_cli_e_conector_repetem_os_tipos_e_o_teto_da_api():
+    """As cópias de tipos e de teto da CLI e do conector não podem se afastar da API (nada confere sozinho)."""
+    from conector_remoto import ferramentas
+
+    for cli_ou_conector in (comandos.TIPOS_DA_ANVISA, ferramentas.TIPOS_DA_ANVISA):
+        assert set(cli_ou_conector.values()) <= set(prospeccao.TIPOS_DA_ANVISA)
+        assert cli_ou_conector["todos"] == prospeccao.TIPO_PADRAO_DA_ANVISA
+    assert comandos.TIPOS_DA_ANVISA == ferramentas.TIPOS_DA_ANVISA
+    assert comandos.REGISTROS_MAXIMOS == prospeccao.REGISTROS_MAXIMOS
+    assert ferramentas.REGISTROS_MAXIMOS_DA_ANVISA == prospeccao.REGISTROS_MAXIMOS
+
+
+def test_planilha_tem_a_linha_aviso_da_anvisa_na_aba_fontes(
+    cenario, monkeypatch, tmp_path
+):
+    http = aj.cliente_da_api(monkeypatch, base_de_mentira.AGORA)
+    destino = tmp_path / "lista.xlsx"
+    resultado = CliRunner().invoke(
+        comandos.principal,
+        ["prospectar", "--uf", "SP", "--cnae", "2063", "--anvisa-tipo", "cosmeticos",
+         "--anvisa-ativos-min", "200", "--planilha", str(destino)],
+        obj=lambda _endereco: http,
+        env={
+            configuracao.VARIAVEL_DA_CHAVE: cenario.valor,
+            configuracao.VARIAVEL_DA_PASTA: str(tmp_path / "config"),
+            configuracao.VARIAVEL_DO_ENDERECO: None,
+        },
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    linhas = list(openpyxl.load_workbook(destino)["fontes"].iter_rows(values_only=True))
+    (aviso,) = [linha for linha in linhas if linha[0] == "aviso da Anvisa"]
+    assert "não faturamento" in aviso[1]
