@@ -21,7 +21,7 @@ const abas = () => screen.getByRole("navigation", { name: "Telas, atalhos" });
 /** Espera o login terminar e a tela Início abrir (o login também tem um h1 e o fundo). O primeiro
  * teste do arquivo monta o app inteiro: com o PC ocupado passa de 1 s, a espera padrão. */
 const noInicio = () =>
-  screen.findByRole("heading", { name: "Por onde começar" }, { timeout: 5000 });
+  screen.findByRole("heading", { name: "Qual empresa você quer estudar?" }, { timeout: 5000 });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {

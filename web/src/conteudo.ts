@@ -146,6 +146,8 @@ export interface ItemDoMenuDoApp {
 export const conteudoDoApp: {
   areas: AreaDoApp[];
   menu: ItemDoMenuDoApp[];
+  /** As contagens do catálogo que o Início mostra ("O que a base tem"). */
+  base: { tabelas: number; ligadas_pelo_cnpj: number; orgaos: number; fontes: number };
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };

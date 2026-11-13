@@ -182,6 +182,20 @@ def test_paginas_de_admin_ficam_fora_do_bundle_publico():
     assert "registro de ações de administrador" not in texto
 
 
+def test_app_leva_as_contagens_da_base_iguais_as_do_catalogo():
+    """O "O que a base tem" do Início do app mostra os mesmos números da página inicial do site."""
+    tudo = exp.conteudo()
+    base = json.loads(exp.em_json(tudo["app"]))["base"]
+    catalogo = json.loads(exp.em_json(tudo["catalogo"]))
+    assert base == {
+        "tabelas": catalogo["totais"]["tabelas"],
+        "ligadas_pelo_cnpj": catalogo["ligado_pelo_cnpj"]["tabelas"],
+        "orgaos": catalogo["ligado_pelo_cnpj"]["orgaos"],
+        "fontes": catalogo["totais"]["fontes"],
+    }
+    assert all(isinstance(n, int) and n > 0 for n in base.values())
+
+
 def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
     """A visão geral em React: os itens do painel, na ordem da tela, e o "?" de cada um em partes."""
     from src import analises
