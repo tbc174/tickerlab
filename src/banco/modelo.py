@@ -1404,6 +1404,41 @@ sa.Index(
     "ix_membros_da_organizacao_organizacao_id", membros_da_organizacao.c.organizacao_id
 )
 
+# O chat de IA do app (linha 903, 0048): uma linha por pergunta, gravada antes de chamar o modelo (conta na
+# cota) e completada no fim. Só ids e números: nem a pergunta nem a resposta. Apagar a conta solta a linha
+# (SET NULL), que fica para o gasto do mês somar certo.
+ESTADOS_DA_PERGUNTA_DO_CHAT = ("em_curso", "respondida", "recusada", "erro")
+perguntas_do_chat = sa.Table(
+    "perguntas_do_chat",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("usuario_id", sa.Uuid, sa.ForeignKey("usuarios.id", ondelete="SET NULL")),
+    sa.Column(
+        "organizacao_id", sa.Uuid, sa.ForeignKey("organizacoes.id", ondelete="SET NULL")
+    ),
+    sa.Column("feita_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("modelo", sa.String(64), nullable=False),
+    sa.Column("estado", sa.String(16), nullable=False),
+    sa.Column("tokens_de_entrada", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("tokens_de_saida", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("tokens_lidos_do_cache", sa.Integer, nullable=False, server_default="0"),
+    sa.Column(
+        "tokens_gravados_no_cache", sa.Integer, nullable=False, server_default="0"
+    ),
+    sa.Column(
+        "custo_em_microdolares", sa.BigInteger, nullable=False, server_default="0"
+    ),
+    sa.Column("latencia_ms", sa.Integer),
+    sa.Column("chamadas_de_ferramenta", sa.Integer, nullable=False, server_default="0"),
+    sa.CheckConstraint(_entre("estado", ESTADOS_DA_PERGUNTA_DO_CHAT), name="estado"),
+)
+sa.Index(
+    "ix_perguntas_do_chat_usuario_id",
+    perguntas_do_chat.c.usuario_id,
+    perguntas_do_chat.c.feita_em,
+)
+sa.Index("ix_perguntas_do_chat_feita_em", perguntas_do_chat.c.feita_em)
+
 # O botão de parar um conjunto para todas as organizações (B-32a, PR 6): fonte que mudou a licença ou
 # dado que saiu errado. Vale também para contrato concedido depois; reativar não mexe no direito que
 # foi suspenso sozinho. Como em `organizacoes`, suspender é preencher, reativar é limpar: nada se apaga.

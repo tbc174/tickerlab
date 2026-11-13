@@ -519,6 +519,44 @@ def conferir_chave(
     )
 
 
+def contexto_da_organizacao(
+    conexao: sa.Connection, organizacao_id: uuid.UUID, *, agora: datetime | None = None
+) -> ContextoDaChave | None:
+    """O contexto da chave ativa mais nova da organização, sem ler nem pedir o segredo dela.
+
+    Para quem já provou ser da organização por outro caminho (a conta com login no chat do app, linha
+    903): o consumo fica na conta da chave, como se a organização tivesse pedido pela API. None se a
+    organização está suspensa ou não tem chave ativa (nem revogada, nem vencida).
+    """
+    momento = agora or _agora()
+    linhas = conexao.execute(
+        sa.select(
+            chaves_da_api.c.id,
+            chaves_da_api.c.prefixo,
+            chaves_da_api.c.expira_em,
+            organizacoes.c.plano_da_api,
+        )
+        .join(organizacoes, organizacoes.c.id == chaves_da_api.c.organizacao_id)
+        .where(
+            chaves_da_api.c.organizacao_id == organizacao_id,
+            chaves_da_api.c.revogada_em.is_(None),
+            organizacoes.c.suspensa_em.is_(None),
+        )
+        .order_by(chaves_da_api.c.criada_em.desc(), chaves_da_api.c.prefixo)
+    )
+    for linha in linhas:
+        # o vencimento se compara aqui, com o fuso posto (o SQLite devolve sem fuso)
+        expira_em = _com_fuso(linha.expira_em)
+        if expira_em is None or expira_em > momento:
+            return ContextoDaChave(
+                organizacao_id=organizacao_id,
+                chave_id=linha.id,
+                prefixo=linha.prefixo,
+                plano_da_api=linha.plano_da_api,
+            )
+    return None
+
+
 # ---------------------------------------------------------------- direitos (o contrato)
 
 
