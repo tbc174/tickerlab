@@ -77,9 +77,9 @@ export const GUIAS: Guia[] = [
     arquivo: "socios-e-grupo-economico-por-cnpj.html",
     titulo: "Sócios e grupo econômico de um CNPJ",
     descricao:
-      "A partir de um CNPJ: o quadro de sócios da Receita, as controladas e coligadas que a companhia informa e as empresas do grupo, com data e fonte.",
+      "A partir de um CNPJ: as controladas e coligadas que a companhia informa, os acionistas do Formulário de Referência e as empresas ligadas, com data e fonte.",
     resposta:
-      "Para companhia aberta, o grupo vem das controladas e coligadas que ela informa à CVM no Formulário de Referência. Para as demais empresas, vem do cadastro e do quadro de sócios do CNPJ aberto da Receita Federal. Cada linha mostra a fonte e a data.",
+      "Para companhia aberta, o grupo vem das controladas e coligadas que ela informa à CVM no Formulário de Referência. Para as demais empresas, vem das ligações que a base registra. Cada linha mostra a fonte e a data.",
     tabelas: ["cnpj_qsa", "controladas", "ligacoes", "fre_acionistas"],
     passos: [
       "Abra a Busca por CNPJ no app e digite o CNPJ da empresa, com ou sem pontuação.",
@@ -87,7 +87,7 @@ export const GUIAS: Guia[] = [
       "Para uma companhia aberta, o relatório completo mostra também as controladas e coligadas por ano.",
     ],
     naoResponde: [
-      "O quadro de sócios da Receita é um retrato do mês: não mostra quem era sócio em outras datas.",
+      "O quadro de sócios da Receita ainda não está na base: o grupo das empresas fechadas vem só das ligações registradas.",
       "Sócio pessoa física não é detalhado: o TickerLab não mostra CPF, contato nem endereço residencial.",
       "Ligação por sobrenome ou por nome parecido não vira relação: só entram vínculos que a fonte registra.",
       "Participação indireta e controle de fato podem não aparecer se não estiverem nos documentos entregues.",

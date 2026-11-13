@@ -624,11 +624,18 @@ def ligado_pelo_cnpj(
             raise ValueError(
                 f"tema {tema.chave} com tabela sem coluna de CNPJ: {', '.join(sem_cnpj)}"
             )
+        texto = tema.texto
+        if len(presentes) < len(tema.tabelas):
+            # o texto do tema descreve o desenho inteiro; quando só parte está montada, diz isso (linha 916)
+            texto += (
+                f" Hoje estão montadas {len(presentes)} de {len(tema.tabelas)} tabelas deste tema;"
+                " o texto acima descreve o que o tema prevê, não só o que já está na base."
+            )
         cartoes.append(
             {
                 "chave": tema.chave,
                 "titulo": tema.titulo,
-                "texto": tema.texto,
+                "texto": texto,
                 "orgaos": _orgaos(catalogo, presentes),
                 "tabelas": len(presentes),
             }
