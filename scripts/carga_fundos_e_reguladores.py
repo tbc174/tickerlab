@@ -1,5 +1,5 @@
-"""Carga das tabelas do lote 1 das 300 pelo CNPJ (linha 904): FIP e FII da CVM, indicadores da ANEEL e
-IDSS da ANS.
+"""Carga das tabelas dos lotes 1 e 2 das 300 pelo CNPJ (linha 904): FIP e FII da CVM, indicadores, agentes e
+fiscalização da ANEEL e IDSS da ANS.
 
     python -m scripts.carga_fundos_e_reguladores                    (todos os retratos guardados)
     python -m scripts.carga_fundos_e_reguladores --pasta /tmp/base  (outra pasta de saída)
@@ -8,7 +8,8 @@ IDSS da ANS.
 Lê os arquivos que o arquivista já guardou no acervo (não baixa nada) e grava, em
 `<TICKERLAB_ACERVO>/base/<tabela>/`, `fip_informe`, `fii_informe_mensal`, `fii_ativos` e
 `fii_administradores` (`base/cvm_fip_fii.py`), `aneel_inadimplencia` e `aneel_indicadores_comerciais`
-(`base/aneel_indicadores.py`) e `ans_idss` (`base/ans_idss.py`). Só CNPJ de dígito certo entra; contato,
+(`base/aneel_indicadores.py`), `ans_idss` (`base/ans_idss.py`) e, do lote 2, `aneel_agentes`,
+`aneel_autos_de_infracao` e `aneel_termos_de_notificacao` (`base/aneel_fiscalizacao.py`). Só CNPJ de dígito certo entra; contato,
 endereço e nome de pessoa não chegam ao Parquet, e `trata_como_pessoa` marca o MEI e o empresário
 individual (ADR 0075). Feita para o servidor de casa (ADR 0031), depois do arquivista; recusa rodar sem
 a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo guardado.
@@ -22,14 +23,14 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import aneel_indicadores, ans_idss, cvm_fip_fii
+from base import aneel_fiscalizacao, aneel_indicadores, ans_idss, cvm_fip_fii
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.carga_fundos_e_reguladores")
 
-MODULOS = (cvm_fip_fii, aneel_indicadores, ans_idss)
+MODULOS = (cvm_fip_fii, aneel_indicadores, ans_idss, aneel_fiscalizacao)
 
 
 def main(argv: list[str] | None = None) -> int:

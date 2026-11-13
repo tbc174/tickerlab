@@ -5033,6 +5033,140 @@ O Índice de Desempenho da Saúde Suplementar (IDSS) de cada operadora de plano 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `aneel_agentes`
+
+As empresas cadastradas como agentes do setor elétrico na ANEEL, por CNPJ: se o cadastro está ativo e em quais atividades a empresa atua (geração, transmissão, distribuição, comercialização). Lista de quem opera no setor. Só CNPJ de dígito certo; a razão social fica de fora
+
+- **Fonte:** ANEEL: dados abertos, agentes do setor elétrico (`base/aneel_fiscalizacao.py`)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo, republicado inteiro (o arquivista olha todo mês)
+- **Atraso de divulgação:** A ANEEL regera o cadastro todo mês e escreve a data de geração no arquivo
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/aneel_agentes/agentes.parquet` (servidor de casa, `base/aneel_fiscalizacao.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do agente (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `sigla_do_agente` | Sigla do agente na ANEEL; vazia quando a ANEEL não tem | texto |
+| `ativo` | Verdadeiro se o cadastro está ativo na ANEEL (`A`), falso se inativo (`I`) | verdadeiro ou falso |
+| `geracao` | Código de atuação em geração, como a ANEEL escreve (0 não atua, 1 atua) | número inteiro |
+| `transmissao` | Código de atuação em transmissão (0 não atua, 1 atua) | número inteiro |
+| `distribuicao` | Código de atuação em distribuição (0 não atua, 1 atua) | número inteiro |
+| `comercializacao` | Código de atuação em comercialização (0 não atua, 1 atua) | número inteiro |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `aneel_autos_de_infracao`
+
+Os autos de infração que a ANEEL e as agências estaduais conveniadas lavraram contra empresas do setor elétrico, por CNPJ: penalidade (multa, advertência, embargo), valor, datas do recurso e das decisões em juízo e na diretoria, e o valor da multa depois de cada decisão. Só a linha com CNPJ de dígito certo (o CPF sai); o nome do agente, a descrição do objeto e o texto das decisões ficam de fora (texto livre)
+
+- **Fonte:** ANEEL: dados abertos, autos de infração (`base/aneel_fiscalizacao.py`)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo, republicado inteiro (o arquivista olha todo mês)
+- **Atraso de divulgação:** A ANEEL regera o arquivo todo mês; o auto entra depois de lavrado e recebido pelo agente
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `lavrado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/aneel_autos_de_infracao/autos.parquet` (servidor de casa, `base/aneel_fiscalizacao.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do agente fiscalizado (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `numero_do_auto` | Número do auto de infração | texto |
+| `fiscalizador` | Sigla de quem fiscalizou (a ANEEL ou a agência estadual conveniada) | texto |
+| `natureza_da_fiscalizacao` | Natureza da fiscalização, como a ANEEL escreve | texto |
+| `codigo_do_objeto` | Código do objeto fiscalizado (a usina, a concessão...) | texto |
+| `processo_punitivo` | Número do processo punitivo | texto |
+| `processo_punitivo_na_aneel` | Número do processo punitivo na ANEEL, quando é outro | texto |
+| `tipo_de_penalidade` | Multa, advertência, advertência e multa ou embargo de obras | texto |
+| `numero_do_termo_de_encerramento` | Número do termo de encerramento | texto |
+| `numero_do_termo_de_notificacao` | Número do termo de notificação que deu origem ao auto | texto |
+| `processo_de_fiscalizacao` | Número do processo de fiscalização | texto |
+| `lavrado_em` | Dia em que o auto foi lavrado | data (dia) |
+| `recebido_em` | Dia em que o agente recebeu o auto | data (dia) |
+| `recurso_recebido_em` | Dia em que o recurso foi recebido; vazio sem recurso | data (dia) |
+| `decidido_em_juizo` | Dia da decisão em juízo (na agência) | data (dia) |
+| `decidido_pela_diretoria_em` | Dia da decisão da diretoria da ANEEL | data (dia) |
+| `encerrado_em` | Dia do termo de encerramento | data (dia) |
+| `valor_da_penalidade` | Valor da penalidade no auto | reais (R$) |
+| `multa_apos_juizo` | Valor da multa depois da decisão em juízo | reais (R$) |
+| `multa_apos_diretoria` | Valor da multa depois da decisão da diretoria | reais (R$) |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `aneel_termos_de_notificacao`
+
+Os termos de notificação da fiscalização da ANEEL e das agências estaduais conveniadas, por CNPJ, objeto e decisão: o primeiro passo da fiscalização, antes de um auto de infração (decisão `AI`) ou do arquivamento (`TA`). Só a linha com CNPJ de dígito certo (o CPF sai); o nome do agente, a descrição do objeto e o texto das decisões ficam de fora (texto livre)
+
+- **Fonte:** ANEEL: dados abertos, termos de notificação (`base/aneel_fiscalizacao.py`)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo, republicado inteiro (o arquivista olha todo mês)
+- **Atraso de divulgação:** A ANEEL regera o arquivo todo mês; o termo entra depois de lavrado
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `lavrado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/aneel_termos_de_notificacao/termos.parquet` (servidor de casa, `base/aneel_fiscalizacao.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do agente fiscalizado (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `numero_do_termo` | Número do termo de notificação | texto |
+| `fiscalizador` | Sigla de quem fiscalizou (a ANEEL ou a agência estadual conveniada) | texto |
+| `natureza_da_fiscalizacao` | Natureza da fiscalização, como a ANEEL escreve | texto |
+| `area` | Sigla da superintendência da ANEEL | texto |
+| `subarea` | Subárea da fiscalização, como a ANEEL escreve | texto |
+| `codigo_do_objeto` | Código do objeto fiscalizado (a usina, a concessão...) | texto |
+| `processo` | Número do processo | texto |
+| `decisao` | Sigla da decisão: `AI` (virou auto de infração) ou `TA` (arquivado) | texto |
+| `documento_da_decisao` | Número do documento da decisão | texto |
+| `lavrado_em` | Dia em que o termo foi lavrado | data (dia) |
+| `recebido_em` | Dia do aviso de recebimento pelo agente | data (dia) |
+| `manifestado_em` | Dia da manifestação do agente; vazio sem manifestação | data (dia) |
+| `decidido_em` | Dia em que a decisão foi lavrada | data (dia) |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `cnes_estabelecimentos`
 
 Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.
