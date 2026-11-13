@@ -70,6 +70,8 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/o-que-mudou",
         "/v1/dados-e-cobertura",
         "/v1/conectar",
+        "/v1/chat",
+        "/v1/chat/estado",
     }
 
 

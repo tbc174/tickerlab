@@ -60,7 +60,9 @@ describe("o menu de sete itens (vindo de src/paginas.py)", () => {
       (item) => item.chave === "inicio" || item.paginas.some((chave) => temTelaPronta(chave)),
     );
     const links = within(menu()).getAllByRole("link");
-    expect(links.map((a) => a.textContent)).toEqual(comTela.map((item) => item.rotulo));
+    // o rótulo, sem o selo "Novo" do item que acabou de ganhar tela
+    const rotulo = (a: HTMLElement) => a.querySelector(".rotulo-do-menu")?.textContent ?? a.textContent;
+    expect(links.map(rotulo)).toEqual(comTela.map((item) => item.rotulo));
     expect(ITENS_DO_MENU.map((item) => item.chave)).toEqual(comTela.map((item) => item.chave));
     expect(menu().textContent).not.toMatch(/em breve/i);
     for (const link of links) expect(link.getAttribute("href")).toMatch(/^\//);
@@ -137,7 +139,10 @@ describe("'Todas as telas': o que não tem item no menu continua a um clique", (
       .getAllByRole("heading", { level: 3 })
       .map((h) => h.textContent);
     expect(titulos).toEqual(["Empresas", "Companhias abertas", "Mais", "Conta"]);
-    const enderecos = [...folha().querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    // a tela que tem item no menu (Perguntar) já está a um clique; a lista traz as outras
+    const enderecos = [...menu().querySelectorAll("a"), ...folha().querySelectorAll("a")].map((a) =>
+      a.getAttribute("href"),
+    );
     // o Pulse é o próprio Início ("/"), o primeiro item do menu
     for (const pagina of TELAS_DO_APP.filter((p) => p.no_menu && p.chave !== "pulse" && temTelaPronta(p.chave)))
       expect(enderecos, pagina.url).toContain(`/${pagina.url}`);
