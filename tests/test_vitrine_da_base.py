@@ -167,6 +167,47 @@ def test_todo_texto_de_licenca_do_catalogo_real_cai_em_um_orgao():
 # --- módulos -------------------------------------------------------------------------------------
 
 
+def test_orgaos_publicos_tira_quem_nao_e_do_estado_e_nao_repete_o_mesmo_orgao():
+    nomes = [
+        "CVM",
+        "Receita Federal",
+        "Assessorias de M&A",
+        "Receita Federal (renúncias)",
+        "CMED (Anvisa)",
+        "GLEIF",
+        "Anvisa",
+        "Receita Federal (transações)",
+        "Imprensa e páginas públicas",
+    ]
+
+    assert vitrine.orgaos_publicos(nomes) == ["CVM", "Receita Federal", "Anvisa"]
+
+
+def test_as_listas_da_conta_de_orgaos_so_citam_nomes_que_existem():
+    nomes = {orgao for _, orgao in vitrine.ORGAOS}
+
+    assert nomes >= vitrine.ORGAOS_QUE_NAO_SAO_PUBLICOS
+    assert nomes >= set(vitrine.MESMO_ORGAO)
+    assert (
+        set(vitrine.MESMO_ORGAO.values()) <= nomes - vitrine.ORGAOS_QUE_NAO_SAO_PUBLICOS
+    )
+
+
+def test_a_conta_de_orgaos_do_catalogo_real_so_tem_orgao_publico():
+    catalogo = vitrine.catalogo_publico(_catalogo_real())
+    ligadas = vitrine.tabelas_ligadas_pelo_cnpj(catalogo)
+    todos = vitrine._orgaos(catalogo, ligadas)
+
+    contados = vitrine.orgaos_publicos(todos)
+
+    assert vitrine.ligado_pelo_cnpj(catalogo)["orgaos"] == len(contados)
+    assert not set(contados) & vitrine.ORGAOS_QUE_NAO_SAO_PUBLICOS
+    assert not set(contados) & set(vitrine.MESMO_ORGAO)
+    assert len(contados) < len(
+        todos
+    )  # hoje há fonte privada e a Receita com três nomes
+
+
 def test_modulos_do_catalogo():
     modulos = vitrine.modulos_do_catalogo(_catalogo_falso())
 
