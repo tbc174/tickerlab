@@ -4,11 +4,32 @@
 // dá (contagem por UF, aberturas por ano) é dito à vista e o estado "não liberada" não vira "sem movimento".
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CompradoresDoSetorV1, SetoresV1 } from "../../src/app/tipos";
+import type { CompradoresDoSetorV1, PerfilDoSetorV1, SetoresV1 } from "../../src/app/tipos";
 import { abrirApp, respostaJson } from "./ajudantes";
 
 const SETORES: SetoresV1 = { setores: [{ chave: "eletricas", nome: "Elétricas", empresas: 12, como_era_em: null }] };
 const ROTA = "/api/v1/analista/setor/compradores";
+const ROTA_DO_PERFIL = "/api/v1/analista/setor/perfil";
+
+const PERFIL: PerfilDoSetorV1 = {
+  estado: "pronta",
+  cnae_principal: "6201501",
+  como_era_em: "2026-11-12",
+  data_do_retrato: "2026-10",
+  publico_em: "2026-10-31",
+  empresas_ativas: 12345,
+  por_uf: [
+    { uf: "SP", empresas_ativas: 8000 },
+    { uf: "RJ", empresas_ativas: 1200 },
+  ],
+  aberturas_por_ano: [
+    { ano: 2025, aberturas: 0 },
+    { ano: 2026, aberturas: 70 },
+  ],
+  blocos_nao_disponiveis: [],
+  fontes: [],
+  limites: ["Só contagens."],
+};
 
 const campo = (valor: string) => ({ valor, fonte: "rfb-cnpj", publico_em: "2026-10-10", visto_em: null });
 
@@ -43,10 +64,11 @@ const PRONTA: CompradoresDoSetorV1 = {
   limites: ["Movimento passado, não intenção de compra."],
 };
 
-function abrir(resposta: CompradoresDoSetorV1 | (() => Response)) {
+function abrir(resposta: CompradoresDoSetorV1 | (() => Response), perfil: PerfilDoSetorV1 = PERFIL) {
   return abrirApp("/relatorio-do-setor?aba=quem-se-mexeu", {
     rotas: (endereco) => {
       if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
+      if (endereco === ROTA_DO_PERFIL) return respostaJson(200, perfil);
       if (endereco === ROTA) return typeof resposta === "function" ? resposta() : respostaJson(200, resposta);
       return undefined;
     },
@@ -84,7 +106,7 @@ describe("quem já se mexeu no setor", () => {
     expect(within(tabela).getByText("CNPJ 11111111/…")).toBeTruthy();
     expect(within(tabela).getByText(/ALVO SP LTDA \(SP\) · já saiu/)).toBeTruthy();
     expect(within(tabela).getByText(/05\/03\/2024/)).toBeTruthy();
-    expect(within(tabela).getByText(/Fonte: rfb-cnpj · dado de 10\/10\/2026/)).toBeTruthy();
+    expect(within(tabela).getByText(/Fonte: Receita Federal, CNPJ · dado de 10\/10\/2026/)).toBeTruthy();
     expect(screen.getByText(/Receita Federal, CNPJ\./)).toBeTruthy();
   });
 
@@ -132,5 +154,34 @@ describe("quem já se mexeu no setor", () => {
     await screen.findByRole("tab", { name: "Quem já se mexeu" });
     expect(screen.getByRole("tab", { name: "Companhias abertas" }).getAttribute("aria-selected")).toBe("true");
     expect(corpos(buscar)).toEqual([]);
+  });
+
+  it("os números do setor: total, UF e aberturas com fonte e data, o CNAE só no corpo e o limite do MEI", async () => {
+    const { buscar } = abrir(PRONTA);
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    const numeros = await screen.findByRole("region", { name: /Números do setor/ });
+    expect(within(numeros).getByText("12.345")).toBeTruthy();
+    const uf = within(numeros).getByRole("region", { name: "Empresas ativas do setor por UF" });
+    expect(within(uf).getByText("8.000")).toBeTruthy();
+    expect(within(numeros).getByRole("region", { name: "Aberturas de empresas do setor por ano" })).toBeTruthy();
+    expect(within(numeros).getAllByText(/Receita Federal \(cadastro do CNPJ\) · dado de out\/2026/).length).toBeGreaterThan(0);
+    expect(within(numeros).getByText(/MEI e empresário individual não entram/)).toBeTruthy();
+    expect(within(numeros).getByText(/A soma das UFs pode passar do total/)).toBeTruthy();
+    expect(within(numeros).getByText(/O último ano está incompleto: conta só até/)).toBeTruthy();
+    const pedidos = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DO_PERFIL);
+    expect(JSON.parse(String(pedidos[0][1]?.body))).toEqual({ cnae: "6201501" });
+  });
+
+  it("bloco não consultado diz 'Não consultado', nunca zero; não liberada não vira setor vazio", async () => {
+    abrir(PRONTA, { ...PERFIL, por_uf: null, blocos_nao_disponiveis: ["por_uf"] });
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    await screen.findByText(/Não consultado nesta base/);
+    cleanup();
+    abrir(PRONTA, { ...PERFIL, estado: "nao_liberada", empresas_ativas: null, por_uf: null, aberturas_por_ano: null });
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    await screen.findByText(/ainda não foram liberados nesta base/);
   });
 });
