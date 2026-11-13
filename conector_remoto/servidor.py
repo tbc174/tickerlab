@@ -11,6 +11,7 @@ recebe 503 com `Retry-After`, nunca 401: um 401 a faria pedir a chave de novo ao
 
 import logging
 import os
+import time
 from typing import Any
 
 import httpx
@@ -50,7 +51,9 @@ from conector_remoto.oauth import (
     VerificadorDoProvedor,
 )
 from conector_remoto.pagina import CAMINHO, MAXIMO_DO_CORPO, nova_pagina
+from conector_remoto.prompts import registrar_prompts
 from conector_remoto.selo import TAMANHO_DA_CHAVE, Selador
+from conector_remoto.uso import Resultado, registrar_chamada
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +129,18 @@ class ServidorDoConector(MCPServer):
         context: Context[Any, Any] | None = None,
     ) -> Any:  # noqa: ANN401 - a mesma assinatura do MCPServer.call_tool
         acesso = acesso_do_pedido()
+        chave = acesso.subject if acesso else None
+        inicio = time.perf_counter()
         if acesso is None or not ferramenta_liberada(name, acesso.conjuntos):
+            registrar_chamada(name, Resultado.RECUSADA, 0.0, chave)
             raise ToolError(MENSAGEM_NAO_LIBERADA)
-        return await super().call_tool(name, arguments, context)
+        resultado = Resultado.ERRO
+        try:
+            saida = await super().call_tool(name, arguments, context)
+            resultado = Resultado.OK
+            return saida
+        finally:
+            registrar_chamada(name, resultado, time.perf_counter() - inicio, chave)
 
 
 class ProtecaoDeHost:
@@ -220,7 +232,7 @@ def criar_provedor(
 def criar_servidor(
     configuracao: Configuracao, provedor: ProvedorOAuth, cliente: ClienteDaApi
 ) -> ServidorDoConector:
-    """O servidor MCP com a entrada por token (OAuth ou chave direta) e as ferramentas."""
+    """O servidor MCP com a entrada por token (OAuth ou chave direta), as ferramentas e os prompts."""
     servidor = ServidorDoConector(
         NOME,
         instructions=INSTRUCOES,
@@ -232,6 +244,7 @@ def criar_servidor(
         ),
     )
     registrar_ferramentas(servidor, cliente)
+    registrar_prompts(servidor, ORIENTACAO_DO_DOSSIE)
 
     @servidor.custom_route("/saude", methods=["GET"])
     async def saude(_pedido: Request) -> Response:
