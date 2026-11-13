@@ -6,6 +6,9 @@
   --e1: .25rem; --e2: .5rem; --e3: .75rem; --e4: 1rem; --e5: 1.5rem; --e6: 2rem; --e7: 3rem;
   --t-1: .8rem; --t0: 1rem; --t1: 1.1rem; --t2: 1.25rem; --t3: 1.75rem;
 }
+/* o fundo do `body` (um degradê do CSS do site) vai até o fim da tela: sem isto, numa tela curta (aviso de
+   erro, lista vazia) o `body` acaba antes e o degradê recomeça embaixo, em faixa */
+body { min-height: 100vh; min-height: 100dvh; }
 .marca .simbolo { display: inline-flex; }
 .marca .simbolo svg { width: 28px; height: 28px; color: var(--simbolo-topo); }
 /* o topo da casca (linha 903): a busca (Ctrl K) logo depois da marca e o link "O que mudou" */
