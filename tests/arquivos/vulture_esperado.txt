@@ -93,6 +93,7 @@ src/api_v1/compartilhados.py: unused variable 'titulo_do_veredito' (60% confiden
 src/api_v1/esquemas.py: unused variable 'alem_do_maximo' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'alem_dos_ativos' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'aviso_da_janela' (60% confidence)
+src/api_v1/esquemas.py: unused variable 'aviso_de_piloto' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'avisos_dos_ativos' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'cadastro_na_receita' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'campos_do_cadastro_nao_disponiveis' (60% confidence)

@@ -10,6 +10,9 @@ A regra inteira da permissão mora aqui, para a rota só perguntar `pode_ver_pes
 Nasce desligado: nenhuma organização tem essa linha até um administrador concedê-la. A permissão é
 só da tela com login; a API por chave não a conhece (o portão não tem linha para `pessoa_na_tela`).
 A auditoria leva só ids: nunca nome nem e-mail.
+
+O mesmo vínculo responde se a conta é de uma organização do piloto (`e_do_piloto`, D11): os passos 1 e 2
+acima e a marca de piloto da organização vigente no dia, a mesma que vale para a chave dela na API externa.
 """
 
 import uuid
@@ -222,6 +225,21 @@ def organizacao_que_ve_pessoa(
 def pode_ver_pessoa(conexao: sa.Connection, usuario_id: uuid.UUID, dia: date) -> bool:
     """A conta pode ver, na tela com login, pessoa física do cadastro da Receita neste dia?"""
     return organizacao_que_ve_pessoa(conexao, usuario_id, dia) is not None
+
+
+def e_do_piloto(conexao: sa.Connection, usuario_id: uuid.UUID, dia: date) -> bool:
+    """A conta é membro de uma organização com a marca de piloto vigente no dia, para a tela (D11)?
+
+    A mesma marca que libera o piloto para a chave da organização na API externa
+    (`chaves_da_api.e_organizacao_do_piloto`), agora para a conta com login que é membro dela. Organização
+    suspensa, conta bloqueada ou excluída e marca fora da vigência não contam.
+    """
+    organizacao_id = _organizacao_ativa_da_conta(conexao, usuario_id)
+    if organizacao_id is None:
+        return False
+    return cb.e_organizacao_do_piloto(
+        conexao, organizacao_id, finalidade=FINALIDADE_DA_TELA, dia=dia
+    )
 
 
 def dados_para_exportar(
