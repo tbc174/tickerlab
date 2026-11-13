@@ -24,9 +24,10 @@ const campoDaBusca = () => busca().querySelector("input")!;
  * aparecer na tela: com a máquina ocupada (o CI), a tecla dada logo depois do título chegava antes do ouvinte
  * e se perdia, e esperar o campo não adiantava. Por isso a tecla se repete até a busca abrir (com ela aberta,
  * o atalho não faz nada). */
-const abrirABusca = async () => {
+const CTRL_K = { key: "k", ctrlKey: true };
+const abrirABusca = async (tecla: { key: string; ctrlKey?: boolean; metaKey?: boolean } = CTRL_K) => {
   await waitFor(() => {
-    if (busca().querySelector("input") === null) fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    if (busca().querySelector("input") === null) fireEvent.keyDown(window, tecla);
     expect(busca().querySelector("input")).not.toBeNull();
   });
 };
@@ -211,7 +212,7 @@ describe("a busca do topo (Ctrl K)", () => {
 
   it("o clique no espaço interno da janela não fecha a busca; fora da caixa, fecha", async () => {
     await noRisco();
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await abrirABusca();
     busca().getBoundingClientRect = () => new DOMRect(100, 50, 400, 300);
     fireEvent.click(busca(), { clientX: 110, clientY: 60 }); // a margem de dentro: ainda é o dialog
     expect(busca().open).toBe(true);
@@ -221,16 +222,20 @@ describe("a busca do topo (Ctrl K)", () => {
 
   it("Ctrl K e Cmd K abrem a busca em qualquer tela", async () => {
     await noRisco();
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await abrirABusca();
     expect(busca().open).toBe(true);
     fireEvent.click(busca()); // o fundo fecha
     expect(busca().open).toBe(false);
-    fireEvent.keyDown(window, { key: "K", metaKey: true });
+    await abrirABusca({ key: "K", metaKey: true });
     expect(busca().open).toBe(true);
   });
 
   it("a letra K sozinha não abre nada (não atrapalha quem está digitando)", async () => {
     await noRisco();
+    // primeiro a prova de que o atalho já está ligado: sem ela, a letra sozinha "não abriria" de qualquer jeito
+    await abrirABusca();
+    fireEvent.click(busca()); // o fundo fecha
+    expect(busca().open).toBe(false);
     fireEvent.keyDown(window, { key: "k" });
     expect(busca().open).toBe(false);
   });
@@ -251,7 +256,7 @@ describe("a busca do topo (Ctrl K)", () => {
     fireEvent.click(within(busca()).getByRole("link", { name: /^Backtest/ }));
     expect(busca().open).toBe(false);
     await screen.findByRole("heading", { level: 1, name: "Backtest" });
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await abrirABusca();
     expect(campoDaBusca().value).toBe(""); // a busca abre limpa
     fireEvent.change(campoDaBusca(), { target: { value: "planos" } });
     fireEvent.submit(campoDaBusca().closest("form")!);
