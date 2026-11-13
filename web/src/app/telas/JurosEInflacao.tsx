@@ -6,7 +6,7 @@ import { formatarData, formatarDecimal, formatarMes } from "../formatar";
 import { GraficoDeLinha } from "../graficos/GraficoDeLinha";
 import type { ExpectativaV1, JurosEInflacaoV1, NumeroDeJurosV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const { termos, fonte_focus, nota_do_focus } = conteudoDoApp.juros;
 const SEM_PARAMETROS = {};
@@ -104,7 +104,7 @@ export function JurosEInflacao({ pagina }: { pagina: PaginaDoApp }) {
           Lendo as séries do Banco Central…
         </p>
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Resultado dados={pedido.dados} />
       )}

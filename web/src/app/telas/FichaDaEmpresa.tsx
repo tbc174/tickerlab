@@ -6,9 +6,9 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, baixar } from "../api";
-import { Carregando } from "../Carregando";
+import { Carregando } from "../pecas/Carregando";
 import { useConta } from "../conta";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
@@ -16,7 +16,7 @@ import type { BlocoDaFichaV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } 
 import { usarPedido } from "../usarPedido";
 import { cnpjComPontuacao, nomeDoCampo, SEM_VALOR, textoDoValor } from "./valoresDaFicha";
 import { ContatoDaFicha } from "./ContatoDaFicha";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 import { EventosDaFicha } from "./EventosDaFicha";
 import { VinculosDaFicha } from "./VinculosDaFicha";
 import { SociosDaFicha } from "./SociosDaFicha";
@@ -278,7 +278,7 @@ function Resultado({ pagina, cnpj }: { pagina: PaginaDoApp; cnpj: string }) {
   const rota = pagina.contrato?.rota ?? "";
   const pedido = usarPedido<FichaDaEmpresaV1>(rota, {}, { cnpj });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando a ficha da empresa…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   return (
     <>
       <Ficha dados={pedido.dados} rota={rota} cnpj={cnpj} />

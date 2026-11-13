@@ -373,3 +373,37 @@
 .cnpjs-da-comparacao { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; }
 .cnpjs-da-comparacao .botao { min-height: 44px; }
 .celula-comparada small { display: block; }
+/* peças únicas do app (web/src/app/pecas, plano de 13/11/2026): uma cara só em toda tela */
+.cabecalho-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e2) var(--e3); margin-bottom: var(--e2); }
+.app-corpo main .cabecalho-titulo h1 { margin: 0; }
+.so-para-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.selo-do-app { display: inline-flex; align-items: center; padding: 0 var(--e2); min-height: 1.5rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 700; line-height: 1.2; white-space: nowrap; color: var(--texto);
+  border: 1px solid var(--linha-forte); background: var(--superficie); }
+.selo-do-app.destaque { color: var(--azul-texto); border-color: var(--azul-texto); }
+.selo-do-app.bom { border-color: var(--alta); background: color-mix(in srgb, var(--alta) 14%, var(--superficie)); }
+.selo-do-app.atencao { border-color: var(--atencao); background: color-mix(in srgb, var(--atencao) 14%, var(--superficie)); }
+.selo-do-app.alerta { border-color: var(--queda); background: color-mix(in srgb, var(--queda) 14%, var(--superficie)); }
+/* abas: a lista rola de lado no celular, sem a página rolar junto; a aba aberta tem o traço azul embaixo */
+.abas-lista { display: flex; gap: var(--e1); overflow-x: auto; border-bottom: 1px solid var(--linha); scrollbar-width: thin; }
+.abas-lista [role="tab"] { display: inline-flex; align-items: center; gap: var(--e2); min-height: 44px; padding: 0 var(--e3);
+  border: 0; border-bottom: 2px solid transparent; background: none; font: inherit; font-weight: 600;
+  white-space: nowrap; color: var(--apagado); cursor: pointer; }
+.abas-lista [role="tab"]:hover { color: var(--texto); }
+.abas-lista [role="tab"][aria-selected="true"] { color: var(--texto); border-bottom-color: var(--azul-texto); }
+.aba-contagem { padding: 0 var(--e2); border-radius: 999px; font-size: .75rem; font-variant-numeric: tabular-nums;
+  border: 1px solid var(--linha); color: var(--apagado); }
+.aba-painel { padding-top: var(--e4); }
+.aba-painel:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 4px; border-radius: var(--raio); }
+.aba-painel > .secao-do-relatorio:first-child { margin-top: 0; }
+/* tabela da peça: número à direita em largura fixa; o cabeçalho numérico não herda o ".numero" do site */
+.tabela-da-peca { margin: var(--e2) 0 var(--e4); }
+.tabela-da-peca .tabela-do-app { margin: 0; }
+.tabela-da-peca th { font-size: .8rem; color: var(--apagado); white-space: nowrap; }
+.tabela-da-peca th.numero { display: table-cell; margin: 0; font: inherit; font-size: .8rem; font-weight: 700; color: var(--apagado); }
+.tabela-da-peca th.numero, .tabela-da-peca td.numero { text-align: right; }
+.tabela-da-peca td.numero { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 400; color: var(--texto); }
+.tabela-da-peca tbody tr:hover { background: var(--superficie); }
+.tabela-rolavel:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.fonte-do-dado { margin: var(--e1) 0 0; font-size: var(--t-1); color: var(--apagado); }
+.numero-detalhe { font-size: .86rem; color: var(--apagado); }
