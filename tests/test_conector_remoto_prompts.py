@@ -16,7 +16,7 @@ CNPJ = "11111111000191"
 PROMPTS = {
     "triagem_de_cnpj": {"cnpj": "11.111.111/0001-91"},
     "alvos_no_setor": {"cnae": "3511-5", "uf": "sp", "anos_de_abertura": "5"},
-    "compradores_no_setor": {"cnae": "62", "uf": "MG", "anos": "3"},
+    "compradores_no_setor": {"cnae": "6201-5", "uf": "MG", "anos": "3"},
     "comparaveis_da_empresa": {"cnpj": CNPJ, "como_era_em": "2025-06-30"},
     "dossie_da_empresa": {"cnpj": CNPJ},
 }
@@ -86,7 +86,11 @@ def test_argumentos_saem_conferidos_e_limpos():
         comparaveis = _texto(
             cliente, "comparaveis_da_empresa", PROMPTS["comparaveis_da_empresa"]
         )
+        compradores = _texto(
+            cliente, "compradores_no_setor", PROMPTS["compradores_no_setor"]
+        )
     assert CNPJ in triagem
+    assert "CNAE 62015 na UF MG nos últimos 3 anos" in compradores
     assert "CNAE 35115 na UF SP" in alvos and "há mais de 5 anos" in alvos
     assert "`como_era_em` = 2025-06-30" in comparaveis
 
@@ -106,7 +110,14 @@ def test_dossie_usa_a_mesma_orientacao_das_instrucoes():
         ("alvos_no_setor", {"cnae": "energia", "uf": "SP"}),
         ("alvos_no_setor", {"cnae": "35", "uf": "São Paulo"}),
         ("alvos_no_setor", {"cnae": "35", "uf": "SP", "anos_de_abertura": "-1"}),
-        ("compradores_no_setor", {"cnae": "62", "anos": "mil"}),
+        ("compradores_no_setor", {"cnae": "62015", "anos": "mil"}),
+        # a ferramenta de compradores só aceita classe ou subclasse, e até 10 anos
+        ("compradores_no_setor", {"cnae": "62"}),
+        ("compradores_no_setor", {"cnae": "62015", "anos": "50"}),
+        # só ASCII: dígito sobrescrito, dígito arábico e a letra que o upper dobra
+        ("alvos_no_setor", {"cnae": "35", "uf": "SP", "anos_de_abertura": "²"}),
+        ("alvos_no_setor", {"cnae": "٦٢", "uf": "SP"}),
+        ("alvos_no_setor", {"cnae": "35", "uf": "ß"}),
     ],
 )
 def test_argumento_fora_da_forma_e_recusado_sem_montar_o_pedido(nome, argumentos):

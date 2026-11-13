@@ -20,17 +20,21 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import INVALID_PARAMS
 from pydantic import Field
 
-from conector_remoto.ferramentas import cnpj_do_pedido
+from conector_remoto.ferramentas import ANOS_MAXIMO_DOS_COMPRADORES, cnpj_do_pedido
 
 FECHO = (
     "Cite a fonte e a data de cada número, separe o que a base diz do que você deduz e liste à parte o "
-    "que faltou e por quê, sem preencher lacuna com estimativa. Não traga dado de pessoa física. Nada "
-    "aqui é recomendação de investimento."
+    "que faltou e por quê, sem preencher lacuna com estimativa. Não traga dado de pessoa física. Ferramenta "
+    "que a chave não pode usar também é lacuna. Nada aqui é recomendação de investimento."
 )
-_CNAE = re.compile(r"\d{2,7}")
-_UF = re.compile(r"[A-Z]{2}")
+# só ASCII: o `\d` do Python aceita dígitos de outras escritas, e o `upper` faz "ß" virar "SS"
+_CNAE = re.compile(r"[0-9]{2,7}")
+# a ferramenta de compradores aceita só a classe ou a subclasse
+_CNAE_DE_CLASSE = re.compile(r"[0-9]{5}|[0-9]{7}")
+_UF = re.compile(r"[A-Za-z]{2}")
+_NUMERO = re.compile(r"[0-9]{1,3}")
 _PONTUACAO_DO_CNAE = re.compile(r"[\s./-]")
-MAXIMO_DE_ANOS = 100
+MAXIMO_DE_ANOS_DE_ABERTURA = 100
 
 _DESCRICAO_DO_CNPJ = "CNPJ da empresa (14 caracteres, com ou sem pontuação)."
 _DESCRICAO_DA_DATA = "Opcional: ver o dado como era conhecido neste dia (AAAA-MM-DD)."
@@ -41,6 +45,12 @@ _DESCRICAO_DO_CNAE = (
 ArgumentoCnpj = Annotated[str, Field(description=_DESCRICAO_DO_CNPJ)]
 ArgumentoData = Annotated[str, Field(description=_DESCRICAO_DA_DATA)]
 ArgumentoCnae = Annotated[str, Field(description=_DESCRICAO_DO_CNAE)]
+ArgumentoCnaeDeClasse = Annotated[
+    str,
+    Field(
+        description="Classe (5 dígitos) ou subclasse (7 dígitos) do CNAE; pontuação vale."
+    ),
+]
 
 
 MENSAGEM_DE_DATA = "Data em formato errado: use AAAA-MM-DD."
@@ -60,18 +70,22 @@ def montar(pedido: Callable[[], str]) -> str:
         raise MCPError(INVALID_PARAMS, str(erro)) from None
 
 
-def _cnae(texto: str) -> str:
+def _cnae(
+    texto: str,
+    forma: re.Pattern[str] = _CNAE,
+    mensagem: str = "CNAE tem de 2 a 7 dígitos.",
+) -> str:
     limpo = _PONTUACAO_DO_CNAE.sub("", texto)
-    if not _CNAE.fullmatch(limpo):
-        raise ValueError("CNAE tem de 2 a 7 dígitos.")
+    if not forma.fullmatch(limpo):
+        raise ValueError(mensagem)
     return limpo
 
 
 def _uf(texto: str) -> str:
-    limpo = texto.strip().upper()
+    limpo = texto.strip()
     if not _UF.fullmatch(limpo):
         raise ValueError("UF tem duas letras (ex.: SP).")
-    return limpo
+    return limpo.upper()
 
 
 def _data(texto: str) -> str:
@@ -85,12 +99,13 @@ def _data(texto: str) -> str:
         raise ValueError(MENSAGEM_DE_DATA) from None
 
 
-def _anos(texto: str) -> int | None:
+def _anos(texto: str, maximo: int, mensagem: str) -> int | None:
+    """O número de anos, de 1 a `maximo`, ou None se veio vazio; `ValueError` com a `mensagem` se não."""
     limpo = texto.strip()
     if not limpo:
         return None
-    if not limpo.isdigit() or not 1 <= int(limpo) <= MAXIMO_DE_ANOS:
-        raise ValueError(f"Anos de abertura é um número de 1 a {MAXIMO_DE_ANOS}.")
+    if not _NUMERO.fullmatch(limpo) or not 1 <= int(limpo) <= maximo:
+        raise ValueError(mensagem)
     return int(limpo)
 
 
@@ -107,14 +122,19 @@ def triagem(cnpj: str, como_era_em: str = "") -> str:
     return (
         f"Faça a triagem da empresa de CNPJ {cnpj_do_pedido(cnpj)} para uma reunião de originação: "
         "quem é (cadastro, situação, idade, porte e CNAE) com `ficha_da_empresa`, o que "
-        "aconteceu com ela com `eventos` e de quem ela é parte ou dona com `vinculos` (profundidade 1)."
+        "aconteceu com ela com `eventos` e as participações e o auditor que a base tiver com `vinculos` "
+        "(profundidade 1; leia os `limits`, que dizem o que a base cobre para empresa fechada)."
         f"{_no_dia(_data(como_era_em))} Termine com três pontos a investigar na reunião. {FECHO}"
     )
 
 
 def alvos(cnae: str, uf: str, anos_de_abertura: str = "") -> str:
     """O pedido dos alvos de um setor numa UF."""
-    anos = _anos(anos_de_abertura)
+    anos = _anos(
+        anos_de_abertura,
+        MAXIMO_DE_ANOS_DE_ABERTURA,
+        f"Anos de abertura é um número de 1 a {MAXIMO_DE_ANOS_DE_ABERTURA}.",
+    )
     idade = (
         f" abertas há mais de {anos} anos (calcule a data de corte a partir de hoje e use "
         "`aberta_antes_de`),"
@@ -132,11 +152,18 @@ def alvos(cnae: str, uf: str, anos_de_abertura: str = "") -> str:
 def compradores(cnae: str, uf: str = "", anos: str = "") -> str:
     """O pedido de quem já se mexeu num setor."""
     limpa_uf = _uf(uf) if uf.strip() else ""
-    janela = _anos(anos)
+    janela = _anos(
+        anos,
+        ANOS_MAXIMO_DOS_COMPRADORES,
+        f"Anos é um número de 1 a {ANOS_MAXIMO_DOS_COMPRADORES}.",
+    )
+    setor = _cnae(
+        cnae, _CNAE_DE_CLASSE, "CNAE é a classe (5 dígitos) ou a subclasse (7 dígitos)."
+    )
     onde = f" na UF {limpa_uf}" if limpa_uf else ""
     quando = f" nos últimos {janela} anos (`anos`)" if janela else ""
     return (
-        f"Quem já se mexeu no setor do CNAE {_cnae(cnae)}{onde}{quando}? Use `compradores_do_setor` e "
+        f"Quem já se mexeu no setor do CNAE {setor}{onde}{quando}? Use `compradores_do_setor` e "
         "mostre cada comprador com os sinais e os exemplos. Leia os `limits` e diga que é movimento "
         "passado, não intenção de compra. Para os três primeiros, sugira o que conferir antes de "
         f"procurá-los. {FECHO}"
@@ -177,10 +204,10 @@ def registrar_prompts(servidor: MCPServer, orientacao_do_dossie: str) -> None:
         return montar(lambda: alvos(cnae, uf, anos_de_abertura))
 
     def _compradores(
-        cnae: ArgumentoCnae,
+        cnae: ArgumentoCnaeDeClasse,
         uf: Annotated[str, Field(description="Opcional: UF, duas letras.")] = "",
         anos: Annotated[
-            str, Field(description="Opcional: olhar só os últimos N anos.")
+            str, Field(description="Opcional: olhar só os últimos N anos (1 a 10).")
         ] = "",
     ) -> str:
         return montar(lambda: compradores(cnae, uf, anos))
