@@ -483,6 +483,71 @@ def test_situacao_nao_vai_sem_empresas_pj(tmp_path):
         envio.montar(base, tmp_path / "saida", ("cnpj_situacao_cadastral",))
 
 
+# ---------------------------------------------------------------- registros da Anvisa (linha 860)
+
+COM_ANVISA = (*TABELAS_PJ, "anvisa_por_empresa")
+
+
+def _anvisa(base: Path, raizes: str) -> None:
+    """Contagens por raiz com as colunas-chave da tabela de verdade (só pessoa jurídica, marca sempre falsa)."""
+    _parquet(
+        base / "anvisa_por_empresa" / "anvisa_por_empresa.parquet",
+        "SELECT cnpj_basico, DATE '2026-11-12' AS disponivel_em, false AS trata_como_pessoa, "
+        "300 AS cosmeticos_total, 250 AS cosmeticos_ativos "
+        f"FROM (VALUES {raizes}) t(cnpj_basico)",
+    )
+
+
+def _empresas_e_anvisa(base: Path, raizes: str) -> None:
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('55555555', 'FULANO DE TAL', '2062', 'micro')",
+        "('00000000')",
+    )
+    _anvisa(base, raizes)
+
+
+def test_anvisa_sobe_no_degrau_2_so_pela_api_externa():
+    """Linha 860: a contagem só das raízes sem pessoa vai com as empresas PJ e só a API externa a serve."""
+    assert "anvisa_por_empresa" in envio.tabelas_do_degrau(2)
+    assert "anvisa_por_empresa" not in envio.tabelas_do_degrau(1)
+    assert "anvisa_por_empresa" not in envio.FICAM_EM_CASA
+    assert "anvisa_por_empresa" in envio.RAIZES_SO_PJ
+    assert not pode_consultar("anvisa_por_empresa")
+    envio.conferir_a_lista(("anvisa_por_empresa",))
+
+
+def test_anvisa_so_de_raiz_pj_sai_inteira(tmp_path):
+    base = tmp_path / "base"
+    _empresas_e_anvisa(base, "('00000000')")
+    envio.montar(base, tmp_path / "saida", COM_ANVISA)
+    arquivo = tmp_path / "saida" / "anvisa_por_empresa" / "anvisa_por_empresa.parquet"
+    assert duckdb.sql(f"SELECT count(*) FROM '{arquivo.as_posix()}'").fetchone() == (1,)
+
+
+@pytest.mark.parametrize(
+    "raiz",
+    [
+        "('99999999')",  # fora da lista
+        "('55555555')",  # MEI que a saída tira
+        "(NULL)",  # sem raiz
+    ],
+)
+def test_anvisa_com_raiz_fora_da_lista_derruba_o_envio(tmp_path, raiz):
+    base = tmp_path / "base"
+    _empresas_e_anvisa(base, f"('00000000'), {raiz}")
+    with pytest.raises(envio.RecorteErro, match="fora da lista sem pessoa"):
+        envio.montar(base, tmp_path / "saida", COM_ANVISA)
+
+
+def test_anvisa_nao_vai_sem_empresas_pj(tmp_path):
+    base = tmp_path / "base"
+    _anvisa(base, "('00000000')")
+    with pytest.raises(envio.RecorteErro, match="junto"):
+        envio.montar(base, tmp_path / "saida", ("anvisa_por_empresa",))
+
+
 def test_a_conexao_despeja_na_temporaria_do_sistema_e_nao_na_pasta_atual(
     tmp_path, monkeypatch
 ):
