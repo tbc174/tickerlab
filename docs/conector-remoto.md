@@ -124,6 +124,11 @@ quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Ho
 `compradores_do_setor`, que chama `/buyers` (conjunto `buyers`, linha 810): `cnae` (classe ou subclasse),
 `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data.
 
+Cada ferramenta tem um título (`title`, em `TITULOS_DAS_FERRAMENTAS`), que é o que o analista vê no
+cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico (`buscar_empresas`) não muda,
+porque é o que as instruções, os prompts e o ensaio citam. Ferramenta nova precisa de título: o teste do
+servidor falha sem ele.
+
 O comparar de duas a cinco empresas ainda não tem rota na API externa. Entra pelo mesmo caminho: rota na
 API, comando na CLI e ferramenta aqui, com a paridade cobrando.
 

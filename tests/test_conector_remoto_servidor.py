@@ -174,6 +174,33 @@ def test_todas_as_ferramentas_so_leem():
         }, ferramenta["name"]
 
 
+def test_toda_ferramenta_tem_titulo_curto_em_portugues():
+    """O título é o que o analista vê no cliente; um lugar só, cobrindo cada ferramenta registrada."""
+    with _conector() as cliente:
+        lista = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
+            "tools"
+        ]
+    assert sorted(ferramentas.TITULOS_DAS_FERRAMENTAS) == sorted(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    titulos = {f["name"]: f.get("title") for f in lista}
+    assert titulos == ferramentas.TITULOS_DAS_FERRAMENTAS
+    assert len(set(titulos.values())) == len(titulos)
+    for titulo in titulos.values():
+        assert 0 < len(titulo) <= 50, titulo
+        assert "_" not in titulo, titulo
+
+
+def test_ficha_explica_os_campos_do_cadastro_nao_consultados():
+    with _conector() as cliente:
+        lista = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
+            "tools"
+        ]
+    (ficha_,) = [f for f in lista if f["name"] == "ficha_da_empresa"]
+    assert "unavailable_registration_fields" in ficha_["description"]
+    assert "limits" in ficha_["description"]
+
+
 def test_conjuntos_das_ferramentas_sao_os_da_api():
     da_api = {
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
