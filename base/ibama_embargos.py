@@ -54,7 +54,9 @@ TEXTOS = [
     "desembargado", "numero_do_auto",
 ]  # fmt: skip
 DATAS = ["embargada_em", "desembargada_em"]
-VALORES = [*TEXTOS, "area_embargada_ha", *DATAS]
+# `consta` entra nos valores comparados: sem ele, o registro que sai do arquivo não vira a linha
+# `consta` falso e continua constando (linha 907)
+VALORES = [*TEXTOS, "area_embargada_ha", *DATAS, "consta"]
 COLUNAS = [
     "id_na_fonte", "cnpj", "cnpj_basico", *TEXTOS, "area_embargada_ha", *DATAS,
 ]  # fmt: skip
