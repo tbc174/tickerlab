@@ -190,6 +190,47 @@ def limites_da_api(plano_da_api: str | None) -> LimitesDaApi:
     )
 
 
+# Chat de IA do app (linha 903, opção A do Tiago em 13/11/2026): cada pergunta é uma chamada paga ao
+# modelo. Cota por conta e um teto do mês somando todas as contas; bateu o teto, o chat pausa sozinho.
+@dataclass(frozen=True)
+class LimitesDoChat:
+    perguntas_por_mes: int  # por conta, no mês de Brasília
+    perguntas_por_dia: int  # por conta, no dia de Brasília
+    teto_do_mes_em_reais: int  # somando todas as contas
+    # câmbio de cautela para converter o custo do modelo (cobrado em dólar) e comparar com o teto
+    centavos_por_dolar: int
+    # quanto uma pergunta em curso (ou que parou no meio) segura do teto: o pior caso das voltas abaixo,
+    # sem acerto de cache (tests/test_chat_custo_e_modelo.py recalcula e falha se ficar abaixo)
+    reserva_por_pergunta_em_microdolares: int
+    voltas_de_ferramenta: (
+        int  # chamadas em sequência que o modelo pode fazer numa pergunta
+    )
+    tokens_por_volta: int  # max_tokens de cada volta (pensamento e texto)
+    caracteres_da_pergunta: int
+    perguntas_no_historico: int  # as perguntas anteriores da conversa que vão junto
+    caracteres_do_historico: int  # de cada pergunta e de cada resposta anterior
+    caracteres_por_resultado: int  # de cada resposta de ferramenta que vai ao modelo
+    caracteres_de_dados_por_pergunta: (
+        int  # somando as respostas de ferramenta da pergunta
+    )
+
+
+LIMITES_DO_CHAT = LimitesDoChat(
+    perguntas_por_mes=50,
+    perguntas_por_dia=10,
+    teto_do_mes_em_reais=300,
+    centavos_por_dolar=600,
+    reserva_por_pergunta_em_microdolares=5_000_000,  # US$ 5 (o pior caso do Opus é ~US$ 4,60)
+    voltas_de_ferramenta=6,
+    tokens_por_volta=8_000,
+    caracteres_da_pergunta=2_000,
+    perguntas_no_historico=4,
+    caracteres_do_historico=4_000,
+    caracteres_por_resultado=40_000,
+    caracteres_de_dados_por_pergunta=120_000,
+)
+
+
 # a página de planos (o Streamlit e o app novo mostram as mesmas frases)
 AVISO_DO_MODO_DE_TESTE = (
     "Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado."

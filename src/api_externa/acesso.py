@@ -153,6 +153,18 @@ def _contexto_da_chave(
     return resultado
 
 
+def conferir_contexto(contexto: ContextoDaChave, *, com_quota_do_mes: bool) -> None:
+    """Os limites da organização para um pedido que não trouxe a chave (o chat do app, linha 903).
+
+    O mesmo limite do minuto e a mesma quota do mês da porta da chave: 429 quando passa.
+    """
+    momento = agora()
+    _conferir_minuto(contexto, momento)
+    if com_quota_do_mes:
+        with obter_engine().connect() as conexao:
+            exigir_quota(conexao, contexto, 1, momento)
+
+
 def exigir_chave(
     request: Request,
     authorization: Annotated[str | None, Header()] = None,

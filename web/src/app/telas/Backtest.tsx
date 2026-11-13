@@ -15,7 +15,7 @@ import { useConta } from "../conta";
 import { formatar } from "../formatar";
 import { GraficoDeLinha } from "../graficos/GraficoDeLinha";
 import type { BacktestDoAtivoV1, FichaV1, MinhasSimulacoesV1 } from "../tipos";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 import { TelaDoContrato } from "./TelaDoContrato";
 
 const { metricas_por_formato, ficha: textosDaFicha } = conteudoDoApp.backtest;
@@ -158,7 +158,7 @@ function SalvarNaConta({ pagina, dados }: { pagina: PaginaDoApp; dados: Backtest
           Simulação guardada ({salvamento.uso}). <Link to="/simulacoes">Ver minhas simulações</Link>
         </p>
       ) : null}
-      {salvamento.estado === "erro" ? <ErroDaTela erro={salvamento.erro} /> : null}
+      {salvamento.estado === "erro" ? <Erro erro={salvamento.erro} /> : null}
     </section>
   );
 }

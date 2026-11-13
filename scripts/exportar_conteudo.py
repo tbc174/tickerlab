@@ -123,6 +123,22 @@ def _areas() -> list[dict]:
     ]
 
 
+def _menu() -> list[dict]:
+    """O menu do app novo (plano de 13/11/2026), na ordem. De cada item saem só as páginas que já
+    existem: item sem página nenhuma fica fora do menu até a tela nascer."""
+    return [
+        {
+            "chave": item.chave,
+            "rotulo": item.rotulo,
+            "icone": item.icone,
+            "paginas": [c for c in item.paginas if c in paginas.POR_CHAVE],
+            "secundario": item.secundario,
+            "novo": item.novo,
+        }
+        for item in paginas.MENU_DO_APP
+    ]
+
+
 def _marca() -> dict:
     return {
         "fonte": marca.FONTE,
@@ -282,6 +298,7 @@ def _app() -> dict[str, object]:
     )
     return {
         "areas": _areas(),
+        "menu": _menu(),
         "painel": {
             "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
             "legenda": analises.LEGENDA_DO_PAINEL,

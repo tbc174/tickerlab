@@ -4,14 +4,17 @@
 // vindos da ficha, pelo estado da navegação), nunca no endereço; nada é pedido antes de a pessoa comparar.
 import { type FormEvent, useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
-import { Carregando } from "../Carregando";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
+import { Carregando } from "../pecas/Carregando";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
 import type { CampoComFonteV1, ComparacaoDeEmpresasV1, EmpresaComparadaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
-import { BaixarPlanilha, Fontes, Limites, TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
+import { Erro } from "../pecas/Erro";
+import { Baixar } from "../pecas/Baixar";
+import { Fontes } from "../pecas/Fonte";
+import { Limites } from "../pecas/Limites";
+import { TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
 
 const MINIMO = 2;
 const MAXIMO = 5;
@@ -163,7 +166,7 @@ function Comparacao({ dados, rota, cnpjs }: { dados: ComparacaoDeEmpresasV1; rot
       <p className="apagado">Como a base conhecia em {formatarData(dados.como_era_em ?? "")}</p>
       {algumaPronta ? (
         <div className="acoes-da-ficha">
-          <BaixarPlanilha rota={rota} corpo={{ cnpjs }} nome={NOME_DA_PLANILHA} />
+          <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={{ cnpjs }} nome={NOME_DA_PLANILHA} />
         </div>
       ) : (
         <p className="apagado" role="note">
@@ -180,7 +183,7 @@ function Resultado({ pagina, cnpjs }: { pagina: PaginaDoApp; cnpjs: string[] }) 
   const rota = pagina.contrato?.rota ?? "";
   const pedido = usarPedido<ComparacaoDeEmpresasV1>(rota, {}, { cnpjs });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Pondo as empresas lado a lado…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   return (
     <>
       <Comparacao dados={pedido.dados} rota={rota} cnpjs={cnpjs} />

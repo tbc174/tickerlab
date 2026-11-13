@@ -11,7 +11,7 @@ import { pedir } from "../api";
 import { useConta } from "../conta";
 import type { MinhasSimulacoesV1, SimulacaoV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 const TERMO_DA_FICHA = conteudoDoApp.backtest.ficha.termo;
@@ -112,7 +112,7 @@ export function Simulacoes({ pagina }: { pagina: PaginaDoApp }) {
           Lendo as suas simulações…
         </p>
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Lista inicial={pedido.dados} />
       )}

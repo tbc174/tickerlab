@@ -2,10 +2,10 @@
 // (GET /v1/dados-e-cobertura, o catálogo público sem as colunas); a tela só agrupa por módulo e não
 // escreve nenhuma cobertura à mão: o que o catálogo não declara, a tela não mostra.
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import type { DadosECoberturaV1, TabelaDaCoberturaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 
@@ -26,7 +26,7 @@ export function DadosECobertura({ pagina }: { pagina: PaginaDoApp }) {
           Carregando…
         </p>
       )}
-      {pedido.estado === "erro" && <ErroDaTela erro={pedido.erro} />}
+      {pedido.estado === "erro" && <Erro erro={pedido.erro} />}
       {pedido.estado === "pronto" && (
         <p className="apagado">Algumas tabelas só entram nesta lista depois de passarem na conferência de prontidão.</p>
       )}

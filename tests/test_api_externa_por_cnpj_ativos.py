@@ -266,12 +266,13 @@ def test_empresa_que_nenhuma_base_tem_sai_com_achou_falso(pasta):
     assert servido.fontes == {ANP, SIGBM, CFEM}
 
 
-def test_tabela_fora_da_base_sai_como_nao_achou(tmp_path):
+def test_tabela_fora_da_base_nao_foi_consultada(tmp_path):
+    """Sem o arquivo, o bloco não sai como "achou: false" (linha 917): vai em `nao_coberto`."""
     pasta = gravar_base(tmp_path / "base", com_anm=False)
     corpo = _ler(pasta).corpo
     assert corpo[ativos.PETROLEO_E_GAS]["achou"] is True
-    assert corpo[ativos.BARRAGENS]["achou"] is False
-    assert corpo[ativos.BARRAGENS]["dado_mais_novo"] is None
+    assert ativos.BARRAGENS not in corpo
+    assert ativos.FORA_DA_ROTA[ativos.BARRAGENS] in corpo["nao_coberto"]
 
 
 def test_as_linhas_contam_os_itens_servidos(pasta):

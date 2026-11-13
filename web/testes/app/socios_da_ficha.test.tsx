@@ -7,7 +7,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, describe, expect, it } from "vitest";
 import type { SociosDaEmpresaV1 } from "../../src/app/telas/SociosDaFicha";
 import type { FichaDaEmpresaV1 } from "../../src/app/tipos";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { abrirAba, abrirApp, respostaJson } from "./ajudantes";
 
 const CNPJ = "02.429.144/0001-93";
 const ROTA_DA_FICHA = "/api/v1/analista/ficha";
@@ -56,7 +56,7 @@ function abrir(socios: () => Response, ficha: FichaDaEmpresaV1 = FICHA) {
 async function verFicha() {
   fireEvent.change(await screen.findByLabelText("CNPJ"), { target: { value: CNPJ } });
   fireEvent.click(screen.getByRole("button", { name: "Ver a ficha" }));
-  await screen.findByRole("region", { name: "Cadastro na Receita" });
+  await abrirAba("Quem controla");
 }
 
 const pedidosDosSocios = (buscar: ReturnType<typeof abrir>["buscar"]) =>
@@ -95,7 +95,7 @@ describe("sócios pessoa física na ficha", () => {
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
     expect(screen.queryByText(/sócio/i)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByRole("region", { name: "Cadastro na Receita" })).toBeTruthy(); // a ficha segue inteira
+    expect(screen.getByRole("tablist")).toBeTruthy(); // a ficha segue inteira
   });
 
   it("empresa sem sócio pessoa física adulto: a seção diz isso, com os limites", async () => {

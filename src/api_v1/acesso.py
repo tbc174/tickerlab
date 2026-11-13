@@ -264,6 +264,9 @@ ROTAS_DA_CONTA = frozenset(
         # molde D: a lista de setores só pede login (ajuda a página "Relatório do setor", que tem o
         # contrato de /v1/relatorio-setor; é ele que diz o plano das seções da base)
         "/v1/setores",
+        # o chat de IA (linha 903): pede login e uma organização com chave ativa, conferidas na própria
+        # rota (src/api_v1/chat.py); o plano da conta não muda o que ele vê, o contrato da organização sim
+        "/v1/chat",
     }
 )
 

@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-// A moldura do app feita para o celular (ADR 0066; série site e app v2, PR 4): abas embaixo, toque de
+// A casca do app feita para o celular (ADR 0066; série site e app v2, PR 4; linha 903): abas embaixo, toque de
 // 44 px, campos de 16 px, fundo animado só no login e no início (ADR 0065 item 2) e tabelas que rolam
 // por dentro. O jsdom não aplica media queries: o CSS é conferido como texto.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TELAS_DO_APP } from "../../src/app/rotas";
+import { TELAS_DO_APP, temTelaPronta } from "../../src/app/rotas";
 import { abrirApp, respostaJson } from "./ajudantes";
 import juros from "./exemplos/juros_e_inflacao.json";
 import linha from "./exemplos/linha_do_tempo.json";
@@ -29,15 +29,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("abas embaixo no celular (por área, ADR 0096)", () => {
+describe("abas embaixo no celular (os itens do menu, linha 903)", () => {
   const folha = () => document.querySelector<HTMLDialogElement>("dialog.folha-mais")!;
 
-  it("Início, Empresas, Companhias abertas e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
+  it("Início, Empresas, Setores e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
     abrirApp("/");
     await noInicio();
     const nav = abas();
     const nomes = [...nav.querySelectorAll(":scope > :is(a, button)")].map((el) => el.textContent);
-    expect(nomes).toEqual(["Início", "Empresas", "Companhias abertas", "Mais"]);
+    expect(nomes).toEqual(["Início", "Empresas", "Setores", "Mais"]);
     expect(within(nav).getByRole("button", { name: "Mais" }).getAttribute("aria-haspopup")).toBe("dialog");
     // a folha fica fora da barra (a barra é fixa e borrada: um filho fixo dela ficaria preso nela)
     expect(nav.contains(folha())).toBe(false);
@@ -45,16 +45,16 @@ describe("abas embaixo no celular (por área, ADR 0096)", () => {
       a.getAttribute("href"),
     );
     // o Pulse é o próprio Início ("/")
-    for (const pagina of TELAS_DO_APP.filter((p) => p.chave !== "pulse"))
+    for (const pagina of TELAS_DO_APP.filter((p) => p.no_menu && p.chave !== "pulse" && temTelaPronta(p.chave)))
       expect(alcancaveis, pagina.url).toContain(`/${pagina.url}`);
   });
 
-  it("cada aba de área abre a primeira tela pronta dela", async () => {
+  it("cada aba abre a primeira tela pronta do item dela", async () => {
     abrirApp("/");
     await noInicio();
     const destino = (nome: string) => within(abas()).getByRole("link", { name: nome }).getAttribute("href");
     expect(destino("Empresas")).toBe("/encontrar-empresas");
-    expect(destino("Companhias abertas")).toBe("/visao-geral");
+    expect(destino("Setores")).toBe("/relatorio-do-setor");
   });
 
   it("no início só a aba Início fica marcada", async () => {
@@ -64,15 +64,15 @@ describe("abas embaixo no celular (por área, ADR 0096)", () => {
     expect([...atuais].map((a) => a.textContent)).toEqual(["Início"]);
   });
 
-  it("numa tela de Companhias abertas, a aba dela fica marcada (mesmo não sendo a primeira tela dela)", async () => {
-    abrirApp("/risco", { rotas: () => new Promise(() => {}) as never });
-    await screen.findByRole("heading", { level: 1, name: "Risco" });
+  it("na ficha da empresa, a aba Empresas fica marcada (mesmo não sendo a tela que a aba abre)", async () => {
+    abrirApp("/ficha-da-empresa", { rotas: () => new Promise(() => {}) as never });
+    await screen.findByRole("heading", { level: 1, name: "Ficha da empresa" });
     const atuais = abas().querySelectorAll("[aria-current]");
-    expect([...atuais].map((a) => a.textContent)).toEqual(["Companhias abertas"]);
-    expect(within(abas()).getByRole("link", { name: "Companhias abertas" }).classList.contains("active")).toBe(true);
+    expect([...atuais].map((a) => a.textContent)).toEqual(["Empresas"]);
+    expect(within(abas()).getByRole("link", { name: "Empresas" }).classList.contains("active")).toBe(true);
   });
 
-  it("numa tela da área Mais (sem aba própria), o botão 'Mais' fica marcado", async () => {
+  it("numa tela sem aba própria, o botão 'Mais' fica marcado", async () => {
     abrirApp("/backtest", { rotas: () => new Promise(() => {}) as never });
     await screen.findByRole("heading", { level: 1, name: "Backtest" });
     expect(within(abas()).getByRole("button", { name: "Mais" }).classList.contains("active")).toBe(true);
@@ -130,22 +130,24 @@ describe("topo compacto e campos que não dão zoom", () => {
     expect(PAGINA_DO_APP).toContain('content="width=device-width, initial-scale=1, viewport-fit=cover"');
   });
 
-  it("no celular o topo esconde o selo e fica mais baixo", () => {
-    expect(NO_CELULAR).toMatch(/\.selo-novo \{ display: none; \}/);
+  it("no celular o topo fica compacto: da busca só o ícone, e o tema encosta nela", () => {
+    expect(NO_CELULAR).toMatch(/\.busca-do-topo :is\(\.rotulo-da-busca, kbd\) \{[^}]*clip-path: inset\(50%\);/);
+    expect(NO_CELULAR).toMatch(/\.topo \.tema-escolha \{ margin-left: 0; \}/);
+    // em 375 px o nome da marca empurrava o "Sair" para fora da tela: fica só o símbolo
+    expect(NO_CELULAR).toMatch(/@media \(max-width: 480px\) \{ \.topo \.marca > span:not\(\.simbolo\) \{ display: none; \} \}/);
   });
 
-  it("no celular o 'Versão clássica' sai do topo (vazava em 375 px) e fica no fim da folha 'Mais'", async () => {
+  it("o 'Versão clássica' não fica no topo de quem entrou (vazava em 375 px): fica no fim da folha 'Mais'", async () => {
     expect(NO_CELULAR).toMatch(/\.app-atual-no-topo \{ display: none; \}/);
     abrirApp("/");
     await noInicio();
-    const noTopo = within(screen.getByRole("banner")).getByRole("link", { name: "Versão clássica" });
-    expect(noTopo.classList.contains("app-atual-no-topo")).toBe(true);
+    expect(within(screen.getByRole("banner")).queryByRole("link", { name: "Versão clássica" })).toBeNull();
     // a folha está fechada: o link existe, mas só aparece quando ela abre
     const naFolha = within(document.querySelector<HTMLDialogElement>("dialog.folha-mais")!).getByRole("link", {
       name: "Versão clássica",
       hidden: true,
     });
-    expect(naFolha.getAttribute("href")).toBe(noTopo.getAttribute("href"));
+    expect(naFolha.getAttribute("href")).toBe("/classico/");
   });
 });
 
