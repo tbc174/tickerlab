@@ -210,6 +210,10 @@ class LeitorDeEventos:
         self.linhas_maximas = linhas_maximas
 
     def _servidos(self, origem: OrigemDoEvento) -> tuple[str, ...]:
+        """Os campos que o portão libera. Tabela fora da porta (sem arquivo na base) não foi consultada:
+        o tipo vai em `tipos_nao_disponiveis`, e a lista vazia não quer dizer "a empresa não tem" (linha 917)."""
+        if origem.tabela not in views(self.porta.con):
+            return ()
         return tuple(
             nome
             for nome in origem.campos
