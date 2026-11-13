@@ -99,6 +99,13 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("cnpj_estabelecimentos_mudancas", "mes"): "visto_em",
     ("cnpj_qsa_mudancas", "mes"): "visto_em",
     ("cnpj_simples_mudancas", "mes"): "visto_em",
+    # linha 904 (lote 3 das 300 tabelas): o período a que a declaração se refere e as datas do SIGSIF
+    ("receita_dirbi", "periodo"): "referencia",
+    ("receita_ecf_renuncia", "dt_ini"): "referencia",
+    ("receita_ecf_renuncia", "dt_fin"): "referencia",
+    ("sigsif_habilitados", "dt_validade"): "ate",
+    ("sigsif_habilitados", "dt_ocorrencia"): "aconteceu_em",
+    ("sigsif_habilitados", "dt_suspensao"): "aconteceu_em",
 }
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160

@@ -7548,7 +7548,7 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "periodo": "a_conferir",
+        "periodo": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"
@@ -7749,8 +7749,8 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "dt_ini": "a_conferir",
-        "dt_fin": "a_conferir",
+        "dt_ini": "referencia",
+        "dt_fin": "referencia",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"
@@ -7850,9 +7850,9 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "dt_validade": "a_conferir",
-        "dt_ocorrencia": "a_conferir",
-        "dt_suspensao": "a_conferir",
+        "dt_validade": "ate",
+        "dt_ocorrencia": "aconteceu_em",
+        "dt_suspensao": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"

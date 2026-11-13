@@ -20,6 +20,7 @@ from base import sigsif
 from base.parquet import GRAVADO, IGUAL
 from scripts import carga_receita_renuncias as carga
 from scripts import montar_tabelas_lote_3 as montagem
+from tests.ajudantes_de_cpf import cpf_que_confere, formatado
 
 
 def _cnpj(raiz: str, filial: str = "0001") -> str:
@@ -366,7 +367,7 @@ def test_sif_dividido_entre_cpf_e_cnpj_nao_entra(tmp_path):
     (pasta / "registrados.csv").write_bytes(
         _registrados(
             (cnpjs.formatar(EMPRESA), "100"),
-            ("123.456.789-09", "100"),
+            (formatado(cpf_que_confere("888123456")), "100"),
             (cnpjs.formatar(OUTRA), "300"),
         )
     )
