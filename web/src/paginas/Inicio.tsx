@@ -156,10 +156,10 @@ const PASSOS_DO_CONECTOR: [string, ReactNode][] = [
 
 const TRAVAS_DO_CONECTOR: [string, string][] = [
   ["Só leitura", "Nenhuma ferramenta escreve, envia ou baixa nada de fora."],
-  ["As mesmas regras da CLI", "Cada comando de leitura da CLI tem uma ferramenta no conector, com o mesmo pedido à API; um teste falha se um lado ficar para trás."],
+  ["As mesmas regras da CLI", "Os comandos de leitura da CLI têm ferramenta no conector, com o mesmo pedido à API; a exceção fica escrita, com o motivo, e um teste falha se um lado ficar para trás sem ela."],
   ["Fonte e data em cada número", "As instruções do conector pedem à IA que cite a fonte e a data e liste à parte o que faltou."],
-  ["Sem dado de pessoa física", "O conector recusa a resposta que trouxer sócio pessoa física, CPF ou contato."],
-  ["A chave não vai ao chat", "Ela só é colada na página do TickerLab, e a organização pode revogá-la."],
+  ["Sem dado de pessoa física", "A API já não entrega pessoa, e o conector confere cada resposta e recusa a que trouxer campo de sócio pessoa física, CPF ou contato."],
+  ["A chave não vai ao chat", "Ela só é colada na página do TickerLab, e a revogação dela corta o acesso na chamada seguinte."],
 ];
 
 const PASSOS_PARA_COMECAR: [string, ReactNode][] = [
