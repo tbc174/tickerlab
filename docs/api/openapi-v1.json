@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AberturasPorAnoV1": {
+        "properties": {
+          "aberturas": {
+            "title": "Aberturas",
+            "type": "integer"
+          },
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ano",
+          "aberturas"
+        ],
+        "title": "AberturasPorAnoV1",
+        "type": "object"
+      },
       "AceiteV1": {
         "description": "A versão dos termos que a tela mostrou (uma aba velha não aceita os termos novos).",
         "properties": {
@@ -2699,6 +2717,24 @@
           "cnpj"
         ],
         "title": "EmpresaDaBuscaV1",
+        "type": "object"
+      },
+      "EmpresasPorUfV1": {
+        "properties": {
+          "empresas_ativas": {
+            "title": "Empresas Ativas",
+            "type": "integer"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uf",
+          "empresas_ativas"
+        ],
+        "title": "EmpresasPorUfV1",
         "type": "object"
       },
       "EncerradasV1": {
@@ -5847,6 +5883,19 @@
         "title": "PedidoDoChatV1",
         "type": "object"
       },
+      "PedidoDoPerfilV1": {
+        "properties": {
+          "cnae": {
+            "title": "Cnae",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnae"
+        ],
+        "title": "PedidoDoPerfilV1",
+        "type": "object"
+      },
       "PedidoDoSetorV1": {
         "properties": {
           "anos": {
@@ -5904,6 +5953,136 @@
           "cnpj"
         ],
         "title": "PedidoDosEventosV1",
+        "type": "object"
+      },
+      "PerfilDoSetorV1": {
+        "description": "Os números de um setor por CNAE (linha 903, tela de Setor): só contagens, só pessoa jurídica. O bloco que\no portão não libera vem `None` (nunca zero) e o nome dele em `blocos_nao_disponiveis`.",
+        "properties": {
+          "aberturas_por_ano": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AberturasPorAnoV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aberturas Por Ano"
+          },
+          "blocos_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocos Nao Disponiveis",
+            "type": "array"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Principal"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "data_do_retrato": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Do Retrato"
+          },
+          "empresas_ativas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresas Ativas"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "por_uf": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmpresasPorUfV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Por Uf"
+          },
+          "publico_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publico Em"
+          }
+        },
+        "required": [
+          "estado",
+          "cnae_principal",
+          "como_era_em",
+          "data_do_retrato",
+          "publico_em",
+          "empresas_ativas",
+          "por_uf",
+          "aberturas_por_ano",
+          "blocos_nao_disponiveis",
+          "fontes",
+          "limites"
+        ],
+        "title": "PerfilDoSetorV1",
         "type": "object"
       },
       "PiorQuedaV1": {
@@ -8294,6 +8473,45 @@
           }
         },
         "summary": "Compradores Do Setor"
+      }
+    },
+    "/v1/analista/setor/perfil": {
+      "post": {
+        "description": "Os números do setor por CNAE: empresas ativas, por UF e aberturas por ano. Só contagens e só pessoa\njurídica (MEI e empresário individual não entram), no retrato da Receita do dia, com o mesmo portão e o\nmesmo leitor da API externa. O bloco que o portão não libera vem vazio e nomeado em `blocos_nao_disponiveis`.",
+        "operationId": "perfil_do_setor_v1_analista_setor_perfil_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoPerfilV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilDoSetorV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perfil Do Setor"
       }
     },
     "/v1/apagar-simulacao": {
