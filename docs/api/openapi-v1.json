@@ -1839,6 +1839,134 @@
         "title": "ComparacaoV1",
         "type": "object"
       },
+      "CompradorDoSetorV1": {
+        "description": "Quem já se mexeu no setor: a raiz do CNPJ, o nome do retrato da Receita, os sinais (pelo nome de dentro:\n`entrou_como_socio`, `fundo_socio`, `controla_no_setor`) e as provas de cada um. Só pessoa jurídica.",
+        "properties": {
+          "provas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProvaDoSinalV1"
+            },
+            "title": "Provas",
+            "type": "object"
+          },
+          "raiz_do_cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raiz Do Cnpj"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sinais": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sinais",
+            "type": "array"
+          }
+        },
+        "required": [
+          "raiz_do_cnpj",
+          "razao_social",
+          "sinais",
+          "provas"
+        ],
+        "title": "CompradorDoSetorV1",
+        "type": "object"
+      },
+      "CompradoresDoSetorV1": {
+        "description": "Quem já se mexeu num setor, na tela (linha 903, PR D): o estado, a lista, as fontes e os limites,\nsempre. Movimento passado, não intenção de compra.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "compradores": {
+            "items": {
+              "$ref": "#/components/schemas/CompradorDoSetorV1"
+            },
+            "title": "Compradores",
+            "type": "array"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "setor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetorPedidoV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sinais_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sinais Nao Disponiveis",
+            "type": "array"
+          },
+          "total_de_compradores": {
+            "title": "Total De Compradores",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "setor",
+          "compradores",
+          "total_de_compradores",
+          "cortada",
+          "sinais_nao_disponiveis",
+          "fontes",
+          "limites"
+        ],
+        "title": "CompradoresDoSetorV1",
+        "type": "object"
+      },
       "ConectarV1": {
         "description": "O texto da página Conectar (`src/conectar.py`): conector de IA e CLI, com a chave só de exemplo.",
         "properties": {
@@ -2739,6 +2867,102 @@
         "title": "EscalaDoGraficoV1",
         "type": "object"
       },
+      "EstadoDoChatV1": {
+        "description": "Se a conta pode perguntar agora e, se não, por quê; com a cota, os limites e o que dizer na tela.",
+        "properties": {
+          "caracteres_da_pergunta": {
+            "title": "Caracteres Da Pergunta",
+            "type": "integer"
+          },
+          "caracteres_do_historico": {
+            "title": "Caracteres Do Historico",
+            "type": "integer"
+          },
+          "como_funciona": {
+            "title": "Como Funciona",
+            "type": "string"
+          },
+          "exemplos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exemplos",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "mensagem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensagem"
+          },
+          "perguntas_hoje": {
+            "title": "Perguntas Hoje",
+            "type": "integer"
+          },
+          "perguntas_no_historico": {
+            "title": "Perguntas No Historico",
+            "type": "integer"
+          },
+          "perguntas_no_mes": {
+            "title": "Perguntas No Mes",
+            "type": "integer"
+          },
+          "perguntas_por_dia": {
+            "title": "Perguntas Por Dia",
+            "type": "integer"
+          },
+          "perguntas_por_mes": {
+            "title": "Perguntas Por Mes",
+            "type": "integer"
+          },
+          "pode_perguntar": {
+            "title": "Pode Perguntar",
+            "type": "boolean"
+          },
+          "situacao": {
+            "enum": [
+              "desligado",
+              "sem_organizacao",
+              "sem_chave",
+              "pausado",
+              "cota_do_dia",
+              "cota_do_mes",
+              "pronto"
+            ],
+            "title": "Situacao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "situacao",
+          "pode_perguntar",
+          "mensagem",
+          "perguntas_hoje",
+          "perguntas_por_dia",
+          "perguntas_no_mes",
+          "perguntas_por_mes",
+          "caracteres_da_pergunta",
+          "perguntas_no_historico",
+          "caracteres_do_historico",
+          "como_funciona",
+          "exemplos",
+          "limites"
+        ],
+        "title": "EstadoDoChatV1",
+        "type": "object"
+      },
       "EstrategiaAcompanhadaV1": {
         "description": "Um backtest salvo com a ficha \"Foi sorte?\" e o veredito dela refeito com os preços de\nhoje.",
         "properties": {
@@ -2967,6 +3191,50 @@
           "limites"
         ],
         "title": "EventosDaEmpresaV1",
+        "type": "object"
+      },
+      "ExemploDeProvaV1": {
+        "description": "Um exemplo de prova: a empresa do setor onde o movimento aconteceu, a UF dela e os campos do sinal\n(data de entrada, tipo, participação...), cada um com fonte e dia. `ainda_socio` só vale para a entrada.",
+        "properties": {
+          "ainda_socio": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ainda Socio"
+          },
+          "campos": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Campos",
+            "type": "object"
+          },
+          "empresa_do_setor": {
+            "$ref": "#/components/schemas/PontaDoVinculoV1"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "empresa_do_setor",
+          "uf",
+          "campos"
+        ],
+        "title": "ExemploDeProvaV1",
         "type": "object"
       },
       "ExpectativaV1": {
@@ -5556,6 +5824,64 @@
         "title": "PedidoDeSimulacaoV1",
         "type": "object"
       },
+      "PedidoDoChatV1": {
+        "properties": {
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/TrocaAnteriorV1"
+            },
+            "maxItems": 4,
+            "title": "Historico",
+            "type": "array"
+          },
+          "pergunta": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Pergunta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta"
+        ],
+        "title": "PedidoDoChatV1",
+        "type": "object"
+      },
+      "PedidoDoSetorV1": {
+        "properties": {
+          "anos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anos"
+          },
+          "cnae": {
+            "title": "Cnae",
+            "type": "string"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "cnae"
+        ],
+        "title": "PedidoDoSetorV1",
+        "type": "object"
+      },
       "PedidoDosEventosV1": {
         "properties": {
           "cnpj": {
@@ -6320,6 +6646,28 @@
         "title": "PrecosDeReferenciaV1",
         "type": "object"
       },
+      "ProvaDoSinalV1": {
+        "description": "As provas de um sinal: quantas são e até cinco exemplos.",
+        "properties": {
+          "exemplos": {
+            "items": {
+              "$ref": "#/components/schemas/ExemploDeProvaV1"
+            },
+            "title": "Exemplos",
+            "type": "array"
+          },
+          "quantas": {
+            "title": "Quantas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "quantas",
+          "exemplos"
+        ],
+        "title": "ProvaDoSinalV1",
+        "type": "object"
+      },
       "PulseV1": {
         "properties": {
           "acontecimentos": {
@@ -6950,6 +7298,48 @@
         "title": "SetorDaBuscaV1",
         "type": "object"
       },
+      "SetorPedidoV1": {
+        "description": "O setor pedido: o CNAE, a UF (se houver), a janela em anos e quantas empresas ativas ele tem.",
+        "properties": {
+          "anos": {
+            "title": "Anos",
+            "type": "integer"
+          },
+          "cnae_principal": {
+            "title": "Cnae Principal",
+            "type": "string"
+          },
+          "desde": {
+            "format": "date",
+            "title": "Desde",
+            "type": "string"
+          },
+          "empresas_ativas": {
+            "title": "Empresas Ativas",
+            "type": "integer"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "cnae_principal",
+          "uf",
+          "anos",
+          "desde",
+          "empresas_ativas"
+        ],
+        "title": "SetorPedidoV1",
+        "type": "object"
+      },
       "SetorV1": {
         "description": "Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias.",
         "properties": {
@@ -7278,6 +7668,27 @@
           "nota"
         ],
         "title": "TermometroDaConabV1",
+        "type": "object"
+      },
+      "TrocaAnteriorV1": {
+        "description": "Uma pergunta e a resposta de antes, que a tela reenvia para o modelo ter o contexto.",
+        "properties": {
+          "pergunta": {
+            "maxLength": 2000,
+            "title": "Pergunta",
+            "type": "string"
+          },
+          "resposta": {
+            "maxLength": 4000,
+            "title": "Resposta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta",
+          "resposta"
+        ],
+        "title": "TrocaAnteriorV1",
         "type": "object"
       },
       "ValidationError": {
@@ -7846,6 +8257,45 @@
         "summary": "Vinculos Da Empresa"
       }
     },
+    "/v1/analista/setor/compradores": {
+      "post": {
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\nativa do CNAE, os FIPs sócios e as companhias abertas com controlada no setor, cada campo com fonte e dia.\nMesmo leitor e mesmo portão da API externa, sem o contrato da organização; movimento passado, não intenção\nde compra. O sinal que o portão não libera vem em `sinais_nao_disponiveis`.",
+        "operationId": "compradores_do_setor_v1_analista_setor_compradores_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoSetorV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompradoresDoSetorV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compradores Do Setor"
+      }
+    },
     "/v1/apagar-simulacao": {
       "post": {
         "description": "Apaga uma simulação da própria conta; a de outra conta (ou já apagada) dá 404, sem dizer\nqual é o caso.",
@@ -8012,6 +8462,62 @@
           }
         },
         "summary": "Busca Por Cnpj Em Pdf"
+      }
+    },
+    "/v1/chat": {
+      "post": {
+        "description": "A resposta do chat, um evento JSON por linha (`application/x-ndjson`).",
+        "operationId": "perguntar_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoChatV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perguntar"
+      }
+    },
+    "/v1/chat/estado": {
+      "get": {
+        "description": "O estado do chat para a tela \"Perguntar\": a primeira recusa que a pergunta ouviria, ou \"pronto\".\n\nA ordem é a de `POST /v1/chat`. Com o chat desligado a tela ainda abre, para dizer que ele não foi\nligado e o que vai fazer.",
+        "operationId": "estado_do_chat_v1_chat_estado_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoDoChatV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Estado Do Chat"
       }
     },
     "/v1/commodities/cafe/mapa": {

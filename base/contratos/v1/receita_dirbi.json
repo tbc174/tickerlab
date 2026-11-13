@@ -1,0 +1,106 @@
+{
+  "tabela": "receita_dirbi",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ do estabelecimento (14 caracteres, com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município do estabelecimento, como a Receita informa",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Unidade da federação do estabelecimento",
+      "unidade": "texto"
+    },
+    "cnae": {
+      "descricao": "CNAE do estabelecimento, como a Receita informa",
+      "unidade": "texto"
+    },
+    "ano": {
+      "descricao": "Ano da declaração",
+      "unidade": "ano"
+    },
+    "mes": {
+      "descricao": "Mês da declaração (1 a 12)",
+      "unidade": "número inteiro"
+    },
+    "periodo": {
+      "descricao": "Primeiro dia do mês da declaração (`ano` e `mes` juntos, como data)",
+      "unidade": "data (dia)"
+    },
+    "codigo_in": {
+      "descricao": "Código do benefício na instrução normativa da DIRBI",
+      "unidade": "texto"
+    },
+    "tributo": {
+      "descricao": "Tributo a que o benefício se refere",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "Valor declarado do benefício, em reais (vazio: não informado)",
+      "unidade": "reais (R$)"
+    },
+    "em_verificacao": {
+      "descricao": "Verdadeiro quando a Receita marca o valor como 'em verificação' (pode mudar)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "ano",
+    "mes",
+    "codigo_in",
+    "tributo"
+  ],
+  "datas": {
+    "aconteceu_em": "periodo",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "periodo": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-09-08",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)",
+  "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
+  "pessoa": false,
+  "frequencia": "Mensal (a Receita regrava o arquivo do ano inteiro)",
+  "atraso": "A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que o arquivo foi modificado na Receita, que é o `disponivel_em`",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

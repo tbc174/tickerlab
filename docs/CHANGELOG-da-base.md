@@ -16,8 +16,14 @@ muda de unidade ou de chave; menor: coluna nova; correção: dado.
   - colunas novas: `fundos_no_bloco_8`, `quantidade_no_bloco_8`, `valor_no_bloco_8`
 - `buracos_dos_fundos`: 1.0.0 → 1.1.0
   - colunas novas: `motivo`
+- `ans_beneficiarios`: 1.0.0 → 1.1.0
+  - colunas novas: `cnpj`, `cnpj_basico`
+- `susep_seguros`: 1.0.0 → 1.1.0
+  - colunas novas: `cnpj`, `cnpj_basico`
 - `amostra_painel`: 1.0.0 → 1.1.0
   - colunas novas: `acumulado_fim`, `acumulado_grupo`, `acumulado_inicio`, `acumulado_publico_em`, `anual_fim`, `anual_grupo`, `anual_publico_em`, `ativo_total`, `balanco_fim`, `balanco_grupo`, `balanco_publico_em`, `caixa`, `divida_bruta`, `ebit_acumulado`, `ebit_anual`, `lucro_acumulado`, `lucro_anual`, `patrimonio_liquido`, `receita_acumulado`, `receita_anual`
+- `ifdata_valores`: 2.0.0 → 2.1.0
+  - colunas novas: `cnpj_basico`
 - `cnpj_situacao_especial`: 2.0.0 → 2.1.0
   - colunas novas: `trata_como_pessoa`
 - `cnpj_empresas_pj`: 1.0.0 → 1.1.0

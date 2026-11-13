@@ -26,6 +26,7 @@ from src.banco import perguntas_do_chat as pc
 from src.banco.modelo import perguntas_do_chat
 from src.banco.usuarios import entrar
 from src.chat import conversa as cv
+from src.chat import estado as rota_estado
 from src.chat.custo import custo_em_microdolares
 from src.planos import LIMITES_DO_CHAT
 from tests import test_api_v1_rotas as rotas
@@ -464,3 +465,139 @@ def test_teto_do_mes_anterior_nao_conta(banco, cliente, casa, fabrica):
         banco, bia.id, None, 1, MOMENTO - timedelta(days=20), custo=49_500_000
     )
     _linhas(_perguntar(cliente))
+
+
+# ---------------------------------------------------------------- o estado para a tela (GET /v1/chat/estado)
+
+ROTA_DO_ESTADO = "/api/v1/chat/estado"
+
+
+def _estado(cliente) -> dict:
+    resposta = cliente.get(ROTA_DO_ESTADO)
+    assert resposta.status_code == 200, resposta.text
+    return resposta.json()
+
+
+def test_estado_pronto_com_a_cota_da_conta(banco, cliente, casa, fabrica):
+    _gravar_perguntas(
+        banco, _ana(banco), casa.id, 2, MOMENTO - timedelta(hours=1), custo=1
+    )
+    _gravar_perguntas(
+        banco, _ana(banco), casa.id, 3, MOMENTO - timedelta(days=5), custo=1
+    )
+    estado = _estado(cliente)
+    assert estado["situacao"] == "pronto" and estado["pode_perguntar"] is True
+    assert estado["mensagem"] is None
+    assert (estado["perguntas_hoje"], estado["perguntas_no_mes"]) == (2, 5)
+    assert estado["perguntas_por_dia"] == LIMITES_DO_CHAT.perguntas_por_dia
+    assert estado["caracteres_do_historico"] == LIMITES_DO_CHAT.caracteres_do_historico
+    assert estado["exemplos"] and estado["limites"] and estado["como_funciona"]
+
+
+def test_estado_nao_grava_nem_chama_o_modelo(banco, cliente, casa, fabrica):
+    _estado(cliente)
+    _nada_saiu(fabrica, banco)
+
+
+def test_estado_nao_mostra_o_gasto(banco, cliente, casa, fabrica):
+    """A tela só sabe se o teto pausou o chat; o gasto em dinheiro não sai da rota."""
+    estado = _estado(cliente)
+    assert not [
+        campo
+        for campo in estado
+        if "gasto" in campo or "custo" in campo or "teto" in campo
+    ]
+
+
+def test_estado_desligado_por_padrao_explica_o_que_vem(
+    banco, cliente, casa, fabrica, monkeypatch
+):
+    monkeypatch.delenv(chat.VARIAVEL_DE_LIGAR)
+    estado = _estado(cliente)
+    assert estado["situacao"] == "desligado" and estado["pode_perguntar"] is False
+    assert estado["mensagem"] == rota_estado.MENSAGEM_AINDA_NAO_LIGADO
+
+
+def test_estado_sem_a_chave_do_modelo_e_desligado(
+    banco, cliente, casa, fabrica, monkeypatch
+):
+    monkeypatch.delenv(chat.VARIAVEL_DA_CHAVE_DO_MODELO)
+    assert _estado(cliente)["situacao"] == "desligado"
+
+
+def test_estado_modelo_sem_preco_e_desligado(
+    banco, cliente, casa, fabrica, monkeypatch
+):
+    monkeypatch.setenv(chat.VARIAVEL_DO_MODELO, "claude-modelo-inventado")
+    assert _estado(cliente)["situacao"] == "desligado"
+
+
+def test_estado_sem_organizacao(banco, cliente, fabrica):
+    estado = _estado(cliente)
+    assert estado["situacao"] == "sem_organizacao"
+    assert estado["mensagem"] == rota.MENSAGEM_SEM_ORGANIZACAO
+
+
+def test_estado_organizacao_sem_chave(banco, cliente, fabrica):
+    _organizacao(banco, _ana(banco), com_chave=False)
+    estado = _estado(cliente)
+    assert estado["situacao"] == "sem_chave"
+    assert estado["mensagem"] == rota.MENSAGEM_SEM_CHAVE
+
+
+def test_estado_cota_do_dia_e_do_mes(banco, cliente, casa, fabrica):
+    _gravar_perguntas(
+        banco, _ana(banco), casa.id, 10, MOMENTO - timedelta(hours=1), custo=1
+    )
+    assert _estado(cliente)["mensagem"] == rota.MENSAGEM_COTA_DO_DIA
+    _gravar_perguntas(
+        banco, _ana(banco), casa.id, 40, MOMENTO - timedelta(days=5), custo=1
+    )
+    assert (
+        _estado(cliente)["situacao"] == "cota_do_dia"
+    )  # a do dia vem primeiro, como na pergunta
+
+
+def test_estado_cota_do_mes(banco, cliente, casa, fabrica):
+    _gravar_perguntas(
+        banco, _ana(banco), casa.id, 50, MOMENTO - timedelta(days=5), custo=1
+    )
+    estado = _estado(cliente)
+    assert estado["situacao"] == "cota_do_mes"
+    assert estado["mensagem"] == rota.MENSAGEM_COTA_DO_MES
+
+
+def test_estado_pausado_pelo_teto_somando_todas_as_contas(
+    banco, cliente, casa, fabrica
+):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "g-bia-903", "bia-903@exemplo.com")[0]
+    _gravar_perguntas(
+        banco, bia.id, None, 1, MOMENTO - timedelta(days=1), custo=49_500_000
+    )
+    estado = _estado(cliente)
+    assert estado["situacao"] == "pausado"
+    assert estado["mensagem"] == rota.MENSAGEM_PAUSADO
+
+
+def test_estado_conta_so_as_perguntas_da_propria_conta(banco, cliente, casa, fabrica):
+    """Isolamento: as perguntas de outra conta (da mesma organização) não entram na cota da Ana."""
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "g-bia-903", "bia-903@exemplo.com")[0]
+    _gravar_perguntas(banco, bia.id, casa.id, 7, MOMENTO - timedelta(hours=1), custo=1)
+    estado = _estado(cliente)
+    assert (estado["perguntas_hoje"], estado["perguntas_no_mes"]) == (0, 0)
+    assert estado["situacao"] == "pronto"
+
+
+def test_estado_sem_login_nao_entra(banco, cliente, casa, fabrica):
+    anonimo = TestClient(cliente.app)
+    assert anonimo.get(ROTA_DO_ESTADO).status_code in (401, 403)
+
+
+def test_estado_e_a_pergunta_concordam(banco, cliente, casa, fabrica):
+    """O que a tela mostra antes é o que a pergunta ouve depois."""
+    _gravar_perguntas(
+        banco, _ana(banco), casa.id, 10, MOMENTO - timedelta(hours=1), custo=1
+    )
+    assert _estado(cliente)["mensagem"] == _perguntar(cliente).json()["detail"]

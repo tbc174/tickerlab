@@ -161,6 +161,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "aneel_samp",
         "anp_concessionarios",
+        "ans_beneficiarios",
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
@@ -169,7 +170,9 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "eventos",
         "fca_geral",
         "fips_registrados",
+        "ifdata_valores",
         "rotulos_atraso",
+        "susep_seguros",
     }
 )
 COM_A_MARCA = sorted(

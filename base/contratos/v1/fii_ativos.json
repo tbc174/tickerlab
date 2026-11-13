@@ -1,0 +1,134 @@
+{
+  "tabela": "fii_ativos",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): o fundo ou a classe",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Trimestre a que o informe se refere (a `Data_Referencia`)",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do informe; o reenvio traz número maior",
+      "unidade": "número inteiro"
+    },
+    "entregue_em": {
+      "descricao": "Dia em que o informe chegou à CVM (`Data_Entrega` da parte geral)",
+      "unidade": "data (dia)"
+    },
+    "cnpj_emissor": {
+      "descricao": "CNPJ do emissor do ativo, quando fecha o dígito",
+      "unidade": "texto"
+    },
+    "cnpj_basico_emissor": {
+      "descricao": "Raiz do CNPJ do emissor (8 caracteres)",
+      "unidade": "texto"
+    },
+    "emissor": {
+      "descricao": "Nome do emissor, como a CVM escreve (só com CNPJ de dígito certo)",
+      "unidade": "texto"
+    },
+    "tipo_do_ativo": {
+      "descricao": "Tipo do ativo (CRI, ações, debêntures...), como a CVM escreve",
+      "unidade": "texto"
+    },
+    "emissao": {
+      "descricao": "Número da emissão, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "serie": {
+      "descricao": "Série, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "codigo": {
+      "descricao": "Código de negociação, quando informado",
+      "unidade": "texto"
+    },
+    "nome_do_ativo": {
+      "descricao": "Nome do ativo, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "vencimento": {
+      "descricao": "Vencimento do ativo, quando há",
+      "unidade": "data (dia)"
+    },
+    "quantidade": {
+      "descricao": "Quantidade do ativo na carteira",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor": {
+      "descricao": "Valor do ativo na carteira, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_na_fonte": {
+      "descricao": "Identificador da linha no arquivo da fonte",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "referencia": "referencia",
+    "entregue_em": "publico_em",
+    "vencimento": "ate",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-10-25",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Um ZIP por ano, republicado inteiro (o arquivista olha toda semana)",
+  "atraso": "`disponivel_em` é a `Data_Entrega` do informe trimestral (parte geral), nunca depois do dia em que o ZIP foi guardado; ativo que só aparece num arquivo seguinte vale do dia desse arquivo",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

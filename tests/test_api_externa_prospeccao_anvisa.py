@@ -491,3 +491,50 @@ def test_organizacao_do_piloto_recebe_a_busca_da_anvisa_com_o_aviso_em_cada_bloc
         assert bloco["published_at"] == "2026-11-09"
         assert bloco["pilot"] is True
         assert bloco["pilot_notice"] == AVISO_DE_PILOTO
+
+
+# ---------------------------------------------------------------- só os tipos de licença lida
+
+
+def test_so_os_tres_tipos_de_licenca_lida_podem_ser_somados():
+    """Medicamentos, alimentos, AFE e CBPF vão na tabela, mas a API não os serve até a ficha de cada um ser lida."""
+    somados = {p for prefixos in prospeccao.TIPOS_DA_ANVISA.values() for p in prefixos}
+    assert somados == {"cosmeticos", "saneantes", "produtos_saude"}
+
+
+def test_registro_de_medicamento_alimento_afe_e_cbpf_nao_conta_nem_aparece(
+    cliente, cenario, pasta
+):
+    """A GAMA só tem esses quatro tipos na tabela: nenhuma busca da API a enxerga nem mostra a contagem deles."""
+    contagens = dict.fromkeys(porte.colunas_de_contagem(), 0)
+    contagens |= {
+        "medicamentos_total": 900, "medicamentos_ativos": 800,
+        "alimentos_total": 700, "alimentos_ativos": 600,
+        "afe_total": 50, "afe_ativos": 40, "cbpf_total": 30, "cbpf_ativos": 20,
+    }  # fmt: skip
+    linha = {
+        "cnpj_basico": "33333333",
+        "disponivel_em": pd.Timestamp("2026-11-09").date(),
+        "trata_como_pessoa": False,
+        **contagens,
+        "montado_em": pd.Timestamp("2026-11-10", tz="UTC"),
+        "versao_do_codigo": "teste",
+    }
+    pd.DataFrame([linha]).to_parquet(
+        pasta / prospeccao.ANVISA / "33.parquet", index=False
+    )
+    for tipo in prospeccao.TIPOS_DA_ANVISA:
+        resposta = _get(
+            cliente, cenario, cnae="2063", state="SP", anvisa_type=tipo,
+            anvisa_total_min=1,
+        )  # fmt: skip
+        assert "33333333000191" not in _cnpjs(resposta), tipo
+    resposta = _get(cliente, cenario, cnae="2063", state="SP", anvisa_type="products")
+    (gama,) = [e for e in resposta.json()["companies"] if e["cnpj"] == "33333333000191"]
+    assert gama["anvisa_registrations_active"]["value"] == 0
+    assert gama["anvisa_registrations_total"]["value"] == 0
+    assert not {
+        c
+        for c in aj.chaves_de(resposta.json())
+        if "medic" in c or "alimento" in c or "afe" in c or "cbpf" in c
+    }

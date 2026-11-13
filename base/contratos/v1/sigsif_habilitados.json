@@ -1,0 +1,102 @@
+{
+  "tabela": "sigsif_habilitados",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ do estabelecimento (14 caracteres, com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "pais": {
+      "descricao": "País para o qual o estabelecimento está habilitado a exportar",
+      "unidade": "texto"
+    },
+    "area": {
+      "descricao": "Área da habilitação (carne, leite, pescado, ovos, mel...)",
+      "unidade": "texto"
+    },
+    "sif": {
+      "descricao": "Número do SIF (Serviço de Inspeção Federal), sem zeros à esquerda",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Unidade da federação do estabelecimento",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município do estabelecimento, como o MAPA informa",
+      "unidade": "texto"
+    },
+    "produto": {
+      "descricao": "Produto da habilitação, como o MAPA descreve",
+      "unidade": "texto"
+    },
+    "dt_validade": {
+      "descricao": "Fim da validade da habilitação (vazio: a fonte não informa)",
+      "unidade": "data (dia)"
+    },
+    "dt_ocorrencia": {
+      "descricao": "Data da ocorrência registrada pelo MAPA (vazio: nenhuma)",
+      "unidade": "data (dia)"
+    },
+    "dt_suspensao": {
+      "descricao": "Data da suspensão da habilitação (vazio: nunca suspensa)",
+      "unidade": "data (dia)"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "pais",
+    "area",
+    "sif",
+    "produto"
+  ],
+  "datas": {
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "dt_validade": "a_conferir",
+    "dt_ocorrencia": "a_conferir",
+    "dt_suspensao": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-02",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Variável (o MAPA regrava o arquivo inteiro quando atualiza)",
+  "atraso": "A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o arquivo foi modificado no portal do MAPA, que é o `disponivel_em`. As datas da fonte (validade, ocorrência, suspensão) ficam nas colunas delas",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

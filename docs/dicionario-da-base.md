@@ -1238,7 +1238,7 @@ Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidad
 - **Chaves:** `competencia`, `cd_operadora`, `modalidade`, `cobertura`, `vigencia_do_plano`, `contratacao`, `financiamento`, `visto_em`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ans/<ano>.parquet` (`scripts/carga_setoriais.py`)
 - **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do arquivo usada (uma por revisão) e a versão do código.
 
@@ -1255,6 +1255,8 @@ Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidad
 | `base_de` | O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto | data (dia) |
 | `disponivel_em` | Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista) | data (dia) |
 | `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+| `cnpj` | CNPJ da operadora, pelo registro, no cadastro `ans_operadoras` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o registro, quando a operadora é pessoa (MEI, empresário individual) ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915) | texto |
+| `cnpj_basico` | Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio | texto |
 
 ## `fre_conselho`
 
@@ -1831,7 +1833,7 @@ Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por 
 
 ## `susep_seguros`
 
-Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)
+Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O CNPJ vem do cadastro da SUSEP (`susep_cadastro`), pelo código da seguradora, quando ele está montado na base (linha 915); a igualdade entre o `coenti` do SES e o código FIP do cadastro ainda não foi conferida em dado real. Os códigos que a B13 não liga continuam nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)
 
 - **Fonte:** SUSEP: SES, base de dados completa (`Ses_seguros.csv` de dentro do ZIP)
 - **Licença:** CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas
@@ -1842,7 +1844,7 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 - **Chaves:** `competencia`, `coenti`, `cogrupo`, `coramo`, `visto_em`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/susep/<ano>.parquet` (`scripts/carga_setoriais.py`)
 - **Linhagem:** O `<ano>.json` guarda o endereço (`zip#Ses_seguros.csv`) e o SHA-256 de cada baixada usada e a versão do código.
 
@@ -1871,6 +1873,8 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 | `consorciosefundos` | Consórcios e fundos no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista) | data (dia) |
 | `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+| `cnpj` | CNPJ da seguradora, pelo código da SUSEP (`coenti` igual ao código do cadastro, sem contar zeros à esquerda), no cadastro `susep_cadastro` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o código (entidade estrangeira não tem CNPJ), quando é pessoa ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915) | texto |
+| `cnpj_basico` | Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio | texto |
 
 ## `amostra_painel`
 
@@ -1956,7 +1960,7 @@ Balanço, resultado, capital, segmentação e carteira de crédito de cada banco
 - **Chaves:** `data_base`, `tipo_instituicao`, `cod_inst`, `relatorio`, `grupo`, `conta`, `coluna`, `visto_em`
 - **Três datas:** aconteceu_em = `data_base`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 2.0.0
+- **Versão do contrato:** 2.1.0
 - **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/valores/tipo_<t>/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)
 - **Linhagem:** O `<AAAAMM>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada resposta da API (no acervo e no registro de coletas, fonte `bcb-ifdata`, com a data da coleta) e a versão do código que gravou.
 
@@ -1974,6 +1978,7 @@ Balanço, resultado, capital, segmentação e carteira de crédito de cada banco
 | `saldo` | Valor da linha | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o número era público (como era na data): o prazo, ou o dia em que a revisão do BC foi vista, se for depois | data (dia) |
 | `visto_em` | Dia (São Paulo) em que o arquivista baixou a resposta que trouxe este valor; vazio se não havia o dia (acervo desligado) | data (dia) |
+| `cnpj_basico` | Raiz (8 dígitos) do CNPJ da instituição ou do líder do conglomerado, pelo cadastro do IF.data (`ifdata_cadastro`, linha 904, lote 4): a do cadastro que já era público quando o número saiu. É só a raiz, porque o conglomerado não tem um CNPJ inteiro; vazia onde o cadastro não a traz e enquanto o cadastro não estiver gravado | texto |
 
 ## `ifdata_cadastro`
 
@@ -2867,6 +2872,256 @@ Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para 
 | `afe_ativos` | Registros de autorizações de funcionamento (AFE) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
 | `cbpf_total` | Registros de certificados de boas práticas de fabricação (CBPF) da empresa, em vigor ou não | número inteiro |
 | `cbpf_ativos` | Registros de certificados de boas práticas de fabricação (CBPF) da empresa que estão em vigor (a situação 'ativa' muda de nome por tipo) | número inteiro |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_dirbi`
+
+Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de Incentivos, Renúncias, Benefícios e Imunidades de Natureza Tributária), por mês, código do regime e tributo, um Parquet por ano. **O valor é o que a empresa declarou, não o que foi efetivamente usufruído**, e a linha marcada `em_verificacao` ainda pode mudar. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`). Linha com CNPJ mascarado, CPF ou de dígito errado sai e é contada na montagem.
+
+- **Fonte:** Receita Federal do Brasil, dados abertos da DIRBI (`renuncia-por-regime-AAAA.zip`), lida por `base/receita_renuncias.py`
+- **Licença:** Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (a Receita regrava o arquivo do ano inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que o arquivo foi modificado na Receita, que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `ano`, `mes`, `codigo_in`, `tributo`
+- **Três datas:** aconteceu_em = `periodo`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-09-08 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_dirbi/<ano>.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `municipio` | Município do estabelecimento, como a Receita informa | texto |
+| `uf` | Unidade da federação do estabelecimento | texto |
+| `cnae` | CNAE do estabelecimento, como a Receita informa | texto |
+| `ano` | Ano da declaração | ano |
+| `mes` | Mês da declaração (1 a 12) | número inteiro |
+| `periodo` | Primeiro dia do mês da declaração (`ano` e `mes` juntos, como data) | data (dia) |
+| `codigo_in` | Código do benefício na instrução normativa da DIRBI | texto |
+| `tributo` | Tributo a que o benefício se refere | texto |
+| `valor` | Valor declarado do benefício, em reais (vazio: não informado) | reais (R$) |
+| `em_verificacao` | Verdadeiro quando a Receita marca o valor como 'em verificação' (pode mudar) | verdadeiro ou falso |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_ecf_renuncia`
+
+Incentivos de IRPJ e CSLL que a empresa declarou na ECF (Escrituração Contábil Fiscal), uma linha por CNPJ, SCP e período da escrituração, com a forma de tributação e cada benefício em reais. **É o que a empresa declarou**; quando o mesmo período aparece mais de uma vez com valores diferentes, fica a linha mais preenchida. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Receita Federal do Brasil, dados abertos da ECF (`renuncia-irpj-csll-ecf.csv`), lida por `base/receita_renuncias.py`
+- **Licença:** Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Anual (a Receita regrava o arquivo inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que o arquivo foi modificado na Receita, que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `cod_scp`, `dt_ini`, `dt_fin`
+- **Três datas:** aconteceu_em = `dt_fin`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-09-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_ecf_renuncia/receita_ecf_renuncia.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `cod_scp` | Código da sociedade em conta de participação (SCP) da escrituração, quando há | texto |
+| `dt_ini` | Primeiro dia do período da escrituração | data (dia) |
+| `dt_fin` | Último dia do período da escrituração | data (dia) |
+| `forma_trib` | Forma de tributação do lucro, código da ECF | texto |
+| `forma_apur` | Forma de apuração, código da ECF | texto |
+| `qualif_pj` | Qualificação da pessoa jurídica, código da ECF | texto |
+| `sit_especial` | Situação especial da escrituração, código da ECF | texto |
+| `cnae` | CNAE informado na escrituração | texto |
+| `cod_nat` | Natureza jurídica, código da ECF | texto |
+| `horario_eleitoral_deducao_lalur` | Benefício `horario_eleitoral_deducao_lalur` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `prouni_universidade_para_todos` | Benefício `prouni_universidade_para_todos` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_isencao_proj_ind_agric` | Benefício `sudam_sudene_isencao_proj_ind_agric` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_isencao_proj_tec_dig` | Benefício `sudam_sudene_isencao_proj_tec_dig` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_reducao_75_proj_setor_priorit` | Benefício `sudam_sudene_reducao_75_proj_setor_priorit` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_red_escal_setor_prior_proj_ind_agric` | Benefício `sudam_sudene_red_escal_setor_prior_proj_ind_agric` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `padis` | Benefício `padis` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `sudam_sudene_red_reinv` | Benefício `sudam_sudene_red_reinv` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `finor` | Benefício `finor` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `finam` | Benefício `finam` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pronac_deducao_ir` | Benefício `pronac_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pat_deducao_ir` | Benefício `pat_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `atividade_audiov_deducao_ir` | Benefício `atividade_audiov_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `fundos_direitos_crianca_adolescente` | Benefício `fundos_direitos_crianca_adolescente` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `fundos_idoso` | Benefício `fundos_idoso` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `incentivo_desporto` | Benefício `incentivo_desporto` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pronon_deducao_ir` | Benefício `pronon_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `pronas_pcd_deducao_ir` | Benefício `pronas_pcd_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `empresa_cidada_deducao_ir` | Benefício `empresa_cidada_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `rota_2030_deducao_ir` | Benefício `rota_2030_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `prouni_deducao_csll` | Benefício `prouni_deducao_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `rota_2030_deducao_csll` | Benefício `rota_2030_deducao_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `perse_irpj` | Benefício `perse_irpj` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `perse_csll` | Benefício `perse_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor) | reais (R$) |
+| `exercicio` | Ano-calendário da escrituração | ano |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `sigsif_habilitados`
+
+A quem o Ministério da Agricultura habilitou exportar, para que país, em que área e produto (Serviço de Inspeção Federal, SIGSIF): uma linha por país, área, SIF e produto. **O CNPJ vem do número do SIF, pelo cadastro dos estabelecimentos registrados no SIF, e só entra quando o SIF tem um CNPJ só**; a habilitação sem CNPJ achado não entra (a montagem conta quantas). **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`). O nome do estabelecimento da fonte não é guardado.
+
+- **Fonte:** Ministério da Agricultura e Pecuária (MAPA), dados abertos do Serviço de Inspeção Federal (SIGSIF), licença CC BY (citar o MAPA); lido por `base/sigsif.py`
+- **Licença:** CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Variável (o MAPA regrava o arquivo inteiro quando atualiza)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o arquivo foi modificado no portal do MAPA, que é o `disponivel_em`. As datas da fonte (validade, ocorrência, suspensão) ficam nas colunas delas
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `pais`, `area`, `sif`, `produto`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-02 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sigsif_habilitados/sigsif_habilitados.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `pais` | País para o qual o estabelecimento está habilitado a exportar | texto |
+| `area` | Área da habilitação (carne, leite, pescado, ovos, mel...) | texto |
+| `sif` | Número do SIF (Serviço de Inspeção Federal), sem zeros à esquerda | texto |
+| `uf` | Unidade da federação do estabelecimento | texto |
+| `municipio` | Município do estabelecimento, como o MAPA informa | texto |
+| `produto` | Produto da habilitação, como o MAPA descreve | texto |
+| `dt_validade` | Fim da validade da habilitação (vazio: a fonte não informa) | data (dia) |
+| `dt_ocorrencia` | Data da ocorrência registrada pelo MAPA (vazio: nenhuma) | data (dia) |
+| `dt_suspensao` | Data da suspensão da habilitação (vazio: nunca suspensa) | data (dia) |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `sigsif_estabelecimentos`
+
+Quem tem registro no Serviço de Inspeção Federal (SIF) do Ministério da Agricultura, em que município e categoria: uma linha por CNPJ, número do SIF, área, categoria e município. **A razão social da fonte não é guardada** e o registro de CPF não entra. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Ministério da Agricultura e Pecuária (MAPA), dados abertos do Serviço de Inspeção Federal (SIGSIF), licença CC BY (citar o MAPA); lido por `base/sigsif.py`
+- **Licença:** CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Variável (o MAPA regrava o arquivo inteiro quando atualiza)
+- **Atraso de divulgação:** A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o arquivo foi modificado no portal do MAPA, que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `nr_sif`, `area_categoria`, `categoria_classe`, `municipio`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-02 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sigsif_estabelecimentos/sigsif_estabelecimentos.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3b.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `nr_sif` | Número do SIF (Serviço de Inspeção Federal) | texto |
+| `situacao` | Situação do registro no SIF, como o MAPA informa | texto |
+| `municipio` | Município do estabelecimento, como o MAPA informa | texto |
+| `uf` | Unidade da federação do estabelecimento | texto |
+| `area_categoria` | Área e categoria do registro (carnes, leite, pescado...) | texto |
+| `categoria_classe` | Classe da categoria do registro (abate, industrialização...) | texto |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_transacoes_individual`
+
+Acordos de transação tributária individual deferidos pela Receita (Procuradoria-Geral da Fazenda Nacional e Receita): uma linha por CNPJ e processo, com a dívida transacionada, a redução e o saldo devedor. **O nome do contribuinte da fonte não é guardado.** **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Receita Federal do Brasil, dados abertos de transação tributária (`transacoes-individual.csv`), lida por `base/receita_transacoes.py`
+- **Licença:** Transações da Receita: sem licença escrita; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Variável (a Receita regrava o arquivo inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que a página do arquivo diz 'Atualizado em', que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `cnpj`, `processo`
+- **Três datas:** aconteceu_em = `data_acordo`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-07-28 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_transacoes_individual/receita_transacoes_individual.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3b.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `processo` | Número do processo administrativo do acordo | texto |
+| `data_acordo` | Mês do acordo (a fonte só traz mês e ano; vale o dia 1) | data (dia) |
+| `divida_transacionada` | Dívida transacionada, em reais | reais (R$) |
+| `reducao` | Redução concedida sobre a dívida, em reais | reais (R$) |
+| `divida_com_reducao` | Dívida depois da redução, em reais | reais (R$) |
+| `creditos_pf_bcn` | Créditos de prejuízo fiscal e base negativa usados, em reais (vazio: nenhum) | reais (R$) |
+| `saldo_devedor` | Saldo devedor do acordo, em reais | reais (R$) |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `receita_transacoes_adesao`
+
+Adesões às modalidades de transação tributária (por exemplo a de pequeno valor e as dos editais), um pedido por linha, com a dívida, a redução, os créditos usados e o número de parcelas. **A chave é o `hash_linha`** (conteúdo da linha): a fonte não numera os pedidos, e linhas idênticas ficam todas, numeradas no hash. **Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é guardado (`base/derivadas_do_lote_3.py`).
+
+- **Fonte:** Receita Federal do Brasil, dados abertos de transação tributária (`transacoes-adesao.csv`), lida por `base/receita_transacoes.py`
+- **Licença:** Transações da Receita: sem licença escrita; risco assumido (ADR 0122)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Variável (a Receita regrava o arquivo inteiro)
+- **Atraso de divulgação:** A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que a página do arquivo diz 'Atualizado em', que é o `disponivel_em`
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `hash_linha`
+- **Três datas:** aconteceu_em = `data_requerimento`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-11 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/receita_transacoes_adesao/receita_transacoes_adesao.parquet` (servidor de casa, `scripts/montar_tabelas_lote_3b.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do estabelecimento (14 caracteres, com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `modalidade` | Modalidade de transação a que o pedido aderiu, como a Receita descreve | texto |
+| `data_requerimento` | Dia do requerimento da adesão | data (dia) |
+| `divida_sem_reducao` | Dívida antes da redução, em reais | reais (R$) |
+| `reducao` | Redução da dívida concedida pela transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_pf_proprio` | Crédito de prejuízo fiscal próprio usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_pf_terceiros` | Crédito de prejuízo fiscal de terceiros usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_bcn_proprio` | Crédito de base negativa da CSLL próprio usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `credito_bcn_terceiros` | Crédito de base negativa da CSLL de terceiros usado na transação, em reais (vazio: a fonte não informa) | reais (R$) |
+| `parcelas` | Número de parcelas | número inteiro |
+| `hash_linha` | SHA-256 do conteúdo da linha (a chave: a fonte não numera os pedidos) | texto |
+| `trata_como_pessoa` | Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075) | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
@@ -4239,6 +4494,138 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `inpi_marcas_titulares`
+
+Titulares de marcas depositadas no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, marcas (`MARCAS_DEPOSITANTES.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_marcas_titulares/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `inpi_patentes_depositantes`
+
+Depositantes de patentes no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, patentes (`PATENTES_DEPOSITANTES.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_patentes_depositantes/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `inpi_desenhos_depositantes`
+
+Depositantes de desenhos industriais no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, desenhos industriais (`DI_DEPOSITANTES.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_desenhos_depositantes/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `inpi_programas_titulares`
+
+Titulares de registros de programas de computador no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** INPI: dados abertos, programas de computador (`PROG_COMP_TITULAR.csv`) (`base/inpi_titulares.py`)
+- **Licença:** Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inpi_programas_titulares/titulares.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O que identifica o registro na fonte | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `numero_inpi` | Número do pedido no INPI (a chave para a ficha pública dele no portal) | texto |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `cvm_fiagro`
 
 O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês, taxas e a carteira por tipo de ativo (imóveis rurais, CRA, CRI, LCA, LCI). Uma linha por classe, mês e versão do informe: o reenvio traz `versao` maior e não apaga a anterior (quem quer o vigente fica com a maior). Contato, nome do administrador e do gestor e as subclasses ficam de fora; administrador e gestor entram só pelo CNPJ. Só classe com CNPJ de dígito certo. A CVM só mantém os meses recentes: a história daqui em diante é a do acervo
@@ -4323,6 +4710,324 @@ A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ da
 | `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
 | `visto_em` | Dia da cópia em que esta versão da linha foi vista | data (dia) |
 | `disponivel_em` | Desde quando a linha vale para a base (ver o atraso) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `fip_informe`
+
+O informe dos Fundos de Investimento em Participações (FIP) por CNPJ do fundo ou da classe: patrimônio, cotas, cotistas por tipo, capital comprometido, subscrito e integralizado. Trimestral até 2023 e quadrimestral desde 2024 (Resolução CVM 175), numa tabela só (`periodicidade`). Uma linha por fundo e competência. Só fundo com CNPJ de dígito certo; o nome é o do fundo
+
+- **Fonte:** CVM: informe trimestral e quadrimestral de FIP (`base/cvm_fip_fii.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo por ano, republicado inteiro (o arquivista olha toda semana)
+- **Atraso de divulgação:** O arquivo não traz a data de entrega: vale o dia em que o arquivista o viu
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fip_informe/<arquivo do ano>.parquet` (servidor de casa, `base/cvm_fip_fii.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): o fundo ou a classe | texto |
+| `competencia` | Data de competência do informe | data (dia) |
+| `periodicidade` | `trimestral` (até 2023) ou `quadrimestral` (desde 2024) | texto |
+| `tipo_fundo_classe` | Fundo ou classe (só no quadrimestral) | texto |
+| `nome_do_fundo` | Nome do fundo, como a CVM escreve | texto |
+| `entidade_de_investimento` | Se é entidade de investimento (S/N) | texto |
+| `publico_alvo` | Público-alvo, como a CVM escreve | texto |
+| `patrimonio_liquido` | Patrimônio líquido, em reais | número com decimais, na unidade da fonte |
+| `cotas` | Quantidade de cotas | número com decimais, na unidade da fonte |
+| `valor_patrimonial_da_cota` | Valor patrimonial da cota, em reais | número com decimais, na unidade da fonte |
+| `cotistas` | Número de cotistas | número inteiro |
+| `capital_comprometido` | Capital comprometido, em reais | número com decimais, na unidade da fonte |
+| `capital_subscrito` | Capital subscrito, em reais | número com decimais, na unidade da fonte |
+| `capital_integralizado` | Capital integralizado, em reais | número com decimais, na unidade da fonte |
+| `investido_em_cotas_de_fip` | Investido em cotas de outros FIP, em reais | número com decimais, na unidade da fonte |
+| `cotistas_pessoa_fisica` | Quantos cotistas subscritores são pessoa física (só a contagem) | número inteiro |
+| `cotistas_empresa_nao_financeira` | Quantos cotistas subscritores são empresa não financeira | número inteiro |
+| `cotistas_nao_residentes` | Quantos cotistas subscritores são investidores não residentes | número inteiro |
+| `cotistas_previdencia_fechada` | Quantos cotistas subscritores são entidade fechada de previdência | número inteiro |
+| `cotistas_regime_proprio` | Quantos cotistas subscritores são regime próprio de previdência | número inteiro |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `fii_informe_mensal`
+
+O informe mensal dos Fundos de Investimento Imobiliário (FII) por CNPJ do fundo ou da classe: segmento, mandato, gestão, ISIN, administrador (só o CNPJ), cotistas, ativo, patrimônio, cota, taxa de administração, rentabilidade e dividend yield do mês. Uma linha por fundo, mês e versão do informe: o reenvio traz `versao` maior e não apaga a anterior. Contato, endereço, nome do administrador e o vínculo familiar dos cotistas ficam de fora. Só fundo com CNPJ de dígito certo
+
+- **Fonte:** CVM: informe mensal de FII, partes geral e complemento (`base/cvm_fip_fii.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um ZIP por ano, republicado inteiro (o arquivista olha toda semana)
+- **Atraso de divulgação:** `disponivel_em` é a `Data_Entrega` do informe, nunca depois do dia em que o ZIP foi guardado; informe que só aparece num arquivo seguinte vale do dia desse arquivo
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fii_informe_mensal/<arquivo do ano>.parquet` (servidor de casa, `base/cvm_fip_fii.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): o fundo ou a classe | texto |
+| `referencia` | Mês a que o informe se refere (a `Data_Referencia`) | data (dia) |
+| `versao` | Versão do informe; o reenvio traz número maior | número inteiro |
+| `entregue_em` | Dia em que o informe chegou à CVM (`Data_Entrega`) | data (dia) |
+| `tipo_fundo_classe` | Fundo ou classe, como a CVM escreve | texto |
+| `nome_do_fundo` | Nome do fundo ou da classe, como a CVM escreve | texto |
+| `publico_alvo` | Público-alvo, como a CVM escreve | texto |
+| `codigo_isin` | Código ISIN da cota, quando informado | texto |
+| `fundo_exclusivo` | Se é fundo exclusivo (S/N) | texto |
+| `mandato` | Mandato do fundo (renda, desenvolvimento, títulos...), como a CVM escreve | texto |
+| `segmento_de_atuacao` | Segmento de atuação (logística, lajes, shoppings...), como a CVM escreve | texto |
+| `tipo_de_gestao` | Gestão ativa ou passiva | texto |
+| `prazo_de_duracao` | Prazo de duração, como a CVM escreve | texto |
+| `negocia_em_bolsa` | Se a cota negocia em bolsa (S/N) | texto |
+| `funciona_desde` | Data de início de funcionamento | data (dia) |
+| `cnpj_administrador` | CNPJ do administrador (só o CNPJ, sem o nome) | texto |
+| `cotistas` | Número de cotistas | número inteiro |
+| `cotistas_pessoa_fisica` | Quantos cotistas são pessoa física (só a contagem) | número inteiro |
+| `valor_do_ativo` | Valor do ativo, em reais | número com decimais, na unidade da fonte |
+| `patrimonio_liquido` | Patrimônio líquido, em reais | número com decimais, na unidade da fonte |
+| `cotas_emitidas` | Cotas emitidas | número com decimais, na unidade da fonte |
+| `valor_patrimonial_da_cota` | Valor patrimonial da cota, em reais | número com decimais, na unidade da fonte |
+| `taxa_de_administracao_pct` | Despesa com taxa de administração, em % do patrimônio | número com decimais, na unidade da fonte |
+| `rentabilidade_efetiva_no_mes` | Rentabilidade efetiva do mês, como a CVM informa | número com decimais, na unidade da fonte |
+| `rentabilidade_patrimonial_no_mes` | Rentabilidade patrimonial do mês, como a CVM informa | número com decimais, na unidade da fonte |
+| `dividend_yield_no_mes` | Dividend yield do mês, como a CVM informa | número com decimais, na unidade da fonte |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `fii_ativos`
+
+Os títulos e valores mobiliários que cada FII declara no informe trimestral (CRI, ações, debêntures, cotas de outros fundos...), com o CNPJ do emissor: liga uma empresa aos FII que carregam os papéis dela. Uma linha por fundo, trimestre, versão do informe e ativo. O nome do emissor só entra quando o CNPJ dele fecha o dígito; a linha é marcada como de pessoa se o fundo ou o emissor for empresário individual ou MEI. Imóveis e terrenos (que trazem endereço) ficam de fora
+
+- **Fonte:** CVM: informe trimestral de FII, parte de ativos (`base/cvm_fip_fii.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um ZIP por ano, republicado inteiro (o arquivista olha toda semana)
+- **Atraso de divulgação:** `disponivel_em` é a `Data_Entrega` do informe trimestral (parte geral), nunca depois do dia em que o ZIP foi guardado; ativo que só aparece num arquivo seguinte vale do dia desse arquivo
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fii_ativos/<arquivo do ano>.parquet` (servidor de casa, `base/cvm_fip_fii.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): o fundo ou a classe | texto |
+| `referencia` | Trimestre a que o informe se refere (a `Data_Referencia`) | data (dia) |
+| `versao` | Versão do informe; o reenvio traz número maior | número inteiro |
+| `entregue_em` | Dia em que o informe chegou à CVM (`Data_Entrega` da parte geral) | data (dia) |
+| `cnpj_emissor` | CNPJ do emissor do ativo, quando fecha o dígito | texto |
+| `cnpj_basico_emissor` | Raiz do CNPJ do emissor (8 caracteres) | texto |
+| `emissor` | Nome do emissor, como a CVM escreve (só com CNPJ de dígito certo) | texto |
+| `tipo_do_ativo` | Tipo do ativo (CRI, ações, debêntures...), como a CVM escreve | texto |
+| `emissao` | Número da emissão, como a CVM escreve | texto |
+| `serie` | Série, como a CVM escreve | texto |
+| `codigo` | Código de negociação, quando informado | texto |
+| `nome_do_ativo` | Nome do ativo, como a CVM escreve | texto |
+| `vencimento` | Vencimento do ativo, quando há | data (dia) |
+| `quantidade` | Quantidade do ativo na carteira | número com decimais, na unidade da fonte |
+| `valor` | Valor do ativo na carteira, em reais | número com decimais, na unidade da fonte |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `fii_administradores`
+
+Quem a CVM registrou para administrar FII, pelo CNPJ: razão social, nome comercial, situação e as datas do registro, da situação e do cancelamento. Endereço, telefone e e-mail ficam de fora (só a UF entra). Só CNPJ de dígito certo
+
+- **Fonte:** CVM: cadastro de administradores de FII (`base/cvm_fip_fii.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo, republicado inteiro (o arquivista olha toda semana)
+- **Atraso de divulgação:** O cadastro não diz quando cada linha mudou: vale o dia em que o arquivista a viu
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `registrado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fii_administradores/administradores.parquet` (servidor de casa, `base/cvm_fip_fii.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): o administrador | texto |
+| `razao_social` | Razão social, como a CVM escreve | texto |
+| `nome_comercial` | Nome comercial, como a CVM escreve | texto |
+| `motivo_do_cancelamento` | Motivo do cancelamento do registro, quando há | texto |
+| `situacao` | Situação do registro na CVM, como a CVM escreve | texto |
+| `uf` | UF da sede | texto |
+| `registrado_em` | Data do registro na CVM | data (dia) |
+| `cancelado_em` | Data do cancelamento do registro, quando há | data (dia) |
+| `situacao_desde` | Desde quando vale a situação | data (dia) |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `aneel_inadimplencia`
+
+Os indicadores de inadimplência que cada distribuidora de energia manda à ANEEL, por CNPJ, indicador e mês: quanto deixa de receber dos consumidores, em cada recorte que a ANEEL pede. A descrição do indicador vem do domínio da própria ANEEL guardado até o dia do arquivo. Só distribuidora com CNPJ de dígito certo; o nome por extenso fica de fora
+
+- **Fonte:** ANEEL: dados abertos, inadimplência das distribuidoras (`base/aneel_indicadores.py`)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo, republicado inteiro (o arquivista olha toda semana)
+- **Atraso de divulgação:** A ANEEL escreve a data de geração do conjunto; o mês mais novo costuma ter de 1 a 3 meses
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/aneel_inadimplencia/inadimplencia.parquet` (servidor de casa, `base/aneel_indicadores.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da distribuidora (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `sigla_do_agente` | Sigla da distribuidora na ANEEL | texto |
+| `indicador` | Sigla do indicador, como a ANEEL escreve | texto |
+| `descricao_do_indicador` | Descrição do indicador no domínio da ANEEL; vazia quando a sigla não está no domínio | texto |
+| `referencia` | Mês do indicador (dia 1) | data (dia) |
+| `valor` | Valor do indicador, na unidade que a ANEEL define para ele | número com decimais, na unidade da fonte |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `aneel_indicadores_comerciais`
+
+Os indicadores comerciais de cada distribuidora de energia por CNPJ, município e mês (INDGER): unidades consumidoras ativas e faturadas, faturas sem leitura, refaturamentos, pedidos e pagamentos de ressarcimento de dano, postos de atendimento e suspensões por inadimplência (inclusive as indevidas e a compensação paga). Só distribuidora com CNPJ de dígito certo; o nome por extenso fica de fora
+
+- **Fonte:** ANEEL: dados abertos, INDGER dados comerciais (`base/aneel_indicadores.py`)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Um arquivo, republicado inteiro (o arquivista olha toda semana)
+- **Atraso de divulgação:** A ANEEL escreve a data de geração do conjunto; o mês mais novo costuma ter de 1 a 3 meses
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/aneel_indicadores_comerciais/comerciais.parquet` (servidor de casa, `base/aneel_indicadores.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da distribuidora (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `sigla_do_agente` | Sigla da distribuidora na ANEEL | texto |
+| `tipo_de_outorga` | Concessão ou permissão, como a ANEEL escreve | texto |
+| `referencia` | Mês informado (dia 1) | data (dia) |
+| `municipio_ibge` | Código IBGE do município (7 dígitos); vazio quando a fonte manda `0` | texto |
+| `unidades_ativas` | Unidades consumidoras ativas | número com decimais, na unidade da fonte |
+| `unidades_faturadas` | Unidades consumidoras ativas faturadas | número com decimais, na unidade da fonte |
+| `faturas` | Faturas emitidas | número com decimais, na unidade da fonte |
+| `faturas_sem_leitura` | Faturas emitidas sem leitura do medidor | número com decimais, na unidade da fonte |
+| `refaturamentos` | Refaturamentos | número com decimais, na unidade da fonte |
+| `pedidos_de_ressarcimento_de_dano` | Pedidos de ressarcimento de dano elétrico | número com decimais, na unidade da fonte |
+| `ressarcimentos_indeferidos` | Pedidos de ressarcimento indeferidos | número com decimais, na unidade da fonte |
+| `valor_pago_de_ressarcimento` | Valor pago de ressarcimento de dano, em reais | número com decimais, na unidade da fonte |
+| `postos_de_atendimento` | Postos de atendimento presencial | número com decimais, na unidade da fonte |
+| `unidades_suspensas_por_inadimplencia` | Unidades com fornecimento suspenso por inadimplência | número com decimais, na unidade da fonte |
+| `suspensoes_indevidas` | Suspensões indevidas de fornecimento | número com decimais, na unidade da fonte |
+| `valor_de_compensacao_por_suspensao_indevida` | Compensação paga por suspensão indevida, em reais | número com decimais, na unidade da fonte |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ans_idss`
+
+O Índice de Desempenho da Saúde Suplementar (IDSS) de cada operadora de plano de saúde, por CNPJ, índice (o IDSS e as dimensões dele) e ano de avaliação, desde 2009. De 2009 a 2011 a ANS publica só a faixa (`0,40 a 0,59`); depois, a nota. Nota `ND` (não disponível) não vira linha. Só operadora com CNPJ de dígito certo; a razão social fica de fora (o nome está em `ans_operadoras`)
+
+- **Fonte:** ANS: dados abertos, histórico do IDSS (`base/ans_idss.py`)
+- **Licença:** CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Três arquivos, republicados inteiros; o mais novo ganha um ano por ano (o arquivista olha toda semana)
+- **Atraso de divulgação:** A ANS publica a avaliação de um ano (ano base) no ano seguinte; o arquivo não diz o dia
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ans_idss/{de_2009,de_2012,de_2016}.parquet` (servidor de casa, `base/ans_idss.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da operadora (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `registro_operadora` | Registro da operadora na ANS | texto |
+| `modalidade` | Modalidade (Medicina de Grupo, Cooperativa Médica...), como a ANS escreve | texto |
+| `indice` | O índice: `IDSS` ou uma dimensão dele (`IDQS`, `IDGA`, `IDSM`, `IDGR`...) | texto |
+| `ano_avaliacao` | Ano da avaliação, como está no nome da coluna da ANS | número inteiro |
+| `ano_base` | Ano base (o ano avaliado) | número inteiro |
+| `valor` | Nota de 0 a 1; vazia quando a ANS publica a faixa | número com decimais, na unidade da fonte |
+| `faixa` | Faixa da nota (`0,40 a 0,59`), só de 2009 a 2011 | texto |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada nota saiu | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
