@@ -1,0 +1,99 @@
+{
+  "tabela": "aneel_agentes",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ do agente (14 dígitos com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres)",
+      "unidade": "texto"
+    },
+    "sigla_do_agente": {
+      "descricao": "Sigla do agente na ANEEL; vazia quando a ANEEL não tem",
+      "unidade": "texto"
+    },
+    "ativo": {
+      "descricao": "Verdadeiro se o cadastro está ativo na ANEEL (`A`), falso se inativo (`I`)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "geracao": {
+      "descricao": "Código de atuação em geração, como a ANEEL escreve (0 não atua, 1 atua)",
+      "unidade": "número inteiro"
+    },
+    "transmissao": {
+      "descricao": "Código de atuação em transmissão (0 não atua, 1 atua)",
+      "unidade": "número inteiro"
+    },
+    "distribuicao": {
+      "descricao": "Código de atuação em distribuição (0 não atua, 1 atua)",
+      "unidade": "número inteiro"
+    },
+    "comercializacao": {
+      "descricao": "Código de atuação em comercialização (0 não atua, 1 atua)",
+      "unidade": "número inteiro"
+    },
+    "id_na_fonte": {
+      "descricao": "Identificador da linha no arquivo da fonte",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "disponivel_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+  "atraso": "A ANEEL regera o cadastro todo mês e escreve a data de geração no arquivo",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

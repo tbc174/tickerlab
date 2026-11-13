@@ -404,6 +404,7 @@
         "aneel-empreendimentos",
         "aneel-encargos",
         "aneel-fiscalizacao",
+        "aneel-agentes",
         "aneel-bdgd-ucat-pj",
         "aneel-tarifas",
         "aneel-geracao",
@@ -2805,7 +2806,7 @@
           "CVM"
         ],
         "tabelas": 4,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 4 de 10 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 4 de 12 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2821,7 +2822,7 @@
           "Ministério da Saúde (DATASUS)"
         ],
         "tabelas": 8,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 8 de 20 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 8 de 21 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -5296,6 +5297,13 @@
     },
     {
       "id": "aneel-fiscalizacao",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "aneel-agentes",
       "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "marca": "vendavel",
       "ritmo": "mensal",

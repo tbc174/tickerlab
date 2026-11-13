@@ -98,6 +98,9 @@ TEXTOS_COMERCIAIS = (
     "municipio_ibge",
 )
 
+FILIAL_DA_MATRIZ = "0001"
+_FILIAL = slice(8, 12)  # no CNPJ: 8 da raiz, 4 da filial, 2 do DV
+
 
 # --- leitura comum ----------------------------------------------------------------------------------
 def ler_csv(conteudo: bytes) -> pd.DataFrame:
@@ -116,16 +119,31 @@ def ler_csv(conteudo: bytes) -> pd.DataFrame:
 def documentos(numeros: pd.Series) -> tuple[pd.Series, pd.Series]:
     """Para cada linha, o CNPJ de 14 caracteres (nulo se não for CNPJ de DV certo) e se é um CPF.
 
-    Confere cada documento diferente uma vez só (são umas cem distribuidoras em um milhão de linhas)."""
+    O CPF com zeros na frente que por acaso também tem o DV de CNPJ conta como CPF, a não ser na matriz
+    (filial `0001`): a mesma regra de `base.sus.e_pessoa_fisica` (o cadastro de agentes da ANEEL tinha um
+    caso assim em 13/11/2026). Na dúvida, fica fora: um CPF publicado não se desfaz. Confere cada documento
+    diferente uma vez só (são umas cem distribuidoras em um milhão de linhas)."""
     cnpj: dict[str, str] = {}
     cpf: set[str] = set()
     for numero in numeros.unique():
         completo = cnpjs.completo(numero)
-        if completo and cnpjs.dv_confere(completo):
-            cnpj[numero] = completo
-        elif cnpjs.cpf_confere(re.sub(r"\D", "", numero)):
+        if _e_cpf(re.sub(r"\D", "", numero)):
             cpf.add(numero)
+        elif completo and cnpjs.dv_confere(completo):
+            cnpj[numero] = completo
     return numeros.map(cnpj), numeros.isin(cpf)
+
+
+def _e_cpf(digitos: str) -> bool:
+    """Os 11 dígitos finais fecham o DV de CPF e só há zeros antes; a matriz que também é CNPJ fica empresa."""
+    cpf_no_fim = cnpjs.cpf_confere(digitos[-cnpjs.TAMANHO_DO_CPF :]) and set(
+        digitos[: -cnpjs.TAMANHO_DO_CPF]
+    ) <= {"0"}
+    if not cpf_no_fim:
+        return False
+    if len(digitos) == cnpjs.TAMANHO and cnpjs.dv_confere(digitos):
+        return digitos[_FILIAL] != FILIAL_DA_MATRIZ
+    return True
 
 
 def so_pessoa_juridica(
