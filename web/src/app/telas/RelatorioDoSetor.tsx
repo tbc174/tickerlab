@@ -12,7 +12,9 @@ import { TextoComLinks } from "../TextoComLinks";
 import { formatarData } from "../formatar";
 import type { RelatorioDoSetorV1, SetoresV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
+import { Abas } from "../pecas/Abas";
 import { Erro } from "../pecas/Erro";
+import { QuemSeMexeuNoSetor } from "./QuemSeMexeuNoSetor";
 import { ConviteDoPro, Secao, fimDoPrimeiroBloco } from "./RelatorioEmpresa";
 
 const ARQUIVOS: { rotulo: string; sufixo: string; nome: string }[] = [
@@ -193,7 +195,16 @@ export function RelatorioDoSetor({ pagina }: { pagina: PaginaDoApp }) {
       <CabecalhoDaTela pagina={pagina} />
       {lista.estado === "carregando" ? <Carregando tipo="painel" rotulo="Carregando os setores…" /> : null}
       {lista.estado === "erro" ? <Erro erro={lista.erro} /> : null}
-      {lista.estado === "pronto" ? <Escolha pagina={pagina} setores={lista.dados.setores} /> : null}
+      {lista.estado === "pronto" ? (
+        <Abas
+          rotulo="Partes da tela do setor"
+          parametro="aba"
+          abas={[
+            { chave: "companhias", rotulo: "Companhias abertas", conteudo: <Escolha pagina={pagina} setores={lista.dados.setores} /> },
+            { chave: "quem-se-mexeu", rotulo: "Quem já se mexeu", conteudo: <QuemSeMexeuNoSetor /> },
+          ]}
+        />
+      ) : null}
     </section>
   );
 }

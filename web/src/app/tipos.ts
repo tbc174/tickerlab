@@ -1244,3 +1244,45 @@ export type EventoDoChat =
   | { tipo: "recomeco" }
   | { tipo: "fim"; como_cheguei_aqui: ConsultaDoChat[]; avisos: string[]; aviso_final: string }
   | { tipo: "erro"; mensagem: string };
+
+/** Um exemplo de movimento num setor: a empresa do setor, a UF e os campos do sinal (cada um com fonte e dia). */
+export interface ExemploDeProvaV1 {
+  empresa_do_setor: PontaDoVinculoV1;
+  uf: string | null;
+  ainda_socio: boolean | null;
+  campos: Record<string, CampoComFonteV1>;
+}
+
+export interface ProvaDoSinalV1 {
+  quantas: number;
+  exemplos: ExemploDeProvaV1[];
+}
+
+/** Quem já se mexeu no setor (só pessoa jurídica): a raiz do CNPJ, o nome, os sinais e as provas. */
+export interface CompradorDoSetorV1 {
+  raiz_do_cnpj: string | null;
+  razao_social: CampoComFonteV1 | null;
+  sinais: string[]; // entrou_como_socio, fundo_socio, controla_no_setor
+  provas: Record<string, ProvaDoSinalV1>;
+}
+
+export interface SetorPedidoV1 {
+  cnae_principal: string;
+  uf: string | null;
+  anos: number;
+  desde: string;
+  empresas_ativas: number;
+}
+
+/** `POST /v1/analista/setor/compradores`: movimento passado no setor, não intenção de compra. */
+export interface CompradoresDoSetorV1 {
+  estado: "pronta" | "nao_liberada";
+  como_era_em: string | null;
+  setor: SetorPedidoV1 | null;
+  compradores: CompradorDoSetorV1[];
+  total_de_compradores: number;
+  cortada: boolean;
+  sinais_nao_disponiveis: string[];
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}
