@@ -8031,7 +8031,7 @@
         "coletado_em": "origem_coletada_em"
       },
       "sinonimos_de_tempo": {
-        "data_acordo": "a_conferir",
+        "data_acordo": "aconteceu_em",
         "disponivel_em": "publico_em",
         "origem_coletada_em": "coletado_em",
         "montado_em": "coletado_em"

@@ -106,6 +106,7 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("sigsif_habilitados", "dt_validade"): "ate",
     ("sigsif_habilitados", "dt_ocorrencia"): "aconteceu_em",
     ("sigsif_habilitados", "dt_suspensao"): "aconteceu_em",
+    ("receita_transacoes_individual", "data_acordo"): "aconteceu_em",
 }
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160
