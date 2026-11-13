@@ -6,9 +6,10 @@ import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import { Carregando } from "../pecas/Carregando";
 import { Erro } from "../pecas/Erro";
-import { Fontes } from "../pecas/Fonte";
+import { Fontes, type FonteDaSecao } from "../pecas/Fonte";
 import { Limites } from "../pecas/Limites";
 import { Tabela, type Coluna } from "../pecas/Tabela";
+import { NumerosDoSetor } from "./NumerosDoSetor";
 import { Vazio } from "../pecas/Vazio";
 import { formatarData } from "../formatar";
 import type { CompradorDoSetorV1, CompradoresDoSetorV1, ExemploDeProvaV1 } from "../tipos";
@@ -49,12 +50,18 @@ function quandoFoi(exemplo: ExemploDeProvaV1): string {
   return typeof valor === "string" && valor ? formatarData(valor) : "Sem data";
 }
 
-function fonteDoExemplo(exemplo: ExemploDeProvaV1): string {
-  const campo = exemplo.campos["data_entrada"] ?? Object.values(exemplo.campos)[0];
-  return campo ? `${campo.fonte} · dado de ${formatarData(campo.publico_em)}` : "Sem fonte";
+/** O nome da fonte para quem lê: a atribuição que a resposta traz (o código interno só se ela faltar). */
+function nomeDaFonte(codigo: string, fontes: FonteDaSecao[]): string {
+  const atribuicao = fontes.find((f) => f.fonte === codigo)?.atribuicao.trim().replace(/\.$/, "");
+  return atribuicao || codigo;
 }
 
-function ProvasDe({ comprador }: { comprador: CompradorDoSetorV1 }) {
+function fonteDoExemplo(exemplo: ExemploDeProvaV1, fontes: FonteDaSecao[]): string {
+  const campo = exemplo.campos["data_entrada"] ?? Object.values(exemplo.campos)[0];
+  return campo ? `${nomeDaFonte(campo.fonte, fontes)} · dado de ${formatarData(campo.publico_em)}` : "Sem fonte";
+}
+
+function ProvasDe({ comprador, fontes }: { comprador: CompradorDoSetorV1; fontes: FonteDaSecao[] }) {
   return (
     <ul>
       {comprador.sinais.map((sinal) => {
@@ -69,7 +76,7 @@ function ProvasDe({ comprador }: { comprador: CompradorDoSetorV1 }) {
                   {oQueFez(exemplo, sinal)}
                   <span className="apagado">
                     {" "}
-                    · {quandoFoi(exemplo)} · Fonte: {fonteDoExemplo(exemplo)}
+                    · {quandoFoi(exemplo)} · Fonte: {fonteDoExemplo(exemplo, fontes)}
                   </span>
                 </li>
               ))}
@@ -81,7 +88,7 @@ function ProvasDe({ comprador }: { comprador: CompradorDoSetorV1 }) {
   );
 }
 
-const COLUNAS: Coluna<CompradorDoSetorV1>[] = [
+const colunas = (fontes: FonteDaSecao[]): Coluna<CompradorDoSetorV1>[] => [
   {
     chave: "quem",
     titulo: "Quem",
@@ -93,7 +100,7 @@ const COLUNAS: Coluna<CompradorDoSetorV1>[] = [
       </>
     ),
   },
-  { chave: "o_que_fez", titulo: "O que fez no setor", celula: (c) => <ProvasDe comprador={c} /> },
+  { chave: "o_que_fez", titulo: "O que fez no setor", celula: (c) => <ProvasDe comprador={c} fontes={fontes} /> },
 ];
 
 function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
@@ -129,7 +136,7 @@ function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
       ) : null}
       <Tabela
         legenda="Quem já se mexeu neste setor"
-        colunas={COLUNAS}
+        colunas={colunas(dados.fontes)}
         linhas={dados.compradores}
         chaveDaLinha={(c) => c.raiz_do_cnpj ?? String(c.razao_social?.valor ?? "")}
         vazio="Nenhuma empresa com esse movimento no setor e no período pedidos."
@@ -137,8 +144,8 @@ function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
       <section className="secao-do-relatorio" aria-labelledby="nao-temos-quem-se-mexeu">
         <h2 id="nao-temos-quem-se-mexeu">O que não temos aqui</h2>
         <p>
-          A contagem de empresas por estado e as aberturas por ano deste setor não vêm desta lista.{" "}
-          <Link to="/encontrar-empresas">Encontre empresas pelo setor, estado ou tamanho</Link>.
+          Esta lista mostra só o que já aconteceu: não diz quem pretende comprar nem vender.{" "}
+          Para ver as empresas do setor uma a uma, <Link to="/encontrar-empresas">encontre empresas pelo setor, estado ou tamanho</Link>.
         </p>
       </section>
       <Fontes fontes={dados.fontes} id="fontes-quem-se-mexeu" />
@@ -152,6 +159,15 @@ function Consulta({ pedido }: { pedido: Pedido }) {
   if (resposta.estado === "carregando") return <Carregando tipo="painel" rotulo="Procurando quem já se mexeu no setor…" />;
   if (resposta.estado === "erro") return <Erro erro={resposta.erro} />;
   return <Resultado dados={resposta.dados} />;
+}
+
+function ConsultaCompleta({ pedido }: { pedido: Pedido }) {
+  return (
+    <>
+      <NumerosDoSetor cnae={pedido.cnae} />
+      <Consulta pedido={pedido} />
+    </>
+  );
 }
 
 export function QuemSeMexeuNoSetor() {
@@ -202,7 +218,7 @@ export function QuemSeMexeuNoSetor() {
           {aviso}
         </p>
       ) : null}
-      {pedido ? <Consulta key={JSON.stringify(pedido)} pedido={pedido} /> : null}
+      {pedido ? <ConsultaCompleta key={JSON.stringify(pedido)} pedido={pedido} /> : null}
     </>
   );
 }

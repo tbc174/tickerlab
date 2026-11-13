@@ -2765,8 +2765,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 20,
-    "tabelas": 83,
+    "orgaos": 21,
+    "tabelas": 86,
     "temas": [
       {
         "chave": "cvm",

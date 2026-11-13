@@ -3024,7 +3024,7 @@
       "tabela": "ans_beneficiarios",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês (último dia)",
@@ -3069,6 +3069,14 @@
         "visto_em": {
           "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
           "unidade": "data (dia)"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da operadora, pelo registro, no cadastro `ans_operadoras` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o registro, quando a operadora é pessoa (MEI, empresário individual) ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio",
+          "unidade": "texto"
         }
       },
       "chaves": [
@@ -4809,7 +4817,7 @@
       "tabela": "susep_seguros",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês (último dia)",
@@ -4902,6 +4910,14 @@
         "visto_em": {
           "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
           "unidade": "data (dia)"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da seguradora, pelo código da SUSEP (`coenti` igual ao código do cadastro, sem contar zeros à esquerda), no cadastro `susep_cadastro` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o código (entidade estrangeira não tem CNPJ), quando é pessoa ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio",
+          "unidade": "texto"
         }
       },
       "chaves": [
@@ -5114,7 +5130,7 @@
       "tabela": "ifdata_valores",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "2.0.0",
+      "versao": "2.1.0",
       "colunas": {
         "data_base": {
           "descricao": "Fim do trimestre a que o número se refere",
@@ -5163,6 +5179,10 @@
         "visto_em": {
           "descricao": "Dia (São Paulo) em que o arquivista baixou a resposta que trouxe este valor; vazio se não havia o dia (acervo desligado)",
           "unidade": "data (dia)"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz (8 dígitos) do CNPJ da instituição ou do líder do conglomerado, pelo cadastro do IF.data (`ifdata_cadastro`, linha 904, lote 4): a do cadastro que já era público quando o número saiu. É só a raiz, porque o conglomerado não tem um CNPJ inteiro; vazia onde o cadastro não a traz e enquanto o cadastro não estiver gravado",
+          "unidade": "texto"
         }
       },
       "chaves": [
