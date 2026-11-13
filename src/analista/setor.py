@@ -21,6 +21,7 @@ from base.porta import Porta
 from src.analista import leitura
 from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import compradores as compradores_
+from src.api_externa.conjuntos import perfil_do_setor
 from src.api_externa.envelope import fontes_da_resposta
 from src.portao_externo import Regras
 
@@ -36,11 +37,11 @@ AVISO_DA_API = "sinais_nao_disponiveis"
 DIA_DA_CONSULTA = "o dia da consulta"
 
 
-def limites_da_tela(limites: list[str]) -> list[str]:
+def limites_da_tela(limites: list[str], aviso: str = AVISO_DA_API) -> list[str]:
     """Os limites do leitor sem o nome de campo para quem programa: `known_at` vira "o dia da consulta" e o
-    aviso da parte não disponível fala do campo da tela (`sinais_nao_disponiveis`, como na API)."""
-    de_fora = nao_disponivel.NOMES_DE_FORA[AVISO_DA_API]
-    return [_frase_da_tela(limite.replace(de_fora, AVISO_DA_API)) for limite in limites]
+    aviso da parte não disponível (`aviso`, o nome de dentro da lista) fala do campo da tela, como na API."""
+    de_fora = nao_disponivel.NOMES_DE_FORA[aviso]
+    return [_frase_da_tela(limite.replace(de_fora, aviso)) for limite in limites]
 
 
 def _frase_da_tela(limite: str) -> str:
@@ -77,4 +78,25 @@ def compradores(
     corpo["limites"] = limites_da_tela(list(corpo["limites"]))
     return leitura.Resposta(
         leitura.PRONTA, corpo, fontes_da_resposta(servidos.fontes), servidos.linhas
+    )
+
+
+def perfil(
+    porta: Porta, cnae: str, *, hoje: date, regras: Regras | None = None
+) -> leitura.Resposta:
+    """Os números do setor (empresas ativas, por UF, aberturas por ano), só contagens e só pessoa jurídica.
+
+    `PedidoInvalido` (um `ValueError`) se o CNAE está fora da forma. Sem o CNAE liberado, sem as tabelas ou sem
+    retrato público, `nao_liberada`. O bloco que o portão não libera vem `None` (nunca zero) e o nome dele em
+    `blocos_nao_disponiveis`."""
+    permitido = leitura.permitido_na_tela(perfil_do_setor.CONJUNTO, hoje, regras)
+    servido = perfil_do_setor.LeitorDoPerfilDoSetor(porta, permitido).perfil(cnae, hoje)
+    if servido is None:
+        return leitura.Resposta(leitura.NAO_LIBERADA)
+    corpo = dict(servido.corpo)
+    corpo["limites"] = limites_da_tela(
+        list(corpo["limites"]), perfil_do_setor.NAO_DISPONIVEIS
+    )
+    return leitura.Resposta(
+        leitura.PRONTA, corpo, fontes_da_resposta(servido.fontes), servido.linhas
     )

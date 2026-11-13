@@ -420,3 +420,18 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .bandeja-de-comparacao { position: sticky; bottom: var(--e3); z-index: 2; margin: var(--e3) 0; padding: var(--e3) var(--e4);
   border: 1px solid var(--linha-forte); border-radius: var(--e2); background: var(--superficie); }
 .bandeja-de-comparacao p { margin: 0 0 var(--e2); }
+
+/* Tela de Setor: as aberturas por ano em barras (a tabela embaixo diz os números) */
+.barras-do-setor {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 80px;
+  margin: 0.5rem 0 1rem;
+}
+.barra-do-setor {
+  flex: 1;
+  background: var(--azul-texto);
+  opacity: 0.75;
+  border-radius: 2px 2px 0 0;
+}

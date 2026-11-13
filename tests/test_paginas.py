@@ -399,6 +399,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
             "/v1/analista/ficha/eventos",  # os eventos herdam o acesso da ficha e a tela os pede com o CNPJ dela
             "/v1/analista/ficha/vinculos",  # os vínculos herdam o acesso da ficha e a tela os pede com o CNPJ dela
             "/v1/analista/setor/compradores",  # quem se mexeu no setor herda o acesso da ficha (mesmo recurso)
+            "/v1/analista/setor/perfil",
             "/v1/analista/empresas/planilha",  # a planilha herda o contrato da busca
             "/v1/analista/comparar/planilha",  # a planilha herda o contrato da comparação
             "/v1/relatorio-setor/pdf",

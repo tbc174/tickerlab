@@ -353,6 +353,10 @@ SETOR_INVALIDO = (
 TAMANHO_MAXIMO_DO_CNAE = 16  # com pontuação e espaços; o resto é erro de quem chama
 
 
+class PedidoDoPerfilV1(BaseModel):
+    cnae: str  # sem limite aqui, como acima: o 422 do FastAPI repetiria o texto
+
+
 class PedidoDoSetorV1(BaseModel):
     # sem limite aqui: o 422 do FastAPI repetiria o texto pedido (os limites ficam na rota)
     cnae: str
@@ -386,3 +390,26 @@ def compradores_do_setor(
         "setor do analista: %s", resposta.estado
     )  # só o estado, nunca o setor pedido
     return esquemas.de_compradores_do_analista(resposta, ())
+
+
+@router.post("/setor/perfil")
+def perfil_do_setor(
+    _conta: Conta, pedido: PedidoDoPerfilV1
+) -> esquemas.PerfilDoSetorV1:
+    """Os números do setor por CNAE: empresas ativas, por UF e aberturas por ano. Só contagens e só pessoa
+    jurídica (MEI e empresário individual não entram), no retrato da Receita do dia, com o mesmo portão e o
+    mesmo leitor da API externa. O bloco que o portão não libera vem vazio e nomeado em `blocos_nao_disponiveis`."""
+    if len(pedido.cnae) > TAMANHO_MAXIMO_DO_CNAE:
+        raise HTTPException(status_code=422, detail=SETOR_INVALIDO)
+    with _porta() as porta:
+        try:
+            resposta = setor.perfil(
+                porta,
+                pedido.cnae,
+                hoje=hoje(),
+                regras=rotas_da_api_externa.regras_da_api(),
+            )
+        except ValueError as erro:  # PedidoInvalido é um ValueError
+            raise HTTPException(status_code=422, detail=SETOR_INVALIDO) from erro
+    log.info("perfil do setor do analista: %s", resposta.estado)  # nunca o CNAE
+    return esquemas.de_perfil_do_setor_do_analista(resposta)

@@ -9,6 +9,7 @@ import { Erro } from "../pecas/Erro";
 import { Fontes } from "../pecas/Fonte";
 import { Limites } from "../pecas/Limites";
 import { Tabela, type Coluna } from "../pecas/Tabela";
+import { NumerosDoSetor } from "./NumerosDoSetor";
 import { Vazio } from "../pecas/Vazio";
 import { formatarData } from "../formatar";
 import type { CompradorDoSetorV1, CompradoresDoSetorV1, ExemploDeProvaV1 } from "../tipos";
@@ -154,6 +155,15 @@ function Consulta({ pedido }: { pedido: Pedido }) {
   return <Resultado dados={resposta.dados} />;
 }
 
+function ConsultaCompleta({ pedido }: { pedido: Pedido }) {
+  return (
+    <>
+      <NumerosDoSetor cnae={pedido.cnae} />
+      <Consulta pedido={pedido} />
+    </>
+  );
+}
+
 export function QuemSeMexeuNoSetor() {
   const [cnae, setCnae] = useState("");
   const [uf, setUf] = useState("");
@@ -202,7 +212,7 @@ export function QuemSeMexeuNoSetor() {
           {aviso}
         </p>
       ) : null}
-      {pedido ? <Consulta key={JSON.stringify(pedido)} pedido={pedido} /> : null}
+      {pedido ? <ConsultaCompleta key={JSON.stringify(pedido)} pedido={pedido} /> : null}
     </>
   );
 }
