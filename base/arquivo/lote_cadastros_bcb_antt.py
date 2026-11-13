@@ -84,6 +84,8 @@ def descobrir_seguro(cliente: Cliente, agora: datetime) -> list[Alvo]:
         r["url"]
         for r in recursos
         if (r.get("url") or "").lower().endswith(ARQUIVO_DO_SEGURO)
+        # o endereço vem do dado do portal: só vale o do próprio portal da ANTT (nada de baixar de outro host)
+        and r["url"].startswith(PORTAL_DA_ANTT + "/")
     ]
     if not urls:
         raise ErroDeDescoberta(

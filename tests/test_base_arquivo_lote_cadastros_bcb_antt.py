@@ -71,6 +71,16 @@ def test_o_seguro_pega_so_o_csv_atual_do_pacote_e_nao_os_mensais():
     ]
 
 
+def test_o_seguro_ignora_csv_de_outro_host_vindo_no_dado_do_portal():
+    de_fora = "https://exemplo.invalido/seguro-responsabilidade-civil.csv"
+    with pytest.raises(ErroDeDescoberta, match="sem o CSV atual"):
+        lote.descobrir_seguro(Cliente(_pacote(de_fora)), AGORA)
+    cliente = Cliente(_pacote(de_fora, DA_ANTT + "seguro-responsabilidade-civil.csv"))
+    assert [a.url for a in lote.descobrir_seguro(cliente, AGORA)] == [
+        DA_ANTT + "seguro-responsabilidade-civil.csv"
+    ]
+
+
 def test_o_seguro_sem_o_csv_atual_e_erro_de_descoberta_nunca_lista_vazia():
     with pytest.raises(ErroDeDescoberta, match="sem o CSV atual"):
         lote.descobrir_seguro(
