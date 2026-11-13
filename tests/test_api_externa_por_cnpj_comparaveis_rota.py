@@ -258,3 +258,77 @@ def test_cnpj_invalido_da_400(cliente, cenario):
 
 def test_sem_chave_da_401(cliente, cenario):
     assert cliente.get(_rota()).status_code == 401
+
+
+# ---------------------------------------------------------------- número não disponível (linha 881)
+
+
+def _sem_o_roe(regras: portao.Regras) -> portao.Regras:
+    linhas = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == comparaveis.CONJUNTO and linha.campo == "roe")
+    )
+    return dataclasses.replace(regras, linhas=linhas)
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `comparables`, outra só com o de `companies`; o portão sem a
+    linha do ROE (como uma linha de direito retirada)."""
+    ator = aj.admin(banco)
+    com_comparaveis = aj.organizacao(banco, ator, "Organização com comparáveis")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem comparáveis")
+    aj.contrato(banco, ator, com_comparaveis, conjunto=comparaveis.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _sem_o_roe(_regras())
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_comparaveis).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_com_tudo_liberado_a_lista_de_fora_sai_vazia(cliente, cenario):
+    corpo = _get(cliente, cenario, known_at=DIA).json()
+    assert corpo["unavailable_figures"] == []
+    assert corpo["limits"] == list(comparaveis.LIMITES)
+
+
+def test_a_razao_barrada_vem_como_nao_disponivel_e_a_mediana_nao_le_como_poucos_pares(
+    duas,
+):
+    cliente, com_comparaveis, _so_de_companies = duas
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_comparaveis)
+    )
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert "return_on_equity" not in corpo["peer_medians"]
+    assert corpo["unavailable_figures"] == ["return_on_equity"]
+    assert comparaveis.LIMITE_DO_NUMERO_NAO_DISPONIVEL in corpo["limits"]
+    assert "unavailable_figures" in comparaveis.LIMITE_DO_NUMERO_NAO_DISPONIVEL
+
+
+def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
+    cliente, _com_comparaveis, so_de_companies = duas
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(so_de_companies)
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_numeros_sem_prontidao_vem_todos_como_nao_disponiveis(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: _regras((comparaveis.TABELA_DO_CADASTRO,))
+    )
+    corpo = _get(cliente, cenario, known_at=DIA).json()
+    assert "peer_medians" not in corpo
+    assert "revenue" in corpo["unavailable_figures"]
+    assert "return_on_equity" in corpo["unavailable_figures"]
+    assert not any("8 pares" in limite for limite in corpo["limits"])

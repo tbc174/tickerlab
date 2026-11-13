@@ -2519,6 +2519,105 @@ def test_deck_resposta_que_nao_e_arquivo_e_fora_do_ar(rodar, chave, tmp_path):
     assert resultado.exit_code == Saida.FORA_DO_AR
 
 
+# ---- tipo de evento não disponível para a organização (linha 883) ----------------------------------------
+
+
+def _eventos_com_tipo_barrado(linhas: list[dict]) -> dict:
+    return {
+        "events": linhas,
+        "unavailable_event_types": ["auditor_change"],
+        "limits": [{"source": "cvm", "text": "só o que foi servido"}],
+        "sources": [{"source": "cvm"}],
+    }
+
+
+def test_eventos_vazios_com_tipo_barrado_nao_dizem_que_nao_tem(rodar, chave):
+    resultado = rodar(
+        "eventos", "11111111000191",
+        http=_resposta_fixa(_eventos_com_tipo_barrado([])), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    primeira = resultado.stdout.splitlines()[0]
+    assert "não está disponível" in primeira and "auditor_change" in primeira
+    assert "Nenhum evento da empresa até o dia" not in resultado.stdout
+
+
+def test_eventos_com_linhas_e_tipo_barrado_avisam_na_primeira_linha(rodar, chave):
+    linhas = [{"kind": _env("ipe_filing"), "year": _env(2025)}]
+    resultado = rodar(
+        "eventos", "11111111000191",
+        http=_resposta_fixa(_eventos_com_tipo_barrado(linhas)), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    primeira = resultado.stdout.splitlines()[0]
+    assert "auditor_change" in primeira and "1 eventos nesta resposta" in primeira
+
+
+def test_eventos_sem_tipo_barrado_seguem_como_antes(rodar, chave):
+    corpo = {"events": [], "unavailable_event_types": [], "sources": []}
+    resultado = rodar(
+        "eventos", "11111111000191", http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert "Nenhum evento da empresa até o dia" in resultado.stdout
+    assert "não está disponível" not in resultado.stdout
+
+
+def test_eventos_em_json_passam_o_campo_inteiro(rodar, chave):
+    corpo = _eventos_com_tipo_barrado([])
+    resultado = rodar(
+        "eventos", "11111111000191", "--json",
+        http=_resposta_fixa(corpo), **_com_chave(chave),
+    )  # fmt: skip
+    assert json.loads(resultado.stdout) == corpo
+
+
+def test_dossie_poe_o_tipo_barrado_em_gaps(rodar, chave):
+    interno, _ = _secoes_do_dossie()
+
+    def responder(pedido):
+        resposta = interno(pedido)
+        if pedido.url.path.endswith("/events"):
+            return httpx.Response(200, json=_eventos_com_tipo_barrado([]))
+        return resposta
+
+    resultado = rodar(
+        "dossie", "11111111000191", "--json",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    lacunas = json.loads(resultado.stdout)["gaps"]
+    assert [g["section"] for g in lacunas] == ["events"]
+    assert "auditor_change" in lacunas[0]["reason"]
+    tela = rodar(
+        "dossie", "11111111000191",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert "Ficou de fora: events" in tela.stdout
+
+
+def test_planilha_de_eventos_leva_o_aviso_de_nao_disponivel(rodar, chave, tmp_path):
+    arquivo = tmp_path / "eventos.xlsx"
+    resultado = rodar(
+        "eventos", "11111111000191", "--planilha", str(arquivo),
+        http=_resposta_fixa(_eventos_com_tipo_barrado([])), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert "auditor_change" in resultado.stdout
+    celulas = " ".join(
+        str(c) for linhas in _abrir_xlsx(arquivo).values() for l in linhas for c in l
+    )
+    assert "auditor_change" in celulas
+
+
+def test_campo_unavailable_de_outra_rota_sai_pelo_proprio_nome(rodar, chave):
+    corpo = {"links": [], "unavailable_link_types": ["auditor"], "sources": []}
+    resultado = rodar(
+        "vinculos", "11111111000191", http=_resposta_fixa(corpo), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    assert "tipos de vínculo: auditor" in resultado.stdout
+
+
 def _ativos_da_anp() -> dict:
     return {
         "cnpj": "11111111000191",
@@ -2568,3 +2667,27 @@ def test_ativos_em_json_passa_inteiro(rodar, chave):
 def test_ativos_sem_chave_sai_com_o_codigo_de_chave(rodar):
     resultado = rodar("ativos", "11111111000191")
     assert resultado.exit_code == 3
+
+
+@pytest.mark.parametrize(
+    ("comando", "campo", "valor", "rotulo"),
+    [
+        ("compradores", "unavailable_signals", "fund_partner", "sinais de comprador"),
+        ("empresa", "unavailable_filings", "ITR", "entregas à CVM"),
+        ("comparaveis", "unavailable_figures", "ebitda", "números dos comparáveis"),
+        (
+            "empresa",
+            "unavailable_registration_fields",
+            "simples_nacional",
+            "campos do cadastro na Receita",
+        ),
+    ],
+)
+def test_rotulos_dos_campos_nao_disponiveis(
+    rodar, chave, comando, campo, valor, rotulo
+):
+    corpo = {campo: [valor], "sources": []}
+    args = ["--cnae", "47113"] if comando == "compradores" else ["11111111000191"]
+    resultado = rodar(comando, *args, http=_resposta_fixa(corpo), **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert f"{rotulo}: {valor}" in resultado.stdout

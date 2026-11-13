@@ -3301,6 +3301,14 @@
             "title": "Cadastro Na Receita",
             "type": "object"
           },
+          "campos_do_cadastro_nao_disponiveis": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Campos Do Cadastro Nao Disponiveis",
+            "type": "array"
+          },
           "cnpj": {
             "title": "Cnpj",
             "type": "string"
@@ -3326,6 +3334,14 @@
               }
             ],
             "title": "Entregas"
+          },
+          "entregas_nao_disponiveis": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Entregas Nao Disponiveis",
+            "type": "array"
           }
         },
         "required": [
@@ -7422,6 +7438,13 @@
             "title": "Limites",
             "type": "array"
           },
+          "tipos_de_vinculo_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tipos De Vinculo Nao Disponiveis",
+            "type": "array"
+          },
           "vinculos": {
             "items": {
               "$ref": "#/components/schemas/VinculoDaEmpresaV1"
@@ -7435,6 +7458,7 @@
           "como_era_em",
           "vinculos",
           "cortada",
+          "tipos_de_vinculo_nao_disponiveis",
           "fontes",
           "limites"
         ],

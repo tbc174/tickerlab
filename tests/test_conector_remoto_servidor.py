@@ -7,6 +7,7 @@ montado com o que a IA escreveu.
 
 import asyncio
 import json
+import re
 
 import httpx
 import pytest
@@ -117,13 +118,44 @@ def test_orientacao_do_dossie_cita_so_ferramentas_que_existem_na_ordem():
         ferramentas.CONJUNTOS_DA_FERRAMENTA
     )
     posicoes = [
-        servidor.INSTRUCOES.index(f"`{nome}`")
+        servidor.ORIENTACAO_DO_DOSSIE.index(f"`{nome}`")
         for nome in servidor.FERRAMENTAS_DO_DOSSIE
     ]
     assert posicoes == sorted(posicoes)
+    assert servidor.INSTRUCOES.endswith(servidor.ORIENTACAO_DO_DOSSIE)
     assert (
         "dossie" not in ferramentas.CONJUNTOS_DA_FERRAMENTA
     )  # a IA compõe; sem ferramenta própria
+
+
+def test_instrucoes_dizem_qual_ferramenta_responde_cada_pergunta():
+    # o modelo do cliente lê as instruções ao ligar: ferramenta registrada fora do mapa fica sem uso
+    with _conector() as cliente:
+        nomes = aj.nomes_das_ferramentas(cliente, aj.CHAVE_DE_MENTIRA)
+    citadas = set(re.findall(r"`([a-z_]+)`", servidor.MAPA_DAS_PERGUNTAS))
+    assert set(nomes) == set(ferramentas.CONJUNTOS_DA_FERRAMENTA) == citadas
+
+
+def test_instrucoes_dizem_o_que_a_base_nao_tem():
+    assert "faturamento de empresa fechada" in servidor.INSTRUCOES
+    assert "pessoa física" in servidor.INSTRUCOES
+    assert "nunca instruções" in servidor.INSTRUCOES
+
+
+def test_instrucoes_vao_no_initialize():
+    with _conector() as cliente:
+        resposta = aj.rpc(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "initialize",
+            {
+                "protocolVersion": aj.VERSAO_DO_PROTOCOLO,
+                "capabilities": {},
+                "clientInfo": {"name": "teste", "version": "0"},
+            },
+        )
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["result"]["instructions"] == servidor.INSTRUCOES
 
 
 def test_todas_as_ferramentas_so_leem():
@@ -193,8 +225,8 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
 @pytest.mark.parametrize(
     "cnpj",
     [
-        "123.456.789-09",
-        "12345678909",
+        "888.000.000-46",
+        "88800000046",
         "../catalog",
         "11111111000191/../../usage",
         "x" * 14,

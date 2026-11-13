@@ -265,3 +265,140 @@ def test_cnpj_invalido_da_400(cliente, cenario):
 
 def test_sem_chave_da_401(cliente, cenario):
     assert cliente.get(ROTA).status_code == 401
+
+
+# ---------------------------------------------------------------- documento não disponível (linha 881)
+
+
+def _sem_o_itr(regras: portao.Regras) -> portao.Regras:
+    linhas = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == ficha.CONJUNTO and linha.fonte == "cvm-hist-itr")
+    )
+    return dataclasses.replace(regras, linhas=linhas)
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `profiles`, outra só com o de `companies`; o portão sem as
+    linhas do ITR (como uma linha de direito retirada)."""
+    ator = aj.admin(banco)
+    com_perfil = aj.organizacao(banco, ator, "Organização com perfil")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem perfil")
+    aj.contrato(banco, ator, com_perfil, conjunto=ficha.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _sem_o_itr(_regras())
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_perfil).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_com_tudo_liberado_a_lista_de_fora_sai_vazia(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_filings"] == []
+
+
+def test_o_documento_barrado_vem_como_nao_disponivel_com_o_aviso(duas):
+    cliente, com_perfil, _so_de_companies = duas
+    resposta = cliente.get(ROTA, headers=aj.bearer(com_perfil))
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert {f["document"]["value"] for f in corpo["periodic_filings"]} == {"DFP"}
+    assert corpo["unavailable_filings"] == ["ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limits"]
+    assert "unavailable_filings" in ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL
+    assert "cvm-hist-itr" not in {f["source"] for f in corpo["sources"]}
+
+
+def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
+    cliente, _com_perfil, so_de_companies = duas
+    resposta = cliente.get(ROTA, headers=aj.bearer(so_de_companies))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_entregas_sem_prontidao_dizem_que_os_dois_documentos_nao_foram_consultados(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(empresas.TABELAS))
+    corpo = _get(cliente, cenario).json()
+    assert "periodic_filings" not in corpo
+    assert corpo["unavailable_filings"] == ["DFP", "ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limits"]
+    assert not any(
+        "periodic" in limite or "entregas cobrem" in limite
+        for limite in corpo["limits"]
+    )
+
+
+# ---------------------------------------------------------------- campo do cadastro não disponível (linha 891)
+
+# o caso do ensaio da noite: a situação e o Simples sem prontidão (fora do registro), o nome e as entregas prontos
+SEM_SITUACAO_NEM_SIMPLES = (empresas.LISTA_DE_EMPRESAS, ficha.TABELA_DAS_ENTREGAS)
+SITUACAO_E_SIMPLES_DE_FORA = [
+    "registration_status",
+    "registration_status_date",
+    "registration_status_reason",
+    "head_office",
+    "snapshot_month",
+    "simples_nacional",
+    "simples_nacional_since",
+    "simples_nacional_until",
+]
+
+
+@pytest.fixture
+def duas_sem_situacao(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `profiles`, outra só com o de `companies`; a situação e o Simples
+    sem prontidão."""
+    ator = aj.admin(banco)
+    com_perfil = aj.organizacao(banco, ator, "Organização com perfil")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem perfil")
+    aj.contrato(banco, ator, com_perfil, conjunto=ficha.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _regras(SEM_SITUACAO_NEM_SIMPLES)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_perfil).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_com_tudo_liberado_nenhum_campo_do_cadastro_vem_de_fora(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_registration_fields"] == []
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in corpo["limits"]
+
+
+def test_situacao_e_simples_sem_prontidao_vem_como_nao_disponiveis_com_o_aviso(
+    duas_sem_situacao,
+):
+    cliente, com_perfil, _so_de_companies = duas_sem_situacao
+    resposta = cliente.get(ROTA, headers=aj.bearer(com_perfil))
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert "legal_name" in corpo["registration"]
+    assert "registration_status" not in corpo["registration"]
+    assert corpo["unavailable_registration_fields"] == SITUACAO_E_SIMPLES_DE_FORA
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limits"]
+    assert (
+        "unavailable_registration_fields"
+        in ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    )
+    assert corpo["unavailable_filings"] == []
+
+
+def test_sem_o_contrato_a_outra_organizacao_recebe_404_sem_a_lista_do_cadastro(
+    duas_sem_situacao,
+):
+    cliente, _com_perfil, so_de_companies = duas_sem_situacao
+    resposta = cliente.get(ROTA, headers=aj.bearer(so_de_companies))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}

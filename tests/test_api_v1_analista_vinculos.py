@@ -5,6 +5,7 @@ estados (nunca erro por falta de prontidão), pessoa e fundo fora da lista, o no
 resposta, o CNPJ só no corpo, o login e o plano da ficha, e a base fora do ar.
 """
 
+import dataclasses
 import logging
 
 import pytest
@@ -13,6 +14,7 @@ from base.porta import Porta
 from src import paginas
 from src.analista import leitura, vinculos
 from src.api_externa import rotas as rotas_da_api_externa
+from src.api_externa.conjuntos import vinculos as vinculos_
 from src.api_v1 import analista
 from src.banco.usuarios import mudar_plano
 from tests import test_analista_leitura as leitura_de_mentira
@@ -164,3 +166,68 @@ def test_o_log_leva_so_o_estado_nunca_o_cnpj(cliente, caplog):
         _pedir(cliente)
     assert any("vínculos do analista" in r.message for r in caplog.records)
     assert ALFA not in caplog.text
+
+
+# ---------------------------------------------------------------- tipo não liberado (linha 889)
+
+DO_FRE = ["subsidiary_of", "affiliate_of", "investee_of"]
+
+
+def _sem_a_fonte(fonte: str):
+    """As regras da tela sem nenhuma linha de direito da fonte nos vínculos (a fonte barrada para a tela)."""
+    regras = leitura_de_mentira._regras(TABELAS)
+    linhas = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == vinculos_.CONJUNTO and linha.fonte == fonte)
+    )
+    return dataclasses.replace(regras, linhas=linhas)
+
+
+def _com_regras(monkeypatch, regras) -> None:
+    monkeypatch.setattr(rotas_da_api_externa, "regras_da_api", lambda: regras)
+
+
+def test_fca_barrado_a_auditoria_vem_listada_e_os_limites_nao_falam_dela(
+    cliente, monkeypatch
+):
+    """Linha 889: sem o FCA, a lista sem auditora não pode parecer "a empresa não tem auditor"."""
+    _com_regras(monkeypatch, _sem_a_fonte(vinculos_.FCA))
+    dados = _pedir(cliente).json()
+    assert dados["estado"] == leitura.PRONTA
+    assert dados["tipos_de_vinculo_nao_disponiveis"] == ["audits"]
+    assert "audits" not in {v["campos"]["tipo"]["valor"] for v in dados["vinculos"]}
+    assert vinculos_.LIMITES_DA_FONTE[vinculos_.FCA] not in dados["limites"]
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL in dados["limites"]
+    assert not any("unavailable_" in l or "known_at" in l for l in dados["limites"])
+
+
+def test_fre_barrado_os_tres_tipos_vem_listados_e_a_auditoria_sai(cliente, monkeypatch):
+    _com_regras(monkeypatch, _sem_a_fonte(vinculos_.FRE))
+    dados = _pedir(cliente).json()
+    assert dados["estado"] == leitura.PRONTA
+    assert dados["tipos_de_vinculo_nao_disponiveis"] == DO_FRE
+    assert {v["campos"]["tipo"]["valor"] for v in dados["vinculos"]} == {"audits"}
+    assert vinculos_.LIMITES_DA_FONTE[vinculos_.FRE] not in dados["limites"]
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL in dados["limites"]
+
+
+def test_os_dois_servidos_nenhum_tipo_fica_de_fora(cliente):
+    dados = _pedir(cliente).json()
+    assert dados["tipos_de_vinculo_nao_disponiveis"] == []
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL not in dados["limites"]
+    assert dados["limites"] == list(vinculos.LIMITES)
+
+
+def test_os_dois_barrados_e_nao_liberada_sem_lista(cliente, monkeypatch):
+    regras = _sem_a_fonte(vinculos_.FRE)
+    linhas = tuple(
+        l
+        for l in regras.linhas
+        if l.fonte != vinculos_.FCA or l.conjunto != vinculos_.CONJUNTO
+    )
+    _com_regras(monkeypatch, dataclasses.replace(regras, linhas=linhas))
+    dados = _pedir(cliente).json()
+    assert dados["estado"] == leitura.NAO_LIBERADA
+    assert dados["tipos_de_vinculo_nao_disponiveis"] == []
+    assert dados["limites"] == list(vinculos.LIMITES)

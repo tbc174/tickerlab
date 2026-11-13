@@ -445,6 +445,43 @@ def test_portao_que_nega_um_campo_tira_so_ele(pasta):
     assert "roe" not in corpo["medianas_dos_pares"]
 
 
+# ---------------------------------------------------------------- número não disponível (linha 881)
+
+
+def test_com_tudo_liberado_nenhum_numero_fica_de_fora(pasta):
+    corpo = _corpo(pasta)
+    assert corpo["numeros_nao_disponiveis"] == []
+    assert comparaveis.LIMITE_DO_NUMERO_NAO_DISPONIVEL not in corpo["limites"]
+
+
+def test_a_razao_barrada_vai_na_lista_e_a_mediana_que_falta_nao_le_como_poucos_pares(
+    pasta,
+):
+    corpo = _corpo(pasta, permitido=lambda _f, campo, _d: campo != "roe")
+    assert "roe" not in corpo["medianas_dos_pares"]
+    assert corpo["medianas_dos_pares"]  # as outras razões tinham pares de sobra
+    assert corpo["numeros_nao_disponiveis"] == ["return_on_equity"]
+    assert comparaveis.LIMITE_DO_NUMERO_NAO_DISPONIVEL in corpo["limites"]
+
+
+def test_a_lista_de_fora_sai_com_os_nomes_de_fora_na_ordem_dos_numeros(pasta):
+    barrados = {"margem_ebitda", "receita"}
+    corpo = _corpo(pasta, permitido=lambda _f, campo, _d: campo not in barrados)
+    assert corpo["numeros_nao_disponiveis"] == ["revenue", "ebitda_margin"]
+
+
+def test_sem_a_dfp_os_limites_nao_falam_dos_numeros_nem_das_medianas(pasta):
+    corpo = _corpo(pasta, permitido=lambda fonte, _c, _d: fonte == CVM_FCA)
+    assert len(corpo["numeros_nao_disponiveis"]) == len(comparaveis.NUMEROS) + len(
+        comparaveis.RAZOES
+    )
+    assert corpo["limites"] == [
+        *comparaveis.LIMITES_GERAIS[:2],
+        comparaveis.LIMITE_DO_NUMERO_NAO_DISPONIVEL,
+        *comparaveis.LIMITES_GERAIS[2:],
+    ]
+
+
 def test_sem_direito_a_receita_a_ordem_dos_pares_nao_a_entrega(pasta):
     """A ordem pela receita contaria o ranking de um campo negado: sem ele, os pares vão pela ordem do CNPJ."""
     corpo = _corpo(pasta, permitido=lambda _f, campo, _d: campo != "receita")

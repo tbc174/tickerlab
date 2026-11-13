@@ -10,8 +10,14 @@ Cada linha diz de onde veio: o documento (DFP ou ITR), a data a que ele se refer
 abertos ou XML do ENET). A fonte de cada linha é a do documento (`cvm-hist-dfp` ou `cvm-hist-itr`), e a data
 de publicação é o dia da entrega à CVM. A base não guarda quando o TickerLab viu cada valor: `visto_em` sai
 vazio. As linhas saem do período mais novo para o mais velho, cortadas no limite do plano.
+
+O documento (DFP, ITR) que o portão não libera não some em silêncio (linha 882,
+`src/api_externa/nao_disponivel.py`): sem as linhas do ITR, a resposta leria como "a companhia não entregou
+ITR". Ele vai em `entregas_nao_disponiveis` (o mesmo nome de fora do perfil, `unavailable_filings`) e os
+limites avisam que a lista de linhas não diz nada sobre ele; sem nenhum documento liberado, nada sai.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from itertools import islice
@@ -20,6 +26,7 @@ import pandas as pd
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
 
@@ -35,6 +42,16 @@ PUBLICADO_EM = "divulgado_em"
 # o período mais novo primeiro; dentro dele, a ordem do plano de contas
 ORDEM = ("fim", "demonstracao", "grupo", "conta", "inicio")
 CRESCENTE = (False, True, True, True, True)
+# o nome de dentro da lista dos documentos que o portão não libera (o mesmo do perfil, `conjuntos/ficha.py`)
+NAO_DISPONIVEIS = "entregas_nao_disponiveis"
+LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "documentos", "a lista de linhas"
+)
+
+
+def limites(nao_disponiveis: Sequence[str]) -> list[str]:
+    """Os limites das demonstrações: só o aviso, quando algum documento ficou de fora."""
+    return [LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL] if nao_disponiveis else []
 
 
 @dataclass(frozen=True)
@@ -67,6 +84,13 @@ class LeitorDeDemonstracoes:
         self.permitido = permitido
         self.linhas_maximas = linhas_maximas
 
+    def _documentos_pedidos(self) -> dict[str, list[str]]:
+        """Os campos que o portão libera de cada documento (DFP, ITR)."""
+        return {
+            documento: [nome for nome in CAMPOS if self.permitido(fonte, nome, False)]
+            for documento, fonte in FONTES_DOS_DOCUMENTOS.items()
+        }
+
     def _linha(self, linha: pd.Series) -> tuple[dict, str] | None:
         fonte = FONTES_DOS_DOCUMENTOS.get(str(linha["documento"]))
         if fonte is None:
@@ -87,6 +111,9 @@ class LeitorDeDemonstracoes:
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
+        nao_disponiveis = nao_disponivel.nao_disponiveis(self._documentos_pedidos())
+        if len(nao_disponiveis) == len(FONTES_DOS_DOCUMENTOS):
+            return None  # nenhum documento liberado: nada a consultar
         filtros: dict[str, object] = {"cnpj": cnpj_.formatar(normal)}
         if fim is not None:
             filtros["fim"] = pd.Timestamp(fim)
@@ -108,6 +135,8 @@ class LeitorDeDemonstracoes:
             "como_era_em": como_era_em.isoformat(),
             "linhas": [servida for servida, _fonte in cortadas],
             "cortada": cortada,
+            NAO_DISPONIVEIS: nao_disponiveis,
+            "limites": limites(nao_disponiveis),
         }
         return DemonstracoesServidas(
             corpo, {fonte for _servida, fonte in cortadas}, len(cortadas)

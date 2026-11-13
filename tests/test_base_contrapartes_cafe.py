@@ -127,7 +127,7 @@ def test_isolamento_nenhum_dado_pessoal(fatos):
         assert not CARGOS.search(texto), texto
     for cnpj in fatos["cnpj"].dropna():
         assert cafe.cnpj_valido(cnpj), cnpj
-    assert not cafe.cnpj_valido("123.456.789-09")
+    assert not cafe.cnpj_valido("888.000.000-46")
 
 
 def test_fato_de_recuperacao_judicial_ou_fechamento_tem_documento_ou_noticia_guardada(

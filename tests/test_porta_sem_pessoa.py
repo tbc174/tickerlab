@@ -38,10 +38,8 @@ COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 AINDA_SEM_A_MARCA = frozenset(
     {
         "anatel_acessos",
-        "aneel_samp",
         "anm_cfem_arrecadacao",
         "anm_sigbm_barragens",
-        "anp_concessionarios",
         "auditores",
         "carteiras_bloco_8",
         "cda_cotas",
@@ -53,7 +51,6 @@ AINDA_SEM_A_MARCA = frozenset(
         "debentures_assembleias",
         "dmpl_como_era",
         "emissores",
-        "eventos",  # o `assunto` (texto livre) traz CPF: 4 linhas medidas em 12/11/2026 (revisão cruzada do #1085)
         "fidc_informe",
         "fre_capital_social",
         "fre_comites",
@@ -94,7 +91,6 @@ FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
         "achados_de_qualidade",
         "registro_de_fundos",
         "cadastro_de_fundos",
-        "fips_registrados",
         "cadastro_gestor_hist",
         "cadastro_admin_hist",
         "amostra_painel",
@@ -160,15 +156,19 @@ FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
 )
 # Sem pessoa por construção: a montagem nem deixa entrar o empresário individual (213-5) nem o
 # grupo 4 (linha 584; o contrato de cada uma diz). Não precisam da marca por linha.
-# sem pessoa por desenho: o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
+# sem pessoa por desenho (aneel_samp e anp_concessionarios: pela raiz do CNPJ, medida à parte): o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
+        "aneel_samp",
+        "anp_concessionarios",
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
+        "eventos",
         "fca_geral",
+        "fips_registrados",
         "rotulos_atraso",
     }
 )

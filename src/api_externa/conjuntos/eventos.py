@@ -33,6 +33,7 @@ import pandas as pd
 from base import cnpj as cnpj_
 from base.porta import Porta
 from base.porta.rede import views
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos.empresas import e_empresa
 from src.api_externa.envelope import campo
@@ -98,19 +99,23 @@ LIMITES_DO_TIPO = {
     ),
 }
 
-LIMITE_DO_TIPO_NAO_DISPONIVEL = (
-    "Os tipos em unavailable_event_types não estão disponíveis para esta organização e não foram consultados: "
-    "a lista de eventos não diz nada sobre eles."
+# os tipos pedidos que o portão não libera (o padrão de `nao_disponivel`, linhas 878 e 880)
+NAO_DISPONIVEIS = "tipos_nao_disponiveis"
+LIMITE_DO_TIPO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "tipos", "a lista de eventos"
 )
 
 
 def limites(servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()) -> list[str]:
     """Os limites da resposta: o primeiro geral, os dos tipos servidos, o aviso dos tipos pedidos que o portão
     não libera (se houver) e o resto dos gerais."""
-    tipos = set(servidos)
-    dos_tipos = [frase for tipo, frase in LIMITES_DO_TIPO.items() if tipo in tipos]
-    aviso = [LIMITE_DO_TIPO_NAO_DISPONIVEL] if nao_disponiveis else []
-    return [LIMITES_GERAIS[0], *dos_tipos, *aviso, *LIMITES_GERAIS[1:]]
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DO_TIPO,
+        servidos,
+        nao_disponiveis,
+        LIMITE_DO_TIPO_NAO_DISPONIVEL,
+    )
 
 
 # os limites com todos os tipos servidos (a tela do analista os usa como texto fixo)
@@ -281,7 +286,7 @@ class LeitorDeEventos:
         servidos = {tipo: self._servidos(ORIGENS[tipo]) for tipo in tipos}
         if not any(servidos.values()):
             return None
-        nao_disponiveis = [tipo for tipo, campos in servidos.items() if not campos]
+        nao_disponiveis = nao_disponivel.nao_disponiveis(servidos)
         if not e_empresa(self.porta, normal):
             return None
         raiz = normal[: cnpj_.TAMANHO_DA_RAIZ]
@@ -304,7 +309,7 @@ class LeitorDeEventos:
             "eventos": [e.linha for e in pagina],
             "cortada": cortada,
             "proximo_cursor": cursor_de(pagina[-1].chave) if cortada else None,
-            "tipos_nao_disponiveis": nao_disponiveis,
+            NAO_DISPONIVEIS: nao_disponiveis,
             "limites": limites(
                 (tipo for tipo, campos in servidos.items() if campos), nao_disponiveis
             ),

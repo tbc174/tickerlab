@@ -279,6 +279,84 @@ def test_custo_da_taxa_nao_sai_se_a_fonte_so_sai_como_publicada(
     assert corpo["profile"]["management_fee_pct_per_year"]["value"] == 2.0
 
 
+# ---------------------------------------------------------------- bloco não disponível (linha 882)
+
+
+def _regras_so_com(*tabelas: str):
+    """As regras dos fundos com só estas tabelas prontas."""
+
+    def regras() -> portao.Regras:
+        base = _regras_dos_fundos()
+        return dataclasses.replace(
+            base, prontidao={t: base.prontidao[t] for t in tabelas}
+        )
+
+    return regras
+
+
+@pytest.mark.parametrize("retorno", [None, 0.08])
+def test_com_tudo_liberado_a_lista_dos_blocos_sai_vazia(cliente, cenario, retorno):
+    parametros = {} if retorno is None else {"assumed_return": retorno}
+    corpo = _get(cliente, cenario, **parametros).json()
+    assert corpo["unavailable_sections"] == []
+    assert corpo["limits"] == []
+
+
+def test_carteira_barrada_vai_na_lista_e_nao_le_como_sem_posicao(
+    cliente, cenario, monkeypatch
+):
+    # sem a prontidão da tabela das carteiras, a lista vazia não leria como "o fundo não tem posição"
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_so_com("cadastro_de_fundos"))
+    corpo = _get(cliente, cenario).json()
+    assert corpo["holdings"]["positions"] == []
+    assert corpo["unavailable_sections"] == ["holdings"]
+    assert corpo["limits"] == [fundos.LIMITE_DO_BLOCO_NAO_DISPONIVEL]
+    assert "unavailable_sections" in corpo["limits"][0]
+    assert corpo["profile"]["management_fee_pct_per_year"]["value"] == 2.0
+
+
+def test_cadastro_barrado_vai_na_lista(cliente, cenario, monkeypatch):
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_so_com("carteiras_dos_fundos"))
+    corpo = _get(cliente, cenario, assumed_return=0.08).json()
+    assert "profile" not in corpo and "fee_cost" not in corpo
+    assert _codigos(corpo)
+    assert corpo["unavailable_sections"] == ["profile", "fee_cost"]
+
+
+def test_custo_derivado_barrado_vai_na_lista_so_quando_pedido(
+    cliente, cenario, monkeypatch
+):
+    def regras():
+        return dataclasses.replace(
+            _regras_dos_fundos(), so_como_publicado=frozenset({"cvm-cadastros"})
+        )
+
+    monkeypatch.setattr(rotas, "regras_da_api", regras)
+    pedido = _get(cliente, cenario, assumed_return=0.08).json()
+    assert pedido["unavailable_sections"] == ["fee_cost"]
+    # sem `assumed_return` o custo não foi pedido: não é "não disponível"
+    assert _get(cliente, cenario).json()["unavailable_sections"] == []
+
+
+def test_duas_organizacoes_so_a_do_contrato_ve_a_lista(banco, monkeypatch, pasta):
+    # a do contrato de `funds`, sem as carteiras prontas, recebe a lista; a outra (só `financials`), 404 sem ela
+    ator = aj.admin(banco)
+    com = aj.organizacao(banco, ator)
+    chave_com = aj.chave(banco, ator, com)
+    aj.contrato(banco, ator, com, conjunto="funds")
+    sem = aj.organizacao(banco, ator)
+    chave_sem = aj.chave(banco, ator, sem)
+    aj.contrato(banco, ator, sem, conjunto="financials")
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_so_com("cadastro_de_fundos"))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    deu = cliente.get(ROTA, headers=aj.bearer(chave_com.valor))
+    assert deu.status_code == 200
+    assert deu.json()["unavailable_sections"] == ["holdings"]
+    negou = cliente.get(ROTA, headers=aj.bearer(chave_sem.valor))
+    assert negou.status_code == 404
+    assert negou.json() == {"detail": "not_available"}
+
+
 # ---------------------------------------------------------------- o que não sai
 
 

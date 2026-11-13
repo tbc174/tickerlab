@@ -309,10 +309,10 @@ def test_empresas_pj_nao_vai_sem_estabelecimentos(tmp_path):
 @pytest.mark.parametrize(
     ("razao", "natureza"),
     [
-        ("EMPRESA 123.456.789-09 LTDA", "2062"),
-        ("EMPRESA 12345678909 LTDA", "2062"),
+        ("EMPRESA 888.000.000-46 LTDA", "2062"),
+        ("EMPRESA 88800000046 LTDA", "2062"),
         ("EMPRESA 123456789012 LTDA", "2062"),
-        ("JOAO DA SILVA", "2135"),
+        ("PESSOA INVENTADA LICITACAO", "2135"),
         ("MARIA", "4014"),
     ],
 )

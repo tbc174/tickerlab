@@ -8,8 +8,12 @@ from hypothesis import strategies as st
 
 from base.cnpj import cpf_confere
 from base.pessoas.sem_cpf import tirar_cpf, tirar_cpf_da_coluna
+from tests.ajudantes_de_cpf import formatado
 
 ONZE_DIGITOS = re.compile(r"(?<!\d)\d{11}(?!\d)")
+NOVE_INVENTADOS = (
+    "888000001"  # nove dígitos inventados; o CPF que confere sai de _cpf_valido
+)
 
 
 def _cpf_valido(base: str) -> str:
@@ -25,26 +29,26 @@ def _cpf_valido(base: str) -> str:
 
 
 def test_tira_o_cpf_do_fim_da_razao_social_do_mei():
-    cpf = _cpf_valido("123456789")
+    cpf = _cpf_valido(NOVE_INVENTADOS)
     assert tirar_cpf(f"FULANO DE TAL {cpf}") == "FULANO DE TAL"
 
 
 def test_tira_o_cpf_formatado_e_o_mascarado():
-    assert tirar_cpf("FULANO 123.456.789-09") == "FULANO"
-    assert tirar_cpf("FULANO ***.456.789-**") == "FULANO"
+    assert tirar_cpf(f"FULANO {formatado(_cpf_valido(NOVE_INVENTADOS))}") == "FULANO"
+    assert tirar_cpf("FULANO ***.000.001-**") == "FULANO"
 
 
 def test_tira_o_cpf_com_espaco_em_volta_do_hifen():
-    # achado na recarga de 11/11/2026: "... CPF: 123.456.789 - 09 ..." passava pelo detector
-    cpf = _cpf_valido("123456789")
+    # achado na recarga de 11/11/2026: "... CPF: ddd.ddd.ddd - dd ..." passava pelo detector
+    cpf = _cpf_valido(NOVE_INVENTADOS)
     pontuado = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]} - {cpf[9:]}"
     assert tirar_cpf(f"FULANO DE TAL {pontuado}") == "FULANO DE TAL"
     assert tirar_cpf(f"FULANO CPF: {pontuado} ME") == "FULANO ME"
     assert (
-        tirar_cpf("FULANO CPF: 123.456.789 - 00 ME") == "FULANO ME"
+        tirar_cpf("FULANO CPF: 888.000.001 - 00 ME") == "FULANO ME"
     )  # com a palavra CPF sai sempre
     assert (
-        tirar_cpf("FULANO 123 456 789 - 00") == "FULANO 123 456 789 - 00"
+        tirar_cpf("FULANO 888 000 001 - 00") == "FULANO 888 000 001 - 00"
     )  # sem a palavra e sem fechar
 
 
@@ -65,7 +69,9 @@ def test_nao_confunde_cnpj_nem_valor():
 def test_vazio_e_ausente_passam():
     assert tirar_cpf("") == ""
     assert tirar_cpf(None) is None
-    coluna = tirar_cpf_da_coluna(pd.Series(["A 11144477735", None, "B"]))
+    coluna = tirar_cpf_da_coluna(
+        pd.Series([f"A {_cpf_valido('888000002')}", None, "B"])
+    )
     assert coluna.iloc[0] == "A" and coluna.iloc[2] == "B"
     assert pd.isna(coluna.iloc[1])
 
@@ -87,12 +93,12 @@ def test_nenhuma_saida_tem_cpf_valido(nome, base, mascara):
 def test_a_tela_do_dossie_tira_o_cpf():
     from src.dossie import _texto
 
-    assert _texto(f"MEI DE FULANO {_cpf_valido('987654321')}") == "MEI DE FULANO"
+    assert _texto(f"MEI DE FULANO {_cpf_valido('888000003')}") == "MEI DE FULANO"
 
 
 def test_tira_o_cpf_com_outros_separadores_e_colado_a_palavra_cpf():
     # revisão cruzada do PR 1019: só espaço, travessões, vírgula, barra e "CPF-"/"CPF/" colados ao número
-    v = _cpf_valido("123456789")
+    v = _cpf_valido(NOVE_INVENTADOS)
     g = (v[:3], v[3:6], v[6:9], v[9:])
     formas = [
         f"{g[0]} {g[1]} {g[2]} {g[3]}",
@@ -112,4 +118,4 @@ def test_tira_o_cpf_com_outros_separadores_e_colado_a_palavra_cpf():
 
 def test_cnpj_e_numero_que_nao_fecha_como_cpf_ficam():
     assert tirar_cpf("EMPRESA 11.222.333/0001-81 ME") == "EMPRESA 11.222.333/0001-81 ME"
-    assert tirar_cpf("EMPRESA 123 456 789 00 ME") == "EMPRESA 123 456 789 00 ME"
+    assert tirar_cpf("EMPRESA 888 000 001 00 ME") == "EMPRESA 888 000 001 00 ME"

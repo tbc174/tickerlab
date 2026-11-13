@@ -13,12 +13,13 @@ import pytest
 from pesquisa import novidades
 from pesquisa.memoria import Memoria, Visto
 from scripts import exportar_novidades
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado, meio, no_formato
 
 AGORA = datetime(2026, 11, 11, 12, tzinfo=UTC)
 HASH = "a" * 64
 URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/exemplo.csv"
 TRECHO = "Parque Exemplo Eólico: 120 MW, vigência 2035, CNPJ 11.222.333/0001-81"
-CPF_INVENTADO = "529.982.247-25"
+CPF_INVENTADO = formatado(CPF_DE_TESTE)
 CNPJ = "11.222.333/0001-81"
 
 
@@ -123,17 +124,17 @@ def test_fora_da_janela_nao_sai(tmp_path):
     "trecho",
     [
         f"Sócio com CPF {CPF_INVENTADO} entrou na empresa em 2025",
-        "Sócio 52998224725 entrou na empresa em 2025",
-        "Sócio 529 982 247 25 entrou na empresa em 2025",
-        "Sócio 529.982.24725 entrou na empresa em 2025",
-        "inscrito sob o nº 52998224725.",
-        "ID-52998224725 entrou",
-        "CPF 529.982.247–25 entrou",
-        "Sócio 529 982 247 25 entrou",
-        "Sócio 529.982.247/25 entrou",
-        "Sócio 529 . 982 . 247 - 25 entrou",
+        f"Sócio {CPF_DE_TESTE} entrou na empresa em 2025",
+        f"Sócio {no_formato(CPF_DE_TESTE, 'ddd ddd ddd dd')} entrou na empresa em 2025",
+        f"Sócio {no_formato(CPF_DE_TESTE, 'ddd.ddd.ddddd')} entrou na empresa em 2025",
+        f"inscrito sob o nº {CPF_DE_TESTE}.",
+        f"ID-{CPF_DE_TESTE} entrou",
+        f"CPF {no_formato(CPF_DE_TESTE, 'ddd.ddd.ddd–dd')} entrou",
+        f"Sócio {no_formato(CPF_DE_TESTE, 'ddd ddd ddd dd')} entrou",
+        f"Sócio {no_formato(CPF_DE_TESTE, 'ddd.ddd.ddd/dd')} entrou",
+        f"Sócio {no_formato(CPF_DE_TESTE, 'ddd . ddd . ddd - dd')} entrou",
         "Sócio ５２９．９８２．２４７－２５ entrou",
-        "JOSE DA SILVA | ***.982.247-** | R$ 10.000",
+        f"JOSE DA SILVA | ***.{no_formato(meio(CPF_DE_TESTE), 'ddd.ddd')}-** | R$ 10.000",
     ],
 )
 def test_cpf_no_trecho_derruba_o_exportador(tmp_path, trecho):
@@ -261,7 +262,7 @@ def test_pessoa_fisica_e_url_com_cpf_nao_saem(tmp_path):
     _visto(
         memoria,
         url="https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/x.csv?cpf="
-        + "52998224725",
+        + CPF_DE_TESTE,
     )
     _fato(memoria)
     with pytest.raises(novidades.CpfNoTrechoError):

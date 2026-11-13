@@ -196,7 +196,7 @@ prontidão fica fora. Um conjunto pode ser suspenso para todas as organizações
 |---|---|---|
 | `GET /data/v1/catalog` | o que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte | não |
 | `GET /data/v1/usage` | o consumo do mês da organização e o que falta da quota | não |
-| `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita (conjunto `companies`) | sim |
+| `GET /data/v1/companies/{cnpj}` | a situação cadastral do estabelecimento na Receita, o nome e o Simples (conjunto `companies`); o campo não consultado vai em `unavailable_registration_fields` | sim |
 | `POST /data/v1/companies/batch` | o mesmo, para até 100 CNPJs | sim, um por CNPJ válido |
 | `GET /data/v1/companies/{cnpj}/profile` | o perfil da empresa: o cadastro na Receita e as entregas de DFP e ITR à CVM como eram (`profiles`, ver abaixo) | sim, 1 |
 | `GET /data/v1/companies/{cnpj}/comparables` | os pares da companhia aberta no mesmo grupo de setores, com os números do último DFP e a mediana de cada razão (`comparables`, ver abaixo) | sim, 1 |
@@ -234,6 +234,20 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
+**Parte não disponível para a organização** (linhas 878, 880 a 882, 891 e 898; `src/api_externa/nao_disponivel.py`):
+quando um pedido junta partes que o portão libera uma a uma (os tipos de evento, os tipos de vínculo, os sinais
+dos compradores, os documentos das entregas e das demonstrações, os campos do cadastro em `/companies` e no perfil, os números dos comparáveis, os blocos do fundo,
+as séries e a lista das companhias do setor), a parte que a organização não tem não
+some em silêncio, porque a lista vazia leria como "a empresa não tem". A resposta traz a lista das partes
+pedidas e não liberadas, `unavailable_<o que>` (`unavailable_event_types` em `/events`, `unavailable_link_types`
+em `/links`, `unavailable_signals` em `/buyers`, `unavailable_registration_fields` em `/companies/{cnpj}` (e em cada
+item do lote), `unavailable_filings` e `unavailable_registration_fields` em `/profile`, `unavailable_figures` em `/comparables`, `unavailable_filings` em `/financials`, `unavailable_sections`
+em `/funds` e em `/sectors`, que traz também `unavailable_series`), vazia quando tudo foi consultado. A parte cuja tabela a base não tem (ou não tem pronta) também
+entra na lista: nos dois casos ela não foi consultada. Os `limits` só falam das partes servidas
+e, quando há parte de fora, trazem a frase de que ela não foi consultada (em `/companies`, `/funds`, `/financials` e
+`/sectors`, que não tinham `limits`, a lista sai vazia quando tudo foi consultado). Se nenhuma parte pedida está liberada,
+a resposta é 404 `not_available`, como o resto do contrato. Todo conjunto novo com partes segue o mesmo molde.
+
 ### Perfil (`profiles`, linha 736)
 
 O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/ficha.py`):
@@ -246,7 +260,16 @@ O que a base sabia da empresa no dia, campo a campo pelo portão (`conjuntos/fic
   velha, com o prazo da CVM (feriados e prorrogações), o dia da primeira entrega, os dias úteis de atraso
   e a situação: `on_time`, `gray_zone` (atraso curto, que um feriado local pode explicar), `late`,
   `severely_late` ou `not_filed`. Vem de `rotulos_atraso` (o índice das entregas da DFP e do ITR), pela
-  mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`).
+  mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`). Com algum documento consultado, a
+  lista sai sempre, vazia quando a base não conhece entrega da empresa;
+- `unavailable_filings` (linha 881): os documentos (`DFP`, `ITR`) que o portão não libera para a organização.
+  Eles não foram consultados: a lista de entregas não diz nada sobre eles, e os `limits` avisam. Sem nenhum
+  documento, `periodic_filings` não sai.
+- `unavailable_registration_fields` (linha 891): os campos do cadastro na Receita, com o nome de fora (ex.:
+  `registration_status`, `simples_nacional`), que o portão não libera para a organização ou cuja tabela a base
+  não tem. Eles não foram consultados: sem eles, `registration` não diz nada sobre a situação cadastral nem
+  sobre o Simples, e os `limits` avisam. O campo liberado que não sai porque a base não tinha versão dele no
+  dia (ex.: o Simples de uma empresa que nunca optou) não entra na lista.
 
 Sem olhar o futuro: a entrega que só aconteceu depois de `known_at` sai `not_filed`, sem a data dela, e
 os dias úteis contam até o dia pedido; a falta de um documento vale pelo prazo e só conta até o dia em
@@ -270,7 +293,10 @@ Os pares de uma companhia aberta como eram no dia (`conjuntos/comparaveis.py`):
   positivo). Par é quem tem DFP de um exercício que terminou até 18 meses antes do dia; os pares vêm da
   maior receita para a menor e são cortados no limite de linhas do plano (`truncated`);
 - `peer_medians`: a mediana de cada razão entre todos os pares (sem a empresa pedida), só quando pelo
-  menos 8 pares a têm.
+  menos 8 pares a têm;
+- `unavailable_figures` (linha 881): os números e as razões, com o nome de fora, que o portão não libera para a
+  organização. Eles somem dos pares e das medianas, e os `limits` avisam: a mediana que falta por isso não quer
+  dizer que faltaram pares.
 
 Cada número traz o dia da entrega do DFP; o cadastro, o dia da entrega do FCA. Número que a base não tem
 some, nunca vira zero. EBITDA, dívida líquida, as razões e o grupo de setores são contas nossas; o portão
@@ -316,7 +342,9 @@ numa ponta sem CNPJ ou numa raiz que não está no retrato, a ponta sai sem nome
 lista vai até o limite de linhas do plano (`truncated`). O fundo que detém o papel, o conglomerado do Banco
 Central e a série do regulador não saem por aqui. A ponta que é pessoa (MEI, empresário individual, sócio
 pessoa física) ou que a rede trata como pessoa não sai, nem a ligação com ela; a empresa sem vínculos não quer
-dizer que ela não tenha grupo. Pessoa e quem a rede não conhece saem `not_available`.
+dizer que ela não tenha grupo. O tipo pedido que não está disponível para a organização vem em
+`unavailable_link_types`, e os `limits` não falam da fonte dele. Pessoa e quem a rede não conhece saem
+`not_available`.
 
 ### Ficha de crédito (`credit`, linha 754)
 
@@ -347,6 +375,10 @@ A base não guarda quando a agência publicou cada mês, então `published_at` �
 sai vazio; só existe a noite mais nova, e um `known_at` antes dela sai `not_available`. Linha sem CNPJ de
 14 dígitos não sai: nenhuma pessoa física. O lado a lado por entidade e o mercado de energia (CCEE, ONS)
 ficam fora desta versão.
+
+A série cuja fonte a organização não tem (ou cuja tabela não está pronta) vai em `unavailable_series`, com o
+nome dela, em vez de sumir; a lista das companhias barrada sai vazia e vai em `unavailable_sections`
+(`members`). O deck do setor leva o mesmo aviso nos limites.
 
 ## Mudou uma rota da `/data/v1`?
 

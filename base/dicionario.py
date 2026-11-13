@@ -4430,7 +4430,11 @@ TABELAS: dict[str, Tabela] = {
             "API externa (linha 844): só FIP, só o fundo cuja raiz está em `cnpj_empresas_pj` (sem pessoa), uma "
             "linha por fundo e registro (sem repetir por gestor). Sem gestor, administrador, nome nem CPF. A CVM "
             "não dá o dia em que cada linha ficou pública: vale a data do registro, como na tabela inteira. "
-            "Montada no envio, não fica no acervo de casa"
+            "Montada no envio, não fica no acervo de casa."
+            + _SEM_PESSOA_PELA_RAIZ
+            + ". **Alcance da marca:** vale para esta cópia, medida montada em 12/11/2026 (4.419 linhas, 4.384 "
+            "raízes, 0 fora da `cnpj_empresas_pj`, 0 CNPJ que não confere, 0 fundo que não é FIP); a tabela "
+            "inteira `registro_de_fundos` segue sem a marca"
         ),
         fonte="CVM: registro de fundos e classes da CVM 175 (cópia reduzida de `registro_de_fundos`)",
         familia_da_fonte="cvm",
@@ -5081,6 +5085,7 @@ TABELAS: dict[str, Tabela] = {
             "o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia "
             "em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte "
             "(o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes"
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="ANP: relação de concessionários (dados abertos)",
         familia_da_fonte="anp",
@@ -5267,6 +5272,7 @@ TABELAS: dict[str, Tabela] = {
             "consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde "
             "2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem "
             "nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+            + _SEM_PESSOA_PELA_RAIZ
         ),
         fonte="ANEEL: SAMP, mercado de distribuição (dados abertos, um Parquet por ano)",
         familia_da_fonte="aneel",
@@ -6985,6 +6991,8 @@ TABELAS: dict[str, Tabela] = {
             "reapresentada fica só na versão mais nova. A rota da API acrescenta `fatos_relevantes_12_meses`: "
             "contagem calculada por ela, não coluna desta tabela. "
             "**Limite medido em 12/11/2026:** 3 protocolos repetem protocolo e versão com assunto e link diferentes (documentos distintos na mesma entrega)."
+            + _SEM_PESSOA_PELA_RAIZ
+            + ". **CPF no assunto:** o CPF que a empresa escreve no texto do assunto é trocado por `[CPF omitido]` na montagem (contagem só no `assunto`, em 12/11/2026: 5 linhas no acervo antes, 0 depois, 0 na cópia servida); o texto livre fora disso não é coberto pela marca."
         ),
         fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
         familia_da_fonte="cvm",

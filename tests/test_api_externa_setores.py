@@ -119,17 +119,17 @@ def test_setor_sai_com_fonte_data_e_atribuicao_em_ingles(cliente, cenario):
 def test_nenhuma_pessoa_fisica_na_resposta(cliente, cenario, pasta):
     # uma linha com 11 dígitos (CPF) plantada nos membros e na participação não sai
     def plantar(secao: dict) -> None:
-        pessoa = {"cnpj": "12345678909", "empresa": "FULANO", "motivo": "ligada"}
+        pessoa = {"cnpj": "88800000046", "empresa": "FULANO", "motivo": "ligada"}
         secao["tabelas"]["membros"].append(pessoa)
         linha = dict(secao["tabelas"]["participacao_dos_membros"][0])
         secao["tabelas"]["participacao_dos_membros"].append(
-            linha | {"cnpj": "12345678909", "empresa": "FULANO"}
+            linha | {"cnpj": "88800000046", "empresa": "FULANO"}
         )
 
     _regravar_noite(pasta, plantar)
     corpo = _get(cliente, cenario).json()
     texto = json.dumps(corpo)
-    assert "12345678909" not in texto
+    assert "88800000046" not in texto
     assert "FULANO" not in texto
     for chave in aj.chaves_de(corpo):
         assert not set(chave.split("_")) & portao.PALAVRAS_QUE_NUNCA_SAEM, chave
@@ -155,6 +155,65 @@ def test_tabela_da_agencia_sem_prontidao_tira_so_a_serie(cliente, cenario, monke
     assert corpo["by_series"] == []
     assert {m["cnpj"]["value"] for m in corpo["members"]} == {CPFL, OUTRA}
     assert {f["source"] for f in corpo["sources"]} == {"cvm-cadastros"}
+    # a série barrada não some em silêncio (linha 882): o mercado vazio não leria como "a agência não mede"
+    assert corpo["unavailable_series"] == ["aneel_consumidores"]
+    assert corpo["unavailable_sections"] == []
+    assert corpo["limits"] == [setores.LIMITE_DA_SERIE_NAO_DISPONIVEL]
+    assert "unavailable_series" in corpo["limits"][0]
+
+
+# ---------------------------------------------------------------- parte não disponível (linha 882)
+
+
+def test_com_tudo_liberado_as_listas_de_fora_saem_vazias(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_series"] == []
+    assert corpo["unavailable_sections"] == []
+    assert corpo["limits"] == []
+
+
+def test_membros_barrados_vao_na_lista_dos_blocos(cliente, cenario, monkeypatch):
+    # sem a prontidão do cadastro das companhias, a lista vazia não leria como "o setor não tem companhia"
+    sem_o_cadastro = ("aneel_samp", "empresa_serie")
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(sem_o_cadastro))
+    corpo = _get(cliente, cenario).json()
+    assert corpo["members"] == []
+    assert corpo["unavailable_sections"] == ["members"]
+    assert corpo["unavailable_series"] == []
+    assert corpo["limits"] == [setores.LIMITE_DO_BLOCO_NAO_DISPONIVEL]
+    assert [s["series"] for s in corpo["by_series"]] == ["aneel_consumidores"]
+
+
+def test_o_aviso_cita_o_nome_de_fora_das_listas():
+    assert "unavailable_series" in setores.LIMITE_DA_SERIE_NAO_DISPONIVEL
+    assert "unavailable_sections" in setores.LIMITE_DO_BLOCO_NAO_DISPONIVEL
+    assert setores.limites(["s"], []) == [setores.LIMITE_DA_SERIE_NAO_DISPONIVEL]
+    assert setores.limites([], ["m"]) == [setores.LIMITE_DO_BLOCO_NAO_DISPONIVEL]
+    assert setores.limites(["s"], ["m"]) == [
+        setores.LIMITE_DA_SERIE_NAO_DISPONIVEL,
+        setores.LIMITE_DO_BLOCO_NAO_DISPONIVEL,
+    ]
+
+
+def test_duas_organizacoes_so_a_do_contrato_ve_a_lista(banco, monkeypatch, pasta):
+    # a do contrato de `sectors`, sem a série da ANEEL, recebe a lista; a outra (só `funds`) recebe 404 sem ela
+    ator = aj.admin(banco)
+    com = aj.organizacao(banco, ator)
+    chave_com = aj.chave(banco, ator, com)
+    aj.contrato(banco, ator, com, conjunto=setores.CONJUNTO)
+    sem = aj.organizacao(banco, ator)
+    chave_sem = aj.chave(banco, ator, sem)
+    aj.contrato(banco, ator, sem, conjunto="funds")
+    sem_a_aneel = ("empresa_serie", "cadastro_das_companhias")
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(sem_a_aneel))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    deu = cliente.get(ROTA, headers=aj.bearer(chave_com.valor))
+    assert deu.status_code == 200
+    assert deu.json()["unavailable_series"] == ["aneel_consumidores"]
+    negou = cliente.get(ROTA, headers=aj.bearer(chave_sem.valor))
+    assert negou.status_code == 404
+    assert negou.json()["detail"] == rotas.NAO_DISPONIVEL
+    assert "unavailable" not in json.dumps(negou.json())
 
 
 def test_sem_contrato_do_conjunto_sai_not_available(banco, monkeypatch, pasta):

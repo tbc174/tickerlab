@@ -212,11 +212,11 @@ def test_filtrar_csv_guarda_so_linhas_de_cnpj_e_tira_as_colunas_de_pessoa():
 
 
 def test_filtrar_csv_tira_a_linha_de_cnpj_cujo_nome_traz_o_cpf_do_dono():
-    # o nome do MEI no portal é "NOME 02903737789": é CNPJ, mas expõe o CPF (ADR 0088)
+    # o nome do MEI no portal é "NOME 88800000399": é CNPJ, mas expõe o CPF (ADR 0088)
     dados = _csv(
         ["CNPJ", "FAVORECIDO", "VALOR", "PROCESSO"],
-        ["43588755000161", "ANNA PINTO 02903737789", "1,00", "1"],
-        ["43588755000161", "ANNA PINTO 029.037.377-89", "2,00", "2"],
+        ["43588755000161", "ANNA PINTO 88800000399", "1,00", "1"],
+        ["43588755000161", "ANNA PINTO 888.000.003-99", "2,00", "2"],
         ["43588755000161", "ANNA PINTO ***.037.377-**", "3,00", "3"],
         ["43588755000161", "Empresa Ltda", "34762323258,00", "12345.123456/2020-12"],
         ["43588755000161", "Outra SA", "7", "123456"],

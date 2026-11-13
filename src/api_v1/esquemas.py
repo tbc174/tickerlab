@@ -1553,6 +1553,10 @@ class FichaDoCnpjV1(BaseModel):
     entregas: list[dict[str, CampoComFonteV1]] | None = (
         None  # só da companhia aberta (DFP e ITR)
     )
+    # os documentos (DFP, ITR) que o portão não libera: não consultados, a lista de entregas não fala deles
+    entregas_nao_disponiveis: list[str] = []
+    # os campos do cadastro (nome de fora) que o portão não libera: não consultados, o cadastro não fala deles
+    campos_do_cadastro_nao_disponiveis: list[str] = []
 
 
 class BlocoDaFichaV1(BaseModel):
@@ -1584,7 +1588,8 @@ def de_ficha_do_analista(
         if resposta.corpo is None
         else FichaDoCnpjV1.model_validate(resposta.corpo),
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
-        limites=list(limites),
+        # com a ficha servida, os limites do corpo (só dos documentos consultados); sem ela, o texto fixo
+        limites=list((resposta.corpo or {}).get("limites", limites)),
         o_que_vem=[
             BlocoDaFichaV1.model_validate(bloco)
             for bloco in leitura_do_analista.blocos_como_lista()
@@ -1660,6 +1665,8 @@ class VinculosDaEmpresaV1(BaseModel):
     como_era_em: date | None
     vinculos: list[VinculoDaEmpresaV1]
     cortada: bool
+    # os tipos que o portão não libera para a tela: não foram consultados, a lista não diz nada sobre eles
+    tipos_de_vinculo_nao_disponiveis: list[str]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
 
@@ -1694,8 +1701,12 @@ def de_vinculos_do_analista(
         como_era_em=corpo.get("como_era_em"),
         vinculos=[_vinculo_do_analista(v) for v in corpo.get("vinculos", [])],
         cortada=bool(corpo.get("cortada", False)),
+        tipos_de_vinculo_nao_disponiveis=list(
+            corpo.get("tipos_de_vinculo_nao_disponiveis", [])
+        ),
         fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
-        limites=list(limites),
+        # com vínculos servidos, os limites do corpo (só dos tipos servidos); sem eles, o texto fixo
+        limites=list(corpo.get("limites", limites)),
     )
 
 
