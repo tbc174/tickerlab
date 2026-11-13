@@ -7,7 +7,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, describe, expect, it } from "vitest";
 import type { FichaDaEmpresaV1 } from "../../src/app/tipos";
 import type { TitularDaEmpresaV1 } from "../../src/app/telas/TitularDaFicha";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { abrirAba, abrirApp, respostaJson } from "./ajudantes";
 
 const CNPJ = "02.429.144/0001-93";
 const ROTA_DA_FICHA = "/api/v1/analista/ficha";
@@ -51,7 +51,7 @@ function abrir(titular: () => Response) {
 async function verFicha() {
   fireEvent.change(await screen.findByLabelText("CNPJ"), { target: { value: CNPJ } });
   fireEvent.click(screen.getByRole("button", { name: "Ver a ficha" }));
-  await screen.findByRole("region", { name: "Cadastro na Receita" });
+  await abrirAba("Quem controla");
 }
 
 const pedidosDoTitular = (buscar: ReturnType<typeof abrir>["buscar"]) =>
@@ -87,7 +87,7 @@ describe("titular do individual e do MEI na ficha", () => {
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
     expect(screen.queryByText(/titular/i)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByRole("region", { name: "Cadastro na Receita" })).toBeTruthy(); // a ficha segue inteira
+    expect(screen.getByRole("tablist")).toBeTruthy(); // a ficha segue inteira
   });
 
   it("empresa que não é individual: sem seção e sem aviso", async () => {

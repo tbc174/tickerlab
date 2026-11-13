@@ -38,8 +38,25 @@ URL_ATIVAS = fontes.CADASTRO_DA_ANS.format(
 URL_CANCELADAS = fontes.CADASTRO_DA_ANS.format(
     situacao="canceladas", arquivo=fontes.ARQUIVOS_DO_CADASTRO_DA_ANS["canceladas"]
 )
-URL_DO_EMBARGO = "https://dadosabertos.ibama.gov.br/x/termo_embargo/termo_embargo.csv"
-URL_DE_OUTRO_EMBARGO = "https://dadosabertos.ibama.gov.br/x/termo_embargo/anexo.csv"
+# Os nomes reais dos arquivos do conjunto do IBAMA, conferidos no acervo em 13/11/2026 (linha 914): o
+# principal é `termo_de_embargo.csv`, ao lado de anexos, itens, histórico e afins.
+PASTA_DO_EMBARGO = "https://dadosabertos.ibama.gov.br/x/fiscalizacao-termo-de-embargo/"
+URL_DO_EMBARGO = PASTA_DO_EMBARGO + "termo_de_embargo.csv"
+URL_DE_OUTRO_EMBARGO = PASTA_DO_EMBARGO + "termo_de_embargo_anexo.csv"
+OUTROS_ARQUIVOS_DO_EMBARGO = (
+    "termo_de_embargo_anexo.csv",
+    "termo_de_embargo_coordenadas.csv",
+    "termo_de_embargo_enquadramento.csv",
+    "termo_embargo_decisao.csv",
+    "termo_embargo_historico.csv",
+    "termo_embargo_itens.csv",
+    "termo_de_embargo.json",
+)
+# Os nomes reais da página do MTE, conferidos em 13/11/2026 (linha 914): o cadastro inteiro tem nome fixo;
+# o outro CSV (`AAAA_NNNN.csv`) é a lista pequena dos empregadores com TAC, baixada na mesma hora.
+PASTA_DO_MTE = "https://www.gov.br/trabalho-e-emprego/x/"
+URL_DO_CADASTRO_DO_MTE = PASTA_DO_MTE + "cadastro_de_empregadores.csv"
+URL_DA_LISTA_DO_TAC = PASTA_DO_MTE + "2026_0018.csv"
 
 
 def _cnpj(raiz: str, filial: str = "0001") -> str:
@@ -190,32 +207,50 @@ def test_susep_entidade_estrangeira_fica_sem_cnpj_e_nunca_e_de_pessoa(banco, tmp
     assert "PESSOA" not in tabela.astype(str).to_csv()
 
 
-def test_mte_usa_so_o_csv_do_endereco_mais_novo(banco, tmp_path):
+def test_mte_le_o_cadastro_inteiro_mesmo_com_a_lista_do_tac_baixada_na_mesma_hora(
+    banco, tmp_path
+):
+    """Linha 914: com os dois CSV baixados na mesma hora, o empate de data caía na lista pequena do TAC,
+    e a tabela ficava com 9 dos 164 empregadores PJ do cadastro."""
     cab = "ID;Ano da ação fiscal;UF;Empregador;CNPJ/CPF;Estabelecimento;Inclusão no Cadastro de Empregadores"
 
-    def lista(cnpj: str) -> bytes:
-        return f"{cab}\r\n1;2024;MG;EMPREGADOR;{cnpjs.formatar(cnpj)};FAZENDA;01/02/2025".encode(
-            "latin-1"
-        )
+    def lista(*documentos: str) -> bytes:
+        linhas = [
+            f"{n};2024;MG;EMPREGADOR;{d};FAZENDA;01/02/2025"
+            for n, d in enumerate(documentos, 1)
+        ]
+        return "\r\n".join([cab, *linhas]).encode("latin-1")
 
+    inteiro = lista(cnpjs.formatar(EMPRESA), cnpjs.formatar(OUTRA), CPF)
+    do_tac = lista(cnpjs.formatar(OUTRA))
+    for dia in (PRIMEIRO_DIA, SEGUNDO_DIA):
+        _coletar(banco, "mte-lista-suja", URL_DO_CADASTRO_DO_MTE, inteiro, dia)
+        _coletar(banco, "mte-lista-suja", URL_DA_LISTA_DO_TAC, do_tac, dia)
     _coletar(
         banco,
         "mte-lista-suja",
-        "https://x.gov.br/antigo.csv",
-        lista(OUTRA),
-        PRIMEIRO_DIA,
-    )
-    _coletar(
-        banco,
-        "mte-lista-suja",
-        "https://x.gov.br/novo.csv",
-        lista(EMPRESA),
+        PASTA_DO_MTE + "cadastro_de_empregadores.pdf",
+        b"%PDF",
         SEGUNDO_DIA,
     )
     resumo = _montar(mte_lista_suja, banco, tmp_path)["empregadores"]
-    assert resumo["enderecos_ignorados"] == 1
     tabela = pd.read_parquet(tmp_path / "base/mte_lista_suja/empregadores.parquet")
-    assert list(tabela["cnpj"]) == [cnpjs.formatar(EMPRESA)]
+    assert sorted(tabela["cnpj"]) == sorted(map(cnpjs.formatar, (EMPRESA, OUTRA)))
+    assert resumo["pessoa_fisica"] == 1  # o CPF é contado e não entra
+    assert "888" not in tabela.astype(str).to_csv()
+
+
+def test_mte_aponta_para_o_cadastro_inteiro_pelo_nome_e_nao_para_a_lista_do_tac():
+    (cadastro,) = mte_lista_suja.CADASTROS
+    assert URL_DO_CADASTRO_DO_MTE.endswith(cadastro.url_termina_em)
+    assert not URL_DA_LISTA_DO_TAC.endswith(cadastro.url_termina_em)
+
+
+def test_ibama_aponta_para_o_nome_real_do_arquivo_principal():
+    (cadastro,) = ibama_embargos.CADASTROS
+    assert URL_DO_EMBARGO.endswith(cadastro.url_termina_em)
+    for nome in OUTROS_ARQUIVOS_DO_EMBARGO:
+        assert not (PASTA_DO_EMBARGO + nome).endswith(cadastro.url_termina_em), nome
 
 
 def test_ibama_le_so_o_arquivo_do_termo_de_embargo(banco, tmp_path):
