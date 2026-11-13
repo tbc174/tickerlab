@@ -30,6 +30,7 @@ from src import (
 )
 from src.analista import busca as busca_do_analista
 from src.analista import leitura as leitura_do_analista
+from src.api_externa import piloto as piloto_da_api_externa
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.banco.dados_do_usuario import Simulacao
@@ -1759,6 +1760,8 @@ class BuscaDeEmpresasV1(BaseModel):
     setores: list[SetorDaBuscaV1]
     ufs: list[str]
     ordens: list[OrdemDaBuscaV1]
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
 
 
 def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpresasV1:
@@ -1783,6 +1786,7 @@ def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpre
             OrdemDaBuscaV1.model_validate(ordem)
             for ordem in busca_do_analista.ordens_como_lista()
         ],
+        aviso_de_piloto=corpo.get(piloto_da_api_externa.AVISO),
     )
 
 

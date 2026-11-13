@@ -6,6 +6,11 @@ entra na tela é a conta com login e o plano da página (`src/paginas.py`). É a
 do app (ADR 0102) é mais solto e não vale aqui. Resultado: o analista vê na tela só o que a chave dele veria
 pela API.
 
+A prontidão de piloto (D11) vale na tela como na API: só para a conta de uma organização com a marca de piloto
+(`permitido_na_tela(..., piloto=True)`, conferida no servidor pela rota) e sempre com o aviso de piloto na
+resposta. Hoje só a busca de empresas a usa (`src/analista/busca.py`); as outras leituras seguem só com a
+prontidão cheia.
+
 Três estados, para a tela nunca mostrar erro onde o certo é explicar:
 
 - `pronta`: o corpo do leitor, com as chaves em português (a rota do app não traduz);
@@ -22,6 +27,7 @@ from functools import cache
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from src.api_externa import piloto as piloto_
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos import empresas as empresas_
 from src.api_externa.conjuntos import ficha as ficha_
@@ -112,9 +118,15 @@ class Resposta:
 
 
 def permitido_na_tela(
-    conjunto: str, hoje: date, regras: Regras | None = None
+    conjunto: str, hoje: date, regras: Regras | None = None, *, piloto: bool = False
 ) -> Permitido:
-    """O portão da tela para um conjunto: o da API externa, campo a campo, sem o contrato da organização."""
+    """O portão da tela para um conjunto: o da API externa, campo a campo, sem o contrato da organização.
+
+    `piloto` diz se a conta é de uma organização com a marca de piloto (D11; quem confere é a rota, no
+    servidor): só então o portão libera a tabela que tem o registro de piloto e ainda não a prontidão cheia.
+    O campo liberado pelo piloto só sai com um registro aberto (`piloto.anotar`), que é como quem chama fica
+    sabendo que deve o aviso; sem ele, é negado.
+    """
 
     @cache
     def permitido(fonte: str, campo: str, derivado: bool) -> bool:
@@ -125,8 +137,9 @@ def permitido_na_tela(
             canal=Canal.API_EXTERNA,
             finalidade=Finalidade.ANALISE,
             derivado=derivado,
+            piloto=piloto,
         )
-        return decidir(pedido, hoje, regras).libera
+        return piloto_.registrar(fonte, campo, decidir(pedido, hoje, regras))
 
     return permitido
 

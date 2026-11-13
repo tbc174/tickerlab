@@ -242,7 +242,15 @@ function Resultado({ rota, filtros }: { rota: string; filtros: Filtros }) {
           Dado ainda não liberado: a busca entra nesta tela quando a conferência da tabela terminar.
         </p>
       ) : (
-        <Lista primeira={dados} rota={rota} filtros={filtros} />
+        <>
+          {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+          {dados.aviso_de_piloto ? (
+            <p className="erro-do-app" role="note">
+              {dados.aviso_de_piloto}
+            </p>
+          ) : null}
+          <Lista primeira={dados} rota={rota} filtros={filtros} />
+        </>
       )}
       {dados.fontes.length > 0 ? <Fontes fontes={dados.fontes} /> : null}
       <Limites itens={dados.limites} />

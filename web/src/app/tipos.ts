@@ -1189,4 +1189,6 @@ export interface BuscaDeEmpresasV1 {
   setores: SetorDaBuscaV1[];
   ufs: string[];
   ordens: OrdemDaBuscaV1[];
+  // a frase fixa quando a resposta saiu pela prontidão de piloto (D11): vale para todos os campos dela
+  aviso_de_piloto?: string | null;
 }

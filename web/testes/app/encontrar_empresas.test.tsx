@@ -75,6 +75,8 @@ const SEGUNDA: BuscaDeEmpresasV1 = {
 };
 const VAZIA: BuscaDeEmpresasV1 = { ...PRIMEIRA, empresas: [], cortada: false, proximo_cursor: null };
 const NAO_LIBERADA: BuscaDeEmpresasV1 = { ...OPCOES, estado: "nao_liberada" };
+const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
+const DE_PILOTO: BuscaDeEmpresasV1 = { ...PRIMEIRA, aviso_de_piloto: AVISO_DE_PILOTO };
 
 /** A API de mentira: o pedido sem filtro devolve as opções; com cursor, a segunda página; o resto, `busca`. */
 function abrir(busca: BuscaDeEmpresasV1) {
@@ -137,6 +139,17 @@ describe("encontrar empresas", () => {
     const limites = screen.getByRole("region", { name: "Limites e cuidados" });
     expect(within(limites).getByText(/recomendação de investimento/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Baixar em Excel" })).toBeTruthy();
+    expect(screen.queryByText(/Dado de piloto/)).toBeNull();
+  });
+
+  it("dado de piloto: o aviso do servidor fica à vista com a lista, inclusive depois de carregar mais", async () => {
+    abrir(DE_PILOTO);
+    await buscarPor(["SP"]);
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(screen.getByText(AVISO_DE_PILOTO)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    await screen.findByRole("row", { name: /EMPRESA BETA LTDA/ });
+    expect(screen.getByText(AVISO_DE_PILOTO)).toBeTruthy();
   });
 
   it("capital, estabelecimentos e ordem vão no corpo; a tabela mostra os dois, como aproximação", async () => {
