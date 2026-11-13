@@ -485,7 +485,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
+        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, o cadastro de "
         "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
@@ -495,6 +495,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sef_mg_parcelamentos",
             "sancoes_cgu",
             "ans_penalidades",
+            "aneel_autos_de_infracao",
+            "aneel_termos_de_notificacao",
             "mte_lista_suja",
             "ibama_embargos",
             "processos_partes",
@@ -505,7 +507,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "licencas",
         "Licenças e registros nas agências",
         "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, "
-        "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
+        "os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
         "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
         "patentes, desenhos e programas de computador no INPI.",
         (
@@ -518,6 +520,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "mapa_sipeagro",
             "sigsif_habilitados",
             "sigsif_estabelecimentos",
+            "aneel_agentes",
             "anatel_outorgas",
             "anm_titulos",
             "anm_sigbm_barragens",

@@ -120,6 +120,11 @@ FICAM_EM_CASA = (
     "inpi_patentes_depositantes",
     "inpi_desenhos_depositantes",
     "inpi_programas_titulares",
+    # linha 904 (lote 2, ANEEL): agentes, autos de infração e termos de notificação só com CNPJ; o envio ao VPS pede
+    # o "pode" da Diretoria com a prova de zero pessoa da 1ª carga (ODbL da ANEEL, citar)
+    "aneel_agentes",
+    "aneel_autos_de_infracao",
+    "aneel_termos_de_notificacao",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

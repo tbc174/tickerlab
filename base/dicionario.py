@@ -3288,6 +3288,188 @@ def _tabelas_da_aneel_e_do_idss() -> dict[str, Tabela]:
     }
 
 
+_DO_AGENTE_FISCALIZADO = {
+    "cnpj": ("CNPJ do agente fiscalizado (14 dígitos com máscara)", TEXTO),
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+}
+_ONDE_DA_FISCALIZACAO = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/aneel_fiscalizacao.py`)"
+_FISCALIZACAO_DE_FORA = (
+    "Só a linha com CNPJ de dígito certo (o CPF sai); o nome do agente, a descrição do objeto e o texto das "
+    "decisões ficam de fora (texto livre)"
+)
+
+
+def _tabelas_da_fiscalizacao_da_aneel() -> dict[str, Tabela]:
+    """Agentes do setor elétrico, autos de infração e termos de notificação da ANEEL
+    (`base/aneel_fiscalizacao.py`: lote 2 das 300 tabelas pelo CNPJ)."""
+    comum = {
+        "familia_da_fonte": "aneel",
+        "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    return {
+        "aneel_agentes": Tabela(
+            descricao=(
+                "As empresas cadastradas como agentes do setor elétrico na ANEEL, por CNPJ: se o cadastro "
+                "está ativo e em quais atividades a empresa atua (geração, transmissão, distribuição, "
+                "comercialização). Lista de quem opera no setor. Só CNPJ de dígito certo; a razão social "
+                "fica de fora"
+            ),
+            fonte="ANEEL: dados abertos, agentes do setor elétrico (`base/aneel_fiscalizacao.py`)",
+            atraso="A ANEEL regera o cadastro todo mês e escreve a data de geração no arquivo",
+            onde=_ONDE_DA_FISCALIZACAO.format(pasta="aneel_agentes", arquivo="agentes"),
+            colunas={
+                "cnpj": ("CNPJ do agente (14 dígitos com máscara)", TEXTO),
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+                "sigla_do_agente": (
+                    "Sigla do agente na ANEEL; vazia quando a ANEEL não tem",
+                    TEXTO,
+                ),
+                "ativo": (
+                    "Verdadeiro se o cadastro está ativo na ANEEL (`A`), falso se inativo (`I`)",
+                    SIM_OU_NAO,
+                ),
+                "geracao": (
+                    "Código de atuação em geração, como a ANEEL escreve (0 não atua, 1 atua)",
+                    NUMERO,
+                ),
+                "transmissao": (
+                    "Código de atuação em transmissão (0 não atua, 1 atua)",
+                    NUMERO,
+                ),
+                "distribuicao": (
+                    "Código de atuação em distribuição (0 não atua, 1 atua)",
+                    NUMERO,
+                ),
+                "comercializacao": (
+                    "Código de atuação em comercialização (0 não atua, 1 atua)",
+                    NUMERO,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELA_GERACAO),
+            },
+            **comum,
+        ),
+        "aneel_autos_de_infracao": Tabela(
+            descricao=(
+                "Os autos de infração que a ANEEL e as agências estaduais conveniadas lavraram contra empresas "
+                "do setor elétrico, por CNPJ: penalidade (multa, advertência, embargo), valor, datas do "
+                "recurso e das decisões em juízo e na diretoria, e o valor da multa depois de cada decisão. "
+                + _FISCALIZACAO_DE_FORA
+            ),
+            fonte="ANEEL: dados abertos, autos de infração (`base/aneel_fiscalizacao.py`)",
+            atraso="A ANEEL regera o arquivo todo mês; o auto entra depois de lavrado e recebido pelo agente",
+            onde=_ONDE_DA_FISCALIZACAO.format(
+                pasta="aneel_autos_de_infracao", arquivo="autos"
+            ),
+            colunas={
+                **_DO_AGENTE_FISCALIZADO,
+                "numero_do_auto": ("Número do auto de infração", TEXTO),
+                "fiscalizador": (
+                    "Sigla de quem fiscalizou (a ANEEL ou a agência estadual conveniada)",
+                    TEXTO,
+                ),
+                "natureza_da_fiscalizacao": (
+                    "Natureza da fiscalização, como a ANEEL escreve",
+                    TEXTO,
+                ),
+                "codigo_do_objeto": (
+                    "Código do objeto fiscalizado (a usina, a concessão...)",
+                    TEXTO,
+                ),
+                "processo_punitivo": ("Número do processo punitivo", TEXTO),
+                "processo_punitivo_na_aneel": (
+                    "Número do processo punitivo na ANEEL, quando é outro",
+                    TEXTO,
+                ),
+                "tipo_de_penalidade": (
+                    "Multa, advertência, advertência e multa ou embargo de obras",
+                    TEXTO,
+                ),
+                "numero_do_termo_de_encerramento": (
+                    "Número do termo de encerramento",
+                    TEXTO,
+                ),
+                "numero_do_termo_de_notificacao": (
+                    "Número do termo de notificação que deu origem ao auto",
+                    TEXTO,
+                ),
+                "processo_de_fiscalizacao": (
+                    "Número do processo de fiscalização",
+                    TEXTO,
+                ),
+                "lavrado_em": ("Dia em que o auto foi lavrado", DATA),
+                "recebido_em": ("Dia em que o agente recebeu o auto", DATA),
+                "recurso_recebido_em": (
+                    "Dia em que o recurso foi recebido; vazio sem recurso",
+                    DATA,
+                ),
+                "decidido_em_juizo": ("Dia da decisão em juízo (na agência)", DATA),
+                "decidido_pela_diretoria_em": (
+                    "Dia da decisão da diretoria da ANEEL",
+                    DATA,
+                ),
+                "encerrado_em": ("Dia do termo de encerramento", DATA),
+                "valor_da_penalidade": ("Valor da penalidade no auto", REAIS_EXATOS),
+                "multa_apos_juizo": (
+                    "Valor da multa depois da decisão em juízo",
+                    REAIS_EXATOS,
+                ),
+                "multa_apos_diretoria": (
+                    "Valor da multa depois da decisão da diretoria",
+                    REAIS_EXATOS,
+                ),
+                **_carimbos_do_retrato(_DISPONIVEL_PELA_GERACAO),
+            },
+            **comum,
+        ),
+        "aneel_termos_de_notificacao": Tabela(
+            descricao=(
+                "Os termos de notificação da fiscalização da ANEEL e das agências estaduais conveniadas, por "
+                "CNPJ, objeto e decisão: o primeiro passo da fiscalização, antes de um auto de infração "
+                "(decisão `AI`) ou do arquivamento (`TA`). " + _FISCALIZACAO_DE_FORA
+            ),
+            fonte="ANEEL: dados abertos, termos de notificação (`base/aneel_fiscalizacao.py`)",
+            atraso="A ANEEL regera o arquivo todo mês; o termo entra depois de lavrado",
+            onde=_ONDE_DA_FISCALIZACAO.format(
+                pasta="aneel_termos_de_notificacao", arquivo="termos"
+            ),
+            colunas={
+                **_DO_AGENTE_FISCALIZADO,
+                "numero_do_termo": ("Número do termo de notificação", TEXTO),
+                "fiscalizador": (
+                    "Sigla de quem fiscalizou (a ANEEL ou a agência estadual conveniada)",
+                    TEXTO,
+                ),
+                "natureza_da_fiscalizacao": (
+                    "Natureza da fiscalização, como a ANEEL escreve",
+                    TEXTO,
+                ),
+                "area": ("Sigla da superintendência da ANEEL", TEXTO),
+                "subarea": ("Subárea da fiscalização, como a ANEEL escreve", TEXTO),
+                "codigo_do_objeto": (
+                    "Código do objeto fiscalizado (a usina, a concessão...)",
+                    TEXTO,
+                ),
+                "processo": ("Número do processo", TEXTO),
+                "decisao": (
+                    "Sigla da decisão: `AI` (virou auto de infração) ou `TA` (arquivado)",
+                    TEXTO,
+                ),
+                "documento_da_decisao": ("Número do documento da decisão", TEXTO),
+                "lavrado_em": ("Dia em que o termo foi lavrado", DATA),
+                "recebido_em": ("Dia do aviso de recebimento pelo agente", DATA),
+                "manifestado_em": (
+                    "Dia da manifestação do agente; vazio sem manifestação",
+                    DATA,
+                ),
+                "decidido_em": ("Dia em que a decisão foi lavrada", DATA),
+                **_carimbos_do_retrato(_DISPONIVEL_PELA_GERACAO),
+            },
+            **comum,
+        ),
+    }
+
+
 def _tabelas_do_cnes() -> dict[str, Tabela]:
     """O CNES por competência (`base/cnes.py`, linha 654): os estabelecimentos e a situação de cada competência."""
     atraso = (
@@ -8253,6 +8435,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_do_fiagro_e_gleif(),
     **_tabelas_dos_fip_e_fii(),
     **_tabelas_da_aneel_e_do_idss(),
+    **_tabelas_da_fiscalizacao_da_aneel(),
     **_tabelas_do_cnes(),
     **_tabelas_do_sus(),
     **_tabelas_dos_tces(),
@@ -10476,6 +10659,8 @@ _LICENCAS = "2026-10-29"  # as licenças e registros (Ficha Clara) entraram no a
 _FINANCIAMENTOS = "2026-11-04"
 _CMED = "2026-11-04"  # as listas de preços da CMED entraram no arquivista neste dia
 _FUNDOS_E_REGULADORES = "2026-10-25"  # FIP, FII, ANEEL (indicadores) e ANS (IDSS) entraram no arquivista neste dia (linha 904)
+# agentes e termos de notificação: fontes do lote 2 (13/11/2026); a 1ª baixada vem depois do merge
+_AGENTES_E_TERMOS_DA_ANEEL = "2026-11-14"
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
@@ -10706,6 +10891,30 @@ _CONTRATO = {
     # linha 904 (lote 1 das 300 pelo CNPJ): indicadores das distribuidoras da ANEEL e IDSS da ANS
     "aneel_inadimplencia": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
     "aneel_indicadores_comerciais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
+    "aneel_agentes": _contrato(
+        modulo=_ME,
+        linhas_de_pessoa="trata_como_pessoa",
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_AGENTES_E_TERMOS_DA_ANEEL,
+        granularidade_do_publico_em="dia",
+    ),
+    "aneel_autos_de_infracao": _contrato(
+        modulo=_ME,
+        linhas_de_pessoa="trata_como_pessoa",
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "lavrado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_FUNDOS_E_REGULADORES,
+        granularidade_do_publico_em="dia",
+    ),
+    "aneel_termos_de_notificacao": _contrato(
+        modulo=_ME,
+        linhas_de_pessoa="trata_como_pessoa",
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"aconteceu_em": "lavrado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_AGENTES_E_TERMOS_DA_ANEEL,
+        granularidade_do_publico_em="dia",
+    ),
     "ans_idss": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
     "gleif_ponte": _contrato(modulo=_ME, pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="dia"),
     "financiamentos_finep": _contrato(
@@ -11036,6 +11245,19 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "aneel_indicadores_comerciais",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "referencia"),
         "faixas": {c: _SEM_NEGATIVO for c in ("unidades_ativas", "faturas", "postos_de_atendimento")},
+    },
+    "aneel_agentes": {
+        "pasta": "aneel_agentes",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ativo"),
+    },
+    "aneel_autos_de_infracao": {
+        "pasta": "aneel_autos_de_infracao",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_do_auto"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("valor_da_penalidade", "multa_apos_juizo", "multa_apos_diretoria")},
+    },
+    "aneel_termos_de_notificacao": {
+        "pasta": "aneel_termos_de_notificacao",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_do_termo"),
     },
     "ans_idss": {
         "pasta": "ans_idss",

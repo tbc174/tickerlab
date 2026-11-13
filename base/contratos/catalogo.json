@@ -13702,6 +13702,393 @@
       "atraso": "A ANS publica a avaliação de um ano (ano base) no ano seguinte; o arquivo não diz o dia",
       "linhas_de_pessoa": "trata_como_pessoa"
     },
+    "aneel_agentes": {
+      "tabela": "aneel_agentes",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ do agente (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "sigla_do_agente": {
+          "descricao": "Sigla do agente na ANEEL; vazia quando a ANEEL não tem",
+          "unidade": "texto"
+        },
+        "ativo": {
+          "descricao": "Verdadeiro se o cadastro está ativo na ANEEL (`A`), falso se inativo (`I`)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "geracao": {
+          "descricao": "Código de atuação em geração, como a ANEEL escreve (0 não atua, 1 atua)",
+          "unidade": "número inteiro"
+        },
+        "transmissao": {
+          "descricao": "Código de atuação em transmissão (0 não atua, 1 atua)",
+          "unidade": "número inteiro"
+        },
+        "distribuicao": {
+          "descricao": "Código de atuação em distribuição (0 não atua, 1 atua)",
+          "unidade": "número inteiro"
+        },
+        "comercializacao": {
+          "descricao": "Código de atuação em comercialização (0 não atua, 1 atua)",
+          "unidade": "número inteiro"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+      "atraso": "A ANEEL regera o cadastro todo mês e escreve a data de geração no arquivo",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "aneel_autos_de_infracao": {
+      "tabela": "aneel_autos_de_infracao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ do agente fiscalizado (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "numero_do_auto": {
+          "descricao": "Número do auto de infração",
+          "unidade": "texto"
+        },
+        "fiscalizador": {
+          "descricao": "Sigla de quem fiscalizou (a ANEEL ou a agência estadual conveniada)",
+          "unidade": "texto"
+        },
+        "natureza_da_fiscalizacao": {
+          "descricao": "Natureza da fiscalização, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "codigo_do_objeto": {
+          "descricao": "Código do objeto fiscalizado (a usina, a concessão...)",
+          "unidade": "texto"
+        },
+        "processo_punitivo": {
+          "descricao": "Número do processo punitivo",
+          "unidade": "texto"
+        },
+        "processo_punitivo_na_aneel": {
+          "descricao": "Número do processo punitivo na ANEEL, quando é outro",
+          "unidade": "texto"
+        },
+        "tipo_de_penalidade": {
+          "descricao": "Multa, advertência, advertência e multa ou embargo de obras",
+          "unidade": "texto"
+        },
+        "numero_do_termo_de_encerramento": {
+          "descricao": "Número do termo de encerramento",
+          "unidade": "texto"
+        },
+        "numero_do_termo_de_notificacao": {
+          "descricao": "Número do termo de notificação que deu origem ao auto",
+          "unidade": "texto"
+        },
+        "processo_de_fiscalizacao": {
+          "descricao": "Número do processo de fiscalização",
+          "unidade": "texto"
+        },
+        "lavrado_em": {
+          "descricao": "Dia em que o auto foi lavrado",
+          "unidade": "data (dia)"
+        },
+        "recebido_em": {
+          "descricao": "Dia em que o agente recebeu o auto",
+          "unidade": "data (dia)"
+        },
+        "recurso_recebido_em": {
+          "descricao": "Dia em que o recurso foi recebido; vazio sem recurso",
+          "unidade": "data (dia)"
+        },
+        "decidido_em_juizo": {
+          "descricao": "Dia da decisão em juízo (na agência)",
+          "unidade": "data (dia)"
+        },
+        "decidido_pela_diretoria_em": {
+          "descricao": "Dia da decisão da diretoria da ANEEL",
+          "unidade": "data (dia)"
+        },
+        "encerrado_em": {
+          "descricao": "Dia do termo de encerramento",
+          "unidade": "data (dia)"
+        },
+        "valor_da_penalidade": {
+          "descricao": "Valor da penalidade no auto",
+          "unidade": "reais (R$)"
+        },
+        "multa_apos_juizo": {
+          "descricao": "Valor da multa depois da decisão em juízo",
+          "unidade": "reais (R$)"
+        },
+        "multa_apos_diretoria": {
+          "descricao": "Valor da multa depois da decisão da diretoria",
+          "unidade": "reais (R$)"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "lavrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "lavrado_em": "aconteceu_em",
+        "recebido_em": "aconteceu_em",
+        "recurso_recebido_em": "aconteceu_em",
+        "decidido_em_juizo": "aconteceu_em",
+        "decidido_pela_diretoria_em": "aconteceu_em",
+        "encerrado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+      "atraso": "A ANEEL regera o arquivo todo mês; o auto entra depois de lavrado e recebido pelo agente",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "aneel_termos_de_notificacao": {
+      "tabela": "aneel_termos_de_notificacao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ do agente fiscalizado (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "numero_do_termo": {
+          "descricao": "Número do termo de notificação",
+          "unidade": "texto"
+        },
+        "fiscalizador": {
+          "descricao": "Sigla de quem fiscalizou (a ANEEL ou a agência estadual conveniada)",
+          "unidade": "texto"
+        },
+        "natureza_da_fiscalizacao": {
+          "descricao": "Natureza da fiscalização, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "area": {
+          "descricao": "Sigla da superintendência da ANEEL",
+          "unidade": "texto"
+        },
+        "subarea": {
+          "descricao": "Subárea da fiscalização, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "codigo_do_objeto": {
+          "descricao": "Código do objeto fiscalizado (a usina, a concessão...)",
+          "unidade": "texto"
+        },
+        "processo": {
+          "descricao": "Número do processo",
+          "unidade": "texto"
+        },
+        "decisao": {
+          "descricao": "Sigla da decisão: `AI` (virou auto de infração) ou `TA` (arquivado)",
+          "unidade": "texto"
+        },
+        "documento_da_decisao": {
+          "descricao": "Número do documento da decisão",
+          "unidade": "texto"
+        },
+        "lavrado_em": {
+          "descricao": "Dia em que o termo foi lavrado",
+          "unidade": "data (dia)"
+        },
+        "recebido_em": {
+          "descricao": "Dia do aviso de recebimento pelo agente",
+          "unidade": "data (dia)"
+        },
+        "manifestado_em": {
+          "descricao": "Dia da manifestação do agente; vazio sem manifestação",
+          "unidade": "data (dia)"
+        },
+        "decidido_em": {
+          "descricao": "Dia em que a decisão foi lavrada",
+          "unidade": "data (dia)"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "lavrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "lavrado_em": "aconteceu_em",
+        "recebido_em": "aconteceu_em",
+        "manifestado_em": "aconteceu_em",
+        "decidido_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+      "atraso": "A ANEEL regera o arquivo todo mês; o termo entra depois de lavrado",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
     "cnes_estabelecimentos": {
       "tabela": "cnes_estabelecimentos",
       "modulo": "governo_e_sancoes",

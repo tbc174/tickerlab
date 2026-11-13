@@ -135,6 +135,8 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     # linha 904 (lote 2): titulares do INPI só com empresa; ficam em casa até o "pode" da Diretoria
     "inpi_marcas_titulares", "inpi_patentes_depositantes", "inpi_desenhos_depositantes",
     "inpi_programas_titulares",
+    # linha 904 (lote 2, ANEEL): em casa até o pode do envio ao VPS
+    "aneel_agentes", "aneel_autos_de_infracao", "aneel_termos_de_notificacao",
 })  # fmt: skip
 
 
