@@ -202,6 +202,17 @@ def _organizacao_ativa_da_conta(
     ).scalar_one_or_none()
 
 
+def organizacao_da_conta(
+    conexao: sa.Connection, usuario_id: uuid.UUID
+) -> uuid.UUID | None:
+    """A organização ativa da conta (não suspensa, conta nem apagada nem bloqueada), ou None.
+
+    É por ela que o chat do app (linha 903) usa o contrato da organização: o chat nunca vê pessoa,
+    mesmo quando a organização tem `pessoa_na_tela` (essa permissão é só da tela).
+    """
+    return _organizacao_ativa_da_conta(conexao, usuario_id)
+
+
 def organizacao_que_ve_pessoa(
     conexao: sa.Connection, usuario_id: uuid.UUID, dia: date
 ) -> uuid.UUID | None:

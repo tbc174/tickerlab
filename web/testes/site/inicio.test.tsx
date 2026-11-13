@@ -1,4 +1,4 @@
-// A página inicial do posicionamento v3 (ADR 0127, linha 774): a assinatura da CLI de M&A e análise de
+// A página inicial do posicionamento v3 (ADR 0127, linha 774): a assinatura da CLI e do conector de M&A e análise de
 // investimento, o terminal só com comandos que existem, o que dá para pedir, o agente e as travas, o que
 // a base tem (números do catálogo e da medição, nunca digitados), o que ela liga pelo CNPJ, os
 // cruzamentos, as quatro regras, as cinco vagas da vitrine e a chamada para pedir a chave.
@@ -40,10 +40,10 @@ const AVISOS = /(Nada aqui|nada) é recomendação de investimento\.?/gi;
 const COMO_PEDIR_A_CHAVE = `${URL_DA_API}/documentacao/#comecar`;
 const RAIZ = join(process.cwd(), "..");
 
-describe("página inicial da CLI de M&A e análise de investimento", () => {
+describe("página inicial da CLI e do conector de M&A e análise de investimento", () => {
   it("o título é a assinatura, o subtítulo fala do agente e a coleta auditável continua à vista", () => {
     expect(semTags(trecho('<h1 id="titulo-heroi">', "</h1>"))).toBe(esc(ASSINATURA));
-    expect(ASSINATURA).toMatch(/CLI de M&A e análise de investimento/);
+    expect(ASSINATURA).toMatch(/CLI e o conector de M&A e análise de investimento/);
     expect(semTags(principal())).toContain("o seu agente de IA roda a tickerlab");
     expect(principal()).toContain(
       "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +

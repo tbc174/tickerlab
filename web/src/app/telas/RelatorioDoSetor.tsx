@@ -4,15 +4,15 @@
 // a escolha vai no endereço (GET), e o relatório já abre no primeiro setor da lista.
 import { useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, baixar } from "../api";
-import { Carregando } from "../Carregando";
+import { Carregando } from "../pecas/Carregando";
 import { useConta } from "../conta";
 import { TextoComLinks } from "../TextoComLinks";
 import { formatarData } from "../formatar";
 import type { RelatorioDoSetorV1, SetoresV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 import { ConviteDoPro, Secao, fimDoPrimeiroBloco } from "./RelatorioEmpresa";
 
 const ARQUIVOS: { rotulo: string; sufixo: string; nome: string }[] = [
@@ -154,7 +154,7 @@ function Relatorio({ dados }: { dados: RelatorioDoSetorV1 }) {
 function Resultado({ rota, setor }: { rota: string; setor: string }) {
   const pedido = usarPedido<RelatorioDoSetorV1>(rota, { setor });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando o relatório do setor…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   return (
     <>
       <BaixarArquivos rota={rota} setor={setor} />
@@ -192,7 +192,7 @@ export function RelatorioDoSetor({ pagina }: { pagina: PaginaDoApp }) {
     <section>
       <CabecalhoDaTela pagina={pagina} />
       {lista.estado === "carregando" ? <Carregando tipo="painel" rotulo="Carregando os setores…" /> : null}
-      {lista.estado === "erro" ? <ErroDaTela erro={lista.erro} /> : null}
+      {lista.estado === "erro" ? <Erro erro={lista.erro} /> : null}
       {lista.estado === "pronto" ? <Escolha pagina={pagina} setores={lista.dados.setores} /> : null}
     </section>
   );

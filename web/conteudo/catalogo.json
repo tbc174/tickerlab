@@ -8309,7 +8309,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O informe dos Fundos de Investimento em Participações (FIP) por CNPJ do fundo ou da classe: patrimônio, cotas, cotistas por tipo, capital comprometido, subscrito e integralizado.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",
@@ -8320,7 +8320,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O informe mensal dos Fundos de Investimento Imobiliário (FII) por CNPJ do fundo ou da classe: segmento, mandato, gestão, ISIN, administrador (só o CNPJ), cotistas, ativo, patrimônio, cota.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",
@@ -8331,7 +8331,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os títulos e valores mobiliários que cada FII declara no informe trimestral (CRI, ações, debêntures, cotas de outros fundos...), com o CNPJ do emissor.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",
@@ -8342,7 +8342,7 @@
     },
     {
       "atraso": null,
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Quem a CVM registrou para administrar FII, pelo CNPJ: razão social, nome comercial, situação e as datas do registro, da situação e do cancelamento.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",
@@ -8353,7 +8353,7 @@
     },
     {
       "atraso": "A ANEEL escreve a data de geração do conjunto",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os indicadores de inadimplência que cada distribuidora de energia manda à ANEEL, por CNPJ, indicador e mês: quanto deixa de receber dos consumidores, em cada recorte que a ANEEL pede.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",
@@ -8364,7 +8364,7 @@
     },
     {
       "atraso": "A ANEEL escreve a data de geração do conjunto",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "Os indicadores comerciais de cada distribuidora de energia por CNPJ, município e mês (INDGER): unidades consumidoras ativas e faturadas, faturas sem leitura, refaturamentos.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",
@@ -8375,7 +8375,7 @@
     },
     {
       "atraso": "A ANS publica a avaliação de um ano no ano seguinte",
-      "consultavel": true,
+      "consultavel": false,
       "frase": "O Índice de Desempenho da Saúde Suplementar (IDSS) de cada operadora de plano de saúde, por CNPJ, índice (o IDSS e as dimensões dele) e ano de avaliação, desde 2009.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-25",

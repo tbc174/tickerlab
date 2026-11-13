@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import { conteudoDoApp } from "../../../conteudo";
 import { linkDoClassico } from "../../classico";
 import type { EstrategiaAcompanhadaV1, PulseV1 } from "../../tipos";
-import { Vazio } from "../../Vazio";
+import { Vazio } from "../../pecas/Vazio";
 
 const TERMO_DA_FICHA = conteudoDoApp.backtest.ficha.termo;
 const SIMBOLO_DO_VEREDITO: Record<string, string> = { passou: "✓", "não passou": "✕", inconclusivo: "?" };

@@ -4,14 +4,14 @@
 // pessoa buscar. "Limites e cuidados" e "O que ainda não aparece" ficam sempre à vista.
 import { type FormEvent, useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, baixar } from "../api";
-import { Carregando } from "../Carregando";
+import { Carregando } from "../pecas/Carregando";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type { BuscaPorCnpjV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 import { ConviteDoPro, Secao, fimDoPrimeiroBloco } from "./RelatorioEmpresa";
 
 const NOME_DO_PDF = "relatorio-do-cnpj-tickerlab.pdf"; // sem o CNPJ: o nome do arquivo não carrega dado
@@ -111,7 +111,7 @@ function BaixarPdf({ rota, cnpj }: { rota: string; cnpj: string }) {
 function Resultado({ pagina, cnpj }: { pagina: PaginaDoApp; cnpj: string }) {
   const pedido = usarPedido<BuscaPorCnpjV1>(pagina.contrato?.rota ?? "", {}, { cnpj });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando o relatório do CNPJ…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   return (
     <>
       <BaixarPdf rota={pagina.contrato?.rota ?? ""} cnpj={cnpj} />

@@ -8,7 +8,7 @@ import { formatarData, formatarDecimal } from "../formatar";
 import { MapaDeMunicipios } from "../graficos/MapaDeMunicipios";
 import type { CamadaDoMapaV1, MapaDoCafeV1, MunicipioDoMapaV1, RegiaoDoMapaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const TIPOS = [
   { valor: "arabica", nome: "Arábica" },
@@ -266,7 +266,7 @@ export function MapaDoCafe({ pagina }: { pagina: PaginaDoApp }) {
           Montando o mapa…
         </p>
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Resultado key={pedido.dados.tipo} dados={pedido.dados} />
       )}
