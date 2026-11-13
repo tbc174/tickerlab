@@ -504,8 +504,7 @@ def test_empresa_sem_vinculo_no_dia_sai_com_a_lista_vazia(pasta):
 def test_sem_a_tabela_de_ligacoes_nada_foi_consultado(pasta):
     """Sem `rede/ligacoes` a lista não é "sem vínculos" (linha 917): os tipos vão em não disponíveis."""
     (pasta / "rede" / "ligacoes.parquet").unlink()
-    servido = _ler(pasta)
-    assert servido is None or servido.corpo["tipos_de_vinculo_nao_disponiveis"]
+    assert _ler(pasta) is None
 
 
 def test_campo_negado_some_e_sem_o_tipo_a_ligacao_nao_sai(pasta):
