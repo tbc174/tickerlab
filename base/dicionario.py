@@ -920,6 +920,225 @@ def _tabela_da_anvisa_por_empresa() -> dict[str, Tabela]:
     }
 
 
+_SEM_PESSOA_DO_LOTE_3 = (
+    "**Sem pessoa:** só pessoa jurídica de CNPJ com dígito certo; a raiz de empresário individual, MEI, natureza "
+    "do grupo 4 ou que a Receita guardada não tem sai da tabela inteira, e nenhum nome, endereço ou contato é "
+    "guardado (`base/derivadas_do_lote_3.py`)."
+)
+_PESSOA_DO_LOTE_3 = {
+    "trata_como_pessoa": (
+        (
+            "Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que "
+            "um dia vier diferente (ADR 0075)"
+        ),
+        SIM_OU_NAO,
+    ),
+}
+_CNPJ_DO_LOTE_3 = {
+    "cnpj": ("CNPJ do estabelecimento (14 caracteres, com máscara)", TEXTO),
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+}
+_LINHAGEM_DO_LOTE_3 = (
+    "Cada linha guarda o SHA-256 do arquivo original (`origem_sha256`) e quando ele foi baixado "
+    "(`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. "
+    + COM_VERSAO_DO_CODIGO
+)
+_ORIGEM_DO_LOTE_3 = {
+    "disponivel_em": (
+        (
+            "Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz "
+            "quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele"
+        ),
+        DATA,
+    ),
+    "origem_sha256": _ORIGEM_SEM_ANO["origem_sha256"],
+    "origem_coletada_em": _ORIGEM_SEM_ANO["origem_coletada_em"],
+    "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+    "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+}
+_ATRASO_DA_RECEITA = (
+    "A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que "
+    "o arquivo foi modificado na Receita, que é o `disponivel_em`"
+)
+
+
+def _tabelas_de_renuncia_da_receita() -> dict[str, Tabela]:
+    """DIRBI e ECF da Receita por CNPJ (linha 904, `base/derivadas_do_lote_3.py`): o benefício fiscal de cada empresa."""
+    from base.receita_renuncias import COLUNAS_DE_BENEFICIO_DA_ECF
+
+    beneficios = {
+        c: (
+            f"Benefício `{c}` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+            REAIS_EXATOS,
+        )
+        for c in COLUNAS_DE_BENEFICIO_DA_ECF
+    }
+    return {
+        "receita_dirbi": Tabela(
+            descricao=(
+                "Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de Incentivos, "
+                "Renúncias, Benefícios e Imunidades de Natureza Tributária), por mês, código do regime e "
+                "tributo, um Parquet por ano. **O valor é o que a empresa declarou, não o que foi "
+                "efetivamente usufruído**, e a linha marcada `em_verificacao` ainda pode mudar. "
+                + _SEM_PESSOA_DO_LOTE_3
+                + " Linha com CNPJ mascarado, CPF ou de dígito errado sai e é contada na montagem."
+            ),
+            fonte=(
+                "Receita Federal do Brasil, dados abertos da DIRBI "
+                "(`renuncia-por-regime-AAAA.zip`), lida por `base/receita_renuncias.py`"
+            ),
+            familia_da_fonte="rfb-renuncias",
+            frequencia="Mensal (a Receita regrava o arquivo do ano inteiro)",
+            atraso=_ATRASO_DA_RECEITA,
+            onde=(
+                "Parquet em `<acervo>/base/receita_dirbi/<ano>.parquet` (servidor de casa, "
+                "`scripts/montar_tabelas_lote_3.py`)"
+            ),
+            linhagem=_LINHAGEM_DO_LOTE_3,
+            colunas={
+                **_CNPJ_DO_LOTE_3,
+                "municipio": (
+                    "Município do estabelecimento, como a Receita informa",
+                    TEXTO,
+                ),
+                "uf": ("Unidade da federação do estabelecimento", TEXTO),
+                "cnae": ("CNAE do estabelecimento, como a Receita informa", TEXTO),
+                "ano": ("Ano da declaração", "ano"),
+                "mes": ("Mês da declaração (1 a 12)", NUMERO),
+                "periodo": (
+                    "Primeiro dia do mês da declaração (`ano` e `mes` juntos, como data)",
+                    DATA,
+                ),
+                "codigo_in": (
+                    "Código do benefício na instrução normativa da DIRBI",
+                    TEXTO,
+                ),
+                "tributo": ("Tributo a que o benefício se refere", TEXTO),
+                "valor": (
+                    "Valor declarado do benefício, em reais (vazio: não informado)",
+                    REAIS_EXATOS,
+                ),
+                "em_verificacao": (
+                    "Verdadeiro quando a Receita marca o valor como 'em verificação' (pode mudar)",
+                    SIM_OU_NAO,
+                ),
+                **_PESSOA_DO_LOTE_3,
+                **_ORIGEM_DO_LOTE_3,
+            },
+        ),
+        "receita_ecf_renuncia": Tabela(
+            descricao=(
+                "Incentivos de IRPJ e CSLL que a empresa declarou na ECF (Escrituração Contábil Fiscal), uma "
+                "linha por CNPJ, SCP e período da escrituração, com a forma de tributação e cada benefício "
+                "em reais. **É o que a empresa declarou**; quando o mesmo período aparece mais de uma vez com "
+                "valores diferentes, fica a linha mais preenchida. "
+                + _SEM_PESSOA_DO_LOTE_3
+            ),
+            fonte=(
+                "Receita Federal do Brasil, dados abertos da ECF (`renuncia-irpj-csll-ecf.csv`), lida por "
+                "`base/receita_renuncias.py`"
+            ),
+            familia_da_fonte="rfb-renuncias",
+            frequencia="Anual (a Receita regrava o arquivo inteiro)",
+            atraso=_ATRASO_DA_RECEITA,
+            onde=(
+                "Parquet em `<acervo>/base/receita_ecf_renuncia/receita_ecf_renuncia.parquet` (servidor de "
+                "casa, `scripts/montar_tabelas_lote_3.py`)"
+            ),
+            linhagem=_LINHAGEM_DO_LOTE_3,
+            colunas={
+                **_CNPJ_DO_LOTE_3,
+                "cod_scp": (
+                    "Código da sociedade em conta de participação (SCP) da escrituração, quando há",
+                    TEXTO,
+                ),
+                "dt_ini": ("Primeiro dia do período da escrituração", DATA),
+                "dt_fin": ("Último dia do período da escrituração", DATA),
+                "forma_trib": ("Forma de tributação do lucro, código da ECF", TEXTO),
+                "forma_apur": ("Forma de apuração, código da ECF", TEXTO),
+                "qualif_pj": ("Qualificação da pessoa jurídica, código da ECF", TEXTO),
+                "sit_especial": (
+                    "Situação especial da escrituração, código da ECF",
+                    TEXTO,
+                ),
+                "cnae": ("CNAE informado na escrituração", TEXTO),
+                "cod_nat": ("Natureza jurídica, código da ECF", TEXTO),
+                **beneficios,
+                "exercicio": ("Ano-calendário da escrituração", "ano"),
+                **_PESSOA_DO_LOTE_3,
+                **_ORIGEM_DO_LOTE_3,
+            },
+        ),
+    }
+
+
+def _tabela_do_sigsif_habilitados() -> dict[str, Tabela]:
+    """Estabelecimentos habilitados à exportação pelo SIF do MAPA (linha 904)."""
+    return {
+        "sigsif_habilitados": Tabela(
+            descricao=(
+                "A quem o Ministério da Agricultura habilitou exportar, para que país, em que área e produto "
+                "(Serviço de Inspeção Federal, SIGSIF): uma linha por país, área, SIF e produto. **O CNPJ vem "
+                "do número do SIF, pelo cadastro dos estabelecimentos registrados no SIF, e só entra quando "
+                "o SIF tem um CNPJ só**; a habilitação sem CNPJ achado não entra (a montagem conta quantas). "
+                + _SEM_PESSOA_DO_LOTE_3
+                + " O nome do estabelecimento da fonte não é guardado."
+            ),
+            fonte=(
+                "Ministério da Agricultura e Pecuária (MAPA), dados abertos do Serviço de Inspeção Federal "
+                "(SIGSIF), licença CC BY (citar o MAPA); lido por `base/sigsif.py`"
+            ),
+            familia_da_fonte="mapa",
+            frequencia="Variável (o MAPA regrava o arquivo inteiro quando atualiza)",
+            atraso=(
+                "A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o "
+                "arquivo foi modificado no portal do MAPA, que é o `disponivel_em`. As datas da fonte "
+                "(validade, ocorrência, suspensão) ficam nas colunas delas"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/sigsif_habilitados/sigsif_habilitados.parquet` (servidor de casa, "
+                "`scripts/montar_tabelas_lote_3.py`)"
+            ),
+            linhagem=_LINHAGEM_DO_LOTE_3,
+            colunas={
+                **_CNPJ_DO_LOTE_3,
+                "pais": (
+                    "País para o qual o estabelecimento está habilitado a exportar",
+                    TEXTO,
+                ),
+                "area": (
+                    "Área da habilitação (carne, leite, pescado, ovos, mel...)",
+                    TEXTO,
+                ),
+                "sif": (
+                    "Número do SIF (Serviço de Inspeção Federal), sem zeros à esquerda",
+                    TEXTO,
+                ),
+                "uf": ("Unidade da federação do estabelecimento", TEXTO),
+                "municipio": (
+                    "Município do estabelecimento, como o MAPA informa",
+                    TEXTO,
+                ),
+                "produto": ("Produto da habilitação, como o MAPA descreve", TEXTO),
+                "dt_validade": (
+                    "Fim da validade da habilitação (vazio: a fonte não informa)",
+                    DATA,
+                ),
+                "dt_ocorrencia": (
+                    "Data da ocorrência registrada pelo MAPA (vazio: nenhuma)",
+                    DATA,
+                ),
+                "dt_suspensao": (
+                    "Data da suspensão da habilitação (vazio: nunca suspensa)",
+                    DATA,
+                ),
+                **_PESSOA_DO_LOTE_3,
+                **_ORIGEM_DO_LOTE_3,
+            },
+        ),
+    }
+
+
 def _tabelas_das_sancoes() -> dict[str, Tabela]:
     """As sanções por CNPJ (`base/sancoes.py`): uma tabela por família de licença, para a marca da CGU
     (só uso interno) não se misturar com a da ANS (vende com atribuição)."""
@@ -7804,6 +8023,8 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_sem_pessoa_do_cnpj(),
     **_tabela_de_entradas_de_socio_pj(),
     **_tabela_da_anvisa_por_empresa(),
+    **_tabelas_de_renuncia_da_receita(),
+    **_tabela_do_sigsif_habilitados(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -10237,6 +10458,9 @@ _CONTRATO = {
     "ans_penalidades": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "anvisa_registros": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anvisa_por_empresa": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj_basico", "disponivel_em"), datas={"publico_em": "disponivel_em", "coletado_em": "montado_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="dia"),  # por dia (12/11/2026, Diretoria): público desde o dia em que o arquivista viu o arquivo; a anvisa_registros fica em "mes"
+    "receita_dirbi": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "ano", "mes", "codigo_in", "tributo"), datas={"aconteceu_em": "periodo", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-08", granularidade_do_publico_em="dia"),  # linha 904: só PJ; o arquivo do ano sai inteiro e vale desde o dia em que a Receita o regravou
+    "receita_ecf_renuncia": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "cod_scp", "dt_ini", "dt_fin"), datas={"aconteceu_em": "dt_fin", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-19", granularidade_do_publico_em="dia"),  # linha 904: só PJ
+    "sigsif_habilitados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("pais", "area", "sif", "produto"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-02", granularidade_do_publico_em="dia"),  # linha 904: só PJ, CNPJ pelo número do SIF
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -10547,6 +10771,19 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "anvisa_por_empresa",
         "nao_nulas": ("cnpj_basico", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
         "faixas": {c: _SEM_NEGATIVO for c in _colunas_da_anvisa_por_empresa()},
+    },
+    "receita_dirbi": {
+        "pasta": "receita_dirbi",
+        "nao_nulas": ("cnpj", "cnpj_basico", "ano", "mes", "codigo_in", "tributo", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+        "faixas": {"mes": (1.0, 12.0)},
+    },
+    "receita_ecf_renuncia": {
+        "pasta": "receita_ecf_renuncia",
+        "nao_nulas": ("cnpj", "cnpj_basico", "dt_ini", "dt_fin", "exercicio", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+    },
+    "sigsif_habilitados": {
+        "pasta": "sigsif_habilitados",
+        "nao_nulas": ("cnpj", "cnpj_basico", "pais", "area", "sif", "produto", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
     },
     "antt_rntrc": {
         "pasta": "antt_rntrc",
