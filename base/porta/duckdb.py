@@ -133,7 +133,6 @@ ARQUIVOS: dict[str, str] = {
     "susep_cadastro": "susep_cadastro/*.parquet",
     "mte_lista_suja": "mte_lista_suja/*.parquet",
     "ibama_embargos": "ibama_embargos/*.parquet",
-    "tcu_inidoneos": "tcu_inidoneos/*.parquet",
     "inpi_marcas_titulares": "inpi_marcas_titulares/*.parquet",
     "inpi_patentes_depositantes": "inpi_patentes_depositantes/*.parquet",
     "inpi_desenhos_depositantes": "inpi_desenhos_depositantes/*.parquet",

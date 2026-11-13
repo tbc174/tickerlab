@@ -2213,35 +2213,6 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
             },
             "ibama_embargos",
         ),
-        "tcu_inidoneos": tabela(
-            "tcu_inidoneos",
-            "inidoneos",
-            (
-                "Licitantes declaradas inidôneas pelo TCU, só pessoa jurídica, uma linha por empresa e "
-                "processo: o número do processo, a deliberação (acórdão) e as datas do acórdão, do "
-                "trânsito em julgado e do fim da proibição. A fonte mistura CPF e CNPJ na mesma coluna: "
-                "o CPF, o nome e a UF (sempre a do TCU, não a da empresa) nunca chegam ao acervo. A "
-                "inidoneidade só vale com o trânsito em julgado; `data_final` é o fim da proibição, "
-                "anunciado na própria decisão. Estar na lista não diz o que a empresa fez depois."
-            ),
-            "TCU: responsáveis inidôneos para licitar (consulta pública)",
-            "tcu",
-            "Semanal (o TCU devolve a lista inteira; o arquivista guarda só o que mudou)",
-            {
-                "processo": ("Número do processo no TCU, como a fonte escreve", TEXTO),
-                "deliberacao": (
-                    "Deliberação (acórdão) que declarou a inidoneidade, como o TCU escreve",
-                    TEXTO,
-                ),
-                "data_acordao": ("Data do acórdão", DATA),
-                "data_transito_julgado": (
-                    "Data do trânsito em julgado (a partir dela a inidoneidade vale)",
-                    DATA,
-                ),
-                "data_final": ("Data em que termina a proibição de licitar", DATA),
-            },
-            "inidoneos_tcu",
-        ),
         "inpi_marcas_titulares": tabela(
             "inpi_marcas_titulares",
             "titulares",
@@ -9855,14 +9826,6 @@ _CONTRATO = {
         historico_desde=_GOVERNO,
         granularidade_do_publico_em="mes",
     ),
-    "tcu_inidoneos": _contrato(
-        modulo="governo_e_sancoes",
-        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a empresa de verdade (raiz de MEI e raiz desconhecida ficam fora)
-        chaves=("id_na_fonte", "visto_em"),
-        datas={"aconteceu_em": "data_acordao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
-        historico_desde=_GOVERNO,
-        granularidade_do_publico_em="dia",
-    ),
     "inpi_marcas_titulares": _contrato(
         modulo="governo_e_sancoes",
         linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a empresa de verdade (raiz de MEI e raiz desconhecida ficam fora)
@@ -10152,10 +10115,6 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "ibama_embargos",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {"area_embargada_ha": _SEM_NEGATIVO},
-    },
-    "tcu_inidoneos": {
-        "pasta": "tcu_inidoneos",
-        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "processo", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "inpi_marcas_titulares": {
         "pasta": "inpi_marcas_titulares",

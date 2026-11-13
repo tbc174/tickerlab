@@ -65,7 +65,6 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da Finep\b", "Finep"),
     (r"empregadores do MTE", "MTE"),
     (r"do IBAMA\b", "IBAMA"),
-    (r"inidôneos do TCU", "TCU"),
     (r"\bINPI\b", "INPI"),
     (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
@@ -485,7 +484,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "riscos",
         "Dívida, sanções e processos",
         "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
-        "empregadores do MTE, os embargos do IBAMA, os licitantes inidôneos do TCU, processos "
+        "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
             "pgfn_divida",
@@ -496,7 +495,6 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "ans_penalidades",
             "mte_lista_suja",
             "ibama_embargos",
-            "tcu_inidoneos",
             "processos_partes",
             "processos_nas_notas",
         ),

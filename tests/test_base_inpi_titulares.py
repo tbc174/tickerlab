@@ -194,19 +194,19 @@ def test_titular_que_some_do_arquivo_ganha_linha_consta_falso(banco, tmp_path):
     assert list(ficou["consta"]) == [True]
 
 
-def test_comando_monta_as_cinco_tabelas_e_sem_nada_guardado_sai_com_1(
+def test_comando_monta_as_quatro_tabelas_e_sem_nada_guardado_sai_com_1(
     banco, tmp_path, monkeypatch
 ):
     monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
-    from scripts import carga_inpi_e_tcu
+    from scripts import carga_inpi_titulares
 
-    assert carga_inpi_e_tcu.main(["--pasta", str(tmp_path / "b")]) == 1
+    assert carga_inpi_titulares.main(["--pasta", str(tmp_path / "b")]) == 1
     _coletar(
         banco,
         PROGRAMAS,
         _csv(PROGRAMAS, ("900000001", EMPRESA, "")),
         PRIMEIRO_DIA,
     )
-    assert carga_inpi_e_tcu.main(["--pasta", str(tmp_path / "b")]) == 0
+    assert carga_inpi_titulares.main(["--pasta", str(tmp_path / "b")]) == 0
     gravada = pd.read_parquet(tmp_path / "b" / PROGRAMAS.tabela / "titulares.parquet")
     assert gravada["trata_como_pessoa"].all()  # sem a Receita guardada: o conservador

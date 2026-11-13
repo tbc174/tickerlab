@@ -4239,43 +4239,6 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
-## `tcu_inidoneos`
-
-Licitantes declaradas inidôneas pelo TCU, só pessoa jurídica, uma linha por empresa e processo: o número do processo, a deliberação (acórdão) e as datas do acórdão, do trânsito em julgado e do fim da proibição. A fonte mistura CPF e CNPJ na mesma coluna: o CPF, o nome e a UF (sempre a do TCU, não a da empresa) nunca chegam ao acervo. A inidoneidade só vale com o trânsito em julgado; `data_final` é o fim da proibição, anunciado na própria decisão. Estar na lista não diz o que a empresa fez depois. Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
-
-- **Fonte:** TCU: responsáveis inidôneos para licitar (consulta pública) (`base/inidoneos_tcu.py`)
-- **Licença:** Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)
-- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
-- **Frequência:** Semanal (o TCU devolve a lista inteira; o arquivista guarda só o que mudou)
-- **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
-- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
-- **Chaves:** `id_na_fonte`, `visto_em`
-- **Três datas:** aconteceu_em = `data_acordao`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
-- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/tcu_inidoneos/inidoneos.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
-
-| Coluna | O que é | Unidade |
-|---|---|---|
-| `id_na_fonte` | O que identifica o registro na fonte | texto |
-| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
-| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
-| `processo` | Número do processo no TCU, como a fonte escreve | texto |
-| `deliberacao` | Deliberação (acórdão) que declarou a inidoneidade, como o TCU escreve | texto |
-| `data_acordao` | Data do acórdão | data (dia) |
-| `data_transito_julgado` | Data do trânsito em julgado (a partir dela a inidoneidade vale) | data (dia) |
-| `data_final` | Data em que termina a proibição de licitar | data (dia) |
-| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
-| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
-| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
-| `disponivel_em` | Desde quando a linha vale para a base: no 1º arquivo, a data do ato público que a fonte informa (nunca depois do dia do arquivo); depois dele, o dia do arquivo em que a mudança apareceu | data (dia) |
-| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
-| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
-| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
-| `versao_do_codigo` | Commit do código que montou a tabela | texto |
-
 ## `inpi_marcas_titulares`
 
 Titulares de marcas depositadas no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada). Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.

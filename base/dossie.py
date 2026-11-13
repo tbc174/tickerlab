@@ -129,6 +129,9 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
     "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
     "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
+    # linha 904 (lote 2): titulares do INPI só com empresa; ficam em casa até o "pode" da Diretoria
+    "inpi_marcas_titulares", "inpi_patentes_depositantes", "inpi_desenhos_depositantes",
+    "inpi_programas_titulares",
 })  # fmt: skip
 
 

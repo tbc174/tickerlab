@@ -530,7 +530,6 @@ DESTINOS: dict[str, Destino] = {
         for f in lote_patentes.fontes()
     },
     # linha 904 (lote 2): depois dos lotes acima, que também listam estas fontes como "só arquivo"
-    "tcu-inidoneos": _tabela("tcu_inidoneos"),
     "inpi-marcas": _tabela("inpi_marcas_titulares"),
     "inpi-patentes-partes": _tabela("inpi_patentes_depositantes"),
     "inpi-desenhos": _tabela("inpi_desenhos_depositantes"),

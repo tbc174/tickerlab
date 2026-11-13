@@ -874,7 +874,7 @@ def test_csv_que_nunca_e_lido_fecha_a_porta_e_devolve_a_vaga(
 
 # --- as 15 da linha 842 -------------------------------------------------------------------------
 def test_as_15_da_linha_842_estao_no_dicionario():
-    assert len(FECHADAS_ATE_A_PRONTIDAO) == 15
+    assert len(FECHADAS_ATE_A_PRONTIDAO) == 19  # +4 do INPI (linha 904, lote 2)
     assert set(TABELAS) >= FECHADAS_ATE_A_PRONTIDAO
 
 

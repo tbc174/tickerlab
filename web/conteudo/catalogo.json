@@ -1584,7 +1584,7 @@
       "orgao": "TCU (Tribunal de Contas da União)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -2887,17 +2887,6 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "Lista de inidôneos do TCU: sem licença escrita (a confirmar; citar o TCU)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "TCU",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "modulos": [
@@ -2921,8 +2910,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 36,
-    "tabelas": 127,
+    "orgaos": 35,
+    "tabelas": 126,
     "temas": [
       {
         "chave": "cvm",
@@ -2962,12 +2951,11 @@
           "ANS",
           "MTE",
           "IBAMA",
-          "TCU",
           "CNJ",
           "CVM"
         ],
-        "tabelas": 11,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, os licitantes inidôneos do TCU, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 10,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -3029,7 +3017,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 63
+      "tabelas": 62
     },
     {
       "chave": "credito_e_fidc",
@@ -8312,17 +8300,6 @@
     {
       "atraso": null,
       "consultavel": true,
-      "frase": "Licitantes declaradas inidôneas pelo TCU, só pessoa jurídica, uma linha por empresa e processo: o número do processo, a deliberação (acórdão) e as datas do acórdão.",
-      "frequencia": "Semanal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCU",
-      "situacao": "licenciada",
-      "tabela": "tcu_inidoneos"
-    },
-    {
-      "atraso": null,
-      "consultavel": true,
       "frase": "Titulares de marcas depositadas no INPI.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
@@ -8950,10 +8927,10 @@
   ],
   "totais": {
     "familias": 133,
-    "familias_em_uso": 48,
-    "fontes": 48,
+    "familias_em_uso": 47,
+    "fontes": 47,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 164
+    "tabelas": 163
   }
 }
