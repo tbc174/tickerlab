@@ -421,6 +421,20 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .bandeja-de-comparacao { position: sticky; bottom: var(--e3); z-index: 2; margin: var(--e3) 0; padding: var(--e3) var(--e4);
   border: 1px solid var(--linha-forte); border-radius: var(--e2); background: var(--superficie); }
 .bandeja-de-comparacao p { margin: 0 0 var(--e2); }
+
+/* Tela de Setor: as aberturas por ano em barras (a tabela embaixo diz os números) */
+.barras-do-setor {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e1);
+  height: 80px;
+  margin: var(--e2) 0 var(--e4);
+}
+.barra-do-setor {
+  flex: 1;
+  background: var(--azul-texto);
+  opacity: 0.75;
+  border-radius: 2px 2px 0 0;
 /* Perguntar (linha 903): a conversa na coluna principal e "Nesta conversa" ao lado; no celular, uma coluna só,
    com a caixa da pergunta presa embaixo */
 .grade-do-chat { display: grid; gap: var(--e5); margin-top: var(--e4); }
