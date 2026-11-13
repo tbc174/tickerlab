@@ -10,6 +10,7 @@ import uvicorn
 
 from conector_remoto.configuracao import ler_configuracao
 from conector_remoto.servidor import criar_app
+from conector_remoto.uso import ligar_registro_de_uso
 
 HOST_PADRAO = "127.0.0.1"
 PORTA_PADRAO = 8010
@@ -17,6 +18,7 @@ PORTA_PADRAO = 8010
 
 def principal() -> None:
     """Lê a configuração do ambiente e sobe o servidor."""
+    ligar_registro_de_uso()
     app = criar_app(ler_configuracao(os.environ))
     host = os.environ.get("TICKERLAB_MCP_ESCUTA", HOST_PADRAO)
     porta = int(os.environ.get("TICKERLAB_MCP_PORTA", str(PORTA_PADRAO)))
