@@ -38,9 +38,11 @@ SUPERAMOSTRA = (
     4  # desenha 4× maior e reduz: bordas suaves (o Pillow não suaviza polígonos)
 )
 PONTOS_POR_CURVA = 24
-ASSINATURA_INSTITUCIONAL = "A CLI de M&A e análise de investimento no Brasil."
+ASSINATURA_INSTITUCIONAL = (
+    "A CLI e o conector de M&A e análise de investimento no Brasil."
+)
 # caracteres por linha da assinatura na imagem de compartilhamento
-LARGURA_DA_LINHA = 28
+LARGURA_DA_LINHA = 34
 
 
 def linhas_da_assinatura() -> tuple[str, str]:

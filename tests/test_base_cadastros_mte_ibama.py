@@ -97,6 +97,7 @@ def test_embargos_so_cnpj_entra_com_area_em_decimal_e_ano_impossivel_vazio():
         "pessoa_fisica": 1,
         "cnpj_invalido": 1,
         "id_repetido": 1,
+        "id_pelo_numero_do_termo": 0,
     }
     assert "NOME 2" not in tabela.astype(str).to_csv()
 
@@ -114,3 +115,39 @@ def test_embargos_disponivel_pelo_embargo_ou_desembargo_nunca_depois_do_retrato(
         pd.Timestamp("2026-03-01"),
         DIA,
     ]
+
+
+def _embargos_como_o_ibama_publica(*linhas: str) -> bytes:
+    """O arquivo real (conferido em 13/11/2026, linha 914): UTF-8 com BOM e cabeçalho entre aspas."""
+    cabecalho = ";".join(f'"{coluna}"' for coluna in CABECALHO_EMBARGOS.split(";"))
+    return "﻿".encode() + "\n".join([cabecalho, *linhas]).encode("utf-8")
+
+
+def test_embargos_le_o_arquivo_com_bom_e_cabecalho_entre_aspas():
+    """Linha 914: lido como Latin-1, o BOM grudava no 1º cabeçalho, o `SEQ_TAD` sumia e todos os
+    termos de PJ viravam um só."""
+    conteudo = _embargos_como_o_ibama_publica(
+        _embargo("1", EMPRESA).replace("Lavrado", "Em análise"),
+        _embargo("2", OUTRA),
+        _embargo("3", "88800000801"),  # CPF
+    )
+    tabela, contagem = ibama_embargos.ler_retrato(conteudo, DIA)
+    assert list(tabela["id_na_fonte"]) == ["1", "2"]
+    assert tabela["situacao_do_termo"].iloc[0] == "Em análise"
+    assert contagem["pessoa_fisica"] == 1
+    assert contagem["id_repetido"] == 0
+    assert "NOME 3" not in tabela.astype(str).to_csv()
+
+
+def test_embargos_sem_seq_tad_ficam_pelo_numero_do_termo_e_nao_se_juntam():
+    """Linha 914: termo sem `SEQ_TAD` (há milhares no arquivo real) não pode virar um id vazio só."""
+    conteudo = _embargos(
+        _embargo("", EMPRESA),
+        _embargo("", OUTRA).replace("ABC;", "XYZ;"),
+        _embargo("7", OUTRA),
+    )
+    tabela, contagem = ibama_embargos.ler_retrato(conteudo, DIA)
+    assert list(tabela["id_na_fonte"]) == ["TAD ABC", "TAD XYZ", "7"]
+    assert contagem["id_repetido"] == 0
+    assert contagem["id_pelo_numero_do_termo"] == 2
+    assert tabela["id_na_fonte"].ne("").all()

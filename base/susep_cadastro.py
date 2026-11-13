@@ -38,7 +38,9 @@ COLUNAS_DA_FONTE = {
     "entcgc": "documento",
     "dataautorizacao": "autorizada_em",
 }
-VALORES = ["codigo_do_mercado", "nome", "cnpj", "autorizada_em"]
+# `consta` entra nos valores comparados: sem ele, o registro que sai do arquivo não vira a linha
+# `consta` falso e continua constando (linha 907)
+VALORES = ["codigo_do_mercado", "nome", "cnpj", "autorizada_em", "consta"]
 COLUNAS = [
     "id_na_fonte", "codigo_do_mercado", "nome", "cnpj", "cnpj_basico", "autorizada_em",
 ]  # fmt: skip

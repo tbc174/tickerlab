@@ -121,7 +121,7 @@ describe("ficha da empresa", () => {
     abrir(() => respostaJson(200, PRONTA));
     await verFicha(CNPJ);
     expect(await screen.findByRole("heading", { level: 1, name: "EMPRESA MODELO S.A." })).toBeTruthy();
-    expect(screen.queryByRole("heading", { level: 1, name: "Ficha da empresa" })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 1, name: "Ficha da empresa" })).toBeNull());
     expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual([
       "Resumo", "Cadastro", "Quem controla", "Sinais", "Eventos", "Vínculos", "Fontes e limites",
     ]);
