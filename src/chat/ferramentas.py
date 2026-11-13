@@ -30,6 +30,7 @@ from conector_remoto.acesso import AcessoDoAnalista, conjuntos_do_catalogo
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.ferramentas import TITULOS_DAS_FERRAMENTAS, registrar_ferramentas
 from conector_remoto.servidor import ServidorDoConector
+from src.chat.fontes import FonteUsada, fontes_do_resultado
 from src.chaves_da_api import ContextoDaChave
 from src.planos import LimitesDoChat
 
@@ -119,10 +120,11 @@ class DefinicaoDeFerramenta:
 
 @dataclass(frozen=True)
 class ResultadoDaFerramenta:
-    """O texto que volta ao modelo e se é um erro (`is_error` do `tool_result`)."""
+    """O texto que volta ao modelo, se é um erro (`is_error` do `tool_result`) e as fontes para a tela."""
 
     texto: str
     erro: bool
+    fontes: tuple[FonteUsada, ...] = ()
 
 
 def marcar_como_dado(ferramenta: str, texto: str) -> str:
@@ -248,4 +250,6 @@ class CaixaDeFerramentas:
             self.caracteres_entregues = teto
             return ResultadoDaFerramenta(MENSAGEM_TETO_DA_PERGUNTA, erro=True)
         self.caracteres_entregues += len(texto)
-        return ResultadoDaFerramenta(marcar_como_dado(nome, texto), erro=False)
+        return ResultadoDaFerramenta(
+            marcar_como_dado(nome, texto), erro=False, fontes=fontes_do_resultado(texto)
+        )

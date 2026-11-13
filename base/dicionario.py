@@ -1139,6 +1139,168 @@ def _tabela_do_sigsif_habilitados() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_do_lote_3b() -> dict[str, Tabela]:
+    """SIF registrado e transações tributárias da Receita por CNPJ (linha 904, `base/derivadas_do_lote_3b.py`)."""
+    valores = {
+        c: (f"{d}, em reais (vazio: a fonte não informa)", REAIS_EXATOS)
+        for c, d in (
+            ("reducao", "Redução da dívida concedida pela transação"),
+            (
+                "credito_pf_proprio",
+                "Crédito de prejuízo fiscal próprio usado na transação",
+            ),
+            (
+                "credito_pf_terceiros",
+                "Crédito de prejuízo fiscal de terceiros usado na transação",
+            ),
+            (
+                "credito_bcn_proprio",
+                "Crédito de base negativa da CSLL próprio usado na transação",
+            ),
+            (
+                "credito_bcn_terceiros",
+                "Crédito de base negativa da CSLL de terceiros usado na transação",
+            ),
+        )
+    }
+    return {
+        "sigsif_estabelecimentos": Tabela(
+            descricao=(
+                "Quem tem registro no Serviço de Inspeção Federal (SIF) do Ministério da Agricultura, em que "
+                "município e categoria: uma linha por CNPJ, número do SIF, área, categoria e município. **A "
+                "razão social da fonte não é guardada** e o registro de CPF não entra. "
+                + _SEM_PESSOA_DO_LOTE_3
+            ),
+            fonte=(
+                "Ministério da Agricultura e Pecuária (MAPA), dados abertos do Serviço de Inspeção Federal "
+                "(SIGSIF), licença CC BY (citar o MAPA); lido por `base/sigsif.py`"
+            ),
+            familia_da_fonte="mapa",
+            frequencia="Variável (o MAPA regrava o arquivo inteiro quando atualiza)",
+            atraso=(
+                "A fonte publica o estado de hoje sem dizer desde quando: tudo vale desde o dia em que o "
+                "arquivo foi modificado no portal do MAPA, que é o `disponivel_em`"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/sigsif_estabelecimentos/sigsif_estabelecimentos.parquet` (servidor "
+                "de casa, `scripts/montar_tabelas_lote_3b.py`)"
+            ),
+            linhagem=_LINHAGEM_DO_LOTE_3,
+            colunas={
+                **_CNPJ_DO_LOTE_3,
+                "nr_sif": ("Número do SIF (Serviço de Inspeção Federal)", TEXTO),
+                "situacao": ("Situação do registro no SIF, como o MAPA informa", TEXTO),
+                "municipio": (
+                    "Município do estabelecimento, como o MAPA informa",
+                    TEXTO,
+                ),
+                "uf": ("Unidade da federação do estabelecimento", TEXTO),
+                "area_categoria": (
+                    "Área e categoria do registro (carnes, leite, pescado...)",
+                    TEXTO,
+                ),
+                "categoria_classe": (
+                    "Classe da categoria do registro (abate, industrialização...)",
+                    TEXTO,
+                ),
+                **_PESSOA_DO_LOTE_3,
+                **_ORIGEM_DO_LOTE_3,
+            },
+        ),
+        "receita_transacoes_individual": Tabela(
+            descricao=(
+                "Acordos de transação tributária individual deferidos pela Receita (Procuradoria-Geral da "
+                "Fazenda Nacional e Receita): uma linha por CNPJ e processo, com a dívida transacionada, a "
+                "redução e o saldo devedor. **O nome do contribuinte da fonte não é guardado.** "
+                + _SEM_PESSOA_DO_LOTE_3
+            ),
+            fonte=(
+                "Receita Federal do Brasil, dados abertos de transação tributária "
+                "(`transacoes-individual.csv`), lida por `base/receita_transacoes.py`"
+            ),
+            familia_da_fonte="rfb-transacoes",
+            frequencia="Variável (a Receita regrava o arquivo inteiro)",
+            atraso=_ATRASO_DA_RECEITA.replace(
+                "o arquivo foi modificado na Receita",
+                "a página do arquivo diz 'Atualizado em'",
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/receita_transacoes_individual/receita_transacoes_individual.parquet` "
+                "(servidor de casa, `scripts/montar_tabelas_lote_3b.py`)"
+            ),
+            linhagem=_LINHAGEM_DO_LOTE_3,
+            colunas={
+                **_CNPJ_DO_LOTE_3,
+                "processo": ("Número do processo administrativo do acordo", TEXTO),
+                "data_acordo": (
+                    "Mês do acordo (a fonte só traz mês e ano; vale o dia 1)",
+                    DATA,
+                ),
+                "divida_transacionada": (
+                    "Dívida transacionada, em reais",
+                    REAIS_EXATOS,
+                ),
+                "reducao": ("Redução concedida sobre a dívida, em reais", REAIS_EXATOS),
+                "divida_com_reducao": (
+                    "Dívida depois da redução, em reais",
+                    REAIS_EXATOS,
+                ),
+                "creditos_pf_bcn": (
+                    "Créditos de prejuízo fiscal e base negativa usados, em reais (vazio: nenhum)",
+                    REAIS_EXATOS,
+                ),
+                "saldo_devedor": ("Saldo devedor do acordo, em reais", REAIS_EXATOS),
+                **_PESSOA_DO_LOTE_3,
+                **_ORIGEM_DO_LOTE_3,
+            },
+        ),
+        "receita_transacoes_adesao": Tabela(
+            descricao=(
+                "Adesões às modalidades de transação tributária (por exemplo a de pequeno valor e as dos "
+                "editais), um pedido por linha, com a dívida, a redução, os créditos usados e o número de "
+                "parcelas. **A chave é o `hash_linha`** (conteúdo da linha): a fonte não numera os pedidos, e "
+                "linhas idênticas ficam todas, numeradas no hash. "
+                + _SEM_PESSOA_DO_LOTE_3
+            ),
+            fonte=(
+                "Receita Federal do Brasil, dados abertos de transação tributária (`transacoes-adesao.csv`), "
+                "lida por `base/receita_transacoes.py`"
+            ),
+            familia_da_fonte="rfb-transacoes",
+            frequencia="Variável (a Receita regrava o arquivo inteiro)",
+            atraso=_ATRASO_DA_RECEITA.replace(
+                "o arquivo foi modificado na Receita",
+                "a página do arquivo diz 'Atualizado em'",
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/receita_transacoes_adesao/receita_transacoes_adesao.parquet` "
+                "(servidor de casa, `scripts/montar_tabelas_lote_3b.py`)"
+            ),
+            linhagem=_LINHAGEM_DO_LOTE_3,
+            colunas={
+                **_CNPJ_DO_LOTE_3,
+                "modalidade": (
+                    "Modalidade de transação a que o pedido aderiu, como a Receita descreve",
+                    TEXTO,
+                ),
+                "data_requerimento": ("Dia do requerimento da adesão", DATA),
+                "divida_sem_reducao": (
+                    "Dívida antes da redução, em reais",
+                    REAIS_EXATOS,
+                ),
+                **valores,
+                "parcelas": ("Número de parcelas", NUMERO),
+                "hash_linha": (
+                    "SHA-256 do conteúdo da linha (a chave: a fonte não numera os pedidos)",
+                    TEXTO,
+                ),
+                **_PESSOA_DO_LOTE_3,
+                **_ORIGEM_DO_LOTE_3,
+            },
+        ),
+    }
+
+
 def _tabelas_das_sancoes() -> dict[str, Tabela]:
     """As sanções por CNPJ (`base/sancoes.py`): uma tabela por família de licença, para a marca da CGU
     (só uso interno) não se misturar com a da ANS (vende com atribuição)."""
@@ -8003,6 +8165,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabela_da_anvisa_por_empresa(),
     **_tabelas_de_renuncia_da_receita(),
     **_tabela_do_sigsif_habilitados(),
+    **_tabelas_do_lote_3b(),
     "pgfn_divida": Tabela(
         descricao=(
             "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
@@ -10439,6 +10602,9 @@ _CONTRATO = {
     "receita_dirbi": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "ano", "mes", "codigo_in", "tributo"), datas={"aconteceu_em": "periodo", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-08", granularidade_do_publico_em="dia"),  # linha 904: só PJ; o arquivo do ano sai inteiro e vale desde o dia em que a Receita o regravou
     "receita_ecf_renuncia": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "cod_scp", "dt_ini", "dt_fin"), datas={"aconteceu_em": "dt_fin", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-09-19", granularidade_do_publico_em="dia"),  # linha 904: só PJ
     "sigsif_habilitados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("pais", "area", "sif", "produto"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-02", granularidade_do_publico_em="dia"),  # linha 904: só PJ, CNPJ pelo número do SIF
+    "sigsif_estabelecimentos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "nr_sif", "area_categoria", "categoria_classe", "municipio"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-02", granularidade_do_publico_em="dia"),  # linha 904: só PJ, sem razão social
+    "receita_transacoes_individual": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "processo"), datas={"aconteceu_em": "data_acordo", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-07-28", granularidade_do_publico_em="dia"),  # linha 904: só PJ, sem contribuinte
+    "receita_transacoes_adesao": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("hash_linha",), datas={"aconteceu_em": "data_requerimento", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-11", granularidade_do_publico_em="dia"),  # linha 904: só PJ
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
@@ -10762,6 +10928,18 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "sigsif_habilitados": {
         "pasta": "sigsif_habilitados",
         "nao_nulas": ("cnpj", "cnpj_basico", "pais", "area", "sif", "produto", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+    },
+    "sigsif_estabelecimentos": {
+        "pasta": "sigsif_estabelecimentos",
+        "nao_nulas": ("cnpj", "cnpj_basico", "nr_sif", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+    },
+    "receita_transacoes_individual": {
+        "pasta": "receita_transacoes_individual",
+        "nao_nulas": ("cnpj", "cnpj_basico", "processo", "data_acordo", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
+    },
+    "receita_transacoes_adesao": {
+        "pasta": "receita_transacoes_adesao",
+        "nao_nulas": ("cnpj", "cnpj_basico", "hash_linha", "data_requerimento", "trata_como_pessoa", "disponivel_em", "montado_em", "versao_do_codigo"),
     },
     "antt_rntrc": {
         "pasta": "antt_rntrc",

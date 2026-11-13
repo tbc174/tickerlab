@@ -24,6 +24,7 @@
       "Tipo_Fundo",
       "cnae_principal",
       "data_entrada",
+      "data_inicio_atividade",
       "participacao",
       "razao_social",
       "referencia",

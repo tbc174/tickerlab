@@ -159,6 +159,9 @@ SO_PELA_API_EXTERNA = frozenset(
         "receita_dirbi",
         "receita_ecf_renuncia",
         "sigsif_habilitados",
+        "sigsif_estabelecimentos",
+        "receita_transacoes_individual",
+        "receita_transacoes_adesao",
     }
 )
 COLUNAS_DE_PESSOA = frozenset(

@@ -12,6 +12,23 @@
     "url": "inicio"
   },
   {
+    "area": "inicio",
+    "chave": "perguntar",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "EstadoDoChatV1",
+      "rota": "/v1/chat/estado"
+    },
+    "descricao": "Pergunte em português sobre empresas brasileiras: a IA responde com a base do TickerLab, mostrando a fonte, a data e as consultas que fez.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Perguntar",
+    "url": "perguntar"
+  },
+  {
     "area": "conta",
     "chave": "o_que_mudou",
     "contrato": {
