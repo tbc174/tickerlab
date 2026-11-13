@@ -130,6 +130,17 @@ describe("topo compacto e campos que não dão zoom", () => {
     expect(PAGINA_DO_APP).toContain('content="width=device-width, initial-scale=1, viewport-fit=cover"');
   });
 
+  it("no celular cada tema tem 44 px de toque; até 350 px ficam 36 px, o que cabe numa linha em 320 px", () => {
+    expect(NO_CELULAR).toMatch(/\.topo \.tema-escolha button \{[^}]*min-width: 44px; min-height: 44px; \}/);
+    expect(NO_CELULAR).toMatch(/\.topo \.tema-escolha \{ gap: 0; padding: 0; \}/);
+    // os vãos apertam depois da regra geral do vão do topo, senão ela ganha
+    const depoisDoVao = NO_CELULAR.split(".topo .faixa { gap: var(--e2); }")[1];
+    expect(depoisDoVao).toMatch(/@media \(max-width: 374px\) \{ \.topo \.faixa, \.topo \.conta-no-topo \{ gap: var\(--e1\); \} \}/);
+    expect(depoisDoVao).toMatch(
+      /@media \(max-width: 350px\) \{ \.topo \.tema-escolha button \{ min-width: 36px; min-height: 36px; \} \}/,
+    );
+  });
+
   it("no celular o topo fica compacto: da busca só o ícone, e o tema encosta nela", () => {
     expect(NO_CELULAR).toMatch(/\.busca-do-topo :is\(\.rotulo-da-busca, kbd\) \{[^}]*clip-path: inset\(50%\);/);
     expect(NO_CELULAR).toMatch(/\.topo \.tema-escolha \{ margin-left: 0; \}/);
