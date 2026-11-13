@@ -3542,12 +3542,12 @@ def _tabelas_dos_cadastros_da_antt() -> dict[str, Tabela]:
         ),
         "antt_seguros_de_transportadores": Tabela(
             descricao=(
-                "As apólices de seguro de responsabilidade civil que os transportadores registram na ANTT, por "
+                "As apólices de responsabilidade civil que os transportadores registram na ANTT, por "
                 "CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos, "
                 "quantos assentos e quantos endossos. Uma linha por apólice; a placa de cada veículo e o nome do "
                 "segurado nunca entram. Só CNPJ de dígito certo (o CPF sai)"
             ),
-            fonte="ANTT: dados abertos, seguro de responsabilidade civil (`base/antt_cadastros.py`)",
+            fonte="ANTT: dados abertos, responsabilidade civil dos transportadores (`base/antt_cadastros.py`)",
             atraso=atraso,
             onde=_ONDE_DOS_CADASTROS_DA_ANTT.format(
                 pasta="antt_seguros_de_transportadores", arquivo="seguros"

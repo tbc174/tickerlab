@@ -5399,9 +5399,9 @@ Os operadores de transporte multimodal habilitados na ANTT, por CNPJ e certifica
 
 ## `antt_seguros_de_transportadores`
 
-As apólices de seguro de responsabilidade civil que os transportadores registram na ANTT, por CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos, quantos assentos e quantos endossos. Uma linha por apólice; a placa de cada veículo e o nome do segurado nunca entram. Só CNPJ de dígito certo (o CPF sai)
+As apólices de responsabilidade civil que os transportadores registram na ANTT, por CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos, quantos assentos e quantos endossos. Uma linha por apólice; a placa de cada veículo e o nome do segurado nunca entram. Só CNPJ de dígito certo (o CPF sai)
 
-- **Fonte:** ANTT: dados abertos, seguro de responsabilidade civil (`base/antt_cadastros.py`)
+- **Fonte:** ANTT: dados abertos, responsabilidade civil dos transportadores (`base/antt_cadastros.py`)
 - **Licença:** CC BY (dados abertos da ANTT; citar a ANTT)
 - **Revenda:** vendável com atribuição à fonte
 - **Frequência:** Um arquivo, republicado inteiro (o arquivista olha todo mês)

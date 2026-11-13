@@ -8700,7 +8700,7 @@
     {
       "atraso": "A ANTT não escreve a data de publicação",
       "consultavel": false,
-      "frase": "As apólices de seguro de responsabilidade civil que os transportadores registram na ANTT, por CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos.",
+      "frase": "As apólices de responsabilidade civil que os transportadores registram na ANTT, por CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-11-16",
       "modulo": "mercado_e_empresas",
