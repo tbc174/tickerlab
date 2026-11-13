@@ -275,13 +275,18 @@ def test_texto_17_diz_que_a_idade_do_titular_de_mei_e_de_individual_nao_e_conhec
         "do microempreendedor individual e do empresário individual a Receita não publica a idade",
         "é quase sempre um emancipado, de 16 ou 17 anos (art. 5º, parágrafo único)",
         "a empresa que era dos pais ou que herdou (art. 974)",
-        "O TickerLab não tem como reconhecer nenhum dos dois.",
+        "A exceção é o menor, ou o adulto interditado, que continua, com representante ou assistido e com autorização do juiz",
+        "O TickerLab não tem como reconhecer nenhum deles.",
         "escreva para privacidade@tickerlab.com.br: o nome sai da tela em até 15 dias",
-        "menor de idade no quadro de sócios, quem tem representante legal",
+        "menor de idade e quem tem representante legal no quadro de sócios, sócio do exterior",
         "sem CPF e sem sócio menor de idade",
     ):
         assert trecho in privacidade, trecho
-    for promessa_antiga in ("sem CPF e sem menor de idade", "é sempre um emancipado"):
+    for promessa_antiga in (
+        "sem CPF e sem menor de idade",
+        "é sempre um emancipado",
+        "no quadro de sócios, quem tem representante legal",
+    ):
         assert promessa_antiga not in privacidade, promessa_antiga
     assert conformidade.VERSAO_DOS_TERMOS == "2026-11-11.14"
 
