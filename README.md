@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/imagens/banner.png" alt="TickerLab: a CLI de M&A e análise de investimento no Brasil" width="100%">
+  <img src="docs/imagens/banner.png" alt="TickerLab: a CLI e o conector de M&A e análise de investimento no Brasil" width="100%">
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 # TickerLab
 
-**A CLI de M&A e análise de investimento no Brasil.** O TickerLab é uma plataforma de
+**A CLI e o conector de M&A e análise de investimento no Brasil.** O TickerLab é uma plataforma de
 inteligência financeira, em fase de testes: junta as fontes públicas brasileiras (Receita, CVM, Banco
 Central, Tesouro, B3, agências reguladoras e outros órgãos) numa base própria, ligada pelo **CNPJ**,
 e entrega cada número com a **fonte**, a **data em que ficou público** e o caminho até o arquivo
