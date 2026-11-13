@@ -92,3 +92,14 @@ def test_arquivo_estragado_e_acervo_indisponivel(tmp_path):
 def test_os_limites_dizem_que_e_o_nome_da_razao_social_sem_cpf():
     texto = " ".join(pessoa.LIMITES_DO_TITULAR).lower()
     assert "cpf" in texto and "razão social" in texto
+
+
+def test_os_limites_dizem_que_o_titular_menor_de_idade_nao_e_reconhecido():
+    """Linha 890: o arquivo da Receita não traz a idade do titular, e a tela diz isso com todas as letras."""
+    texto = " ".join(pessoa.LIMITES_DO_TITULAR)
+    assert "não traz a idade do titular de MEI e de empresário individual" in texto
+    assert "um titular com menos de 18 anos" in texto and "não é reconhecido" in texto
+    assert (
+        "Quem pedir sai da tela." in texto
+        and "Sem CPF e sem endereço da pessoa." in texto
+    )
