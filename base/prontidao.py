@@ -231,11 +231,13 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 # com coluna de CNPJ, raiz ou CPF precisa da marca.
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
+# ans_beneficiarios, ifdata_valores e susep_seguros (linha 904, lote 4): o CNPJ só vem da ponte da fonte, e a linha da ponte marcada como pessoa ou fora da fonte deixa o CNPJ vazio (tests/test_cnpj_pela_ponte.py)
 # sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "aneel_samp",
         "anp_concessionarios",
+        "ans_beneficiarios",
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
@@ -244,7 +246,9 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "eventos",
         "fca_geral",
         "fips_registrados",
+        "ifdata_valores",
         "rotulos_atraso",
+        "susep_seguros",
     }
 )
 COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)

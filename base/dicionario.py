@@ -6556,6 +6556,14 @@ TABELAS: dict[str, Tabela] = {
                 "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
                 DATA,
             ),
+            "cnpj": (
+                "CNPJ da operadora, pelo registro, no cadastro `ans_operadoras` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o registro, quando a operadora é pessoa (MEI, empresário individual) ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915)",
+                TEXTO,
+            ),
+            "cnpj_basico": (
+                "Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio",
+                TEXTO,
+            ),
         },
     ),
     "fre_conselho": Tabela(
@@ -7516,8 +7524,10 @@ TABELAS: dict[str, Tabela] = {
     "susep_seguros": Tabela(
         descricao=(
             "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, "
-            "ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a "
-            "B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha "
+            "ramo e mês desde 1995 (SES), no formato da fonte. O CNPJ vem do cadastro da SUSEP "
+            "(`susep_cadastro`), pelo código da seguradora, quando ele está montado na base (linha 915); a "
+            "igualdade entre o `coenti` do SES e o código FIP do cadastro ainda não foi conferida em dado real. "
+            "Os códigos que a B13 não liga continuam nos buracos. Uma linha "
             "por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale "
             "desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)"
         ),
@@ -7610,6 +7620,14 @@ TABELAS: dict[str, Tabela] = {
             "visto_em": (
                 "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
                 DATA,
+            ),
+            "cnpj": (
+                "CNPJ da seguradora, pelo código da SUSEP (`coenti` igual ao código do cadastro, sem contar zeros à esquerda), no cadastro `susep_cadastro` (linha 904, lote 4): a linha da ponte que já era pública quando o número saiu. Vazio quando a ponte não tem o código (entidade estrangeira não tem CNPJ), quando é pessoa ou saiu do cadastro, e enquanto o cadastro não estiver montado na base (linha 915)",
+                TEXTO,
+            ),
+            "cnpj_basico": (
+                "Raiz (8 dígitos) do `cnpj`; vazia onde ele é vazio",
+                TEXTO,
             ),
         },
     ),
@@ -7791,6 +7809,10 @@ TABELAS: dict[str, Tabela] = {
                     "vazio se não havia o dia (acervo desligado)"
                 ),
                 DATA,
+            ),
+            "cnpj_basico": (
+                "Raiz (8 dígitos) do CNPJ da instituição ou do líder do conglomerado, pelo cadastro do IF.data (`ifdata_cadastro`, linha 904, lote 4): a do cadastro que já era público quando o número saiu. É só a raiz, porque o conglomerado não tem um CNPJ inteiro; vazia onde o cadastro não a traz e enquanto o cadastro não estiver gravado",
+                TEXTO,
             ),
         },
     ),
@@ -10729,7 +10751,7 @@ _CONTRATO = {
     "comex_via": _contrato(modulo=_ME, chaves=("via", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
-    "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO, versao_do_contrato="1.1.0"),
     "fre_conselho": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_comites": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'tipo_de_comite'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_remuneracao": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
@@ -10742,11 +10764,11 @@ _CONTRATO = {
     "fre_partes_relacionadas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'linha'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
-    "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO, versao_do_contrato="1.1.0"),
     "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     # 2.0.0 (21/10/2026): a revisão do BC é linha nova da mesma chave (`visto_em`), que vale só desde o dia em que foi vista
-    "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
+    "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.1.0"),
     # 2.0.0 (25/10/2026): a revisão do BC é linha nova da mesma chave (`visto_em`), que vale só desde o dia em que foi vista
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst", "visto_em"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
     "ligacao_dos_bancos": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),

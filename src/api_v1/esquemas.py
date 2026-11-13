@@ -2009,3 +2009,53 @@ def de_compradores_do_analista(
         fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
         limites=list(corpo.get("limites", limites)),
     )
+
+
+class EmpresasPorUfV1(BaseModel):
+    uf: str
+    empresas_ativas: int
+
+
+class AberturasPorAnoV1(BaseModel):
+    ano: int
+    aberturas: int
+
+
+class PerfilDoSetorV1(BaseModel):
+    """Os números de um setor por CNAE (linha 903, tela de Setor): só contagens, só pessoa jurídica. O bloco que
+    o portão não libera vem `None` (nunca zero) e o nome dele em `blocos_nao_disponiveis`."""
+
+    estado: str  # "pronta" ou "nao_liberada", como a ficha
+    cnae_principal: str | None
+    como_era_em: date | None
+    data_do_retrato: str | None  # AAAA-MM
+    publico_em: date | None
+    empresas_ativas: int | None
+    por_uf: list[EmpresasPorUfV1] | None
+    aberturas_por_ano: list[AberturasPorAnoV1] | None
+    blocos_nao_disponiveis: list[str]
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def de_perfil_do_setor_do_analista(
+    resposta: leitura_do_analista.Resposta,
+) -> PerfilDoSetorV1:
+    corpo = resposta.corpo or {}
+    por_uf = corpo.get("por_uf")
+    aberturas = corpo.get("aberturas_por_ano")
+    return PerfilDoSetorV1(
+        estado=resposta.estado,
+        cnae_principal=corpo.get("cnae_principal"),
+        como_era_em=corpo.get("como_era_em"),
+        data_do_retrato=corpo.get("data_do_retrato"),
+        publico_em=corpo.get("publico_em"),
+        empresas_ativas=corpo.get("empresas_ativas"),
+        por_uf=None if por_uf is None else [EmpresasPorUfV1(**u) for u in por_uf],
+        aberturas_por_ano=None
+        if aberturas is None
+        else [AberturasPorAnoV1(**a) for a in aberturas],
+        blocos_nao_disponiveis=list(corpo.get("blocos_nao_disponiveis", [])),
+        fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
+        limites=list(corpo.get("limites", [])),
+    )

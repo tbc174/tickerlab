@@ -1286,3 +1286,28 @@ export interface CompradoresDoSetorV1 {
   fontes: FonteDaFichaV1[];
   limites: string[];
 }
+
+export interface EmpresasPorUfV1 {
+  uf: string;
+  empresas_ativas: number;
+}
+
+export interface AberturasPorAnoV1 {
+  ano: number;
+  aberturas: number;
+}
+
+/** `POST /v1/analista/setor/perfil`: só contagens. Bloco `null` = não consultado (nunca zero). */
+export interface PerfilDoSetorV1 {
+  estado: "pronta" | "nao_liberada";
+  cnae_principal: string | null;
+  como_era_em: string | null;
+  data_do_retrato: string | null; // AAAA-MM
+  publico_em: string | null;
+  empresas_ativas: number | null;
+  por_uf: EmpresasPorUfV1[] | null;
+  aberturas_por_ano: AberturasPorAnoV1[] | null;
+  blocos_nao_disponiveis: string[];
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+}

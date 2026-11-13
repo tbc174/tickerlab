@@ -156,6 +156,10 @@ DEGRAU_2_ACRESCENTA = (
     # sem pessoa por desenho (linha 841): só das raízes de `cnpj_estabelecimentos_pj`, só para a API externa
     # (ficha por CNPJ e crédito). A mesma guarda (`conferir_raizes_so_pj`) confere cada raiz na saída.
     "cnpj_situacao_cadastral",
+    # sem pessoa por desenho (linha 860): a contagem de registros da Anvisa só das raízes sem pessoa
+    # (`base/anvisa_porte.py`), só para a API externa (a busca de empresas). A guarda `conferir_raizes_so_pj`
+    # confere cada raiz na saída. Pode da Diretoria, 13/11/2026 01h55 (Emenda 4), linha 860.
+    "anvisa_por_empresa",
 )  # fmt: skip
 # A rede só PJ (linha 843; desenho aceito pela Diretoria em 11/11/2026): só no degrau 3, inteira, pelo filtro e pela
 # trava de `base/rede/recorte_so_pj.py`, nunca pela cópia por arquivo.
@@ -438,6 +442,9 @@ RAIZES_SO_PJ: dict[str, tuple[str, ...]] = {
         "raiz_socio_pj",
     ),  # a empresa e a sócia (linha 810)
     "cnpj_situacao_cadastral": ("cnpj_basico",),  # o estabelecimento (linha 841)
+    "anvisa_por_empresa": (
+        "cnpj_basico",
+    ),  # a contagem de registros por empresa (linha 860)
 }
 # A tabela que também traz o CNPJ inteiro: a raiz conferida tem de ser a do CNPJ (senão a guarda olharia outra).
 CNPJ_DA_RAIZ: dict[str, str] = {"cnpj_situacao_cadastral": "cnpj"}
