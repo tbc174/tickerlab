@@ -414,3 +414,9 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .tabela-rolavel:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
 .fonte-do-dado { margin: var(--e1) 0 0; font-size: var(--t-1); color: var(--apagado); }
 .numero-detalhe { font-size: .86rem; color: var(--apagado); }
+/* Explorar: os filtros em uso como etiquetas que se tiram com um clique, e a bandeja que acompanha a escolha */
+.etiquetas-de-filtro { display: flex; flex-wrap: wrap; gap: var(--e2); margin: var(--e3) 0; padding: 0; list-style: none; }
+.etiquetas-de-filtro .botao { padding: var(--e1) var(--e3); font-size: var(--t-1); border-radius: 999px; }
+.bandeja-de-comparacao { position: sticky; bottom: var(--e3); z-index: 2; margin: var(--e3) 0; padding: var(--e3) var(--e4);
+  border: 1px solid var(--linha-forte); border-radius: var(--e2); background: var(--superficie); }
+.bandeja-de-comparacao p { margin: 0 0 var(--e2); }
