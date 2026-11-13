@@ -26,6 +26,11 @@ ARQUIVOS = {
 }
 
 
+RAIZES_DO_EXEMPLO = frozenset(
+    anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)["cnpj"].str[:8]
+) | frozenset(anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)["cnpj"].str[:8])
+
+
 def _download(arquivos: dict[str, bytes]):
     def baixar(url: str) -> bytes:
         for sufixo, conteudo in (
@@ -43,14 +48,20 @@ def _download(arquivos: dict[str, bytes]):
 
 
 def _carregar(
-    grupo: str, saida: Path, quando: date, arquivos: dict[str, bytes] | None = None
+    grupo: str,
+    saida: Path,
+    quando: date,
+    arquivos: dict[str, bytes] | None = None,
+    raizes: frozenset[str] | None = None,
 ):
     baixar = _download(arquivos or ARQUIVOS)
     resultados = {}
     for tabela in carga_anm.tabelas_pedidas(["2022_2026"], [grupo], quando):
         if tabela.grupo == "cfem" and not tabela.url.endswith("2022_2026.csv"):
             continue
-        resultados[tabela.nome] = carga_anm.carregar(tabela, saida, quando, baixar)
+        resultados[tabela.nome] = carga_anm.carregar(
+            tabela, saida, quando, baixar, raizes=raizes or RAIZES_DO_EXEMPLO
+        )
     return resultados
 
 
@@ -163,3 +174,38 @@ def test_o_cadastro_mineiro_continua_com_a_licenca_propria():
         coletas.revenda_da_fonte("anm-cadastro-mineiro")
         == coletas.VENDAVEL_COM_ATRIBUICAO
     )
+
+
+def test_cfem_e_sigbm_so_gravam_raiz_que_esta_na_lista_de_empresas(tmp_path: Path):
+    """Empresário individual e MEI (fora da `cnpj_empresas_pj`) são pessoa: a linha não entra."""
+    todas = sorted(RAIZES_DO_EXEMPLO)
+    assert len(todas) >= 2
+    fica = frozenset(todas[:1])
+    _carregar("cfem", tmp_path, PRIMEIRA, raizes=fica)
+    _carregar("sigbm", tmp_path, PRIMEIRA, raizes=fica)
+    for arquivo in (
+        tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet",
+        tmp_path / "anm_sigbm_barragens" / "barragens.parquet",
+    ):
+        tabela = ler_tabela(arquivo)
+        assert set(tabela["cnpj"].str[:8]) <= fica
+
+
+def test_cfem_e_sigbm_recusam_gravar_sem_a_lista_de_empresas(tmp_path: Path):
+    baixar = _download(ARQUIVOS)
+    for tabela in carga_anm.tabelas_pedidas(["2022_2026"], ["sigbm"], PRIMEIRA):
+        with pytest.raises(ValueError, match="sem a lista de empresas"):
+            carga_anm.carregar(tabela, tmp_path, PRIMEIRA, baixar)
+    assert not (tmp_path / "anm_sigbm_barragens").exists()
+
+
+def test_raizes_de_empresa_le_a_tabela_e_ignora_as_versoes_antigas(tmp_path: Path):
+    pasta = tmp_path / "cnpj_empresas_pj"
+    pasta.mkdir()
+    pd.DataFrame({"cnpj_basico": ["11111111", "22222222"]}).to_parquet(
+        pasta / "00.parquet"
+    )
+    pd.DataFrame({"cnpj_basico": ["99999999"]}).to_parquet(pasta / "00.v1.parquet")
+    assert carga_anm.raizes_de_empresa(tmp_path) == {"11111111", "22222222"}
+    with pytest.raises(FileNotFoundError):
+        carga_anm.raizes_de_empresa(tmp_path / "outra")

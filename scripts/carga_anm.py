@@ -7,9 +7,10 @@
 Lê os CSV de https://dadosabertos.anm.gov.br (`base/anm.py`) e grava, com manifesto e versões
 (`base/parquet.py::gravar_com_versoes`):
 - `anm_cfem_arrecadacao/<faixa>.parquet`: um arquivo por faixa de anos da ANM (`2022_2026`...), só pessoa
-  jurídica com CNPJ completo (pessoa física e documento mascarado são descartados e contados no log);
+  jurídica com CNPJ completo (pessoa física e documento mascarado são descartados e contados no log) e só
+  de raiz que está na `cnpj_empresas_pj` (empresário individual e MEI são pessoa: saem e são contados);
 - `anm_sigbm_barragens/barragens.parquet`: uma linha por barragem, com a categoria de risco e o dano potencial
-  como a ANM declarou;
+  como a ANM declarou, só de empreendedor com raiz na `cnpj_empresas_pj`;
 - `anm_amb_producao_bruta`, `anm_amb_producao_beneficiada` e `anm_amb_agua_mineral` (`atual.parquet`): o
   Anuário, série setorial sem CNPJ.
 
@@ -28,6 +29,7 @@ dicionario-da-base.md; citado em dicionario.py.
 import argparse
 import hashlib
 import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -55,6 +57,9 @@ FAIXAS_PADRAO = (
 SEPARADOR = "\x1f"
 
 Leitor = Callable[[bytes, date], pd.DataFrame]
+GRUPOS_COM_CNPJ = frozenset({"cfem", "sigbm"})
+TABELA_PJ = "cnpj_empresas_pj"
+ARQUIVO_VERSIONADO = re.compile(r"\.v\d+\.parquet$")
 
 
 @dataclass(frozen=True)
@@ -145,14 +150,49 @@ def manter_a_data_da_primeira_coleta(
     return resultado
 
 
+def raizes_de_empresa(base: Path) -> frozenset[str]:
+    """As raízes de CNPJ da `cnpj_empresas_pj` desta base (a lista limpa de empresário individual)."""
+    pasta = base / TABELA_PJ
+    arquivos = [
+        a for a in pasta.glob("*.parquet") if not ARQUIVO_VERSIONADO.search(a.name)
+    ]
+    if not arquivos:
+        raise FileNotFoundError(
+            f"sem a {TABELA_PJ} em {pasta}: não dá para conferir quem é pessoa"
+        )
+    raizes: set[str] = set()
+    for arquivo in arquivos:
+        raizes.update(
+            pd.read_parquet(arquivo, columns=["cnpj_basico"])["cnpj_basico"].astype(str)
+        )
+    return frozenset(raizes)
+
+
+def so_empresa(tabela: pd.DataFrame, raizes: frozenset[str]) -> pd.DataFrame:
+    """Só as linhas cujo CNPJ tem 14 dígitos e raiz na lista de empresas; conta as que saíram."""
+    cnpj = tabela["cnpj"].astype(str)
+    fica = (cnpj.str.len() == 14) & cnpj.str[:8].isin(raizes)
+    saida = tabela[fica].reset_index(drop=True)
+    saida.attrs = {**tabela.attrs, "fora_da_pj": int((~fica).sum())}
+    return saida
+
+
 def carregar(
     tabela: Tabela,
     saida: Path,
     coletado_em: date,
     baixar_arquivo: Callable[[str], bytes] = baixar,
     forcar: bool = False,
+    raizes: frozenset[str] | None = None,
 ) -> str:
-    """Baixa, lê e grava uma tabela; devolve `GRAVADO` ou `IGUAL`."""
+    """Baixa, lê e grava uma tabela; devolve `GRAVADO` ou `IGUAL`.
+
+    CFEM e SIGBM trazem CNPJ de empreendedor e só se gravam com a lista de raízes de empresa: sem ela,
+    a carga recusa (empresário individual e MEI são pessoa)."""
+    if tabela.grupo in GRUPOS_COM_CNPJ and raizes is None:
+        raise ValueError(
+            f"{tabela.nome}: sem a lista de empresas (raizes) não se grava CNPJ"
+        )
     conteudo = baixar_arquivo(tabela.url)
     origem = {"url": tabela.url, "sha256": hashlib.sha256(conteudo).hexdigest()}
     destino = saida / tabela.nome
@@ -160,6 +200,13 @@ def carregar(
 
     def montar() -> pd.DataFrame:
         lida = tabela.leitor(conteudo, coletado_em)
+        if raizes is not None and tabela.grupo in GRUPOS_COM_CNPJ:
+            lida = so_empresa(lida, raizes)
+            log.info(
+                "%s: %d linhas de fora da lista de empresas (pessoa ou sem CNPJ) descartadas",
+                tabela.fonte,
+                lida.attrs["fora_da_pj"],
+            )
         if lida.attrs.get("descartadas"):
             log.info(
                 "%s: %d linhas sem CNPJ completo descartadas",
@@ -194,6 +241,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     argumentos.add_argument("--pasta", type=Path, default=None)
     argumentos.add_argument("--forcar", action="store_true")
+    argumentos.add_argument(
+        "--base-pj",
+        type=Path,
+        default=None,
+        help="pasta base/ que tem a cnpj_empresas_pj (padrão: a base do acervo)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -204,10 +257,22 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
+    base_da_pj = (
+        opcoes.base_pj
+        or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
+    )
+    pedidas = tabelas_pedidas(opcoes.faixa, opcoes.so, hoje)
+    raizes = (
+        raizes_de_empresa(base_da_pj)
+        if any(t.grupo in GRUPOS_COM_CNPJ for t in pedidas)
+        else None
+    )
     falhas = 0
-    for tabela in tabelas_pedidas(opcoes.faixa, opcoes.so, hoje):
+    for tabela in pedidas:
         try:
-            resultado = carregar(tabela, saida, hoje, forcar=opcoes.forcar)
+            resultado = carregar(
+                tabela, saida, hoje, forcar=opcoes.forcar, raizes=raizes
+            )
         except (TypeError, ValueError, OSError) as erro:
             log.error("%s falhou: %s", tabela.nome, erro)
             falhas += 1
