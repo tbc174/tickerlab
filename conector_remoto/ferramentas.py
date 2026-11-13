@@ -55,7 +55,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "eventos": "Eventos de uma empresa",
     "fundo": "Fundo de investimento",
     "vinculos": "Participações e auditor de uma empresa",
-    "compradores_do_setor": "Quem já entrou no setor como sócio",
+    "compradores_do_setor": "Quem já se mexeu no setor",
     "novidades": "Fontes novas provadas pela pesquisa",
     "setores": "Setores acompanhados",
     "setor": "Séries e concentração de um setor",
@@ -340,8 +340,8 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         """A ficha de uma empresa: o cadastro na Receita (razão social, situação, abertura, CNAE,
         porte, natureza jurídica, Simples) e, se for companhia aberta, as entregas de DFP e ITR à
         CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do
-        cadastro que a base não consultou vem em `unavailable_registration_fields`, com o aviso em
-        `limits`: diga que falta, sem supor o valor."""
+        cadastro que a base não consultou vem em `unavailable_registration_fields`, e o DFP ou ITR não
+        consultado em `unavailable_filings`, com o aviso em `limits`: diga que falta, sem supor o valor."""
         numeros = cnpj_do_pedido(cnpj)
         dia: dict[str, ParametroDaApi] = {"known_at": _dia(como_era_em)}
         acesso = acesso_do_pedido()
