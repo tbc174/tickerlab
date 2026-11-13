@@ -146,6 +146,24 @@ que já existe sem `--trocar`.
 
 O guia para quem usa o conector está em `docs/guia-do-analista-conector.md`.
 
+## Medida de uso
+
+Cada chamada de ferramenta grava uma linha de JSON (`conector_remoto/uso.py`) com estes campos:
+
+- `evento: ferramenta_chamada`, a hora e a duração;
+- o resultado: `ok`, `erro` ou `recusada`;
+- a ferramenta: só um nome registrado; nome inventado sai como `desconhecida`;
+- a chave: só o id público, `tld_...`.
+
+A linha nunca leva os argumentos, a resposta nem a mensagem de erro, porque a mensagem de validação repete o
+que foi digitado. Há teste para isso. A lista de ferramentas não conta.
+
+Para contar por ferramenta no VPS:
+
+```bash
+docker logs tickerlab-mcp 2>&1 | grep ferramenta_chamada
+```
+
 ## Incidente: a chave do servidor vazou
 
 Quem tem a chave do servidor e um token capturado lê a chave do analista dentro dele. Então:
