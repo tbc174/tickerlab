@@ -1240,6 +1240,17 @@
       "BuscaDeEmpresasV1": {
         "description": "A resposta da busca: o estado, as empresas (só quando pronta), o cursor da página seguinte, as fontes,\nos limites e as opções do formulário, sempre.",
         "properties": {
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
           "como_era_em": {
             "anyOf": [
               {
@@ -7617,7 +7628,7 @@
     },
     "/v1/analista/empresas": {
       "post": {
-        "description": "Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`.",
+        "description": "Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`. O que sai pela prontidão de piloto, só para a conta de\norganização com a marca, vem com `aviso_de_piloto`.",
         "operationId": "encontrar_empresas_v1_analista_empresas_post",
         "requestBody": {
           "content": {
@@ -7656,7 +7667,7 @@
     },
     "/v1/analista/empresas/planilha": {
       "post": {
-        "description": "A mesma busca em Excel (mesmo acesso, mesmo plano): até dez páginas, com os nomes ao lado dos códigos,\na aba das fontes e o aviso.",
+        "description": "A mesma busca em Excel (mesmo acesso, mesmo plano): até dez páginas, com os nomes ao lado dos códigos,\na aba das fontes e o aviso; dado de piloto leva o aviso de piloto em cada linha e nas fontes.",
         "operationId": "encontrar_empresas_em_planilha_v1_analista_empresas_planilha_post",
         "requestBody": {
           "content": {
