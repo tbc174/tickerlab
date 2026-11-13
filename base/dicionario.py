@@ -2390,6 +2390,13 @@ def _tabelas_da_cmed() -> dict[str, Tabela]:
     }
 
 
+_ATRASO_DO_INPI = (
+    "O arquivo de titulares do INPI não traz data de publicação: a linha vale desde o dia em que o "
+    "arquivista a viu pela primeira vez (o conservador; a história guardada começa no dia em que "
+    "o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+)
+
+
 def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
     """Os cadastros que a fonte publica inteiros a cada vez (`base/cadastros_em_retrato.py`, linha 679):
     operadoras da ANS, entidades da SUSEP, Cadastro de Empregadores do MTE e embargos do IBAMA."""
@@ -2448,13 +2455,14 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
         frequencia: str,
         colunas: dict[str, tuple[str, str]],
         modulo: str,
+        atraso_proprio: str | None = None,
     ) -> Tabela:
         return Tabela(
             descricao=descricao + " " + comum,
             fonte=f"{fonte} (`base/{modulo}.py`)",
             familia_da_fonte=familia,
             frequencia=frequencia,
-            atraso=atraso,
+            atraso=atraso_proprio or atraso,
             onde=(
                 f"Parquet em `<acervo>/base/{nome}/{arquivo}.parquet` (servidor de casa, "
                 "`base/cadastros_em_retrato.py`)"
@@ -2585,6 +2593,100 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
                 "desembargada_em": ("Data do desembargo", DATA),
             },
             "ibama_embargos",
+        ),
+        "inpi_marcas_titulares": tabela(
+            "inpi_marcas_titulares",
+            "titulares",
+            (
+                "Titulares de marcas depositadas no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de "
+                "cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): "
+                "o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam "
+                "ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o "
+                "arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
+                "Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada)."
+            ),
+            "INPI: dados abertos, marcas (`MARCAS_DEPOSITANTES.csv`)",
+            "inpi",
+            "Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)",
+            {
+                "numero_inpi": (
+                    "Número do pedido no INPI (a chave para a ficha pública dele no portal)",
+                    TEXTO,
+                ),
+            },
+            "inpi_titulares",
+            atraso_proprio=_ATRASO_DO_INPI,
+        ),
+        "inpi_patentes_depositantes": tabela(
+            "inpi_patentes_depositantes",
+            "titulares",
+            (
+                "Depositantes de patentes no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de "
+                "cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): "
+                "o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam "
+                "ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e "
+                "o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o "
+                "dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
+                "Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada)."
+            ),
+            "INPI: dados abertos, patentes (`PATENTES_DEPOSITANTES.csv`)",
+            "inpi",
+            "Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)",
+            {
+                "numero_inpi": (
+                    "Número do pedido no INPI (a chave para a ficha pública dele no portal)",
+                    TEXTO,
+                ),
+            },
+            "inpi_titulares",
+            atraso_proprio=_ATRASO_DO_INPI,
+        ),
+        "inpi_desenhos_depositantes": tabela(
+            "inpi_desenhos_depositantes",
+            "titulares",
+            (
+                "Depositantes de desenhos industriais no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de "
+                "cada depositante que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): "
+                "o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam "
+                "ao acervo. O arquivo de titulares não traz data: a linha vale desde o dia em que o "
+                "arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
+                "Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada)."
+            ),
+            "INPI: dados abertos, desenhos industriais (`DI_DEPOSITANTES.csv`)",
+            "inpi",
+            "Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)",
+            {
+                "numero_inpi": (
+                    "Número do pedido no INPI (a chave para a ficha pública dele no portal)",
+                    TEXTO,
+                ),
+            },
+            "inpi_titulares",
+            atraso_proprio=_ATRASO_DO_INPI,
+        ),
+        "inpi_programas_titulares": tabela(
+            "inpi_programas_titulares",
+            "titulares",
+            (
+                "Titulares de registros de programas de computador no INPI. Uma linha por pedido e empresa: o número do pedido no INPI e o CNPJ de "
+                "cada titular que é empresa. Só pessoa jurídica (CNPJ de dígito certo e tipo de pessoa que não é física): "
+                "o nome, o CPF, o país, o estado, os inventores, autores e procuradores nunca chegam "
+                "ao acervo. Só o titular vigente: a linha com data de fim da titularidade (pedido transferido) não entra, e "
+                "o titular que a ganha depois passa a `consta` falso. O arquivo não traz data de publicação: a linha vale desde o "
+                "dia em que o arquivista a viu pela primeira vez, não desde o depósito. Dado do INPI sob licença "
+                "Creative Commons Atribuição-SemDerivações 3.0 (a confirmar para tabela derivada)."
+            ),
+            "INPI: dados abertos, programas de computador (`PROG_COMP_TITULAR.csv`)",
+            "inpi",
+            "Mensal (o INPI republica o arquivo inteiro; o arquivista guarda só o que mudou)",
+            {
+                "numero_inpi": (
+                    "Número do pedido no INPI (a chave para a ficha pública dele no portal)",
+                    TEXTO,
+                ),
+            },
+            "inpi_titulares",
+            atraso_proprio=_ATRASO_DO_INPI,
         ),
     }
 
@@ -10563,6 +10665,38 @@ _CONTRATO = {
         historico_desde=_GOVERNO,
         granularidade_do_publico_em="mes",
     ),
+    "inpi_marcas_titulares": _contrato(
+        modulo="governo_e_sancoes",
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a empresa de verdade (raiz de MEI e raiz desconhecida ficam fora)
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_GOVERNO,
+        granularidade_do_publico_em="dia",
+    ),
+    "inpi_patentes_depositantes": _contrato(
+        modulo="governo_e_sancoes",
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a empresa de verdade (raiz de MEI e raiz desconhecida ficam fora)
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_GOVERNO,
+        granularidade_do_publico_em="dia",
+    ),
+    "inpi_desenhos_depositantes": _contrato(
+        modulo="governo_e_sancoes",
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a empresa de verdade (raiz de MEI e raiz desconhecida ficam fora)
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_GOVERNO,
+        granularidade_do_publico_em="dia",
+    ),
+    "inpi_programas_titulares": _contrato(
+        modulo="governo_e_sancoes",
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a empresa de verdade (raiz de MEI e raiz desconhecida ficam fora)
+        chaves=("id_na_fonte", "visto_em"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde=_GOVERNO,
+        granularidade_do_publico_em="dia",
+    ),
     "cvm_fiagro": _contrato(modulo=_FIDC, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2025-10-01"),
     # linha 904 (lote 1 das 300 pelo CNPJ): informes de FIP e FII e administradores de FII, da CVM
     "fip_informe": _contrato(modulo=_FIDC, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
@@ -10854,6 +10988,22 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "ibama_embargos",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {"area_embargada_ha": _SEM_NEGATIVO},
+    },
+    "inpi_marcas_titulares": {
+        "pasta": "inpi_marcas_titulares",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "numero_inpi", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "inpi_patentes_depositantes": {
+        "pasta": "inpi_patentes_depositantes",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "numero_inpi", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "inpi_desenhos_depositantes": {
+        "pasta": "inpi_desenhos_depositantes",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "numero_inpi", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "inpi_programas_titulares": {
+        "pasta": "inpi_programas_titulares",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "numero_inpi", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "cvm_fiagro": {
         "pasta": "cvm_fiagro",
