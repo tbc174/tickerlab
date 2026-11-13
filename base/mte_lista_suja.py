@@ -44,7 +44,9 @@ COLUNAS_DA_FONTE = {
     "Inclusão no Cadastro de Empregadores": "incluida_em",
 }
 TEXTOS = ["uf", "empregador", "estabelecimento", "cnae"]
-VALORES = ["ano_da_acao", *TEXTOS, "trabalhadores", "incluida_em"]
+# `consta` entra nos valores comparados: sem ele, o registro que sai do arquivo não vira a linha
+# `consta` falso e continua constando (linha 907)
+VALORES = ["ano_da_acao", *TEXTOS, "trabalhadores", "incluida_em", "consta"]
 COLUNAS = [
     "id_na_fonte", "cnpj", "cnpj_basico", "ano_da_acao", *TEXTOS, "trabalhadores", "incluida_em",
 ]  # fmt: skip
