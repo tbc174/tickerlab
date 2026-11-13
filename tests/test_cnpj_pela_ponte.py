@@ -201,3 +201,18 @@ def test_ifdata_individual_fica_com_a_propria_raiz_e_nao_a_do_lider(monkeypatch)
     monkeypatch.setattr(carga, "_valores_do_tipo", lambda _coletas: valores)
     saida = carga._valores_com_raiz({}, cadastro)
     assert list(saida["cnpj_basico"]) == ["60701190", "60872504"]
+
+
+def test_ano_digitado_errado_na_ponte_nao_derruba_a_carga():
+    ponte = _ponte(
+        ("123", "11.222.333/0001-81", "2020-01-31", True, False),
+        ("456", "33.000.167/0001-01", "2020-01-31", True, False),
+    )
+    ponte.loc[1, "disponivel_em"] = pd.Timestamp("0201-05-01")
+    saida, _ = com_cnpj_da_ponte(
+        _fatos(("123", "2026-01-31"), ("456", "2026-01-31")),
+        "cd_operadora",
+        ponte,
+        SAIDA,
+    )
+    assert saida["cnpj"].notna().tolist() == [True, True]

@@ -37,9 +37,9 @@ def _normal(serie: pd.Series) -> pd.Series:
 
 
 def _datas(serie: pd.Series) -> pd.Series:
-    """Datas na mesma unidade (ns): a ponte gravada com data pura volta como `datetime64[s]` e o `merge_asof`
+    """Datas na mesma unidade (us, que aguenta ano digitado errado): a ponte gravada com data pura volta como `datetime64[s]` e o `merge_asof`
     recusa unidades diferentes."""
-    return pd.to_datetime(serie).astype("datetime64[ns]")
+    return pd.to_datetime(serie).astype("datetime64[us]")
 
 
 def _usavel(ponte: pd.DataFrame) -> pd.Series:
