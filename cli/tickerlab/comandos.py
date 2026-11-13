@@ -196,7 +196,6 @@ class FiltrosDaBusca:
             "opened_after": _dia(self.aberta_depois),
             "opened_before": _dia(self.aberta_antes),
             "head_office": "true" if self.so_matriz else None,
-            "anvisa_type": TIPOS_DA_ANVISA.get(self.anvisa_tipo or ""),
             "anvisa_active_min": _inteiro(self.anvisa_ativos_min),
             "anvisa_total_min": _inteiro(self.anvisa_total_min),
         }
@@ -211,6 +210,8 @@ class FiltrosDaBusca:
             )
         if self.situacao:
             filtros["registration_status"] = list(self.situacao)
+        if self.anvisa_tipo:  # o tipo só escolhe qual contagem: sozinho não filtra (a API também o recusa)
+            filtros["anvisa_type"] = TIPOS_DA_ANVISA[self.anvisa_tipo]
         if self.ordenar_por:  # a ordem não filtra: não conta como filtro
             filtros["sort"] = ORDENS_DA_BUSCA[self.ordenar_por]
         return filtros

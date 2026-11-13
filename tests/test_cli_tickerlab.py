@@ -1346,6 +1346,17 @@ def test_prospectar_so_ordenar_nao_conta_como_filtro(rodar, chave):
     assert pedidos == []
 
 
+def test_prospectar_so_o_tipo_da_anvisa_nao_conta_como_filtro(rodar, chave):
+    """O tipo só escolhe a contagem: a API também o recusa sozinho, então a CLI recusa antes de gastar a quota."""
+    http, pedidos = _busca_falsa(PAGINAS_DA_BUSCA[:1])
+    resultado = rodar(
+        "prospectar", "--anvisa-tipo", "cosmeticos", http=http, **_com_chave(chave)
+    )
+    assert resultado.exit_code == Saida.USO
+    assert "pelo menos um filtro" in resultado.output
+    assert pedidos == []
+
+
 @pytest.mark.parametrize("opcao", ["--anvisa-ativos-min", "--anvisa-total-min"])
 @pytest.mark.parametrize("valor", ["0", "-3", "10000001", "muitos"])
 def test_prospectar_recusa_minimo_da_anvisa_fora_da_faixa(rodar, chave, opcao, valor):
