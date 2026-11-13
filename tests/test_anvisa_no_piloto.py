@@ -2,8 +2,8 @@
 
 A busca por registros da Anvisa só responde à organização do piloto no conector e na CLI se a tabela tiver o
 registro de piloto em dia, a marca de pessoa decidida e a versão maior conferida. O que este arquivo cobra é o
-**registro de verdade** (não um de mentira): o aviso, o sinal de porte e as colunas sem licença lida ficam
-cobertos em `test_api_externa_prospeccao_anvisa.py` e `test_api_externa_piloto.py`.
+**registro de verdade** (não um de mentira). A busca de ponta a ponta (organização com a marca de piloto, aviso em
+cada bloco, fonte e data) está em `test_api_externa_prospeccao_anvisa.py`; a marca em si, em `test_api_externa_piloto.py`.
 """
 
 from datetime import date
