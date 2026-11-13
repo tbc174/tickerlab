@@ -3,10 +3,10 @@
 // de copiar. A chave que aparece é sempre o exemplo tld_...; a tela não pede nem guarda chave nenhuma.
 import { useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import type { ConectarV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 
@@ -53,7 +53,7 @@ export function Conectar({ pagina }: { pagina: PaginaDoApp }) {
           Carregando…
         </p>
       )}
-      {pedido.estado === "erro" && <ErroDaTela erro={pedido.erro} />}
+      {pedido.estado === "erro" && <Erro erro={pedido.erro} />}
       {pedido.estado === "pronto" && (
         <>
           <section aria-label="Ligar a sua IA">

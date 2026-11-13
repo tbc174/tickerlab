@@ -156,6 +156,16 @@ def test_paginas_e_areas_levam_a_area_para_o_menu_do_app_novo():
         and ativo["frase"] == AREAS["ativo"].frase
     )
     assert ativo["paginas"] == [p.chave for p in paginas_da_area("ativo")]
+    # o menu de sete itens (linha 903): só as páginas que existem; item que espera a tela vai vazio
+    from src.paginas import MENU_DO_APP
+
+    menu = json.loads(exp.em_json(exp.conteudo()["app"]))["menu"]
+    assert [i["rotulo"] for i in menu] == [i.rotulo for i in MENU_DO_APP]
+    por_chave = {i["chave"]: i for i in menu}
+    assert por_chave["empresas"]["paginas"][0] == "encontrar_empresas"
+    assert por_chave["dados"]["secundario"] and not por_chave["empresas"]["secundario"]
+    for item in menu:
+        assert all(chave in POR_CHAVE for chave in item["paginas"]), item["chave"]
     conta = next(a for a in areas if a["chave"] == "conta")
     assert (
         "admin" not in conta["paginas"]
