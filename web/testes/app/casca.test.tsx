@@ -20,6 +20,12 @@ const topo = () => document.querySelector<HTMLElement>("header.topo")!;
 const folha = () => document.querySelector<HTMLDialogElement>("dialog.folha-mais")!;
 const busca = () => document.querySelector<HTMLDialogElement>("dialog.busca-global")!;
 const campoDaBusca = () => busca().querySelector("input")!;
+/** Abre a busca pelo atalho e espera o campo existir: com a máquina ocupada (o CI), o miolo da janela pode
+ * aparecer um instante depois da tecla. */
+const abrirABusca = async () => {
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  await waitFor(() => expect(busca().querySelector("input")).not.toBeNull());
+};
 /** Abre uma tela que nunca termina de carregar (a casca é o que interessa aqui). */
 const abrirTela = (caminho: string) => abrirApp(caminho, { rotas: () => new Promise(() => {}) as never });
 const noRisco = async () => {
@@ -231,7 +237,7 @@ describe("a busca do topo (Ctrl K)", () => {
 
   it("escolher uma tela abre a tela e fecha a busca; o Enter abre a primeira", async () => {
     await noRisco();
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await abrirABusca();
     fireEvent.change(campoDaBusca(), { target: { value: "backtest" } });
     fireEvent.click(within(busca()).getByRole("link", { name: /^Backtest/ }));
     expect(busca().open).toBe(false);
@@ -246,7 +252,7 @@ describe("a busca do topo (Ctrl K)", () => {
 
   it("sem tela com o nome digitado, a busca diz, e aponta a tela que acha empresas", async () => {
     await noRisco();
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await abrirABusca();
     fireEvent.change(campoDaBusca(), { target: { value: "xyzxyz" } });
     expect(within(busca()).getByRole("status").textContent).toBe("Nenhuma tela com esse nome.");
     expect(within(busca()).getByRole("link", { name: "Encontrar empresas" }).getAttribute("href")).toBe(
@@ -268,7 +274,7 @@ describe("a busca do topo (Ctrl K)", () => {
       rotas: (endereco) => (endereco.includes("/api/v1/risco") ? (new Promise(() => {}) as never) : undefined),
     });
     await screen.findByRole("heading", { level: 1, name: "Risco" });
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await abrirABusca();
     fireEvent.change(campoDaBusca(), { target: { value: CNPJ_DE_TESTE } });
     expect(within(busca()).queryAllByRole("link", { name: /^Backtest/ })).toEqual([]);
     fireEvent.click(within(busca()).getByRole("button", { name: /Abrir a ficha deste CNPJ/ }));
@@ -286,7 +292,7 @@ describe("a busca do topo (Ctrl K)", () => {
     const campo = () => screen.getByLabelText("CNPJ") as HTMLInputElement;
     expect(campo().value).toBe("");
     for (const cnpj of ["11222333000181", "44555666000199"]) {
-      fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+      await abrirABusca();
       fireEvent.change(campoDaBusca(), { target: { value: cnpj } });
       fireEvent.submit(campoDaBusca().closest("form")!);
       await waitFor(() => expect(campo().value).toBe(cnpj));
