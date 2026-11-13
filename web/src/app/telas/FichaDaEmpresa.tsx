@@ -59,6 +59,10 @@ function camposNaoConsultados(deFora: string[]): string {
   return `os dados ${nomes.length === 1 ? "do campo" : "dos campos"} ${juntarEmLista(nomes)}`;
 }
 
+/** As chaves da tela (não as de fora da API) dos campos do cadastro que não foram consultados. */
+const chavesBarradas = (ficha: FichaDoCnpjV1): ReadonlySet<string> =>
+  new Set((ficha.campos_do_cadastro_nao_disponiveis ?? []).map((nome) => CHAVE_DO_CAMPO_DE_FORA[nome] ?? nome));
+
 function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
   // o campo barrado não foi consultado: a tabela sem ele não pode parecer "a empresa não tem" (linha 899)
   const deFora = ficha.campos_do_cadastro_nao_disponiveis ?? [];
@@ -188,9 +192,9 @@ const dataDaFonte = (publicoEm: string | null) => (publicoEm === null ? null : f
 function Resumo({ ficha }: { ficha: FichaDoCnpjV1 }) {
   return (
     <section aria-label="Resumo da ficha">
-      <p>{fraseDoTopo(ficha)}</p>
+      <p>{fraseDoTopo(ficha, chavesBarradas(ficha))}</p>
       <div className="numeros">
-        {numerosDoResumo(ficha).map((numero) => (
+        {numerosDoResumo(ficha, chavesBarradas(ficha)).map((numero) => (
           <CartaoDeNumero
             key={numero.rotulo}
             rotulo={numero.rotulo}

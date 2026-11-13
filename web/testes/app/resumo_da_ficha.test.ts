@@ -67,4 +67,22 @@ describe("resumo da ficha", () => {
     const parcial = { ...FICHA, entregas_nao_disponiveis: ["ITR"] };
     expect(numerosDoResumo(parcial)[3].valor).toBe("Não consultado por inteiro");
   });
+  it("campo barrado não vira 'a empresa não tem': a frase e o cartão dizem que não foi consultado", () => {
+    const barrada = { ...FICHA, cadastro_na_receita: {}, campos_do_cadastro_nao_disponiveis: ["registration_status"] };
+    const barrados = new Set(["situacao_cadastral", "optante_simples"]);
+    expect(fraseDoTopo(barrada, barrados)).toBe(
+      "A empresa do CNPJ 02.429.144/0001-93 tem a situação cadastral fora desta consulta.",
+    );
+    const [situacao, , simples] = numerosDoResumo(barrada, barrados);
+    expect(situacao.valor).toBe("Não consultado");
+    expect(simples.valor).toBe("Não consultado");
+  });
+
+  it("entrega não feita não entra na contagem das entregas", () => {
+    const naoEntregue = { documento: campo("ITR", "cvm-hist-itr", "2026-08-01"), situacao_da_entrega: campo("not_filed", "cvm-hist-itr", "2026-08-01") };
+    const ficha = { ...FICHA, entregas: [...(FICHA.entregas ?? []), naoEntregue] };
+    expect(numerosDoResumo(ficha)[3]).toMatchObject({ valor: "2", publicoEm: "2026-05-12" });
+    const so = { ...FICHA, entregas: [naoEntregue] };
+    expect(numerosDoResumo(so)[3].valor).toBe(NAO_TEMOS);
+  });
 });

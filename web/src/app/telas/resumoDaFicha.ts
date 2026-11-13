@@ -35,7 +35,7 @@ export function nomeDaEmpresa(ficha: FichaDoCnpjV1): string | null {
 }
 
 /** Uma frase só, de fato: quem é, a situação na Receita e se é matriz. Sem adjetivo, sem recomendação. */
-export function fraseDoTopo(ficha: FichaDoCnpjV1): string {
+export function fraseDoTopo(ficha: FichaDoCnpjV1, barrados: ReadonlySet<string> = new Set()): string {
   const nome = nomeDaEmpresa(ficha) ?? `A empresa do CNPJ ${cnpjComPontuacao(ficha.cnpj)}`;
   const situacao = valorDe(ficha, "situacao_cadastral");
   const desde = valorDe(ficha, "data_situacao_cadastral");
@@ -48,6 +48,9 @@ export function fraseDoTopo(ficha: FichaDoCnpjV1): string {
         ? `consta como ${texto} na Receita desde ${textoDoValor("data_situacao_cadastral", desde.valor)}`
         : `consta como ${texto} na Receita`,
     );
+  } else if (barrados.has("situacao_cadastral")) {
+    // campo não liberado para a tela não é campo que a empresa não tem (linha 899)
+    partes.push("tem a situação cadastral fora desta consulta");
   } else {
     partes.push("não tem a situação cadastral na base");
   }
@@ -55,8 +58,14 @@ export function fraseDoTopo(ficha: FichaDoCnpjV1): string {
   return `${nome} ${partes.join("; ")}.`;
 }
 
-function numeroDoCampo(ficha: FichaDoCnpjV1, rotulo: string, chave: string): NumeroDoResumo {
+function numeroDoCampo(
+  ficha: FichaDoCnpjV1,
+  rotulo: string,
+  chave: string,
+  barrados: ReadonlySet<string>,
+): NumeroDoResumo {
   const campo = valorDe(ficha, chave);
+  if (barrados.has(chave)) return { rotulo, valor: "Não consultado", fonte: null, publicoEm: null };
   if (!campo || campo.valor === null) return { rotulo, valor: NAO_TEMOS, fonte: null, publicoEm: null };
   return { rotulo, valor: textoDoValor(chave, campo.valor), fonte: campo.fonte, publicoEm: campo.publico_em };
 }
@@ -69,22 +78,25 @@ function numeroDasEntregas(ficha: FichaDoCnpjV1): NumeroDoResumo {
   if ((ficha.entregas_nao_disponiveis ?? []).length > 0) {
     return { rotulo, valor: "Não consultado por inteiro", fonte: null, publicoEm: null };
   }
-  const campos = entregas.flatMap((entrega) => Object.values(entrega));
+  // a lista traz também o que era devido e não foi entregue: a contagem é só do que foi entregue
+  const entregues = entregas.filter((entrega) => entrega.situacao_da_entrega?.valor !== "not_filed");
+  if (entregues.length === 0) return { rotulo, valor: NAO_TEMOS, fonte: null, publicoEm: null };
+  const campos = entregues.flatMap((entrega) => Object.values(entrega));
   const datas = campos.map((campo) => campo.publico_em).sort();
   return {
     rotulo,
-    valor: String(entregas.length),
+    valor: String(entregues.length),
     fonte: [...new Set(campos.map((campo) => campo.fonte))].join(", "),
     publicoEm: datas[datas.length - 1] ?? null,
   };
 }
 
 /** Os quatro números do Resumo, na ordem em que a conversa de venda os lê. */
-export function numerosDoResumo(ficha: FichaDoCnpjV1): NumeroDoResumo[] {
+export function numerosDoResumo(ficha: FichaDoCnpjV1, barrados: ReadonlySet<string> = new Set()): NumeroDoResumo[] {
   return [
-    numeroDoCampo(ficha, "Situação cadastral", "situacao_cadastral"),
-    numeroDoCampo(ficha, "Situação desde", "data_situacao_cadastral"),
-    numeroDoCampo(ficha, "Optante pelo Simples", "optante_simples"),
+    numeroDoCampo(ficha, "Situação cadastral", "situacao_cadastral", barrados),
+    numeroDoCampo(ficha, "Situação desde", "data_situacao_cadastral", barrados),
+    numeroDoCampo(ficha, "Optante pelo Simples", "optante_simples", barrados),
     numeroDasEntregas(ficha),
   ];
 }
