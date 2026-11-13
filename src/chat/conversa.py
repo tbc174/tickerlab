@@ -8,7 +8,8 @@ Só tipos simples na saída (dicionários prontos para virar JSON): cada evento 
 - `{"tipo": "texto", "texto"}`: um pedaço da resposta;
 - `{"tipo": "recomeco"}`: a volta recomeçou (o texto parcial desta volta deve ser descartado);
 - `{"tipo": "fim", "como_cheguei_aqui", "avisos", "aviso_final"}`: a lista das consultas feitas, com os
-  filtros, se deram certo e quanto demoraram, montada pelo código e não pelo modelo.
+  filtros, se deram certo, quanto demoraram e as fontes que trouxeram, montada pelo código e não pelo
+  modelo.
 
 O modelo é qualquer coisa com `turno(pedido)` (`Modelo`): o de verdade (`modelo_anthropic.py`) ou o dublê
 dos testes. Os tetos (voltas de ferramenta, tokens por volta, tamanho do histórico) vêm de `LIMITES_DO_CHAT`.
@@ -199,6 +200,8 @@ class Conversa:
                 "titulo": self.caixa.titulo(chamada.nome),
                 "filtros": resumo_dos_filtros(chamada.entrada),
                 "ok": not resultado.erro,
+                # as fontes que a resposta trouxe, lidas pelo código (src/chat/fontes.py)
+                "fontes": [f.para_a_tela() for f in resultado.fontes],
                 "duracao_ms": round(
                     (time.perf_counter() - inicio) * MILISSEGUNDOS_POR_SEGUNDO
                 ),

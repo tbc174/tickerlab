@@ -147,7 +147,7 @@ MENU_DO_APP = (
 )
 # Páginas do menu que ainda não existem: o item fica fora do menu até a página nascer com tela (o
 # menu não mostra linha que não abre). Quem criar a página tira a chave daqui; há teste que cobra.
-PAGINAS_DO_MENU_QUE_AINDA_VEM = frozenset({"perguntar", "monitorar"})
+PAGINAS_DO_MENU_QUE_AINDA_VEM = frozenset({"monitorar"})
 
 
 # --- Contrato de cada página (preparação 3 da ADR 0044; ADR 0048) ---------------------------
@@ -243,6 +243,18 @@ PAGINAS = (
         "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
         area=AREA_INICIO,
         precisa_do_ativo=False,
+    ),
+    Pagina(
+        "perguntar",
+        "Perguntar",
+        GRUPO_TOPO,
+        ":material/forum:",
+        "Pergunte em português sobre empresas brasileiras: a IA responde com a base do TickerLab, mostrando "
+        "a fonte, a data e as consultas que fez.",
+        area=AREA_INICIO,
+        precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/chat/estado", (), "EstadoDoChatV1"),
+        so_no_app_novo=True,
     ),
     Pagina(
         "o_que_mudou",

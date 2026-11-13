@@ -20,6 +20,7 @@
       "icone": "inicio",
       "paginas": [
         "inicio",
+        "perguntar",
         "pulse"
       ],
       "rotulo": "Início"
@@ -883,7 +884,9 @@
       "chave": "perguntar",
       "icone": "perguntar",
       "novo": true,
-      "paginas": [],
+      "paginas": [
+        "perguntar"
+      ],
       "rotulo": "Perguntar",
       "secundario": false
     },
