@@ -44,6 +44,65 @@ def test_chave_do_modelo_so_confere_presenca():
     assert not chat.tem_chave_do_modelo({})
 
 
+# chaves inventadas: nenhuma de verdade em teste
+CHAVE_GERAL = "chave-geral-inventada"
+CHAVE_DO_CHAT = "chave-do-chat-inventada"
+
+
+def test_a_chave_do_chat_e_propria_e_nao_cai_na_geral():
+    assert chat.VARIAVEL_DA_CHAVE_DO_MODELO == "ANTHROPIC_API_KEY_CHAT"
+    so_a_geral = {"ANTHROPIC_API_KEY": CHAVE_GERAL}
+    assert not chat.tem_chave_do_modelo(so_a_geral)
+    assert chat.chave_do_modelo(so_a_geral) is None
+    so_a_do_chat = {"ANTHROPIC_API_KEY_CHAT": f" {CHAVE_DO_CHAT} "}
+    assert chat.tem_chave_do_modelo(so_a_do_chat)
+    assert chat.chave_do_modelo(so_a_do_chat) == CHAVE_DO_CHAT
+
+
+def test_so_a_chave_do_chat_nao_liga_os_outros_usos_pagos(monkeypatch):
+    from base.boletim import leitura_ia
+    from src import topicos_modelo
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY_CHAT", CHAVE_DO_CHAT)
+    assert chat.tem_chave_do_modelo()
+    assert topicos_modelo.cliente_da_chave() is None
+    assert leitura_ia.cliente_da_chave() is None
+
+
+class _SdkQueGuarda:
+    """Troca o `AsyncAnthropic`: guarda com que chave o cliente seria criado, sem rede."""
+
+    def __init__(self):
+        self.chaves: list[object] = []
+
+    def __call__(self, **argumentos):
+        self.chaves.append(
+            argumentos.get("api_key", "sem api_key: o SDK leria o ambiente")
+        )
+        return SimpleNamespace(messages=None)
+
+
+def test_o_cliente_do_sdk_recebe_a_chave_do_chat(monkeypatch):
+    sdk = _SdkQueGuarda()
+    monkeypatch.setattr(ma.anthropic, "AsyncAnthropic", sdk)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", CHAVE_GERAL)
+    monkeypatch.setenv("ANTHROPIC_API_KEY_CHAT", CHAVE_DO_CHAT)
+    ma.ModeloDaAnthropic("claude-opus-5-5")._cliente_do_sdk()
+    assert sdk.chaves == [CHAVE_DO_CHAT]
+
+
+def test_so_com_a_geral_o_cliente_do_sdk_nao_e_criado(monkeypatch):
+    sdk = _SdkQueGuarda()
+    monkeypatch.setattr(ma.anthropic, "AsyncAnthropic", sdk)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", CHAVE_GERAL)
+    monkeypatch.delenv("ANTHROPIC_API_KEY_CHAT", raising=False)
+    with pytest.raises(ma.SemChaveDoChat) as erro:
+        ma.ModeloDaAnthropic("claude-opus-5-5")._cliente_do_sdk()
+    assert sdk.chaves == []
+    assert CHAVE_GERAL not in str(erro.value)
+
+
 # ---------------------------------------------------------------- o custo
 
 

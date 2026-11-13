@@ -7,7 +7,8 @@ avisos.
 Antes de qualquer chamada ao modelo, nesta ordem:
 
 1. `TICKERLAB_CHAT=1`; sem ela, 503 "Chat não disponível." e nada sai (ligar em produção é só do Tiago);
-2. a chave do modelo presente e o modelo com preço na tabela (`src/chat/custo.py`); senão o mesmo 503;
+2. a chave do modelo só do chat (`ANTHROPIC_API_KEY_CHAT`, nunca a geral) e o modelo com preço na tabela
+   (`src/chat/custo.py`); senão o mesmo 503;
 3. a conta numa organização ativa com uma chave da API ativa (o contrato dela diz o que as ferramentas
    veem, e o consumo fica na conta dessa chave); senão 403;
 4. as ferramentas abertas (o catálogo da organização respondeu);
