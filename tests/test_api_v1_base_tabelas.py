@@ -930,3 +930,16 @@ def test_a_lista_nao_anuncia_tabela_que_nao_esta_montada(cliente, monkeypatch):
     nomes = {t["tabela"] for t in cliente.get(ROTA, headers=SITE).json()["tabelas"]}
 
     assert nomes == {"pgfn_divida"}
+
+
+def test_tabela_servida_que_nao_esta_na_lista_de_montadas_continua_respondendo(
+    cliente, monkeypatch
+):
+    """A lista de montadas só tira a tabela do anúncio: quem consulta uma tabela que a porta serve (como a
+    Anvisa antes de entrar na lista) segue recebendo a resposta (linha 916, ponto 3 da Diretoria)."""
+    monkeypatch.setattr(vitrine, "tabelas_montadas", lambda *_: frozenset())
+    base_tabelas.limpar_cache()
+
+    assert cliente.get(ROTA, headers=SITE).json()["tabelas"] == []
+    assert cliente.get(f"{ROTA}/pgfn_divida", headers=SITE).status_code == 200
+    assert cliente.get(f"{ROTA}/pgfn_divida.csv", headers=SITE).status_code == 200
