@@ -2392,7 +2392,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 66
+      "tabelas": 70
     },
     {
       "historico_desde": "2026-10-14",
@@ -2429,6 +2429,30 @@
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 6
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANEEL",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
     },
     {
       "historico_desde": "2026-10-16",
@@ -2470,18 +2494,6 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 3
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
@@ -2529,18 +2541,6 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANEEL",
-      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 2
     },
     {
       "historico_desde": "2026-10-14",
@@ -2922,7 +2922,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 36,
-    "tabelas": 128,
+    "tabelas": 135,
     "temas": [
       {
         "chave": "cvm",
@@ -3024,7 +3024,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 67
+      "tabelas": 70
     },
     {
       "chave": "governo_e_sancoes",
@@ -3034,7 +3034,7 @@
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 17
+      "tabelas": 21
     },
     {
       "chave": "macro",
@@ -8400,6 +8400,83 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "O informe dos Fundos de Investimento em Participações (FIP) por CNPJ do fundo ou da classe: patrimônio, cotas, cotistas por tipo, capital comprometido, subscrito e integralizado.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fip_informe"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "O informe mensal dos Fundos de Investimento Imobiliário (FII) por CNPJ do fundo ou da classe: segmento, mandato, gestão, ISIN, administrador (só o CNPJ), cotistas, ativo, patrimônio, cota.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fii_informe_mensal"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Os títulos e valores mobiliários que cada FII declara no informe trimestral (CRI, ações, debêntures, cotas de outros fundos...), com o CNPJ do emissor.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fii_ativos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Quem a CVM registrou para administrar FII, pelo CNPJ: razão social, nome comercial, situação e as datas do registro, da situação e do cancelamento.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fii_administradores"
+    },
+    {
+      "atraso": "A ANEEL escreve a data de geração do conjunto",
+      "consultavel": false,
+      "frase": "Os indicadores de inadimplência que cada distribuidora de energia manda à ANEEL, por CNPJ, indicador e mês: quanto deixa de receber dos consumidores, em cada recorte que a ANEEL pede.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_inadimplencia"
+    },
+    {
+      "atraso": "A ANEEL escreve a data de geração do conjunto",
+      "consultavel": false,
+      "frase": "Os indicadores comerciais de cada distribuidora de energia por CNPJ, município e mês (INDGER): unidades consumidoras ativas e faturadas, faturas sem leitura, refaturamentos.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_indicadores_comerciais"
+    },
+    {
+      "atraso": "A ANS publica a avaliação de um ano no ano seguinte",
+      "consultavel": false,
+      "frase": "O Índice de Desempenho da Saúde Suplementar (IDSS) de cada operadora de plano de saúde, por CNPJ, índice (o IDSS e as dimensões dele) e ano de avaliação, desde 2009.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_idss"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -8965,6 +9042,6 @@
     "fontes": 48,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 165
+    "tabelas": 172
   }
 }

@@ -501,9 +501,10 @@ def test_empresa_sem_vinculo_no_dia_sai_com_a_lista_vazia(pasta):
     assert servido.fontes == set()
 
 
-def test_sem_a_tabela_de_ligacoes_a_lista_sai_vazia(pasta):
+def test_sem_a_tabela_de_ligacoes_nada_foi_consultado(pasta):
+    """Sem `rede/ligacoes` a lista não é "sem vínculos" (linha 917): os tipos vão em não disponíveis."""
     (pasta / "rede" / "ligacoes.parquet").unlink()
-    assert _ler(pasta).corpo["vinculos"] == []
+    assert _ler(pasta) is None
 
 
 def test_campo_negado_some_e_sem_o_tipo_a_ligacao_nao_sai(pasta):
@@ -601,8 +602,7 @@ def test_sem_o_tipo_liberado_o_resto_dos_campos_dele_nao_conta(pasta):
 
 
 def test_empresa_sem_vinculo_com_tipo_barrado_diz_qual_ficou_de_fora(pasta):
-    (pasta / "rede" / "ligacoes.parquet").unlink()
-    servido = _ler(pasta, permitido=_sem_o_fca)
+    servido = _ler(pasta, permitido=_sem_o_fca, dia=date(2018, 1, 1))
     assert servido.corpo["vinculos"] == []
     assert servido.corpo["tipos_de_vinculo_nao_disponiveis"] == ["audits"]
 

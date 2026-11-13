@@ -12477,6 +12477,919 @@
       "frequencia": "Semanal (uma cópia por semana; o arquivista guarda só o que mudou)",
       "atraso": "No 1º arquivo guardado, `disponivel_em` é a data da cópia do GLEIF (`goldenCopy.publishDate`), nunca depois do dia em que foi guardada; depois, o dia da cópia em que a mudança apareceu"
     },
+    "fip_informe": {
+      "tabela": "fip_informe",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): o fundo ou a classe",
+          "unidade": "texto"
+        },
+        "competencia": {
+          "descricao": "Data de competência do informe",
+          "unidade": "data (dia)"
+        },
+        "periodicidade": {
+          "descricao": "`trimestral` (até 2023) ou `quadrimestral` (desde 2024)",
+          "unidade": "texto"
+        },
+        "tipo_fundo_classe": {
+          "descricao": "Fundo ou classe (só no quadrimestral)",
+          "unidade": "texto"
+        },
+        "nome_do_fundo": {
+          "descricao": "Nome do fundo, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "entidade_de_investimento": {
+          "descricao": "Se é entidade de investimento (S/N)",
+          "unidade": "texto"
+        },
+        "publico_alvo": {
+          "descricao": "Público-alvo, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "patrimonio_liquido": {
+          "descricao": "Patrimônio líquido, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "cotas": {
+          "descricao": "Quantidade de cotas",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_patrimonial_da_cota": {
+          "descricao": "Valor patrimonial da cota, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "cotistas": {
+          "descricao": "Número de cotistas",
+          "unidade": "número inteiro"
+        },
+        "capital_comprometido": {
+          "descricao": "Capital comprometido, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "capital_subscrito": {
+          "descricao": "Capital subscrito, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "capital_integralizado": {
+          "descricao": "Capital integralizado, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "investido_em_cotas_de_fip": {
+          "descricao": "Investido em cotas de outros FIP, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "cotistas_pessoa_fisica": {
+          "descricao": "Quantos cotistas subscritores são pessoa física (só a contagem)",
+          "unidade": "número inteiro"
+        },
+        "cotistas_empresa_nao_financeira": {
+          "descricao": "Quantos cotistas subscritores são empresa não financeira",
+          "unidade": "número inteiro"
+        },
+        "cotistas_nao_residentes": {
+          "descricao": "Quantos cotistas subscritores são investidores não residentes",
+          "unidade": "número inteiro"
+        },
+        "cotistas_previdencia_fechada": {
+          "descricao": "Quantos cotistas subscritores são entidade fechada de previdência",
+          "unidade": "número inteiro"
+        },
+        "cotistas_regime_proprio": {
+          "descricao": "Quantos cotistas subscritores são regime próprio de previdência",
+          "unidade": "número inteiro"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "competencia": "referencia",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo por ano, republicado inteiro (o arquivista olha toda semana)",
+      "atraso": "O arquivo não traz a data de entrega: vale o dia em que o arquivista o viu",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "fii_informe_mensal": {
+      "tabela": "fii_informe_mensal",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): o fundo ou a classe",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Mês a que o informe se refere (a `Data_Referencia`)",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do informe; o reenvio traz número maior",
+          "unidade": "número inteiro"
+        },
+        "entregue_em": {
+          "descricao": "Dia em que o informe chegou à CVM (`Data_Entrega`)",
+          "unidade": "data (dia)"
+        },
+        "tipo_fundo_classe": {
+          "descricao": "Fundo ou classe, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "nome_do_fundo": {
+          "descricao": "Nome do fundo ou da classe, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "publico_alvo": {
+          "descricao": "Público-alvo, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "codigo_isin": {
+          "descricao": "Código ISIN da cota, quando informado",
+          "unidade": "texto"
+        },
+        "fundo_exclusivo": {
+          "descricao": "Se é fundo exclusivo (S/N)",
+          "unidade": "texto"
+        },
+        "mandato": {
+          "descricao": "Mandato do fundo (renda, desenvolvimento, títulos...), como a CVM escreve",
+          "unidade": "texto"
+        },
+        "segmento_de_atuacao": {
+          "descricao": "Segmento de atuação (logística, lajes, shoppings...), como a CVM escreve",
+          "unidade": "texto"
+        },
+        "tipo_de_gestao": {
+          "descricao": "Gestão ativa ou passiva",
+          "unidade": "texto"
+        },
+        "prazo_de_duracao": {
+          "descricao": "Prazo de duração, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "negocia_em_bolsa": {
+          "descricao": "Se a cota negocia em bolsa (S/N)",
+          "unidade": "texto"
+        },
+        "funciona_desde": {
+          "descricao": "Data de início de funcionamento",
+          "unidade": "data (dia)"
+        },
+        "cnpj_administrador": {
+          "descricao": "CNPJ do administrador (só o CNPJ, sem o nome)",
+          "unidade": "texto"
+        },
+        "cotistas": {
+          "descricao": "Número de cotistas",
+          "unidade": "número inteiro"
+        },
+        "cotistas_pessoa_fisica": {
+          "descricao": "Quantos cotistas são pessoa física (só a contagem)",
+          "unidade": "número inteiro"
+        },
+        "valor_do_ativo": {
+          "descricao": "Valor do ativo, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "patrimonio_liquido": {
+          "descricao": "Patrimônio líquido, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "cotas_emitidas": {
+          "descricao": "Cotas emitidas",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_patrimonial_da_cota": {
+          "descricao": "Valor patrimonial da cota, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "taxa_de_administracao_pct": {
+          "descricao": "Despesa com taxa de administração, em % do patrimônio",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "rentabilidade_efetiva_no_mes": {
+          "descricao": "Rentabilidade efetiva do mês, como a CVM informa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "rentabilidade_patrimonial_no_mes": {
+          "descricao": "Rentabilidade patrimonial do mês, como a CVM informa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "dividend_yield_no_mes": {
+          "descricao": "Dividend yield do mês, como a CVM informa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "entregue_em": "publico_em",
+        "funciona_desde": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um ZIP por ano, republicado inteiro (o arquivista olha toda semana)",
+      "atraso": "`disponivel_em` é a `Data_Entrega` do informe, nunca depois do dia em que o ZIP foi guardado; informe que só aparece num arquivo seguinte vale do dia desse arquivo",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "fii_ativos": {
+      "tabela": "fii_ativos",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): o fundo ou a classe",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Trimestre a que o informe se refere (a `Data_Referencia`)",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do informe; o reenvio traz número maior",
+          "unidade": "número inteiro"
+        },
+        "entregue_em": {
+          "descricao": "Dia em que o informe chegou à CVM (`Data_Entrega` da parte geral)",
+          "unidade": "data (dia)"
+        },
+        "cnpj_emissor": {
+          "descricao": "CNPJ do emissor do ativo, quando fecha o dígito",
+          "unidade": "texto"
+        },
+        "cnpj_basico_emissor": {
+          "descricao": "Raiz do CNPJ do emissor (8 caracteres)",
+          "unidade": "texto"
+        },
+        "emissor": {
+          "descricao": "Nome do emissor, como a CVM escreve (só com CNPJ de dígito certo)",
+          "unidade": "texto"
+        },
+        "tipo_do_ativo": {
+          "descricao": "Tipo do ativo (CRI, ações, debêntures...), como a CVM escreve",
+          "unidade": "texto"
+        },
+        "emissao": {
+          "descricao": "Número da emissão, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "serie": {
+          "descricao": "Série, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "codigo": {
+          "descricao": "Código de negociação, quando informado",
+          "unidade": "texto"
+        },
+        "nome_do_ativo": {
+          "descricao": "Nome do ativo, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "vencimento": {
+          "descricao": "Vencimento do ativo, quando há",
+          "unidade": "data (dia)"
+        },
+        "quantidade": {
+          "descricao": "Quantidade do ativo na carteira",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor": {
+          "descricao": "Valor do ativo na carteira, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "entregue_em": "publico_em",
+        "vencimento": "ate",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um ZIP por ano, republicado inteiro (o arquivista olha toda semana)",
+      "atraso": "`disponivel_em` é a `Data_Entrega` do informe trimestral (parte geral), nunca depois do dia em que o ZIP foi guardado; ativo que só aparece num arquivo seguinte vale do dia desse arquivo",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "fii_administradores": {
+      "tabela": "fii_administradores",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): o administrador",
+          "unidade": "texto"
+        },
+        "razao_social": {
+          "descricao": "Razão social, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "nome_comercial": {
+          "descricao": "Nome comercial, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "motivo_do_cancelamento": {
+          "descricao": "Motivo do cancelamento do registro, quando há",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação do registro na CVM, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da sede",
+          "unidade": "texto"
+        },
+        "registrado_em": {
+          "descricao": "Data do registro na CVM",
+          "unidade": "data (dia)"
+        },
+        "cancelado_em": {
+          "descricao": "Data do cancelamento do registro, quando há",
+          "unidade": "data (dia)"
+        },
+        "situacao_desde": {
+          "descricao": "Desde quando vale a situação",
+          "unidade": "data (dia)"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "registrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "registrado_em": "aconteceu_em",
+        "cancelado_em": "ate",
+        "situacao_desde": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo, republicado inteiro (o arquivista olha toda semana)",
+      "atraso": "O cadastro não diz quando cada linha mudou: vale o dia em que o arquivista a viu",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "aneel_inadimplencia": {
+      "tabela": "aneel_inadimplencia",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da distribuidora (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "sigla_do_agente": {
+          "descricao": "Sigla da distribuidora na ANEEL",
+          "unidade": "texto"
+        },
+        "indicador": {
+          "descricao": "Sigla do indicador, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "descricao_do_indicador": {
+          "descricao": "Descrição do indicador no domínio da ANEEL; vazia quando a sigla não está no domínio",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Mês do indicador (dia 1)",
+          "unidade": "data (dia)"
+        },
+        "valor": {
+          "descricao": "Valor do indicador, na unidade que a ANEEL define para ele",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo, republicado inteiro (o arquivista olha toda semana)",
+      "atraso": "A ANEEL escreve a data de geração do conjunto; o mês mais novo costuma ter de 1 a 3 meses",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "aneel_indicadores_comerciais": {
+      "tabela": "aneel_indicadores_comerciais",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da distribuidora (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "sigla_do_agente": {
+          "descricao": "Sigla da distribuidora na ANEEL",
+          "unidade": "texto"
+        },
+        "tipo_de_outorga": {
+          "descricao": "Concessão ou permissão, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Mês informado (dia 1)",
+          "unidade": "data (dia)"
+        },
+        "municipio_ibge": {
+          "descricao": "Código IBGE do município (7 dígitos); vazio quando a fonte manda `0`",
+          "unidade": "texto"
+        },
+        "unidades_ativas": {
+          "descricao": "Unidades consumidoras ativas",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidades_faturadas": {
+          "descricao": "Unidades consumidoras ativas faturadas",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "faturas": {
+          "descricao": "Faturas emitidas",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "faturas_sem_leitura": {
+          "descricao": "Faturas emitidas sem leitura do medidor",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "refaturamentos": {
+          "descricao": "Refaturamentos",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "pedidos_de_ressarcimento_de_dano": {
+          "descricao": "Pedidos de ressarcimento de dano elétrico",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "ressarcimentos_indeferidos": {
+          "descricao": "Pedidos de ressarcimento indeferidos",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_pago_de_ressarcimento": {
+          "descricao": "Valor pago de ressarcimento de dano, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "postos_de_atendimento": {
+          "descricao": "Postos de atendimento presencial",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidades_suspensas_por_inadimplencia": {
+          "descricao": "Unidades com fornecimento suspenso por inadimplência",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "suspensoes_indevidas": {
+          "descricao": "Suspensões indevidas de fornecimento",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_de_compensacao_por_suspensao_indevida": {
+          "descricao": "Compensação paga por suspensão indevida, em reais",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a data de geração do conjunto que a ANEEL escreve no arquivo, nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Um arquivo, republicado inteiro (o arquivista olha toda semana)",
+      "atraso": "A ANEEL escreve a data de geração do conjunto; o mês mais novo costuma ter de 1 a 3 meses",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "ans_idss": {
+      "tabela": "ans_idss",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da operadora (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "registro_operadora": {
+          "descricao": "Registro da operadora na ANS",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "Modalidade (Medicina de Grupo, Cooperativa Médica...), como a ANS escreve",
+          "unidade": "texto"
+        },
+        "indice": {
+          "descricao": "O índice: `IDSS` ou uma dimensão dele (`IDQS`, `IDGA`, `IDSM`, `IDGR`...)",
+          "unidade": "texto"
+        },
+        "ano_avaliacao": {
+          "descricao": "Ano da avaliação, como está no nome da coluna da ANS",
+          "unidade": "número inteiro"
+        },
+        "ano_base": {
+          "descricao": "Ano base (o ano avaliado)",
+          "unidade": "número inteiro"
+        },
+        "valor": {
+          "descricao": "Nota de 0 a 1; vazia quando a ANS publica a faixa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "faixa": {
+          "descricao": "Faixa da nota (`0,40 a 0,59`), só de 2009 a 2011",
+          "unidade": "texto"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada nota saiu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Três arquivos, republicados inteiros; o mais novo ganha um ano por ano (o arquivista olha toda semana)",
+      "atraso": "A ANS publica a avaliação de um ano (ano base) no ano seguinte; o arquivo não diz o dia",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
     "cnes_estabelecimentos": {
       "tabela": "cnes_estabelecimentos",
       "modulo": "governo_e_sancoes",

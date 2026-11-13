@@ -129,6 +129,9 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
     "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
     "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
+    # lote 1 das 300 pelo CNPJ (linha 904): em casa até o pode do envio ao VPS (linha 908)
+    "fip_informe", "fii_informe_mensal", "fii_ativos", "fii_administradores",
+    "aneel_inadimplencia", "aneel_indicadores_comerciais", "ans_idss",
 })  # fmt: skip
 
 

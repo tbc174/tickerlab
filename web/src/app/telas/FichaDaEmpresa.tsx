@@ -3,75 +3,33 @@
 // e baixa tudo em Excel. A rota usa o mesmo leitor e o mesmo portão da API externa: o que a API negaria
 // não aparece aqui. Como na Busca por CNPJ, o CNPJ vai no corpo do POST, nunca no endereço, e nada é
 // pedido antes de a pessoa buscar. "Limites e cuidados" fica sempre à vista depois da busca.
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../pecas/Cabecalho";
-import { ErroDaApi, baixar } from "../api";
-import { Carregando } from "../pecas/Carregando";
-import { useConta } from "../conta";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
-import type { BlocoDaFichaV1, CampoComFonteV1, FichaDaEmpresaV1, FichaDoCnpjV1, FonteDaFichaV1 } from "../tipos";
+import { Abas } from "../pecas/Abas";
+import { Baixar } from "../pecas/Baixar";
+import { Cabecalho, CabecalhoDaTela } from "../pecas/Cabecalho";
+import { CartaoDeNumero } from "../pecas/CartaoDeNumero";
+import { Carregando } from "../pecas/Carregando";
+import { Erro } from "../pecas/Erro";
+import { Fonte, Fontes } from "../pecas/Fonte";
+import { Limites } from "../pecas/Limites";
+import { Selo } from "../pecas/Selo";
+import type { BlocoDaFichaV1, FichaDaEmpresaV1, FichaDoCnpjV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { ContatoDaFicha } from "./ContatoDaFicha";
-import { Erro } from "../pecas/Erro";
 import { EventosDaFicha } from "./EventosDaFicha";
-import { VinculosDaFicha } from "./VinculosDaFicha";
 import { SociosDaFicha } from "./SociosDaFicha";
 import { TitularDaFicha } from "./TitularDaFicha";
+import { VinculosDaFicha } from "./VinculosDaFicha";
+import { fraseDoTopo, nomeDaEmpresa, numerosDoResumo } from "./resumoDaFicha";
+import { SEM_VALOR, cnpjComPontuacao, nomeDoCampo, textoDoValor } from "./valoresDaFicha";
 
 const NOME_DA_PLANILHA = "ficha-da-empresa-tickerlab.xlsx"; // sem o CNPJ: o nome do arquivo não carrega dado
+export { cnpjComPontuacao, textoDoValor };
 export const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
-const SEM_VALOR = "—";
-
-// o nome de cada campo na tela; campo novo sem nome aparece com a chave, nunca some
-const NOMES_DOS_CAMPOS: Record<string, string> = {
-  razao_social: "Razão social",
-  situacao_cadastral: "Situação cadastral",
-  data_situacao_cadastral: "Data da situação",
-  motivo_situacao: "Motivo da situação (código da Receita)",
-  natureza_juridica: "Natureza jurídica (código da Receita)",
-  matriz: "Matriz",
-  optante_simples: "Optante pelo Simples",
-  data_opcao_simples: "Entrou no Simples em",
-  data_exclusao_simples: "Saiu do Simples em",
-  mes_do_retrato: "Mês do cadastro",
-  mes_do_retrato_do_cadastro: "Mês do retrato do cadastro",
-  documento: "Documento",
-  referencia: "Referência",
-  prazo: "Prazo",
-  primeira_entrega: "Primeira entrega",
-  dias_uteis_de_atraso: "Dias úteis de atraso",
-  situacao_da_entrega: "Situação da entrega",
-};
-
-// os cinco códigos do dicionário de dados do CNPJ (base/receita_codigos.py)
-const SITUACOES_CADASTRAIS: Record<string, string> = {
-  "01": "Nula",
-  "02": "Ativa",
-  "03": "Suspensa",
-  "04": "Inapta",
-  "08": "Baixada",
-};
-
-// a regra do TickerLab sobre o índice da CVM (src/api_externa/conjuntos/ficha.py)
-const SITUACOES_DA_ENTREGA: Record<string, string> = {
-  on_time: "No prazo",
-  late: "Atrasou",
-  gray_zone: "Atraso curto (um feriado local pode explicar)",
-  severely_late: "Atraso grave",
-  not_filed: "Não entregue",
-};
-
-const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
-const MES_ISO = /^(\d{4})-(\d{2})$/;
-const CNPJ_SO_DIGITOS = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/;
-
-/** "02429144000193" → "02.429.144/0001-93", como o analista digita; outro formato sai como veio. */
-export const cnpjComPontuacao = (cnpj: string) => cnpj.replace(CNPJ_SO_DIGITOS, "$1.$2.$3/$4-$5");
-
-const nomeDoCampo = (chave: string) => NOMES_DOS_CAMPOS[chave] ?? chave;
 
 // a lista dos campos do cadastro não consultados vem com o nome de fora da API (src/api_externa/nomes.py);
 // a tela os mostra pelo nome da tabela acima. Campo sem par aparece com o nome de fora, nunca some; o
@@ -101,15 +59,9 @@ function camposNaoConsultados(deFora: string[]): string {
   return `os dados ${nomes.length === 1 ? "do campo" : "dos campos"} ${juntarEmLista(nomes)}`;
 }
 
-export function textoDoValor(chave: string, valor: CampoComFonteV1["valor"]): string {
-  if (valor === null) return SEM_VALOR;
-  if (typeof valor === "boolean") return valor ? "Sim" : "Não";
-  const texto = String(valor);
-  if (chave === "situacao_cadastral") return SITUACOES_CADASTRAIS[texto.padStart(2, "0")] ?? `código ${texto}`;
-  if (chave === "situacao_da_entrega") return SITUACOES_DA_ENTREGA[texto] ?? texto;
-  if (DATA_ISO.test(texto)) return formatarData(texto);
-  return texto.replace(MES_ISO, "$2/$1"); // "2026-09" → "09/2026" (o mês do cadastro)
-}
+/** As chaves da tela (não as de fora da API) dos campos do cadastro que não foram consultados. */
+const chavesBarradas = (ficha: FichaDoCnpjV1): ReadonlySet<string> =>
+  new Set((ficha.campos_do_cadastro_nao_disponiveis ?? []).map((nome) => CHAVE_DO_CAMPO_DE_FORA[nome] ?? nome));
 
 function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
   // o campo barrado não foi consultado: a tabela sem ele não pode parecer "a empresa não tem" (linha 899)
@@ -206,71 +158,6 @@ function Entregas({ ficha }: { ficha: FichaDoCnpjV1 }) {
   );
 }
 
-export function Fontes({ fontes }: { fontes: FonteDaFichaV1[] }) {
-  return (
-    <section className="secao-do-relatorio" aria-labelledby="fontes-da-ficha">
-      <h2 id="fontes-da-ficha">Fontes</h2>
-      <ul>
-        {fontes.map((fonte) => (
-          <li key={fonte.fonte}>
-            {fonte.atribuicao} <span className="apagado">({fonte.fonte}; licença: {fonte.licenca})</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-export function Limites({ itens }: { itens: string[] }) {
-  return (
-    <section className="secao-do-relatorio" aria-labelledby="limites-da-ficha">
-      <h2 id="limites-da-ficha">Limites e cuidados</h2>
-      <ul>
-        {itens.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-/** O botão do Excel: pede `${rota}/planilha` com o mesmo corpo da tela e salva com um nome sem dado. */
-export function BaixarPlanilha({ rota, corpo, nome }: { rota: string; corpo: object; nome: string }) {
-  const token = useConta()?.token ?? null;
-  const [baixando, setBaixando] = useState(false);
-  const [falha, setFalha] = useState<string | null>(null);
-  const baixarAgora = () => {
-    if (token === null) return;
-    setBaixando(true);
-    setFalha(null);
-    baixar(`${rota}/planilha`, token, corpo)
-      .then((arquivo) => {
-        const endereco = URL.createObjectURL(arquivo);
-        const ancora = document.createElement("a");
-        ancora.href = endereco;
-        ancora.download = nome;
-        ancora.click();
-        URL.revokeObjectURL(endereco);
-      })
-      .catch((erro: unknown) =>
-        setFalha(erro instanceof ErroDaApi ? erro.message : "Não deu agora. Tente de novo em instantes."),
-      )
-      .finally(() => setBaixando(false));
-  };
-  return (
-    <>
-      <button type="button" className="botao" disabled={baixando} onClick={baixarAgora}>
-        Baixar em Excel
-      </button>
-      {falha ? (
-        <p className="erro-do-app" role="alert">
-          {falha}
-        </p>
-      ) : null}
-    </>
-  );
-}
-
 /** Enquanto o dado não é liberado: o que a ficha vai trazer, bloco a bloco, com a fonte de cada um. */
 function OQueVem({ blocos }: { blocos: BlocoDaFichaV1[] }) {
   return (
@@ -296,52 +183,152 @@ function OQueVem({ blocos }: { blocos: BlocoDaFichaV1[] }) {
   );
 }
 
-function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; cnpj: string }) {
-  if (dados.estado === "nao_liberada") return <OQueVem blocos={dados.o_que_vem} />;
-  if (dados.ficha === null) {
-    return (
-      <p className="apagado" role="note">
-        Ficha não disponível para este CNPJ.
-      </p>
-    );
-  }
-  const ficha = dados.ficha;
+const ROTULO_DAS_ABAS = "Partes da ficha";
+const PARAMETRO_DA_ABA = "aba"; // `?aba=cadastro`: o link copiado abre na mesma aba
+
+/** A data de um número do Resumo no formato curto da peça `Fonte` ("03/11/2005"). */
+const dataDaFonte = (publicoEm: string | null) => (publicoEm === null ? null : formatarData(publicoEm));
+
+function Resumo({ ficha }: { ficha: FichaDoCnpjV1 }) {
+  return (
+    <section aria-label="Resumo da ficha">
+      <p>{fraseDoTopo(ficha, chavesBarradas(ficha))}</p>
+      <div className="numeros">
+        {numerosDoResumo(ficha, chavesBarradas(ficha)).map((numero) => (
+          <CartaoDeNumero
+            key={numero.rotulo}
+            rotulo={numero.rotulo}
+            valor={numero.valor}
+            fonte={numero.fonte === null ? null : <Fonte nome={numero.fonte} data={dataDaFonte(numero.publicoEm)} />}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Pessoa física: o servidor decide a cada pedido (permissão `pessoa_na_tela`); sem ela a aba fica sem nada e
+ * sem aviso, para a tela não revelar que existe lista de pessoa (testes de duas organizações). */
+function QuemControla({ rota, cnpj }: { rota: string; cnpj: string }) {
   return (
     <>
-      <p>
-        CNPJ {cnpjComPontuacao(ficha.cnpj)}
-        <span className="apagado"> · como a base conhecia em {formatarData(ficha.como_era_em)}</span>
-      </p>
-      <div className="acoes-da-ficha">
-        <BaixarPlanilha rota={rota} corpo={{ cnpj }} nome={NOME_DA_PLANILHA} />
-        {/* o CNPJ vai pelo estado da navegação, nunca pelo endereço */}
-        <Link className="botao" to="/comparar-empresas" state={{ cnpjs: [ficha.cnpj] }}>
-          Pôr na comparação
-        </Link>
-      </div>
-      <Cadastro ficha={ficha} />
       <SociosDaFicha rota={rota} cnpj={cnpj} />
       <TitularDaFicha rota={rota} cnpj={cnpj} />
-      <ContatoDaFicha rota={rota} cnpj={cnpj} />
-      <Entregas ficha={ficha} />
-      <EventosDaFicha rota={rota} cnpj={cnpj} />
-      <VinculosDaFicha rota={rota} cnpj={cnpj} />
-      {dados.fontes.length > 0 ? <Fontes fontes={dados.fontes} /> : null}
     </>
   );
 }
 
-function Resultado({ pagina, cnpj }: { pagina: PaginaDoApp; cnpj: string }) {
-  const rota = pagina.contrato?.rota ?? "";
-  const pedido = usarPedido<FichaDaEmpresaV1>(rota, {}, { cnpj });
-  if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando a ficha da empresa…" />;
-  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
+function Sinais({ ficha }: { ficha: FichaDoCnpjV1 }) {
   return (
     <>
-      <Ficha dados={pedido.dados} rota={rota} cnpj={cnpj} />
-      <Limites itens={pedido.dados.limites} />
+      <Entregas ficha={ficha} />
+      <p className="apagado">
+        Sanções, dívida ativa e autuações ambientais não são mostradas nesta ficha: a falta delas aqui não quer dizer
+        que a empresa não as tenha.
+      </p>
     </>
   );
+}
+
+function FontesELimites({ dados }: { dados: FichaDaEmpresaV1 }) {
+  return (
+    <>
+      <Fontes fontes={dados.fontes} id="fontes-da-ficha" />
+      <Limites itens={dados.limites} id="limites-da-ficha" />
+    </>
+  );
+}
+
+function abasDaFicha(dados: FichaDaEmpresaV1, ficha: FichaDoCnpjV1, rota: string, cnpj: string) {
+  return [
+    { chave: "resumo", rotulo: "Resumo", conteudo: <Resumo ficha={ficha} /> },
+    {
+      chave: "cadastro",
+      rotulo: "Cadastro",
+      conteudo: (
+        <>
+          <Cadastro ficha={ficha} />
+          <ContatoDaFicha rota={rota} cnpj={cnpj} />
+        </>
+      ),
+    },
+    { chave: "quem_controla", rotulo: "Quem controla", conteudo: <QuemControla rota={rota} cnpj={cnpj} /> },
+    { chave: "sinais", rotulo: "Sinais", conteudo: <Sinais ficha={ficha} /> },
+    { chave: "eventos", rotulo: "Eventos", conteudo: <EventosDaFicha rota={rota} cnpj={cnpj} /> },
+    { chave: "vinculos", rotulo: "Vínculos", conteudo: <VinculosDaFicha rota={rota} cnpj={cnpj} /> },
+    { chave: "fontes", rotulo: "Fontes e limites", conteudo: <FontesELimites dados={dados} /> },
+  ];
+}
+
+function SeloDaSituacao({ ficha }: { ficha: FichaDoCnpjV1 }) {
+  const situacao = ficha.cadastro_na_receita.situacao_cadastral?.valor;
+  if (situacao === undefined || situacao === null) return null;
+  const ativa = String(situacao).padStart(2, "0") === "02";
+  return <Selo tom={ativa ? "bom" : "atencao"}>{textoDoValor("situacao_cadastral", situacao)}</Selo>;
+}
+
+function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; cnpj: string }) {
+  const ficha = dados.ficha;
+  if (dados.estado === "nao_liberada") {
+    return (
+      <>
+        <OQueVem blocos={dados.o_que_vem} />
+        <Limites itens={dados.limites} id="limites-da-ficha" />
+      </>
+    );
+  }
+  if (ficha === null) {
+    return (
+      <>
+        <p className="apagado" role="note">
+          Ficha não disponível para este CNPJ.
+        </p>
+        <Limites itens={dados.limites} id="limites-da-ficha" />
+      </>
+    );
+  }
+  return (
+    <>
+      <Cabecalho
+        olho="Empresas"
+        titulo={nomeDaEmpresa(ficha) ?? `CNPJ ${cnpjComPontuacao(ficha.cnpj)}`}
+        descricao={`CNPJ ${cnpjComPontuacao(ficha.cnpj)} · como a base conhecia em ${formatarData(ficha.como_era_em)}`}
+        selos={<SeloDaSituacao ficha={ficha} />}
+        acoes={
+          <>
+            <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={{ cnpj }} nome={NOME_DA_PLANILHA} />
+            {/* o CNPJ vai pelo estado da navegação, nunca pelo endereço */}
+            <Link className="botao" to="/comparar-empresas" state={{ cnpjs: [ficha.cnpj] }}>
+              Pôr na comparação
+            </Link>
+          </>
+        }
+      />
+      <Abas rotulo={ROTULO_DAS_ABAS} abas={abasDaFicha(dados, ficha, rota, cnpj)} parametro={PARAMETRO_DA_ABA} />
+    </>
+  );
+}
+
+function Resultado({
+  pagina,
+  cnpj,
+  aoFicarPronta,
+}: {
+  pagina: PaginaDoApp;
+  cnpj: string;
+  aoFicarPronta: (pronta: boolean) => void;
+}) {
+  const rota = pagina.contrato?.rota ?? "";
+  const pedido = usarPedido<FichaDaEmpresaV1>(rota, {}, { cnpj });
+  const pronta = pedido.estado === "pronto" && pedido.dados.ficha !== null;
+  // a ficha pronta traz o próprio título (o nome da empresa): o título da página sai para não haver dois h1
+  useEffect(() => {
+    aoFicarPronta(pronta);
+    return () => aoFicarPronta(false);
+  }, [pronta, aoFicarPronta]);
+  if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando a ficha da empresa…" />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
+  return <Ficha dados={pedido.dados} rota={rota} cnpj={cnpj} />;
 }
 
 // antes da primeira busca os limites não vêm da API; este é o resumo fixo da tela
@@ -357,6 +344,7 @@ function cnpjDaNavegacao(estado: unknown): string | null {
 export function FichaDaEmpresa({ pagina }: { pagina: PaginaDoApp }) {
   const vindo = cnpjDaNavegacao(useEstadoDaNavegacaoUmaVez());
   const [rascunho, setRascunho] = useState(vindo ?? "");
+  const [fichaPronta, setFichaPronta] = useState(false);
   const [buscado, setBuscado] = useState<{ cnpj: string; vez: number } | null>(
     vindo === null ? null : { cnpj: vindo, vez: 1 },
   );
@@ -367,7 +355,7 @@ export function FichaDaEmpresa({ pagina }: { pagina: PaginaDoApp }) {
   };
   return (
     <section>
-      <CabecalhoDaTela pagina={pagina} />
+      {fichaPronta ? null : <CabecalhoDaTela pagina={pagina} />}
       <form className="formulario-do-app" onSubmit={buscar}>
         <div className="campos-do-formulario">
           <label>
@@ -391,7 +379,7 @@ export function FichaDaEmpresa({ pagina }: { pagina: PaginaDoApp }) {
       {buscado === null ? (
         <p className="apagado">{ANTES_DA_BUSCA}</p>
       ) : (
-        <Resultado key={buscado.vez} pagina={pagina} cnpj={buscado.cnpj} />
+        <Resultado key={buscado.vez} pagina={pagina} cnpj={buscado.cnpj} aoFicarPronta={setFichaPronta} />
       )}
     </section>
   );

@@ -47,6 +47,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
+        "registrado_em", "funciona_desde",  # linha 904: registro do administrador de FII; início do FII
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
         # linha 440: carimbo do arquivo na fonte, dia do fato e prazo (o `datas` já os tem assim)
         "gerado_em", "atualizado_em", "data", "prazo",
@@ -54,6 +55,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
     "ate": (
         "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "Data_Cancelamento", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
         "confidencial_ate", "data_vencimento",  # linha 440: fim do sigilo; vencimento (como `vence_em`)
+        "vencimento",  # linha 904: vencimento do ativo do FII
         "vigencia_fim", "fim_negociacao", "desembargada_em", "descredenciada_em", "data_encerramento", "data_encerramento_oferta",
         "data_exclusao_mei", "data_exclusao_mei_antes", "data_exclusao_mei_depois",
         "data_exclusao_simples", "data_exclusao_simples_antes", "data_exclusao_simples_depois",
