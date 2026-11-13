@@ -106,7 +106,7 @@ describe("quem já se mexeu no setor", () => {
     expect(within(tabela).getByText("CNPJ 11111111/…")).toBeTruthy();
     expect(within(tabela).getByText(/ALVO SP LTDA \(SP\) · já saiu/)).toBeTruthy();
     expect(within(tabela).getByText(/05\/03\/2024/)).toBeTruthy();
-    expect(within(tabela).getByText(/Fonte: rfb-cnpj · dado de 10\/10\/2026/)).toBeTruthy();
+    expect(within(tabela).getByText(/Fonte: Receita Federal, CNPJ · dado de 10\/10\/2026/)).toBeTruthy();
     expect(screen.getByText(/Receita Federal, CNPJ\./)).toBeTruthy();
   });
 
