@@ -193,7 +193,7 @@ def test_registro_de_verdade_so_tem_as_tabelas_com_as_tres_provas() -> None:
     """D10.5: só entra tabela com 6, 7 e 8 e a versão maior de hoje. Tabela nova aqui = PR de nível 2
     da mesa Dados, e este teste sobe junto com ela."""
     assert set(prontidao.PRONTIDAO) == {"demonstracoes_como_era"}
-    hoje = date(2026, 11, 13)
+    hoje = date(2026, 11, 14)
     assert (
         negacao_da_prontidao(
             ("demonstracoes_como_era",), prontidao.PRONTIDAO, versoes_maiores(), hoje
@@ -237,11 +237,11 @@ def test_fora_do_ensaio_o_registro_e_o_de_verdade(ambiente) -> None:
 
 def test_no_ensaio_toda_tabela_do_dicionario_vale_como_pronta() -> None:
     ambiente = {"TICKERLAB_AMBIENTE": " Ensaio "}
-    registro = prontidao.registro_vigente(ambiente, date(2026, 11, 13))
+    registro = prontidao.registro_vigente(ambiente, date(2026, 11, 14))
     assert set(registro) >= set(TABELAS)
     assert (
         negacao_da_prontidao(
-            ("demonstracoes_como_era",), registro, versoes_maiores(), date(2026, 11, 13)
+            ("demonstracoes_como_era",), registro, versoes_maiores(), date(2026, 11, 14)
         )
         is None
     )
@@ -260,7 +260,7 @@ def test_em_producao_o_portao_segue_negando_o_que_nao_tem_registro(monkeypatch) 
     registro = prontidao.registro_vigente()
     assert (
         negacao_da_prontidao(
-            ("dmpl_como_era",), registro, versoes_maiores(), date(2026, 11, 13)
+            ("dmpl_como_era",), registro, versoes_maiores(), date(2026, 11, 14)
         )
         is Falta.SEM_PRONTIDAO
     )
