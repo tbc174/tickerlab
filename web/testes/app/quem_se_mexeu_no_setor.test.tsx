@@ -4,12 +4,29 @@
 // dá (contagem por UF, aberturas por ano) é dito à vista e o estado "não liberada" não vira "sem movimento".
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CompradoresDoSetorV1, PerfilDoSetorV1, SetoresV1 } from "../../src/app/tipos";
+import type { BuscaDeEmpresasV1, CompradoresDoSetorV1, PerfilDoSetorV1, SetoresV1 } from "../../src/app/tipos";
 import { abrirApp, respostaJson } from "./ajudantes";
 
 const SETORES: SetoresV1 = { setores: [{ chave: "eletricas", nome: "Elétricas", empresas: 12, como_era_em: null }] };
 const ROTA = "/api/v1/analista/setor/compradores";
 const ROTA_DO_PERFIL = "/api/v1/analista/setor/perfil";
+const ROTA_DA_BUSCA = "/api/v1/analista/empresas";
+
+const OPCOES_DA_BUSCA: BuscaDeEmpresasV1 = {
+  estado: "sem_filtro",
+  como_era_em: null,
+  empresas: [],
+  cortada: false,
+  proximo_cursor: null,
+  fontes: [],
+  limites: ["Nada aqui é recomendação de investimento."],
+  setores: [
+    { codigo: "F", nome: "Construção" },
+    { codigo: "J", nome: "Informação e comunicação" },
+  ],
+  ufs: ["RJ", "SP"],
+  ordens: [],
+};
 
 const PERFIL: PerfilDoSetorV1 = {
   estado: "pronta",
@@ -70,6 +87,7 @@ function abrir(resposta: CompradoresDoSetorV1 | (() => Response), perfil: Perfil
       if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
       if (endereco === ROTA_DO_PERFIL) return respostaJson(200, perfil);
       if (endereco === ROTA) return typeof resposta === "function" ? resposta() : respostaJson(200, resposta);
+      if (endereco === ROTA_DA_BUSCA) return respostaJson(200, OPCOES_DA_BUSCA);
       return undefined;
     },
   });
@@ -105,7 +123,8 @@ describe("quem já se mexeu no setor", () => {
     expect(within(tabela).getByText("COMPRADORA S.A.")).toBeTruthy();
     expect(within(tabela).getByText("CNPJ 11111111/…")).toBeTruthy();
     expect(within(tabela).getByText(/ALVO SP LTDA \(SP\) · já saiu/)).toBeTruthy();
-    expect(within(tabela).getByText(/05\/03\/2024/)).toBeTruthy();
+    // a data aparece na coluna Quando e na linha do exemplo
+    expect(within(tabela).getAllByText(/05\/03\/2024/).length).toBe(2);
     expect(within(tabela).getByText(/Fonte: Receita Federal, CNPJ · dado de 10\/10\/2026/)).toBeTruthy();
     expect(screen.getByText(/Receita Federal, CNPJ\./)).toBeTruthy();
   });
@@ -183,5 +202,138 @@ describe("quem já se mexeu no setor", () => {
     await screen.findByLabelText("CNAE");
     preencher("6201501");
     await screen.findByText(/ainda não foram liberados nesta base/);
+  });
+
+  it("Tipo e Quando: o tipo vem do sinal e a data é a do registro mais recente entre os exemplos", async () => {
+    const dois: CompradoresDoSetorV1 = {
+      ...PRONTA,
+      compradores: [
+        ...PRONTA.compradores,
+        {
+          raiz_do_cnpj: "33333333",
+          razao_social: campo("FUNDO E CONTROLADORA S.A."),
+          sinais: ["fundo_socio", "controla_no_setor"],
+          provas: {
+            fundo_socio: {
+              quantas: 1,
+              exemplos: [
+                {
+                  empresa_do_setor: { raiz_do_cnpj: "44444444", razao_social: campo("ALVO RJ LTDA") },
+                  uf: "RJ",
+                  ainda_socio: true,
+                  campos: { data_entrada: campo("2022-01-10") },
+                },
+              ],
+            },
+            controla_no_setor: {
+              quantas: 1,
+              exemplos: [
+                {
+                  empresa_do_setor: { raiz_do_cnpj: "55555555", razao_social: campo("ALVO MG LTDA") },
+                  uf: "MG",
+                  ainda_socio: null,
+                  campos: { referencia: campo("2025-06-30") },
+                },
+              ],
+            },
+          },
+        },
+        {
+          raiz_do_cnpj: "66666666",
+          razao_social: campo("SEM DATA S.A."),
+          sinais: ["entrou_como_socio"],
+          provas: { entrou_como_socio: { quantas: 1, exemplos: [] } },
+        },
+      ],
+      total_de_compradores: 3,
+    };
+    abrir(dois);
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    const tabela = await screen.findByRole("region", { name: "Quem já se mexeu neste setor" });
+    expect(within(tabela).getByRole("columnheader", { name: "Tipo" })).toBeTruthy();
+    expect(within(tabela).getByRole("columnheader", { name: "Quando" })).toBeTruthy();
+    const linhas = within(tabela).getAllByRole("row");
+    const da = (nome: RegExp) => linhas.find((l) => nome.test(l.textContent ?? ""))!;
+    const celulas = (linha: HTMLElement) => within(linha).getAllByRole("cell").map((c) => c.textContent);
+    const primeira = celulas(da(/COMPRADORA S\.A\./));
+    expect(primeira[1]).toBe("Entrou como sócia");
+    expect(primeira[2]).toBe("05/03/2024");
+    const segunda = celulas(da(/FUNDO E CONTROLADORA/));
+    expect(segunda[1]).toContain("Fundo sócio");
+    expect(segunda[1]).toContain("Controla no setor");
+    expect(segunda[2]).toBe("30/06/2025");
+    expect(celulas(da(/SEM DATA S\.A\./))[2]).toBe("Sem data");
+  });
+
+  it("o quadro Como ler esta lista diz que é movimento passado e como a ordem e as colunas se leem", async () => {
+    abrir(PRONTA);
+    await screen.findByLabelText("CNAE");
+    expect(screen.queryByRole("heading", { name: "Como ler esta lista" })).toBeNull();
+    preencher("6201501");
+    const quadro = (await screen.findByRole("heading", { name: "Como ler esta lista" })).closest("section")!;
+    expect(within(quadro).getByText(/movimento passado, não intenção de compra/i)).toBeTruthy();
+    expect(within(quadro).getByText(/não é uma classificação de quem compraria/)).toBeTruthy();
+    expect(within(quadro).getByText(/A coluna Quando traz a data do registro mais recente/)).toBeTruthy();
+    expect(within(quadro).getByText(/MEI, empresário individual e sócio pessoa física não entram/)).toBeTruthy();
+  });
+
+  it("não liberada não leva o quadro Como ler: não há lista para ler", async () => {
+    abrir({ ...PRONTA, estado: "nao_liberada", setor: null, compradores: [], total_de_compradores: 0 });
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    await screen.findByText(/ainda não foi liberado/);
+    expect(screen.queryByRole("heading", { name: "Como ler esta lista" })).toBeNull();
+  });
+
+  it("empresas por UF ganham barras proporcionais ao maior, e o número segue na tabela", async () => {
+    abrir(PRONTA);
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    const numeros = await screen.findByRole("region", { name: /Números do setor/ });
+    const barras = [...numeros.querySelectorAll<HTMLElement>(".barra-da-uf")];
+    expect(barras.map((b) => b.style.width)).toEqual(["100%", "15%"]);
+    expect(barras.every((b) => b.closest("[aria-hidden='true']") !== null)).toBe(true);
+    const uf = within(numeros).getByRole("region", { name: "Empresas ativas do setor por UF" });
+    expect(within(uf).getByText("8.000")).toBeTruthy();
+    expect(within(uf).getByText("1.200")).toBeTruthy();
+  });
+
+  it("Ver as empresas leva o CNAE e a UF pedidos ao Explorar, que abre já filtrado, sem nada no endereço", async () => {
+    const { buscar } = abrir(PRONTA);
+    await screen.findByLabelText("CNAE");
+    preencher("6201501", "sp", "5");
+    fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor em SP" }));
+    expect(await screen.findByRole("heading", { name: "Encontrar empresas" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("list", { name: "Filtros em uso" })).toBeTruthy());
+    const etiquetas = within(screen.getByRole("list", { name: "Filtros em uso" })).getAllByRole("listitem");
+    expect(etiquetas.map((i) => i.textContent)).toEqual(["Setor: Informação e comunicação ×", "Estado: SP ×"]);
+    const dasBuscas = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
+    expect(dasBuscas.at(-1)).toEqual({ setores: ["J"], ufs: ["SP"] });
+    expect(screen.getByText(/CNAE 6201501/)).toBeTruthy();
+    expect(screen.getByText(/mais ampla/)).toBeTruthy();
+    expect(buscar.mock.calls.every(([e]) => !String(e).includes("6201501"))).toBe(true);
+  });
+
+  it("o link de uma UF da tabela abre o Explorar nessa UF, mesmo que o pedido fosse do Brasil todo", async () => {
+    const { buscar } = abrir(PRONTA);
+    await screen.findByLabelText("CNAE");
+    preencher("6201501");
+    fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor em RJ" }));
+    await screen.findByRole("list", { name: "Filtros em uso" });
+    const dasBuscas = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
+    expect(dasBuscas.at(-1)).toEqual({ setores: ["J"], ufs: ["RJ"] });
+  });
+
+  it("CNAE de seção que a busca não cobre: abre o Explorar sem filtro e diz por quê", async () => {
+    const { buscar } = abrir(PRONTA);
+    await screen.findByLabelText("CNAE");
+    preencher("8411600");
+    fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor" }));
+    expect(await screen.findByText(/não está nesta busca/)).toBeTruthy();
+    expect(screen.getByText(/Escolha ao menos um filtro/)).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
+    const dasBuscas = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
+    expect(dasBuscas).toEqual([{}]);
   });
 });
