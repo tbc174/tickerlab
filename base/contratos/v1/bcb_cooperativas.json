@@ -1,0 +1,123 @@
+{
+  "tabela": "bcb_cooperativas",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da entidade (14 dígitos com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres)",
+      "unidade": "texto"
+    },
+    "codigo_sisbacen": {
+      "descricao": "Código da entidade no Sisbacen, como o Banco Central escreve",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Nome da unidade da federação da sede, como o Banco Central escreve",
+      "unidade": "texto"
+    },
+    "municipio_ibge": {
+      "descricao": "Código IBGE do município da sede (7 dígitos)",
+      "unidade": "texto"
+    },
+    "sigla": {
+      "descricao": "Sigla da entidade; vazia quando o Banco Central não tem",
+      "unidade": "texto"
+    },
+    "situacao_codigo": {
+      "descricao": "Código da situação da entidade",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação da entidade, como o Banco Central escreve (autorizada em atividade, paralisada...)",
+      "unidade": "texto"
+    },
+    "classe_codigo": {
+      "descricao": "Código da classe da cooperativa",
+      "unidade": "texto"
+    },
+    "classe": {
+      "descricao": "Classe da cooperativa (singular, central, confederação)",
+      "unidade": "texto"
+    },
+    "tipo_da_cooperativa_codigo": {
+      "descricao": "Código do tipo da cooperativa",
+      "unidade": "texto"
+    },
+    "tipo_da_cooperativa": {
+      "descricao": "Tipo da cooperativa (atividade profissional, livre admissão...)",
+      "unidade": "texto"
+    },
+    "categoria_codigo": {
+      "descricao": "Código da categoria da cooperativa",
+      "unidade": "texto"
+    },
+    "categoria": {
+      "descricao": "Categoria da cooperativa (capital e empréstimo, crédito rural...)",
+      "unidade": "texto"
+    },
+    "id_na_fonte": {
+      "descricao": "Identificador da linha no arquivo da fonte",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "disponivel_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-16",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A posição de cada dia de coleta do arquivista (uma por mês), sem apagar as anteriores",
+  "atraso": "O Banco Central não escreve a data de publicação; a linha vale desde o dia do arquivo",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

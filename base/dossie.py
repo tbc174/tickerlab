@@ -129,14 +129,18 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
     "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
     "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
-    # lote 1 das 300 pelo CNPJ (linha 904): em casa até o pode do envio ao VPS (linha 908)
+    # lote 1 das 300 pelo CNPJ (linha 904): vai ao VPS só no degrau 6 do recorte, com o pode da Diretoria, e segue
+    # fechado aqui até entrar na prontidão
     "fip_informe", "fii_informe_mensal", "fii_ativos", "fii_administradores",
     "aneel_inadimplencia", "aneel_indicadores_comerciais", "ans_idss",
     # linha 904 (lote 2): titulares do INPI só com empresa; ficam em casa até o "pode" da Diretoria
     "inpi_marcas_titulares", "inpi_patentes_depositantes", "inpi_desenhos_depositantes",
     "inpi_programas_titulares",
-    # linha 904 (lote 2, ANEEL): em casa até o pode do envio ao VPS
+    # linha 904 (lote 2, ANEEL): em casa (o original dos agentes trouxe CPF), fora do VPS
     "aneel_agentes", "aneel_autos_de_infracao", "aneel_termos_de_notificacao",
+    # linha 904 (lote 3): cadastros do Banco Central e da ANTT; em casa até o pode do envio ao VPS
+    "bcb_supervisionadas", "bcb_cooperativas", "bcb_correspondentes", "bcb_filiais_de_consorcio",
+    "bcb_regimes_especiais", "antt_operadores_multimodais", "antt_seguros_de_transportadores",
 })  # fmt: skip
 
 
