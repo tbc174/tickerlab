@@ -90,6 +90,8 @@ def test_setores_do_lancamento_usam_series_que_existem() -> None:
         "saude_suplementar",
         "telecom",
         "aviacao",
+        "combustiveis",
+        "ferrovias",
     ]
     for setor in dossie.SETORES_DO_LANCAMENTO:
         assert setor.series, setor.chave
@@ -359,3 +361,80 @@ def test_setor_cortar_o_futuro_nao_muda_o_passado() -> None:
     for tabela in ("concentracao_ans_beneficiarios", "participacao_dos_membros"):
         ate_2025 = [r for r in inteira["tabelas"][tabela] if r["ano"] <= 2025]
         assert ate_2025 == cortada["tabelas"][tabela]
+
+
+# --- combustíveis e ferrovias (linha 664, e) -------------------------------------------------------
+
+VALE, BRADESPAR, RAIZEN = "33592510000154", "03847461000192", "33453598000123"
+
+
+def _setor(chave: str) -> dossie.SetorDoLancamento:
+    return next(s for s in dossie.SETORES_DO_LANCAMENTO if s.chave == chave)
+
+
+def _ferrovias_ligadas() -> pd.DataFrame:
+    """A Vale é a principal da EFC e da EFVM; a Bradespar só tem participação (não é membro)."""
+    return pd.DataFrame(
+        {
+            "fonte": ["antt-siade"] * 3,
+            "chave": ["EFC", "EFVM", "EFC"],
+            "nome": ["Carajás", "Vitória a Minas", "Carajás"],
+            "cnpj_companhia": [VALE, VALE, BRADESPAR],
+            "via": ["propria", "propria", "participacao"],
+            "principal": [True, True, False],
+            "desde": [D("2011-01-01")] * 3,
+        }
+    )
+
+
+def test_ferrovias_tem_so_a_companhia_principal_da_ferrovia() -> None:
+    empresas = pd.DataFrame(
+        {"cnpj": [VALE, BRADESPAR], "empresa": ["VALE S.A.", "BRADESPAR S.A."]}
+    )
+    membros = dossie.membros_do_setor(
+        _setor("ferrovias"), empresas, _ferrovias_ligadas()
+    )
+    assert membros.to_dict("records") == [
+        {
+            "cnpj": VALE,
+            "empresa": "VALE S.A.",
+            "motivo": "ligada à ANTT por 2 entidades",
+        }
+    ]
+
+
+def test_ferrovias_soma_as_toneladas_do_ano_sem_contar_mes_incompleto() -> None:
+    meses = pd.date_range("2024-01-31", "2025-03-31", freq="ME")
+    mensal = pd.concat(
+        [
+            pd.DataFrame({"competencia": meses, "chave": "EFC", "valor": 100.0}),
+            pd.DataFrame({"competencia": meses, "chave": "EFVM", "valor": 50.0}),
+        ]
+    )
+    serie = next(s for s in dossie.SERIES_DAS_AGENCIAS if s.nome == "antt_toneladas")
+    assert (serie.valor, serie.modo, serie.como_era) == (
+        "toneladas_uteis",
+        dossie.SOMA_DO_ANO,
+        True,
+    )
+    anual = dossie.serie_anual(mensal, serie.modo)
+    por_ano = anual.groupby("ano")["valor"].sum().to_dict()
+    assert por_ano == {2024: 1800.0, 2025: 450.0}  # 2025 tem só 3 meses: fica marcado
+    assert anual[anual["ano"] == 2025]["meses"].eq(3).all()
+
+
+def test_combustiveis_liga_a_distribuidora_pela_anp() -> None:
+    ligacoes = pd.DataFrame(
+        {
+            "fonte": ["anp-vendas-distribuidora"],
+            "chave": ["CENTROESTE DISTRIBUICAO DE DERIVADOS DE PETROLEO S/A"],
+            "nome": ["CENTROESTE"],
+            "cnpj_companhia": [RAIZEN],
+            "via": ["controlada"],
+            "principal": [True],
+            "desde": [D("2012-01-01")],
+        }
+    )
+    empresas = pd.DataFrame({"cnpj": [RAIZEN], "empresa": ["RAÍZEN S.A."]})
+    membros = dossie.membros_do_setor(_setor("combustiveis"), empresas, ligacoes)
+    assert membros["motivo"].tolist() == ["ligada à ANP por 1 entidade"]
