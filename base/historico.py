@@ -146,17 +146,21 @@ def so_empresa(
 
 
 def _exigir_a_lista(nome: str, tabela: Tabela, raizes: RaizesDeEmpresa | None) -> None:
-    if tabela.so_raiz_de_empresa and raizes is None:
-        raise ValueError(f"{nome}: sem a lista de empresas (raizes) não se grava CNPJ")
+    if tabela.so_raiz_de_empresa and (raizes is None or len(raizes.valores) == 0):
+        raise ValueError(
+            f"{nome}: sem a lista de empresas (raizes), ou ela veio vazia: não se grava CNPJ"
+        )
 
 
-def _origem_da_lista(
-    tabela: Tabela, raizes: RaizesDeEmpresa | None
-) -> list[dict[str, str]]:
-    """A impressão da lista entra na origem: mudou a lista, a tabela se refaz."""
-    if raizes is None or not tabela.so_raiz_de_empresa:
-        return []
-    return [{"url": "raizes_de_empresa", "sha256": raizes.impressao}]
+def _origem_do_arquivo(
+    url: str, sha256: str, tabela: Tabela, raizes: RaizesDeEmpresa | None
+) -> dict[str, str]:
+    """O arquivo da CVM; a impressão da lista de empresas vai dentro dele (`raizes_sha256`, como na
+    carga da ANM), sem criar uma origem que não é fonte (a marca de licença não vira "a confirmar")."""
+    origem = {"url": url, "sha256": sha256}
+    if raizes is not None and tabela.so_raiz_de_empresa:
+        origem["raizes_sha256"] = raizes.impressao
+    return origem
 
 
 def _so_empresa_da_tabela(
@@ -236,8 +240,9 @@ def montar(
             if dados.empty:
                 linhas_por_ano.setdefault(ano, 0)
                 continue
-            origens = [{"url": original.url, "sha256": original.sha256}]
-            origens += _origem_da_lista(tabela, raizes)
+            origens = [
+                _origem_do_arquivo(original.url, original.sha256, tabela, raizes)
+            ]
             if tabela.data_publica and cadastro is not None:
                 dados = _com_data_publica(dados, tabela.data_publica, cadastro[0])
                 origens.append(cadastro[1])

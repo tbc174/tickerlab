@@ -90,14 +90,16 @@ def main(argv: list[str] | None = None) -> int:
     agora = datetime.now(UTC)
     falhou = False
     pedidas = opcoes.tabelas or TODAS
-    raizes = (
-        raizes_de_empresa(opcoes.base_pj or pasta)
-        if any(
-            n in historico.TABELAS and historico.TABELAS[n].so_raiz_de_empresa
-            for n in pedidas
-        )
-        else None
-    )
+    raizes = None
+    if any(
+        n in historico.TABELAS and historico.TABELAS[n].so_raiz_de_empresa
+        for n in pedidas
+    ):
+        try:
+            raizes = raizes_de_empresa(opcoes.base_pj or pasta)
+        except FileNotFoundError as erro:
+            # só a tabela que precisa da lista falha (abaixo); as outras seguem
+            log.error("%s", erro)
     with obter_engine().connect() as conexao:
         for nome in pedidas:
             if nome == CNPJ:
@@ -139,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             try:
                 linhas = historico.montar(nome, conexao, pasta, agora, raizes)
-            except historico.ArquivoIlegivel as erro:
+            except (historico.ArquivoIlegivel, ValueError) as erro:
                 log.error("%s", erro)
                 falhou = True
                 continue

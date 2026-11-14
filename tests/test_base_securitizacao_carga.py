@@ -238,3 +238,27 @@ def test_cedente_devedor_so_grava_raiz_de_empresa_e_recusa_sem_a_lista(banco, tm
     )
     raizes = {"".join(c for c in x if c.isdigit())[:8] for x in gravado["cnpj"]}
     assert raizes and not raizes & fora
+
+
+def test_lista_vazia_tambem_recusa_e_a_impressao_fica_na_origem_do_arquivo(
+    banco, tmp_path
+):
+    for fonte, nome in ARQUIVO_DA_FONTE.items():
+        _guardar(fonte, nome)
+    with banco.connect() as conexao:
+        with pytest.raises(ValueError, match="vazia"):
+            historico.montar(
+                "securitizacao_cedente_devedor",
+                conexao,
+                tmp_path / "base",
+                AGORA,
+                RaizesDeEmpresa.de_lista([]),
+            )
+        raizes = _raizes_de_todos()
+        historico.montar(
+            "securitizacao_cedente_devedor", conexao, tmp_path / "base", AGORA, raizes
+        )
+    manifesto = (tmp_path / "base" / "securitizacao_cedente_devedor").glob("*.json")
+    texto = "".join(m.read_text(encoding="utf-8") for m in manifesto)
+    assert raizes.impressao in texto
+    assert "raizes_de_empresa" not in texto
