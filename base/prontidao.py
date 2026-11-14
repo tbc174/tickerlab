@@ -55,8 +55,37 @@ class Falta(StrEnum):
     CONTRATO_MUDOU = "contrato_mudou"  # versão maior diferente da conferida
 
 
-# Nenhuma tabela está pronta ainda: falta a prova da 6, que vem do placar (linha 427, API A2b).
-PRONTIDAO: dict[str, Prontidao] = {}
+# Só entra tabela com as três provas (D10.5). As provas da 6 e da 7 vêm do placar e vencem em 90 dias.
+PRONTIDAO: dict[str, Prontidao] = {
+    "demonstracoes_como_era": Prontidao(
+        versao_maior=3,
+        cruzada=Prova(
+            data=date(2026, 11, 12),
+            prova=(
+                "DFP lida da base contra o mesmo documento no ENET, em amostra sorteada: "
+                "16055 valores comparados, 16055 iguais, nenhum diferente"
+            ),
+            independencia=(
+                "mesmo documento, outro canal: a base lê os dados abertos da CVM "
+                "e a conferência baixa o XML da entrega no ENET"
+            ),
+        ),
+        qualidade=Prova(
+            data=date(2026, 11, 12),
+            prova=(
+                "placar de qualidade verde em 24328845 linhas: chave única, colunas "
+                "obrigatórias preenchidas, 2 achados todos explicados"
+            ),
+        ),
+        dicionario=Prova(
+            data=date(2026, 11, 10),
+            prova=(
+                "dicionário revisado em 10 de novembro de 2026 pela Diretoria, a pedido do dono do projeto "
+                "(pedido: revise o dicionario): resultado revisado, sem correção pendente"
+            ),
+        ),
+    ),
+}
 
 
 def versao_maior(versao: str) -> int:
