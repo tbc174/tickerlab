@@ -926,7 +926,18 @@ def test_fatos_da_base_vem_da_fotografia():
     medicao = (
         None if das_fechadas is None else fechadas.fechadas_da_fotografia(das_fechadas)
     )
-    assert fatos["grupos"] == vitrine.grupos_dos_fatos(cruzamentos, medicao)
+    # o recorte por estado e setor vem do arquivo ao lado, quando a fotografia o tem
+    arquivo_dos_recortes = vitrine.FOTOGRAFIA_DOS_CRUZAMENTOS.with_name(
+        vitrine.NOME_DOS_RECORTES
+    )
+    recortes = (
+        fechadas.recortes_da_fotografia(
+            json.loads(arquivo_dos_recortes.read_text(encoding="utf-8"))
+        )
+        if arquivo_dos_recortes.exists()
+        else None
+    )
+    assert fatos["grupos"] == vitrine.grupos_dos_fatos(cruzamentos, medicao, recortes)
     for grupo in fatos["grupos"]:
         for fato in grupo["fatos"]:
             assert len(fato["texto"]) <= vitrine.LIMITE_DO_FATO, fato["chave"]
