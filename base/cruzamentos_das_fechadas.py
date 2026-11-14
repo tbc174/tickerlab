@@ -40,6 +40,7 @@ from typing import Protocol
 import duckdb
 import pandas as pd
 
+from base import cnae
 from base.dicionario import TABELAS
 from base.porta.duckdb import nome_da_view
 from base.porta.rede import views
@@ -104,6 +105,32 @@ class CartaoCaido:
 class MedicaoDasFechadas:
     medido_em: str
     cartoes: tuple[CartaoMedido, ...]
+    caidos: tuple[CartaoCaido, ...]
+
+
+@dataclass(frozen=True)
+class Celula:
+    """Uma célula do recorte (uma UF ou uma seção da CNAE): `parte` das `todo` empresas do cartão que estão
+    nela; as duas None quando a célula não pode sair (contagem pequena, ou deduzível pela subtração)."""
+
+    chave: str
+    parte: int | None
+    todo: int | None
+
+
+@dataclass(frozen=True)
+class RecorteDoCartao:
+    chave: str
+    por_uf: tuple[Celula, ...]
+    por_setor: tuple[Celula, ...]
+
+
+@dataclass(frozen=True)
+class RecortesDasFechadas:
+    """O recorte por UF da matriz e por seção da CNAE da matriz de cada cartão de pé (linha 925, 2º PR)."""
+
+    medido_em: str
+    cartoes: tuple[RecorteDoCartao, ...]
     caidos: tuple[CartaoCaido, ...]
 
 
@@ -208,6 +235,27 @@ def _simples_em(dia: str) -> str:
     )
 
 
+@dataclass(frozen=True)
+class Partes:
+    """O SQL de um cartão em pedaços: o todo e a parte (SQL de raízes, coluna `raiz`) e as CTEs que eles usam
+    (`prefixo`, terminado em vírgula, ou vazio). Daí saem a contagem do cartão e a do recorte."""
+
+    todo: str
+    parte: str
+    prefixo: str = ""
+
+
+def _total(partes: Callable[[], Partes]) -> Callable[[], str]:
+    """A contagem do cartão (todo, parte) a partir das partes sem CTE própria."""
+
+    def sql() -> str:
+        pedacos = partes()
+        assert not pedacos.prefixo
+        return _parte_e_todo(pedacos.todo, pedacos.parte)
+
+    return sql
+
+
 def _parte_e_todo(todo: str, parte: str) -> str:
     """`todo` e `parte` são SQL de raízes (`raiz`); a parte só conta dentro do todo."""
     return (
@@ -219,8 +267,8 @@ def _parte_e_todo(todo: str, parte: str) -> str:
 ATIVAS = "SELECT raiz FROM ativas"
 
 
-def _saiu_do_simples() -> str:
-    return _parte_e_todo(
+def _saiu_do_simples() -> Partes:
+    return Partes(
         f"SELECT a.raiz FROM ativas a JOIN ({_simples_em('$dia12')}) s USING (raiz) "
         "WHERE coalesce(s.consta, false) AND s.optante_simples",
         f"SELECT raiz FROM ({_simples_em('$dia')}) WHERE coalesce(consta, false) "
@@ -228,8 +276,8 @@ def _saiu_do_simples() -> str:
     )
 
 
-def _tres_filiais() -> str:
-    return _parte_e_todo(
+def _tres_filiais() -> Partes:
+    return Partes(
         ATIVAS,
         f"SELECT cnpj_basico AS raiz FROM {_v(ESTABELECIMENTOS)} WHERE mes_do_retrato = $mes "
         "AND NOT coalesce(matriz, true) AND data_inicio_atividade > CAST($dia12 AS DATE) "
@@ -237,15 +285,15 @@ def _tres_filiais() -> str:
     )
 
 
-def _bndes_e_finep() -> str:
-    return _parte_e_todo(
+def _bndes_e_finep() -> Partes:
+    return Partes(
         f"SELECT raiz FROM ativas WHERE raiz IN ({_raizes_com_contrato(BNDES)})",
         _raizes_com_contrato(FINEP),
     )
 
 
-def _socia_entrou() -> str:
-    return _parte_e_todo(
+def _socia_entrou() -> Partes:
+    return Partes(
         ATIVAS,
         f"SELECT DISTINCT cnpj_basico AS raiz FROM {_v(SOCIAS)} WHERE movimento = 'entrou' "
         "AND publico_em <= CAST($dia AS DATE) AND data_entrada > CAST($dia12 AS DATE) "
@@ -253,8 +301,8 @@ def _socia_entrou() -> str:
     )
 
 
-def _capital_estrangeiro() -> str:
-    return _parte_e_todo(
+def _capital_estrangeiro() -> Partes:
+    return Partes(
         ATIVAS,
         f"SELECT DISTINCT cnpj_basico AS raiz FROM ({_vigentes_do_arquivista(RDE)})",
     )
@@ -270,27 +318,43 @@ def _socias_no_dia() -> str:
     )
 
 
-def _tres_niveis() -> str:
+def _niveis() -> str:
+    """As CTEs dos três níveis: `um` tem uma sócia empresa; `tres`, uma sócia que tem sócia que tem sócia."""
     pares = _socias_no_dia()
     return (
-        f"WITH pares AS ({pares}), "
+        f"pares AS ({pares}), "
         "um AS (SELECT DISTINCT empresa AS raiz FROM pares), "
         "dois AS (SELECT DISTINCT empresa AS raiz FROM pares WHERE socia IN (SELECT raiz FROM um)), "
-        "tres AS (SELECT DISTINCT empresa AS raiz FROM pares WHERE socia IN (SELECT raiz FROM dois)) "
+        "tres AS (SELECT DISTINCT empresa AS raiz FROM pares WHERE socia IN (SELECT raiz FROM dois))"
+    )
+
+
+def _tres_niveis() -> str:
+    return (
+        f"WITH {_niveis()} "
         "SELECT (SELECT count(*) FROM ativas WHERE raiz IN (SELECT raiz FROM um)), "
         "(SELECT count(*) FROM ativas WHERE raiz IN (SELECT raiz FROM tres))"
     )
 
 
-def _bndes_e_divida() -> str:
-    return _parte_e_todo(
+def _tres_niveis_partes() -> Partes:
+    """Para o recorte; `tres` está dentro de `um` (toda empresa com sócia está em `um`)."""
+    return Partes(
+        "SELECT raiz FROM ativas WHERE raiz IN (SELECT raiz FROM um)",
+        "SELECT raiz FROM tres",
+        f"{_niveis()}, ",
+    )
+
+
+def _bndes_e_divida() -> Partes:
+    return Partes(
         f"SELECT raiz FROM ativas WHERE raiz IN ({_raizes_com_contrato(BNDES, '$bndes_desde')})",
         _divida_no_retrato(),
     )
 
 
-def _anvisa_e_divida() -> str:
-    return _parte_e_todo(
+def _anvisa_e_divida() -> Partes:
+    return Partes(
         f"SELECT raiz FROM ativas WHERE raiz IN (SELECT cnpj_basico FROM {_v(ANVISA)} "
         "WHERE publico_em <= CAST($dia AS DATE) QUALIFY row_number() OVER "
         "(PARTITION BY cnpj_basico ORDER BY publico_em DESC) = 1 AND coalesce(afe_ativos, 0) > 0)",
@@ -302,9 +366,26 @@ def _recuperacao_e_divida() -> str:
     """A entrada em recuperação judicial (a data da situação especial na Receita) e a dívida que a lista da
     PGFN já mostrava naquele dia, inscrita ao menos 12 meses antes. Sem retrato da PGFN público na entrada,
     a empresa fica de fora (não dá para saber sem olhar o futuro)."""
+    return (
+        f"WITH {_recuperacoes()} "
+        "SELECT (SELECT count(*) FROM com_retrato WHERE retrato IS NOT NULL), (SELECT count(*) FROM devia)"
+    )
+
+
+def _recuperacao_e_divida_partes() -> Partes:
+    """Para o recorte; `devia` está dentro de `com_retrato` com retrato (o join é pelo retrato)."""
+    return Partes(
+        "SELECT raiz FROM com_retrato WHERE retrato IS NOT NULL",
+        "SELECT raiz FROM devia",
+        f"{_recuperacoes()}, ",
+    )
+
+
+def _recuperacoes() -> str:
+    """As CTEs da recuperação judicial: `com_retrato` (a entrada e o retrato da PGFN já público nela) e `devia`."""
     raiz = _raiz_de_cnpj("p.cnpj")
     return (
-        "WITH rj AS (SELECT cnpj_basico AS raiz, min(CAST(data_situacao_especial AS DATE)) AS entrada "
+        "rj AS (SELECT cnpj_basico AS raiz, min(CAST(data_situacao_especial AS DATE)) AS entrada "
         f"FROM {_v(SITUACAO_ESPECIAL)} WHERE rotulo = '{RECUPERACAO_JUDICIAL}' "
         "AND publico_em <= CAST($dia AS DATE) AND cnpj_basico IN (SELECT raiz FROM fechadas) GROUP BY 1), "
         f"retratos AS (SELECT data_do_retrato, min(publico_em) AS publico_em FROM {_v(PGFN)} GROUP BY 1), "
@@ -313,14 +394,13 @@ def _recuperacao_e_divida() -> str:
         f"devia AS (SELECT DISTINCT c.raiz FROM com_retrato c JOIN {_v(PGFN)} p "
         f"ON p.data_do_retrato = c.retrato AND {raiz} = c.raiz "
         "AND p.publico_em <= c.entrada "
-        f"AND CAST(p.primeira_inscricao AS DATE) <= c.entrada - INTERVAL {MESES_DA_JANELA} MONTH) "
-        "SELECT (SELECT count(*) FROM com_retrato WHERE retrato IS NOT NULL), (SELECT count(*) FROM devia)"
+        f"AND CAST(p.primeira_inscricao AS DATE) <= c.entrada - INTERVAL {MESES_DA_JANELA} MONTH)"
     )
 
 
-def _industria_e_marca() -> str:
+def _industria_e_marca() -> Partes:
     menor, maior = DIVISOES_DA_INDUSTRIA
-    return _parte_e_todo(
+    return Partes(
         f"SELECT a.raiz FROM ativas a JOIN fechadas f USING (raiz) WHERE f.porte = '{PORTE_ACIMA_DA_EPP}' "
         f"AND a.raiz IN (SELECT cnpj_basico FROM {_v(ESTABELECIMENTOS)} WHERE mes_do_retrato = $mes "
         f"AND matriz AND TRY_CAST(left(cnae_principal, 2) AS INTEGER) BETWEEN {menor} AND {maior})",
@@ -328,8 +408,8 @@ def _industria_e_marca() -> str:
     )
 
 
-def _finep_e_patente() -> str:
-    return _parte_e_todo(
+def _finep_e_patente() -> Partes:
+    return Partes(
         f"SELECT raiz FROM ativas WHERE raiz IN ({_raizes_com_contrato(FINEP)})",
         _raizes_do_inpi(PATENTES),
     )
@@ -337,27 +417,45 @@ def _finep_e_patente() -> str:
 
 @dataclass(frozen=True)
 class Molde:
-    """Um cartão: as tabelas que ele lê (além das da base) e o SQL que devolve (todo, parte)."""
+    """Um cartão: as tabelas que ele lê (além das da base), o SQL que devolve (todo, parte) e as partes que o
+    recorte por UF e por setor usa."""
 
     chave: str
     tabelas: tuple[str, ...]
     sql: Callable[[], str] | None
+    partes: Callable[[], Partes] | None = None
 
 
 MOLDES = (
-    Molde("saiu_do_simples", (SIMPLES,), _saiu_do_simples),
-    Molde("tres_filiais", (), _tres_filiais),
-    Molde("bndes_e_finep", (BNDES, FINEP), _bndes_e_finep),
-    Molde("socia_entrou", (SOCIAS,), _socia_entrou),
-    Molde("capital_estrangeiro", (RDE,), _capital_estrangeiro),
-    Molde("tres_niveis", (SOCIAS,), _tres_niveis),
-    Molde("bndes_e_divida", (BNDES, PGFN), _bndes_e_divida),
+    Molde("saiu_do_simples", (SIMPLES,), _total(_saiu_do_simples), _saiu_do_simples),
+    Molde("tres_filiais", (), _total(_tres_filiais), _tres_filiais),
+    Molde("bndes_e_finep", (BNDES, FINEP), _total(_bndes_e_finep), _bndes_e_finep),
+    Molde("socia_entrou", (SOCIAS,), _total(_socia_entrou), _socia_entrou),
+    Molde(
+        "capital_estrangeiro",
+        (RDE,),
+        _total(_capital_estrangeiro),
+        _capital_estrangeiro,
+    ),
+    Molde("tres_niveis", (SOCIAS,), _tres_niveis, _tres_niveis_partes),
+    Molde("bndes_e_divida", (BNDES, PGFN), _total(_bndes_e_divida), _bndes_e_divida),
     # a lista de punidas da CGU é só de uso interno: a trava derruba o cartão antes de qualquer SQL
     Molde("tce_e_sancao", (CONTRATOS_DOS_TCES, SANCOES), None),
-    Molde("anvisa_e_divida", (ANVISA, PGFN), _anvisa_e_divida),
-    Molde("recuperacao_e_divida", (SITUACAO_ESPECIAL, PGFN), _recuperacao_e_divida),
-    Molde("industria_e_marca", (MARCAS,), _industria_e_marca),
-    Molde("finep_e_patente", (FINEP, PATENTES), _finep_e_patente),
+    Molde(
+        "anvisa_e_divida", (ANVISA, PGFN), _total(_anvisa_e_divida), _anvisa_e_divida
+    ),
+    Molde(
+        "recuperacao_e_divida",
+        (SITUACAO_ESPECIAL, PGFN),
+        _recuperacao_e_divida,
+        _recuperacao_e_divida_partes,
+    ),
+    Molde(
+        "industria_e_marca", (MARCAS,), _total(_industria_e_marca), _industria_e_marca
+    ),
+    Molde(
+        "finep_e_patente", (FINEP, PATENTES), _total(_finep_e_patente), _finep_e_patente
+    ),
 )
 
 
@@ -430,6 +528,102 @@ def motivo_da_contagem(todo: int, parte: int) -> str | None:
     return None
 
 
+SEM_INFORMACAO = "nd"  # matriz sem UF ou sem CNAE com divisão conhecida no retrato
+_LETRA_DA_SECAO = {nome: letra for letra, nome in cnae.SECOES.items()}
+SECAO_DA_DIVISAO: tuple[tuple[str, str], ...] = tuple(
+    (f"{d:02d}", _LETRA_DA_SECAO[nome])
+    for d in range(1, 100)
+    if (nome := cnae.secao_do_cnae(f"{d:02d}00000")) is not None
+)
+
+
+def celulas_que_saem(contagens: Mapping[str, tuple[int, int]]) -> tuple[Celula, ...]:
+    """As células de um recorte, de (todo, parte) por chave. Cai a célula cuja contagem não pode sair
+    (`motivo_da_contagem`); e, como o total do cartão sai, as células escondidas somadas também têm de poder
+    sair (senão uma célula escondida sozinha é o total menos as outras): enquanto não puderem, esconde-se também
+    a menor das visíveis. Em ordem de chave."""
+    escondidas = {
+        k for k, (todo, parte) in contagens.items() if motivo_da_contagem(todo, parte)
+    }
+    visiveis = sorted(
+        (v for v in contagens if v not in escondidas),
+        key=lambda k: (contagens[k][0], k),
+    )
+
+    def soma_nao_sai() -> bool:
+        todo = sum(contagens[k][0] for k in escondidas)
+        parte = sum(contagens[k][1] for k in escondidas)
+        return motivo_da_contagem(todo, parte) is not None
+
+    while escondidas and visiveis and soma_nao_sai():
+        escondidas.add(visiveis.pop(0))
+    return tuple(
+        Celula(k, None, None)
+        if k in escondidas
+        else Celula(k, contagens[k][1], contagens[k][0])
+        for k in sorted(contagens)
+    )
+
+
+def _montar_o_onde(
+    cursor: duckdb.DuckDBPyConnection, parametros: Mapping[str, object]
+) -> None:
+    """A UF e a seção da CNAE da matriz de cada empresa fechada, no retrato do dia."""
+    cursor.execute(
+        "CREATE OR REPLACE TEMP TABLE secoes (divisao VARCHAR, secao VARCHAR)"
+    )
+    cursor.executemany("INSERT INTO secoes VALUES (?, ?)", list(SECAO_DA_DIVISAO))
+    divisao = "left(lpad(regexp_replace(CAST(cnae_principal AS VARCHAR), '[^0-9]', '', 'g'), 7, '0'), 2)"
+    cursor.execute(
+        "CREATE OR REPLACE TEMP TABLE onde AS SELECT m.raiz, m.uf, s.secao FROM (SELECT cnpj_basico AS raiz, "
+        f"min(upper(trim(uf))) AS uf, min({divisao}) AS divisao FROM {_v(ESTABELECIMENTOS)} "
+        "WHERE mes_do_retrato = $mes AND matriz AND cnpj_basico IN (SELECT raiz FROM fechadas) GROUP BY 1) m "
+        "LEFT JOIN secoes s USING (divisao)",
+        {"mes": parametros["mes"]},
+    )
+
+
+def _sql_do_recorte(partes: Partes) -> str:
+    return (
+        f"WITH {partes.prefixo}todo AS ({partes.todo}), parte AS ({partes.parte}), "
+        "conjunto AS (SELECT raiz, raiz IN (SELECT raiz FROM parte) AS na_parte FROM todo) "
+        "SELECT o.uf, o.secao, count(*), count_if(c.na_parte) "
+        "FROM conjunto c LEFT JOIN onde o USING (raiz) GROUP BY ALL"
+    )
+
+
+def _somar(linhas: Sequence[tuple], indice: int) -> dict[str, tuple[int, int]]:
+    contas: dict[str, tuple[int, int]] = {}
+    for linha in linhas:
+        chave = linha[indice] or SEM_INFORMACAO
+        todo, parte = contas.get(chave, (0, 0))
+        contas[chave] = (todo + int(linha[2]), parte + int(linha[3]))
+    return contas
+
+
+def _recortar_um(
+    cursor: duckdb.DuckDBPyConnection,
+    molde: Molde,
+    cartao: CartaoMedido,
+    parametros: Mapping[str, object],
+) -> RecorteDoCartao | CartaoCaido:
+    """O recorte de um cartão de pé; se as células não somam o total do cartão, o recorte cai inteiro."""
+    if molde.partes is None:
+        return CartaoCaido(molde.chave, "o cartão não tem as partes do recorte")
+    sql = _sql_do_recorte(molde.partes())
+    linhas = cursor.execute(sql, _parametros_usados(sql, parametros)).fetchall()
+    por_uf, por_setor = _somar(linhas, 0), _somar(linhas, 1)
+    for contas in (por_uf, por_setor):
+        if (sum(c[0] for c in contas.values()), sum(c[1] for c in contas.values())) != (
+            cartao.todo,
+            cartao.parte,
+        ):
+            return CartaoCaido(molde.chave, "o recorte não fecha com o total do cartão")
+    return RecorteDoCartao(
+        molde.chave, celulas_que_saem(por_uf), celulas_que_saem(por_setor)
+    )
+
+
 def doze_meses_antes(dia: date) -> date:
     return (pd.Timestamp(dia) - pd.DateOffset(months=MESES_DA_JANELA)).date()
 
@@ -439,16 +633,31 @@ def medir_fechadas(
 ) -> MedicaoDasFechadas:
     """Mede os cartões de empresa fechada pela porta, só com o que era público em `ate`. O cartão cuja tabela
     não passa nas travas, ou cuja contagem fica abaixo do mínimo, cai com o motivo; os outros seguem."""
+    return _medir_pela_porta(porta, catalogo, ate, recortar=False)[0]
+
+
+def medir_fechadas_e_recortes(
+    porta: PortaDeConsulta, catalogo: dict, ate: date
+) -> tuple[MedicaoDasFechadas, RecortesDasFechadas]:
+    """A mesma medição e, de cada cartão de pé, a contagem por UF e por seção da CNAE da matriz."""
+    medicao, recortes = _medir_pela_porta(porta, catalogo, ate, recortar=True)
+    assert recortes is not None
+    return medicao, recortes
+
+
+def _medir_pela_porta(
+    porta: PortaDeConsulta, catalogo: dict, ate: date, recortar: bool
+) -> tuple[MedicaoDasFechadas, RecortesDasFechadas | None]:
     cursor = porta.con.cursor()
     try:
-        return _medir(cursor, catalogo, ate)
+        return _medir(cursor, catalogo, ate, recortar)
     finally:
         cursor.close()
 
 
 def _medir(
-    cursor: duckdb.DuckDBPyConnection, catalogo: dict, ate: date
-) -> MedicaoDasFechadas:
+    cursor: duckdb.DuckDBPyConnection, catalogo: dict, ate: date, recortar: bool
+) -> tuple[MedicaoDasFechadas, RecortesDasFechadas | None]:
     na_porta = views(cursor)
     dia = ate.isoformat()
     motivo_da_base = _motivo(TABELAS_DA_BASE, catalogo, na_porta)
@@ -473,9 +682,27 @@ def _medir(
             continue
         medido = _medir_um(cursor, molde, parametros)
         (cartoes if isinstance(medido, CartaoMedido) else caidos).append(medido)
-    return MedicaoDasFechadas(
+    medicao = MedicaoDasFechadas(
         medido_em=dia, cartoes=tuple(cartoes), caidos=tuple(caidos)
     )
+    if not recortar:
+        return medicao, None
+    return medicao, _recortar(cursor, medicao, parametros)
+
+
+def _recortar(
+    cursor: duckdb.DuckDBPyConnection,
+    medicao: MedicaoDasFechadas,
+    parametros: Mapping[str, object],
+) -> RecortesDasFechadas:
+    recortes, caidos = [], []
+    if medicao.cartoes:
+        _montar_o_onde(cursor, parametros)
+    moldes = {m.chave: m for m in MOLDES}
+    for cartao in medicao.cartoes:
+        recorte = _recortar_um(cursor, moldes[cartao.chave], cartao, parametros)
+        (recortes if isinstance(recorte, RecorteDoCartao) else caidos).append(recorte)
+    return RecortesDasFechadas(medicao.medido_em, tuple(recortes), tuple(caidos))
 
 
 def de_pe_o_bastante(medicao: MedicaoDasFechadas) -> bool:
@@ -499,3 +726,7 @@ def fechadas_da_fotografia(dados: Mapping) -> MedicaoDasFechadas:
 
 def para_a_fotografia(medicao: MedicaoDasFechadas) -> dict:
     return asdict(medicao)
+
+
+def recortes_para_a_fotografia(recortes: RecortesDasFechadas) -> dict:
+    return asdict(recortes)
