@@ -69,7 +69,7 @@
                   },
                   "largura": 13.3,
                   "parte": "247",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Atividades administrativas e serviços complementares",
                   "todo": "779.295"
                 },
@@ -89,7 +89,7 @@
                   },
                   "largura": 10.7,
                   "parte": "198",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Atividades financeiras, de seguros e serviços relacionados",
                   "todo": "460.286"
                 },
@@ -99,7 +99,7 @@
                   },
                   "largura": 9.0,
                   "parte": "167",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Saúde humana e serviços sociais",
                   "todo": "769.254"
                 },
@@ -109,7 +109,7 @@
                   },
                   "largura": 7.5,
                   "parte": "139",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Informação e comunicação",
                   "todo": "398.982"
                 },
@@ -119,7 +119,7 @@
                   },
                   "largura": 7.1,
                   "parte": "132",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Atividades profissionais, científicas e técnicas",
                   "todo": "1.050.879"
                 },
@@ -129,7 +129,7 @@
                   },
                   "largura": 3.3,
                   "parte": "61",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Educação",
                   "todo": "246.946"
                 },
@@ -139,7 +139,7 @@
                   },
                   "largura": 2.8,
                   "parte": "51",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Atividades imobiliárias",
                   "todo": "322.285"
                 },
@@ -149,7 +149,7 @@
                   },
                   "largura": 2.8,
                   "parte": "51",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Outras atividades de serviços",
                   "todo": "170.238"
                 },
@@ -159,7 +159,7 @@
                   },
                   "largura": 1.9,
                   "parte": "35",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "Artes, cultura, esporte e recreação",
                   "todo": "122.842"
                 },
@@ -219,7 +219,7 @@
                   },
                   "largura": 31.0,
                   "parte": "418",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "MG",
                   "todo": "872.549"
                 },
@@ -249,7 +249,7 @@
                   },
                   "largura": 20.7,
                   "parte": "279",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "RJ",
                   "todo": "646.728"
                 },
@@ -419,7 +419,7 @@
                   },
                   "largura": 1.8,
                   "parte": "24",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "AL",
                   "todo": "53.611"
                 },
@@ -429,7 +429,7 @@
                   },
                   "largura": 1.2,
                   "parte": "16",
-                  "porcento": "0,0%",
+                  "porcento": "menos de 0,1%",
                   "rotulo": "SE",
                   "todo": "50.337"
                 },
@@ -446,7 +446,7 @@
               ],
               "escondidas": [
                 "AC",
-                "EX",
+                "Exterior",
                 "RR"
               ]
             }
@@ -1060,7 +1060,7 @@
                 }
               ],
               "escondidas": [
-                "EX",
+                "Exterior",
                 "RR"
               ]
             }
@@ -1524,7 +1524,7 @@
               ],
               "escondidas": [
                 "AP",
-                "EX"
+                "Exterior"
               ]
             }
           },
@@ -2370,7 +2370,7 @@
                   "largura": 0.1,
                   "parte": "11",
                   "porcento": "0,3%",
-                  "rotulo": "EX",
+                  "rotulo": "Exterior",
                   "todo": "3.403"
                 }
               ],
@@ -2382,7 +2382,7 @@
             "cnpj_empresas_pj",
             "cnpj_estabelecimentos_pj"
           ],
-          "texto": "das 55.515 indústrias fechadas ativas acima do porte de pequena empresa têm marca no INPI, concedida ou pedida (29.233 empresas)."
+          "texto": "das 55.515 indústrias fechadas ativas acima do porte de pequena empresa são titulares de ao menos um pedido de marca no INPI (29.233 empresas)."
         },
         {
           "chave": "finep_e_patente",
