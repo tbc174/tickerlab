@@ -34,8 +34,9 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base import cnpj_pela_ponte
+from base.cnpj_pela_ponte import ler_ponte
 from base.commodities import cftc_cot
-from base.parquet import gravar_com_versoes, gravar_se_mudou
+from base.parquet import gravar_com_versoes, gravar_se_mudou, ler_tabela
 from base.setoriais import (
     anac,
     anatel,
@@ -54,7 +55,6 @@ from base.setoriais import (
     revisoes,
     susep,
 )
-from scripts import carga_ponte
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
@@ -285,7 +285,7 @@ def _com_cnpj_da_ponte(
     origens com a ponte: a tabela se refaz quando a ponte muda. Sem ponte na base, as colunas saem vazias."""
     if not revisada.ponte:
         return montar, origens
-    ponte, origens_da_ponte = carga_ponte.ler_ponte(base / revisada.ponte, base)
+    ponte, origens_da_ponte = ler_ponte(base / revisada.ponte, base, ler_tabela)
 
     def com_cnpj() -> pd.DataFrame:
         tabela, contagem = cnpj_pela_ponte.com_cnpj_da_ponte(
