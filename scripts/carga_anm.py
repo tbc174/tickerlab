@@ -29,7 +29,6 @@ dicionario-da-base.md; citado em dicionario.py.
 import argparse
 import hashlib
 import logging
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -37,9 +36,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import pyarrow as pa
 
 from base import anm
 from base.parquet import gravar_com_versoes, ler_tabela
+from base.raizes_de_empresa import RaizesDeEmpresa, raizes_de_empresa
 from src import acervo, rede
 from src.versao_do_codigo import exigir_versao_do_codigo
 
@@ -58,9 +59,6 @@ SEPARADOR = "\x1f"
 
 Leitor = Callable[[bytes, date], pd.DataFrame]
 GRUPOS_COM_CNPJ = frozenset({"cfem", "sigbm"})
-TABELA_PJ = "cnpj_empresas_pj"
-TABELA_ESTAB = "cnpj_estabelecimentos_pj"
-ARQUIVO_VERSIONADO = re.compile(r"\.v\d+\.parquet$")
 
 
 @dataclass(frozen=True)
@@ -151,47 +149,8 @@ def manter_a_data_da_primeira_coleta(
     return resultado
 
 
-def _arquivos_atuais(base: Path, tabela: str) -> dict[str, Path]:
-    """Os arquivos atuais (sem as versões `.vN`) de uma tabela da base, pelo nome; sem arquivo, recusa."""
-    pasta = base / tabela
-    arquivos = {
-        a.name: a
-        for a in pasta.glob("*.parquet")
-        if not ARQUIVO_VERSIONADO.search(a.name)
-    }
-    if not arquivos:
-        raise FileNotFoundError(
-            f"sem a {tabela} em {pasta}: não dá para conferir quem é pessoa"
-        )
-    return arquivos
-
-
-def _raizes_do_arquivo(arquivo: Path | None) -> set[str]:
-    if arquivo is None:
-        return set()
-    coluna = pd.read_parquet(arquivo, columns=["cnpj_basico"])["cnpj_basico"]
-    return set(coluna.astype(str))
-
-
-def raizes_de_empresa(base: Path) -> frozenset[str]:
-    """Raízes que estão nas duas listas sem pessoa: `cnpj_empresas_pj` e `cnpj_estabelecimentos_pj`.
-
-    A de empresas só tira empresário individual pela natureza; MEI com natureza de empresa só sai
-    na de estabelecimentos (opção pelo Simples). Por isso vale a interseção, como no recorte da API
-    (`montar_recorte_da_api.tirar_raizes_de_mei`). Os dois lados dividem os arquivos pelos 2 primeiros
-    caracteres da raiz: cruza arquivo a arquivo, para não guardar as duas listas inteiras na memória."""
-    empresas = _arquivos_atuais(base, TABELA_PJ)
-    estabelecimentos = _arquivos_atuais(base, TABELA_ESTAB)
-    raizes: set[str] = set()
-    for nome, arquivo in empresas.items():
-        raizes |= _raizes_do_arquivo(arquivo) & _raizes_do_arquivo(
-            estabelecimentos.get(nome)
-        )
-    return frozenset(raizes)
-
-
 def so_empresa(
-    tabela: pd.DataFrame, raizes: frozenset[str], descartar: bool = True
+    tabela: pd.DataFrame, raizes: RaizesDeEmpresa, descartar: bool = True
 ) -> pd.DataFrame:
     """Tira da tabela o que é de CNPJ fora da lista de empresas; conta o que saiu em `fora_da_pj`.
 
@@ -199,7 +158,13 @@ def so_empresa(
     do empreendedor, como o leitor já faz com o documento incompleto."""
     cnpj = tabela["cnpj"].astype(str)
     completo = cnpj.str.len() == 14
-    fora = completo & ~cnpj.str[:8].isin(raizes)
+    na_lista = pd.Series(
+        raizes.esta_na_lista(
+            pa.array(cnpj.str[:8].tolist(), type=pa.string())
+        ).to_numpy(zero_copy_only=False),
+        index=tabela.index,
+    ).astype(bool)
+    fora = completo & ~na_lista
     if descartar:
         saida = tabela[completo & ~fora].reset_index(drop=True)
         conta = int((~(completo & ~fora)).sum())
@@ -212,18 +177,13 @@ def so_empresa(
     return saida
 
 
-def hash_das_raizes(raizes: frozenset[str]) -> str:
-    """Impressão digital da lista de raízes: entra na origem, para a tabela refazer se a lista mudar."""
-    return hashlib.sha256("\n".join(sorted(raizes)).encode()).hexdigest()
-
-
 def carregar(
     tabela: Tabela,
     saida: Path,
     coletado_em: date,
     baixar_arquivo: Callable[[str], bytes] = baixar,
     forcar: bool = False,
-    raizes: frozenset[str] | None = None,
+    raizes: RaizesDeEmpresa | None = None,
 ) -> str:
     """Baixa, lê e grava uma tabela; devolve `GRAVADO` ou `IGUAL`.
 
@@ -236,7 +196,7 @@ def carregar(
     conteudo = baixar_arquivo(tabela.url)
     origem = {"url": tabela.url, "sha256": hashlib.sha256(conteudo).hexdigest()}
     if raizes is not None and tabela.grupo in GRUPOS_COM_CNPJ:
-        origem["raizes_sha256"] = hash_das_raizes(raizes)
+        origem["raizes_sha256"] = raizes.impressao
     destino = saida / tabela.nome
     arquivo = destino.with_suffix(".parquet")
 
