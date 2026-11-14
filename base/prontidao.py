@@ -78,10 +78,10 @@ PRONTIDAO: dict[str, Prontidao] = {
             ),
         ),
         dicionario=Prova(
-            data=date(2026, 11, 10),
+            data=date(2026, 11, 14),
             prova=(
-                "dicionário revisado em 10 de novembro de 2026 pela Diretoria, a pedido do dono do projeto "
-                "(pedido: revise o dicionario): resultado revisado, sem correção pendente"
+                "dicionário lido pelo dono do projeto em 14 de novembro de 2026, leitura própria e só "
+                "deste dicionário: resultado lido, sem correção pendente"
             ),
         ),
     ),
