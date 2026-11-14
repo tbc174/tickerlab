@@ -13,6 +13,7 @@ import pytest
 
 from base import historico, securitizacao
 from base.dicionario import TABELAS
+from base.raizes_de_empresa import RaizesDeEmpresa
 from src.banco.coletas import com_registro
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "securitizacao"
@@ -153,6 +154,15 @@ def test_as_tabelas_estao_no_dicionario_com_contrato_e_data_publica():
     assert "Cedente e devedor" in TABELAS["securitizacao_cedente_devedor"].descricao
 
 
+def _raizes_de_todos(sem: frozenset[str] = frozenset()) -> RaizesDeEmpresa:
+    """Raízes de todos os CNPJs dos cedentes e devedores do exemplo (menos as de `sem`)."""
+    raizes: set[str] = set()
+    for nome in ARQUIVO_DA_FONTE.values():
+        cnpjs = securitizacao.ler_cedentes_e_devedores(_bytes(nome))["cnpj"]
+        raizes |= {"".join(c for c in x if c.isdigit())[:8] for x in cnpjs}
+    return RaizesDeEmpresa.de_lista(raizes - sem)
+
+
 def _guardar(fonte: str, nome: str) -> None:
     conteudo = _bytes(nome)
     com_registro(fonte, lambda _: conteudo)(URLS[fonte])
@@ -163,7 +173,11 @@ def test_a_montagem_junta_cri_cra_e_ots_num_arquivo_por_ano(banco, tmp_path):
         _guardar(fonte, nome)
     with banco.connect() as conexao:
         linhas = historico.montar(
-            "securitizacao_cedente_devedor", conexao, tmp_path / "base", AGORA
+            "securitizacao_cedente_devedor",
+            conexao,
+            tmp_path / "base",
+            AGORA,
+            _raizes_de_todos(),
         )
         historico.montar(
             "securitizacao_certificados", conexao, tmp_path / "base", AGORA
@@ -198,3 +212,29 @@ def test_a_montagem_ignora_os_outros_arquivos_da_fonte_que_nao_sao_o_informe_men
             "securitizacao_certificados", conexao, tmp_path / "base", AGORA
         )
     assert set(linhas) == {2026} and linhas[2026] > 0
+
+
+def test_cedente_devedor_so_grava_raiz_de_empresa_e_recusa_sem_a_lista(banco, tmp_path):
+    """Empresário individual e MEI são pessoa: a raiz fora da lista sai da montagem (linha 784)."""
+    for fonte, nome in ARQUIVO_DA_FONTE.items():
+        _guardar(fonte, nome)
+    todas = _raizes_de_todos()
+    fora = frozenset(sorted(todas.valores.to_pylist())[:1])
+    with banco.connect() as conexao:
+        with pytest.raises(ValueError, match="sem a lista de empresas"):
+            historico.montar(
+                "securitizacao_cedente_devedor", conexao, tmp_path / "base", AGORA
+            )
+        assert not (tmp_path / "base" / "securitizacao_cedente_devedor").exists()
+        historico.montar(
+            "securitizacao_cedente_devedor",
+            conexao,
+            tmp_path / "base",
+            AGORA,
+            _raizes_de_todos(fora),
+        )
+    gravado = pd.read_parquet(
+        tmp_path / "base" / "securitizacao_cedente_devedor" / "2026.parquet"
+    )
+    raizes = {"".join(c for c in x if c.isdigit())[:8] for x in gravado["cnpj"]}
+    assert raizes and not raizes & fora

@@ -9,6 +9,7 @@ Cada linha leva a **origem**: o SHA-256 do arquivo da CVM de onde saiu, quando e
 a tabela foi montada. Nada é baixado: sem original no acervo, o ano não entra.
 """
 
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
 import sqlalchemy as sa
 
 from base import (
@@ -30,12 +32,14 @@ from base import (
 from base.cadastro import cadastro_do_acervo
 from base.parquet import LINHAGEM, gravar_se_mudou
 from base.ponto_no_tempo import divulgacao_publica
+from base.raizes_de_empresa import RaizesDeEmpresa
 from src import acervo
 from src.banco.coletas import exigir_licenca, originais_mais_recentes
 from src.eventos import ler_ipe
 from src.negociacoes_cvm import ler_vlmo
 from src.versao_do_codigo import versao_do_codigo
 
+log = logging.getLogger(__name__)
 ANO_NO_NOME = re.compile(r"_(\d{4})\.(?:zip|csv)$")
 
 
@@ -58,6 +62,9 @@ class Tabela:
     # a fonte guarda mais de um tipo de arquivo (o informe mensal de CRI e CRA vem com os `dfin_*`
     # e um `meta_*.txt`): só entra o original cujo endereço tem este trecho; vazio = todos
     so_url_com: str = ""
+    # coluna de CNPJ: só fica a linha cuja raiz é empresa (`base/raizes_de_empresa.py`); empresário
+    # individual e MEI são pessoa. Sem a lista, a montagem recusa (linha 784)
+    so_raiz_de_empresa: str = ""
 
 
 FONTES_DE_SECURITIZACAO = ("cvm-cra", "cvm-securitizadoras-ots")
@@ -103,6 +110,7 @@ TABELAS = {
         securitizacao.ler_cedentes_e_devedores,
         outras_fontes=FONTES_DE_SECURITIZACAO,
         so_url_com="inf_mensal",
+        so_raiz_de_empresa="cnpj",
     ),
     # série B13: controladas e coligadas pelo FRE (base/controladas.py), desde 2010
     "controladas": Tabela("cvm-hist-fre", controladas.ler_controladas_do_fre),
@@ -125,6 +133,52 @@ def _gravar(tabela: pd.DataFrame, destino: Path, origens: list[dict[str, str]]) 
     return gravar_se_mudou(tabela, destino, origens, [], carimbos=LINHAGEM)
 
 
+def so_empresa(
+    dados: pd.DataFrame, coluna: str, raizes: RaizesDeEmpresa
+) -> pd.DataFrame:
+    """Só as linhas cujo CNPJ (14 dígitos, formatado ou não) tem raiz na lista de empresas."""
+    digitos = dados[coluna].fillna("").astype(str).str.replace(r"\D", "", regex=True)
+    completo = digitos.str.len() == 14
+    na_lista = raizes.esta_na_lista(
+        pa.array(digitos.str[:8].tolist(), type=pa.string())
+    ).to_numpy(zero_copy_only=False)
+    return dados[completo.to_numpy() & na_lista].reset_index(drop=True)
+
+
+def _exigir_a_lista(nome: str, tabela: Tabela, raizes: RaizesDeEmpresa | None) -> None:
+    if tabela.so_raiz_de_empresa and raizes is None:
+        raise ValueError(f"{nome}: sem a lista de empresas (raizes) não se grava CNPJ")
+
+
+def _origem_da_lista(
+    tabela: Tabela, raizes: RaizesDeEmpresa | None
+) -> list[dict[str, str]]:
+    """A impressão da lista entra na origem: mudou a lista, a tabela se refaz."""
+    if raizes is None or not tabela.so_raiz_de_empresa:
+        return []
+    return [{"url": "raizes_de_empresa", "sha256": raizes.impressao}]
+
+
+def _so_empresa_da_tabela(
+    nome: str,
+    ano: int,
+    dados: pd.DataFrame,
+    tabela: Tabela,
+    raizes: RaizesDeEmpresa | None,
+) -> pd.DataFrame:
+    """Tira as linhas de raiz fora da lista de empresas, quando a tabela pede, e conta no log."""
+    if raizes is None or not tabela.so_raiz_de_empresa:
+        return dados
+    so = so_empresa(dados, tabela.so_raiz_de_empresa, raizes)
+    log.info(
+        "%s %d: %d linhas de fora da lista de empresas tiradas",
+        nome,
+        ano,
+        len(dados) - len(so),
+    )
+    return so
+
+
 def _com_data_publica(
     dados: pd.DataFrame, coluna: str, cadastro: pd.DataFrame
 ) -> pd.DataFrame:
@@ -134,7 +188,11 @@ def _com_data_publica(
 
 
 def montar(
-    nome: str, conexao: sa.Connection, pasta: Path, agora: datetime
+    nome: str,
+    conexao: sa.Connection,
+    pasta: Path,
+    agora: datetime,
+    raizes: RaizesDeEmpresa | None = None,
 ) -> dict[int, int]:
     """Monta `<pasta>/<nome>/<ano>.parquet` para cada arquivo anual guardado; devolve linhas por ano.
 
@@ -144,6 +202,7 @@ def montar(
     `data_publica`, sem o cadastro no acervo).
     """
     tabela = TABELAS[nome]
+    _exigir_a_lista(nome, tabela, raizes)
     if tabela.e_rotulo:
         exigir_licenca("rotular", [tabela.fonte], onde=nome)
     linhas_por_ano: dict[int, int] = {}
@@ -173,10 +232,12 @@ def montar(
                 raise ArquivoIlegivel(
                     f"{nome} {ano}: {type(erro).__name__}: {erro}"
                 ) from erro
+            dados = _so_empresa_da_tabela(nome, ano, dados, tabela, raizes)
             if dados.empty:
                 linhas_por_ano.setdefault(ano, 0)
                 continue
             origens = [{"url": original.url, "sha256": original.sha256}]
+            origens += _origem_da_lista(tabela, raizes)
             if tabela.data_publica and cadastro is not None:
                 dados = _com_data_publica(dados, tabela.data_publica, cadastro[0])
                 origens.append(cadastro[1])

@@ -11,6 +11,7 @@
     python -m scripts.montar_base_historica notas_dfp              (texto das notas da DFP, do ENET; linha 135)
     python -m scripts.montar_base_historica rotulos_atraso         (rótulo do modelo 8, de DFP, ITR e cadastro)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
+    python -m scripts.montar_base_historica securitizacao_cedente_devedor --base-pj <base/ com a cnpj_empresas_pj> (só raiz de empresa; linha 784)
 
 Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<ano>.parquet`. Roda no servidor de casa (ADR 0031),
 depois que o arquivista guardou os arquivos `cvm-hist-*`. Saída 0 tudo certo; 1 algum original não
@@ -35,6 +36,7 @@ from base import (
     rotulos,
 )
 from base.modelos.atraso import rotulo as rotulo_de_atraso
+from base.raizes_de_empresa import raizes_de_empresa
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -68,6 +70,12 @@ def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("tabelas", nargs="*", choices=[*TODAS, []], default=[])
     argumentos.add_argument("--pasta", type=Path, default=None)
+    argumentos.add_argument(
+        "--base-pj",
+        type=Path,
+        default=None,
+        help="pasta base/ que tem a cnpj_empresas_pj e a cnpj_estabelecimentos_pj (padrão: a de --pasta)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -81,8 +89,17 @@ def main(argv: list[str] | None = None) -> int:
     log.info("Versão do código: %s", exigir_versao_do_codigo())
     agora = datetime.now(UTC)
     falhou = False
+    pedidas = opcoes.tabelas or TODAS
+    raizes = (
+        raizes_de_empresa(opcoes.base_pj or pasta)
+        if any(
+            n in historico.TABELAS and historico.TABELAS[n].so_raiz_de_empresa
+            for n in pedidas
+        )
+        else None
+    )
     with obter_engine().connect() as conexao:
-        for nome in opcoes.tabelas or TODAS:
+        for nome in pedidas:
             if nome == CNPJ:
                 meses = rotulos.montar_situacao_especial(conexao, pasta, agora)
                 log.info("%s: %s", CNPJ, meses or "nenhum mês do CNPJ guardado")
@@ -121,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 continue
             try:
-                linhas = historico.montar(nome, conexao, pasta, agora)
+                linhas = historico.montar(nome, conexao, pasta, agora, raizes)
             except historico.ArquivoIlegivel as erro:
                 log.error("%s", erro)
                 falhou = True
