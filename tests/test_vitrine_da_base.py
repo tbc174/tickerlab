@@ -1074,6 +1074,33 @@ def test_o_recorte_vira_barras_da_maior_parte_para_a_menor():
     conferir_sem_pessoas(recorte, set())
 
 
+def test_barra_com_menos_de_um_decimo_por_cento_nao_aparece_como_zero():
+    # 418 de 872.549 arredondaria para "0,0%" ao lado de 418 empresas: a página diz "menos de 0,1%"
+    celulas = fechadas.celulas_que_saem(
+        {"MG": (872_549, 418), "SP": (20_000, 19), "RJ": (100_000, 100)}
+    )
+    porcentos = {
+        b["rotulo"]: b["porcento"]
+        for b in vitrine.barras_do_recorte(celulas, "uf")["barras"]
+    }
+    assert porcentos == {"MG": "menos de 0,1%", "SP": "0,1%", "RJ": "0,1%"}
+
+
+def test_o_exterior_sai_pelo_nome_e_sem_link_para_o_app():
+    celulas = fechadas.celulas_que_saem(
+        {"SP": (900, 300), "EX": (800, 200), "MG": (700, 100)}
+    )
+    barras = {
+        b["rotulo"]: b["filtro_no_app"]
+        for b in vitrine.barras_do_recorte(celulas, "uf")["barras"]
+    }
+    assert barras == {
+        "SP": {"uf": "SP"},
+        vitrine.ROTULO_DO_EXTERIOR: None,
+        "MG": {"uf": "MG"},
+    }
+
+
 def test_cada_barra_leva_o_filtro_que_o_app_le_e_so_quando_a_busca_tem_o_valor():
     from src.analista import busca
 

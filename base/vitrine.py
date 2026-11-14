@@ -1678,10 +1678,26 @@ COMO_FOI_RECORTADO = (
 )
 
 
+ROTULO_DO_EXTERIOR = "Exterior"
+UF_DO_EXTERIOR = "EX"  # a Receita marca assim a matriz fora do Brasil
+MENOR_PORCENTO_ESCRITO = (
+    0.05  # abaixo disso o "%.1f" daria "0,0%" ao lado de centenas de empresas
+)
+
+
 def _rotulo_da_celula(dimensao: str, chave: str) -> str:
     if chave == fechadas.SEM_INFORMACAO:
         return ROTULO_SEM_INFORMACAO
-    return fechadas.cnae.SECOES[chave] if dimensao == "setor" else chave
+    if dimensao == "setor":
+        return fechadas.cnae.SECOES[chave]
+    return ROTULO_DO_EXTERIOR if chave == UF_DO_EXTERIOR else chave
+
+
+def _porcento_da_barra(parte: int, todo: int) -> str:
+    """O porcento da barra, sem "0,0%" quando há empresa: aí sai "menos de 0,1%"."""
+    if parte and 100 * parte / todo < MENOR_PORCENTO_ESCRITO:
+        return "menos de 0,1%"
+    return _porcento(parte, todo)
 
 
 def _filtro_no_app(dimensao: str, chave: str) -> dict[str, str] | None:
@@ -1709,7 +1725,7 @@ def barras_do_recorte(celulas: Sequence[fechadas.Celula], dimensao: str) -> dict
             "rotulo": _rotulo_da_celula(dimensao, c.chave),
             "parte": _milhar(c.parte),
             "todo": _milhar(c.todo),
-            "porcento": _porcento(c.parte, c.todo),
+            "porcento": _porcento_da_barra(c.parte, c.todo),
             "largura": round(100 * c.parte / maior, 1) if maior else 0.0,
             "filtro_no_app": _filtro_no_app(dimensao, c.chave),
         }

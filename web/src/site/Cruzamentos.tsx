@@ -50,7 +50,8 @@ function Lado({ titulo, lado, onde }: { titulo: string; lado: LadoDoRecorte; ond
       </ul>
       {lado.escondidas.length > 0 && (
         <p className="v2-recorte-escondidas">
-          Não aparecem, por terem poucas empresas: {lado.escondidas.join(", ")}.
+          Não aparecem, por terem menos de 10 empresas ou para que essas não saiam pela subtração do total:{" "}
+          {lado.escondidas.join(", ")}.
         </p>
       )}
     </div>

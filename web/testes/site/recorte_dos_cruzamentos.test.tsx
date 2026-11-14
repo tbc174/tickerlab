@@ -55,7 +55,8 @@ describe("o recorte do cartão por estado e por setor", () => {
     expect(texto).toContain("SP1.000 de 5.000 (20,0%)");
     expect(texto).toContain("MG500 de 3.000 (16,7%)");
     expect(texto).toContain("Indústrias de transformação1.300 de 6.000 (21,7%)");
-    expect(texto).toContain("Não aparecem, por terem poucas empresas: AC, Sem informação no cadastro.");
+    expect(texto).toContain("Não aparecem, por terem menos de 10 empresas ou para que essas não saiam pela subtração do total: " +
+        "AC, Sem informação no cadastro.");
     expect(texto).toContain(RECORTE.como_foi_calculado);
     // a barra é só desenho: a largura vai como fração, e o leitor de tela lê o número do texto
     expect(html).toContain('style="--p:1.000"');
