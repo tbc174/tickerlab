@@ -18,11 +18,14 @@ Como nas entradas de sócio PJ, quem hoje não é só empresa some da história 
 endereço e contatos nem são lidos (ADR 0106).
 """
 
+import logging
 from collections.abc import Collection, Mapping
 
 import pandas as pd
 
 from base import cnpj_historico as historico
+
+log = logging.getLogger(__name__)
 
 TABELA = "cnpj_situacao_cadastral"
 # a lista sem pessoa de `scripts/montar_empresas_pj.py` (o mesmo nome lá; há teste que confere)
@@ -41,6 +44,7 @@ COLUNAS = (
     "cnpj", *CAMPOS, historico.MES, historico.DISPONIVEL_EM, historico.CONSTA,
 )  # fmt: skip
 TAMANHO_DA_RAIZ = 8
+DIGITOS_DO_CNPJ = 14
 TAMANHO_DO_CODIGO = 2  # a base guarda sem o zero à esquerda em alguns meses
 # Retrato da Receita com defeito conhecido → o mês em que as mudanças dele passam a contar. O de estabelecimentos
 # de 2024-10 trouxe 4.634.796 CNPJs em dobro (a cópia com `ordem` 1) e deixou 3.054.993 de fora; em 2024-11 as
@@ -55,6 +59,16 @@ RETRATOS_COM_DEFEITO: Mapping[str, str] = {"2024-10": "2024-11"}
 def da_raiz(cnpj: pd.Series) -> pd.Series:
     """A raiz (8 primeiros caracteres) de cada CNPJ de 14 caracteres."""
     return cnpj.astype(str).str[:TAMANHO_DA_RAIZ]
+
+
+def so_de_14_digitos(tabela: pd.DataFrame) -> pd.DataFrame:
+    """As linhas cujo CNPJ tem 14 dígitos; o resto sai (o descarte só é contado em `versoes`, nunca mostrado).
+
+    CNPJ mais curto não prova pessoa jurídica: se o zero à esquerda se perdeu, a raiz de 8 caracteres é outra e
+    não foi conferida na lista sem pessoa (a prova de `base/sem_pessoa_por_raiz.py` também o conta como fora).
+    """
+    inteiro = tabela["cnpj"].astype(str).str.fullmatch(rf"\d{{{DIGITOS_DO_CNPJ}}}")
+    return tabela[inteiro].reset_index(drop=True)
 
 
 def so_das_raizes(tabela: pd.DataFrame, raizes: Collection[str]) -> pd.DataFrame:
@@ -91,6 +105,15 @@ def versoes(
     O ponto no tempo vale para todo mês que não é retrato com defeito: montar com o vigente do próprio retrato
     com defeito não é um ponto válido (é o arquivo errado).
     """
+    linhas = len(vigente) + len(mudancas)
+    vigente = so_de_14_digitos(vigente)
+    if not mudancas.empty:
+        mudancas = so_de_14_digitos(mudancas)
+    descartados = linhas - len(vigente) - len(mudancas)
+    if descartados:
+        log.warning(
+            "situação: %d linhas sem CNPJ de 14 dígitos ficaram de fora", descartados
+        )
     vigente = so_das_raizes(vigente, raizes_pj)[[*CHAVE, *CAMPOS]]
     if not mudancas.empty:
         mudancas = historico.juntar_retratos_com_defeito(

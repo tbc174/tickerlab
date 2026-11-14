@@ -110,6 +110,29 @@ def test_so_pj_a_raiz_fora_da_lista_some_da_historia_inteira():
     assert set(versoes["cnpj_basico"]) == RAIZES_PJ
 
 
+def test_cnpj_sem_14_digitos_fica_de_fora_mesmo_com_a_raiz_na_lista(caplog):
+    """Um CNPJ de 12 dígitos não prova pessoa jurídica (zero à esquerda perdido muda a raiz): sai, e só a contagem
+    vai ao log."""
+    curto = (
+        EMPRESA[:8] + "0001"
+    )  # a raiz está na lista sem pessoa, mas faltam dois dígitos
+    retratos = [[*r, _estabelecimento(curto, "02", "2010-01-01")] for r in RETRATOS]
+    with caplog.at_level("WARNING", logger=sc.log.name):
+        versoes = _versoes(retratos)
+    formatados = set(versoes["cnpj"])
+    assert all(len(c) == 18 for c in formatados)
+    assert set(versoes["cnpj_basico"]) == RAIZES_PJ
+    assert "ficaram de fora" in caplog.text
+    assert curto not in caplog.text
+    assert _versoes().equals(versoes)
+
+
+def test_sem_cnpj_curto_nada_e_logado(caplog):
+    with caplog.at_level("WARNING", logger=sc.log.name):
+        _versoes()
+    assert "ficaram de fora" not in caplog.text
+
+
 def test_so_as_colunas_da_situacao_saem_e_o_cnpj_formatado():
     versoes = _versoes()
     assert list(versoes.columns) == list(sc.COLUNAS)
