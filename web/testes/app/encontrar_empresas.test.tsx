@@ -7,6 +7,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BuscaDeEmpresasV1, CampoComFonteV1, EmpresaDaBuscaV1 } from "../../src/app/tipos";
+import { aberturaDoSetor } from "../../src/app/telas/EncontrarEmpresas";
 import { abrirApp, respostaJson } from "./ajudantes";
 
 const ROTA = "/api/v1/analista/empresas";
@@ -259,6 +260,55 @@ describe("encontrar empresas", () => {
     expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
   });
 
+  it("o capital das etiquetas sai em reais por extenso curto, não em número solto", async () => {
+    abrir(PRIMEIRA);
+    fireEvent.change(await screen.findByLabelText("Capital social mínimo (R$)"), { target: { value: "5000000" } });
+    fireEvent.change(screen.getByLabelText("Capital social máximo (R$)"), { target: { value: "1500000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Encontrar empresas" }));
+    const etiquetas = await screen.findByRole("list", { name: "Filtros em uso" });
+    expect(within(etiquetas).getAllByRole("listitem").map((i) => i.textContent)).toEqual([
+      "Capital social mínimo: R$ 5 mi ×",
+      "Capital social máximo: R$ 1,5 bi ×",
+    ]);
+  });
+
+  it("a ordem em uso aparece ao lado da contagem: a escolhida, ou o número do CNPJ", async () => {
+    abrir(PRIMEIRA);
+    await buscarPor(["SP"]);
+    const contagem = await screen.findByText(/empresa até aqui/);
+    expect(contagem.textContent).toContain("ordem: número do CNPJ");
+    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    fireEvent.click(screen.getByRole("button", { name: "Encontrar empresas" }));
+    await waitFor(() => expect(screen.getByText(/empresa até aqui/).textContent).toContain("ordem: maior capital social"));
+  });
+
+  it("Limpar filtros volta ao formulário vazio e tira a lista, sem nova busca", async () => {
+    const { buscar } = abrir(PRIMEIRA);
+    expect(((await screen.findByRole("button", { name: "Limpar filtros" })) as HTMLButtonElement).disabled).toBe(true);
+    await buscarPor(["Comércio", "SP"], "10");
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    const antes = corpos(buscar).length;
+    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    expect(await screen.findByText(/Escolha ao menos um filtro/)).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
+    expect((screen.getByRole("checkbox", { name: "Comércio" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("checkbox", { name: "SP" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText("Idade mínima (anos)") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Ordenar por") as HTMLSelectElement).value).toBe("");
+    expect((screen.getByRole("button", { name: "Limpar filtros" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(corpos(buscar).length).toBe(antes);
+  });
+
+  it("Limpar filtros também esvazia o que ainda não foi buscado", async () => {
+    abrir(PRIMEIRA);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Agricultura" }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    expect((screen.getByRole("checkbox", { name: "Agricultura" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("nenhuma empresa: a frase no lugar da tabela, sem Excel", async () => {
     abrir(VAZIA);
     await buscarPor(["SP"]);
@@ -274,5 +324,44 @@ describe("encontrar empresas", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getByRole("region", { name: "Limites e cuidados" })).toBeTruthy();
+  });
+});
+
+describe("abertura vinda do Setor", () => {
+  it("o CNAE vira a seção dele e a UF vira o estado, só se o formulário os oferece", () => {
+    expect(aberturaDoSetor({ doSetor: { cnae: "6201501", uf: "SP" } }, OPCOES)).toMatchObject({
+      filtros: { setores: ["J"], ufs: ["SP"] },
+    });
+    expect(aberturaDoSetor({ doSetor: { cnae: "62015", uf: null } }, OPCOES)?.filtros).toEqual({ setores: ["J"], ufs: [] });
+    expect(aberturaDoSetor({ doSetor: { cnae: "6201501", uf: "XX" } }, OPCOES)?.filtros).toEqual({ setores: ["J"], ufs: [] });
+    expect(aberturaDoSetor({ doSetor: { cnae: "6201501", uf: "sp" } }, OPCOES)?.filtros).toEqual({ setores: ["J"], ufs: [] });
+  });
+
+  it("seção fora da busca: só o estado entra, e sem estado não há filtro", () => {
+    const com = aberturaDoSetor({ doSetor: { cnae: "8411600", uf: "MG" } }, OPCOES);
+    expect(com?.filtros).toEqual({ setores: [], ufs: ["MG"] });
+    expect(com?.nota).toMatch(/não está nesta busca/);
+    expect(aberturaDoSetor({ doSetor: { cnae: "8411600", uf: null } }, OPCOES)?.filtros).toBeNull();
+  });
+
+  it("a nota diz que a busca usa a seção, mais ampla que o CNAE", () => {
+    const nota = aberturaDoSetor({ doSetor: { cnae: "6201501", uf: "SP" } }, OPCOES)?.nota ?? "";
+    expect(nota).toContain("CNAE 6201501");
+    expect(nota).toContain("Informação e comunicação");
+    expect(nota).toMatch(/mais ampla/);
+  });
+
+  it.each([
+    ["sem estado", null],
+    ["sem estado (indefinido)", undefined],
+    ["texto", "doSetor"],
+    ["outro estado da navegação", { cnpjs: ["11111111000191"] }],
+    ["setor sem forma", { doSetor: "6201501" }],
+    ["CNAE curto", { doSetor: { cnae: "62", uf: null } }],
+    ["CNAE com letra", { doSetor: { cnae: "62015AB", uf: null } }],
+    ["CNAE que não é número", { doSetor: { cnae: 6201501, uf: null } }],
+    ["divisão que não existe", { doSetor: { cnae: "0400000", uf: null } }],
+  ])("estado que não é do Setor (%s): não abre filtro nenhum", (_caso, estado) => {
+    expect(aberturaDoSetor(estado, OPCOES)).toBeNull();
   });
 });
