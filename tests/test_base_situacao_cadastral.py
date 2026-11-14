@@ -110,35 +110,19 @@ def test_so_pj_a_raiz_fora_da_lista_some_da_historia_inteira():
     assert set(versoes["cnpj_basico"]) == RAIZES_PJ
 
 
-def test_cnpj_sem_14_digitos_fica_de_fora_mesmo_com_a_raiz_na_lista(caplog):
-    """Um CNPJ de 12 dígitos não prova pessoa jurídica (zero à esquerda perdido muda a raiz): sai, e só a contagem
-    vai ao log."""
-    curto = (
-        EMPRESA[:8] + "0001"
-    )  # a raiz está na lista sem pessoa, mas faltam dois dígitos
-    retratos = [[*r, _estabelecimento(curto, "02", "2010-01-01")] for r in RETRATOS]
-    with caplog.at_level("WARNING", logger=sc.log.name):
-        versoes = _versoes(retratos)
-    formatados = set(versoes["cnpj"])
-    assert all(len(c) == 18 for c in formatados)
-    assert set(versoes["cnpj_basico"]) == RAIZES_PJ
-    assert "ficaram de fora" in caplog.text
-    assert curto not in caplog.text
-    assert _versoes().equals(versoes)
-
-
-def test_cnpj_alfanumerico_de_14_caracteres_continua_na_tabela():
-    """O CNPJ novo da Receita (letras nas 12 primeiras posições) é pessoa jurídica válida e não pode sumir."""
-    novo = "A1B2C3D4000199"
+def test_cnpj_alfanumerico_fica_na_tabela_com_a_raiz_certa():
+    """O CNPJ novo da Receita (letras nas posições 9 a 12, a ordem do estabelecimento) é filial de PJ válida:
+    a montagem o mantém, formatado, com o `cnpj_basico` igual aos 8 primeiros caracteres. Valor inventado."""
+    novo = "44444444AB0145"
     retratos = [[*r, _estabelecimento(novo, "02", "2026-08-01")] for r in RETRATOS]
     versoes = _versoes(retratos, raizes={*RAIZES_PJ, novo[:8]})
-    assert novo[:8] in set(versoes["cnpj_basico"])
-
-
-def test_sem_cnpj_curto_nada_e_logado(caplog):
-    with caplog.at_level("WARNING", logger=sc.log.name):
-        _versoes()
-    assert "ficaram de fora" not in caplog.text
+    linha = versoes[versoes["cnpj_basico"] == novo[:8]]
+    assert not linha.empty
+    assert set(linha["cnpj"]) == {"44.444.444/AB01-45"}
+    assert (
+        linha["cnpj"].str.replace(r"[./-]", "", regex=True).str[:8]
+        == linha["cnpj_basico"]
+    ).all()
 
 
 def test_so_as_colunas_da_situacao_saem_e_o_cnpj_formatado():

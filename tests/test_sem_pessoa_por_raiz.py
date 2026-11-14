@@ -68,6 +68,44 @@ def test_cnpj_sem_os_quatorze_digitos_conta_como_fora(tmp_path):
     assert (c.raizes, c.fora_da_pj) == (1, 1)
 
 
+def test_cnpj_alfanumerico_cruza_pela_raiz_sem_cortar_as_letras(tmp_path):
+    """As letras do CNPJ novo ficam nas posições 9 a 12 (a ordem): a raiz de 8 continua numérica e é a da PJ."""
+    _acervo(tmp_path, [RAIZ_PJ])
+    arquivo = tmp_path / _caminho(ARQUIVOS["eventos"])
+    tabela = pd.read_parquet(arquivo)
+    tabela["cnpj"] = ["11.111.111/00AB-35"]
+    tabela.to_parquet(arquivo, index=False)
+    with Porta(tmp_path) as porta:
+        c = cruzar(porta, "eventos", "cnpj")
+    assert (c.raizes, c.fora_da_pj, c.sem_pessoa) == (1, 0, True)
+
+
+def test_cnpj_com_letra_na_raiz_cruza_pela_raiz_inteira(tmp_path):
+    _acervo(tmp_path, ["A1B2C3D4"])  # raiz alfanumérica que não está na lista
+    with Porta(tmp_path) as porta:
+        c = cruzar(porta, "eventos", "cnpj")
+    assert (c.raizes, c.fora_da_pj) == (1, 1)
+
+
+def test_raiz_do_texto_diferente_da_coluna_de_raiz_reprova(tmp_path, monkeypatch):
+    from base import sem_pessoa_por_raiz as modulo
+
+    _acervo(tmp_path, [RAIZ_PJ])
+    arquivo = tmp_path / _caminho(ARQUIVOS["eventos"])
+    tabela = pd.read_parquet(arquivo)
+    tabela["cnpj"] = ["11.111.111/00AB-35"]
+    tabela["protocolo"] = "11111111"
+    tabela.to_parquet(arquivo, index=False)
+    monkeypatch.setitem(modulo.RAIZ_SEPARADA, "eventos", "protocolo")
+    with Porta(tmp_path) as porta:
+        assert cruzar(porta, "eventos", "cnpj").sem_pessoa
+        tabela["protocolo"] = "22222222"
+        tabela.to_parquet(arquivo, index=False)
+    with Porta(tmp_path) as porta:
+        c = cruzar(porta, "eventos", "cnpj")
+    assert (c.fora_da_pj, c.raiz_diferente, c.sem_pessoa) == (0, 1, False)
+
+
 def test_tabela_vazia_nao_conta_como_sem_pessoa(tmp_path):
     _acervo(tmp_path, [])
     with Porta(tmp_path) as porta:
