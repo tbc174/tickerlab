@@ -730,3 +730,41 @@ def para_a_fotografia(medicao: MedicaoDasFechadas) -> dict:
 
 def recortes_para_a_fotografia(recortes: RecortesDasFechadas) -> dict:
     return asdict(recortes)
+
+
+def _celulas_da_fotografia(
+    chave: str, celulas: Sequence[Mapping]
+) -> tuple[Celula, ...]:
+    lidas = tuple(Celula(**c) for c in celulas)
+    for celula in lidas:
+        if (celula.todo is None) != (celula.parte is None):
+            raise ValueError(
+                f"recorte de {chave} na fotografia: célula {celula.chave} pela metade"
+            )
+        if celula.todo is not None and celula.parte is not None:
+            motivo = motivo_da_contagem(celula.todo, celula.parte)
+            if motivo is not None:
+                raise ValueError(
+                    f"recorte de {chave} na fotografia: célula {celula.chave}: {motivo}"
+                )
+    return lidas
+
+
+def recortes_da_fotografia(dados: Mapping) -> RecortesDasFechadas:
+    """O recorte gravado de volta; campo a mais ou a menos é erro, e célula visível com contagem que não
+    poderia sair (fotografia editada à mão, por exemplo) também."""
+    cartoes = tuple(
+        RecorteDoCartao(
+            chave=r["chave"],
+            por_uf=_celulas_da_fotografia(r["chave"], r["por_uf"]),
+            por_setor=_celulas_da_fotografia(r["chave"], r["por_setor"]),
+        )
+        for r in dados["cartoes"]
+    )
+    if len(dados) != 3 or any(len(r) != 3 for r in dados["cartoes"]):
+        raise ValueError("recorte na fotografia com campo a mais")
+    return RecortesDasFechadas(
+        medido_em=dados["medido_em"],
+        cartoes=cartoes,
+        caidos=tuple(CartaoCaido(**c) for c in dados["caidos"]),
+    )

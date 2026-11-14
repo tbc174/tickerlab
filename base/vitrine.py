@@ -1668,6 +1668,54 @@ def fato_da_fechada(cartao: fechadas.CartaoMedido, data: str) -> Fato:
     )
 
 
+# o recorte por UF e por seção da CNAE da matriz (linha 925, 2º PR): a página só desenha estas barras
+ROTULO_SEM_INFORMACAO = "Sem informação no cadastro"
+COMO_FOI_RECORTADO = (
+    "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita "
+    "estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece "
+    "o que permitiria chegar a ele pela subtração do total."
+)
+
+
+def _rotulo_da_celula(dimensao: str, chave: str) -> str:
+    if chave == fechadas.SEM_INFORMACAO:
+        return ROTULO_SEM_INFORMACAO
+    return fechadas.cnae.SECOES[chave] if dimensao == "setor" else chave
+
+
+def barras_do_recorte(celulas: Sequence[fechadas.Celula], dimensao: str) -> dict:
+    """As células que saem, da maior parte para a menor, com a largura da barra (a parte sobre a maior parte,
+    em %), e os rótulos das que não saem."""
+    visiveis = sorted(
+        (c for c in celulas if c.todo is not None and c.parte is not None),
+        key=lambda c: (-(c.parte or 0), c.chave),
+    )
+    maior = max((c.parte or 0 for c in visiveis), default=0)
+    barras = [
+        {
+            "rotulo": _rotulo_da_celula(dimensao, c.chave),
+            "parte": _milhar(c.parte),
+            "todo": _milhar(c.todo),
+            "porcento": _porcento(c.parte, c.todo),
+            "largura": round(100 * c.parte / maior, 1) if maior else 0.0,
+        }
+        for c in visiveis
+        if c.todo is not None and c.parte is not None
+    ]
+    escondidas = sorted(
+        _rotulo_da_celula(dimensao, c.chave) for c in celulas if c.todo is None
+    )
+    return {"barras": barras, "escondidas": escondidas}
+
+
+def recorte_do_fato(recorte: fechadas.RecorteDoCartao) -> dict:
+    return {
+        "por_uf": barras_do_recorte(recorte.por_uf, "uf"),
+        "por_setor": barras_do_recorte(recorte.por_setor, "setor"),
+        "como_foi_calculado": COMO_FOI_RECORTADO,
+    }
+
+
 def fatos_agregados(cruzamentos: Cruzamentos) -> list[Fato]:
     """Os cartões dos cruzamentos, na ordem da página inicial."""
     data = cruzamentos.medido_em
@@ -1699,16 +1747,34 @@ SUBTITULO_SO_DAS_ABERTAS = (
 )
 
 
+def _fato_com_recorte(fato: Fato, recorte: fechadas.RecorteDoCartao | None) -> dict:
+    dados = asdict(fato)
+    if recorte is not None:
+        dados["recorte"] = recorte_do_fato(recorte)
+    return dados
+
+
 def grupos_dos_fatos(
-    cruzamentos: Cruzamentos, medicao: fechadas.MedicaoDasFechadas | None
+    cruzamentos: Cruzamentos,
+    medicao: fechadas.MedicaoDasFechadas | None,
+    recortes: fechadas.RecortesDasFechadas | None = None,
 ) -> list[dict]:
     """Os cartões da página por pergunta: os de empresa fechada primeiro (só os de pé), os de companhia aberta
-    por último. Pergunta sem cartão de pé não aparece."""
+    por último. Pergunta sem cartão de pé não aparece. O recorte só entra se for da mesma medição."""
     grupos = []
     medidos = {} if medicao is None else {c.chave: c for c in medicao.cartoes}
+    recortados = (
+        {r.chave: r for r in recortes.cartoes}
+        if recortes is not None
+        and medicao is not None
+        and recortes.medido_em == medicao.medido_em
+        else {}
+    )
     for grupo in fechadas.GRUPOS:
         fatos = [
-            asdict(fato_da_fechada(medidos[c], medicao.medido_em))
+            _fato_com_recorte(
+                fato_da_fechada(medidos[c], medicao.medido_em), recortados.get(c)
+            )
             for c in grupo.cartoes
             if medicao is not None and c in medidos
         ]
@@ -1724,16 +1790,27 @@ def grupos_dos_fatos(
     return grupos
 
 
+NOME_DOS_RECORTES = "recortes_das_fechadas.json"  # ao lado do `fatos.json`
+
+
 def fatos_da_base(fotografia: Path = FOTOGRAFIA_DOS_CRUZAMENTOS) -> dict:
     """O `web/conteudo/fatos_da_base.json`: os cartões da fotografia por pergunta, o parágrafo da seção e a
-    data curta que a página mostra."""
+    data curta que a página mostra; com o recorte por estado e setor, se ele estiver ao lado."""
     dados = json.loads(fotografia.read_text(encoding="utf-8"))
     das_fechadas = dados.pop(CHAVE_DAS_FECHADAS, None)
     cruzamentos = cruzamentos_da_fotografia(dados)
     medicao = (
         None if das_fechadas is None else fechadas.fechadas_da_fotografia(das_fechadas)
     )
-    grupos = grupos_dos_fatos(cruzamentos, medicao)
+    arquivo_dos_recortes = fotografia.with_name(NOME_DOS_RECORTES)
+    recortes = (
+        fechadas.recortes_da_fotografia(
+            json.loads(arquivo_dos_recortes.read_text(encoding="utf-8"))
+        )
+        if arquivo_dos_recortes.exists()
+        else None
+    )
+    grupos = grupos_dos_fatos(cruzamentos, medicao, recortes)
     com_fechadas = len(grupos) > 1
     data = dia_e_mes(
         medicao.medido_em if medicao is not None else cruzamentos.medido_em

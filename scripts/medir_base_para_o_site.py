@@ -27,7 +27,7 @@ from base import porta, vitrine
 from base.contrato import catalogo
 
 BRASILIA = ZoneInfo("America/Sao_Paulo")
-FOTOGRAFIA_DOS_RECORTES = vitrine.FOTOGRAFIA.with_name("recortes_das_fechadas.json")
+FOTOGRAFIA_DOS_RECORTES = vitrine.FOTOGRAFIA.with_name(vitrine.NOME_DOS_RECORTES)
 
 
 def medir(

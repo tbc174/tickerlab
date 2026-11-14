@@ -404,6 +404,28 @@ export interface VagaDaVitrine {
 export const vitrine: VagaDaVitrine[] = vitrineJson as never;
 import fatosJson from "../conteudo/fatos_da_base.json";
 
+/** Uma barra do recorte: um estado ou um setor, já formatado (`barras_do_recorte` de base/vitrine.py). */
+export interface BarraDoRecorte {
+  rotulo: string;
+  parte: string;
+  todo: string;
+  porcento: string;
+  largura: number; // a parte sobre a maior parte do recorte, em %
+}
+
+/** Um lado do recorte: as barras que saem e os rótulos das que não saem (contagem pequena). */
+export interface LadoDoRecorte {
+  barras: BarraDoRecorte[];
+  escondidas: string[];
+}
+
+/** O recorte de um cartão de empresa fechada por estado e por setor da matriz (linha 925, 2º PR). */
+export interface RecorteDoFato {
+  por_uf: LadoDoRecorte;
+  por_setor: LadoDoRecorte;
+  como_foi_calculado: string;
+}
+
 /** Um fato agregado da página inicial (`Fato` de base/vitrine.py): só contagens, com a fonte e a data. */
 export interface FatoDaBase {
   chave: string;
@@ -413,6 +435,7 @@ export interface FatoDaBase {
   tabelas: string[];
   data: string;
   como_foi_calculado: string;
+  recorte?: RecorteDoFato;
 }
 
 /** Uma pergunta da seção de cruzamentos e os cartões dela (`grupos_dos_fatos` de base/vitrine.py). */
