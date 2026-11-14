@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 from base.contas_cvm import ler_indice
 from base.enet import DocumentoEnet, ler_xml_enet
@@ -176,12 +177,12 @@ def _documento_do_enet(
 ) -> DocumentoEnet | None:
     """Baixa o pacote do link e lê o XML; tenta de novo quando a CVM devolve erro no lugar do zip."""
     for tentativa in range(1, TENTATIVAS + 1):
-        pacote = baixador.baixar(link)
-        nome = cnpj.replace("/", "").replace(".", "").replace("-", "")
-        (pasta / f"{nome}.zip").write_bytes(pacote)
         try:
+            pacote = baixador.baixar(link)
+            nome = cnpj.replace("/", "").replace(".", "").replace("-", "")
+            (pasta / f"{nome}-{link[-6:]}.zip").write_bytes(pacote)
             return ler_xml_enet(xml_do_pacote(pacote))
-        except (zipfile.BadZipFile, ValueError) as erro:
+        except (zipfile.BadZipFile, ValueError, requests.RequestException) as erro:
             print(f"AVISO: {cnpj} não lido (tentativa {tentativa}): {erro}")
             if tentativa < TENTATIVAS:
                 time.sleep(PAUSA_ENTRE_TENTATIVAS)

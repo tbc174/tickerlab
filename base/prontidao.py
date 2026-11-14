@@ -62,8 +62,10 @@ PRONTIDAO: dict[str, Prontidao] = {
         cruzada=Prova(
             data=date(2026, 11, 12),
             prova=(
-                "DFP lida da base contra o mesmo documento no ENET, em amostra sorteada: "
-                "16055 valores comparados, 16055 iguais, nenhum diferente"
+                "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas "
+                "(a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, "
+                "16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 48 de 60 "
+                "pacotes lidos) 16238 valores comparados, 16238 iguais, nenhum diferente"
             ),
             independencia=(
                 "mesmo documento, outro canal: a base lê os dados abertos da CVM "
