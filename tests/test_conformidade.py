@@ -112,7 +112,7 @@ def test_versao_18_da_politica_descreve_o_chat_de_ia():
         "Quando você apaga a conta, esses números ficam, sem nada que aponte para a conta apagada.",
         "com uma exceção: a pergunta que você escreve no chat de IA, descrita na seção seguinte",
         "nenhum outro dado da sua conta.",
-        "pedimos que você não escreva nelas dado pessoal seu ou de outra pessoa.",
+        "pedimos que você não escreva dado pessoal na pergunta.",
         "Ficam também os números das perguntas ao chat de IA (a organização, a data, o modelo, os tokens, o tempo e o custo)",
     ):
         assert trecho in privacidade, trecho
