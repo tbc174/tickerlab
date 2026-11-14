@@ -140,6 +140,16 @@ LICENCAS = {
     "anm-amb": "ANM, Anuário: licença não declarada; risco assumido (ADR 0122)",
     "estban": "BCB, ESTBAN: reprodução com fonte e integridade; risco assumido (ADR 0122)",
     "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
+    # conferência de 14/11/2026 (linha 904): nenhum destes conjuntos declara licença própria; o PAT só tem o rodapé
+    # CC BY-ND 3.0 do gov.br (sem derivada: uso interno, como o resto do MTE). A ANM (pasta e
+    # metadados da TAH) e a ANP (página e metadados da tancagem) só têm o rodapé CC BY-ND 3.0 do gov.br, que é
+    # do conteúdo do site; a página de dados abertos da Anatel recusou a leitura (403). Leitura mais estreita
+    # (ADR 0102): a confirmar, sem perguntar à fonte
+    "mte-pat": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+    "anm-tah": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+    "anatel-pados": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+    "anatel-homologados": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+    "anp-tancagem": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
@@ -408,6 +418,12 @@ REVENDA = {
     "anm-amb": VENDAVEL_RISCO_ASSUMIDO,
     "estban": VENDAVEL_RISCO_ASSUMIDO,  # ESTBAN do BCB (linha 659): nada perguntado ao BC
     "ancine": VENDAVEL_COM_ATRIBUICAO,
+    # conferência de 14/11/2026 (linha 904): sem licença do conjunto lida (ver `LICENCAS`)
+    "mte-pat": SO_USO_INTERNO,
+    "anm-tah": A_CONFIRMAR,
+    "anatel-pados": A_CONFIRMAR,
+    "anatel-homologados": A_CONFIRMAR,
+    "anp-tancagem": A_CONFIRMAR,
     "mme": VENDAVEL_RISCO_ASSUMIDO,
     "finep": VENDAVEL_RISCO_ASSUMIDO,
     "aneel": VENDAVEL_ODBL,

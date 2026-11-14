@@ -88,11 +88,15 @@
     },
     {
       "coletas": [
-        "mte-lista-suja"
+        "mte-lista-suja",
+        "mte-pat-beneficiarias",
+        "mte-pat-facilitadoras",
+        "mte-pat-fornecedoras"
       ],
       "familia": "mte",
       "licencas": [
-        "Cadastro de empregadores do MTE (dado público; citar o MTE)"
+        "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+        "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno"
       ],
       "link": "https://www.gov.br/trabalho-e-emprego/",
       "marca": "uso_interno",
@@ -123,11 +127,16 @@
     },
     {
       "coletas": [
-        "rfb-cnpj"
+        "rfb-cnpj",
+        "rfb-renuncias-regime-presumido",
+        "rfb-renuncias-regime-real",
+        "rfb-renuncias-regime-arbitrado",
+        "rfb-renuncias-regime-imunes"
       ],
       "familia": "rfb",
       "licencas": [
-        "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+        "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+        "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido"
       ],
       "link": "https://www.gov.br/receitafederal/",
       "marca": "vendavel",
@@ -285,16 +294,18 @@
         "anp-vendas-distribuidora",
         "anp-producao-poco",
         "anp-concessionarios",
+        "anp-tancagem",
         "anp-precos-ultimas-semanas",
         "anp-precos-semestral",
         "anp-precos-mensal"
       ],
       "familia": "anp",
       "licencas": [
-        "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)"
+        "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+        "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)"
       ],
       "link": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "ANP (petróleo, gás e combustíveis)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-14",
@@ -390,14 +401,18 @@
       "coletas": [
         "anatel-acessos",
         "anatel-outorgas",
+        "anatel-pados",
+        "anatel-homologados",
         "anatel-acessos-telefonia-fixa"
       ],
       "familia": "anatel",
       "licencas": [
-        "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)"
+        "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+        "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+        "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)"
       ],
       "link": "https://www.anatel.gov.br/dadosabertos/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Anatel (telecomunicações)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-14",
@@ -481,14 +496,16 @@
     },
     {
       "coletas": [
-        "anm-cadastro-mineiro"
+        "anm-cadastro-mineiro",
+        "anm-tah"
       ],
       "familia": "anm",
       "licencas": [
-        "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)"
+        "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+        "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)"
       ],
       "link": "https://dadosabertos.anm.gov.br/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "ANM (mineração)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-29",
@@ -2563,6 +2580,18 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2026-09-08",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "Receita Federal (renúncias)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2026-11-04",
       "licenca": "TCE-PE: licença não localizada; risco assumido",
       "modulos": [
@@ -2592,17 +2621,6 @@
         "governo_e_sancoes"
       ],
       "orgao": "Anvisa",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-09-08",
-      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Receita Federal (renúncias)",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2661,6 +2679,50 @@
       "orgao": "ANAC",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANM (TAH)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANP (tancagem)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel (PADOs)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel (homologados)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -2851,6 +2913,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-17",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MTE (PAT)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
@@ -2941,7 +3014,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 31,
-    "tabelas": 152,
+    "tabelas": 158,
     "temas": [
       {
         "chave": "cvm",
@@ -2965,10 +3038,11 @@
       {
         "chave": "cadastro",
         "orgaos": [
-          "Receita Federal"
+          "Receita Federal",
+          "Receita Federal (renúncias)"
         ],
-        "tabelas": 10,
-        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro.",
+        "tabelas": 11,
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional, a forma de tributação do lucro declarada na ECF e o que mudou de um mês para o outro.",
         "titulo": "Cadastro e situação na Receita"
       },
       {
@@ -2980,14 +3054,15 @@
           "CGU",
           "ANS",
           "ANEEL",
+          "Anatel (PADOs)",
           "Banco Central",
           "MTE",
           "IBAMA",
           "CNJ",
           "CVM"
         ],
-        "tabelas": 13,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 14,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2997,19 +3072,23 @@
           "SUSEP",
           "Anvisa",
           "ANP",
+          "ANP (tancagem)",
           "ANTT",
           "Banco Central",
           "MAPA",
           "ANEEL",
           "Anatel",
+          "Anatel (homologados)",
           "ANM",
+          "ANM (TAH)",
           "CMED (Anvisa)",
           "Ancine",
           "Ministério da Saúde (DATASUS)",
+          "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 27,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI.",
+        "tabelas": 31,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3048,7 +3127,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 80
+      "tabelas": 86
     },
     {
       "chave": "governo_e_sancoes",
@@ -5834,6 +5913,83 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-presumido",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-real",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-arbitrado",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-imunes",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "mte-pat-beneficiarias",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "mte-pat-facilitadoras",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "mte-pat-fornecedoras",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "anm-tah",
+      "licenca": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anatel-pados",
+      "licenca": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anatel-homologados",
+      "licenca": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-tancagem",
+      "licenca": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "bcb-sgs-selic-meta",
@@ -8709,6 +8865,72 @@
       "tabela": "antt_seguros_de_transportadores"
     },
     {
+      "atraso": "A Receita não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "O regime de tributação do lucro que cada empresa declarou na ECF, por ano: lucro presumido, real ou arbitrado, imune ou isenta, e quantas escriturações entregou.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Receita Federal (renúncias)",
+      "situacao": "licenciada",
+      "tabela": "receita_regime_tributario"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As empresas inscritas no Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho: beneficiárias (dão alimentação aos empregados).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MTE (PAT)",
+      "situacao": "em consulta",
+      "tabela": "mte_pat"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "A Taxa Anual por Hectare (TAH) que cada titular de processo minerário paga à ANM: processo, fase, superintendência, área em hectares, valor pago e valor cobrado, por quitação.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANM (TAH)",
+      "situacao": "em consulta",
+      "tabela": "anm_tah"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os processos sancionadores da Anatel (PADOs) contra empresas: tema, serviço, situação e fase do processo, multa aplicada e situação do pagamento.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Anatel (PADOs)",
+      "situacao": "em consulta",
+      "tabela": "anatel_pados"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os produtos de telecomunicações que cada empresa homologou na Anatel: número da homologação, certificado de conformidade, modelo, nome comercial, categoria, tipo.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Anatel (homologados)",
+      "situacao": "em consulta",
+      "tabela": "anatel_produtos_homologados"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os tanques das instalações autorizadas pela ANP no abastecimento de combustíveis (bases de distribuição, terminais, produtores...): município, segmento, tipo de unidade.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANP (tancagem)",
+      "situacao": "em consulta",
+      "tabela": "anp_tancagem"
+    },
+    {
       "atraso": null,
       "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
@@ -9273,9 +9495,9 @@
   "totais": {
     "familias": 133,
     "familias_em_uso": 47,
-    "fontes": 49,
-    "fontes_em_consulta": 7,
+    "fontes": 54,
+    "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 186
+    "tabelas": 192
   }
 }

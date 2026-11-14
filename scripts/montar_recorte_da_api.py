@@ -132,6 +132,14 @@ FICAM_EM_CASA = (
     "bcb_regimes_especiais",
     "antt_operadores_multimodais",
     "antt_seguros_de_transportadores",
+    # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem; o envio ao VPS pede o "pode"
+    # da Diretoria com a prova de zero pessoa da 1ª carga (quatro delas com a licença a confirmar)
+    "receita_regime_tributario",
+    "mte_pat",
+    "anm_tah",
+    "anatel_pados",
+    "anatel_produtos_homologados",
+    "anp_tancagem",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

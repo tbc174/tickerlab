@@ -133,6 +133,14 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("antt_operadores_multimodais", "vigencia_ate"): "ate",
     ("antt_seguros_de_transportadores", "inicio_da_apolice"): "aconteceu_em",
     ("antt_seguros_de_transportadores", "fim_da_apolice"): "ate",
+    # linha 904 (conferência de 14/11): inscrição no PAT, quitação da TAH, homologação e certificado são fatos; a
+    # validade do certificado é prazo; a posição da tancagem é o mês que o arquivo retrata
+    ("mte_pat", "data_do_cadastro"): "aconteceu_em",
+    ("anm_tah", "data_da_quitacao"): "aconteceu_em",
+    ("anatel_produtos_homologados", "data_da_homologacao"): "aconteceu_em",
+    ("anatel_produtos_homologados", "data_do_certificado"): "aconteceu_em",
+    ("anatel_produtos_homologados", "validade_do_certificado"): "ate",
+    ("anp_tancagem", "data_da_posicao"): "referencia",
 }  # fmt: skip
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160

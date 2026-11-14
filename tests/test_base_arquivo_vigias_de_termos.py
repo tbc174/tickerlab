@@ -41,6 +41,13 @@ _SEM_VIGIA = {
             "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
             "anm-cfem",
             "anm-sigbm",
+            # conferência de 14/11/2026 (linha 904): sem licença do conjunto, a confirmar (o PAT, só o rodapé
+            # do gov.br: uso interno)
+            "mte-pat",
+            "anm-tah",
+            "anatel-pados",
+            "anatel-homologados",
+            "anp-tancagem",
             "estban",  # linha 659: termos gerais do BC lidos em 04/11/2026, sem página própria do ESTBAN
             "ancine",
             # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
