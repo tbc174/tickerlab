@@ -404,6 +404,30 @@ export interface VagaDaVitrine {
 export const vitrine: VagaDaVitrine[] = vitrineJson as never;
 import fatosJson from "../conteudo/fatos_da_base.json";
 
+/** Uma barra do recorte: um estado ou um setor, já formatado (`barras_do_recorte` de base/vitrine.py). */
+export interface BarraDoRecorte {
+  rotulo: string;
+  parte: string;
+  todo: string;
+  porcento: string;
+  largura: number; // a parte sobre a maior parte do recorte, em %
+  // o filtro da tela Encontrar empresas ({uf} ou {setor}) que abre as empresas ativas dali; null sem link
+  filtro_no_app?: Record<string, string> | null;
+}
+
+/** Um lado do recorte: as barras que saem e os rótulos das que não saem (contagem pequena). */
+export interface LadoDoRecorte {
+  barras: BarraDoRecorte[];
+  escondidas: string[];
+}
+
+/** O recorte de um cartão de empresa fechada por estado e por setor da matriz (linha 925, 2º PR). */
+export interface RecorteDoFato {
+  por_uf: LadoDoRecorte;
+  por_setor: LadoDoRecorte;
+  como_foi_calculado: string;
+}
+
 /** Um fato agregado da página inicial (`Fato` de base/vitrine.py): só contagens, com a fonte e a data. */
 export interface FatoDaBase {
   chave: string;
@@ -413,7 +437,20 @@ export interface FatoDaBase {
   tabelas: string[];
   data: string;
   como_foi_calculado: string;
+  recorte?: RecorteDoFato;
 }
 
-/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão. */
-export const fatosDaBase: { fatos: FatoDaBase[]; medido_em_curto: string } = fatosJson as never;
+/** Uma pergunta da seção de cruzamentos e os cartões dela (`grupos_dos_fatos` de base/vitrine.py). */
+export interface GrupoDeFatos {
+  chave: string;
+  pergunta: string;
+  fatos: FatoDaBase[];
+}
+
+/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão.
+ * Os de empresa fechada vêm primeiro, por pergunta; os de companhia aberta, no último grupo. */
+export const fatosDaBase: {
+  grupos: GrupoDeFatos[];
+  subtitulo: string;
+  medido_em_curto: string;
+} = fatosJson as never;

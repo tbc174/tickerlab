@@ -405,6 +405,24 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: var(--azul-texto); }
 .v2-fato-fonte { color: var(--apagado); font-size: .84rem; }
 .v2-fato .como-foi-calculado { margin: .3rem 0 0; font-size: .88rem; }
+/* o recorte de um cartão por estado e por setor: barras de CSS, recolhidas num <details> */
+.v2-recorte { margin: .3rem 0 0; font-size: .86rem; }
+.v2-recorte summary { cursor: pointer; color: var(--azul-texto); font-weight: 600; }
+.v2-recorte-lado { margin-top: .7rem; }
+.v2-recorte-titulo { font-weight: 600; }
+.v2-recorte-barras { list-style: none; margin: .35rem 0 0; padding: 0; display: grid; gap: .3rem; }
+.v2-recorte-barras li { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(2rem, 1fr); gap: .1rem .5rem;
+  align-items: center; }
+.v2-recorte-rotulo { overflow-wrap: anywhere; }
+.v2-recorte-barra { display: block; height: 6px; border-radius: 999px; background: var(--linha); overflow: hidden; }
+.v2-recorte-barra i { display: block; height: 100%; width: calc(var(--p) * 100%); border-radius: inherit;
+  background: var(--azul-texto); }
+.v2-recorte-conta { grid-column: 2; color: var(--apagado); font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: .78rem; }
+.v2-recorte-link { grid-column: 2; font-size: .78rem; }
+.v2-recorte-escondidas, .v2-recorte-nota { margin-top: .5rem !important; color: var(--apagado); font-size: .8rem; }
+.v2-fatos-grupo + .v2-fatos-grupo { margin-top: 2rem; }
+.v2-fatos-pergunta { margin: 0 0 .8rem; font-size: 1.1rem; }
 
 /* as quatro regras da base, recolhidas, em duas colunas */
 .v2-regras-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .8rem; }
@@ -494,7 +512,10 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-bento .v2-larga { grid-template-columns: 1fr; }
   .v2-bento .v2-faixa-cartao { flex-direction: column; align-items: start; }
   .v2-regras-lista { grid-template-columns: 1fr; }
-  .v2-vagas, .v2-fatos, .v2-temas-cnpj { grid-template-columns: 1fr; }
+  .v2-vagas, .v2-temas-cnpj { grid-template-columns: 1fr; }
+  /* no celular cada pergunta vira uma fileira que corre de lado: a seção não cresce sem fim para baixo */
+  .v2-fatos { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: .8rem; padding-bottom: .4rem; }
+  .v2-fatos .v2-fato { flex: 0 0 85%; scroll-snap-align: start; }
   .v2-vaga, .v2-vaga.breve { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {

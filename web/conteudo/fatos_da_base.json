@@ -1,76 +1,2611 @@
 {
-  "fatos": [
+  "grupos": [
     {
-      "chave": "lucros",
-      "como_foi_calculado": "O lucro do período de cada balanço anual, na primeira versão que a base guarda, comparado com o número que o balanço do ano seguinte mostra para o mesmo ano (a coluna do ano anterior). A mudança pode vir de uma nova versão do próprio balanço ou do seguinte. Conta como mudado quando a diferença passa de 1% e de R$ 1 mil. Usa o consolidado e, na companhia que não o publica, o individual. Só entram os balanços que já têm o do ano seguinte. Mudar não quer dizer erro: entram reclassificação, norma contábil nova e operação descontinuada.",
-      "data": "2026-10-29",
-      "fonte": "CVM: demonstrações financeiras padronizadas (DFP)",
-      "numero": "6,3%",
-      "tabelas": [
-        "demonstracoes_como_era"
+      "chave": "crescendo",
+      "fatos": [
+        {
+          "chave": "tres_filiais",
+          "como_foi_calculado": "Filial é o estabelecimento que não é a matriz, contado pela data de início de atividade que a Receita registra, no retrato que valia no dia e em qualquer situação (a filial aberta e já fechada conta). Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ",
+          "numero": "4.906",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 100.0,
+                  "parte": "1.852",
+                  "porcento": "0,1%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "2.352.828"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "F"
+                  },
+                  "largura": 29.7,
+                  "parte": "550",
+                  "porcento": "0,1%",
+                  "rotulo": "Construção",
+                  "todo": "547.323"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "H"
+                  },
+                  "largura": 22.5,
+                  "parte": "416",
+                  "porcento": "0,1%",
+                  "rotulo": "Transporte, armazenagem e correio",
+                  "todo": "310.865"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "I"
+                  },
+                  "largura": 22.4,
+                  "parte": "414",
+                  "porcento": "0,1%",
+                  "rotulo": "Alojamento e alimentação",
+                  "todo": "382.976"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 17.8,
+                  "parte": "329",
+                  "porcento": "0,1%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "537.812"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "N"
+                  },
+                  "largura": 13.3,
+                  "parte": "247",
+                  "porcento": "0,0%",
+                  "rotulo": "Atividades administrativas e serviços complementares",
+                  "todo": "779.295"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "A"
+                  },
+                  "largura": 11.8,
+                  "parte": "218",
+                  "porcento": "0,3%",
+                  "rotulo": "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                  "todo": "85.571"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "K"
+                  },
+                  "largura": 10.7,
+                  "parte": "198",
+                  "porcento": "0,0%",
+                  "rotulo": "Atividades financeiras, de seguros e serviços relacionados",
+                  "todo": "460.286"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "Q"
+                  },
+                  "largura": 9.0,
+                  "parte": "167",
+                  "porcento": "0,0%",
+                  "rotulo": "Saúde humana e serviços sociais",
+                  "todo": "769.254"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "J"
+                  },
+                  "largura": 7.5,
+                  "parte": "139",
+                  "porcento": "0,0%",
+                  "rotulo": "Informação e comunicação",
+                  "todo": "398.982"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "M"
+                  },
+                  "largura": 7.1,
+                  "parte": "132",
+                  "porcento": "0,0%",
+                  "rotulo": "Atividades profissionais, científicas e técnicas",
+                  "todo": "1.050.879"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "P"
+                  },
+                  "largura": 3.3,
+                  "parte": "61",
+                  "porcento": "0,0%",
+                  "rotulo": "Educação",
+                  "todo": "246.946"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "L"
+                  },
+                  "largura": 2.8,
+                  "parte": "51",
+                  "porcento": "0,0%",
+                  "rotulo": "Atividades imobiliárias",
+                  "todo": "322.285"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "S"
+                  },
+                  "largura": 2.8,
+                  "parte": "51",
+                  "porcento": "0,0%",
+                  "rotulo": "Outras atividades de serviços",
+                  "todo": "170.238"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "R"
+                  },
+                  "largura": 1.9,
+                  "parte": "35",
+                  "porcento": "0,0%",
+                  "rotulo": "Artes, cultura, esporte e recreação",
+                  "todo": "122.842"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "B"
+                  },
+                  "largura": 0.7,
+                  "parte": "13",
+                  "porcento": "0,1%",
+                  "rotulo": "Indústrias extrativas",
+                  "todo": "17.102"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "E"
+                  },
+                  "largura": 0.6,
+                  "parte": "11",
+                  "porcento": "0,1%",
+                  "rotulo": "Água, esgoto, atividades de gestão de resíduos e descontaminação",
+                  "todo": "19.680"
+                }
+              ],
+              "escondidas": [
+                "Administração pública, defesa e seguridade social",
+                "Eletricidade e gás",
+                "Organismos internacionais e outras instituições extraterritoriais",
+                "Serviços domésticos"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "1.348",
+                  "porcento": "0,1%",
+                  "rotulo": "SP",
+                  "todo": "2.648.496"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 35.7,
+                  "parte": "481",
+                  "porcento": "0,1%",
+                  "rotulo": "PR",
+                  "todo": "720.706"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 31.0,
+                  "parte": "418",
+                  "porcento": "0,0%",
+                  "rotulo": "MG",
+                  "todo": "872.549"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 24.8,
+                  "parte": "334",
+                  "porcento": "0,1%",
+                  "rotulo": "RS",
+                  "todo": "537.184"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 23.1,
+                  "parte": "311",
+                  "porcento": "0,1%",
+                  "rotulo": "SC",
+                  "todo": "553.923"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RJ"
+                  },
+                  "largura": 20.7,
+                  "parte": "279",
+                  "porcento": "0,0%",
+                  "rotulo": "RJ",
+                  "todo": "646.728"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "GO"
+                  },
+                  "largura": 20.5,
+                  "parte": "276",
+                  "porcento": "0,1%",
+                  "rotulo": "GO",
+                  "todo": "344.188"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "BA"
+                  },
+                  "largura": 13.2,
+                  "parte": "178",
+                  "porcento": "0,1%",
+                  "rotulo": "BA",
+                  "todo": "351.289"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "CE"
+                  },
+                  "largura": 12.7,
+                  "parte": "171",
+                  "porcento": "0,1%",
+                  "rotulo": "CE",
+                  "todo": "214.768"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MT"
+                  },
+                  "largura": 10.3,
+                  "parte": "139",
+                  "porcento": "0,1%",
+                  "rotulo": "MT",
+                  "todo": "184.588"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PE"
+                  },
+                  "largura": 10.1,
+                  "parte": "136",
+                  "porcento": "0,1%",
+                  "rotulo": "PE",
+                  "todo": "182.878"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "ES"
+                  },
+                  "largura": 8.0,
+                  "parte": "108",
+                  "porcento": "0,1%",
+                  "rotulo": "ES",
+                  "todo": "171.329"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "DF"
+                  },
+                  "largura": 7.6,
+                  "parte": "103",
+                  "porcento": "0,1%",
+                  "rotulo": "DF",
+                  "todo": "190.006"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MS"
+                  },
+                  "largura": 6.7,
+                  "parte": "90",
+                  "porcento": "0,1%",
+                  "rotulo": "MS",
+                  "todo": "112.209"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PB"
+                  },
+                  "largura": 6.4,
+                  "parte": "86",
+                  "porcento": "0,1%",
+                  "rotulo": "PB",
+                  "todo": "78.757"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PA"
+                  },
+                  "largura": 6.0,
+                  "parte": "81",
+                  "porcento": "0,1%",
+                  "rotulo": "PA",
+                  "todo": "150.197"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MA"
+                  },
+                  "largura": 5.1,
+                  "parte": "69",
+                  "porcento": "0,1%",
+                  "rotulo": "MA",
+                  "todo": "105.231"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AM"
+                  },
+                  "largura": 5.0,
+                  "parte": "67",
+                  "porcento": "0,1%",
+                  "rotulo": "AM",
+                  "todo": "76.554"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RN"
+                  },
+                  "largura": 3.9,
+                  "parte": "53",
+                  "porcento": "0,1%",
+                  "rotulo": "RN",
+                  "todo": "75.659"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RO"
+                  },
+                  "largura": 3.0,
+                  "parte": "41",
+                  "porcento": "0,1%",
+                  "rotulo": "RO",
+                  "todo": "51.849"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PI"
+                  },
+                  "largura": 2.9,
+                  "parte": "39",
+                  "porcento": "0,1%",
+                  "rotulo": "PI",
+                  "todo": "60.024"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "TO"
+                  },
+                  "largura": 2.5,
+                  "parte": "34",
+                  "porcento": "0,1%",
+                  "rotulo": "TO",
+                  "todo": "54.068"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AL"
+                  },
+                  "largura": 1.8,
+                  "parte": "24",
+                  "porcento": "0,0%",
+                  "rotulo": "AL",
+                  "todo": "53.611"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SE"
+                  },
+                  "largura": 1.2,
+                  "parte": "16",
+                  "porcento": "0,0%",
+                  "rotulo": "SE",
+                  "todo": "50.337"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AP"
+                  },
+                  "largura": 0.9,
+                  "parte": "12",
+                  "porcento": "0,1%",
+                  "rotulo": "AP",
+                  "todo": "15.949"
+                }
+              ],
+              "escondidas": [
+                "AC",
+                "EX",
+                "RR"
+              ]
+            }
+          },
+          "tabelas": [
+            "cnpj_empresas_pj",
+            "cnpj_estabelecimentos_pj"
+          ],
+          "texto": "empresas fechadas ativas abriram três filiais ou mais nos 12 meses até o dia da medição, entre 8.588.883 ativas."
+        },
+        {
+          "chave": "bndes_e_finep",
+          "como_foi_calculado": "Os contratos com data de assinatura até o dia da medição, nas listas que os dois bancos publicam, como a base as viu até o dia. Só contratos com CNPJ de empresa: a linha de pessoa física fica de fora. O cartão não diz o valor nem se o crédito foi pago. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "BNDES: operações de crédito não automáticas; Finep: crédito direto e descentralizado",
+          "numero": "10,6%",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 100.0,
+                  "parte": "184",
+                  "porcento": "29,6%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "621"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "J"
+                  },
+                  "largura": 14.7,
+                  "parte": "27",
+                  "porcento": "14,1%",
+                  "rotulo": "Informação e comunicação",
+                  "todo": "191"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 13.0,
+                  "parte": "24",
+                  "porcento": "14,8%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "162"
+                }
+              ],
+              "escondidas": [
+                "Administração pública, defesa e seguridade social",
+                "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                "Alojamento e alimentação",
+                "Artes, cultura, esporte e recreação",
+                "Atividades administrativas e serviços complementares",
+                "Atividades financeiras, de seguros e serviços relacionados",
+                "Atividades imobiliárias",
+                "Atividades profissionais, científicas e técnicas",
+                "Construção",
+                "Educação",
+                "Eletricidade e gás",
+                "Indústrias extrativas",
+                "Saúde humana e serviços sociais",
+                "Transporte, armazenagem e correio",
+                "Água, esgoto, atividades de gestão de resíduos e descontaminação"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "74",
+                  "porcento": "8,7%",
+                  "rotulo": "SP",
+                  "todo": "851"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 74.3,
+                  "parte": "55",
+                  "porcento": "28,8%",
+                  "rotulo": "RS",
+                  "todo": "191"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 56.8,
+                  "parte": "42",
+                  "porcento": "25,9%",
+                  "rotulo": "PR",
+                  "todo": "162"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 51.4,
+                  "parte": "38",
+                  "porcento": "16,9%",
+                  "rotulo": "SC",
+                  "todo": "225"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 35.1,
+                  "parte": "26",
+                  "porcento": "12,4%",
+                  "rotulo": "MG",
+                  "todo": "209"
+                }
+              ],
+              "escondidas": [
+                "AC",
+                "AL",
+                "AM",
+                "AP",
+                "BA",
+                "CE",
+                "DF",
+                "ES",
+                "GO",
+                "MA",
+                "MS",
+                "MT",
+                "PA",
+                "PB",
+                "PE",
+                "PI",
+                "RJ",
+                "RN",
+                "RO",
+                "RR",
+                "SE",
+                "TO"
+              ]
+            }
+          },
+          "tabelas": [
+            "financiamentos_bndes",
+            "financiamentos_finep",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 2.543 empresas fechadas ativas com crédito contratado no BNDES também tiveram crédito da Finep (270 empresas)."
+        }
       ],
-      "texto": "dos 7.959 balanços anuais de 2010 a 2025 tiveram o lucro do ano mudado em mais de 1% até o balanço do ano seguinte: 498 balanços, de 335 de 1.051 companhias."
+      "pergunta": "Quem está crescendo"
     },
     {
-      "chave": "auditor",
-      "como_foi_calculado": "Cada troca de firma de auditoria olha o primeiro balanço anual publicado depois dela e compara o lucro do ano anterior com a mesma regra do número dos balanços refeitos. 569 das 2.129 trocas ficam de fora: ainda não têm esse balanço, ou a base não tem o do ano anterior. A comparação com os balanços sem troca mostra uma frequência, não uma causa.",
-      "data": "2026-10-29",
-      "fonte": "CVM: formulário cadastral (FCA) e demonstrações financeiras (DFP)",
-      "numero": "7,9%",
-      "tabelas": [
-        "trocas_de_auditor",
-        "demonstracoes_como_era"
+      "chave": "se_mexeu",
+      "fatos": [
+        {
+          "chave": "socia_entrou",
+          "como_foi_calculado": "A data de entrada que a Receita registra para a sócia empresa, numa mudança do quadro já publicada no dia. Sócio pessoa física não entra na conta. Entrar como sócia não quer dizer compra: holding da família, reorganização e aumento de capital também entram. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ (quadro de sócios)",
+          "numero": "72.280",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "F"
+                  },
+                  "largura": 100.0,
+                  "parte": "13.424",
+                  "porcento": "2,5%",
+                  "rotulo": "Construção",
+                  "todo": "547.323"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "K"
+                  },
+                  "largura": 77.8,
+                  "parte": "10.446",
+                  "porcento": "2,3%",
+                  "rotulo": "Atividades financeiras, de seguros e serviços relacionados",
+                  "todo": "460.286"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 70.9,
+                  "parte": "9.513",
+                  "porcento": "0,4%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "2.352.828"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "L"
+                  },
+                  "largura": 51.7,
+                  "parte": "6.941",
+                  "porcento": "2,2%",
+                  "rotulo": "Atividades imobiliárias",
+                  "todo": "322.285"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "Q"
+                  },
+                  "largura": 45.6,
+                  "parte": "6.127",
+                  "porcento": "0,8%",
+                  "rotulo": "Saúde humana e serviços sociais",
+                  "todo": "769.254"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "M"
+                  },
+                  "largura": 41.2,
+                  "parte": "5.534",
+                  "porcento": "0,5%",
+                  "rotulo": "Atividades profissionais, científicas e técnicas",
+                  "todo": "1.050.879"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "N"
+                  },
+                  "largura": 34.4,
+                  "parte": "4.620",
+                  "porcento": "0,6%",
+                  "rotulo": "Atividades administrativas e serviços complementares",
+                  "todo": "779.295"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "J"
+                  },
+                  "largura": 27.4,
+                  "parte": "3.678",
+                  "porcento": "0,9%",
+                  "rotulo": "Informação e comunicação",
+                  "todo": "398.982"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 21.5,
+                  "parte": "2.885",
+                  "porcento": "0,5%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "537.812"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "I"
+                  },
+                  "largura": 14.9,
+                  "parte": "2.003",
+                  "porcento": "0,5%",
+                  "rotulo": "Alojamento e alimentação",
+                  "todo": "382.976"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "H"
+                  },
+                  "largura": 11.6,
+                  "parte": "1.561",
+                  "porcento": "0,5%",
+                  "rotulo": "Transporte, armazenagem e correio",
+                  "todo": "310.865"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "A"
+                  },
+                  "largura": 11.3,
+                  "parte": "1.518",
+                  "porcento": "1,8%",
+                  "rotulo": "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                  "todo": "85.571"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "P"
+                  },
+                  "largura": 8.4,
+                  "parte": "1.126",
+                  "porcento": "0,5%",
+                  "rotulo": "Educação",
+                  "todo": "246.946"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "R"
+                  },
+                  "largura": 8.2,
+                  "parte": "1.101",
+                  "porcento": "0,9%",
+                  "rotulo": "Artes, cultura, esporte e recreação",
+                  "todo": "122.842"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "B"
+                  },
+                  "largura": 2.9,
+                  "parte": "392",
+                  "porcento": "2,3%",
+                  "rotulo": "Indústrias extrativas",
+                  "todo": "17.102"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "S"
+                  },
+                  "largura": 2.0,
+                  "parte": "272",
+                  "porcento": "0,2%",
+                  "rotulo": "Outras atividades de serviços",
+                  "todo": "170.238"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "E"
+                  },
+                  "largura": 1.5,
+                  "parte": "199",
+                  "porcento": "1,0%",
+                  "rotulo": "Água, esgoto, atividades de gestão de resíduos e descontaminação",
+                  "todo": "19.680"
+                }
+              ],
+              "escondidas": [
+                "Administração pública, defesa e seguridade social",
+                "Eletricidade e gás",
+                "Organismos internacionais e outras instituições extraterritoriais",
+                "Serviços domésticos"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "22.259",
+                  "porcento": "0,8%",
+                  "rotulo": "SP",
+                  "todo": "2.648.496"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 37.1,
+                  "parte": "8.258",
+                  "porcento": "0,9%",
+                  "rotulo": "MG",
+                  "todo": "872.549"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 26.6,
+                  "parte": "5.926",
+                  "porcento": "1,1%",
+                  "rotulo": "SC",
+                  "todo": "553.923"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 25.0,
+                  "parte": "5.569",
+                  "porcento": "0,8%",
+                  "rotulo": "PR",
+                  "todo": "720.706"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RJ"
+                  },
+                  "largura": 21.0,
+                  "parte": "4.684",
+                  "porcento": "0,7%",
+                  "rotulo": "RJ",
+                  "todo": "646.728"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "GO"
+                  },
+                  "largura": 15.0,
+                  "parte": "3.339",
+                  "porcento": "1,0%",
+                  "rotulo": "GO",
+                  "todo": "344.188"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 14.9,
+                  "parte": "3.306",
+                  "porcento": "0,6%",
+                  "rotulo": "RS",
+                  "todo": "537.184"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "CE"
+                  },
+                  "largura": 11.5,
+                  "parte": "2.560",
+                  "porcento": "1,2%",
+                  "rotulo": "CE",
+                  "todo": "214.768"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "BA"
+                  },
+                  "largura": 10.7,
+                  "parte": "2.382",
+                  "porcento": "0,7%",
+                  "rotulo": "BA",
+                  "todo": "351.289"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "DF"
+                  },
+                  "largura": 10.1,
+                  "parte": "2.248",
+                  "porcento": "1,2%",
+                  "rotulo": "DF",
+                  "todo": "190.006"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "ES"
+                  },
+                  "largura": 9.0,
+                  "parte": "1.995",
+                  "porcento": "1,2%",
+                  "rotulo": "ES",
+                  "todo": "171.329"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MT"
+                  },
+                  "largura": 8.0,
+                  "parte": "1.787",
+                  "porcento": "1,0%",
+                  "rotulo": "MT",
+                  "todo": "184.588"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PE"
+                  },
+                  "largura": 7.0,
+                  "parte": "1.548",
+                  "porcento": "0,8%",
+                  "rotulo": "PE",
+                  "todo": "182.878"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PA"
+                  },
+                  "largura": 3.8,
+                  "parte": "836",
+                  "porcento": "0,6%",
+                  "rotulo": "PA",
+                  "todo": "150.197"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PB"
+                  },
+                  "largura": 3.7,
+                  "parte": "830",
+                  "porcento": "1,1%",
+                  "rotulo": "PB",
+                  "todo": "78.757"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MS"
+                  },
+                  "largura": 3.7,
+                  "parte": "825",
+                  "porcento": "0,7%",
+                  "rotulo": "MS",
+                  "todo": "112.209"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RN"
+                  },
+                  "largura": 3.5,
+                  "parte": "769",
+                  "porcento": "1,0%",
+                  "rotulo": "RN",
+                  "todo": "75.659"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AM"
+                  },
+                  "largura": 2.7,
+                  "parte": "593",
+                  "porcento": "0,8%",
+                  "rotulo": "AM",
+                  "todo": "76.554"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MA"
+                  },
+                  "largura": 2.1,
+                  "parte": "472",
+                  "porcento": "0,4%",
+                  "rotulo": "MA",
+                  "todo": "105.231"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AL"
+                  },
+                  "largura": 2.1,
+                  "parte": "457",
+                  "porcento": "0,9%",
+                  "rotulo": "AL",
+                  "todo": "53.611"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "TO"
+                  },
+                  "largura": 2.0,
+                  "parte": "441",
+                  "porcento": "0,8%",
+                  "rotulo": "TO",
+                  "todo": "54.068"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SE"
+                  },
+                  "largura": 1.5,
+                  "parte": "328",
+                  "porcento": "0,7%",
+                  "rotulo": "SE",
+                  "todo": "50.337"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RO"
+                  },
+                  "largura": 1.5,
+                  "parte": "324",
+                  "porcento": "0,6%",
+                  "rotulo": "RO",
+                  "todo": "51.849"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PI"
+                  },
+                  "largura": 1.4,
+                  "parte": "306",
+                  "porcento": "0,5%",
+                  "rotulo": "PI",
+                  "todo": "60.024"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AP"
+                  },
+                  "largura": 0.4,
+                  "parte": "81",
+                  "porcento": "0,5%",
+                  "rotulo": "AP",
+                  "todo": "15.949"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AC"
+                  },
+                  "largura": 0.3,
+                  "parte": "70",
+                  "porcento": "0,5%",
+                  "rotulo": "AC",
+                  "todo": "14.977"
+                }
+              ],
+              "escondidas": [
+                "EX",
+                "RR"
+              ]
+            }
+          },
+          "tabelas": [
+            "entradas_de_socio_pj",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "empresas fechadas ativas ganharam uma empresa como sócia nos 12 meses até o dia da medição, pelo quadro de sócios da Receita, entre 8.588.883 ativas."
+        },
+        {
+          "chave": "tres_niveis",
+          "como_foi_calculado": "Três camadas: a empresa tem uma sócia empresa, que tem uma sócia empresa, que tem uma sócia empresa, no quadro de sócios que valia no dia (entrou e não saiu até ali). A cadeia que volta a uma empresa já contada também entra. Sócio pessoa física não entra na conta. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ (quadro de sócios)",
+          "numero": "30.696",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "F"
+                  },
+                  "largura": 100.0,
+                  "parte": "10.735",
+                  "porcento": "12,6%",
+                  "rotulo": "Construção",
+                  "todo": "85.149"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "K"
+                  },
+                  "largura": 36.0,
+                  "parte": "3.867",
+                  "porcento": "9,6%",
+                  "rotulo": "Atividades financeiras, de seguros e serviços relacionados",
+                  "todo": "40.271"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "L"
+                  },
+                  "largura": 31.3,
+                  "parte": "3.356",
+                  "porcento": "9,7%",
+                  "rotulo": "Atividades imobiliárias",
+                  "todo": "34.757"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "M"
+                  },
+                  "largura": 19.7,
+                  "parte": "2.117",
+                  "porcento": "8,5%",
+                  "rotulo": "Atividades profissionais, científicas e técnicas",
+                  "todo": "24.910"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 17.8,
+                  "parte": "1.914",
+                  "porcento": "4,8%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "39.992"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "N"
+                  },
+                  "largura": 16.2,
+                  "parte": "1.740",
+                  "porcento": "8,0%",
+                  "rotulo": "Atividades administrativas e serviços complementares",
+                  "todo": "21.826"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "Q"
+                  },
+                  "largura": 15.0,
+                  "parte": "1.613",
+                  "porcento": "4,7%",
+                  "rotulo": "Saúde humana e serviços sociais",
+                  "todo": "34.164"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "D"
+                  },
+                  "largura": 10.5,
+                  "parte": "1.126",
+                  "porcento": "17,9%",
+                  "rotulo": "Eletricidade e gás",
+                  "todo": "6.296"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 8.0,
+                  "parte": "854",
+                  "porcento": "5,2%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "16.469"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "J"
+                  },
+                  "largura": 6.9,
+                  "parte": "741",
+                  "porcento": "5,1%",
+                  "rotulo": "Informação e comunicação",
+                  "todo": "14.568"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "I"
+                  },
+                  "largura": 6.2,
+                  "parte": "664",
+                  "porcento": "9,2%",
+                  "rotulo": "Alojamento e alimentação",
+                  "todo": "7.245"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "H"
+                  },
+                  "largura": 6.0,
+                  "parte": "649",
+                  "porcento": "7,6%",
+                  "rotulo": "Transporte, armazenagem e correio",
+                  "todo": "8.527"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "A"
+                  },
+                  "largura": 4.4,
+                  "parte": "476",
+                  "porcento": "6,6%",
+                  "rotulo": "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                  "todo": "7.247"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "P"
+                  },
+                  "largura": 2.4,
+                  "parte": "258",
+                  "porcento": "6,5%",
+                  "rotulo": "Educação",
+                  "todo": "3.995"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "B"
+                  },
+                  "largura": 1.9,
+                  "parte": "201",
+                  "porcento": "7,8%",
+                  "rotulo": "Indústrias extrativas",
+                  "todo": "2.581"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "R"
+                  },
+                  "largura": 1.4,
+                  "parte": "151",
+                  "porcento": "4,9%",
+                  "rotulo": "Artes, cultura, esporte e recreação",
+                  "todo": "3.063"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "S"
+                  },
+                  "largura": 0.7,
+                  "parte": "74",
+                  "porcento": "3,2%",
+                  "rotulo": "Outras atividades de serviços",
+                  "todo": "2.291"
+                }
+              ],
+              "escondidas": [
+                "Administração pública, defesa e seguridade social",
+                "Organismos internacionais e outras instituições extraterritoriais",
+                "Serviços domésticos",
+                "Água, esgoto, atividades de gestão de resíduos e descontaminação"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "11.772",
+                  "porcento": "9,5%",
+                  "rotulo": "SP",
+                  "todo": "123.433"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 24.4,
+                  "parte": "2.877",
+                  "porcento": "7,8%",
+                  "rotulo": "MG",
+                  "todo": "36.865"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "GO"
+                  },
+                  "largura": 19.9,
+                  "parte": "2.346",
+                  "porcento": "15,7%",
+                  "rotulo": "GO",
+                  "todo": "14.988"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RJ"
+                  },
+                  "largura": 19.4,
+                  "parte": "2.287",
+                  "porcento": "6,8%",
+                  "rotulo": "RJ",
+                  "todo": "33.647"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "ES"
+                  },
+                  "largura": 15.3,
+                  "parte": "1.798",
+                  "porcento": "21,7%",
+                  "rotulo": "ES",
+                  "todo": "8.274"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 14.9,
+                  "parte": "1.749",
+                  "porcento": "7,2%",
+                  "rotulo": "PR",
+                  "todo": "24.324"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 12.7,
+                  "parte": "1.495",
+                  "porcento": "6,3%",
+                  "rotulo": "SC",
+                  "todo": "23.764"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 8.8,
+                  "parte": "1.040",
+                  "porcento": "6,4%",
+                  "rotulo": "RS",
+                  "todo": "16.137"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "BA"
+                  },
+                  "largura": 6.2,
+                  "parte": "725",
+                  "porcento": "6,9%",
+                  "rotulo": "BA",
+                  "todo": "10.522"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PE"
+                  },
+                  "largura": 5.5,
+                  "parte": "645",
+                  "porcento": "6,3%",
+                  "rotulo": "PE",
+                  "todo": "10.185"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "CE"
+                  },
+                  "largura": 5.0,
+                  "parte": "590",
+                  "porcento": "5,9%",
+                  "rotulo": "CE",
+                  "todo": "9.943"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "DF"
+                  },
+                  "largura": 4.9,
+                  "parte": "571",
+                  "porcento": "7,2%",
+                  "rotulo": "DF",
+                  "todo": "7.979"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MT"
+                  },
+                  "largura": 4.7,
+                  "parte": "548",
+                  "porcento": "7,9%",
+                  "rotulo": "MT",
+                  "todo": "6.945"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PA"
+                  },
+                  "largura": 3.0,
+                  "parte": "356",
+                  "porcento": "11,1%",
+                  "rotulo": "PA",
+                  "todo": "3.208"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PB"
+                  },
+                  "largura": 2.9,
+                  "parte": "342",
+                  "porcento": "10,8%",
+                  "rotulo": "PB",
+                  "todo": "3.159"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RN"
+                  },
+                  "largura": 2.2,
+                  "parte": "260",
+                  "porcento": "5,9%",
+                  "rotulo": "RN",
+                  "todo": "4.418"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MS"
+                  },
+                  "largura": 2.1,
+                  "parte": "245",
+                  "porcento": "7,7%",
+                  "rotulo": "MS",
+                  "todo": "3.165"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "TO"
+                  },
+                  "largura": 1.7,
+                  "parte": "197",
+                  "porcento": "9,9%",
+                  "rotulo": "TO",
+                  "todo": "1.994"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AM"
+                  },
+                  "largura": 1.7,
+                  "parte": "195",
+                  "porcento": "7,6%",
+                  "rotulo": "AM",
+                  "todo": "2.554"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MA"
+                  },
+                  "largura": 1.5,
+                  "parte": "175",
+                  "porcento": "8,0%",
+                  "rotulo": "MA",
+                  "todo": "2.180"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PI"
+                  },
+                  "largura": 1.1,
+                  "parte": "129",
+                  "porcento": "8,6%",
+                  "rotulo": "PI",
+                  "todo": "1.508"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AL"
+                  },
+                  "largura": 0.9,
+                  "parte": "108",
+                  "porcento": "5,5%",
+                  "rotulo": "AL",
+                  "todo": "1.979"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RO"
+                  },
+                  "largura": 0.7,
+                  "parte": "82",
+                  "porcento": "7,1%",
+                  "rotulo": "RO",
+                  "todo": "1.157"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SE"
+                  },
+                  "largura": 0.5,
+                  "parte": "59",
+                  "porcento": "5,1%",
+                  "rotulo": "SE",
+                  "todo": "1.158"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RR"
+                  },
+                  "largura": 0.4,
+                  "parte": "44",
+                  "porcento": "11,8%",
+                  "rotulo": "RR",
+                  "todo": "373"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AC"
+                  },
+                  "largura": 0.3,
+                  "parte": "32",
+                  "porcento": "7,4%",
+                  "rotulo": "AC",
+                  "todo": "435"
+                }
+              ],
+              "escondidas": [
+                "AP",
+                "EX"
+              ]
+            }
+          },
+          "tabelas": [
+            "entradas_de_socio_pj",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "empresas fechadas ativas têm três camadas de empresas sócias acima delas: 8,7% das 354.667 que têm uma empresa como sócia."
+        }
       ],
-      "texto": "das 1.560 trocas de auditor vieram com o lucro do ano anterior mudado em mais de 1% no primeiro balanço depois da troca (123 trocas). Nos balanços sem troca, foram 5,9%."
+      "pergunta": "Quem já se mexeu"
     },
     {
-      "chave": "atraso",
-      "como_foi_calculado": "O prazo da DFP é o da CVM (três meses depois do fim do exercício) e o atraso é um rótulo nosso: a primeira entrega registrada no sistema da CVM depois do prazo, contada em dias úteis; grave quando passa de 30 dias corridos. O lucro mudado segue a regra do primeiro cartão, e só entram os balanços que já têm o do ano seguinte. Atrasar não quer dizer erro no balanço: o cartão mostra uma frequência, não uma causa.",
-      "data": "2026-10-29",
-      "fonte": "CVM: demonstrações financeiras padronizadas (DFP) e as datas de entrega",
-      "numero": "12,0%",
-      "tabelas": [
-        "rotulos_atraso",
-        "demonstracoes_como_era"
+      "chave": "diligencia",
+      "fatos": [
+        {
+          "chave": "bndes_e_divida",
+          "como_foi_calculado": "Os contratos do BNDES assinados de 2015 até o dia, cruzados com a lista de devedores da PGFN do trimestre mais novo já público no dia. Só CNPJ de empresa, nas duas listas. A dívida inscrita pode estar parcelada, garantida ou em discussão na Justiça. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "BNDES e PGFN: lista de devedores da dívida ativa da União",
+          "numero": "6,1%",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 100.0,
+                  "parte": "38",
+                  "porcento": "12,1%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "315"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 34.2,
+                  "parte": "13",
+                  "porcento": "14,0%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "93"
+                }
+              ],
+              "escondidas": [
+                "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                "Alojamento e alimentação",
+                "Artes, cultura, esporte e recreação",
+                "Atividades administrativas e serviços complementares",
+                "Atividades financeiras, de seguros e serviços relacionados",
+                "Atividades imobiliárias",
+                "Atividades profissionais, científicas e técnicas",
+                "Construção",
+                "Educação",
+                "Eletricidade e gás",
+                "Indústrias extrativas",
+                "Informação e comunicação",
+                "Saúde humana e serviços sociais",
+                "Transporte, armazenagem e correio",
+                "Água, esgoto, atividades de gestão de resíduos e descontaminação"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "35",
+                  "porcento": "7,9%",
+                  "rotulo": "SP",
+                  "todo": "445"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 28.6,
+                  "parte": "10",
+                  "porcento": "9,3%",
+                  "rotulo": "MG",
+                  "todo": "107"
+                }
+              ],
+              "escondidas": [
+                "AC",
+                "AL",
+                "AM",
+                "AP",
+                "BA",
+                "CE",
+                "DF",
+                "ES",
+                "GO",
+                "MA",
+                "MS",
+                "MT",
+                "PA",
+                "PB",
+                "PE",
+                "PI",
+                "PR",
+                "RJ",
+                "RN",
+                "RO",
+                "RR",
+                "RS",
+                "SC",
+                "SE",
+                "TO"
+              ]
+            }
+          },
+          "tabelas": [
+            "financiamentos_bndes",
+            "pgfn_divida",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 1.383 empresas fechadas ativas com crédito do BNDES contratado desde 2015 têm dívida ativa da União inscrita (84 empresas)."
+        },
+        {
+          "chave": "anvisa_e_divida",
+          "como_foi_calculado": "Ao menos uma autorização de funcionamento da Anvisa em vigor no retrato mais novo já público no dia, cruzada com a lista de devedores da PGFN do trimestre mais novo já público no dia. Só CNPJ de empresa. A dívida inscrita pode estar parcelada, garantida ou em discussão na Justiça. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Anvisa: autorizações de funcionamento; PGFN: lista de devedores da dívida ativa da União",
+          "numero": "7,9%",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 100.0,
+                  "parte": "5.315",
+                  "porcento": "6,2%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "85.786"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 28.6,
+                  "parte": "1.522",
+                  "porcento": "16,6%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "9.167"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "H"
+                  },
+                  "largura": 13.4,
+                  "parte": "713",
+                  "porcento": "17,6%",
+                  "rotulo": "Transporte, armazenagem e correio",
+                  "todo": "4.059"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "N"
+                  },
+                  "largura": 5.9,
+                  "parte": "312",
+                  "porcento": "23,8%",
+                  "rotulo": "Atividades administrativas e serviços complementares",
+                  "todo": "1.312"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "M"
+                  },
+                  "largura": 1.7,
+                  "parte": "89",
+                  "porcento": "13,5%",
+                  "rotulo": "Atividades profissionais, científicas e técnicas",
+                  "todo": "658"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "Q"
+                  },
+                  "largura": 0.6,
+                  "parte": "33",
+                  "porcento": "7,3%",
+                  "rotulo": "Saúde humana e serviços sociais",
+                  "todo": "449"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "L"
+                  },
+                  "largura": 0.6,
+                  "parte": "30",
+                  "porcento": "15,9%",
+                  "rotulo": "Atividades imobiliárias",
+                  "todo": "189"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "K"
+                  },
+                  "largura": 0.4,
+                  "parte": "21",
+                  "porcento": "11,9%",
+                  "rotulo": "Atividades financeiras, de seguros e serviços relacionados",
+                  "todo": "177"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "J"
+                  },
+                  "largura": 0.3,
+                  "parte": "18",
+                  "porcento": "10,2%",
+                  "rotulo": "Informação e comunicação",
+                  "todo": "176"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "B"
+                  },
+                  "largura": 0.3,
+                  "parte": "17",
+                  "porcento": "27,4%",
+                  "rotulo": "Indústrias extrativas",
+                  "todo": "62"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "I"
+                  },
+                  "largura": 0.3,
+                  "parte": "17",
+                  "porcento": "16,5%",
+                  "rotulo": "Alojamento e alimentação",
+                  "todo": "103"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "F"
+                  },
+                  "largura": 0.3,
+                  "parte": "15",
+                  "porcento": "11,0%",
+                  "rotulo": "Construção",
+                  "todo": "136"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "P"
+                  },
+                  "largura": 0.2,
+                  "parte": "13",
+                  "porcento": "16,2%",
+                  "rotulo": "Educação",
+                  "todo": "80"
+                }
+              ],
+              "escondidas": [
+                "Administração pública, defesa e seguridade social",
+                "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                "Artes, cultura, esporte e recreação",
+                "Outras atividades de serviços",
+                "Serviços domésticos",
+                "Água, esgoto, atividades de gestão de resíduos e descontaminação"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "2.243",
+                  "porcento": "9,6%",
+                  "rotulo": "SP",
+                  "todo": "23.362"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RJ"
+                  },
+                  "largura": 39.2,
+                  "parte": "880",
+                  "porcento": "9,6%",
+                  "rotulo": "RJ",
+                  "todo": "9.125"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 37.2,
+                  "parte": "834",
+                  "porcento": "7,5%",
+                  "rotulo": "MG",
+                  "todo": "11.068"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 23.8,
+                  "parte": "533",
+                  "porcento": "7,8%",
+                  "rotulo": "PR",
+                  "todo": "6.858"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "GO"
+                  },
+                  "largura": 20.2,
+                  "parte": "453",
+                  "porcento": "7,9%",
+                  "rotulo": "GO",
+                  "todo": "5.709"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 18.8,
+                  "parte": "421",
+                  "porcento": "8,2%",
+                  "rotulo": "RS",
+                  "todo": "5.147"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "BA"
+                  },
+                  "largura": 14.5,
+                  "parte": "325",
+                  "porcento": "5,9%",
+                  "rotulo": "BA",
+                  "todo": "5.489"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 14.4,
+                  "parte": "324",
+                  "porcento": "5,7%",
+                  "rotulo": "SC",
+                  "todo": "5.644"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PE"
+                  },
+                  "largura": 11.8,
+                  "parte": "265",
+                  "porcento": "8,0%",
+                  "rotulo": "PE",
+                  "todo": "3.292"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "CE"
+                  },
+                  "largura": 10.3,
+                  "parte": "231",
+                  "porcento": "7,2%",
+                  "rotulo": "CE",
+                  "todo": "3.226"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "ES"
+                  },
+                  "largura": 10.0,
+                  "parte": "225",
+                  "porcento": "7,2%",
+                  "rotulo": "ES",
+                  "todo": "3.122"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "DF"
+                  },
+                  "largura": 9.0,
+                  "parte": "202",
+                  "porcento": "10,9%",
+                  "rotulo": "DF",
+                  "todo": "1.854"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PA"
+                  },
+                  "largura": 7.3,
+                  "parte": "164",
+                  "porcento": "5,4%",
+                  "rotulo": "PA",
+                  "todo": "3.063"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MT"
+                  },
+                  "largura": 6.4,
+                  "parte": "144",
+                  "porcento": "8,9%",
+                  "rotulo": "MT",
+                  "todo": "1.627"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MA"
+                  },
+                  "largura": 5.9,
+                  "parte": "132",
+                  "porcento": "6,2%",
+                  "rotulo": "MA",
+                  "todo": "2.122"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PB"
+                  },
+                  "largura": 5.3,
+                  "parte": "120",
+                  "porcento": "7,0%",
+                  "rotulo": "PB",
+                  "todo": "1.713"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MS"
+                  },
+                  "largura": 4.7,
+                  "parte": "106",
+                  "porcento": "8,8%",
+                  "rotulo": "MS",
+                  "todo": "1.209"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PI"
+                  },
+                  "largura": 3.6,
+                  "parte": "80",
+                  "porcento": "6,2%",
+                  "rotulo": "PI",
+                  "todo": "1.293"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "TO"
+                  },
+                  "largura": 3.3,
+                  "parte": "75",
+                  "porcento": "8,2%",
+                  "rotulo": "TO",
+                  "todo": "915"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RN"
+                  },
+                  "largura": 3.3,
+                  "parte": "74",
+                  "porcento": "4,9%",
+                  "rotulo": "RN",
+                  "todo": "1.513"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AL"
+                  },
+                  "largura": 3.2,
+                  "parte": "72",
+                  "porcento": "6,2%",
+                  "rotulo": "AL",
+                  "todo": "1.165"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AM"
+                  },
+                  "largura": 3.2,
+                  "parte": "71",
+                  "porcento": "5,6%",
+                  "rotulo": "AM",
+                  "todo": "1.272"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SE"
+                  },
+                  "largura": 2.8,
+                  "parte": "63",
+                  "porcento": "5,9%",
+                  "rotulo": "SE",
+                  "todo": "1.075"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RO"
+                  },
+                  "largura": 2.8,
+                  "parte": "62",
+                  "porcento": "7,1%",
+                  "rotulo": "RO",
+                  "todo": "876"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AC"
+                  },
+                  "largura": 0.6,
+                  "parte": "13",
+                  "porcento": "4,3%",
+                  "rotulo": "AC",
+                  "todo": "301"
+                }
+              ],
+              "escondidas": [
+                "AP",
+                "RR"
+              ]
+            }
+          },
+          "tabelas": [
+            "anvisa_por_empresa",
+            "pgfn_divida",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 102.547 empresas fechadas ativas com autorização de funcionamento da Anvisa em vigor têm dívida ativa da União inscrita (8.130 empresas)."
+        }
       ],
-      "texto": "dos 410 balanços anuais entregues à CVM depois do prazo tiveram o lucro do ano mudado em mais de 1% até o balanço seguinte. Nos 7.102 entregues no prazo, foram 5,8%; nos 172 com mais de 30 dias de atraso, 13,4%."
+      "pergunta": "O que a diligência acharia"
     },
     {
-      "chave": "remuneracao",
-      "como_foi_calculado": "A remuneração total reconhecida da diretoria estatutária em cada exercício, como o último formulário de referência público a informa (a CVM reescreve os anos antigos), só nos exercícios inteiros já encerrados quando o formulário saiu: o valor previsto para o ano em curso fica de fora. O lucro é o do período na DRE da DFP, consolidado ou individual. Cada par é um exercício e o anterior: 6.256 pares, de 2011 a 2026, em 803 companhias; em todos eles, a remuneração subiu em 61,4%. Ela pode subir porque entraram diretores ou porque o pagamento foi combinado antes do resultado.",
-      "data": "2026-10-29",
-      "fonte": "CVM: formulário de referência (FRE, remuneração dos administradores) e DFP",
-      "numero": "59,4%",
-      "tabelas": [
-        "fre_remuneracao",
-        "demonstracoes_como_era"
+      "chave": "fora_do_balanco",
+      "fatos": [
+        {
+          "chave": "industria_e_marca",
+          "como_foi_calculado": "Indústria: o CNAE principal da matriz é da indústria de transformação (divisões 10 a 33). Porte: o da Receita, que não tem \"médio\"; entram as do porte \"demais\", acima do limite da empresa de pequeno porte, pela declaração da própria empresa. Marca: ao menos um processo no INPI com a empresa como titular, como a base o viu até o dia. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ e INPI: titulares de marcas",
+          "numero": "52,7%",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 100.0,
+                  "parte": "29.233",
+                  "porcento": "52,7%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "55.515"
+                }
+              ],
+              "escondidas": []
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 100.0,
+                  "parte": "11.369",
+                  "porcento": "61,5%",
+                  "rotulo": "SP",
+                  "todo": "18.491"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 28.2,
+                  "parte": "3.206",
+                  "porcento": "63,3%",
+                  "rotulo": "SC",
+                  "todo": "5.065"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 27.1,
+                  "parte": "3.083",
+                  "porcento": "64,1%",
+                  "rotulo": "RS",
+                  "todo": "4.810"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 24.7,
+                  "parte": "2.811",
+                  "porcento": "56,5%",
+                  "rotulo": "MG",
+                  "todo": "4.976"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 22.8,
+                  "parte": "2.596",
+                  "porcento": "56,8%",
+                  "rotulo": "PR",
+                  "todo": "4.570"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RJ"
+                  },
+                  "largura": 9.9,
+                  "parte": "1.123",
+                  "porcento": "38,9%",
+                  "rotulo": "RJ",
+                  "todo": "2.890"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "GO"
+                  },
+                  "largura": 5.7,
+                  "parte": "650",
+                  "porcento": "49,2%",
+                  "rotulo": "GO",
+                  "todo": "1.320"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "BA"
+                  },
+                  "largura": 5.4,
+                  "parte": "616",
+                  "porcento": "46,1%",
+                  "rotulo": "BA",
+                  "todo": "1.336"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PE"
+                  },
+                  "largura": 4.7,
+                  "parte": "532",
+                  "porcento": "46,8%",
+                  "rotulo": "PE",
+                  "todo": "1.137"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "CE"
+                  },
+                  "largura": 4.3,
+                  "parte": "493",
+                  "porcento": "44,1%",
+                  "rotulo": "CE",
+                  "todo": "1.118"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "ES"
+                  },
+                  "largura": 4.0,
+                  "parte": "453",
+                  "porcento": "53,8%",
+                  "rotulo": "ES",
+                  "todo": "842"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MT"
+                  },
+                  "largura": 3.4,
+                  "parte": "391",
+                  "porcento": "42,1%",
+                  "rotulo": "MT",
+                  "todo": "929"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AM"
+                  },
+                  "largura": 3.2,
+                  "parte": "366",
+                  "porcento": "40,2%",
+                  "rotulo": "AM",
+                  "todo": "911"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MS"
+                  },
+                  "largura": 2.0,
+                  "parte": "228",
+                  "porcento": "47,0%",
+                  "rotulo": "MS",
+                  "todo": "485"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PA"
+                  },
+                  "largura": 2.0,
+                  "parte": "225",
+                  "porcento": "36,4%",
+                  "rotulo": "PA",
+                  "todo": "618"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PB"
+                  },
+                  "largura": 1.6,
+                  "parte": "182",
+                  "porcento": "52,3%",
+                  "rotulo": "PB",
+                  "todo": "348"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RN"
+                  },
+                  "largura": 1.3,
+                  "parte": "145",
+                  "porcento": "47,7%",
+                  "rotulo": "RN",
+                  "todo": "304"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AL"
+                  },
+                  "largura": 1.1,
+                  "parte": "125",
+                  "porcento": "44,3%",
+                  "rotulo": "AL",
+                  "todo": "282"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MA"
+                  },
+                  "largura": 1.0,
+                  "parte": "117",
+                  "porcento": "34,9%",
+                  "rotulo": "MA",
+                  "todo": "335"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "DF"
+                  },
+                  "largura": 1.0,
+                  "parte": "109",
+                  "porcento": "38,8%",
+                  "rotulo": "DF",
+                  "todo": "281"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SE"
+                  },
+                  "largura": 0.8,
+                  "parte": "95",
+                  "porcento": "41,3%",
+                  "rotulo": "SE",
+                  "todo": "230"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RO"
+                  },
+                  "largura": 0.8,
+                  "parte": "91",
+                  "porcento": "41,4%",
+                  "rotulo": "RO",
+                  "todo": "220"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "TO"
+                  },
+                  "largura": 0.8,
+                  "parte": "88",
+                  "porcento": "40,2%",
+                  "rotulo": "TO",
+                  "todo": "219"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PI"
+                  },
+                  "largura": 0.7,
+                  "parte": "81",
+                  "porcento": "35,4%",
+                  "rotulo": "PI",
+                  "todo": "229"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AC"
+                  },
+                  "largura": 0.2,
+                  "parte": "20",
+                  "porcento": "23,0%",
+                  "rotulo": "AC",
+                  "todo": "87"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RR"
+                  },
+                  "largura": 0.1,
+                  "parte": "14",
+                  "porcento": "41,2%",
+                  "rotulo": "RR",
+                  "todo": "34"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "AP"
+                  },
+                  "largura": 0.1,
+                  "parte": "13",
+                  "porcento": "28,9%",
+                  "rotulo": "AP",
+                  "todo": "45"
+                },
+                {
+                  "filtro_no_app": null,
+                  "largura": 0.1,
+                  "parte": "11",
+                  "porcento": "0,3%",
+                  "rotulo": "EX",
+                  "todo": "3.403"
+                }
+              ],
+              "escondidas": []
+            }
+          },
+          "tabelas": [
+            "inpi_marcas_titulares",
+            "cnpj_empresas_pj",
+            "cnpj_estabelecimentos_pj"
+          ],
+          "texto": "das 55.515 indústrias fechadas ativas acima do porte de pequena empresa têm marca no INPI, concedida ou pedida (29.233 empresas)."
+        },
+        {
+          "chave": "finep_e_patente",
+          "como_foi_calculado": "Os contratos da Finep assinados até o dia, cruzados com os pedidos de patente no INPI que têm a empresa como depositante, como a base viu os dois até o dia. Só CNPJ de empresa. Pedir a patente não quer dizer que ela foi concedida. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Finep: crédito direto e descentralizado; INPI: depositantes de patentes",
+          "numero": "23,4%",
+          "recorte": {
+            "como_foi_calculado": "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece o que permitiria chegar a ele pela subtração do total.",
+            "por_setor": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "setor": "C"
+                  },
+                  "largura": 100.0,
+                  "parte": "671",
+                  "porcento": "31,9%",
+                  "rotulo": "Indústrias de transformação",
+                  "todo": "2.106"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "G"
+                  },
+                  "largura": 9.2,
+                  "parte": "62",
+                  "porcento": "17,7%",
+                  "rotulo": "Comércio; reparação de veículos automotores e motocicletas",
+                  "todo": "350"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "J"
+                  },
+                  "largura": 6.0,
+                  "parte": "40",
+                  "porcento": "7,6%",
+                  "rotulo": "Informação e comunicação",
+                  "todo": "523"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "M"
+                  },
+                  "largura": 4.2,
+                  "parte": "28",
+                  "porcento": "16,3%",
+                  "rotulo": "Atividades profissionais, científicas e técnicas",
+                  "todo": "172"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "N"
+                  },
+                  "largura": 2.4,
+                  "parte": "16",
+                  "porcento": "14,8%",
+                  "rotulo": "Atividades administrativas e serviços complementares",
+                  "todo": "108"
+                },
+                {
+                  "filtro_no_app": {
+                    "setor": "F"
+                  },
+                  "largura": 1.6,
+                  "parte": "11",
+                  "porcento": "16,7%",
+                  "rotulo": "Construção",
+                  "todo": "66"
+                }
+              ],
+              "escondidas": [
+                "Agricultura, pecuária, produção florestal, pesca e aquicultura",
+                "Alojamento e alimentação",
+                "Artes, cultura, esporte e recreação",
+                "Atividades financeiras, de seguros e serviços relacionados",
+                "Atividades imobiliárias",
+                "Educação",
+                "Eletricidade e gás",
+                "Indústrias extrativas",
+                "Outras atividades de serviços",
+                "Saúde humana e serviços sociais",
+                "Transporte, armazenagem e correio",
+                "Água, esgoto, atividades de gestão de resíduos e descontaminação"
+              ]
+            },
+            "por_uf": {
+              "barras": [
+                {
+                  "filtro_no_app": {
+                    "uf": "RS"
+                  },
+                  "largura": 100.0,
+                  "parte": "226",
+                  "porcento": "26,1%",
+                  "rotulo": "RS",
+                  "todo": "867"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SC"
+                  },
+                  "largura": 81.4,
+                  "parte": "184",
+                  "porcento": "22,9%",
+                  "rotulo": "SC",
+                  "todo": "804"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "SP"
+                  },
+                  "largura": 76.5,
+                  "parte": "173",
+                  "porcento": "30,0%",
+                  "rotulo": "SP",
+                  "todo": "576"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "PR"
+                  },
+                  "largura": 57.1,
+                  "parte": "129",
+                  "porcento": "21,3%",
+                  "rotulo": "PR",
+                  "todo": "605"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "MG"
+                  },
+                  "largura": 27.0,
+                  "parte": "61",
+                  "porcento": "24,6%",
+                  "rotulo": "MG",
+                  "todo": "248"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "RJ"
+                  },
+                  "largura": 9.3,
+                  "parte": "21",
+                  "porcento": "21,0%",
+                  "rotulo": "RJ",
+                  "todo": "100"
+                },
+                {
+                  "filtro_no_app": {
+                    "uf": "GO"
+                  },
+                  "largura": 4.4,
+                  "parte": "10",
+                  "porcento": "20,8%",
+                  "rotulo": "GO",
+                  "todo": "48"
+                }
+              ],
+              "escondidas": [
+                "AC",
+                "AL",
+                "AM",
+                "BA",
+                "CE",
+                "DF",
+                "ES",
+                "MA",
+                "MS",
+                "MT",
+                "PA",
+                "PB",
+                "PE",
+                "PI",
+                "RN",
+                "RO",
+                "RR",
+                "SE",
+                "TO"
+              ]
+            }
+          },
+          "tabelas": [
+            "financiamentos_finep",
+            "inpi_patentes_depositantes",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 3.620 empresas fechadas ativas com crédito da Finep depositaram ao menos um pedido de patente no INPI (847 empresas)."
+        }
       ],
-      "texto": "dos 1.579 exercícios em que o lucro caiu mais de 20% (ou virou prejuízo) tiveram a remuneração total da diretoria estatutária maior que no ano anterior. Quando o lucro cresceu mais de 20%, ela subiu em 68,2% dos 1.609."
+      "pergunta": "O que não está no balanço"
     },
     {
-      "chave": "dividendo",
-      "como_foi_calculado": "O dividendo total do exercício (dividendos e juros sobre capital próprio) que o formulário de referência declara, na última versão cujo prazo de entrega (cinco meses depois do fim do exercício a que o formulário se refere) já tinha passado, comparado com o lucro do período na DRE do mesmo exercício, consolidado ou individual. Pagar mais do que o lucro do ano é permitido: sai de reservas ou de lucros de anos anteriores; o cartão só conta. A CVM tirou a tabela de proventos do formulário aberto depois de 2022, e a série para ali. São 573 companhias.",
-      "data": "2026-10-29",
-      "fonte": "CVM: formulário de referência (FRE, proventos) e DFP",
-      "numero": "255",
-      "tabelas": [
-        "proventos",
-        "demonstracoes_como_era"
+      "chave": "abertas",
+      "fatos": [
+        {
+          "chave": "lucros",
+          "como_foi_calculado": "O lucro do período de cada balanço anual, na primeira versão que a base guarda, comparado com o número que o balanço do ano seguinte mostra para o mesmo ano (a coluna do ano anterior). A mudança pode vir de uma nova versão do próprio balanço ou do seguinte. Conta como mudado quando a diferença passa de 1% e de R$ 1 mil. Usa o consolidado e, na companhia que não o publica, o individual. Só entram os balanços que já têm o do ano seguinte. Mudar não quer dizer erro: entram reclassificação, norma contábil nova e operação descontinuada.",
+          "data": "2026-11-14",
+          "fonte": "CVM: demonstrações financeiras padronizadas (DFP)",
+          "numero": "6,3%",
+          "tabelas": [
+            "demonstracoes_como_era"
+          ],
+          "texto": "dos 7.959 balanços anuais de 2010 a 2025 tiveram o lucro do ano mudado em mais de 1% até o balanço do ano seguinte: 498 balanços, de 335 de 1.051 companhias."
+        },
+        {
+          "chave": "parecer",
+          "como_foi_calculado": "Cada parecer de auditoria da DFP (a última versão pública de cada exercício) publicado há mais de 24 meses, de 2010 a 2024. O alerta é o parágrafo de incerteza relevante sobre a continuidade operacional, lido pelo nosso rótulo no texto do relatório; o relatório curto ou ambíguo fica de fora. A insolvência é o primeiro pedido ou decreto que a própria companhia comunicou à CVM (fato relevante ou formulário); a companhia que já estava em recuperação quando o parecer saiu não entra. São 134 companhias com o alerta. O auditor descreve o que vê: o cartão mostra uma frequência, não uma previsão.",
+          "data": "2026-11-14",
+          "fonte": "CVM: relatório do auditor na DFP e comunicados das companhias",
+          "numero": "5,3%",
+          "tabelas": [
+            "pareceres_dfp",
+            "insolvencia"
+          ],
+          "texto": "dos 455 pareceres de auditoria com incerteza relevante sobre a continuidade da companhia foram seguidos, em 24 meses, de recuperação judicial ou extrajudicial, falência ou liquidação. Entre os 8.423 sem esse alerta, foram 1,5%."
+        }
       ],
-      "texto": "dos 2.979 exercícios com dividendo declarado no formulário de referência, de 2010 a 2022, pagaram mais do que o lucro do ano no balanço (149 companhias). Em 72 deles, o ano fechou em prejuízo."
-    },
-    {
-      "chave": "parecer",
-      "como_foi_calculado": "Cada parecer de auditoria da DFP (a última versão pública de cada exercício) publicado há mais de 24 meses, de 2010 a 2024. O alerta é o parágrafo de incerteza relevante sobre a continuidade operacional, lido pelo nosso rótulo no texto do relatório; o relatório curto ou ambíguo fica de fora. A insolvência é o primeiro pedido ou decreto que a própria companhia comunicou à CVM (fato relevante ou formulário); a companhia que já estava em recuperação quando o parecer saiu não entra. São 134 companhias com o alerta. O auditor descreve o que vê: o cartão mostra uma frequência, não uma previsão.",
-      "data": "2026-10-29",
-      "fonte": "CVM: relatório do auditor na DFP e comunicados das companhias",
-      "numero": "5,3%",
-      "tabelas": [
-        "pareceres_dfp",
-        "insolvencia"
-      ],
-      "texto": "dos 455 pareceres de auditoria com incerteza relevante sobre a continuidade da companhia foram seguidos, em 24 meses, de recuperação judicial ou extrajudicial, falência ou liquidação. Entre os 8.421 sem esse alerta, foram 1,5%."
+      "pergunta": "Nas companhias abertas"
     }
   ],
-  "medido_em_curto": "29/10"
+  "medido_em_curto": "14/11",
+  "subtitulo": "Contagens de empresas fechadas e de companhias abertas, medidas em 14/11, sem nome de empresa, sócio ou pessoa. Cada número diz de onde veio e como foi contado."
 }

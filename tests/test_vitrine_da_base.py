@@ -12,6 +12,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
+from base import cruzamentos_das_fechadas as fechadas
 from base import vitrine
 from base.contrato import PASTA
 from base.dicionario import TABELAS
@@ -918,13 +919,221 @@ def test_fatos_da_base_vem_da_fotografia():
     fotografia = json.loads(
         vitrine.FOTOGRAFIA_DOS_CRUZAMENTOS.read_text(encoding="utf-8")
     )
+    das_fechadas = fotografia.pop(vitrine.CHAVE_DAS_FECHADAS, None)
     fatos = exp.conteudo()["fatos_da_base"]
 
     cruzamentos = vitrine.cruzamentos_da_fotografia(fotografia)
-    assert fatos["fatos"] == [asdict(f) for f in vitrine.fatos_agregados(cruzamentos)]
-    for fato in vitrine.fatos_agregados(cruzamentos):
-        assert len(fato.texto) <= vitrine.LIMITE_DO_FATO, fato.chave
-    assert fatos["medido_em_curto"] == vitrine.dia_e_mes(fotografia["medido_em"])
+    medicao = (
+        None if das_fechadas is None else fechadas.fechadas_da_fotografia(das_fechadas)
+    )
+    # o recorte por estado e setor vem do arquivo ao lado, quando a fotografia o tem
+    arquivo_dos_recortes = vitrine.FOTOGRAFIA_DOS_CRUZAMENTOS.with_name(
+        vitrine.NOME_DOS_RECORTES
+    )
+    recortes = (
+        fechadas.recortes_da_fotografia(
+            json.loads(arquivo_dos_recortes.read_text(encoding="utf-8"))
+        )
+        if arquivo_dos_recortes.exists()
+        else None
+    )
+    assert fatos["grupos"] == vitrine.grupos_dos_fatos(cruzamentos, medicao, recortes)
+    for grupo in fatos["grupos"]:
+        for fato in grupo["fatos"]:
+            assert len(fato["texto"]) <= vitrine.LIMITE_DO_FATO, fato["chave"]
+    medido_em = cruzamentos.medido_em if medicao is None else medicao.medido_em
+    assert fatos["medido_em_curto"] == vitrine.dia_e_mes(medido_em)
+    assert f"medidas em {fatos['medido_em_curto']}" in fatos["subtitulo"]
+
+
+# --- os cartões de empresa fechada (linha 925) --------------------------------------------------------
+
+_MOLDES_COM_TEXTO = [m.chave for m in fechadas.MOLDES if m.sql is not None]
+
+
+def _medicao_das_fechadas(*chaves: str) -> fechadas.MedicaoDasFechadas:
+    return fechadas.MedicaoDasFechadas(
+        medido_em="2026-11-14",
+        cartoes=tuple(fechadas.CartaoMedido(c, parte=1234, todo=98765) for c in chaves),
+        caidos=(fechadas.CartaoCaido("tce_e_sancao", "sancoes_cgu: só uso interno"),),
+    )
+
+
+def test_todo_cartao_medivel_tem_texto_e_so_ele():
+    assert set(vitrine.MOLDES_DOS_FATOS) == set(_MOLDES_COM_TEXTO)
+
+
+@pytest.mark.parametrize("chave", _MOLDES_COM_TEXTO)
+def test_o_cartao_da_fechada_tem_fonte_data_e_conta_sem_palavra_proibida(chave):
+    fato = vitrine.fato_da_fechada(
+        fechadas.CartaoMedido(chave, parte=1234, todo=98765), "2026-11-14"
+    )
+    assert fato.numero in {"1.234", "1,2%"}
+    assert fato.fonte and fato.tabelas and fato.data == "2026-11-14"
+    assert vitrine.FECHADA_E_ATIVA in fato.como_foi_calculado
+    assert len(fato.texto) <= vitrine.LIMITE_DO_FATO
+    for texto in (fato.texto, fato.fonte, fato.como_foi_calculado):
+        assert not PROIBIDAS_NOS_FATOS.search(texto), texto
+        assert not re.search(r"\bpre[çc]o\b|R\$|garant[ei] (retorno|lucro)", texto), (
+            texto
+        )
+    assert "98.765" in fato.texto
+    conferir_sem_pessoas(asdict(fato), set())
+
+
+def test_os_grupos_poem_as_fechadas_primeiro_e_as_abertas_por_ultimo():
+    medicao = _medicao_das_fechadas("finep_e_patente", "saiu_do_simples", "tres_niveis")
+    grupos = vitrine.grupos_dos_fatos(_cruzamentos(), medicao)
+    assert [g["chave"] for g in grupos] == [
+        "crescendo",
+        "se_mexeu",
+        "fora_do_balanco",
+        "abertas",
+    ]
+    assert [[f["chave"] for f in g["fatos"]] for g in grupos] == [
+        ["saiu_do_simples"],
+        ["tres_niveis"],
+        ["finep_e_patente"],
+        ["lucros", "parecer"],
+    ]
+    assert all(f["data"] == "2026-11-14" for g in grupos[:-1] for f in g["fatos"])
+
+
+def test_sem_a_medicao_das_fechadas_ficam_so_as_abertas():
+    grupos = vitrine.grupos_dos_fatos(_cruzamentos(), None)
+    assert [g["chave"] for g in grupos] == ["abertas"]
+
+
+def test_fatos_da_base_le_as_fechadas_da_fotografia(tmp_path):
+    """O script grava a medição das fechadas na chave dela do `fatos.json`, e a página a lê de volta."""
+    from scripts.medir_base_para_o_site import fatos_com_as_fechadas, gravar
+
+    medicao = _medicao_das_fechadas(*_MOLDES_COM_TEXTO)
+    arquivo = tmp_path / "fatos.json"
+    gravar(fatos_com_as_fechadas(_cruzamentos(), medicao), arquivo)
+    fatos = vitrine.fatos_da_base(arquivo)
+    assert [g["chave"] for g in fatos["grupos"]] == [
+        *(g.chave for g in fechadas.GRUPOS),
+        "abertas",
+    ]
+    assert fatos["medido_em_curto"] == vitrine.dia_e_mes("2026-11-14")
+    assert fatos["subtitulo"].startswith(
+        "Contagens de empresas fechadas e de companhias abertas"
+    )
+    assert "medidas em" in fatos["subtitulo"]
+
+
+def test_fatos_da_base_sem_as_fechadas_mantem_o_paragrafo_das_abertas(tmp_path):
+    arquivo = tmp_path / "fatos.json"
+    arquivo.write_text(json.dumps(asdict(_cruzamentos())), encoding="utf-8")
+    fatos = vitrine.fatos_da_base(arquivo)
+    assert [g["chave"] for g in fatos["grupos"]] == ["abertas"]
+    assert fatos["subtitulo"].startswith("Contagens das companhias abertas")
+
+
+# --- o recorte por estado e por setor de cada cartão (linha 925, 2º PR) ----------------------------------
+
+
+def _recorte(chave: str) -> fechadas.RecorteDoCartao:
+    return fechadas.RecorteDoCartao(
+        chave,
+        por_uf=fechadas.celulas_que_saem(
+            {"SP": (5000, 1000), "MG": (3000, 500), "nd": (400, 120), "AC": (5, 1)}
+        ),
+        por_setor=fechadas.celulas_que_saem({"C": (6000, 1300), "J": (2405, 321)}),
+    )
+
+
+def _recortes(
+    *chaves: str, medido_em: str = "2026-11-14"
+) -> fechadas.RecortesDasFechadas:
+    return fechadas.RecortesDasFechadas(
+        medido_em, tuple(_recorte(c) for c in chaves), ()
+    )
+
+
+def test_o_recorte_vira_barras_da_maior_parte_para_a_menor():
+    recorte = vitrine.recorte_do_fato(_recorte("saiu_do_simples"))
+    por_uf = recorte["por_uf"]
+    # a AC é pequena e a "nd", a menor das outras, cai junto (senão a AC sairia pela subtração)
+    assert [b["rotulo"] for b in por_uf["barras"]] == ["SP", "MG"]
+    assert por_uf["escondidas"] == sorted(["AC", vitrine.ROTULO_SEM_INFORMACAO])
+    assert por_uf["barras"][0] == {
+        "rotulo": "SP",
+        "parte": "1.000",
+        "todo": "5.000",
+        "porcento": "20,0%",
+        "largura": 100.0,
+        "filtro_no_app": {"uf": "SP"},
+    }
+    assert por_uf["barras"][1]["largura"] == 50.0
+    setores = [b["rotulo"] for b in recorte["por_setor"]["barras"]]
+    assert setores == [fechadas.cnae.SECOES["C"], fechadas.cnae.SECOES["J"]]
+    for texto in (recorte["como_foi_calculado"], *setores):
+        assert not PROIBIDAS_NOS_FATOS.search(texto), texto
+    conferir_sem_pessoas(recorte, set())
+
+
+def test_cada_barra_leva_o_filtro_que_o_app_le_e_so_quando_a_busca_tem_o_valor():
+    from src.analista import busca
+
+    celulas = fechadas.celulas_que_saem(
+        {"SP": (900, 300), "MG": (800, 200), "nd": (700, 100)}
+    )
+    filtros = {
+        b["rotulo"]: b["filtro_no_app"]
+        for b in vitrine.barras_do_recorte(celulas, "uf")["barras"]
+    }
+    assert filtros == {
+        "SP": {"uf": "SP"},
+        "MG": {"uf": "MG"},
+        vitrine.ROTULO_SEM_INFORMACAO: None,
+    }
+    # a seção fora da busca do app (O, T e U) sai sem link; a que está nela leva a letra da seção
+    assert "O" not in busca.SETORES
+    setores = fechadas.celulas_que_saem({"C": (900, 300), "O": (800, 200)})
+    assert [
+        b["filtro_no_app"]
+        for b in vitrine.barras_do_recorte(setores, "setor")["barras"]
+    ] == [{"setor": "C"}, None]
+
+
+def test_fatos_da_base_le_o_recorte_ao_lado_da_fotografia(tmp_path):
+    from scripts.medir_base_para_o_site import fatos_com_as_fechadas, gravar
+
+    medicao = _medicao_das_fechadas(*_MOLDES_COM_TEXTO)
+    arquivo = tmp_path / "fatos.json"
+    gravar(fatos_com_as_fechadas(_cruzamentos(), medicao), arquivo)
+    gravar(
+        fechadas.recortes_para_a_fotografia(
+            _recortes("saiu_do_simples", "tres_niveis")
+        ),
+        tmp_path / vitrine.NOME_DOS_RECORTES,
+    )
+    fatos = vitrine.fatos_da_base(arquivo)
+    com_recorte = {
+        f["chave"] for g in fatos["grupos"] for f in g["fatos"] if "recorte" in f
+    }
+    assert com_recorte == {"saiu_do_simples", "tres_niveis"}
+
+
+def test_recorte_de_outra_medicao_nao_entra():
+    medicao = _medicao_das_fechadas("saiu_do_simples")
+    recortes = _recortes("saiu_do_simples", medido_em="2026-11-13")
+    grupos = vitrine.grupos_dos_fatos(_cruzamentos(), medicao, recortes)
+    assert all("recorte" not in f for g in grupos for f in g["fatos"])
+
+
+def test_fotografia_do_recorte_volta_igual_e_recusa_celula_pequena():
+    recortes = _recortes("saiu_do_simples")
+    dados = json.loads(json.dumps(fechadas.recortes_para_a_fotografia(recortes)))
+    assert fechadas.recortes_da_fotografia(dados) == recortes
+    dados["cartoes"][0]["por_uf"][0] = {"chave": "AC", "parte": 1, "todo": 5}
+    with pytest.raises(ValueError, match="célula AC"):
+        fechadas.recortes_da_fotografia(dados)
+    dados["cartoes"][0]["por_uf"][0] = {"chave": "AC", "parte": None, "todo": 5}
+    with pytest.raises(ValueError, match="pela metade"):
+        fechadas.recortes_da_fotografia(dados)
 
 
 def test_fotografia_dos_cruzamentos_volta_igual():

@@ -5,7 +5,7 @@
 // negaria não aparece aqui. As opções do formulário vêm da API (um pedido sem filtro, que não lê a base);
 // "Limites e cuidados" fica sempre à vista depois da busca.
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, pedir } from "../api";
@@ -456,10 +456,32 @@ function EtiquetasDeFiltro({
   );
 }
 
-export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
-  const rota = pagina.contrato?.rota ?? "";
-  const opcoes = usarPedido<BuscaDeEmpresasV1>(rota, {}, SEM_FILTRO);
-  const [buscado, setBuscado] = useState<{ filtros: Filtros; vez: number } | null>(null);
+/** O setor e o estado que chegam no endereço (o link dos cruzamentos do site, linha 925): só `setor` e `uf`,
+ * um de cada, e só valores que o formulário oferece; o resto se ignora, sem erro, e sem nenhum dos dois a
+ * tela abre com o filtro vazio. */
+export function filtrosDoEndereco(busca: URLSearchParams, opcoes: BuscaDeEmpresasV1): Filtros | null {
+  const setor = busca.get("setor");
+  const uf = busca.get("uf");
+  const filtros: Filtros = {
+    setores: setor !== null && opcoes.setores.some((s) => s.codigo === setor) ? [setor] : [],
+    ufs: uf !== null && opcoes.ufs.includes(uf) ? [uf] : [],
+  };
+  return temFiltro(filtros) ? filtros : null;
+}
+
+const AVISO_DE_COMECO = (
+  <p className="apagado">
+    Escolha ao menos um filtro. Aparecem só empresas com cadastro ativo na Receita Federal, uma linha por empresa;
+    pessoa física, MEI e empresário individual não aparecem. Nada aqui é recomendação de investimento.
+  </p>
+);
+
+/** O formulário, as etiquetas e a lista, depois que as opções chegaram; a busca já começa com o filtro do
+ * endereço, se houver. */
+function Busca({ rota, opcoes, doEndereco }: { rota: string; opcoes: BuscaDeEmpresasV1; doEndereco: Filtros | null }) {
+  const [buscado, setBuscado] = useState<{ filtros: Filtros; vez: number } | null>(
+    doEndereco === null ? null : { filtros: doEndereco, vez: 1 },
+  );
   const [vezDoFormulario, setVezDoFormulario] = useState(0);
   // buscar de novo (formulário ou etiqueta) abre uma lista nova, sem a escolha da lista anterior
   const buscarDe = (filtros: Filtros | null) => {
@@ -467,31 +489,33 @@ export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
     setVezDoFormulario((v) => v + 1);
   };
   return (
+    <>
+      <Formulario key={vezDoFormulario} opcoes={opcoes} inicial={buscado?.filtros ?? null} aoBuscar={buscarDe} />
+      {buscado === null ? (
+        AVISO_DE_COMECO
+      ) : (
+        <>
+          <EtiquetasDeFiltro filtros={buscado.filtros} opcoes={opcoes} aoMudar={buscarDe} />
+          <Resultado key={buscado.vez} rota={rota} filtros={buscado.filtros} />
+        </>
+      )}
+    </>
+  );
+}
+
+export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
+  const rota = pagina.contrato?.rota ?? "";
+  const opcoes = usarPedido<BuscaDeEmpresasV1>(rota, {}, SEM_FILTRO);
+  const [endereco] = useSearchParams();
+  return (
     <section>
       <CabecalhoDaTela pagina={pagina} />
       {opcoes.estado === "carregando" && <Carregando tipo="painel" rotulo="Abrindo o formulário…" />}
       {opcoes.estado === "erro" && <Erro erro={opcoes.erro} />}
-      {opcoes.estado === "pronto" && (
-        <>
-          <Formulario
-            key={vezDoFormulario}
-            opcoes={opcoes.dados}
-            inicial={buscado?.filtros ?? null}
-            aoBuscar={buscarDe}
-          />
-          {buscado === null ? null : (
-            <EtiquetasDeFiltro filtros={buscado.filtros} opcoes={opcoes.dados} aoMudar={buscarDe} />
-          )}
-        </>
-      )}
-      {buscado === null ? (
-        <p className="apagado">
-          Escolha ao menos um filtro. Aparecem só empresas com cadastro ativo na Receita Federal, uma linha por
-          empresa; pessoa física, MEI e empresário individual não aparecem. Nada aqui é recomendação de
-          investimento.
-        </p>
+      {opcoes.estado === "pronto" ? (
+        <Busca rota={rota} opcoes={opcoes.dados} doEndereco={filtrosDoEndereco(endereco, opcoes.dados)} />
       ) : (
-        <Resultado key={buscado.vez} rota={rota} filtros={buscado.filtros} />
+        AVISO_DE_COMECO
       )}
     </section>
   );
