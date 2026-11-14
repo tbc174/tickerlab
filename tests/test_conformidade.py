@@ -109,11 +109,11 @@ def test_versao_18_da_politica_descreve_o_chat_de_ia():
         "O modelo não recebe nome de sócio pessoa física, CPF nem contato, nem para a organização com a permissão de ver pessoas.",
         "Não escreva na pergunta dado pessoal seu ou de outra pessoa.",
         "nunca o texto da pergunta nem da resposta; isso entra na exportação dos seus dados.",
-        "Quando você apaga a conta, esses números ficam, sem nada que aponte para a conta apagada.",
+        "Quando você apaga a conta, esses números ficam ligados só à organização, sem o número da conta.",
         "com uma exceção: a pergunta que você escreve no chat de IA, descrita na seção seguinte",
         "nenhum outro dado da sua conta.",
         "pedimos que você não escreva dado pessoal na pergunta.",
-        "Ficam também os números das perguntas ao chat de IA (a organização, a data, o modelo, os tokens, o tempo e o custo)",
+        "Ficam também os números das perguntas ao chat de IA (a organização, a data, o modelo, os tokens, o tempo e o custo), ligados só à organização, sem o número da conta.",
     ):
         assert trecho in privacidade, trecho
     for promessa_antiga in (
