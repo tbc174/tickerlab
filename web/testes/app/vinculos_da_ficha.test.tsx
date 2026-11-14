@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FichaDaEmpresaV1, VinculosDaEmpresaV1 } from "../../src/app/tipos";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { abrirAba, abrirApp, respostaJson } from "./ajudantes";
 
 const CNPJ = "02.429.144/0001-93";
 const ROTA_DA_FICHA = "/api/v1/analista/ficha";
@@ -69,7 +69,7 @@ function abrir(vinculos: () => Response) {
 async function verFicha() {
   fireEvent.change(await screen.findByLabelText("CNPJ"), { target: { value: CNPJ } });
   fireEvent.click(screen.getByRole("button", { name: "Ver a ficha" }));
-  await screen.findByRole("region", { name: "Cadastro na Receita" });
+  await abrirAba("Vínculos");
 }
 
 describe("vínculos da ficha", () => {
@@ -108,10 +108,52 @@ describe("vínculos da ficha", () => {
     expect(within(secao).getByText(/Sem vínculos desta empresa/)).toBeTruthy();
   });
 
+  it("tipo não liberado não vira 'sem vínculos' (linha 889)", async () => {
+    abrir(() =>
+      respostaJson(200, { ...PAGINA, vinculos: [], fontes: [], tipos_de_vinculo_nao_disponiveis: ["audits"] }),
+    );
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).queryByText(/Sem vínculos desta empresa/)).toBeNull();
+    expect(within(secao).getByText("Nenhum vínculo dos tipos consultados.")).toBeTruthy();
+    // um tipo só: a frase concorda
+    expect(
+      within(secao).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os vínculos de auditoria. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um tipo não liberado, a lista que vem leva o aviso do outro", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PAGINA,
+        vinculos: [CONTROLADA],
+        tipos_de_vinculo_nao_disponiveis: ["subsidiary_of", "affiliate_of", "investee_of"],
+      }),
+    );
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByRole("table")).toBeTruthy();
+    // vários tipos: a mesma frase concorda
+    expect(
+      within(secao).getByText(
+        /liberados para a tela: os vínculos de controle e os vínculos de coligação e os vínculos de participação\./,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("tudo consultado: nenhum aviso de tipo de fora", async () => {
+    abrir(() => respostaJson(200, { ...PAGINA, tipos_de_vinculo_nao_disponiveis: [] }));
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).queryByText(/Não consultados/)).toBeNull();
+  });
+
   it("se o pedido falha, a ficha segue sem a seção", async () => {
     abrir(() => respostaJson(503, { detail: "A base não está disponível agora." }));
     await verFicha();
-    expect(screen.getByRole("region", { name: "Cadastro na Receita" })).toBeTruthy();
+    expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
   });
 });

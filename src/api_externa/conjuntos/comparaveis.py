@@ -16,12 +16,16 @@ e com as chaves em português (a rota traduz na saída), o que a base sabia no d
 Cada campo sai no envelope, com a fonte e o dia em que ficou público: o cadastro pelo dia da entrega do FCA,
 os números pelo dia da entrega do DFP. Número que a base não tem some, nunca vira zero. Pessoa não sai
 (ADR 0108 D2.2): a empresa pedida e cada par passam por `empresas.e_empresa`. Bloco ou campo negado pelo
-portão some da resposta, sem `null`; sem o setor, nada sai.
+portão some da resposta, sem `null`; sem o setor, nada sai. O número ou a razão que o portão não libera não
+some em silêncio (linha 881, `src/api_externa/nao_disponivel.py`): ele vai em `numeros_nao_disponiveis` (com o
+nome de fora) e os limites avisam que os pares e as medianas não dizem nada sobre ele, para a mediana que falta
+não ler como "menos de 8 pares".
 """
 
 import math
 import statistics
 import unicodedata
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
 
@@ -33,9 +37,11 @@ from base.porta import Porta
 from base.porta.rede import views
 from base.regras import LINHA_DO_LUCRO
 from src import setores
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos.empresas import e_empresa, e_empresas
 from src.api_externa.envelope import campo
+from src.api_externa.nomes import NOMES_DE_FORA
 
 CONJUNTO = "comparables"
 TABELA_DO_CADASTRO = "fca_geral"
@@ -80,23 +86,54 @@ ORIGEM_DAS_CONTAS: dict[str, tuple[str, ...]] = {
     **{nome: _LINHAS_DO_DFP for nome in (*NUMEROS, *RAZOES)},
 }
 
-LIMITES = (
+# os limites que valem para toda resposta; os dos números só entram quando algum número foi consultado
+LIMITES_GERAIS = (
     "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra.",
     (
         "Os pares são as companhias abertas do mesmo grupo de setores, pelo setor informado à CVM no FCA; "
         "só entra quem tinha DFP de um exercício recente no dia. Não cobre empresa fechada."
     ),
     (
-        "Os números são do DFP (consolidado; sem ele, o individual), em reais, como a companhia publicou; "
-        "EBITDA, dívida líquida e as razões são contas do TickerLab sobre essas linhas. Bancos e seguradoras "
-        "têm outro plano de contas: as razões deles não se comparam às das outras empresas."
+        "Comparação não é opinião sobre a empresa, e nada aqui é recomendação de investimento. Pessoa natural "
+        "(MEI, empresário individual) não é servida."
     ),
-    (
-        "A mediana de cada razão só sai com pelo menos 8 pares que a têm. Comparação não é opinião sobre a "
-        "empresa, e nada aqui é recomendação de investimento."
-    ),
-    "Pessoa natural (MEI, empresário individual) não é servida.",
 )
+_FRASE_DOS_NUMEROS = (
+    "Os números são do DFP (consolidado; sem ele, o individual), em reais, como a companhia publicou; "
+    "EBITDA, dívida líquida e as razões são contas do TickerLab sobre essas linhas. Bancos e seguradoras "
+    "têm outro plano de contas: as razões deles não se comparam às das outras empresas."
+)
+_FRASE_DAS_MEDIANAS = "A mediana de cada razão só sai com pelo menos 8 pares que a têm."
+LIMITES_DO_NUMERO: dict[str, str | tuple[str, ...]] = {
+    **{nome: _FRASE_DOS_NUMEROS for nome in NUMEROS},
+    **{nome: (_FRASE_DOS_NUMEROS, _FRASE_DAS_MEDIANAS) for nome in RAZOES},
+}
+# o nome de dentro da lista dos números e razões que o portão não libera: o par sem o número e a mediana que
+# falta não querem dizer que a base não tem o número nem que faltaram pares (linha 881)
+NAO_DISPONIVEIS = "numeros_nao_disponiveis"
+LIMITE_DO_NUMERO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "números", "os pares e as medianas"
+)
+GERAIS_ANTES_DOS_NUMEROS = 2  # o do known_at e o de quem são os pares
+
+
+def limites(
+    numeros_servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()
+) -> list[str]:
+    """Os limites de uma resposta: os gerais, as frases dos números e das medianas quando foram consultados
+    e, quando algum número ficou de fora, o aviso de que os pares e as medianas não dizem nada sobre ele."""
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DO_NUMERO,
+        numeros_servidos,
+        nao_disponiveis,
+        LIMITE_DO_NUMERO_NAO_DISPONIVEL,
+        antes=GERAIS_ANTES_DOS_NUMEROS,
+    )
+
+
+# os limites com todos os números consultados
+LIMITES = tuple(limites((*NUMEROS, *RAZOES)))
 
 
 @dataclass(frozen=True)
@@ -480,5 +517,15 @@ class LeitorDeComparaveis:
         if medianas:
             corpo["medianas_dos_pares"] = medianas
             fontes.add(FONTE_DOS_NUMEROS)
-        corpo["limites"] = list(LIMITES)
+        numeros = {
+            nome: (nome,)
+            if self.permitido(FONTE_DOS_NUMEROS, nome, nome in DERIVADOS)
+            else ()
+            for nome in (*NUMEROS, *RAZOES)
+        }
+        nao_disponiveis = nao_disponivel.nao_disponiveis(numeros)
+        corpo[NAO_DISPONIVEIS] = [NOMES_DE_FORA[nome] for nome in nao_disponiveis]
+        corpo["limites"] = limites(
+            [nome for nome, campos in numeros.items() if campos], nao_disponiveis
+        )
         return ComparaveisServidos(corpo, fontes, 1 + len(servidos))

@@ -11,7 +11,7 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from src import auditoria
-from src.banco import novidades_por_email
+from src.banco import novidades_por_email, perguntas_do_chat
 from src.banco.compartilhamentos import dados_para_exportar as links_para_exportar
 from src.banco.garantias import dados_para_exportar as garantias_para_exportar
 from src.banco.membros_da_organizacao import (
@@ -65,7 +65,10 @@ from src.sala.documentos import apagar_arquivos_da_conta
 # Versão 13: o registro de quem entra no servidor e usa sudo vai a outro computador por 12 meses
 # (linha 207 da fila; RIPD da sala, R-S1). O texto 14 (a ficha de originação e as garantias da
 # sala, linha 194) entrou sem novo aceite: descreve o que a pessoa já anota, sem uso novo
-VERSAO_DOS_TERMOS = "2026-10-22.13"
+# Versão 14 do aceite (texto 16 da política, linha 809): o vínculo da conta com a organização e o
+# registro das consultas a dados de pessoas são usos novos de dado da conta; a organização com a
+# permissão de ver pessoas (ADR 0128, Emenda 1) e a consulta da base pelo próprio responsável
+VERSAO_DOS_TERMOS = "2026-11-11.14"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
@@ -192,6 +195,8 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "garantias": garantias_para_exportar(conexao, usuario_id=usuario_id),
         # a organização de que a conta é membro (ADR 0128, Emenda 1): o nome dela e desde quando
         "organizacao": organizacao_para_exportar(conexao, usuario_id=usuario_id),
+        # o chat de IA (linha 903): só a data, o modelo e os números; a pergunta e a resposta não são guardadas
+        "perguntas_ao_chat": perguntas_do_chat.para_exportar(conexao, usuario_id),
         "origem_do_cadastro": _origem_do_cadastro(conexao, usuario_id),
         "favoritos": [
             l.ticker

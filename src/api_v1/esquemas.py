@@ -30,6 +30,7 @@ from src import (
 )
 from src.analista import busca as busca_do_analista
 from src.analista import leitura as leitura_do_analista
+from src.api_externa import piloto as piloto_da_api_externa
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.banco.dados_do_usuario import Simulacao
@@ -1553,6 +1554,10 @@ class FichaDoCnpjV1(BaseModel):
     entregas: list[dict[str, CampoComFonteV1]] | None = (
         None  # só da companhia aberta (DFP e ITR)
     )
+    # os documentos (DFP, ITR) que o portão não libera: não consultados, a lista de entregas não fala deles
+    entregas_nao_disponiveis: list[str] = []
+    # os campos do cadastro (nome de fora) que o portão não libera: não consultados, o cadastro não fala deles
+    campos_do_cadastro_nao_disponiveis: list[str] = []
 
 
 class BlocoDaFichaV1(BaseModel):
@@ -1584,7 +1589,8 @@ def de_ficha_do_analista(
         if resposta.corpo is None
         else FichaDoCnpjV1.model_validate(resposta.corpo),
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
-        limites=list(limites),
+        # com a ficha servida, os limites do corpo (só dos documentos consultados); sem ela, o texto fixo
+        limites=list((resposta.corpo or {}).get("limites", limites)),
         o_que_vem=[
             BlocoDaFichaV1.model_validate(bloco)
             for bloco in leitura_do_analista.blocos_como_lista()
@@ -1608,6 +1614,8 @@ class EventosDaEmpresaV1(BaseModel):
     eventos: list[EventoDaEmpresaV1]
     cortada: bool
     proximo_cursor: str | None
+    # os tipos que o portão não libera para a tela: não foram consultados, a lista não diz nada sobre eles
+    tipos_nao_disponiveis: list[str]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
 
@@ -1627,13 +1635,16 @@ def de_eventos_do_analista(
         eventos=[_evento_do_analista(linha) for linha in corpo.get("eventos", [])],
         cortada=bool(corpo.get("cortada", False)),
         proximo_cursor=corpo.get("proximo_cursor"),
+        tipos_nao_disponiveis=list(corpo.get("tipos_nao_disponiveis", [])),
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
-        limites=list(limites),
+        # com eventos servidos, os limites do corpo (só dos tipos servidos); sem eles, o texto fixo
+        limites=list(corpo.get("limites", limites)),
     )
 
 
 class PontaDoVinculoV1(BaseModel):
-    """Uma ponta do vínculo: a raiz do CNPJ e a razão social que valia no dia (sem nome quando a Receita não tem)."""
+    """Uma ponta do vínculo: a raiz do CNPJ e a razão social do retrato mensal da Receita mais novo já público no
+    dia (sem nome quando a raiz não está nele)."""
 
     raiz_do_cnpj: str | None
     razao_social: CampoComFonteV1 | None
@@ -1655,6 +1666,8 @@ class VinculosDaEmpresaV1(BaseModel):
     como_era_em: date | None
     vinculos: list[VinculoDaEmpresaV1]
     cortada: bool
+    # os tipos que o portão não libera para a tela: não foram consultados, a lista não diz nada sobre eles
+    tipos_de_vinculo_nao_disponiveis: list[str]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
 
@@ -1689,8 +1702,12 @@ def de_vinculos_do_analista(
         como_era_em=corpo.get("como_era_em"),
         vinculos=[_vinculo_do_analista(v) for v in corpo.get("vinculos", [])],
         cortada=bool(corpo.get("cortada", False)),
+        tipos_de_vinculo_nao_disponiveis=list(
+            corpo.get("tipos_de_vinculo_nao_disponiveis", [])
+        ),
         fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
-        limites=list(limites),
+        # com vínculos servidos, os limites do corpo (só dos tipos servidos); sem eles, o texto fixo
+        limites=list(corpo.get("limites", limites)),
     )
 
 
@@ -1743,6 +1760,8 @@ class BuscaDeEmpresasV1(BaseModel):
     setores: list[SetorDaBuscaV1]
     ufs: list[str]
     ordens: list[OrdemDaBuscaV1]
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
 
 
 def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpresasV1:
@@ -1767,6 +1786,7 @@ def de_busca_do_analista(resposta: leitura_do_analista.Resposta) -> BuscaDeEmpre
             OrdemDaBuscaV1.model_validate(ordem)
             for ordem in busca_do_analista.ordens_como_lista()
         ],
+        aviso_de_piloto=corpo.get(piloto_da_api_externa.AVISO),
     )
 
 
@@ -1845,3 +1865,197 @@ class OQueMudouV1(BaseModel):
     """O que entrou no app a cada dia (`src/o_que_mudou.py`), a mais nova primeiro."""
 
     entregas: list[EntregaDoDiaV1]
+
+
+class TabelaDaCoberturaV1(BaseModel):
+    """Uma tabela da base como o catálogo público a declara: o que traz, de onde vem e com que licença."""
+
+    tabela: str
+    modulo: str
+    frase: str
+    fonte: str
+    orgao: str
+    licenca: str
+    historico_desde: str
+    frequencia: str
+    situacao_da_licenca: str
+    n_colunas: int
+
+
+class DadosECoberturaV1(BaseModel):
+    """O que a base serve de verdade (`GET /v1/base/tabelas` sem as colunas), na ordem do catálogo."""
+
+    tabelas: list[TabelaDaCoberturaV1]
+
+
+class ComandoDaCliV1(BaseModel):
+    """Um comando da CLI para copiar, com o que ele faz."""
+
+    titulo: str
+    comando: str
+
+
+class ConectarV1(BaseModel):
+    """O texto da página Conectar (`src/conectar.py`): conector de IA e CLI, com a chave só de exemplo."""
+
+    endereco_do_conector: str
+    chave_de_exemplo: str
+    passos_no_claude: list[str]
+    passos_no_chatgpt: list[str]
+    cuidado_com_a_chave: str
+    comandos_da_cli: list[ComandoDaCliV1]
+    perguntas_prontas: list[str]
+    limites: list[str]
+
+
+class ExemploDeProvaV1(BaseModel):
+    """Um exemplo de prova: a empresa do setor onde o movimento aconteceu, a UF dela e os campos do sinal
+    (data de entrada, tipo, participação...), cada um com fonte e dia. `ainda_socio` só vale para a entrada."""
+
+    empresa_do_setor: PontaDoVinculoV1
+    uf: str | None
+    ainda_socio: bool | None = None
+    campos: dict[str, CampoComFonteV1]
+
+
+class ProvaDoSinalV1(BaseModel):
+    """As provas de um sinal: quantas são e até cinco exemplos."""
+
+    quantas: int
+    exemplos: list[ExemploDeProvaV1]
+
+
+class CompradorDoSetorV1(BaseModel):
+    """Quem já se mexeu no setor: a raiz do CNPJ, o nome do retrato da Receita, os sinais (pelo nome de dentro:
+    `entrou_como_socio`, `fundo_socio`, `controla_no_setor`) e as provas de cada um. Só pessoa jurídica."""
+
+    raiz_do_cnpj: str | None
+    razao_social: CampoComFonteV1 | None
+    sinais: list[str]
+    provas: dict[str, ProvaDoSinalV1]
+
+
+class SetorPedidoV1(BaseModel):
+    """O setor pedido: o CNAE, a UF (se houver), a janela em anos e quantas empresas ativas ele tem."""
+
+    cnae_principal: str
+    uf: str | None
+    anos: int
+    desde: date
+    empresas_ativas: int
+
+
+class CompradoresDoSetorV1(BaseModel):
+    """Quem já se mexeu num setor, na tela (linha 903, PR D): o estado, a lista, as fontes e os limites,
+    sempre. Movimento passado, não intenção de compra."""
+
+    estado: str  # "pronta" ou "nao_liberada", como a ficha
+    como_era_em: date | None
+    setor: SetorPedidoV1 | None
+    compradores: list[CompradorDoSetorV1]
+    total_de_compradores: int
+    cortada: bool
+    # os sinais que o portão não libera: não foram consultados, a lista não diz nada sobre eles
+    sinais_nao_disponiveis: list[str]
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def _exemplo_do_analista(exemplo: dict) -> ExemploDeProvaV1:
+    alvo = exemplo["empresa_do_setor"]
+    campos = {
+        nome: valor
+        for nome, valor in exemplo.items()
+        if nome not in ("empresa_do_setor", "uf", "ainda_socio")
+    }
+    return ExemploDeProvaV1(
+        empresa_do_setor=_ponta_do_analista(alvo),
+        uf=exemplo.get("uf"),
+        ainda_socio=exemplo.get("ainda_socio"),
+        campos=campos,  # type: ignore[arg-type]
+    )
+
+
+def _comprador_do_analista(comprador: dict) -> CompradorDoSetorV1:
+    provas = {
+        sinal: ProvaDoSinalV1(
+            quantas=prova["quantas"],
+            exemplos=[_exemplo_do_analista(e) for e in prova["exemplos"]],
+        )
+        for sinal, prova in comprador["provas"].items()
+    }
+    return CompradorDoSetorV1(
+        raiz_do_cnpj=comprador.get("raiz_do_cnpj"),
+        razao_social=comprador.get("razao_social"),
+        sinais=list(provas),
+        provas=provas,
+    )
+
+
+def de_compradores_do_analista(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> CompradoresDoSetorV1:
+    corpo = resposta.corpo or {}
+    return CompradoresDoSetorV1(
+        estado=resposta.estado,
+        como_era_em=corpo.get("como_era_em"),
+        setor=SetorPedidoV1.model_validate(corpo["setor"])
+        if "setor" in corpo
+        else None,
+        compradores=[_comprador_do_analista(c) for c in corpo.get("compradores", [])],
+        total_de_compradores=int(corpo.get("total_de_compradores", 0)),
+        cortada=bool(corpo.get("cortada", False)),
+        sinais_nao_disponiveis=list(corpo.get("sinais_nao_disponiveis", [])),
+        fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
+        limites=list(corpo.get("limites", limites)),
+    )
+
+
+class EmpresasPorUfV1(BaseModel):
+    uf: str
+    empresas_ativas: int
+
+
+class AberturasPorAnoV1(BaseModel):
+    ano: int
+    aberturas: int
+
+
+class PerfilDoSetorV1(BaseModel):
+    """Os números de um setor por CNAE (linha 903, tela de Setor): só contagens, só pessoa jurídica. O bloco que
+    o portão não libera vem `None` (nunca zero) e o nome dele em `blocos_nao_disponiveis`."""
+
+    estado: str  # "pronta" ou "nao_liberada", como a ficha
+    cnae_principal: str | None
+    como_era_em: date | None
+    data_do_retrato: str | None  # AAAA-MM
+    publico_em: date | None
+    empresas_ativas: int | None
+    por_uf: list[EmpresasPorUfV1] | None
+    aberturas_por_ano: list[AberturasPorAnoV1] | None
+    blocos_nao_disponiveis: list[str]
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+
+
+def de_perfil_do_setor_do_analista(
+    resposta: leitura_do_analista.Resposta,
+) -> PerfilDoSetorV1:
+    corpo = resposta.corpo or {}
+    por_uf = corpo.get("por_uf")
+    aberturas = corpo.get("aberturas_por_ano")
+    return PerfilDoSetorV1(
+        estado=resposta.estado,
+        cnae_principal=corpo.get("cnae_principal"),
+        como_era_em=corpo.get("como_era_em"),
+        data_do_retrato=corpo.get("data_do_retrato"),
+        publico_em=corpo.get("publico_em"),
+        empresas_ativas=corpo.get("empresas_ativas"),
+        por_uf=None if por_uf is None else [EmpresasPorUfV1(**u) for u in por_uf],
+        aberturas_por_ano=None
+        if aberturas is None
+        else [AberturasPorAnoV1(**a) for a in aberturas],
+        blocos_nao_disponiveis=list(corpo.get("blocos_nao_disponiveis", [])),
+        fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
+        limites=list(corpo.get("limites", [])),
+    )

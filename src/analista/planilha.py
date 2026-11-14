@@ -9,11 +9,14 @@ o código é outro; um teste confere que as duas dão a mesma forma para a mesma
 
 Texto da base (a razão social, por exemplo) vai sempre como texto, nunca como fórmula: um nome que começa com
 `=` não pode virar fórmula no Excel de quem abre o arquivo.
+
+Dado de piloto (D11.3) leva o aviso junto, como na planilha da CLI: a coluna `piloto` com a frase em cada linha
+que traz um campo marcado, e a linha `aviso de piloto` na aba `fontes`. O arquivo sai da tela e anda sozinho.
 """
 
 import io
 import zipfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -21,9 +24,15 @@ from openpyxl import Workbook
 from openpyxl.cell.cell import TYPE_STRING
 from openpyxl.writer.excel import ExcelWriter
 
+from base.prontidao import AVISO_DE_PILOTO
+from src.api_externa import piloto as piloto_
+
 COLUNA_DA_FONTE = "fonte"
 COLUNA_DA_DATA = "publicado_em"
+COLUNA_DO_PILOTO = "piloto"
+LINHA_DO_AVISO_DE_PILOTO = "aviso de piloto"
 CHAVE_DAS_FONTES = "fontes"
+_MARCAS_DE_PILOTO = (piloto_.MARCA, piloto_.AVISO)
 SEPARADOR = " › "
 AVISO = "Nada aqui é recomendação de investimento."  # o mesmo aviso da CLI (`tickerlab.formato.AVISO`)
 LIMITE_DO_NOME_DA_ABA = 31  # o Excel não abre aba com nome maior
@@ -47,6 +56,8 @@ class Aba:
     nome: str
     cabecalho: list[str]
     linhas: list[list[Valor]] = field(default_factory=list)
+    # linha de `linhas` -> a frase de piloto do campo que ela traz (só a aba `campos` usa)
+    pilotos: dict[int, str] = field(default_factory=dict)
 
 
 def _e_envelope(valor: object) -> bool:
@@ -62,6 +73,21 @@ def _cru(valor: object) -> Valor:
     return str(valor)
 
 
+def _avisos_de_piloto(dado: object) -> Iterator[str]:
+    """A frase de piloto de cada bloco do dado, em qualquer nível; bloco marcado sem frase leva a frase fixa."""
+    if isinstance(dado, Mapping):
+        frase = dado.get(piloto_.AVISO)
+        if isinstance(frase, str) and frase.strip():
+            yield frase
+        elif dado.get(piloto_.MARCA) is True:
+            yield AVISO_DE_PILOTO
+        for valor in dado.values():
+            yield from _avisos_de_piloto(valor)
+    elif isinstance(dado, list):
+        for item in dado:
+            yield from _avisos_de_piloto(item)
+
+
 def _fonte_e_data(envelopes: Sequence[Mapping]) -> list[Valor]:
     """As fontes e as datas de publicação distintas da linha, juntas (quase sempre uma de cada)."""
     fontes = dict.fromkeys(str(env.get("fonte")) for env in envelopes)
@@ -74,15 +100,20 @@ def _juntar(caminho: str, nome: str) -> str:
 
 
 def _aba_de_linhas(nome: str, itens: Sequence[Mapping]) -> Aba:
-    colunas = list(dict.fromkeys(chave for item in itens for chave in item))
+    nomes = dict.fromkeys(chave for item in itens for chave in item)
+    colunas = [nome for nome in nomes if nome not in _MARCAS_DE_PILOTO]
     com_fonte = any(_e_envelope(v) for item in itens for v in item.values())
-    aba = Aba(
-        nome, [*colunas, *([COLUNA_DA_FONTE, COLUNA_DA_DATA] if com_fonte else [])]
-    )
-    for item in itens:
+    frases = [next(_avisos_de_piloto(item), None) for item in itens]
+    com_piloto = any(frases)
+    extra = [COLUNA_DA_FONTE, COLUNA_DA_DATA] if com_fonte else []
+    extra += [COLUNA_DO_PILOTO] if com_piloto else []
+    aba = Aba(nome, [*colunas, *extra])
+    for item, frase in zip(itens, frases, strict=True):
         valores = [_cru(item.get(coluna)) for coluna in colunas]
         if com_fonte:
             valores += _fonte_e_data([v for v in item.values() if _e_envelope(v)])
+        if com_piloto:  # a própria frase: a aba da lista a carrega sozinha
+            valores.append(frase)
         aba.linhas.append(valores)
     return aba
 
@@ -95,6 +126,8 @@ def _percorrer(caminho: str, dado: Mapping, campos: Aba, abas: list[Aba]) -> Non
         lugar = _juntar(caminho, str(nome))
         if _e_envelope(valor):
             campos.linhas.append([lugar, _cru(valor), *_fonte_e_data([valor])])
+            if frase := next(_avisos_de_piloto(valor), None):
+                campos.pilotos[len(campos.linhas) - 1] = frase
         elif valor is None or isinstance(valor, str | int | float | bool):
             # o que identifica o pedido (CNPJ, dia): sem fonte, não é dado de fonte
             campos.linhas.append([lugar, valor, None, None])
@@ -123,7 +156,18 @@ def _aba_das_fontes(corpo: Mapping) -> Aba:
                 ]
             )
     fontes.linhas.append(["aviso", AVISO, None])
+    frases = dict.fromkeys(_avisos_de_piloto(corpo))
+    fontes.linhas.extend([LINHA_DO_AVISO_DE_PILOTO, frase, None] for frase in frases)
     return fontes
+
+
+def _marcar_campos_de_piloto(campos: Aba) -> None:
+    """A coluna `piloto` (com a frase) nos campos soltos, quando algum saiu pelo piloto."""
+    if not campos.pilotos:
+        return
+    campos.cabecalho.append(COLUNA_DO_PILOTO)
+    for posicao, linha in enumerate(campos.linhas):
+        linha.append(campos.pilotos.get(posicao))
 
 
 def abas(corpo: Mapping) -> list[Aba]:
@@ -131,6 +175,7 @@ def abas(corpo: Mapping) -> list[Aba]:
     campos = Aba("campos", ["campo", "valor", COLUNA_DA_FONTE, COLUNA_DA_DATA])
     listas: list[Aba] = []
     _percorrer("", corpo, campos, listas)
+    _marcar_campos_de_piloto(campos)
     return [*([campos] if campos.linhas else []), *listas, _aba_das_fontes(corpo)]
 
 

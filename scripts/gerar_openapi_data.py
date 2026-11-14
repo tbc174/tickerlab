@@ -65,7 +65,7 @@ SEMPRE = ("api_key_in_url", "invalid_api_key", "rate_limited")
 DE_DADO = ("monthly_quota_exceeded", "invalid_known_at", "service_unavailable")
 DE_UM_CNPJ = ("invalid_cnpj", "not_available")
 # rota de dado que lê a ficha da noite, não a base (`conjuntos/setores.py`): sem o 503 da base, com o 404
-DA_FICHA_DA_NOITE = ("/data/v1/sectors/{key}",)
+DA_FICHA_DA_NOITE = ("/data/v1/sectors/{key}", "/data/v1/sectors/{key}/deck")
 DOS_VINCULOS = "/links"
 # rota que lê o arquivo das novidades, não a base: gasta a quota, sem o 503 da base, com o 404 sem contrato
 DO_ARQUIVO_DAS_NOVIDADES = ("/data/v1/research/news",)

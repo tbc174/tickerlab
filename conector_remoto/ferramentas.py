@@ -46,6 +46,21 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
 }
+# o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
+TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
+    "buscar_empresas": "Buscar empresas por setor, UF, porte e idade",
+    "ficha_da_empresa": "Ficha da empresa",
+    "comparaveis": "Comparáveis de uma companhia aberta",
+    "demonstracoes": "Demonstrações de uma companhia aberta",
+    "eventos": "Eventos de uma empresa",
+    "fundo": "Fundo de investimento",
+    "vinculos": "Participações e auditor de uma empresa",
+    "compradores_do_setor": "Quem já se mexeu no setor",
+    "novidades": "Fontes novas provadas pela pesquisa",
+    "setores": "Setores acompanhados",
+    "setor": "Séries e concentração de um setor",
+    "o_que_posso_ver": "O que a sua chave pode ver",
+}
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
 _PONTUACAO_DO_CNPJ = re.compile(r"[\s./-]")
@@ -57,6 +72,16 @@ LIMITE_PADRAO_DA_BUSCA = 50
 ESPERA_PADRAO_S = 60
 # o nome em português (o mesmo da CLI) -> o tipo de evento da API
 TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
+# os registros na Anvisa (linha 860): o nome em português (o mesmo da CLI) -> o tipo da API; "todos" é a soma dos
+# tipos que a API serve (cosméticos, saneantes e produtos para saúde)
+TIPOS_DA_ANVISA = {
+    "cosmeticos": "cosmetics",
+    "produtos_saude": "health_products",
+    "saneantes": "sanitizers",
+    "todos": "products",
+}
+REGISTROS_MAXIMOS_DA_ANVISA = 10_000_000  # o teto da API para o mínimo de registros
+ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}  # mais registros primeiro
 # o nome em português (o mesmo da CLI, linha 773) -> o tipo de vínculo da API
 TIPOS_DE_VINCULO = {
     "controlada": "subsidiary_of",
@@ -68,6 +93,10 @@ PROFUNDIDADE_MAXIMA = 3  # a da API (`src/api_externa/conjuntos/vinculos.py`)
 # os da API (`src/api_externa/conjuntos/compradores.py`)
 ANOS_MAXIMO_DOS_COMPRADORES = 10
 LIMITE_MAXIMO_DOS_COMPRADORES = 50
+# Um evento pesa ~750 caracteres e a IA aceita ~150 mil por resposta: sem teto próprio, a 1ª página de uma
+# companhia grande (1.000 eventos) passava do limite e a ferramenta falhava.
+LIMITE_MAXIMO_DOS_EVENTOS = 100
+LIMITE_PADRAO_DOS_EVENTOS = 50
 DIAS_MAXIMO_DAS_NOVIDADES = 30  # o da API (`src/api_externa/conjuntos/novidades.py`)
 
 MENSAGEM_DE_PESSOA = (
@@ -225,7 +254,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
     pedidos = Pedidos(cliente)
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["buscar_empresas"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def buscar_empresas(
         cnae: Annotated[
             list[str] | None,
@@ -275,6 +308,37 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
                 description="true = só a matriz; false = só as filiais; vazio = todas."
             ),
         ] = None,
+        anvisa_tipo: Annotated[
+            Literal["cosmeticos", "produtos_saude", "saneantes", "todos"] | None,
+            Field(
+                description=(
+                    "Tipo de registro na Anvisa que os mínimos abaixo contam: cosmeticos, produtos_saude, "
+                    "saneantes ou todos (a soma dos três; vale se você der só o mínimo)."
+                )
+            ),
+        ] = None,
+        anvisa_ativos_min: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=REGISTROS_MAXIMOS_DA_ANVISA,
+                description="Só empresas com pelo menos este número de registros ativos na Anvisa.",
+            ),
+        ] = None,
+        anvisa_total_min: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=REGISTROS_MAXIMOS_DA_ANVISA,
+                description="Só empresas com pelo menos este número de registros na Anvisa, ativos ou não.",
+            ),
+        ] = None,
+        ordenar_por: Annotated[
+            Literal["anvisa"] | None,
+            Field(
+                description="Em vez de por CNPJ: 'anvisa' põe primeiro quem tem mais registros ativos na Anvisa."
+            ),
+        ] = None,
         limite: Annotated[
             int,
             Field(
@@ -295,7 +359,10 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         """Acha empresas brasileiras por filtros do cadastro da Receita (CNAE, UF, município, porte,
         natureza jurídica, data de abertura). Pelo menos um filtro. Devolve razão social, CNAE, UF,
         município, porte e data de abertura, cada valor com a fonte e o dia em que ficou público.
-        Só pessoa jurídica: sem sócio, contato ou endereço."""
+        Os registros na Anvisa (cosméticos, saneantes, produtos para saúde) servem de sinal de porte da
+        empresa fechada: com anvisa_ativos_min ou anvisa_total_min a busca traz a contagem de cada empresa,
+        com a fonte e o dia do retrato; é sinal de porte, não faturamento. Só pessoa jurídica: sem sócio,
+        contato ou endereço."""
         return await pedidos.pedir(
             "buscar_empresas",
             "/companies",
@@ -305,14 +372,23 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
                 "opened_before": _dia(aberta_antes_de), "opened_after": _dia(aberta_depois_de),
                 "head_office": so_matriz, "limit": limite, "cursor": cursor,
                 "known_at": _dia(como_era_em),
+                "anvisa_type": TIPOS_DA_ANVISA.get(anvisa_tipo or ""),
+                "anvisa_active_min": anvisa_ativos_min, "anvisa_total_min": anvisa_total_min,
+                "sort": ORDENS_DA_BUSCA.get(ordenar_por or ""),
             },
         )  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["ficha_da_empresa"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def ficha_da_empresa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
         """A ficha de uma empresa: o cadastro na Receita (razão social, situação, abertura, CNAE,
         porte, natureza jurídica, Simples) e, se for companhia aberta, as entregas de DFP e ITR à
-        CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público."""
+        CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do
+        cadastro que a base não consultou vem em `unavailable_registration_fields`, e o DFP ou ITR não
+        consultado em `unavailable_filings`, com o aviso em `limits`: diga que falta, sem supor o valor."""
         numeros = cnpj_do_pedido(cnpj)
         dia: dict[str, ParametroDaApi] = {"known_at": _dia(como_era_em)}
         acesso = acesso_do_pedido()
@@ -323,7 +399,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
                 return pedidos.entregar(resposta, "ficha_da_empresa")
         return await pedidos.pedir("ficha_da_empresa", f"/companies/{numeros}", dia)
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["comparaveis"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def comparaveis(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
         """As companhias abertas comparáveis à pedida (mesmo grupo de setores na CVM), cada uma com
         receita, EBITDA, lucro, dívida líquida e as razões do último DFP entregue, e a mediana dos
@@ -335,7 +415,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             {"known_at": _dia(como_era_em)},
         )
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["demonstracoes"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def demonstracoes(
         cnpj: Cnpj,
         como_era_em: ComoEraEm = None,
@@ -361,13 +445,21 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["setores"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def setores() -> str:
         """A lista de setores que o TickerLab acompanha, com a chave de cada um (para a ferramenta
         `setor`)."""
         return await pedidos.pedir("setores", "/sectors")
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["setor"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def setor(
         chave: Annotated[
             str,
@@ -387,7 +479,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             "setor", f"/sectors/{chave}", {"known_at": _dia(como_era_em)}
         )
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["o_que_posso_ver"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def o_que_posso_ver() -> str:
         """O que a chave do analista pode consultar (conjuntos, campos, fontes e licenças) e o
         consumo do mês da organização, com os limites do plano."""
@@ -405,7 +501,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
 def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A ferramenta das novidades da pesquisa (linha 830)."""
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["novidades"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def novidades(
         dias: Annotated[
             int | None,
@@ -434,7 +534,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
     """Eventos, vínculos, compradores do setor e fundo (à parte, para a
     `registrar_ferramentas` não crescer demais); chamada no meio dela, para a ordem da lista ficar."""
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["eventos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def eventos(
         cnpj: Cnpj,
         tipos: Annotated[
@@ -448,6 +552,14 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
                 ),
             ),
         ] = None,
+        limite: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DOS_EVENTOS,
+                description="Eventos por página (até 100).",
+            ),
+        ] = LIMITE_PADRAO_DOS_EVENTOS,
         cursor: Annotated[
             str | None,
             Field(
@@ -460,16 +572,21 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         """Os eventos da empresa, do mais novo ao mais velho: cada documento entregue à CVM (protocolo,
         categoria, tipo, data de referência e endereço; o assunto escrito pela companhia não sai) e cada
         troca de auditor (a firma anterior, a nova, o dia e os anos com a anterior). Cada valor traz a
-        fonte e o dia em que ficou público; a página vai até o limite do plano e `next_cursor` traz a
-        seguinte."""
+        fonte e o dia em que ficou público; a página tem até `limite` eventos (padrão 50) e `next_cursor` traz
+        a seguinte."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir("eventos", f"/companies/{numeros}/events", {
             "types": [TIPOS_DE_EVENTO[tipo] for tipo in tipos or ()],
+            "limit": str(limite),
             "cursor": cursor,
             "known_at": _dia(como_era_em),
         })  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["vinculos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def vinculos(
         cnpj: Cnpj,
         profundidade: Annotated[
@@ -504,7 +621,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
         })  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["compradores_do_setor"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def compradores_do_setor(
         cnae: Annotated[
             str,
@@ -552,7 +673,11 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "known_at": _dia(como_era_em),
         })  # fmt: skip
 
-    @servidor.tool(annotations=SO_LEITURA, structured_output=False)
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["fundo"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
     async def fundo(
         cnpj: Cnpj,
         como_era_em: ComoEraEm = None,

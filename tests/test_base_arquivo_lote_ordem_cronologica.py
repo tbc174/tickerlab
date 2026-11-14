@@ -24,7 +24,7 @@ AGORA = datetime(2026, 11, 6, 22, tzinfo=UTC)
 CNPJ_MASCARADO = "07.091.063/0001-40"
 CNPJ_LIMPO = "07091063000140"
 OUTRO_CNPJ = "00220359000506"
-CPF = "12345678909"
+CPF = "88800000046"
 CABECALHO_PE = (
     "descicao_unidade_gestora;data_liquidacao;CPF/CNPJ_Credor;nome_credor;numero_documento;"
     "valor_documento;categoria_contrato;fonte_recurso;numero_ordem_bancaria;data_ordem_bancaria;"
@@ -171,8 +171,10 @@ def test_pe_guarda_so_cnpj_sem_o_nome_do_credor_e_sem_cpf():
     bruto = (
         CABECALHO_PE
         + _linha_pe(CNPJ_MASCARADO, "C B H BIRU OCULOS LTDA ME")
-        + _linha_pe(CPF, "JOAO DA SILVA", cpf=CPF)  # pessoa física: o documento é CPF
-        + _linha_pe(OUTRO_CNPJ, "FIRMA DE JOSE 12345678909")  # CPF no nome do credor
+        + _linha_pe(
+            CPF, "PESSOA INVENTADA LICITACAO", cpf=CPF
+        )  # pessoa física: o documento é CPF
+        + _linha_pe(OUTRO_CNPJ, "FIRMA DE JOSE 88800000046")  # CPF no nome do credor
         + _linha_pe("", "SEM DOCUMENTO LTDA")
         + _linha_pe("11.222.333/0001-81", "FORTQUIM LTDA")
     )

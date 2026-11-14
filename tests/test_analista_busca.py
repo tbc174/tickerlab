@@ -20,9 +20,10 @@ import pytest
 
 from base import cnae, prontidao
 from base.porta import Porta
-from base.prontidao import Prontidao, Prova
+from base.prontidao import AVISO_DE_PILOTO, Prontidao, ProntidaoDePiloto, Prova
 from src import portao_externo as portao
 from src.analista import busca, leitura
+from src.api_externa import piloto as piloto_
 from src.api_externa.conjuntos import prospeccao
 from tests import test_api_externa_prospeccao as base_de_mentira
 
@@ -58,10 +59,14 @@ def pasta(tmp_path):
     return base_de_teste(tmp_path)
 
 
-def _buscar(pasta, regras=None, hoje=HOJE, **filtros):
+def _buscar(pasta, regras=None, hoje=HOJE, piloto=False, **filtros):
     with Porta(pasta) as porta:
         return busca.buscar(
-            porta, busca.Filtros(**filtros), hoje=hoje, regras=regras or _regras()
+            porta,
+            busca.Filtros(**filtros),
+            hoje=hoje,
+            regras=regras or _regras(),
+            piloto=piloto,
         )
 
 
@@ -321,3 +326,90 @@ def test_planilha_sem_filtro_ou_sem_prontidao_nao_le(pasta):
             porta, busca.Filtros(ufs=("SP",)), hoje=HOJE, regras=_sem_prontidao()
         )
     assert vazia.corpo is None and negada.corpo is None
+
+
+# ---------------------------------------------------------------- piloto (D11)
+
+
+def _so_de_piloto() -> portao.Regras:
+    """Como a produção em 13/11/2026: nenhuma tabela com a prontidão cheia; as da busca só no registro de
+    piloto."""
+    prova = Prova(HOJE, "conferida no teste", "teste")
+    versoes = prontidao.versoes_maiores()
+    tabelas = (prospeccao.ESTABELECIMENTOS, prospeccao.EMPRESAS)
+    return dataclasses.replace(
+        portao.regras_vigentes(),
+        prontidao={},
+        prontidao_de_piloto={
+            t: ProntidaoDePiloto(versoes[t], prova, prova) for t in tabelas
+        },
+    )
+
+
+def _envelopes(empresa: dict) -> list[dict]:
+    return [valor for valor in empresa.values() if isinstance(valor, dict)]
+
+
+def test_conta_do_piloto_busca_com_o_aviso_em_todo_campo_e_no_topo(pasta):
+    resposta = _buscar(pasta, _so_de_piloto(), piloto=True, setores=("J",))
+    assert resposta.estado == leitura.PRONTA
+    assert _cnpjs(resposta) == ["11111111000191"]
+    # D11.3: bloco de piloto sem o aviso é defeito
+    assert resposta.corpo[piloto_.AVISO] == AVISO_DE_PILOTO
+    (empresa,) = resposta.corpo["empresas"]
+    assert _envelopes(empresa)
+    for envelope in _envelopes(empresa):
+        assert envelope[piloto_.MARCA] is True
+        assert envelope[piloto_.AVISO] == AVISO_DE_PILOTO
+
+
+def test_so_com_o_registro_de_piloto_a_conta_comum_continua_sem_a_busca(pasta):
+    resposta = _buscar(pasta, _so_de_piloto(), setores=("J",))
+    assert resposta.estado == leitura.NAO_LIBERADA
+    assert resposta.corpo is None and resposta.fontes == []
+
+
+def test_conta_do_piloto_sem_registro_de_piloto_continua_sem_a_busca(pasta):
+    resposta = _buscar(pasta, _sem_prontidao_nem_piloto(), piloto=True, ufs=("SP",))
+    assert resposta.estado == leitura.NAO_LIBERADA
+
+
+def _sem_prontidao_nem_piloto() -> portao.Regras:
+    return dataclasses.replace(_sem_prontidao(), prontidao_de_piloto={})
+
+
+def test_prontidao_cheia_sai_sem_aviso_de_piloto_ate_para_a_conta_do_piloto(pasta):
+    resposta = _buscar(pasta, piloto=True, setores=("J",))
+    assert resposta.estado == leitura.PRONTA
+    assert piloto_.AVISO not in resposta.corpo
+    (empresa,) = resposta.corpo["empresas"]
+    assert all(piloto_.MARCA not in envelope for envelope in _envelopes(empresa))
+
+
+def test_portao_da_tela_nao_serve_piloto_sem_o_registro_que_marca_o_aviso():
+    # quem chama sem abrir `piloto.anotar()` não tem como pôr o aviso: o campo de piloto não sai
+    permitido = leitura.permitido_na_tela(
+        prospeccao.CONJUNTO, HOJE, _so_de_piloto(), piloto=True
+    )
+    assert permitido(prospeccao.FONTE, "razao_social", False) is False
+    with piloto_.anotar():
+        aberto = leitura.permitido_na_tela(
+            prospeccao.CONJUNTO, HOJE, _so_de_piloto(), piloto=True
+        )
+        assert aberto(prospeccao.FONTE, "razao_social", False) is True
+
+
+def test_planilha_do_piloto_leva_o_aviso_em_todas_as_paginas(pasta, monkeypatch):
+    monkeypatch.setattr(busca, "TAMANHO_DA_PAGINA", 1)
+    with Porta(pasta) as porta:
+        resposta = busca.para_planilha(
+            porta,
+            busca.Filtros(ufs=("SP", "MG")),
+            hoje=HOJE,
+            regras=_so_de_piloto(),
+            piloto=True,
+        )
+    assert _cnpjs(resposta) == ["11111111000191", "22222222000191"]
+    assert resposta.corpo[piloto_.AVISO] == AVISO_DE_PILOTO
+    for empresa in resposta.corpo["empresas"]:
+        assert all(envelope[piloto_.MARCA] for envelope in _envelopes(empresa))

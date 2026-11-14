@@ -17,7 +17,7 @@ from base.dicionario import TABELAS
 from base.porta.duckdb import ARQUIVOS, conectar
 
 TABELA = "registro_de_fundos"
-CPF_FICTICIO = "52998224725"  # dígitos verificadores certos, de ninguém
+CPF_FICTICIO = "88800000127"  # dígitos verificadores certos, de ninguém
 CABECALHO = (
     "ID_Registro_Fundo;CNPJ_Fundo;Codigo_CVM;Data_Registro;Tipo_Fundo;Denominacao_Social;"
     "Data_Cancelamento;Situacao;Diretor;CNPJ_Administrador;Administrador;Tipo_Pessoa_Gestor;"

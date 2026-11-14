@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Carregando } from "../../src/app/Carregando";
-import { Vazio } from "../../src/app/Vazio";
+import { Carregando } from "../../src/app/pecas/Carregando";
+import { Vazio } from "../../src/app/pecas/Vazio";
 import { abrirApp } from "./ajudantes";
 
 const CSS = readFileSync(join(process.cwd(), "src", "app", "app.css"), "utf8");

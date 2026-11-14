@@ -3,7 +3,7 @@
 // com um lugar à direita para as ações (o botão do relatório entra no PR 3 da série).
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CabecalhoDaTela } from "../../src/app/CabecalhoDaTela";
+import { CabecalhoDaTela } from "../../src/app/pecas/Cabecalho";
 import { paginasDoApp } from "../../src/conteudo";
 import { abrirApp } from "./ajudantes";
 

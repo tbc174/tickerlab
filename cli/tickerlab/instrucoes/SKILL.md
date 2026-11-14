@@ -25,19 +25,24 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo controlada|coligada|participada|auditor] --json`: de quem a
      empresa era controlada, coligada ou participada, quem ela controlava (com a participação no capital) e quem a
      auditava, como era no dia; sem pessoa física. Leia `limits` e `truncated`.
+   - `tickerlab ativos <cnpj> [--como-era AAAA-MM-DD] --json`: os ativos por bloco (hoje, contratos de E&P da ANP), com fonte e data;
+     bloco sem dado vem com `found` falso e o que a base não cobre, em `not_covered`
    - `tickerlab dossie <cnpj> [--como-era AAAA-MM-DD] --json`: perfil, eventos, vínculos e comparáveis numa saída
      só (4 pedidos da quota); leia `gaps` (seção que faltou e por quê) e `limits`.
    - `tickerlab eventos <cnpj> [--tipo documento|auditor] [--como-era AAAA-MM-DD] --json`: documentos entregues à
      CVM (fato relevante, comunicado, assembleia...) e trocas de auditor, do mais novo ao mais velho, com o
      endereço de cada documento; `next_cursor` preenchido: há mais, `--todas` busca todas. Leia `limits`: sem
      evento não quer dizer que nada aconteceu.
+   - `tickerlab deck <cnpj>` ou `tickerlab deck --setor <chave>` `[--saida arq.pptx]`: grava o deck (.pptx) da empresa ou do setor, com fonte e data em cada tabela; diga onde o arquivo ficou.
    - `tickerlab demonstracoes <cnpj> [--periodo AAAA-MM-DD] --json`: DFP e ITR (CVM), uma linha por conta e
      período, com documento, versão e data de entrega.
    - `tickerlab fundo <cnpj> [--retorno-suposto 0.12] --json`: cadastro, taxas e carteira do fundo (CVM).
    - `tickerlab prospectar --cnae 3511 --uf SP [--porte demais] [--aberta-antes AAAA-MM-DD] --json`: empresas do
      cadastro da Receita por atividade, lugar, porte e idade (pelo menos um filtro além da situação; os filtros
      repetem, até 50 valores; `--municipio` é o nome ou o código da Receita, não o do IBGE; só empresa, sem sócio
-     nem contato). `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
+     nem contato). `--anvisa-tipo cosmeticos --anvisa-ativos-min 200` filtra pelo número de registros na Anvisa, um sinal
+     de porte (não é faturamento) com fonte e dia do retrato; `--ordenar-por anvisa` põe quem tem mais registros
+     primeiro. `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
    - `tickerlab setor --json`: os setores disponíveis (não gasta a quota); `tickerlab setor <chave> --json`:
      mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
      antes de concluir sobre concentração).

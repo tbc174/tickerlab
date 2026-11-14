@@ -28,7 +28,7 @@ AGORA = empresas_de_mentira.AGORA
 ALFA = vinculos_de_mentira.ALFA
 DIA = vinculos_de_mentira.DIA.isoformat()
 TABELAS_DA_REDE = ("ligacoes", "entidades", "identificadores")
-TABELAS_PRONTAS = (*TABELAS_DA_REDE, "cnpj_empresas_historico")
+TABELAS_PRONTAS = (*TABELAS_DA_REDE, "cnpj_empresas_pj")
 # no dia, a um salto: a MAE, a FILHA, a VENDIDA_DEPOIS (o fim só se soube depois), a COLIGADA e a AUDITORA
 VINCULOS_NO_DIA = 5
 
@@ -96,6 +96,7 @@ def test_vinculos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert corpo["cnpj"] == ALFA and corpo["known_at"] == DIA
     assert corpo["depth"] == 1 and corpo["truncated"] is False
     assert corpo["limits"] == list(vinculos.LIMITES)
+    assert corpo["unavailable_link_types"] == []
     assert _tipos(corpo) == [
         "subsidiary_of", "subsidiary_of", "subsidiary_of", "affiliate_of", "audits",
     ]  # fmt: skip
@@ -104,7 +105,10 @@ def test_vinculos_saem_em_ingles_com_fonte_data_e_atribuicao(cliente, cenario):
     assert mae["from"] == {
         "entity_id": "EALFA",
         "cnpj_root": "11111111",
-        "legal_name": {"value": "ALFA LTDA", "source": "rfb-cnpj", "published_at": "2023-05-31", "observed_at": None},
+        "legal_name": {"value": "ALFA LTDA", "source": "rfb-cnpj", "published_at": "2025-03-31", "observed_at": None},
+        "registry_snapshot_month": {
+            "value": "2025-03", "source": "rfb-cnpj", "published_at": "2025-03-31", "observed_at": None,
+        },
     }  # fmt: skip
     assert mae["to"]["entity_id"] == "EMAE"
     assert mae["ownership_pct"] == {
@@ -254,6 +258,88 @@ def test_sem_o_tipo_do_fca_a_auditoria_nao_sai(cliente, cenario, monkeypatch):
     assert "cvm-hist-fca" not in {f["source"] for f in corpo["sources"]}
 
 
+# ---------------------------------------------------------------- o tipo barrado (linha 880)
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `links`, outra só com o de `companies`; o portão sem o tipo de
+    vínculo do FCA (a auditoria barrada, como uma linha de direito retirada)."""
+    ator = aj.admin(banco)
+    com_links = aj.organizacao(banco, ator, "Organização com links")
+    so_de_companies = aj.organizacao(banco, ator, "Organização sem links")
+    aj.contrato(banco, ator, com_links, conjunto=vinculos.CONJUNTO)
+    aj.contrato(banco, ator, so_de_companies, conjunto=empresas.CONJUNTO)
+    regras = _sem(_regras(), "tipo", "cvm-hist-fca")
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_links).valor,
+        aj.chave(banco, ator, so_de_companies).valor,
+    )
+
+
+def test_o_tipo_barrado_vem_como_nao_disponivel_e_os_limites_nao_falam_dele(duas):
+    cliente, com_links, _so_de_companies = duas
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_links)
+    )
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert "audits" not in _tipos(corpo)
+    assert corpo["unavailable_link_types"] == ["audits"]
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL in corpo["limits"]
+    assert "unavailable_link_types" in vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL
+    assert vinculos.LIMITES_DA_FONTE[vinculos.FCA] not in corpo["limits"]
+    assert "cvm-hist-fca" not in {f["source"] for f in corpo["sources"]}
+
+
+def test_a_lista_vazia_com_o_tipo_barrado_diz_o_que_nao_foi_consultado(duas):
+    cliente, com_links, _so_de_companies = duas
+    corpo = cliente.get(
+        _rota(), params={"known_at": "2018-01-01"}, headers=aj.bearer(com_links)
+    ).json()
+    assert corpo["links"] == []
+    assert corpo["unavailable_link_types"] == ["audits"]
+
+
+def test_so_o_tipo_barrado_pedido_da_404(duas):
+    cliente, com_links, _so_de_companies = duas
+    resposta = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": ["audits"]},
+        headers=aj.bearer(com_links),
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_o_tipo_liberado_pedido_sozinho_nao_lista_o_barrado(duas):
+    cliente, com_links, _so_de_companies = duas
+    corpo = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": ["subsidiary_of"]},
+        headers=aj.bearer(com_links),
+    ).json()
+    assert corpo["unavailable_link_types"] == []
+    assert vinculos.LIMITE_DO_TIPO_NAO_DISPONIVEL not in corpo["limits"]
+
+
+@pytest.mark.parametrize("tipos", [[], ["subsidiary_of"]])
+def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista_dos_barrados(
+    duas, tipos
+):
+    cliente, _com_links, so_de_companies = duas
+    resposta = cliente.get(
+        _rota(),
+        params={"known_at": DIA, "types": tipos},
+        headers=aj.bearer(so_de_companies),
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
 def test_sem_a_razao_social_da_receita_a_ponta_sai_sem_nome(
     cliente, cenario, monkeypatch
 ):
@@ -263,17 +349,36 @@ def test_sem_a_razao_social_da_receita_a_ponta_sai_sem_nome(
     assert mae["from"] == {"entity_id": "EALFA", "cnpj_root": "11111111"}
 
 
-def test_sem_a_prontidao_do_historico_os_vinculos_saem_sem_nome(
+def test_sem_a_prontidao_da_lista_pj_os_vinculos_saem_sem_nome(
     cliente, cenario, monkeypatch
 ):
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(TABELAS_DA_REDE))
     corpo = _get(cliente, cenario, known_at=DIA).json()
     assert len(corpo["links"]) == VINCULOS_NO_DIA
     assert all(
-        "legal_name" not in v["from"] and "legal_name" not in v["to"]
+        campo not in ponta
         for v in corpo["links"]
+        for ponta in (v["from"], v["to"])
+        for campo in ("legal_name", "registry_snapshot_month")
     )
     assert "rfb-cnpj" not in {f["source"] for f in corpo["sources"]}
+
+
+def test_o_nome_das_pontas_declara_so_a_lista_sem_pessoa():
+    # linha 867: uma linha por caminho, declarando só a tabela lida; o histórico datado (com pessoa) não é
+    # lido, e exigir a prontidão dele (D10) tiraria o nome no VPS, onde ele não está
+    da_receita = [
+        linha
+        for linha in portao.regras_vigentes().linhas
+        if linha.conjunto == vinculos.CONJUNTO and linha.fonte == "rfb-cnpj"
+    ]
+    assert {linha.campo for linha in da_receita} == {
+        "razao_social",
+        "mes_do_retrato_do_cadastro",
+    }
+    assert {tabela for linha in da_receita for tabela in linha.tabelas} == {
+        "cnpj_empresas_pj"
+    }
 
 
 # ---------------------------------------------------------------- erros e consumo
@@ -325,3 +430,13 @@ def test_cnpj_invalido_da_400(cliente, cenario):
 
 def test_sem_chave_da_401(cliente, cenario):
     assert cliente.get(_rota()).status_code == 401
+
+
+def test_sem_a_tabela_de_ligacoes_a_rota_da_404(duas, pasta):
+    """Tabela fora da porta não é "sem vínculos" (linha 917)."""
+    cliente, com_links, _so_de_companies = duas
+    (pasta / "rede" / "ligacoes.parquet").unlink()
+    resposta = cliente.get(
+        _rota(), params={"known_at": DIA}, headers=aj.bearer(com_links)
+    )
+    assert resposta.status_code == 404

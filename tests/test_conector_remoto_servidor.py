@@ -7,6 +7,7 @@ montado com o que a IA escreveu.
 
 import asyncio
 import json
+import re
 
 import httpx
 import pytest
@@ -117,13 +118,44 @@ def test_orientacao_do_dossie_cita_so_ferramentas_que_existem_na_ordem():
         ferramentas.CONJUNTOS_DA_FERRAMENTA
     )
     posicoes = [
-        servidor.INSTRUCOES.index(f"`{nome}`")
+        servidor.ORIENTACAO_DO_DOSSIE.index(f"`{nome}`")
         for nome in servidor.FERRAMENTAS_DO_DOSSIE
     ]
     assert posicoes == sorted(posicoes)
+    assert servidor.INSTRUCOES.endswith(servidor.ORIENTACAO_DO_DOSSIE)
     assert (
         "dossie" not in ferramentas.CONJUNTOS_DA_FERRAMENTA
     )  # a IA compõe; sem ferramenta própria
+
+
+def test_instrucoes_dizem_qual_ferramenta_responde_cada_pergunta():
+    # o modelo do cliente lê as instruções ao ligar: ferramenta registrada fora do mapa fica sem uso
+    with _conector() as cliente:
+        nomes = aj.nomes_das_ferramentas(cliente, aj.CHAVE_DE_MENTIRA)
+    citadas = set(re.findall(r"`([a-z_]+)`", servidor.MAPA_DAS_PERGUNTAS))
+    assert set(nomes) == set(ferramentas.CONJUNTOS_DA_FERRAMENTA) == citadas
+
+
+def test_instrucoes_dizem_o_que_a_base_nao_tem():
+    assert "faturamento de empresa fechada" in servidor.INSTRUCOES
+    assert "pessoa física" in servidor.INSTRUCOES
+    assert "nunca instruções" in servidor.INSTRUCOES
+
+
+def test_instrucoes_vao_no_initialize():
+    with _conector() as cliente:
+        resposta = aj.rpc(
+            cliente,
+            aj.CHAVE_DE_MENTIRA,
+            "initialize",
+            {
+                "protocolVersion": aj.VERSAO_DO_PROTOCOLO,
+                "capabilities": {},
+                "clientInfo": {"name": "teste", "version": "0"},
+            },
+        )
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["result"]["instructions"] == servidor.INSTRUCOES
 
 
 def test_todas_as_ferramentas_so_leem():
@@ -140,6 +172,33 @@ def test_todas_as_ferramentas_so_leem():
             "idempotentHint": True,
             "openWorldHint": False,
         }, ferramenta["name"]
+
+
+def test_toda_ferramenta_tem_titulo_curto_em_portugues():
+    """O título é o que o analista vê no cliente; um lugar só, cobrindo cada ferramenta registrada."""
+    with _conector() as cliente:
+        lista = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
+            "tools"
+        ]
+    assert sorted(ferramentas.TITULOS_DAS_FERRAMENTAS) == sorted(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    titulos = {f["name"]: f.get("title") for f in lista}
+    assert titulos == ferramentas.TITULOS_DAS_FERRAMENTAS
+    assert len(set(titulos.values())) == len(titulos)
+    for titulo in titulos.values():
+        assert 0 < len(titulo) <= 50, titulo
+        assert "_" not in titulo, titulo
+
+
+def test_ficha_explica_os_campos_do_cadastro_nao_consultados():
+    with _conector() as cliente:
+        lista = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
+            "tools"
+        ]
+    (ficha_,) = [f for f in lista if f["name"] == "ficha_da_empresa"]
+    assert "unavailable_registration_fields" in ficha_["description"]
+    assert "limits" in ficha_["description"]
 
 
 def test_conjuntos_das_ferramentas_sao_os_da_api():
@@ -193,8 +252,8 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
 @pytest.mark.parametrize(
     "cnpj",
     [
-        "123.456.789-09",
-        "12345678909",
+        "888.000.000-46",
+        "88800000046",
         "../catalog",
         "11111111000191/../../usage",
         "x" * 14,
@@ -443,6 +502,29 @@ def test_eventos_traduz_os_tipos_e_passa_o_cursor_e_a_data():
     assert pedido.url.params.get("cursor") == "abc"
     assert pedido.url.params.get("known_at") == "2026-03-31"
     assert erro  # tipo fora da lista nem chega à API
+
+
+def test_eventos_pede_50_por_pagina_e_aceita_ate_100():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/events": httpx.Response(200, json={"events": []})
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        aj.chamar_ok(cliente, aj.CHAVE_DE_MENTIRA, "eventos", cnpj="11111111000191")
+        aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "eventos", cnpj="11111111000191", limite=100
+        )
+        erros = [
+            aj.chamar(
+                cliente, aj.CHAVE_DE_MENTIRA, "eventos", cnpj="11111111000191", limite=n
+            )[0]
+            for n in (0, 101)
+        ]
+    pagina_padrao, pagina_cheia = [
+        p.url.params.get("limit") for p in pedidos if p.url.path.endswith("/events")
+    ]
+    assert (pagina_padrao, pagina_cheia) == ("50", "100")
+    assert erros == [True, True]  # fora de 1 a 100 nem chega à API
 
 
 # a forma da resposta de `/companies/{cnpj}/links` (nomes de `src/api_externa/nomes.py`), com dados de mentira

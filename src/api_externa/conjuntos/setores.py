@@ -10,7 +10,12 @@ CVM), e a ficha é o lugar onde essa conta já está feita e conferida, a mesma 
 
 Cada coluna passa pelo portão com a fonte de onde saiu: a concentração (`concentracao_<série>`) e a
 participação das companhias (`participacao_dos_membros`) pela fonte da agência da série, a lista das
-companhias pela CVM. Coluna sem linha de direito não aparece; série sem nada liberado some.
+companhias pela CVM. Coluna sem linha de direito não aparece.
+
+A parte que o portão não libera não some em silêncio (linha 882, `src/api_externa/nao_disponivel.py`): sem a
+série, o mercado leria como "a agência não mede"; sem a lista das companhias, como "o setor não tem companhia
+aberta". A série sem nenhuma coluna liberada vai em `series_nao_disponiveis` (o nome dela) e a lista das
+companhias barrada vai em `blocos_nao_disponiveis`; os limites avisam que a resposta não diz nada sobre elas.
 
 Datas: a base não guarda quando a agência publicou cada mês da série nem quando a ligação ficou pública
 (`ITENS_SEM_DATA_DE_PUBLICACAO` da base), então `publico_em` é o dia da noite (o dado já era público nele,
@@ -22,13 +27,16 @@ CNPJ de 14 dígitos não sai, mesmo que a noite a traga. O lado a lado por entid
 """
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
 from src import dossie
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.nomes import NOMES_DE_FORA
 from src.relatorio_setor import POR_CHAVE
 
 CONJUNTO = "sectors"
@@ -45,6 +53,27 @@ COLUNAS_DA_PARTICIPACAO = (
 COLUNAS_DOS_MEMBROS = ("cnpj", "empresa", "motivo")
 TAMANHO_DO_CNPJ = 14
 TAMANHO_DO_DIA = 10  # "2025-12-31" (a noite pode gravar "2025-12-31T00:00:00")
+# os nomes de dentro das listas do que o portão não libera: as séries de agência e os blocos (os membros)
+SERIES_NAO_DISPONIVEIS = "series_nao_disponiveis"
+BLOCOS_NAO_DISPONIVEIS = "blocos_nao_disponiveis"
+LIMITE_DA_SERIE_NAO_DISPONIVEL = nao_disponivel.aviso(
+    SERIES_NAO_DISPONIVEIS, "séries", "o mercado do setor"
+)
+LIMITE_DO_BLOCO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    BLOCOS_NAO_DISPONIVEIS, "blocos", "a resposta"
+)
+
+
+def limites(series_de_fora: Sequence[str], blocos_de_fora: Sequence[str]) -> list[str]:
+    """Os limites de um setor: só os avisos das listas que não estão vazias."""
+    return [
+        aviso
+        for aviso, de_fora in (
+            (LIMITE_DA_SERIE_NAO_DISPONIVEL, series_de_fora),
+            (LIMITE_DO_BLOCO_NAO_DISPONIVEL, blocos_de_fora),
+        )
+        if de_fora
+    ]
 
 
 @dataclass(frozen=True)
@@ -92,6 +121,11 @@ class LeitorDeSetores:
         self._restantes = linhas_maximas
         self._cortada = False
         self._fontes: set[str] = set()
+        self._series_de_fora: list[str] = []
+
+    def _liberada(self, fonte: str, colunas: tuple[str, ...], derivado: bool) -> bool:
+        """O portão libera alguma das colunas dessa fonte."""
+        return any(self.permitido(fonte, nome, derivado) for nome in colunas)
 
     def _linha(
         self,
@@ -145,6 +179,10 @@ class LeitorDeSetores:
             if serie is None:
                 continue
             fonte = serie.fonte_b13
+            colunas = (*COLUNAS_DA_CONCENTRACAO, *COLUNAS_DA_PARTICIPACAO)
+            if not self._liberada(fonte, colunas, True):
+                self._series_de_fora.append(serie.nome)
+                continue
             concentracao = self._linhas(
                 linhas, COLUNAS_DA_CONCENTRACAO, fonte, dia, True
             )
@@ -180,6 +218,11 @@ class LeitorDeSetores:
         linhas = self.linhas_maximas - self._restantes
         if linhas == 0:
             return None
+        blocos_de_fora = (
+            []
+            if self._liberada(FONTE_DOS_MEMBROS, COLUNAS_DOS_MEMBROS, False)
+            else [TABELA_DOS_MEMBROS]
+        )
         corpo = {
             "setor": chave,
             "nome": setor.nome,
@@ -188,5 +231,8 @@ class LeitorDeSetores:
             TABELA_DOS_MEMBROS: membros_servidos,
             "avisos": list(noite.secao.paragrafos),
             "cortada": self._cortada,
+            SERIES_NAO_DISPONIVEIS: list(self._series_de_fora),
+            BLOCOS_NAO_DISPONIVEIS: [NOMES_DE_FORA[b] for b in blocos_de_fora],
+            "limites": limites(self._series_de_fora, blocos_de_fora),
         }
         return SetorServido(corpo, set(self._fontes), linhas)

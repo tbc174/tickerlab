@@ -7,12 +7,16 @@ depois de públicos) e contar como compra o que não é (fundador, mesmo grupo, 
 """
 
 import dataclasses
+import shutil
 from datetime import UTC, datetime
 
+import duckdb
 import pandas as pd
 import pytest
 
 from base import prontidao
+from base import recorte_dos_compradores as reduzidas
+from base.cnpj import digitos_verificadores
 from base.porta import Porta
 from base.prontidao import Prontidao, Prova
 from src import portao_externo as portao
@@ -90,6 +94,11 @@ ENTRADAS = [
 # fmt: on
 
 
+def _cnpj(raiz: str) -> str:
+    """O CNPJ da matriz com o dígito verificador certo (a cópia reduzida só leva CNPJ que confere)."""
+    return f"{raiz}0001{digitos_verificadores(f'{raiz}0001')}"
+
+
 def _estabelecimentos() -> pd.DataFrame:
     tabela = pd.DataFrame(
         ESTABELECIMENTOS,
@@ -144,7 +153,7 @@ def _entradas() -> pd.DataFrame:
 def _fundos() -> pd.DataFrame:
     return pd.DataFrame({
         "ID_Registro_Fundo": ["1", "2"],
-        "CNPJ_Fundo": [f"{FUNDO[:2]}.{FUNDO[2:5]}.{FUNDO[5:]}/0001-00", f"{FUNDADORA}000100"],
+        "CNPJ_Fundo": [f"{FUNDO[:2]}.{FUNDO[2:5]}.{FUNDO[5:]}/0001-{_cnpj(FUNDO)[-2:]}", _cnpj(FUNDADORA)],
         "Tipo_Fundo": ["FIP", "FIP"],
         "Data_Registro": pd.to_datetime(["2020-01-01", "2015-01-01"]).date,
         "Data_Cancelamento": [None, pd.Timestamp("2020-01-01").date()],  # o FIP cancelado não conta
@@ -155,12 +164,12 @@ def _fundos() -> pd.DataFrame:
 def _controladas() -> pd.DataFrame:
     # a versão 2 do FRE de 2025 só chega em 20/10/2026; a do RJ é de um FRE antigo, que o de 2025 substitui
     return pd.DataFrame({
-        "cnpj_companhia": [f"{ABERTA}000100"] * 3,
+        "cnpj_companhia": [_cnpj(ABERTA)] * 3,
         "referencia": pd.to_datetime(["2025-12-31", "2025-12-31", "2020-12-31"]).date,
         "versao": [1, 2, 1],
         "conhecido_em": pd.to_datetime(["2026-05-30", "2026-10-20", "2021-05-30"]).date,
         "origem_coletada_em": pd.to_datetime(["2026-06-01", "2026-10-21", "2021-06-01"]).date,
-        "cnpj": [f"{ALVO_SP}000100", f"{ALVO_SP}000100", f"{ALVO_RJ}000100"],
+        "cnpj": [_cnpj(ALVO_SP), _cnpj(ALVO_SP), _cnpj(ALVO_RJ)],
         "tipo": ["controlada", "controlada", "coligada"],
         "participacao": [60.0, 70.0, 20.0],
     }).assign(**CARIMBOS)  # fmt: skip
@@ -179,15 +188,23 @@ def pasta(tmp_path, monkeypatch):
     _gravar(base / compradores.ENTRADAS / "parte.parquet", _entradas())
     _gravar(base / "fidc" / "cadastro" / "registro_fundo.parquet", _fundos())
     _gravar(base / compradores.CONTROLADAS / "2025.parquet", _controladas())
+    # o FIP só sai da cópia reduzida (a do VPS), montada do registro inteiro pela mesma função do recorte
+    reduzidas.montar_fips_registrados(
+        duckdb.connect(),
+        [base / "fidc" / "cadastro" / "registro_fundo.parquet"],
+        sorted((base / compradores.EMPRESAS).glob("*.parquet")),
+        base / compradores.FIPS_REGISTRADOS / f"{compradores.FIPS_REGISTRADOS}.parquet",
+    )
     monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
     return base
 
 
+# o FIP: o portão confere a cópia `fips_registrados` (a tabela servida no VPS), não o registro inteiro
 TABELAS = (
     compradores.ESTABELECIMENTOS,
     compradores.EMPRESAS,
     compradores.ENTRADAS,
-    compradores.FUNDOS,
+    compradores.FIPS_REGISTRADOS,
     compradores.CONTROLADAS,
 )
 
@@ -357,7 +374,7 @@ def test_como_era_antes_da_versao_nova_do_fre_e_do_retrato_de_outubro(cliente, c
 
 def test_versao_nova_do_fre_sem_a_controlada_tira_o_sinal(cliente, cenario, pasta):
     # a versão 2 do FRE de 2025 já não traz a controlada do setor: vale a versão mais nova da companhia
-    fre = _controladas().iloc[:2].assign(cnpj=[f"{ALVO_SP}000100", f"{FORA}000100"])
+    fre = _controladas().iloc[:2].assign(cnpj=[_cnpj(ALVO_SP), _cnpj(FORA)])
     _gravar(pasta / compradores.CONTROLADAS / "2025.parquet", fre)
     assert ABERTA not in _raizes(_get(cliente, cenario))
     assert ABERTA in _raizes(_get(cliente, cenario, known_at="2026-10-15"))
@@ -426,3 +443,227 @@ def test_sem_contrato_do_conjunto_e_404(banco, monkeypatch, pasta):
     cliente = aj.cliente_da_api(monkeypatch, AGORA)
     resposta = cliente.get(ROTA, params={"cnae": SETOR}, headers=aj.bearer(chave.valor))
     assert resposta.status_code == 404
+
+
+# ---------------------------------------------------------------- sinal não disponível (linha 881)
+
+
+def test_com_todos_os_sinais_a_lista_de_fora_sai_vazia(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_signals"] == []
+    assert corpo["limits"] == list(compradores.LIMITES)
+    assert compradores.LIMITE_DO_SINAL_NAO_DISPONIVEL not in corpo["limits"]
+
+
+def test_sem_a_tabela_na_base_o_sinal_tambem_fica_de_fora(cliente, cenario, pasta):
+    """A base sem a tabela do FRE: o sinal não foi consultado, como se o portão o barrasse."""
+    for arquivo in (pasta / compradores.CONTROLADAS).iterdir():
+        arquivo.unlink()
+    (pasta / compradores.CONTROLADAS).rmdir()
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_signals"] == ["controls_in_sector"]
+
+
+@pytest.fixture
+def duas(banco, monkeypatch, pasta):
+    """Duas organizações: uma com o contrato de `buyers`, outra só com o de `prospecting`; o FRE sem
+    prontidão (o sinal das controladas barrado pelo portão)."""
+    ator = aj.admin(banco)
+    com_buyers = aj.organizacao(banco, ator, "Organização com compradores")
+    sem_buyers = aj.organizacao(banco, ator, "Organização sem compradores")
+    aj.contrato(banco, ator, com_buyers, conjunto=compradores.CONJUNTO)
+    aj.contrato(banco, ator, sem_buyers, conjunto="prospecting")
+    sem_fre = tuple(t for t in TABELAS if t != compradores.CONTROLADAS)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fre))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    return (
+        cliente,
+        aj.chave(banco, ator, com_buyers).valor,
+        aj.chave(banco, ator, sem_buyers).valor,
+    )
+
+
+def test_o_sinal_barrado_vem_como_nao_disponivel_e_os_limites_nao_falam_dele(duas):
+    """Sem a lista de fora, a falta da companhia aberta leria como "ninguém controla empresa no setor"."""
+    cliente, com_buyers, _sem_buyers = duas
+    resposta = cliente.get(ROTA, params={"cnae": SETOR}, headers=aj.bearer(com_buyers))
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert ABERTA not in _raizes(resposta)
+    assert corpo["unavailable_signals"] == ["controls_in_sector"]
+    assert compradores.LIMITE_DO_SINAL_NAO_DISPONIVEL in corpo["limits"]
+    assert "unavailable_signals" in compradores.LIMITE_DO_SINAL_NAO_DISPONIVEL
+    assert compradores.LIMITES_DO_SINAL[compradores.CONTROLA] not in corpo["limits"]
+    assert compradores.LIMITES_DO_SINAL[compradores.ENTROU] in corpo["limits"]
+    assert corpo["limits"][0] == compradores.LIMITES_GERAIS[0]
+    assert corpo["limits"][-1] == compradores.LIMITES_GERAIS[-1]
+
+
+def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
+    cliente, _com_buyers, sem_buyers = duas
+    resposta = cliente.get(ROTA, params={"cnae": SETOR}, headers=aj.bearer(sem_buyers))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_o_fundo_barrado_tira_so_o_sinal_do_fundo(cliente, cenario, monkeypatch):
+    sem_fundos = tuple(t for t in TABELAS if t != compradores.FIPS_REGISTRADOS)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fundos))
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_signals"] == ["fund_stake"]
+    assert compradores.LIMITES_DO_SINAL[compradores.FUNDO] not in corpo["limits"]
+
+
+def test_a_lista_de_fora_acompanha_o_portao_mesmo_com_a_resposta_guardada(
+    cliente, cenario, monkeypatch
+):
+    """A mesma pergunta com outro portão não pode receber a lista guardada do primeiro (o cache da 848)."""
+    assert _get(cliente, cenario).json()["unavailable_signals"] == []
+    sem_fre = tuple(t for t in TABELAS if t != compradores.CONTROLADAS)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fre))
+    assert _get(cliente, cenario).json()["unavailable_signals"] == [
+        "controls_in_sector"
+    ]
+
+
+# ---------------------------------------------------------------- as cópias reduzidas do VPS (linha 844)
+
+
+def _so_reduzidas(pasta) -> None:
+    """Troca as tabelas inteiras do FRE e do registro de fundos pelas cópias reduzidas, como no VPS."""
+    _montar_reduzidas(pasta)
+    shutil.rmtree(pasta / compradores.CONTROLADAS)
+    shutil.rmtree(pasta / "fidc")
+
+
+def _montar_reduzidas(pasta) -> None:
+    """Monta as cópias reduzidas ao lado das tabelas inteiras, conferidas pela mesma trava do recorte."""
+    con = duckdb.connect()
+    empresas = sorted((pasta / compradores.EMPRESAS).glob("*.parquet"))
+    origens = {
+        reduzidas.CONTROLADAS_PJ: sorted(
+            (pasta / compradores.CONTROLADAS).glob("*.parquet")
+        ),
+        reduzidas.FIPS_REGISTRADOS: [
+            pasta / "fidc" / "cadastro" / "registro_fundo.parquet"
+        ],
+    }
+    montar = {
+        reduzidas.CONTROLADAS_PJ: reduzidas.montar_controladas_pj,
+        reduzidas.FIPS_REGISTRADOS: reduzidas.montar_fips_registrados,
+    }
+    destinos = {nome: pasta / nome / f"{nome}.parquet" for nome in reduzidas.REDUZIDAS}
+    for nome, destino in destinos.items():
+        montar[nome](con, origens[nome], empresas, destino)
+    reduzidas.conferir_reduzidas(con, destinos, empresas)
+
+
+def test_so_com_as_copias_reduzidas_a_resposta_e_a_mesma(cliente, cenario, pasta):
+    antes = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    _so_reduzidas(pasta)
+    depois = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    assert depois == antes
+    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
+        "took_stake",
+        "fund_stake",
+    ]
+    assert ABERTA in _raizes(_get(cliente, cenario))
+
+
+def test_na_copia_reduzida_a_versao_nova_sem_a_controlada_tambem_tira_o_sinal(
+    cliente, cenario, pasta
+):
+    # a versão 2 só tem uma controlada fora da lista sem pessoa (MEI, por exemplo): ela não vai à cópia, mas a
+    # marca do documento vai, e a versão 1 não volta a valer
+    sem_lista = "99000099"
+    assert sem_lista not in NOMES
+    fre = _controladas().iloc[:2].assign(cnpj=[_cnpj(ALVO_SP), _cnpj(sem_lista)])
+    _gravar(pasta / compradores.CONTROLADAS / "2025.parquet", fre)
+    _so_reduzidas(pasta)
+    assert ABERTA not in _raizes(_get(cliente, cenario))
+    assert ABERTA in _raizes(_get(cliente, cenario, known_at="2026-10-15"))
+
+
+def test_na_copia_reduzida_o_portao_segue_pela_tabela_inteira(
+    cliente, cenario, pasta, monkeypatch
+):
+    # a prontidão é a da tabela de onde a cópia sai: sem a do FRE, o sinal não sai nem pela cópia
+    _so_reduzidas(pasta)
+    sem_fre = tuple(t for t in TABELAS if t != compradores.CONTROLADAS)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_fre))
+    resposta = _get(cliente, cenario)
+    assert resposta.status_code == 200
+    assert ABERTA not in _raizes(resposta)
+
+
+# ---------------------------------------------------------------- o FIP lê a tabela que o portão confere
+
+
+def _so_a_inteira_prontas() -> tuple[str, ...]:
+    return (
+        *(t for t in TABELAS if t != compradores.FIPS_REGISTRADOS),
+        compradores.FUNDOS,
+    )
+
+
+def test_o_fundo_nao_sai_pela_tabela_inteira_pronta(
+    cliente, cenario, pasta, monkeypatch
+):
+    # o registro inteiro tem fundo com CNPJ fora da lista sem pessoa: pronto ou não, ele não libera o sinal
+    _montar_reduzidas(pasta)
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: _regras(*_so_a_inteira_prontas())
+    )
+    resposta = _get(cliente, cenario)
+    assert resposta.status_code == 200
+    assert _comprador(resposta, FUNDO)["signals"] == ["took_stake"]
+    assert "fund_stake" in resposta.json()["unavailable_signals"]
+
+
+def test_com_as_duas_na_porta_o_fundo_sai_da_copia_e_a_resposta_e_a_mesma(
+    cliente, cenario, pasta
+):
+    antes = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    _montar_reduzidas(pasta)
+    # a inteira deixa de dizer FIP: se a leitura fosse por ela, o sinal sumiria
+    _gravar(
+        pasta / "fidc" / "cadastro" / "registro_fundo.parquet",
+        _fundos().assign(Tipo_Fundo="FIDC"),
+    )
+    depois = [
+        _get(cliente, cenario, known_at=dia).json()
+        for dia in ("2026-11-10", "2026-10-15")
+    ]
+    assert depois == antes
+    assert _comprador(_get(cliente, cenario), FUNDO)["signals"] == [
+        "took_stake",
+        "fund_stake",
+    ]
+
+
+def test_por_chave_so_com_a_tabela_inteira_o_fundo_e_recusado(cliente, cenario, pasta):
+    # sem a cópia na porta, o FIP nunca sai do registro inteiro (que tem CNPJ_Fundo fora da lista sem pessoa),
+    # nem com a inteira pronta: o sinal vem como não disponível e nada do registro de fundos vai na resposta
+    shutil.rmtree(pasta / compradores.FIPS_REGISTRADOS)
+    assert (pasta / "fidc" / "cadastro" / "registro_fundo.parquet").exists()
+    for prontas in (TABELAS, (*TABELAS, compradores.FUNDOS)):
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                rotas, "regras_da_api", lambda prontas=prontas: _regras(*prontas)
+            )
+            resposta = _get(cliente, cenario)
+        corpo = resposta.json()
+        assert resposta.status_code == 200
+        assert "fund_stake" in corpo["unavailable_signals"]
+        assert all("fund_stake" not in c["signals"] for c in corpo["buyers"])
+        assert "cvm-fidc-base" not in {f["source"] for f in corpo["sources"]}
+        assert _comprador(resposta, FUNDO)["signals"] == ["took_stake"]

@@ -108,6 +108,30 @@ def test_cnpj_que_a_base_nao_conhece_nao_esta_disponivel(cliente):
     assert dados["limites"] == list(eventos.LIMITES)
 
 
+def test_tipo_barrado_na_tela_vem_listado_e_os_limites_nao_falam_dele(
+    cliente, monkeypatch
+):
+    """Linha 878: com só as trocas de auditor prontas, a tela não pode dizer que os documentos do IPE foram
+    servidos nem deixar a lista curta parecer "a companhia não entregou documento"."""
+    monkeypatch.setattr(
+        rotas_da_api_externa,
+        "regras_da_api",
+        lambda: leitura_de_mentira._regras(("trocas_de_auditor",)),
+    )
+    dados = _pedir(cliente).json()
+    assert dados["estado"] == leitura.PRONTA
+    assert {e["tipo"] for e in dados["eventos"]} == {"auditor_change"}
+    assert dados["tipos_nao_disponiveis"] == ["ipe_filing"]
+    assert not any("IPE" in limite for limite in dados["limites"])
+    assert eventos.LIMITE_DO_TIPO_NAO_DISPONIVEL in dados["limites"]
+    assert all("known_at" not in limite for limite in dados["limites"])
+
+
+def test_com_tudo_pronto_nenhum_tipo_fica_de_fora_na_tela(cliente):
+    dados = _pedir(cliente).json()
+    assert dados["tipos_nao_disponiveis"] == []
+
+
 def test_sem_prontidao_e_estado_da_tela_nao_erro(cliente, monkeypatch):
     monkeypatch.setattr(
         rotas_da_api_externa, "regras_da_api", leitura_de_mentira._sem_prontidao

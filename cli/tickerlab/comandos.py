@@ -39,6 +39,10 @@ PONTUACAO_DO_CNPJ = re.compile(r"[.\-/\s]")
 FORMATO_DO_CNPJ = re.compile(r"[0-9A-Z]{14}")
 # a chave do setor como a API a dá (`tickerlab setor` lista); nada além disso chega ao endereço do pedido
 FORMATO_DO_SETOR = re.compile(r"[a-z0-9_]{1,40}")
+# o nome que a API sugere para o deck; qualquer outro (ou com pasta dentro) é ignorado
+NOME_DO_DECK = re.compile(
+    r'filename="(tickerlab-(?:empresa-\d{14}|setor-[a-z0-9_]{1,40})\.pptx)"'
+)
 INSTRUCOES = {"agents": "AGENTS.md", "skill": "SKILL.md"}
 # os filtros da busca (`prospectar`): o formato de cada um, conferido antes de gastar um pedido
 # o CNAE: a subclasse inteira (7 dígitos) ou um prefixo (divisão, grupo, classe)
@@ -61,6 +65,17 @@ PORTES = {
     "nao_informado": "not_informed",
 }
 POR_PAGINA_MAXIMO = 100
+# os registros na Anvisa (linha 860): o tipo em português na CLI e em inglês na API; "todos" é a soma dos tipos
+# que a API serve (cosméticos, saneantes e produtos para saúde)
+TIPOS_DA_ANVISA = {
+    "cosmeticos": "cosmetics",
+    "produtos_saude": "health_products",
+    "saneantes": "sanitizers",
+    "todos": "products",
+}
+REGISTROS_MAXIMOS = 10_000_000  # o teto da API para o mínimo de registros
+# a ordem da busca: só a de registros na Anvisa, do que tem mais para o que tem menos (o "-" é decrescente)
+ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}
 # os tipos de evento como a CLI os recebe e como a API os chama
 TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
 # os tipos de vínculo como a CLI os recebe e como a API os chama
@@ -163,6 +178,10 @@ class FiltrosDaBusca:
     aberta_depois: datetime | None = None
     aberta_antes: datetime | None = None
     so_matriz: bool = False
+    anvisa_tipo: str | None = None
+    anvisa_ativos_min: int | None = None
+    anvisa_total_min: int | None = None
+    ordenar_por: str | None = None
 
     def para_a_api(self) -> dict[str, str | list[str]]:
         """Os filtros com os nomes da API; erro de uso se não há nenhum além da situação."""
@@ -177,6 +196,8 @@ class FiltrosDaBusca:
             "opened_after": _dia(self.aberta_depois),
             "opened_before": _dia(self.aberta_antes),
             "head_office": "true" if self.so_matriz else None,
+            "anvisa_active_min": _inteiro(self.anvisa_ativos_min),
+            "anvisa_total_min": _inteiro(self.anvisa_total_min),
         }
         filtros: dict[str, str | list[str]] = {
             **{nome: valores for nome, valores in listas.items() if valores},
@@ -189,11 +210,19 @@ class FiltrosDaBusca:
             )
         if self.situacao:
             filtros["registration_status"] = list(self.situacao)
+        if self.anvisa_tipo:  # o tipo só escolhe qual contagem: sozinho não filtra (a API também o recusa)
+            filtros["anvisa_type"] = TIPOS_DA_ANVISA[self.anvisa_tipo]
+        if self.ordenar_por:  # a ordem não filtra: não conta como filtro
+            filtros["sort"] = ORDENS_DA_BUSCA[self.ordenar_por]
         return filtros
 
 
 def _dia(valor: datetime | None) -> str | None:
     return None if valor is None else valor.date().isoformat()
+
+
+def _inteiro(valor: int | None) -> str | None:
+    return None if valor is None else str(valor)
 
 
 def _api(contexto: click.Context) -> ApiDoTickerlab:
@@ -227,7 +256,8 @@ def _mostrar(
     if como_json:
         click.echo(json.dumps(corpo, ensure_ascii=False, indent=2))
     else:
-        click.echo(formatar(corpo))
+        texto = formato.com_aviso_de_nao_disponivel(formatar(corpo), corpo)
+        click.echo(formato.com_aviso_de_piloto(texto, corpo))
 
 
 def _extensao_da_planilha(
@@ -260,6 +290,15 @@ opcao_planilha = click.option(
     help="Grava a resposta numa planilha para o Excel: .xlsx (uma aba por tabela, mais a aba das fontes) "
     "ou .csv (separado por ponto e vírgula, um arquivo por tabela). Cada linha leva a fonte e a data.",
 )
+
+
+def _cnpj_opcional(
+    contexto: click.Context, parametro: click.Parameter, valor: str | None
+) -> str | None:
+    """O CNPJ de `deck`, que também aceita --setor no lugar dele."""
+    return None if valor is None else _cnpj(contexto, parametro, valor)
+
+
 argumento_cnpj = click.argument("cnpj", callback=_cnpj)
 
 
@@ -503,7 +542,8 @@ def vinculos(
 @click.option(
     "--todas",
     is_flag=True,
-    help="Segue as páginas até o fim e junta tudo numa resposta (cada página é um pedido da quota).",
+    help="Segue as páginas até o fim e junta tudo numa resposta (cada página é um pedido da quota). Sem ela, "
+    "só os 50 eventos mais novos.",
 )
 @opcao_planilha
 @opcao_json
@@ -527,6 +567,28 @@ def eventos(
         cnpj, _dia(como_era), [TIPOS_DE_EVENTO[tipo] for tipo in tipos], todas
     )
     _mostrar(corpo, como_json, formato.eventos, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def ativos(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os ativos da empresa por bloco (hoje, contratos de E&P da ANP), cada um com fonte e data.
+
+    Bloco sem dado vem com `found` falso; o que a base ainda não cobre vem em `not_covered`. Não achado
+    não quer dizer que a empresa não tem o ativo: leia os `limits`. Só pessoa jurídica.
+    """
+    corpo = _api(contexto).ativos(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
 
 @principal.command()
@@ -575,6 +637,77 @@ def fundo(
     """Cadastro, taxas e carteira do fundo (CVM); com --retorno-suposto, o custo da taxa em prazos."""
     corpo = _api(contexto).fundo(cnpj, _dia(como_era), retorno_suposto)
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+def _nome_do_deck(cabecalho: str | None, padrao: str) -> str:
+    """O nome sugerido pela API no cabeçalho, só se tiver o formato esperado; senão o padrão local."""
+    achado = NOME_DO_DECK.search(cabecalho or "")
+    return achado.group(1) if achado else padrao
+
+
+@principal.command()
+@click.argument("cnpj", required=False, callback=_cnpj_opcional)
+@click.option(
+    "--setor",
+    "chave_do_setor",
+    callback=_setor,
+    help="O deck do setor (a chave que `tickerlab setor` lista) em vez do de uma empresa.",
+)
+@opcao_como_era
+@click.option(
+    "--saida",
+    "saida",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Onde gravar o .pptx. Sem isto, grava aqui mesmo com o nome que a API sugere.",
+)
+@click.option(
+    "--substituir",
+    is_flag=True,
+    help="Troca o arquivo se ele já existir (sem isto a CLI recusa, para não apagar nada).",
+)
+@click.pass_context
+def deck(
+    contexto: click.Context,
+    cnpj: str | None,
+    chave_do_setor: str | None,
+    como_era: datetime | None,
+    saida: Path | None,
+    substituir: bool,
+) -> None:
+    """Grava o deck (.pptx) da empresa (CNPJ) ou do setor (--setor), com a fonte e a data de cada tabela.
+
+    Um dos dois: `tickerlab deck 11222333000181` ou `tickerlab deck --setor eletricas`. Gasta um pedido da
+    quota, como o JSON da mesma rota.
+    """
+    if (cnpj is None) == (chave_do_setor is None):
+        raise click.UsageError(
+            "peça o deck de uma empresa (CNPJ) ou de um setor (--setor), um dos dois."
+        )
+    api = _api(contexto)
+    if cnpj is not None:
+        conteudo, cabecalho = api.deck_da_empresa(cnpj, _dia(como_era))
+        padrao = f"tickerlab-empresa-{cnpj}.pptx"
+    else:
+        conteudo, cabecalho = api.deck_do_setor(chave_do_setor or "", _dia(como_era))
+        padrao = f"tickerlab-setor-{chave_do_setor}.pptx"
+    destino = saida or Path(_nome_do_deck(cabecalho, padrao))
+    if destino.suffix.lower() != ".pptx":
+        raise click.UsageError("--saida termina em .pptx.")
+    if destino.exists() and not substituir:
+        raise ErroDaCli(
+            f"{destino} já existe: use outro --saida ou --substituir para trocar o arquivo.",
+            Saida.PEDIDO_INVALIDO,
+        )
+    try:
+        destino.write_bytes(conteudo)
+    except OSError as erro:
+        raise ErroDaCli(
+            f"não consegui gravar o deck em {destino}: {erro.strerror or erro}",
+            Saida.ERRO,
+        ) from None
+    click.echo(
+        f"Deck gravado em {destino} (cada tabela com a fonte e a data). {formato.AVISO}"
+    )
 
 
 @principal.command()
@@ -663,6 +796,27 @@ def setor(
     "--so-matriz", is_flag=True, help="Só a matriz de cada empresa, sem as filiais."
 )
 @click.option(
+    "--anvisa-tipo",
+    type=click.Choice(list(TIPOS_DA_ANVISA)),
+    help="Tipo de registro na Anvisa que as opções abaixo contam: cosmeticos, saneantes, produtos_saude ou "
+    "todos (a soma dos três; é o que vale se você der só o mínimo).",
+)
+@click.option(
+    "--anvisa-ativos-min",
+    type=click.IntRange(1, REGISTROS_MAXIMOS),
+    help="Só empresas com pelo menos este número de registros ativos na Anvisa. É sinal de porte, não faturamento.",
+)
+@click.option(
+    "--anvisa-total-min",
+    type=click.IntRange(1, REGISTROS_MAXIMOS),
+    help="Só empresas com pelo menos este número de registros na Anvisa, ativos ou não.",
+)
+@click.option(
+    "--ordenar-por",
+    type=click.Choice(list(ORDENS_DA_BUSCA)),
+    help="Ordena em vez de por CNPJ: anvisa põe primeiro quem tem mais registros ativos na Anvisa.",
+)
+@click.option(
     "--por-pagina",
     type=click.IntRange(1, POR_PAGINA_MAXIMO),
     help=f"Empresas por página (até {POR_PAGINA_MAXIMO}; sem ela, o padrão da API).",
@@ -687,7 +841,10 @@ def prospectar(
 ) -> None:
     """Empresas por atividade, lugar, porte e idade, do cadastro da Receita (só empresa, nunca pessoa).
 
-    Pelo menos um filtro além da situação. A resposta vem em páginas, por ordem de CNPJ: sem --todas, só a
+    Pelo menos um filtro além da situação. Os registros na Anvisa (cosméticos, saneantes e produtos para saúde)
+    entram como sinal de porte de empresa fechada: --anvisa-ativos-min 200 --anvisa-tipo cosmeticos, com a fonte
+    e o dia do retrato em cada empresa; não é faturamento. A resposta vem em páginas, por ordem de CNPJ (ou de
+    registros, com --ordenar-por anvisa): sem --todas, só a
     primeira (e o aviso de que há mais). Com --planilha lista.xlsx, a lista vai para o Excel, com a fonte e
     a data de cada linha. Não traz sócio, contato nem endereço: para a ficha de uma empresa,
     `tickerlab empresa`.

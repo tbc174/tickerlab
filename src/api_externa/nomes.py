@@ -28,6 +28,9 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "fontes": "sources",
     "licenca": "license",
     "atribuicao": "attribution",
+    # D11: o bloco servido pela prontidão de piloto
+    "piloto": "pilot",
+    "aviso_de_piloto": "pilot_notice",
     # o catálogo
     "conjuntos": "datasets",
     "conjunto": "dataset",
@@ -100,9 +103,11 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "motivo_situacao": "registration_status_reason",
     "matriz": "head_office",
     "mes_do_retrato": "snapshot_month",
-    # companies: o histórico datado do nome, da natureza jurídica e do Simples (linha 686)
+    # companies: o nome e a natureza do retrato da lista sem pessoa, e de que mês (linha 861)
     "razao_social": "legal_name",
     "natureza_juridica": "legal_nature_code",
+    "mes_do_retrato_do_cadastro": "registry_snapshot_month",
+    # companies: o Simples do histórico datado (linha 686)
     "optante_simples": "simples_nacional",
     "data_opcao_simples": "simples_nacional_since",
     "data_exclusao_simples": "simples_nacional_until",
@@ -112,6 +117,11 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "porte": "size",
     "capital_social": "share_capital",
     "n_estabelecimentos": "active_establishments",
+    # registros na Anvisa (linha 860)
+    "registros_anvisa_total": "anvisa_registrations_total",
+    "registros_anvisa_ativos": "anvisa_registrations_active",
+    "anvisa_tipo": "anvisa_type",
+    "anvisa_aviso": "anvisa_notice",
     "cnae_principal": "cnae_code",
     "uf": "state_code",
     "municipio": "municipality",
@@ -153,11 +163,15 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "primeira_entrega": "first_filed_on",
     "dias_uteis_de_atraso": "business_days_late",
     "situacao_da_entrega": "filing_status",
+    "entregas_nao_disponiveis": "unavailable_filings",
+    # o campo do cadastro que o portão não libera no perfil (linha 891)
+    "campos_do_cadastro_nao_disponiveis": "unavailable_registration_fields",
     # comparables: os pares da companhia aberta (linha 736, PR 3), com os números do último DFP
     "grupo_de_setores": "sector_group",
     "empresa_pedida": "subject_company",
     "pares": "peers",
     "medianas_dos_pares": "peer_medians",
+    "numeros_nao_disponiveis": "unavailable_figures",
     "exercicio": "fiscal_year_end",
     "receita": "revenue",
     "ebitda": "ebitda",
@@ -170,6 +184,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     # events: os documentos do IPE e as trocas de auditor (linha 736, PR 4)
     "eventos": "events",
     "tipo_de_evento": "event_type",
+    "tipos_nao_disponiveis": "unavailable_event_types",
     "protocolo": "filing_id",
     "categoria": "category",
     "link": "document_url",
@@ -186,10 +201,15 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "id_na_rede": "entity_id",
     "raiz_do_cnpj": "cnpj_root",
     "participacao_no_capital": "ownership_pct",
+    "tipos_de_vinculo_nao_disponiveis": "unavailable_link_types",
     # buyers: quem já se mexeu num setor (linha 810, PR 4), só pessoa jurídica
     "compradores": "buyers",
     "total_de_compradores": "total_buyers",
     "sinais": "signals",
+    "sinais_nao_disponiveis": "unavailable_signals",
+    # o que o portão não libera em fundos e setores (linha 882)
+    "series_nao_disponiveis": "unavailable_series",
+    "blocos_nao_disponiveis": "unavailable_sections",
     "provas": "evidence",
     "quantas": "count",
     "exemplos": "examples",
@@ -212,6 +232,36 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "recorte": "excerpt_cut",
     "sha256": "original_sha256",
     "posicao": "location",
+    # assets: os ativos físicos nas bases das agências (linha 845), só pessoa jurídica
+    "contratos_de_petroleo_e_gas": "oil_gas_contracts",
+    "barragens_de_mineracao": "mining_dams",
+    "royalties_de_mineracao": "mining_royalties",
+    "achou": "found",
+    "dado_mais_novo": "latest_published_at",
+    "cobertura": "coverage",
+    "nao_coberto": "not_covered",
+    "periodo": "period",
+    "numero_do_contrato": "contract_number",
+    "bid": "bid_round",
+    "fase": "phase",
+    "nome_fantasia": "field_or_block_name",  # na ANP, o nome do campo ou do bloco do contrato
+    "bacia": "basin",
+    "ambiente": "onshore_offshore",
+    "participacao_pct": "contract_share_pct",
+    "operador": "is_operator",
+    "id": "dam_id",  # no SIGBM, o identificador da barragem
+    "nome_mina": "mine_name",
+    "categoria_risco": "risk_category",
+    "dano_potencial": "potential_damage",
+    "nivel_emergencia": "emergency_level",
+    "situacao_operacional": "operating_status",
+    "altura_atual_m": "height_m",
+    "volume_atual_m3": "reservoir_volume_m3",
+    "processo": "mining_process",
+    "substancia": "substance",
+    "valor_recolhido": "cfem_paid_brl",
+    "recolhido_12_meses": "cfem_paid_last_12_months_brl",
+    "ultima_competencia": "last_paid_month",
     "Tipo_Fundo": "fund_type",  # o campo do portão do sinal do FIP (não sai como chave)
 }
 

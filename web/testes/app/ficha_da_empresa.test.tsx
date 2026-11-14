@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CampoComFonteV1, FichaDaEmpresaV1 } from "../../src/app/tipos";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { abrirAba, abrirApp, respostaJson } from "./ajudantes";
 
 const CNPJ = "02.429.144/0001-93";
 const ROTA = "/api/v1/analista/ficha";
@@ -90,6 +90,7 @@ describe("ficha da empresa", () => {
   it("pronta: o CNPJ vai no corpo, e cada campo vem com o valor legível, a fonte e a data", async () => {
     const { buscar } = abrir(() => respostaJson(200, PRONTA));
     await verFicha(CNPJ);
+    await abrirAba("Cadastro");
     const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
     const [[endereco, pedido]] = pedidos(buscar);
     expect(String(endereco)).toBe(ROTA);
@@ -102,9 +103,11 @@ describe("ficha da empresa", () => {
     expect(within(cadastro).getByRole("row", { name: /Situação cadastral/ }).textContent).toContain("Ativa");
     expect(within(cadastro).getByRole("row", { name: /Matriz/ }).textContent).toContain("Sim");
     expect(within(cadastro).getByRole("row", { name: /Data da situação/ }).textContent).toContain("03/11/2005");
+    await abrirAba("Sinais");
     const entregas = screen.getByRole("region", { name: "Entregas de balanço à CVM" });
     expect(within(entregas).getByText("No prazo")).toBeTruthy();
     expect(within(entregas).getByText("cvm-hist-dfp")).toBeTruthy();
+    await abrirAba("Fontes e limites");
     const fontes = screen.getByRole("region", { name: "Fontes" });
     expect(within(fontes).getByText(/Receita Federal do Brasil/)).toBeTruthy();
     const limites = screen.getByRole("region", { name: "Limites e cuidados" });
@@ -114,12 +117,161 @@ describe("ficha da empresa", () => {
     expect(within(cadastro).getByRole("row", { name: /Mês do cadastro/ }).textContent).toContain("09/2026");
   });
 
+  it("em abas: o nome da empresa é o título, o Resumo abre primeiro com a frase e os números, cada um com fonte e data", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await verFicha(CNPJ);
+    expect(await screen.findByRole("heading", { level: 1, name: "EMPRESA MODELO S.A." })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 1, name: "Ficha da empresa" })).toBeNull());
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual([
+      "Resumo", "Cadastro", "Quem controla", "Sinais", "Eventos", "Vínculos", "Fontes e limites",
+    ]);
+    expect(screen.getByRole("tab", { name: "Resumo" }).getAttribute("aria-selected")).toBe("true");
+    const resumo = screen.getByRole("region", { name: "Resumo da ficha" });
+    expect(within(resumo).getByText(/consta como ativa na Receita desde 03\/11\/2005; é a matriz\./)).toBeTruthy();
+    expect(within(resumo).getByText("Situação cadastral").closest(".numero-do-painel")?.textContent).toContain("Ativa");
+    expect(within(resumo).getAllByText(/Fonte: rfb-cnpj · dado de 31\/10\/2026/).length).toBeGreaterThan(0);
+    // o que a ficha não traz é dito, nunca um zero
+    expect(within(resumo).getByText("Optante pelo Simples").closest(".numero-do-painel")?.textContent).toContain("Não temos");
+  });
+
+  it("só a aba aberta busca dado: os eventos só são pedidos quando a pessoa abre a aba", async () => {
+    const { buscar } = abrir(() => respostaJson(200, PRONTA));
+    await verFicha(CNPJ);
+    await screen.findByRole("region", { name: "Resumo da ficha" });
+    const dosEventos = () => buscar.mock.calls.filter(([e]) => String(e) === `${ROTA}/eventos`);
+    expect(dosEventos()).toHaveLength(0);
+    await abrirAba("Eventos");
+    await waitFor(() => expect(dosEventos()).toHaveLength(1));
+  });
+
   it("sem entregas: a frase fixa no lugar da tabela", async () => {
     abrir(() => respostaJson(200, SEM_ENTREGAS));
     await verFicha(CNPJ);
+    await abrirAba("Sinais");
     const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
     expect(within(entregas).queryByRole("table")).toBeNull();
     expect(within(entregas).getByText(/Sem entregas nesta ficha/)).toBeTruthy();
+  });
+
+  it("documento não liberado não vira 'sem entregas' (linha 897)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, entregas: [], entregas_nao_disponiveis: ["DFP", "ITR"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    await abrirAba("Sinais");
+    const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
+    expect(within(entregas).queryByText(/Sem entregas nesta ficha/)).toBeNull();
+    expect(within(entregas).getByText("Nenhuma entrega dos documentos consultados.")).toBeTruthy();
+    // dois documentos
+    expect(
+      within(entregas).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os documentos DFP e os documentos ITR. A falta deles aqui não quer dizer que a empresa não os tenha entregado.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um documento não liberado, a tabela que vem leva o aviso do outro", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, entregas_nao_disponiveis: ["ITR"] } }));
+    await verFicha(CNPJ);
+    await abrirAba("Sinais");
+    const entregas = await screen.findByRole("region", { name: "Entregas de balanço à CVM" });
+    expect(within(entregas).getByRole("table")).toBeTruthy();
+    // um documento só: a frase concorda
+    expect(within(entregas).getByText(/liberados para a tela: os documentos ITR\. A falta deles/)).toBeTruthy();
+  });
+
+  it("campo do cadastro não liberado aparece na seção, pelo nome da tela (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: {
+          ...PRONTA.ficha!,
+          campos_do_cadastro_nao_disponiveis: ["simples_nacional", "simples_nacional_since", "legal_name"],
+        },
+      }),
+    );
+    await verFicha(CNPJ);
+    await abrirAba("Cadastro");
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    // vários campos
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados dos campos “Optante pelo Simples”, “Entrou no Simples em” e “Razão social”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com um campo do cadastro não liberado, a frase concorda; campo sem nome na tela aparece como veio", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["registration_status_reason"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    await abrirAba("Cadastro");
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados do campo “Motivo da situação (código da Receita)”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+    cleanup();
+    abrir(() =>
+      respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["campo_novo"] } }),
+    );
+    await verFicha(CNPJ);
+    await abrirAba("Cadastro");
+    const outro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(outro).getByText(/liberados para a tela: os dados do campo “campo_novo”\./)).toBeTruthy();
+  });
+
+  it("o mês do retrato do cadastro tem nome na tela, na linha 'Não consultados' (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: ["registry_snapshot_month"] },
+      }),
+    );
+    await verFicha(CNPJ);
+    await abrirAba("Cadastro");
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(
+      within(cadastro).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os dados do campo “Mês do retrato do cadastro”. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("o mês do retrato do cadastro tem nome na tabela", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PRONTA,
+        ficha: {
+          ...PRONTA.ficha!,
+          cadastro_na_receita: {
+            ...PRONTA.ficha!.cadastro_na_receita,
+            mes_do_retrato_do_cadastro: campo("2026-08", "rfb-cnpj", "2026-09-30"),
+          },
+        },
+      }),
+    );
+    await verFicha(CNPJ);
+    await abrirAba("Cadastro");
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(cadastro).getByRole("row", { name: /Mês do retrato do cadastro/ }).textContent).toContain("08/2026");
+    expect(within(cadastro).queryByText("mes_do_retrato_do_cadastro")).toBeNull();
+  });
+
+  it("cadastro todo consultado não leva a linha 'Não consultados'", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, ficha: { ...PRONTA.ficha!, campos_do_cadastro_nao_disponiveis: [] } }));
+    await verFicha(CNPJ);
+    await abrirAba("Cadastro");
+    const cadastro = await screen.findByRole("region", { name: "Cadastro na Receita" });
+    expect(within(cadastro).queryByText(/Não consultados/)).toBeNull();
   });
 
   it("dado ainda não liberado: é estado da tela, sem alerta de erro e com os limites à vista", async () => {

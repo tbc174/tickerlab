@@ -22,6 +22,128 @@ AVISO_DE_CORTE = "Atenção: a resposta foi cortada no limite de linhas do plano
 AVISO = "Nada aqui é recomendação de investimento."
 
 
+CHAVE_DO_AVISO_DE_PILOTO = "pilot_notice"
+CHAVE_DO_PILOTO = "pilot"
+SEM_FRASE_DE_PILOTO = (
+    "Dado de piloto: a resposta marcou o dado como de piloto mas não trouxe o aviso."
+)
+
+
+def e_de_piloto(valor: object) -> bool:
+    """O campo (envelope) vem marcado pela API como dado de piloto."""
+    return isinstance(valor, Mapping) and valor.get(CHAVE_DO_PILOTO) is True
+
+
+def frase_do_envelope(envelope: Mapping) -> str:
+    """A frase de piloto do próprio envelope; sem ela, a linha que diz que a resposta não a trouxe."""
+    frase = envelope.get(CHAVE_DO_AVISO_DE_PILOTO)
+    return frase if isinstance(frase, str) and frase.strip() else SEM_FRASE_DE_PILOTO
+
+
+def frase_de_piloto_da_linha(linha: object) -> str | None:
+    """A frase de piloto de uma linha (de qualquer profundidade dela), ou None se a linha não é de piloto."""
+    for bloco in _percorrer(linha):
+        if e_de_piloto(bloco):
+            return frase_do_envelope(bloco)
+    return None
+
+
+def colunas_da_linha(linhas: Iterable[Mapping]) -> list[str]:
+    """As colunas de uma tabela de linhas: as chaves dos itens, sem as marcas de piloto (vão na coluna própria)."""
+    nomes = dict.fromkeys(nome for linha in linhas for nome in linha)
+    return [n for n in nomes if n not in (CHAVE_DO_PILOTO, CHAVE_DO_AVISO_DE_PILOTO)]
+
+
+def _percorrer(dado: object) -> Iterable[Mapping]:
+    """Todo dicionário da resposta, de qualquer nível."""
+    if isinstance(dado, Mapping):
+        yield dado
+        for valor in dado.values():
+            yield from _percorrer(valor)
+    elif isinstance(dado, list):
+        for item in dado:
+            yield from _percorrer(item)
+
+
+def avisos_de_piloto(dado: object) -> list[str]:
+    """As frases de piloto que a API mandou, distintas e na ordem; a CLI não escreve a frase, só repassa a que
+    veio. Dado marcado como piloto sem frase vira uma linha que diz isso (nunca some em silêncio)."""
+    frases: dict[str, None] = {}
+    sem_frase = False
+    for bloco in _percorrer(dado):
+        frase = bloco.get(CHAVE_DO_AVISO_DE_PILOTO)
+        if isinstance(frase, str) and frase.strip():
+            frases[frase] = None
+        elif e_de_piloto(bloco):
+            sem_frase = True
+    if sem_frase and not frases:
+        frases[SEM_FRASE_DE_PILOTO] = None
+    return list(frases)
+
+
+def com_aviso_de_piloto(texto: str, dado: object) -> str:
+    """Garante que toda frase de piloto da resposta aparece na saída (rede de segurança de toda tela)."""
+    faltam = [f for f in avisos_de_piloto(dado) if f not in texto]
+    if not faltam:
+        return texto
+    return "\n".join(f"Aviso de piloto: {f}" for f in faltam) + "\n\n" + texto
+
+
+# A API diz o que a organização não pode consultar em campos `unavailable_<o que>` (lista; a lista de dados
+# não diz nada sobre eles). Rótulo da tela por campo; o que não está aqui sai pelo próprio nome do campo.
+PREFIXO_NAO_DISPONIVEL = "unavailable_"
+ROTULOS_NAO_DISPONIVEIS = {
+    "unavailable_event_types": "tipos de evento",
+    "unavailable_link_types": "tipos de vínculo",
+    "unavailable_signals": "sinais de comprador",
+    "unavailable_filings": "entregas à CVM",
+    "unavailable_figures": "números dos comparáveis",
+    "unavailable_registration_fields": "campos do cadastro na Receita",
+}
+
+
+def nao_disponiveis(dado: object) -> dict[str, list[str]]:
+    """O que a API disse que não está disponível para a organização, por rótulo (de qualquer nível da resposta)."""
+    achados: dict[str, list[str]] = {}
+    for bloco in _percorrer(dado):
+        for chave, valores in bloco.items():
+            if not (
+                isinstance(chave, str)
+                and chave.startswith(PREFIXO_NAO_DISPONIVEL)
+                and isinstance(valores, list)
+            ):
+                continue
+            rotulo = ROTULOS_NAO_DISPONIVEIS.get(
+                chave, chave.removeprefix(PREFIXO_NAO_DISPONIVEL).replace("_", " ")
+            )
+            for valor in valores:
+                if str(valor) not in achados.setdefault(rotulo, []):
+                    achados[rotulo].append(str(valor))
+    return {rotulo: valores for rotulo, valores in achados.items() if valores}
+
+
+def aviso_de_nao_disponivel(dado: object) -> str | None:
+    """A frase de tela: o que não está disponível para a organização e que o resultado não diz nada sobre isso."""
+    itens = nao_disponiveis(dado)
+    if not itens:
+        return None
+    lista = "; ".join(
+        f"{rotulo}: {', '.join(valores)}" for rotulo, valores in itens.items()
+    )
+    return (
+        f"Parte dos dados não está disponível para a sua organização ({lista}). Não foi consultada: o "
+        "resultado abaixo não diz nada sobre ela."
+    )
+
+
+def com_aviso_de_nao_disponivel(texto: str, dado: object) -> str:
+    """Garante que o aviso de indisponível aparece na saída de toda tela (rede de segurança)."""
+    aviso = aviso_de_nao_disponivel(dado)
+    if aviso is None or aviso in texto:
+        return texto
+    return aviso + "\n\n" + texto
+
+
 def e_envelope(valor: object) -> bool:
     """Diz se o valor é um campo no envelope da API (valor, fonte e data)."""
     return isinstance(valor, Mapping) and "value" in valor and "source" in valor
@@ -75,14 +197,23 @@ def _data_do_envelope(envelope: Mapping) -> str:
     return celula(envelope.get("published_at"))
 
 
+def _rodape_de_piloto(frases: Iterable[str | None]) -> list[str]:
+    """Abaixo de uma tabela com dado de piloto, a frase de cada linha marcada (uma vez por frase)."""
+    return [f"Aviso de piloto: {f}" for f in dict.fromkeys(f for f in frases if f)]
+
+
 def _tabela_de_campos(campos: Mapping[str, Mapping]) -> str:
-    return tabela(
-        ("campo", "valor", "fonte", "público em"),
-        [
-            (nome, celula(env, nome), str(env["source"]), _data_do_envelope(env))
-            for nome, env in campos.items()
-        ],
+    com_piloto = any(e_de_piloto(env) for env in campos.values())
+    cabecalho = ["campo", "valor", "fonte", "público em"] + (
+        ["piloto"] if com_piloto else []
     )
+    corpo = [
+        [nome, celula(env, nome), str(env["source"]), _data_do_envelope(env)]
+        + (["sim" if e_de_piloto(env) else ""] if com_piloto else [])
+        for nome, env in campos.items()
+    ]
+    frases = [frase_de_piloto_da_linha(env) for env in campos.values()]
+    return "\n".join([tabela(cabecalho, corpo), *_rodape_de_piloto(frases)])
 
 
 def _fonte_e_data_da_linha(linha: Mapping) -> tuple[str, str]:
@@ -94,16 +225,24 @@ def _fonte_e_data_da_linha(linha: Mapping) -> tuple[str, str]:
 
 
 def _tabela_de_linhas(linhas: Sequence[Mapping]) -> str:
-    colunas = list(dict.fromkeys(nome for linha in linhas for nome in linha))
+    colunas = colunas_da_linha(linhas)
     com_fonte = any(e_envelope(v) for linha in linhas for v in linha.values())
-    cabecalho = [*colunas, *(("fonte", "público em") if com_fonte else ())]
+    frases = [frase_de_piloto_da_linha(linha) for linha in linhas]
+    com_piloto = any(frases)
+    cabecalho = [
+        *colunas,
+        *(("fonte", "público em") if com_fonte else ()),
+        *(("piloto",) if com_piloto else ()),
+    ]
     corpo = []
-    for linha in linhas:
+    for linha, frase in zip(linhas, frases, strict=True):
         celulas = [celula(linha.get(nome), nome) for nome in colunas]
         if com_fonte:
             celulas += _fonte_e_data_da_linha(linha)
+        if com_piloto:
+            celulas.append("sim" if frase else "")
         corpo.append(celulas)
-    return tabela(cabecalho, corpo)
+    return "\n".join([tabela(cabecalho, corpo), *_rodape_de_piloto(frases)])
 
 
 def tem_listas(item: Mapping) -> bool:
@@ -143,10 +282,12 @@ def _blocos(titulo: str, dado: Mapping, partes: list[str]) -> None:
         for nome, valor in dado.items()
         if not e_envelope(valor)
         and not isinstance(valor, Mapping | list)
-        and nome != "truncated"
+        and nome not in ("truncated", CHAVE_DO_AVISO_DE_PILOTO, CHAVE_DO_PILOTO)
     ]
     if titulo:
         partes.append(f"## {titulo}")
+    if isinstance(dado.get(CHAVE_DO_AVISO_DE_PILOTO), str):
+        partes.append(f"Aviso de piloto: {dado[CHAVE_DO_AVISO_DE_PILOTO]}")
     if soltos:
         partes.append("\n".join(soltos))
     if campos:
@@ -186,6 +327,13 @@ def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
     """Uma resposta em páginas: quantas linhas vieram, se há mais, e cada linha com a fonte e a data."""
     linhas = [e for e in corpo.get(lista) or [] if isinstance(e, Mapping)]
     topo = f"{len(linhas)} {nome} nesta resposta." if linhas else vazia
+    faltou = aviso_de_nao_disponivel(corpo)
+    if faltou:  # o "nenhum" só vale para o que foi consultado
+        topo = f"{faltou} " + (
+            f"{len(linhas)} {nome} nesta resposta."
+            if linhas
+            else f"Nos demais, nenhum dos {nome} até o dia. Sem evento não quer dizer que nada aconteceu."
+        )
     if corpo.get("next_cursor"):
         topo += (
             " Há mais: rode de novo com --todas para buscar as outras páginas (cada página é um pedido "
@@ -195,14 +343,42 @@ def _paginada(corpo: Mapping, lista: str, nome: str, vazia: str) -> str:
     return f"{topo}\n\n{resposta_de_dado(resto)}"
 
 
+SEPARADOR_DE_BLOCOS = "\n\n"
+CAMPOS_DA_ANVISA = ("anvisa_registrations_total", "anvisa_registrations_active")
+
+
+def _aviso_da_anvisa(corpo: Mapping) -> str | None:
+    """O aviso de que registro na Anvisa é sinal de porte (inteiro, sem o corte das células) e o dia do
+    retrato de onde saiu cada contagem: a coluna "público em" da tabela é a da Receita, não a da Anvisa."""
+    aviso = corpo.get("anvisa_notice")
+    if not isinstance(aviso, str):
+        return None
+    dias: set[str] = set()
+    for empresa in corpo.get("companies") or []:
+        for nome in CAMPOS_DA_ANVISA:
+            campo = empresa.get(nome) if isinstance(empresa, Mapping) else None
+            if isinstance(campo, Mapping) and campo.get("published_at"):
+                dias.add(str(campo["published_at"]))
+    dias = sorted(dias)
+    if not dias:
+        return aviso
+    return f"{aviso} Retrato da Anvisa de {', '.join(sorted(dias))} (fonte: anvisa-produtos)."
+
+
 def prospeccao(corpo: Mapping) -> str:
     """A busca de empresas: quantas vieram, se há mais, e cada empresa com a fonte e a data."""
-    return _paginada(
-        corpo,
+    aviso = _aviso_da_anvisa(corpo)
+    resto = {c: v for c, v in corpo.items() if c != "anvisa_notice"}
+    texto = _paginada(
+        resto,
         "companies",
         "empresas",
         "Nenhuma empresa com estes filtros. Afrouxe algum (CNAE mais curto, sem município...).",
     )
+    if aviso is None:
+        return texto
+    topo, _, depois = texto.partition(SEPARADOR_DE_BLOCOS)
+    return SEPARADOR_DE_BLOCOS.join([topo, f"Atenção: {aviso}", depois])
 
 
 def _ponta(ponta: object) -> str:
@@ -224,15 +400,19 @@ def vinculos_em_linhas(corpo: Mapping) -> dict:
             continue
         resto = {k: v for k, v in vinculo.items() if k not in ("from", "to")}
         origem, destino = vinculo.get("from"), vinculo.get("to")
-        linhas.append(
-            {
-                "hops": resto.pop("hops", None),
-                "kind": resto.pop("kind", None),
-                "de": _ponta(origem),
-                "para": _ponta(destino),
-                **resto,
-            }
-        )
+        achatada = {
+            "hops": resto.pop("hops", None),
+            "kind": resto.pop("kind", None),
+            "de": _ponta(origem),
+            "para": _ponta(destino),
+            **resto,
+        }
+        # a ponta achatada em texto perderia a marca de piloto do nome: a linha a leva
+        frase = frase_de_piloto_da_linha([origem, destino])
+        if frase and frase_de_piloto_da_linha(resto) is None:
+            achatada[CHAVE_DO_PILOTO] = True
+            achatada[CHAVE_DO_AVISO_DE_PILOTO] = frase
+        linhas.append(achatada)
     return {**corpo, "links": linhas}
 
 
@@ -354,6 +534,8 @@ def planilha_gravada(arquivos: Sequence[object], corpo: Mapping) -> str:
     return "\n\n".join(
         [
             f"Planilha gravada (cada linha com a fonte e a data):\n{lista}",
+            *(f"Aviso de piloto: {f}" for f in avisos_de_piloto(corpo)),
+            *([aviso] if (aviso := aviso_de_nao_disponivel(corpo)) else []),
             fontes(corpo.get("sources")),
             AVISO,
         ]

@@ -28,7 +28,13 @@ from src.banco.coletas import (
 AGORA = datetime(2026, 10, 22, 14, tzinfo=UTC)
 DUBLES = Path(__file__).parent / "arquivos" / "licitacoes"
 FONTES_DO_LOTE = {f.id: f for f in lote_licitacoes.fontes()}
-PESSOAS_FISICAS = ("98765432100", "JOAO DA SILVA", "11122233344", "maria", "Servidor")
+PESSOAS_FISICAS = (
+    "99900000774",
+    "PESSOA INVENTADA LICITACAO",
+    "11122233344",
+    "maria",
+    "Servidor",
+)
 
 
 class Servidor:
@@ -320,7 +326,7 @@ def test_api_que_nao_para_de_paginar_e_erro_e_nao_arquivo_cortado(tmp_path):
         b"",  # o 204 do PNCP, sem corpo
         b'{"data": [], "paginasRestantes": 0}',
         json.dumps(
-            {"data": [{"tipoPessoa": "PF", "niFornecedor": "98765432100"}]}
+            {"data": [{"tipoPessoa": "PF", "niFornecedor": "99900000774"}]}
         ).encode(),
     ],
 )
@@ -422,7 +428,7 @@ def test_tcu_pagina_pelo_offset_e_guarda_so_cnpj_formatado_ou_nao(tmp_path):
                     "processo": "1",
                 },
                 {
-                    "nome": "JOAO DA SILVA",
+                    "nome": "PESSOA INVENTADA LICITACAO",
                     "cpf_cnpj": "123.456.789-00",
                     "processo": "2",
                 },
@@ -561,7 +567,7 @@ def test_pagamentos_do_transferegov_usam_a_api_nova_com_pagina_e_tamanho():
 def test_pagamentos_guardam_so_cnpj_normalizado_sem_conta_nem_cpf(tmp_path):
     itens = [
         _subtransacao(1, "13399033000106"),
-        _subtransacao(2, "***456789**", "JOAO DA SILVA"),
+        _subtransacao(2, "***456789**", "PESSOA INVENTADA LICITACAO"),
     ]
     resto = [_subtransacao(3, "41499157000190", "VH ENGENHARIA LTDA")]
     saida = _ler_pagamentos(
@@ -577,7 +583,7 @@ def test_pagamentos_guardam_so_cnpj_normalizado_sem_conta_nem_cpf(tmp_path):
         "41499157000190",
     ]
     texto = json.dumps(saida)
-    assert "JOAO DA SILVA" not in texto
+    assert "PESSOA INVENTADA LICITACAO" not in texto
     for campo in ("codigo_banco", "codigo_agencia", "codigo_conta"):
         assert campo not in texto
     # a ligação com a transferência-mãe vai pela chave do lançamento, não por texto

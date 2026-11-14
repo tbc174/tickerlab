@@ -143,8 +143,8 @@ def _zip(pasta: Path, nome: str, linhas: list[tuple[str, str, str]]) -> Path:
 
 
 EMPRESAS_POR_MES = {
-    "2023-05": [[(A, "ALFA LTDA", "2062")], [(B, "FULANO 12345678909", "2135")]],
-    "2023-06": [[(A, "ALFA S.A.", "2054")], [(B, "FULANO 12345678909", "2135")]],
+    "2023-05": [[(A, "ALFA LTDA", "2062")], [(B, "FULANO 88800000046", "2135")]],
+    "2023-06": [[(A, "ALFA S.A.", "2054")], [(B, "FULANO 88800000046", "2135")]],
     "2023-07": [[(A, "ALFA S.A.", "2054")], [(C, "GAMA LTDA", "2062")]],
 }
 
@@ -180,7 +180,7 @@ def test_empresas_mes_a_mes_sem_nome_de_pessoa(tmp_path):
         da_b["razao_social"].isna().all()
     )  # empresário individual: o nome é da pessoa
     assert list(da_b[historico.CONSTA]) == [True, False]
-    assert "12345678909" not in versoes.to_string()
+    assert "88800000046" not in versoes.to_string()
     gravados = json.loads(
         (destino / montar.EMPRESAS / montar.MESES).read_text(encoding="utf-8")
     )

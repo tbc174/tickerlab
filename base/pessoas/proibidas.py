@@ -19,6 +19,9 @@ EXCECOES = {
     "cadastro_de_fundos.CPF_CNPJ_GESTOR": "só o CNPJ do gestor; vazio quando é pessoa física (base/fidc.py)",
     "cadastro_gestor_hist.CPF_CNPJ_GESTOR": "só o CNPJ do gestor; vazio quando é pessoa física (base/fidc.py)",
     "registro_de_fundos.CPF_CNPJ_Gestor": "só o CNPJ do gestor; vazio quando é pessoa física (base/fidc.py)",
+    # "saúde" é a categoria de produto da Anvisa (produtos para saúde, os correlatos), não dado de saúde de pessoa
+    "anvisa_por_empresa.produtos_saude_total": "contagem de registros de produtos para saúde por raiz de PJ (linha 860)",
+    "anvisa_por_empresa.produtos_saude_ativos": "contagem de registros de produtos para saúde por raiz de PJ (linha 860)",
 }
 CPF_PONTUADO = re.compile(r"^\d{3}\.\d{3}\.\d{3}-\d{2}$")
 CPF_CRU = re.compile(r"^(?!0{11}$)\d{11}$")

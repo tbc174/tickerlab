@@ -12,7 +12,9 @@ from datetime import date
 import openpyxl
 import pytest
 
+from base.prontidao import AVISO_DE_PILOTO
 from src.analista import planilha
+from src.api_externa import piloto as piloto_
 from src.api_externa.envelope import campo
 from src.api_externa.nomes import para_fora, traduzir_chaves
 
@@ -55,6 +57,11 @@ def _corpo(razao_social: str = "ALFA S.A.") -> dict:
             {"fonte": "cvm-hist-dfp", "licenca": "ODbL", "atribuicao": "CVM"},
         ],
     }
+
+
+def _corpo_de_piloto() -> dict:
+    """A mesma ficha como a rota a marca quando algum campo saiu pela prontidão de piloto (D11.3)."""
+    return piloto_.marcar(_corpo(), piloto_.Liberados({("rfb-cnpj", "razao_social")}))
 
 
 def _abrir(conteudo: bytes) -> openpyxl.Workbook:
@@ -164,11 +171,33 @@ def test_toda_entrada_do_zip_tem_a_data_fixa():
         }
 
 
-def test_mesmas_abas_linhas_e_colunas_da_planilha_da_cli():
-    """A planilha do app e a da CLI (773) dão a mesma forma para a mesma resposta: só os nomes mudam de
-    língua (a CLI recebe a resposta da API, em inglês)."""
+def test_dado_de_piloto_leva_a_frase_nos_campos_em_cada_linha_e_nas_fontes():
+    pasta = _abrir(planilha.xlsx(_corpo_de_piloto()))
+    campos = _linhas(pasta["campos"])
+    assert campos[0] == ["campo", "valor", "fonte", "publicado_em", "piloto"]
+    assert [
+        "cadastro_na_receita › matriz", True, "rfb-cnpj", "2025-01-31", AVISO_DE_PILOTO,
+    ] in campos  # fmt: skip
+    assert ["cnpj", "11111111000191", None, None, None] in campos
+    entregas = _linhas(pasta["entregas"])
+    assert entregas[0][-1] == "piloto"
+    assert [linha[-1] for linha in entregas[1:]] == [AVISO_DE_PILOTO] * 2
+    assert _linhas(pasta["fontes"])[-1] == ["aviso de piloto", AVISO_DE_PILOTO, None]
+
+
+def test_sem_dado_de_piloto_a_planilha_nao_fala_de_piloto():
+    for aba in planilha.abas(_corpo()):
+        assert "piloto" not in aba.cabecalho
+        assert all(linha[0] != "aviso de piloto" for linha in aba.linhas)
+
+
+@pytest.mark.parametrize(
+    "corpo", [_corpo(), _corpo_de_piloto()], ids=["cheia", "piloto"]
+)
+def test_mesmas_abas_linhas_e_colunas_da_planilha_da_cli(corpo):
+    """A planilha do app e a da CLI (773) dão a mesma forma para a mesma resposta, com e sem dado de piloto:
+    só os nomes mudam de língua (a CLI recebe a resposta da API, em inglês)."""
     cli = pytest.importorskip("tickerlab.planilha")
-    corpo = _corpo()
     da_cli = [
         *cli.tabelas_da_resposta(traduzir_chaves(corpo)),
         cli.tabela_das_fontes(traduzir_chaves(corpo)),
@@ -185,6 +214,7 @@ def test_mesmas_abas_linhas_e_colunas_da_planilha_da_cli():
         "licenca",
         "campos",
         "fontes",
+        "piloto",
     }
 
     def fora(nome: str) -> str:

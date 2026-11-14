@@ -48,11 +48,11 @@ ESTABELECIMENTOS_0 = (
     _estabelecimento("11222333", "0001", "81")
     + _estabelecimento("11222333", "0001", "81")  # repetido: sai um só
     + _estabelecimento("11222333", "0002", "62", matriz="2", situacao_cadastral="08")
-    + _estabelecimento("22333444", "0001", "81", email="52998224725@exemplo.com")
+    + _estabelecimento("22333444", "0001", "81", email="88800000127@exemplo.com")
 )
 EMPRESAS_0 = (
     '"11222333";"EMPRESA DE MENTIRA LTDA";"2062";"49";"0";"01";""\n'
-    '"22333444";"BELTRANO EXEMPLO 52998224725";"2135";"50";"0";"01";""\n'
+    '"22333444";"BELTRANO EXEMPLO 88800000127";"2135";"50";"0";"01";""\n'
 )
 MEMBROS = {
     "Socios": "K.SOCIOCSV",
@@ -302,14 +302,14 @@ def test_monta_so_o_titular_do_empresario_individual_sem_cpf(tmp_path):
         {
             "cnpj_basico": "22333444",
             "titular": "BELTRANO EXEMPLO",
-            "id_pessoa": next(iter(_opostos(("52998224725", "BELTRANO EXEMPLO")).ids)),
+            "id_pessoa": next(iter(_opostos(("88800000127", "BELTRANO EXEMPLO")).ids)),
             "mes_do_retrato": "2026-10",
         }
     ]
     assert manifesto["tabelas"][montar.INDIVIDUAIS] == {"linhas": 1, "empresas": 1}
     assert manifesto["descartes"][ri.NAO_E_INDIVIDUAL] == 1
     texto = (destino / montar.MANIFESTO).read_text(encoding="utf-8")
-    assert "BELTRANO" not in texto and "52998224725" not in texto
+    assert "BELTRANO" not in texto and "88800000127" not in texto
 
 
 # ------------------------------------------------ oposição do titular (linha 829)
@@ -355,7 +355,7 @@ def test_sem_oposicoes_monta_o_mesmo(tmp_path):
 
 def test_titular_individual_que_se_opos_sai_e_o_contato_da_raiz_dele_tambem(tmp_path):
     destino, manifesto = _montar_com(
-        tmp_path, _opostos(("52998224725", "BELTRANO EXEMPLO"))
+        tmp_path, _opostos(("88800000127", "BELTRANO EXEMPLO"))
     )
     assert _tabela(destino, montar.INDIVIDUAIS).empty
     assert manifesto["descartes"][ri.OPOSTO] == 1
@@ -367,20 +367,20 @@ def test_titular_individual_que_se_opos_sai_e_o_contato_da_raiz_dele_tambem(tmp_
 def test_oposicao_do_titular_nao_tira_o_socio_de_outra_empresa_com_o_mesmo_nome(
     tmp_path,
 ):
-    # BELTRANO EXEMPLO é sócio da raiz 22333444 (miolo 123456) e titular de outra (CPF 52998224725)
-    destino, _ = _montar_com(tmp_path, _opostos(("52998224725", "BELTRANO EXEMPLO")))
+    # BELTRANO EXEMPLO é sócio da raiz 22333444 (miolo 123456) e titular de outra (CPF 88800000127)
+    destino, _ = _montar_com(tmp_path, _opostos(("88800000127", "BELTRANO EXEMPLO")))
     assert "BELTRANO EXEMPLO" in set(_tabela(destino)["nome_socio"])
 
 
 def test_manifesto_so_leva_contagem_nunca_id_nome_nem_cpf(tmp_path):
     opostos = _opostos(
-        ("***123456**", "FULANA EXEMPLO"), ("52998224725", "BELTRANO EXEMPLO")
+        ("***123456**", "FULANA EXEMPLO"), ("88800000127", "BELTRANO EXEMPLO")
     )
     destino, _ = _montar_com(tmp_path, opostos)
     texto = (destino / montar.MANIFESTO).read_text(encoding="utf-8")
     assert not any(i in texto for i in opostos.ids)
     assert (
-        "FULANA" not in texto and "52998224725" not in texto and "123456" not in texto
+        "FULANA" not in texto and "88800000127" not in texto and "123456" not in texto
     )
 
 
@@ -430,7 +430,7 @@ def test_cpf_e_id_nunca_vao_a_arquivo_log_nem_saida(tmp_path, caplog, capsys):
     oposicoes.registrar(tmp_path / "restrita", list(ids), AGORA.date())
     with caplog.at_level("INFO"):
         assert montar.main(argumentos) == 0
-    proibidos = [b"123456", b"52998224725", b"FULANA", *(i.encode() for i in ids)]
+    proibidos = [b"123456", b"88800000127", b"FULANA", *(i.encode() for i in ids)]
     for arquivo in destino.rglob("*"):
         if arquivo.is_file():
             conteudo = arquivo.read_bytes()
@@ -471,7 +471,7 @@ def test_aplicar_no_acervo_tira_o_socio_e_e_idempotente(tmp_path):
 
 def test_aplicar_no_acervo_tira_o_titular_e_o_contato_da_raiz(tmp_path):
     destino = _montado_sem_oposicao(tmp_path)
-    ids = set(_opostos(("52998224725", "BELTRANO EXEMPLO")).ids)
+    ids = set(_opostos(("88800000127", "BELTRANO EXEMPLO")).ids)
     assert oposicao_na_tela.aplicar_no_acervo(destino, ids) >= 2
     assert _tabela(destino, montar.INDIVIDUAIS).empty
     assert set(_tabela(destino, montar.CONTATO)["cnpj_basico"]) == {"11222333"}
@@ -499,7 +499,7 @@ def test_pedido_do_dono_de_mei_acha_pela_raiz_e_pelo_nome_e_tira_do_acervo(
         ]
     )  # fmt: skip
     texto = capsys.readouterr().out
-    assert saida == 0 and "BELTRANO" not in texto.upper() and "52998224725" not in texto
+    assert saida == 0 and "BELTRANO" not in texto.upper() and "88800000127" not in texto
     assert _tabela(destino, montar.INDIVIDUAIS).empty
     assert set(_tabela(destino, montar.CONTATO)["cnpj_basico"]) == {"11222333"}
     assert len(oposicoes.ids_opostos(restrita)) == 1

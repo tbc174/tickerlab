@@ -12,6 +12,23 @@
     "url": "inicio"
   },
   {
+    "area": "inicio",
+    "chave": "perguntar",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "EstadoDoChatV1",
+      "rota": "/v1/chat/estado"
+    },
+    "descricao": "Pergunte em português sobre empresas brasileiras: a IA responde com a base do TickerLab, mostrando a fonte, a data e as consultas que fez.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Perguntar",
+    "url": "perguntar"
+  },
+  {
     "area": "conta",
     "chave": "o_que_mudou",
     "contrato": {
@@ -27,6 +44,40 @@
     "somente_admin": false,
     "titulo": "O que mudou",
     "url": "o-que-mudou"
+  },
+  {
+    "area": "mais",
+    "chave": "dados_e_cobertura",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "DadosECoberturaV1",
+      "rota": "/v1/dados-e-cobertura"
+    },
+    "descricao": "O que a base serve de verdade: cada tabela, o que traz, a fonte, a licença, o histórico e a frequência, como o catálogo público a declara.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Dados e cobertura",
+    "url": "dados-e-cobertura"
+  },
+  {
+    "area": "mais",
+    "chave": "conectar",
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "ConectarV1",
+      "rota": "/v1/conectar"
+    },
+    "descricao": "Ligue o TickerLab ao Claude ou ao ChatGPT e use a CLI: endereço do conector, passos, comandos e perguntas prontas para copiar.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Conectar",
+    "url": "conectar"
   },
   {
     "area": "ativo",

@@ -35,6 +35,8 @@ SEM_FERRAMENTA: dict[str, str] = {
     "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
     "dossie": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
+    "ativos": "a ferramenta do conector vem com a rota na produção (linha 845); a CLI já chama a rota",
+    "deck": "grava um arquivo .pptx no PC; o conector devolve texto, não arquivo (Diretoria 12/11, linha 782)",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
 }
 
@@ -54,6 +56,14 @@ CASOS = [
         {"uf": ["SC"], "cnae": ["2222600"], "aberta_antes_de": "2010-01-01", "so_matriz": True,
          "limite": 20},
         id="prospectar",
+    ),
+    pytest.param(
+        ["prospectar", "--uf", "SP", "--cnae", "2063100", "--anvisa-tipo", "cosmeticos",
+         "--anvisa-ativos-min", "200", "--anvisa-total-min", "250", "--ordenar-por", "anvisa", "--por-pagina", "20"],
+        "buscar_empresas",
+        {"uf": ["SP"], "cnae": ["2063100"], "anvisa_tipo": "cosmeticos", "anvisa_ativos_min": 200,
+         "anvisa_total_min": 250, "ordenar_por": "anvisa", "limite": 20},
+        id="prospectar_por_registros_na_anvisa",
     ),
     pytest.param(
         ["empresa", CNPJ, "--como-era", UM_DIA],

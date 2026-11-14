@@ -9,10 +9,12 @@ simples (a rota traduz as chaves na saída) cada ligação que valia no dia:
 - `audits`: a firma de auditoria que auditava a companhia, pelo FCA (`auditores`, fonte `cvm-hist-fca`).
 
 As outras ligações da rede (o fundo que detém o papel, quem emite o valor mobiliário, o conglomerado do BC e a
-série do regulador) não saem por aqui. Cada ponta sai com o id da rede, a raiz do CNPJ e a razão social que valia
-no dia, do histórico datado da Receita (`cnpj_empresas_historico`, o mesmo de `/companies`); o nome guardado na
-rede é o de hoje e não sai (num dia do passado, ele seria um dado do futuro). Cada campo sai no envelope, com a
-fonte e o dia em que ficou público.
+série do regulador) não saem por aqui. Cada ponta sai com o id da rede, a raiz do CNPJ e a razão social do
+retrato mensal mais novo da lista sem pessoa da Receita já público no dia (`cnpj_empresas_pj`, a mesma de
+`/companies`), com o mês dele (linha 867): é o nome daquele retrato, não o de cada dia, e a raiz que não está nele
+sai sem nome, mesmo que esteja num retrato mais velho. O histórico datado (`cnpj_empresas_historico`) não é lido:
+tem pessoa e não vai à base da API. O nome guardado na rede é o de hoje e não sai (num dia do passado, ele seria um
+dado do futuro). Cada campo sai no envelope, com a fonte e o dia em que ficou público.
 
 Sem olhar o futuro: a porta só devolve a ligação já pública no dia e esconde o fim que só se soube depois (D5:
 a ligação que acabou depois do dia ainda aparece no dia). Pessoa não sai (ADR 0108 D2.2): o CNPJ pedido só é
@@ -21,6 +23,7 @@ pessoa natural (vista publicada, ADR 0075), e aqui sai também a ligação com a
 pessoa (MEI, empresário individual, natureza não informada) ou que ainda não era pública no dia.
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -29,15 +32,16 @@ import pandas as pd
 from base import cnpj as cnpj_
 from base.porta import Porta
 from base.porta.rede import views
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
+from src.api_externa.conjuntos.empresas import FONTE as RECEITA
 from src.api_externa.conjuntos.empresas import (
-    CONSTA,
     MES,
     PUBLICADO_EM,
-    RAIZ,
+    RETRATO_DO_CADASTRO,
     e_empresa,
+    retratos_de_empresa,
 )
-from src.api_externa.conjuntos.empresas import FONTE as RECEITA
 from src.api_externa.envelope import campo
 
 CONJUNTO = "links"
@@ -46,7 +50,6 @@ CODIGO_DO_TIPO_INVALIDO = "invalid_link_type"
 PROFUNDIDADE_MAXIMA = 3
 FRE, FCA = "cvm-hist-fre", "cvm-hist-fca"
 SISTEMA_DA_RAIZ = "cnpj_raiz"
-HISTORICO_DOS_NOMES = "cnpj_empresas_historico"
 NOME = "razao_social"
 
 
@@ -71,29 +74,60 @@ TIPOS: dict[str, TipoDeVinculo] = {
 TIPO_PELO_NOME_DE_FORA = {tipo.de_fora: nome for nome, tipo in TIPOS.items()}
 # a chave da resposta quando a coluna tem outro sentido em outro conjunto ("participacao" é a do mercado)
 CHAVE_NA_RESPOSTA = {"participacao": "participacao_no_capital"}
-LIMITES = (
+# os limites que valem para a resposta inteira; os de cada fonte (`LIMITES_DA_FONTE`) só entram quando algum
+# tipo dela é servido, para a resposta não afirmar o que não consultou (linha 880)
+LIMITES_GERAIS = (
     (
         "Cada campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra, e a "
         "ligação que só se soube ter acabado depois do dia ainda aparece."
     ),
-    (
-        "Controle, coligação e participação vêm do FRE (só de companhia aberta, uma vez por ano, e só as "
-        "sociedades com CNPJ); a auditoria vem do FCA. Fundos, sócios e administradores não saem por aqui."
-    ),
-    (
-        "O tipo (controlada, coligada) e a participação no capital são os que a companhia escreveu no FRE, sem "
-        "correção nossa: um número estranho (uma controlada com 0,12% do capital) vem da própria entrega."
-    ),
+    "Fundos, sócios e administradores não saem por aqui.",
     (
         "Uma empresa sem vínculos não quer dizer que ela não tenha grupo: quer dizer que nenhuma fonte servida "
         "mostra um no dia. Nada aqui é recomendação de investimento."
     ),
     (
-        "O nome de cada ponta é a razão social que valia no dia, do histórico da Receita (que começa em 05/2023): "
-        "antes dele, ou numa ponta sem CNPJ, a ponta sai sem nome."
+        "O nome de cada ponta é a razão social do retrato mensal mais novo da Receita já público no dia, com o "
+        "mês dele (mes_do_retrato_do_cadastro): é o nome daquele retrato, não necessariamente o que valia no dia "
+        "exato. Antes do primeiro retrato, numa ponta sem CNPJ ou fora do retrato, a ponta sai sem nome."
     ),
     "Pessoa natural (MEI, empresário individual, sócio pessoa física) não é servida.",
 )
+
+LIMITES_DA_FONTE = {
+    FRE: (
+        "Controle, coligação e participação vêm do FRE (só de companhia aberta, uma vez por ano, e só as "
+        "sociedades com CNPJ). O tipo (controlada, coligada) e a participação no capital são os que a "
+        "companhia escreveu no FRE, sem correção nossa: um número estranho (uma controlada com 0,12% do "
+        "capital) vem da própria entrega."
+    ),
+    FCA: "A auditoria vem do FCA.",
+}
+
+# os tipos pedidos que o portão não libera, com o nome de fora (o padrão de `nao_disponivel`, linha 880)
+NAO_DISPONIVEIS = "tipos_de_vinculo_nao_disponiveis"
+LIMITE_DO_TIPO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    NAO_DISPONIVEIS, "tipos", "a lista de vínculos"
+)
+
+
+def limites(
+    tipos_servidos: Iterable[str], nao_disponiveis: Sequence[str] = ()
+) -> list[str]:
+    """Os limites da resposta: o primeiro geral, os das fontes dos tipos servidos, o aviso dos tipos pedidos
+    que o portão não libera (se houver) e o resto dos gerais."""
+    fontes = (TIPOS[tipo].fonte for tipo in tipos_servidos)
+    return nao_disponivel.limites(
+        LIMITES_GERAIS,
+        LIMITES_DA_FONTE,
+        fontes,
+        nao_disponiveis,
+        LIMITE_DO_TIPO_NAO_DISPONIVEL,
+    )
+
+
+# os limites com todos os tipos servidos (a tela do analista os usa como texto fixo)
+LIMITES = tuple(limites(TIPOS))
 
 
 class PedidoInvalido(ValueError):
@@ -162,7 +196,10 @@ class LeitorDeVinculos:
         self.linhas_maximas = linhas_maximas
 
     def _servidos(self, tipo: TipoDeVinculo) -> tuple[str, ...]:
-        """Os campos da ligação que o portão libera; sem o `tipo`, a ligação não sai."""
+        """Os campos da ligação que o portão libera; sem o `tipo`, a ligação não sai. Sem a tabela de ligações
+        na base nada foi consultado: o tipo vai em `tipos_de_vinculo_nao_disponiveis` (linha 917)."""
+        if "ligacoes" not in views(self.porta.con):
+            return ()
         servidos = tuple(c for c in tipo.campos if self.permitido(tipo.fonte, c, False))
         return servidos if "tipo" in servidos else ()
 
@@ -195,49 +232,41 @@ class LeitorDeVinculos:
             )
         return pontas
 
-    def _nomes(
-        self, raizes: set[str], como_era_em: date
-    ) -> dict[str, tuple[str, date]]:
-        """A razão social de cada raiz no retrato mais novo já público no dia, com o dia em que ele ficou
-        público; a raiz sem retrato público no dia, ou que tinha saído do arquivo, fica de fora."""
-        if (
-            not raizes
-            or not self.permitido(RECEITA, NOME, False)
-            or HISTORICO_DOS_NOMES not in views(self.porta.con)
-        ):
+    def _nomes(self, raizes: set[str], como_era_em: date) -> dict[str, dict[str, dict]]:
+        """Por raiz, a razão social (e o mês do retrato) do retrato mais novo de `cnpj_empresas_pj` já público no
+        dia, cada um no envelope; a raiz fora desse retrato, repetida nele ou sem natureza de empresa fica de
+        fora (na dúvida, não), e sem o nome liberado nada sai."""
+        if not raizes or not self.permitido(RECEITA, NOME, False):
             return {}
-        versoes = self.porta.ler(
-            HISTORICO_DOS_NOMES,
-            como_era_em=como_era_em,
-            filtros={RAIZ: sorted(raizes)},
-            colunas=[RAIZ, NOME, MES, CONSTA, PUBLICADO_EM],
-        )
-        if versoes.empty:
-            return {}
-        ultimas = versoes.sort_values([RAIZ, MES, PUBLICADO_EM]).groupby(RAIZ).tail(1)
+        servem_o_mes = self.permitido(RECEITA, RETRATO_DO_CADASTRO, False)
         nomes = {}
-        for linha in ultimas.to_dict("records"):
+        for raiz, linha in retratos_de_empresa(
+            self.porta, raizes, como_era_em, (NOME,)
+        ).items():
             nome = linha[NOME]
-            if _sim(linha[CONSTA]) and isinstance(nome, str) and nome.strip():
-                nomes[str(linha[RAIZ])] = (
-                    nome,
-                    pd.Timestamp(linha[PUBLICADO_EM]).date(),
+            if not isinstance(nome, str) or not nome.strip():
+                continue
+            publico_em = pd.Timestamp(linha[PUBLICADO_EM]).date()
+            campos = {
+                NOME: campo(nome, fonte=RECEITA, publico_em=publico_em, visto_em=None)
+            }
+            if servem_o_mes:
+                campos[RETRATO_DO_CADASTRO] = campo(
+                    str(linha[MES]), fonte=RECEITA, publico_em=publico_em, visto_em=None
                 )
+            nomes[raiz] = campos
         return nomes
 
     @staticmethod
     def _ponta(
-        ponta: _Ponta, nomes: dict[str, tuple[str, date]], fontes: set[str]
+        ponta: _Ponta, nomes: dict[str, dict[str, dict]], fontes: set[str]
     ) -> dict[str, object]:
         saida: dict[str, object] = {
             "id_na_rede": ponta.id_entidade,
             "raiz_do_cnpj": ponta.raiz,
         }
         if ponta.raiz in nomes:
-            nome, publico_em = nomes[ponta.raiz]
-            saida[NOME] = campo(
-                nome, fonte=RECEITA, publico_em=publico_em, visto_em=None
-            )
+            saida.update(nomes[ponta.raiz])
             fontes.add(RECEITA)
         return saida
 
@@ -246,7 +275,7 @@ class LeitorDeVinculos:
         linha: dict,
         servidos: tuple[str, ...],
         pontas: dict[str, _Ponta],
-        nomes: dict[str, tuple[str, date]],
+        nomes: dict[str, dict[str, dict]],
         fontes: set[str],
     ) -> dict[str, object]:
         tipo = TIPOS[linha["tipo"]]
@@ -282,16 +311,22 @@ class LeitorDeVinculos:
         tipos: tuple[str, ...] = tuple(TIPOS),
     ) -> VinculosServidos | None:
         """Os vínculos do CNPJ como eram em `como_era_em`, até `profundidade` saltos, só com o que o portão
-        libera; None se o CNPJ não é de empresa ou se o portão não libera nenhum dos tipos pedidos. Empresa
-        sem vínculo no dia sai com a lista vazia."""
+        libera; None se o CNPJ não é de empresa ou se o portão não libera nenhum dos tipos pedidos. O tipo pedido
+        que o portão não libera não some em silêncio: vai, com o nome de fora, em
+        `tipos_de_vinculo_nao_disponiveis` (linha 880), e os limites não falam da fonte dele. Empresa sem
+        vínculo no dia sai com a lista vazia; com essa lista também vazia, todos os tipos pedidos foram
+        consultados."""
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
         profundidade_do_pedido(profundidade)
-        servidos = {t: self._servidos(TIPOS[t]) for t in tipos}
-        servidos = {t: campos for t, campos in servidos.items() if campos}
+        pedidos = {t: self._servidos(TIPOS[t]) for t in tipos}
+        servidos = {t: campos for t, campos in pedidos.items() if campos}
         if not servidos:
             return None
+        nao_disponiveis = [
+            TIPOS[t].de_fora for t in nao_disponivel.nao_disponiveis(pedidos)
+        ]
         if not e_empresa(self.porta, normal):
             return None
         ligacoes, pontas = self._da_rede(normal, como_era_em, profundidade, servidos)
@@ -312,7 +347,8 @@ class LeitorDeVinculos:
             "profundidade": profundidade,
             "vinculos": lista,
             "cortada": cortada,
-            "limites": list(LIMITES),
+            NAO_DISPONIVEIS: nao_disponiveis,
+            "limites": limites(servidos, nao_disponiveis),
         }
         return VinculosServidos(corpo=corpo, fontes=fontes, linhas=len(lista))
 

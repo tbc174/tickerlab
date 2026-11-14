@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { EventosDaEmpresaV1, FichaDaEmpresaV1 } from "../../src/app/tipos";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { abrirAba, abrirApp, respostaJson } from "./ajudantes";
 
 const CNPJ = "02.429.144/0001-93";
 const ROTA_DA_FICHA = "/api/v1/analista/ficha";
@@ -69,7 +69,7 @@ function abrir(eventos: (corpo: unknown) => Response) {
 async function verFicha() {
   fireEvent.change(await screen.findByLabelText("CNPJ"), { target: { value: CNPJ } });
   fireEvent.click(screen.getByRole("button", { name: "Ver a ficha" }));
-  await screen.findByRole("region", { name: "Cadastro na Receita" });
+  await abrirAba("Eventos");
 }
 
 describe("eventos da ficha", () => {
@@ -127,10 +127,53 @@ describe("eventos da ficha", () => {
     expect(within(secao).getByText(/Sem eventos desta empresa/)).toBeTruthy();
   });
 
+  it("tipo não liberado não vira 'sem eventos' (linha 878)", async () => {
+    abrir(() =>
+      respostaJson(200, { ...PAGINA, eventos: [], fontes: [], tipos_nao_disponiveis: ["ipe_filing"] }),
+    );
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).queryByText(/Sem eventos desta empresa/)).toBeNull();
+    expect(within(secao).getByText("Nenhum evento dos tipos consultados.")).toBeTruthy();
+    // um tipo só: a frase concorda (linha 899)
+    expect(
+      within(secao).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os documentos à CVM. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("com os dois tipos não liberados, a frase concorda com vários (linha 899)", async () => {
+    abrir(() =>
+      respostaJson(200, {
+        ...PAGINA,
+        eventos: [],
+        fontes: [],
+        tipos_nao_disponiveis: ["ipe_filing", "auditor_change"],
+      }),
+    );
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(
+      within(secao).getByText(
+        "Não consultados, por ainda não estarem liberados para a tela: os documentos à CVM e os eventos de troca de auditor. A falta deles aqui não quer dizer que a empresa não tenha.",
+      ),
+    ).toBeTruthy();
+    expect(within(secao).queryByText(/ainda não estão liberados/)).toBeNull();
+  });
+
+  it("com um tipo não liberado, a lista que vem leva o aviso do outro", async () => {
+    abrir(() => respostaJson(200, { ...PAGINA, eventos: [TROCA], tipos_nao_disponiveis: ["ipe_filing"] }));
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByText("Troca de auditor")).toBeTruthy();
+    expect(within(secao).getByText(/liberados para a tela: os documentos à CVM\. A falta deles/)).toBeTruthy();
+  });
+
   it("se o pedido falha, a ficha segue sem a seção", async () => {
     abrir(() => respostaJson(503, { detail: "A base não está disponível agora." }));
     await verFicha();
-    expect(screen.getByRole("region", { name: "Cadastro na Receita" })).toBeTruthy();
+    expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
   });
 });

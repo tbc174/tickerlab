@@ -27,7 +27,7 @@ describe("rotas do app novo", () => {
     expect(comContrato).toContain("visao-geral");
     expect(TELAS_DO_APP.every((p) => !p.somente_admin)).toBe(true);
     // a ficha, a busca e a comparação de empresas (tela do analista, linha 798) são as telas do plano Pro no app
-    // novo: o 403 do plano vira o caminho para os Planos (ErroDaTela); outra tela Pro entra aqui de propósito
+    // novo: o 403 do plano vira o caminho para os Planos (Erro); outra tela Pro entra aqui de propósito
     expect(TELAS_DO_APP.filter((p) => p.e_pro).map((p) => p.url)).toEqual([
       "ficha-da-empresa",
       "encontrar-empresas",

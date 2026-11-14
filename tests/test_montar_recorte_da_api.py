@@ -11,6 +11,7 @@ from base.dicionario import TABELAS
 from base.dossie import COLUNAS_DE_PESSOA, pode_consultar
 from base.porta.duckdb import ARQUIVOS
 from scripts import montar_recorte_da_api as envio
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
 
 
 def _parquet(caminho: Path, selecao: str) -> None:
@@ -59,6 +60,7 @@ def test_tabela_nova_que_a_porta_libera_nao_entra_sozinha():
     """Se a porta passar a mostrar uma tabela, alguém decide: degrau 2 ou fica em casa."""
     decididas = {
         *envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.REDE_SO_PJ, *envio.FICAM_EM_CASA,
+        *envio.LOTE_1_DAS_300,
     }  # fmt: skip
     novas = sorted(n for n in TABELAS if pode_consultar(n) and n not in decididas)
     assert novas == []
@@ -309,10 +311,10 @@ def test_empresas_pj_nao_vai_sem_estabelecimentos(tmp_path):
 @pytest.mark.parametrize(
     ("razao", "natureza"),
     [
-        ("EMPRESA 123.456.789-09 LTDA", "2062"),
-        ("EMPRESA 12345678909 LTDA", "2062"),
+        ("EMPRESA 888.000.000-46 LTDA", "2062"),
+        ("EMPRESA 88800000046 LTDA", "2062"),
         ("EMPRESA 123456789012 LTDA", "2062"),
-        ("JOAO DA SILVA", "2135"),
+        ("PESSOA INVENTADA LICITACAO", "2135"),
         ("MARIA", "4014"),
     ],
 )
@@ -483,6 +485,94 @@ def test_situacao_nao_vai_sem_empresas_pj(tmp_path):
         envio.montar(base, tmp_path / "saida", ("cnpj_situacao_cadastral",))
 
 
+# ---------------------------------------------------------------- registros da Anvisa (linha 860)
+
+COM_ANVISA = (*TABELAS_PJ, "anvisa_por_empresa")
+
+
+def _anvisa(base: Path, raizes: str) -> None:
+    """Contagens por raiz com as colunas-chave da tabela de verdade (só pessoa jurídica, marca sempre falsa)."""
+    _parquet(
+        base / "anvisa_por_empresa" / "anvisa_por_empresa.parquet",
+        "SELECT cnpj_basico, DATE '2026-11-12' AS disponivel_em, false AS trata_como_pessoa, "
+        "300 AS cosmeticos_total, 250 AS cosmeticos_ativos "
+        f"FROM (VALUES {raizes}) t(cnpj_basico)",
+    )
+
+
+def _empresas_e_anvisa(base: Path, raizes: str) -> None:
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('55555555', 'FULANO DE TAL', '2062', 'micro')",
+        "('00000000')",
+    )
+    _anvisa(base, raizes)
+
+
+def test_anvisa_sobe_no_degrau_2_so_pela_api_externa():
+    """Linha 860: a contagem só das raízes sem pessoa vai com as empresas PJ e só a API externa a serve."""
+    assert "anvisa_por_empresa" in envio.tabelas_do_degrau(2)
+    assert "anvisa_por_empresa" not in envio.tabelas_do_degrau(1)
+    assert "anvisa_por_empresa" not in envio.FICAM_EM_CASA
+    assert "anvisa_por_empresa" in envio.RAIZES_SO_PJ
+    assert not pode_consultar("anvisa_por_empresa")
+    envio.conferir_a_lista(("anvisa_por_empresa",))
+
+
+def test_anvisa_linha_marcada_como_pessoa_nao_sai_mesmo_de_raiz_pj(tmp_path):
+    """Revisão cruzada (P2): a marca de pessoa tira a linha, ainda que a raiz esteja em `cnpj_empresas_pj`."""
+    base = tmp_path / "base"
+    _empresas_e_anvisa(base, "('00000000')")
+    _parquet(
+        base / "anvisa_por_empresa" / "anvisa_por_empresa.parquet",
+        "SELECT cnpj_basico, DATE '2026-11-12' AS disponivel_em, (cnpj_basico = '00000000') AS trata_como_pessoa, "
+        "300 AS cosmeticos_total, 250 AS cosmeticos_ativos "
+        "FROM (VALUES ('00000000'), ('11111111')) t(cnpj_basico)",
+    )
+    _empresas_pj(
+        base,
+        "('00000000', 'BANCO DO BRASIL SA', '2038', 'demais'), "
+        "('11111111', 'EMPRESA SA', '2038', 'demais')",
+        "('00000000'), ('11111111')",
+    )
+    envio.montar(base, tmp_path / "saida", COM_ANVISA)
+    arquivo = tmp_path / "saida" / "anvisa_por_empresa" / "anvisa_por_empresa.parquet"
+    assert duckdb.sql(f"SELECT cnpj_basico FROM '{arquivo.as_posix()}'").fetchall() == [
+        ("11111111",)
+    ]
+
+
+def test_anvisa_so_de_raiz_pj_sai_inteira(tmp_path):
+    base = tmp_path / "base"
+    _empresas_e_anvisa(base, "('00000000')")
+    envio.montar(base, tmp_path / "saida", COM_ANVISA)
+    arquivo = tmp_path / "saida" / "anvisa_por_empresa" / "anvisa_por_empresa.parquet"
+    assert duckdb.sql(f"SELECT count(*) FROM '{arquivo.as_posix()}'").fetchone() == (1,)
+
+
+@pytest.mark.parametrize(
+    "raiz",
+    [
+        "('99999999')",  # fora da lista
+        "('55555555')",  # MEI que a saída tira
+        "(NULL)",  # sem raiz
+    ],
+)
+def test_anvisa_com_raiz_fora_da_lista_derruba_o_envio(tmp_path, raiz):
+    base = tmp_path / "base"
+    _empresas_e_anvisa(base, f"('00000000'), {raiz}")
+    with pytest.raises(envio.RecorteErro, match="fora da lista sem pessoa"):
+        envio.montar(base, tmp_path / "saida", COM_ANVISA)
+
+
+def test_anvisa_nao_vai_sem_empresas_pj(tmp_path):
+    base = tmp_path / "base"
+    _anvisa(base, "('00000000')")
+    with pytest.raises(envio.RecorteErro, match="junto"):
+        envio.montar(base, tmp_path / "saida", ("anvisa_por_empresa",))
+
+
 def test_a_conexao_despeja_na_temporaria_do_sistema_e_nao_na_pasta_atual(
     tmp_path, monkeypatch
 ):
@@ -520,3 +610,226 @@ def test_montar_usa_a_conexao_com_a_temporaria(tmp_path, monkeypatch):
     monkeypatch.setattr(envio, "conectar", espiao)
     envio.montar(tmp_path / "base", tmp_path / "saida", ())
     assert usadas == [True]
+
+
+# --- as cópias reduzidas da lista de compradores (linha 844) -----------------------------------------
+
+COM_REDUZIDAS = (*TABELAS_PJ, *envio.REDUZIDAS)
+
+
+def _empresas_controladas_e_fundos(base: Path) -> None:
+    """A aberta, a controlada e o FIP têm estabelecimento; o MEI com natureza de empresa (55555555) não."""
+    _empresas_pj(
+        base,
+        "('14000001', 'ABERTA SA', '2046', 'demais'), ('11000001', 'ALVO SA', '2054', 'demais'), "
+        "('13000001', 'FIP DE MENTIRA', '2224', 'demais'), ('55555555', 'FULANO DE TAL', '2062', 'micro')",
+        "('14000001'), ('11000001'), ('13000001')",
+    )
+    _parquet(
+        base / "controladas" / "2025.parquet",
+        "SELECT '14000001000140' AS cnpj_companhia, 'ABERTA SA' AS companhia, DATE '2024-12-31' AS referencia, "
+        "1 AS versao, DATE '2025-05-01' AS conhecido_em, cnpj, razao_social, 'controlada' AS tipo, "
+        "60.0 AS participacao FROM (VALUES ('11000001000152', 'ALVO SA'), ('55555555000191', 'FULANO DE TAL')) "
+        "t(cnpj, razao_social)",
+    )
+    _parquet(
+        base / "fidc" / "cadastro" / "registro_fundo.parquet",
+        "SELECT '1' AS ID_Registro_Fundo, CNPJ_Fundo, Tipo_Fundo, '2020-01-01' AS Data_Registro, "
+        "NULL::VARCHAR AS Data_Cancelamento, 'PF' AS Tipo_Pessoa_Gestor, NULL::VARCHAR AS CPF_CNPJ_Gestor, "
+        "NULL::VARCHAR AS Gestor, 'ADM SA' AS Administrador "
+        "FROM (VALUES ('13000001000188', 'FIP'), ('55555555000191', 'FIP'), ('11000001000152', 'FIDC')) "
+        "t(CNPJ_Fundo, Tipo_Fundo)",
+    )
+
+
+def test_as_reduzidas_so_vao_pelo_degrau_4():
+    """O cron diário (degrau 2) não as manda: o envio pede o pode da Diretoria com as contagens."""
+    for degrau in (1, 2, 3):
+        assert not set(envio.REDUZIDAS) & set(envio.tabelas_do_degrau(degrau))
+    assert envio.tabelas_do_degrau(4) == (*envio.tabelas_do_degrau(3), *envio.REDUZIDAS)
+    assert envio._argumentos(["--degrau", "4"]).degrau == 4
+    # as tabelas inteiras seguem em casa, e a consulta aberta não serve as cópias
+    assert "controladas" in envio.FICAM_EM_CASA
+    for nome in envio.REDUZIDAS:
+        assert not pode_consultar(nome)
+        with pytest.raises(envio.RecorteErro, match="degrau 4"):
+            envio.conferir_a_lista((nome,))
+
+
+def test_reduzidas_saem_so_pj_e_sem_gestor(tmp_path):
+    base = tmp_path / "base"
+    _empresas_controladas_e_fundos(base)
+    saida = tmp_path / "saida"
+    resultados = envio.montar(base, saida, COM_REDUZIDAS)
+    assert {r.tabela for r in resultados} >= set(envio.REDUZIDAS)
+    controladas = saida / "controladas_pj" / "controladas_pj.parquet"
+    fundos = saida / "fips_registrados" / "fips_registrados.parquet"
+    # o MEI tirado de `cnpj_empresas_pj` leva junto a controlada e o fundo dele
+    assert duckdb.sql(
+        f"SELECT cnpj FROM '{controladas.as_posix()}' ORDER BY cnpj NULLS LAST"
+    ).fetchall() == [("11000001000152",), (None,)]
+    assert duckdb.sql(
+        f"SELECT CNPJ_Fundo, Tipo_Fundo FROM '{fundos.as_posix()}'"
+    ).fetchall() == [("13000001000188", "FIP")]
+    for arquivo in (controladas, fundos):
+        colunas = {
+            c[0].lower()
+            for c in duckdb.sql(
+                f"DESCRIBE SELECT * FROM '{arquivo.as_posix()}'"
+            ).fetchall()
+        }
+        assert not {
+            c for c in colunas if "gestor" in c or "administrador" in c or "razao" in c
+        }
+    # nada da tabela inteira foi junto
+    assert not (saida / "controladas").exists()
+    assert not (saida / "fidc").exists()
+
+
+def test_reduzidas_nao_vao_sem_empresas_pj(tmp_path):
+    base = tmp_path / "base"
+    _empresas_controladas_e_fundos(base)
+    with pytest.raises(envio.RecorteErro, match="junto com cnpj_empresas_pj"):
+        envio.montar(base, tmp_path / "saida", envio.REDUZIDAS)
+
+
+def test_reduzida_com_pessoa_na_saida_derruba_o_envio(tmp_path, monkeypatch):
+    """A trava lê a saída: se o filtro deixasse passar o gestor, nada sairia."""
+    from base import recorte_dos_compradores
+
+    def sem_filtro(con, origem, empresas, destino):
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        lista = ", ".join(f"'{a.as_posix()}'" for a in origem)
+        con.execute(
+            f"COPY (SELECT * FROM read_parquet([{lista}])) TO '{destino.as_posix()}' (FORMAT PARQUET)"
+        )
+        return 0
+
+    monkeypatch.setattr(recorte_dos_compradores, "montar_fips_registrados", sem_filtro)
+    base = tmp_path / "base"
+    _empresas_controladas_e_fundos(base)
+    with pytest.raises(envio.RecorteErro, match="fora da lista"):
+        envio.montar(base, tmp_path / "saida", COM_REDUZIDAS)
+
+
+# --- o lote 1 das 300 pelo CNPJ (linha 904): só no degrau 6, pela cópia por arquivo -------------------------------
+
+_ANEEL_DO_LOTE_2 = (
+    "aneel_agentes",
+    "aneel_autos_de_infracao",
+    "aneel_termos_de_notificacao",
+)
+
+
+def test_o_lote_1_das_300_so_vai_pelo_degrau_6():
+    """O cron diário (degrau 2) não o manda: o envio pede o pode da Diretoria com a prova de zero pessoa."""
+    lote = set(envio.LOTE_1_DAS_300)
+    assert len(envio.LOTE_1_DAS_300) == len(lote) == 7
+    for degrau in (1, 2, 3, 4, 5):
+        assert not lote & set(envio.tabelas_do_degrau(degrau))
+    assert envio.tabelas_do_degrau(6) == (
+        *envio.tabelas_do_degrau(5),
+        *envio.LOTE_1_DAS_300,
+    )
+    assert envio._argumentos(["--degrau", "6"]).degrau == 6
+    assert not lote & set(envio.FICAM_EM_CASA)
+    envio.conferir_a_lista(envio.LOTE_1_DAS_300)
+
+
+def test_o_lote_2_segue_em_casa():
+    """A ANEEL do lote 2 (o original dos agentes trouxe CPF, Diretoria 13/11) e o INPI não saem de casa."""
+    for nome in (*_ANEEL_DO_LOTE_2, "inpi_marcas_titulares"):
+        assert nome in envio.FICAM_EM_CASA, nome
+        assert nome not in envio.tabelas_do_degrau(6), nome
+    with pytest.raises(envio.RecorteErro):
+        envio.conferir_a_lista(_ANEEL_DO_LOTE_2)
+
+
+def test_o_lote_1_tem_marca_de_pessoa_por_linha_e_texto_conferido():
+    for nome in envio.LOTE_1_DAS_300:
+        assert not TABELAS[nome].pessoa, nome
+        assert TABELAS[nome].linhas_de_pessoa == "trata_como_pessoa", nome
+        for coluna in envio.TEXTOS_LIVRES.get(nome, ()):
+            assert coluna in TABELAS[nome].colunas, (nome, coluna)
+    # toda coluna com nome (de fundo, de ativo, de administrador) que sai passa pela conferência de CPF
+    for nome in envio.LOTE_1_DAS_300:
+        cortadas = set(envio.COLUNAS_FORA_DO_RECORTE.get(nome, ()))
+        com_nome = {
+            c
+            for c in TABELAS[nome].colunas
+            if (
+                c in ("emissor", "razao_social", "nome_comercial")
+                or c.startswith("nome_")
+            )
+            and c not in cortadas
+        }
+        assert com_nome <= set(envio.TEXTOS_LIVRES.get(nome, ())), nome
+
+
+def test_o_nome_do_emissor_nao_sai_do_recorte():
+    """Condição da Diretoria (13/11 17h10): o `emissor` de `fii_ativos` é cortado, não só conferido."""
+    assert envio.COLUNAS_FORA_DO_RECORTE == {"fii_ativos": ("emissor",)}
+    assert "emissor" in TABELAS["fii_ativos"].colunas
+    colunas = ["cnpj", "emissor", "nome_do_ativo", "trata_como_pessoa"]
+    assert envio.colunas_permitidas("fii_ativos", colunas) == [
+        "cnpj",
+        "nome_do_ativo",
+        "trata_como_pessoa",
+    ]
+
+
+def _ativos_dos_fii(base: Path, nome_do_ativo_da_empresa: str) -> None:
+    # três linhas: uma de pessoa (MEI emissor), uma sem marca (na dúvida é pessoa) e uma de empresa
+    _parquet(
+        base / "fii_ativos" / "2026.parquet",
+        "SELECT * FROM (VALUES "
+        "('11000001000101', 'EMISSOR PESSOA', 'CRI PESSOA', true), "
+        "('11000002000101', 'EMISSOR SEM MARCA', 'CRI SEM MARCA', NULL), "
+        f"('11000003000101', 'EMPRESA EMISSORA SA', '{nome_do_ativo_da_empresa}', false)"
+        ") t(cnpj, emissor, nome_do_ativo, trata_como_pessoa)",
+    )
+
+
+def test_ativos_dos_fii_saem_so_com_a_linha_de_empresa_e_sem_o_emissor(tmp_path):
+    base = tmp_path / "base"
+    _ativos_dos_fii(base, "CRI EMPRESA")
+    saida = tmp_path / "saida"
+    resultados = envio.montar(base, saida, ("fii_ativos",))
+    arquivo = (saida / "fii_ativos/2026.parquet").as_posix()
+    colunas = [
+        c[0] for c in duckdb.sql(f"DESCRIBE SELECT * FROM '{arquivo}'").fetchall()
+    ]
+    assert "emissor" not in colunas
+    lidas = duckdb.sql(
+        f"SELECT cnpj, nome_do_ativo, trata_como_pessoa FROM '{arquivo}'"
+    ).fetchall()
+    assert lidas == [("11000003000101", "CRI EMPRESA", False)]
+    assert resultados[0].linhas_tiradas == 2
+    assert envio.obrigatorias_sem_arquivo(resultados) == []
+
+
+def test_saida_com_o_emissor_derruba_o_envio(tmp_path):
+    arquivo = tmp_path / "saida" / "fii_ativos" / "2026.parquet"
+    _parquet(
+        arquivo,
+        "SELECT '11000003000101' AS cnpj, 'EMPRESA EMISSORA SA' AS emissor, false AS trata_como_pessoa",
+    )
+    with pytest.raises(envio.RecorteErro, match="emissor"):
+        envio.conferir_saida(duckdb.connect(), "fii_ativos", arquivo)
+
+
+def test_cpf_no_nome_do_ativo_derruba_o_envio(tmp_path):
+    base = tmp_path / "base"
+    _ativos_dos_fii(base, f"CRI {formatado(CPF_DE_TESTE)}")
+    with pytest.raises(envio.RecorteErro, match="CPF no texto da coluna nome_do_ativo"):
+        envio.montar(base, tmp_path / "saida", ("fii_ativos",))
+
+
+def test_tabela_do_lote_1_sem_arquivo_na_base_e_falha(tmp_path):
+    base = tmp_path / "base"
+    base.mkdir()
+    resultados = envio.montar(base, tmp_path / "saida", ("ans_idss",))
+    assert envio.obrigatorias_sem_arquivo(resultados) == ["ans_idss"]
+    # tabela do degrau 2 sem arquivo não derruba (a porta responde que não tem)
+    outras = envio.montar(base, tmp_path / "saida2", ("pgfn_divida",))
+    assert envio.obrigatorias_sem_arquivo(outras) == []

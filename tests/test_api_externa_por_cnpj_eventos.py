@@ -363,6 +363,58 @@ def test_campo_negado_some_e_o_evento_sem_campo_some(pasta):
     assert so_o_ipe_sem_link.fontes == {IPE}
 
 
+# o tipo barrado no portão não some em silêncio (linha 878, achado do ensaio da 739): a lista vazia de um tipo
+# que nem foi consultado parecia "a empresa não tem evento"
+def _so_o_auditor(fonte: str, _campo: str, _derivado: bool) -> bool:
+    return fonte == FCA
+
+
+def test_tipo_barrado_vem_listado_como_nao_disponivel(pasta):
+    corpo = _corpo(pasta, permitido=_so_o_auditor)
+    assert corpo["tipos_nao_disponiveis"] == [eventos.DOCUMENTO_DO_IPE]
+    assert _ids(corpo) == ["2025-01-01"]
+
+
+def test_com_o_tipo_barrado_a_lista_vazia_nao_parece_que_nao_ha_evento(pasta):
+    # antes de qualquer troca de auditor: a lista sai vazia, mas o corpo diz que o IPE não foi consultado
+    corpo = _corpo(pasta, permitido=_so_o_auditor, dia=date(2025, 5, 1))
+    assert corpo["eventos"] == []
+    assert corpo["tipos_nao_disponiveis"] == [eventos.DOCUMENTO_DO_IPE]
+
+
+def test_com_o_tipo_barrado_os_limites_nao_falam_dele(pasta):
+    corpo = _corpo(pasta, permitido=_so_o_auditor)
+    assert corpo["limites"] == [
+        eventos.LIMITES_GERAIS[0],
+        eventos.LIMITES_DO_TIPO[eventos.TROCA_DE_AUDITOR],
+        eventos.LIMITE_DO_TIPO_NAO_DISPONIVEL,
+        *eventos.LIMITES_GERAIS[1:],
+    ]
+    assert not any("IPE" in frase for frase in corpo["limites"])
+
+
+def test_so_o_tipo_barrado_pedido_nada_sai(pasta):
+    assert (
+        _ler(pasta, permitido=_so_o_auditor, tipos=(eventos.DOCUMENTO_DO_IPE,)) is None
+    )
+
+
+def test_tipo_nao_pedido_nao_entra_como_nao_disponivel(pasta):
+    corpo = _corpo(pasta, permitido=_so_o_auditor, tipos=(eventos.TROCA_DE_AUDITOR,))
+    assert corpo["tipos_nao_disponiveis"] == []
+    assert eventos.LIMITE_DO_TIPO_NAO_DISPONIVEL not in corpo["limites"]
+
+
+def test_com_tudo_liberado_nenhum_tipo_fica_de_fora(pasta):
+    corpo = _corpo(pasta, dia=date(2024, 1, 1))
+    assert corpo["eventos"] == [] and corpo["tipos_nao_disponiveis"] == []
+    assert corpo["limites"] == list(eventos.LIMITES)
+
+
+def test_todo_tipo_tem_a_frase_de_limite():
+    assert set(eventos.LIMITES_DO_TIPO) == set(eventos.ORIGENS)
+
+
 def test_os_anos_com_o_anterior_pedem_o_direito_de_derivado(pasta):
     pedidos = []
 
@@ -382,7 +434,17 @@ def test_cnpj_invalido_e_erro_de_quem_chama(pasta):
         _ler(pasta, cnpj="123")
 
 
-def test_sem_as_tabelas_a_empresa_sai_sem_eventos(tmp_path):
+def test_sem_as_tabelas_nada_foi_consultado_e_a_rota_nao_serve(tmp_path):
+    """Tabela fora da porta não é "empresa sem eventos" (linha 917): sem nenhum tipo consultado, sem resposta."""
     base = tmp_path / "base"
     _gravar_rede(base)
-    assert _corpo(base)["eventos"] == []
+    assert _ler(base) is None
+
+
+def test_tabela_fora_da_porta_vai_em_tipos_nao_disponiveis(pasta):
+    import shutil
+
+    shutil.rmtree(pasta / "trocas_de_auditor")
+    corpo = _corpo(pasta)
+    assert corpo["tipos_nao_disponiveis"]
+    assert corpo["eventos"]

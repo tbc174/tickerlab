@@ -2,7 +2,8 @@
 
 O catálogo diz o que **esta chave** pode ver hoje: cada campo com linha no portão (N3) para um conjunto
 e uma finalidade que o contrato da organização (N7) também tem. Passa pelas mesmas duas travas que um
-pedido de dado (`acesso.autorizar`), então nada que seria negado aparece, nem o motivo. O consumo é o do
+pedido de dado (`acesso.autorizar`), então nada que seria negado aparece, nem o motivo. O campo que só sai pela
+prontidão de piloto (D11) vem com a marca `piloto`, e o catálogo, com a frase do aviso. O consumo é o do
 mês da própria organização, com o que falta da quota.
 
 As chaves saem em português; a rota traduz na saída.
@@ -13,7 +14,8 @@ from datetime import date
 
 import sqlalchemy as sa
 
-from src.api_externa import envelope
+from base.prontidao import AVISO_DE_PILOTO
+from src.api_externa import envelope, piloto
 from src.api_externa.acesso import autorizar
 from src.api_externa.conjuntos import novidades
 from src.api_externa.nomes import para_fora
@@ -28,7 +30,8 @@ def _linhas_liberadas(
     contexto: ContextoDaChave,
     hoje: date,
     regras: Regras,
-) -> Iterable[LinhaDeDireito]:
+) -> Iterable[tuple[LinhaDeDireito, bool]]:
+    """Cada linha liberada para a chave, e se ela sai só pela prontidão de piloto."""
     contratados = {
         (direito.conjunto, direito.finalidade)
         for direito in direitos_vigentes(conexao, contexto.organizacao_id, hoje)
@@ -49,7 +52,7 @@ def _linhas_liberadas(
             regras=regras,
         )
         if decisao.libera:
-            yield linha
+            yield linha, decisao.piloto
 
 
 def catalogo_da_organizacao(
@@ -59,15 +62,21 @@ def catalogo_da_organizacao(
     regras: Regras | None = None,
 ) -> dict[str, object]:
     """Os conjuntos, com os campos e as fontes, que a chave pode pedir no dia; vazio se nada."""
-    por_conjunto: dict[tuple[str, str], list[dict[str, str]]] = {}
+    por_conjunto: dict[tuple[str, str], list[dict[str, object]]] = {}
     fontes: set[str] = set()
-    for linha in _linhas_liberadas(
+    algum_de_piloto = False
+    for linha, de_piloto in _linhas_liberadas(
         conexao, contexto, hoje, regras or regras_vigentes()
     ):
         chave = (linha.conjunto, linha.finalidade.value)
-        por_conjunto.setdefault(chave, []).append(
-            {"campo": para_fora(linha.campo), "fonte": linha.fonte}
-        )
+        campo: dict[str, object] = {
+            "campo": para_fora(linha.campo),
+            "fonte": linha.fonte,
+        }
+        if de_piloto:
+            campo[piloto.MARCA] = True
+            algum_de_piloto = True
+        por_conjunto.setdefault(chave, []).append(campo)
         fontes.add(linha.fonte)
     for direito in direitos_vigentes(conexao, contexto.organizacao_id, hoje):
         # `research` não tem campo no dicionário (é arquivo de citações): o contrato basta para listar
@@ -77,7 +86,13 @@ def catalogo_da_organizacao(
         {"conjunto": conjunto, "finalidade": para_fora(finalidade), "campos": campos}
         for (conjunto, finalidade), campos in sorted(por_conjunto.items())
     ]
-    return {"conjuntos": conjuntos, "fontes": envelope.fontes_da_resposta(fontes)}
+    corpo: dict[str, object] = {
+        "conjuntos": conjuntos,
+        "fontes": envelope.fontes_da_resposta(fontes),
+    }
+    if algum_de_piloto:
+        corpo[piloto.AVISO] = AVISO_DE_PILOTO
+    return corpo
 
 
 def consumo_da_organizacao(

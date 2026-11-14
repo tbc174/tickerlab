@@ -6,6 +6,9 @@ tabela que só cresce).
   empregador e estabelecimento. A coluna `CNPJ/CPF` mistura os dois; o arquivo de 2026 tem layouts
   diferentes (um com `Inclusão no CEAC`, outro com `CNAE` e trabalhadores), então só as colunas em
   comum e as opcionais são lidas.
+- **Só o cadastro inteiro** (`cadastro_de_empregadores.csv`, linha 914): o CSV `AAAA_NNNN.csv` da mesma
+  página é outra lista (a dos empregadores com TAC, com `Inclusão no CEAC`), pequena; em 13/11/2026 a
+  tabela tinha só os 9 dela no lugar dos 164 do cadastro.
 - **Só pessoa jurídica com CNPJ de DV certo** (ADR 0075): CPF (produtor rural, pessoa física) nunca
   entra, nem o nome dele; documento que não fecha o DV também sai e é contado.
 - **Chave**: CNPJ + ano da ação fiscal + estabelecimento (o `ID` do arquivo é só a posição na lista e
@@ -44,7 +47,9 @@ COLUNAS_DA_FONTE = {
     "Inclusão no Cadastro de Empregadores": "incluida_em",
 }
 TEXTOS = ["uf", "empregador", "estabelecimento", "cnae"]
-VALORES = ["ano_da_acao", *TEXTOS, "trabalhadores", "incluida_em"]
+# `consta` entra nos valores comparados: sem ele, o registro que sai do arquivo não vira a linha
+# `consta` falso e continua constando (linha 907)
+VALORES = ["ano_da_acao", *TEXTOS, "trabalhadores", "incluida_em", "consta"]
 COLUNAS = [
     "id_na_fonte", "cnpj", "cnpj_basico", "ano_da_acao", *TEXTOS, "trabalhadores", "incluida_em",
 ]  # fmt: skip
@@ -127,7 +132,9 @@ CADASTROS = (
         juntar=juntar_retratos,
         colunas=tuple(COLUNAS),
         datas=("incluida_em",),
-        url_termina_em=".csv",
+        # pelo nome, não pela data: o outro CSV da página (`AAAA_NNNN.csv`, empregadores com Termo de
+        # Ajustamento de Conduta) é baixado na mesma hora, e o empate de data caía nele (linha 914)
+        url_termina_em="/cadastro_de_empregadores.csv",
     ),
 )
 

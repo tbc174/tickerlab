@@ -45,8 +45,19 @@ async function abrir(arquivo: string) {
   await vi.waitFor(() => expect(document.body.textContent).not.toContain("Carregando"));
 }
 
+/** Espera o que o Preact deixou agendado. Depois de cada desenho ele marca os efeitos para o próximo quadro
+ * (requestAnimationFrame, com um setTimeout de reserva) e, nesse quadro, chama cancelAnimationFrame. Se o
+ * arquivo de teste acaba antes, o jsdom é desmontado e o quadro pendente estoura com "cancelAnimationFrame is
+ * not defined", um erro solto que derruba o job. Um efeito pode pedir outro desenho: por isso duas voltas. */
+async function esperarOPreact() {
+  for (let volta = 0; volta < 2; volta += 1) {
+    await new Promise((pronto) => requestAnimationFrame(() => setTimeout(pronto, 0)));
+  }
+}
+
 const erros = vi.spyOn(console, "error");
-afterEach(() => {
+afterEach(async () => {
+  await esperarOPreact();
   document.body.innerHTML = "";
   erros.mockClear();
   vi.unstubAllGlobals();

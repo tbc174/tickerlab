@@ -105,6 +105,17 @@ NAO_E_SAIDA: dict[tuple[str, str], str] = {
         "seguro",
     ): "regex que classifica o nome da parte; não é texto exibido",
     ("src/raio_x.py", "seguro"): "regex do setor 'Seguro' (nome de setor), não é juízo",
+    **{
+        (
+            arquivo,
+            "seguro",
+        ): "id da fonte e do pacote da ANTT (seguro de responsabilidade civil): nome do produto, não juízo"
+        for arquivo in (
+            "base/antt_cadastros.py",
+            "base/arquivo/destinos.py",
+            "base/arquivo/lote_cadastros_bcb_antt.py",
+        )
+    },
 }
 
 # (arquivo, palavra) -> o que é. Texto que o usuário vê e contém a palavra: NÃO reescrever aqui

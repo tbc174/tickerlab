@@ -5,13 +5,15 @@ entregas de DFP e ITR vêm de `rotulos_atraso`, com a regra da ficha da noite. S
 publicado depois do dia pedido sai, e a entrega que ainda não tinha acontecido sai como `not_filed`.
 """
 
+import shutil
 from datetime import date
 
 import pandas as pd
 import pytest
 
 from base.porta import Porta
-from src.api_externa.conjuntos import ficha
+from src.api_externa.conjuntos import empresas, ficha
+from src.api_externa.nomes import NOMES_DE_FORA
 from tests import test_api_externa_empresas as empresas_de_mentira
 
 EMPRESA = empresas_de_mentira.EMPRESA
@@ -240,6 +242,52 @@ def test_portao_que_nega_a_cvm_tira_o_bloco_sem_null(pasta):
     assert servida.fontes == {RECEITA}
 
 
+# ---------------------------------------------------------------- documento não disponível (linha 881)
+
+
+def test_com_tudo_liberado_nenhum_documento_fica_de_fora(pasta):
+    corpo = _corpo(pasta)
+    assert corpo["entregas_nao_disponiveis"] == []
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL not in corpo["limites"]
+
+
+def test_documento_que_o_portao_nao_libera_vai_na_lista_e_no_aviso(pasta):
+    """Sem o ITR, a lista de entregas só tem DFP: sem a lista de fora, leria como "nenhum ITR devido"."""
+    corpo = _corpo(pasta, permitido=lambda fonte, _c, _d: fonte != CVM_ITR)
+    assert {linha["documento"]["valor"] for linha in corpo["entregas"]} == {"DFP"}
+    assert corpo["entregas_nao_disponiveis"] == ["ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limites"]
+    # as frases das entregas continuam: o DFP foi consultado
+    assert set(ficha.LIMITES) <= set(corpo["limites"])
+
+
+def test_sem_nenhum_documento_o_bloco_some_e_os_limites_nao_falam_das_entregas(pasta):
+    servida = _ler(pasta, permitido=lambda fonte, _c, _d: fonte == RECEITA)
+    assert servida is not None
+    corpo = servida.corpo
+    assert "entregas" not in corpo
+    assert corpo["entregas_nao_disponiveis"] == ["DFP", "ITR"]
+    assert corpo["limites"] == [
+        ficha.LIMITES_GERAIS[0],
+        ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL,
+        *ficha.LIMITES_GERAIS[1:],
+    ]
+    assert not any("entregas cobrem" in limite for limite in corpo["limites"])
+
+
+def test_documento_com_so_conta_nossa_negada_continua_consultado(pasta):
+    """Negar só os derivados tira os campos, não o documento: ele não vai para a lista de fora."""
+    corpo = _corpo(pasta, permitido=lambda _f, _c, derivado: not derivado)
+    assert corpo["entregas_nao_disponiveis"] == []
+
+
+def test_base_sem_a_tabela_conta_os_dois_documentos_como_nao_consultados(tmp_path):
+    corpo = _corpo(_base(tmp_path))
+    assert "entregas" not in corpo
+    assert corpo["entregas_nao_disponiveis"] == ["DFP", "ITR"]
+    assert ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL in corpo["limites"]
+
+
 def test_portao_que_nega_a_receita_nao_serve_nada(pasta):
     """Sem cadastro, nada sai, nem as entregas que o portão liberaria."""
     assert _ler(pasta, permitido=lambda fonte, _c, _d: fonte != RECEITA) is None
@@ -250,9 +298,102 @@ def test_documento_que_nao_e_dfp_nem_itr_nao_sai(tmp_path):
         ("FRE", "2023-12-31", "2024-05-31", "2024-05-30", 0, False, False, False)
     ]
     servida = _ler(_base(tmp_path, _rotulos(estranho)))
-    assert servida is not None and "entregas" not in servida.corpo
+    # os dois documentos foram consultados: a lista sai vazia, não some
+    assert servida is not None and servida.corpo["entregas"] == []
+    assert servida.corpo["entregas_nao_disponiveis"] == []
 
 
 def test_cnpj_invalido_e_erro_de_quem_chama(pasta):
     with pytest.raises(ValueError):
         _ler(pasta, cnpj="123")
+
+
+# ---------------------------------------------------------------- campo do cadastro não disponível (linha 891)
+
+# no piloto, a situação e o Simples ficaram fora do registro: o portão não libera os campos das duas tabelas
+SITUACAO = list(empresas.CAMPOS)
+SIMPLES = ["optante_simples", "data_opcao_simples", "data_exclusao_simples"]
+CAMPOS_DE_FORA = "campos_do_cadastro_nao_disponiveis"
+
+
+def _de_fora(*campos: str) -> list[str]:
+    return [NOMES_DE_FORA[nome] for nome in campos]
+
+
+def _sem(*campos: str):
+    return lambda _fonte, campo, _derivado: campo not in campos
+
+
+def test_com_tudo_liberado_nenhum_campo_do_cadastro_fica_de_fora(pasta):
+    """No dia, a raiz já tinha saído do arquivo do Simples: o Simples falta por não ter dado, não pelo portão,
+    e não vai para a lista."""
+    corpo = _corpo(pasta)
+    assert "optante_simples" not in corpo["cadastro_na_receita"]
+    assert corpo[CAMPOS_DE_FORA] == []
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL not in corpo["limites"]
+
+
+def test_situacao_e_simples_barrados_vao_na_lista_e_no_aviso(pasta):
+    """O caso do piloto: sem a lista, o cadastro só com o nome leria como "a empresa não tem situação"."""
+    corpo = _corpo(pasta, permitido=_sem(*SITUACAO, *SIMPLES))
+    cadastro = corpo["cadastro_na_receita"]
+    assert "razao_social" in cadastro
+    assert not set(cadastro) & {*SITUACAO, *SIMPLES}
+    assert corpo[CAMPOS_DE_FORA] == _de_fora(*SITUACAO, *SIMPLES)
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limites"]
+    # as entregas continuam consultadas: a lista delas e as frases não mudam
+    assert corpo["entregas_nao_disponiveis"] == []
+    assert set(ficha.LIMITES) <= set(corpo["limites"])
+
+
+def test_a_lista_e_o_aviso_do_leitor_de_companies_nao_entram_no_cadastro(pasta):
+    """O perfil lê o cadastro pelo leitor de `companies`, que já traz a lista e os limites dele (linha 898): eles
+    saem no topo do perfil, não dentro do bloco do cadastro."""
+    corpo = _corpo(pasta, permitido=_sem(*SIMPLES))
+    assert not set(corpo["cadastro_na_receita"]) & set(empresas.CHAVES_DO_AVISO)
+    assert corpo[CAMPOS_DE_FORA] == _de_fora(*SIMPLES)
+
+
+def test_um_campo_barrado_vai_sozinho_na_lista(pasta):
+    corpo = _corpo(pasta, permitido=_sem("motivo_situacao"))
+    assert "situacao_cadastral" in corpo["cadastro_na_receita"]
+    assert corpo[CAMPOS_DE_FORA] == ["registration_status_reason"]
+
+
+def test_base_sem_o_historico_do_simples_conta_os_campos_dele_como_nao_consultados(
+    tmp_path,
+):
+    base = _base(tmp_path, _rotulos())
+    shutil.rmtree(base / empresas_de_mentira.SIMPLES_HISTORICO)
+    corpo = _corpo(base, dia=date(2025, 4, 30))
+    assert corpo[CAMPOS_DE_FORA] == _de_fora(*SIMPLES)
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limites"]
+
+
+def test_com_o_historico_o_simples_que_valia_sai_e_nao_vai_na_lista(pasta):
+    corpo = _corpo(pasta, dia=date(2025, 4, 30))
+    assert corpo["cadastro_na_receita"]["optante_simples"]["valor"] is False
+    assert corpo[CAMPOS_DE_FORA] == []
+
+
+def test_o_aviso_do_cadastro_vem_antes_do_das_entregas(pasta):
+    corpo = _corpo(
+        pasta,
+        permitido=lambda fonte, campo, _d: fonte != CVM_ITR and campo not in SIMPLES,
+    )
+    limites = corpo["limites"]
+    assert limites.index(
+        ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    ) < limites.index(ficha.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL)
+
+
+def test_sem_nenhum_campo_do_cadastro_liberado_nada_sai(pasta):
+    """Sem campo do cadastro, nada sai, como antes: a lista não abre o 404."""
+    todos = [
+        *SITUACAO,
+        *SIMPLES,
+        "razao_social",
+        "natureza_juridica",
+        "mes_do_retrato_do_cadastro",
+    ]
+    assert _ler(pasta, permitido=_sem(*todos)) is None

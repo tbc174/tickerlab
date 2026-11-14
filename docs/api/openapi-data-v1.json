@@ -141,7 +141,7 @@
   "paths": {
     "/data/v1/buyers": {
       "get": {
-        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra.",
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal\nque não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em\n`unavailable_signals`: a lista não diz nada sobre ele.",
         "operationId": "compradores_do_setor_data_v1_buyers_get",
         "parameters": [
           {
@@ -490,7 +490,7 @@
     },
     "/data/v1/companies": {
       "get": {
-        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,\n`capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que\nvalia em `known_at`. `sort` ordena por `capital` ou `branches` (`-` na frente é decrescente); sem ele,\npor CNPJ. Capital e estabelecimentos são sinais aproximados de porte, não faturamento. Pelo menos um\nfiltro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
+        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,\n`capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que\nvalia em `known_at`. Registros na Anvisa: `anvisa_active_min` e `anvisa_total_min` (de 1 em diante)\nfiltram pela contagem do tipo `anvisa_type` (`cosmetics`, `health_products`, `sanitizers`; sem tipo,\n`products`, a soma desses três; medicamentos e alimentos entram quando a licença deles for lida); a\ncontagem sai em `anvisa_registrations_active` e `anvisa_registrations_total`, com fonte e dia do retrato.\n`sort` ordena por `capital`, `branches` ou `anvisa` (registros ativos; `-` na frente é decrescente); sem\nele, por CNPJ. Capital, estabelecimentos e registros são sinais aproximados de porte, não faturamento. Pelo menos um\nfiltro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
         "operationId": "busca_de_empresas_data_v1_companies_get",
         "parameters": [
           {
@@ -667,6 +667,54 @@
                 }
               ],
               "title": "Branches Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_active_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Active Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_total_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Total Min"
             }
           },
           {
@@ -1041,7 +1089,7 @@
     },
     "/data/v1/companies/{cnpj}": {
       "get": {
-        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`. O campo do\ncadastro que não foi consultado (a situação, o nome, o Simples) vem em `unavailable_registration_fields`,\ncom o aviso em `limits`.",
         "operationId": "empresa_data_v1_companies__cnpj__get",
         "parameters": [
           {
@@ -1236,9 +1284,206 @@
         "summary": "Empresa"
       }
     },
+    "/data/v1/companies/{cnpj}/assets": {
+      "get": {
+        "description": "Os ativos físicos da empresa como eram em `known_at`, um bloco por base aberta de agência. Hoje sai um\nbloco: os contratos de exploração e produção de petróleo e gás da ANP (`oil_gas_contracts`), com a parte\nda empresa em cada um. Mineração (barragens e royalties da ANM) ainda não sai, e `not_covered` diz isso.\nO bloco diz se achou a empresa, a fonte e o dia do dado mais novo; `not_covered` diz o que a rota não\ntraz. A lista vai até o limite de linhas do plano (`truncated`). MEI, empresário individual e o que não é\nempresa saem `not_available`.",
+        "operationId": "ativos_da_empresa_data_v1_companies__cnpj__assets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Ativos Da Empresa Data V1 Companies  Cnpj  Assets Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Ativos Da Empresa"
+      }
+    },
     "/data/v1/companies/{cnpj}/comparables": {
       "get": {
-        "description": "Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores\n(pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida\nlíquida e as razões), e a mediana de cada razão entre os pares. Empresa sem FCA no dia, MEI,\nempresário individual e o que não é empresa saem `not_available`.",
+        "description": "Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores\n(pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida\nlíquida e as razões), e a mediana de cada razão entre os pares. O número ou a razão que o portão não\nlibera para a organização vem em `unavailable_figures`: os pares e as medianas não dizem nada sobre ele.\nEmpresa sem FCA no dia, MEI, empresário individual e o que não é empresa saem `not_available`.",
         "operationId": "comparaveis_da_empresa_data_v1_companies__cnpj__comparables_get",
         "parameters": [
           {
@@ -1433,9 +1678,202 @@
         "summary": "Comparaveis Da Empresa"
       }
     },
+    "/data/v1/companies/{cnpj}/deck": {
+      "get": {
+        "description": "O perfil da empresa (o mesmo de `/companies/{cnpj}/profile`, com o mesmo contrato `profiles`) como\ndeck `.pptx`: o cadastro e as entregas à CVM, com a fonte e o dia de cada tabela, as fontes e os\nlimites. Conta na quota como o JSON.",
+        "operationId": "deck_da_empresa_data_v1_companies__cnpj__deck_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": {}
+            },
+            "description": "o deck (.pptx)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Deck Da Empresa"
+      }
+    },
     "/data/v1/companies/{cnpj}/events": {
       "get": {
-        "description": "Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à\nCVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor\n(`auditor_change`). `types` filtra; a página vai até o limite de linhas do plano e `next_cursor` traz a\nseguinte. MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à\nCVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor\n(`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o\nplano é o teto) e `next_cursor` traz a seguinte. Um tipo pedido que não está disponível para a organização\nvem em `unavailable_event_types` (não foi consultado: a lista não diz nada sobre ele); se nenhum tipo pedido\nestá, a resposta é `not_available`, como para MEI, empresário individual e o que não é empresa.",
         "operationId": "eventos_da_empresa_data_v1_companies__cnpj__events_get",
         "parameters": [
           {
@@ -1491,6 +1929,22 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
             }
           },
           {
@@ -1663,7 +2117,7 @@
     },
     "/data/v1/companies/{cnpj}/financials": {
       "get": {
-        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia.",
+        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia. O documento que a organização\nnão tem vai em `unavailable_filings` (sem as linhas dele não é \"não entregou\"), com o aviso em `limits`.",
         "operationId": "demonstracoes_da_empresa_data_v1_companies__cnpj__financials_get",
         "parameters": [
           {
@@ -1877,7 +2331,7 @@
     },
     "/data/v1/companies/{cnpj}/links": {
       "get": {
-        "description": "Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,\ncoligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e\na firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano\n(`truncated`). MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,\ncoligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e\na firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano\n(`truncated`). O tipo pedido que não está disponível para a organização não foi consultado e vem em\n`unavailable_link_types` (os `limits` não falam da fonte dele); se nenhum tipo pedido está disponível, a\nresposta é `not_available`. MEI, empresário individual e o que não é empresa saem `not_available`.",
         "operationId": "vinculos_da_empresa_data_v1_companies__cnpj__links_get",
         "parameters": [
           {
@@ -2099,7 +2553,7 @@
     },
     "/data/v1/companies/{cnpj}/profile": {
       "get": {
-        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista\nde entregas não diz nada sobre ele. O campo do cadastro que não foi consultado (a situação cadastral, o\nSimples) vem em `unavailable_registration_fields`. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
         "operationId": "perfil_da_empresa_data_v1_companies__cnpj__profile_get",
         "parameters": [
           {
@@ -2813,7 +3267,7 @@
     },
     "/data/v1/funds/{cnpj}": {
       "get": {
-        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.",
+        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.\nO bloco pedido que a organização não tem vai em `unavailable_sections` (a carteira vazia não é \"sem\nposição\"), com o aviso em `limits`.",
         "operationId": "fundo_data_v1_funds__cnpj__get",
         "parameters": [
           {
@@ -3318,7 +3772,7 @@
     },
     "/data/v1/sectors/{key}": {
       "get": {
-        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`.",
+        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a\norganização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,\ncom o aviso em `limits`.",
         "operationId": "setor_data_v1_sectors__key__get",
         "parameters": [
           {
@@ -3489,6 +3943,177 @@
           }
         },
         "summary": "Setor"
+      }
+    },
+    "/data/v1/sectors/{key}/deck": {
+      "get": {
+        "description": "O setor (o mesmo de `/sectors/{key}`, com o mesmo contrato `sectors` e o mesmo corte do plano) como\ndeck `.pptx`: a concentração, a parte de cada companhia e quem são, com a fonte e o dia de cada\ntabela, as fontes e os limites. Conta na quota como o JSON.",
+        "operationId": "deck_do_setor_data_v1_sectors__key__deck_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": {}
+            },
+            "description": "o deck (.pptx)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          }
+        },
+        "summary": "Deck Do Setor"
       }
     },
     "/data/v1/usage": {

@@ -44,7 +44,8 @@ from src.portao_externo import (
 # "profiles" (linha 736, PR 2) repete o cadastro de "companies" e junta as entregas de DFP e ITR;
 # "comparables" (linha 736, PR 3) junta o setor do FCA e os números do DFP dos pares; "events" (linha 736,
 # PR 4) lista os documentos do IPE e as trocas de auditor; "links" (linha 736, PR 5) lê a rede de entidades;
-# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica
+# "buyers" (linha 810, PR 4) lista quem já se mexeu num setor, só pessoa jurídica; "assets" (linha 845) lista os
+# contratos de exploração e produção da ANP da empresa
 CONJUNTOS_DO_BETA = {
     "companies",
     "financials",
@@ -57,6 +58,7 @@ CONJUNTOS_DO_BETA = {
     "events",
     "links",
     "buyers",
+    "assets",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
@@ -72,12 +74,17 @@ FONTES_DE_CARGA_PROPRIA = {"bcb-ifdata": "ifdata_valores"}
 CARGA_PROPRIA_PELO_SCRIPT = {
     "cvm-fidc-base": ("registro_de_fundos", "scripts/carga_fidc.py")
 }
+# cópia reduzida montada no envio ao VPS a partir da tabela de carga própria (o FIP do `buyers` lê `fips_registrados`,
+# que sai do registro de fundos, `base/recorte_dos_compradores.py`): a linhagem dela cita a tabela de origem
+COPIAS_DA_CARGA_PROPRIA = {"fips_registrados": "registro_de_fundos"}
 # tabela montada na base a partir de outra que a fonte alimenta (as trocas de auditor saem dos auditores de
 # cada FCA, `base/auditores.py`): a de origem é a que está nos destinos do arquivista
 MONTADAS_DE_OUTRA_TABELA = {
     "trocas_de_auditor": "auditores",
     # as entradas de sócio PJ saem do quadro de sócios, cortado pelas raízes da lista sem pessoa (linha 810)
     "entradas_de_socio_pj": "cnpj_estabelecimentos_pj",
+    # a contagem de registros por empresa sai dos registros da Anvisa, um a um (linha 860)
+    prospeccao.ANVISA: "anvisa_registros",
 }
 # a rede de entidades (ADR 0077, `base/rede/montar.py`) é montada de várias tabelas; a de cada fonte que sai em
 # `links` é a que está nos destinos do arquivista: as controladas do FRE e os auditores do FCA
@@ -171,13 +178,16 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                     linha
                 )
             elif linha.fonte in CARGA_PROPRIA_PELO_SCRIPT:
-                assert (tabela, linha.fonte) == (
+                origem = COPIAS_DA_CARGA_PROPRIA.get(tabela, tabela)
+                assert (origem, linha.fonte) == (
                     CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][0],
                     linha.fonte,
                 ), linha
                 assert (
-                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[tabela].onde
+                    CARGA_PROPRIA_PELO_SCRIPT[linha.fonte][1] in TABELAS[origem].onde
                 ), (linha, tabela)
+                if tabela != origem:
+                    assert f"`{origem}`" in TABELAS[tabela].linhagem, (linha, tabela)
             elif linha.fonte in FONTES_DE_CARGA_PROPRIA:
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
@@ -210,8 +220,26 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
             # conta nossa sobre as colunas da tabela: o grupo do setor, o fim do exercício, as somas e razões
             assert set(comparaveis.ORIGEM_DAS_CONTAS[linha.campo]) <= colunas, linha
             continue
+        if (
+            linha.conjunto == prospeccao.CONJUNTO
+            and linha.campo in prospeccao.CAMPOS_DA_ANVISA
+        ):
+            # soma nossa das colunas `<tipo>_total` e `<tipo>_ativos` dos tipos servidos (linha 860)
+            sufixo = linha.campo.removeprefix("registros_anvisa_")
+            tipos = {
+                t for prefixos in prospeccao.TIPOS_DA_ANVISA.values() for t in prefixos
+            }
+            assert {f"{t}_{sufixo}" for t in tipos} <= colunas, linha
+            continue
         if linha.tabelas == (CADASTRO,):
             colunas |= do_raio_x
+        if (linha.tabelas, linha.campo) == (
+            (empresas.LISTA_DE_EMPRESAS,),
+            empresas.RETRATO_DO_CADASTRO,
+        ):
+            # o mês do retrato de onde saíram o nome e a natureza (linha 861): é o `mes_do_retrato` da lista PJ
+            assert empresas.MES in colunas, linha
+            continue
         assert linha.campo in colunas, linha
 
 
@@ -221,6 +249,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
     servidos = {
         empresas.TABELA: empresas.CAMPOS,
         **{historico.tabela: historico.campos for historico in empresas.HISTORICOS},
+        # o nome e a natureza do retrato da lista sem pessoa, com o mês (linha 861)
+        empresas.LISTA_DE_EMPRESAS: (
+            *empresas.CAMPOS_DO_RETRATO_PJ,
+            empresas.RETRATO_DO_CADASTRO,
+        ),
     }
     # a ficha de crédito tira pessoa com a mesma trava (`empresas.e_empresa`)
     da_ficha = {
@@ -255,13 +288,11 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             }, linha
             continue
         if linha.conjunto == vinculos.CONJUNTO:
-            # os vínculos leem só a razão social, e só da ponta que passou pela trava da rede (MEI e quem a
-            # rede trata como pessoa saem antes, `vinculos.LeitorDeVinculos._pontas`); na tabela, a razão
-            # social do empresário individual e do MEI já vem vazia (ADR 0106)
-            assert (tabela, linha.campo) == (
-                vinculos.HISTORICO_DOS_NOMES,
-                vinculos.NOME,
-            ), linha
+            # os vínculos leem só a razão social e o mês do retrato, da lista sem pessoa (linha 867), e só da
+            # ponta que passou pela trava da rede (MEI e quem a rede trata como pessoa saem antes,
+            # `vinculos.LeitorDeVinculos._pontas`); a natureza de pessoa também não dá nome
+            assert tabela == empresas.LISTA_DE_EMPRESAS, linha
+            assert linha.campo in {vinculos.NOME, empresas.RETRATO_DO_CADASTRO}, linha
             continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha

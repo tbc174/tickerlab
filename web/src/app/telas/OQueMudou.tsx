@@ -2,11 +2,11 @@
 // da API (src/o_que_mudou.py), a mais nova primeiro; a tela só as agrupa por dia.
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { formatarData } from "../formatar";
 import type { EntregaDoDiaV1, OQueMudouV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 
@@ -27,7 +27,7 @@ export function OQueMudou({ pagina }: { pagina: PaginaDoApp }) {
           Carregando…
         </p>
       )}
-      {pedido.estado === "erro" && <ErroDaTela erro={pedido.erro} />}
+      {pedido.estado === "erro" && <Erro erro={pedido.erro} />}
       {pedido.estado === "pronto" && pedido.dados.entregas.length === 0 && (
         <p className="apagado">Nada novo por enquanto.</p>
       )}

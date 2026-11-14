@@ -140,8 +140,18 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         **_colunas_das_ofertas_e_conselhos(),
         "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
         "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
-        "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
-        "susep_seguros": [*setoriais_susep.COLUNAS, "visto_em"],
+        "ans_beneficiarios": [
+            *setoriais_ans.COLUNAS,
+            "visto_em",
+            "cnpj",
+            "cnpj_basico",
+        ],  # CNPJ pela ponte (linha 904)
+        "susep_seguros": [
+            *setoriais_susep.COLUNAS,
+            "visto_em",
+            "cnpj",
+            "cnpj_basico",
+        ],  # CNPJ pela ponte (linha 904)
         "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
@@ -248,6 +258,7 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
             *bcb_ifdata.ler_valores(_ifdata("valores_202506_t1_r1.json")).columns,
             "disponivel_em",
             "visto_em",
+            "cnpj_basico",  # a raiz pelo cadastro (linha 904, lote 4)
         ],
         "ifdata_cadastro": [*cadastro.columns, "disponivel_em", "visto_em"],
         "ligacao_dos_bancos": list(
