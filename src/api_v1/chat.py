@@ -22,7 +22,9 @@ começar, nada é gravado nem gasto. O processo que morre no meio deixa a linha 
 a fecha como erro (`fechar_abandonadas`).
 
 O registro de cada pergunta leva só ids e números (tokens, custo, latência): nem e-mail, nem nome, nem o
-texto da pergunta ou da resposta.
+texto da pergunta ou da resposta. Dos ids, só o da pergunta e o da organização, nunca o da conta: nenhuma
+linha de log do chat junta a pergunta à conta (a política de privacidade diz que, apagada a conta, os
+números da pergunta ficam sem nada que aponte para ela).
 """
 
 import json
@@ -233,10 +235,11 @@ def _fechar(
             pergunta_id,
             type(erro).__name__,
         )
+    # sem o id da conta: o `pergunta_id` é o id da linha que fica no banco depois de a conta ser apagada
+    # (a exclusão solta o `usuario_id` dela), e o log não pode ligar essa linha de volta à conta
     campos = {
         "evento": "chat_pergunta",
         "pergunta_id": str(pergunta_id),
-        "usuario_id": str(pergunta.usuario_id),
         "organizacao_id": str(pergunta.organizacao_id),
         "modelo": pergunta.modelo,
         "estado": estado,
