@@ -415,5 +415,17 @@ export interface FatoDaBase {
   como_foi_calculado: string;
 }
 
-/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão. */
-export const fatosDaBase: { fatos: FatoDaBase[]; medido_em_curto: string } = fatosJson as never;
+/** Uma pergunta da seção de cruzamentos e os cartões dela (`grupos_dos_fatos` de base/vitrine.py). */
+export interface GrupoDeFatos {
+  chave: string;
+  pergunta: string;
+  fatos: FatoDaBase[];
+}
+
+/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão.
+ * Os de empresa fechada vêm primeiro, por pergunta; os de companhia aberta, no último grupo. */
+export const fatosDaBase: {
+  grupos: GrupoDeFatos[];
+  subtitulo: string;
+  medido_em_curto: string;
+} = fatosJson as never;

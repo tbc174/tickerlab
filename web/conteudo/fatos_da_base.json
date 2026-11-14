@@ -1,76 +1,160 @@
 {
-  "fatos": [
+  "grupos": [
     {
-      "chave": "lucros",
-      "como_foi_calculado": "O lucro do período de cada balanço anual, na primeira versão que a base guarda, comparado com o número que o balanço do ano seguinte mostra para o mesmo ano (a coluna do ano anterior). A mudança pode vir de uma nova versão do próprio balanço ou do seguinte. Conta como mudado quando a diferença passa de 1% e de R$ 1 mil. Usa o consolidado e, na companhia que não o publica, o individual. Só entram os balanços que já têm o do ano seguinte. Mudar não quer dizer erro: entram reclassificação, norma contábil nova e operação descontinuada.",
-      "data": "2026-10-29",
-      "fonte": "CVM: demonstrações financeiras padronizadas (DFP)",
-      "numero": "6,3%",
-      "tabelas": [
-        "demonstracoes_como_era"
+      "chave": "crescendo",
+      "fatos": [
+        {
+          "chave": "tres_filiais",
+          "como_foi_calculado": "Filial é o estabelecimento que não é a matriz, contado pela data de início de atividade que a Receita registra, no retrato que valia no dia e em qualquer situação (a filial aberta e já fechada conta). Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ",
+          "numero": "4.906",
+          "tabelas": [
+            "cnpj_empresas_pj",
+            "cnpj_estabelecimentos_pj"
+          ],
+          "texto": "empresas fechadas ativas abriram três filiais ou mais nos 12 meses até o dia da medição, entre 8.588.883 ativas."
+        },
+        {
+          "chave": "bndes_e_finep",
+          "como_foi_calculado": "Os contratos com data de assinatura até o dia da medição, nas listas que os dois bancos publicam, como a base as viu até o dia. Só contratos com CNPJ de empresa: a linha de pessoa física fica de fora. O cartão não diz o valor nem se o crédito foi pago. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "BNDES: operações de crédito não automáticas; Finep: crédito direto e descentralizado",
+          "numero": "10,6%",
+          "tabelas": [
+            "financiamentos_bndes",
+            "financiamentos_finep",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 2.543 empresas fechadas ativas com crédito contratado no BNDES também tiveram crédito da Finep (270 empresas)."
+        }
       ],
-      "texto": "dos 7.959 balanços anuais de 2010 a 2025 tiveram o lucro do ano mudado em mais de 1% até o balanço do ano seguinte: 498 balanços, de 335 de 1.051 companhias."
+      "pergunta": "Quem está crescendo"
     },
     {
-      "chave": "auditor",
-      "como_foi_calculado": "Cada troca de firma de auditoria olha o primeiro balanço anual publicado depois dela e compara o lucro do ano anterior com a mesma regra do número dos balanços refeitos. 569 das 2.129 trocas ficam de fora: ainda não têm esse balanço, ou a base não tem o do ano anterior. A comparação com os balanços sem troca mostra uma frequência, não uma causa.",
-      "data": "2026-10-29",
-      "fonte": "CVM: formulário cadastral (FCA) e demonstrações financeiras (DFP)",
-      "numero": "7,9%",
-      "tabelas": [
-        "trocas_de_auditor",
-        "demonstracoes_como_era"
+      "chave": "se_mexeu",
+      "fatos": [
+        {
+          "chave": "socia_entrou",
+          "como_foi_calculado": "A data de entrada que a Receita registra para a sócia empresa, numa mudança do quadro já publicada no dia. Sócio pessoa física não entra na conta. Entrar como sócia não quer dizer compra: holding da família, reorganização e aumento de capital também entram. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ (quadro de sócios)",
+          "numero": "72.280",
+          "tabelas": [
+            "entradas_de_socio_pj",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "empresas fechadas ativas ganharam uma empresa como sócia nos 12 meses até o dia da medição, pelo quadro de sócios da Receita, entre 8.588.883 ativas."
+        },
+        {
+          "chave": "tres_niveis",
+          "como_foi_calculado": "Três camadas: a empresa tem uma sócia empresa, que tem uma sócia empresa, que tem uma sócia empresa, no quadro de sócios que valia no dia (entrou e não saiu até ali). A cadeia que volta a uma empresa já contada também entra. Sócio pessoa física não entra na conta. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ (quadro de sócios)",
+          "numero": "30.696",
+          "tabelas": [
+            "entradas_de_socio_pj",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "empresas fechadas ativas têm três camadas de empresas sócias acima delas: 8,7% das 354.667 que têm uma empresa como sócia."
+        }
       ],
-      "texto": "das 1.560 trocas de auditor vieram com o lucro do ano anterior mudado em mais de 1% no primeiro balanço depois da troca (123 trocas). Nos balanços sem troca, foram 5,9%."
+      "pergunta": "Quem já se mexeu"
     },
     {
-      "chave": "atraso",
-      "como_foi_calculado": "O prazo da DFP é o da CVM (três meses depois do fim do exercício) e o atraso é um rótulo nosso: a primeira entrega registrada no sistema da CVM depois do prazo, contada em dias úteis; grave quando passa de 30 dias corridos. O lucro mudado segue a regra do primeiro cartão, e só entram os balanços que já têm o do ano seguinte. Atrasar não quer dizer erro no balanço: o cartão mostra uma frequência, não uma causa.",
-      "data": "2026-10-29",
-      "fonte": "CVM: demonstrações financeiras padronizadas (DFP) e as datas de entrega",
-      "numero": "12,0%",
-      "tabelas": [
-        "rotulos_atraso",
-        "demonstracoes_como_era"
+      "chave": "diligencia",
+      "fatos": [
+        {
+          "chave": "bndes_e_divida",
+          "como_foi_calculado": "Os contratos do BNDES assinados de 2015 até o dia, cruzados com a lista de devedores da PGFN do trimestre mais novo já público no dia. Só CNPJ de empresa, nas duas listas. A dívida inscrita pode estar parcelada, garantida ou em discussão na Justiça. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "BNDES e PGFN: lista de devedores da dívida ativa da União",
+          "numero": "6,1%",
+          "tabelas": [
+            "financiamentos_bndes",
+            "pgfn_divida",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 1.383 empresas fechadas ativas com crédito do BNDES contratado desde 2015 têm dívida ativa da União inscrita (84 empresas)."
+        },
+        {
+          "chave": "anvisa_e_divida",
+          "como_foi_calculado": "Ao menos uma autorização de funcionamento da Anvisa em vigor no retrato mais novo já público no dia, cruzada com a lista de devedores da PGFN do trimestre mais novo já público no dia. Só CNPJ de empresa. A dívida inscrita pode estar parcelada, garantida ou em discussão na Justiça. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Anvisa: autorizações de funcionamento; PGFN: lista de devedores da dívida ativa da União",
+          "numero": "7,9%",
+          "tabelas": [
+            "anvisa_por_empresa",
+            "pgfn_divida",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 102.547 empresas fechadas ativas com autorização de funcionamento da Anvisa em vigor têm dívida ativa da União inscrita (8.130 empresas)."
+        }
       ],
-      "texto": "dos 410 balanços anuais entregues à CVM depois do prazo tiveram o lucro do ano mudado em mais de 1% até o balanço seguinte. Nos 7.102 entregues no prazo, foram 5,8%; nos 172 com mais de 30 dias de atraso, 13,4%."
+      "pergunta": "O que a diligência acharia"
     },
     {
-      "chave": "remuneracao",
-      "como_foi_calculado": "A remuneração total reconhecida da diretoria estatutária em cada exercício, como o último formulário de referência público a informa (a CVM reescreve os anos antigos), só nos exercícios inteiros já encerrados quando o formulário saiu: o valor previsto para o ano em curso fica de fora. O lucro é o do período na DRE da DFP, consolidado ou individual. Cada par é um exercício e o anterior: 6.256 pares, de 2011 a 2026, em 803 companhias; em todos eles, a remuneração subiu em 61,4%. Ela pode subir porque entraram diretores ou porque o pagamento foi combinado antes do resultado.",
-      "data": "2026-10-29",
-      "fonte": "CVM: formulário de referência (FRE, remuneração dos administradores) e DFP",
-      "numero": "59,4%",
-      "tabelas": [
-        "fre_remuneracao",
-        "demonstracoes_como_era"
+      "chave": "fora_do_balanco",
+      "fatos": [
+        {
+          "chave": "industria_e_marca",
+          "como_foi_calculado": "Indústria: o CNAE principal da matriz é da indústria de transformação (divisões 10 a 33). Porte: o da Receita, que não tem \"médio\"; entram as do porte \"demais\", acima do limite da empresa de pequeno porte, pela declaração da própria empresa. Marca: ao menos um processo no INPI com a empresa como titular, como a base o viu até o dia. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Receita Federal: cadastro do CNPJ e INPI: titulares de marcas",
+          "numero": "52,7%",
+          "tabelas": [
+            "inpi_marcas_titulares",
+            "cnpj_empresas_pj",
+            "cnpj_estabelecimentos_pj"
+          ],
+          "texto": "das 55.515 indústrias fechadas ativas acima do porte de pequena empresa são titulares de ao menos um pedido de marca no INPI (29.233 empresas)."
+        },
+        {
+          "chave": "finep_e_patente",
+          "como_foi_calculado": "Os contratos da Finep assinados até o dia, cruzados com os pedidos de patente no INPI que têm a empresa como depositante, como a base viu os dois até o dia. Só CNPJ de empresa. Pedir a patente não quer dizer que ela foi concedida. Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. Contagens abaixo de 10 não saem.",
+          "data": "2026-11-14",
+          "fonte": "Finep: crédito direto e descentralizado; INPI: depositantes de patentes",
+          "numero": "23,4%",
+          "tabelas": [
+            "financiamentos_finep",
+            "inpi_patentes_depositantes",
+            "cnpj_empresas_pj"
+          ],
+          "texto": "das 3.620 empresas fechadas ativas com crédito da Finep depositaram ao menos um pedido de patente no INPI (847 empresas)."
+        }
       ],
-      "texto": "dos 1.579 exercícios em que o lucro caiu mais de 20% (ou virou prejuízo) tiveram a remuneração total da diretoria estatutária maior que no ano anterior. Quando o lucro cresceu mais de 20%, ela subiu em 68,2% dos 1.609."
+      "pergunta": "O que não está no balanço"
     },
     {
-      "chave": "dividendo",
-      "como_foi_calculado": "O dividendo total do exercício (dividendos e juros sobre capital próprio) que o formulário de referência declara, na última versão cujo prazo de entrega (cinco meses depois do fim do exercício a que o formulário se refere) já tinha passado, comparado com o lucro do período na DRE do mesmo exercício, consolidado ou individual. Pagar mais do que o lucro do ano é permitido: sai de reservas ou de lucros de anos anteriores; o cartão só conta. A CVM tirou a tabela de proventos do formulário aberto depois de 2022, e a série para ali. São 573 companhias.",
-      "data": "2026-10-29",
-      "fonte": "CVM: formulário de referência (FRE, proventos) e DFP",
-      "numero": "255",
-      "tabelas": [
-        "proventos",
-        "demonstracoes_como_era"
+      "chave": "abertas",
+      "fatos": [
+        {
+          "chave": "lucros",
+          "como_foi_calculado": "O lucro do período de cada balanço anual, na primeira versão que a base guarda, comparado com o número que o balanço do ano seguinte mostra para o mesmo ano (a coluna do ano anterior). A mudança pode vir de uma nova versão do próprio balanço ou do seguinte. Conta como mudado quando a diferença passa de 1% e de R$ 1 mil. Usa o consolidado e, na companhia que não o publica, o individual. Só entram os balanços que já têm o do ano seguinte. Mudar não quer dizer erro: entram reclassificação, norma contábil nova e operação descontinuada.",
+          "data": "2026-11-14",
+          "fonte": "CVM: demonstrações financeiras padronizadas (DFP)",
+          "numero": "6,3%",
+          "tabelas": [
+            "demonstracoes_como_era"
+          ],
+          "texto": "dos 7.959 balanços anuais de 2010 a 2025 tiveram o lucro do ano mudado em mais de 1% até o balanço do ano seguinte: 498 balanços, de 335 de 1.051 companhias."
+        },
+        {
+          "chave": "parecer",
+          "como_foi_calculado": "Cada parecer de auditoria da DFP (a última versão pública de cada exercício) publicado há mais de 24 meses, de 2010 a 2024. O alerta é o parágrafo de incerteza relevante sobre a continuidade operacional, lido pelo nosso rótulo no texto do relatório; o relatório curto ou ambíguo fica de fora. A insolvência é o primeiro pedido ou decreto que a própria companhia comunicou à CVM (fato relevante ou formulário); a companhia que já estava em recuperação quando o parecer saiu não entra. São 134 companhias com o alerta. O auditor descreve o que vê: o cartão mostra uma frequência, não uma previsão.",
+          "data": "2026-11-14",
+          "fonte": "CVM: relatório do auditor na DFP e comunicados das companhias",
+          "numero": "5,3%",
+          "tabelas": [
+            "pareceres_dfp",
+            "insolvencia"
+          ],
+          "texto": "dos 455 pareceres de auditoria com incerteza relevante sobre a continuidade da companhia foram seguidos, em 24 meses, de recuperação judicial ou extrajudicial, falência ou liquidação. Entre os 8.423 sem esse alerta, foram 1,5%."
+        }
       ],
-      "texto": "dos 2.979 exercícios com dividendo declarado no formulário de referência, de 2010 a 2022, pagaram mais do que o lucro do ano no balanço (149 companhias). Em 72 deles, o ano fechou em prejuízo."
-    },
-    {
-      "chave": "parecer",
-      "como_foi_calculado": "Cada parecer de auditoria da DFP (a última versão pública de cada exercício) publicado há mais de 24 meses, de 2010 a 2024. O alerta é o parágrafo de incerteza relevante sobre a continuidade operacional, lido pelo nosso rótulo no texto do relatório; o relatório curto ou ambíguo fica de fora. A insolvência é o primeiro pedido ou decreto que a própria companhia comunicou à CVM (fato relevante ou formulário); a companhia que já estava em recuperação quando o parecer saiu não entra. São 134 companhias com o alerta. O auditor descreve o que vê: o cartão mostra uma frequência, não uma previsão.",
-      "data": "2026-10-29",
-      "fonte": "CVM: relatório do auditor na DFP e comunicados das companhias",
-      "numero": "5,3%",
-      "tabelas": [
-        "pareceres_dfp",
-        "insolvencia"
-      ],
-      "texto": "dos 455 pareceres de auditoria com incerteza relevante sobre a continuidade da companhia foram seguidos, em 24 meses, de recuperação judicial ou extrajudicial, falência ou liquidação. Entre os 8.421 sem esse alerta, foram 1,5%."
+      "pergunta": "Nas companhias abertas"
     }
   ],
-  "medido_em_curto": "29/10"
+  "medido_em_curto": "14/11",
+  "subtitulo": "Contagens de empresas fechadas e de companhias abertas, medidas em 14/11, sem nome de empresa, sócio ou pessoa. Cada número diz de onde veio e como foi contado."
 }
