@@ -105,7 +105,7 @@ function AtalhosDePergunta() {
   return (
     <div className="atalhos-do-inicio">
       <h2>Ou pergunte à base</h2>
-      <p className="apagado">Cada pergunta abre o Perguntar com o texto pronto; você confere e envia.</p>
+      <p className="apagado">Cada pergunta abre o Perguntar; com o chat disponível na sua conta, o texto já vem na caixa e você confere e envia.</p>
       <ul aria-label="Perguntas para começar">
         {ATALHOS_DE_PERGUNTA.map((pergunta) => (
           <li key={pergunta}>
