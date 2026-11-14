@@ -849,6 +849,13 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "istat",
             "rba",
             "snb",
+            # conferência de 14/11 (linha 904): só o rodapé do gov.br lido em 14/11/2026, sem licença do
+            # conjunto nem robots.txt lido; as páginas da Anatel recusaram o acesso
+            "mte-pat",
+            "anm-tah",
+            "anatel-pados",
+            "anatel-homologados",
+            "anp-tancagem",
         ),
         _NAO_RESPONDIDA,
     ),
