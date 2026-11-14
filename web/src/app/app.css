@@ -464,6 +464,17 @@ button.resultado-da-busca { margin-top: var(--e3); }
   background: var(--azul-texto);
   opacity: 0.75;
   border-radius: 2px 2px 0 0;
+}
+/* Setor: a barra de cada UF (largura proporcional à maior; o número fica na coluna ao lado) e o quadro "Como ler
+   esta lista" da aba Quem já se mexeu */
+.uf-com-barra { display: flex; align-items: center; gap: var(--e3); min-width: 0; }
+.trilho-da-uf { flex: 1; min-width: 3rem; height: .6rem; border-radius: 3px; background: var(--superficie); }
+.barra-da-uf { display: block; height: 100%; border-radius: 3px; background: var(--azul-texto); opacity: 0.75; }
+.quadro-como-ler { margin: var(--e4) 0; padding: var(--e3) var(--e4); border: 1px solid var(--linha-forte);
+  border-radius: var(--e2); background: var(--superficie); }
+.quadro-como-ler h2 { margin: 0 0 var(--e2); font-size: 1rem; }
+.quadro-como-ler ul { margin: 0; padding-left: var(--e4); }
+.quadro-como-ler li + li { margin-top: var(--e1); }
 /* Perguntar (linha 903): a conversa na coluna principal e "Nesta conversa" ao lado; no celular, uma coluna só,
    com a caixa da pergunta presa embaixo */
 .grade-do-chat { display: grid; gap: var(--e5); margin-top: var(--e4); }
