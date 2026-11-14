@@ -12,8 +12,17 @@ import {
   fatosDaBase,
 } from "../conteudo";
 import { ComoFoiCalculado } from "./ComoFoiCalculado";
+import { linkDoApp } from "./textos";
 
-function Lado({ titulo, lado }: { titulo: string; lado: LadoDoRecorte }) {
+// o link abre a tela Encontrar empresas do app com o estado ou o setor da barra: a lista é a do cadastro (todas
+// as empresas ativas dali), não a das empresas que o cartão contou; a frase diz isso, e o app pede login
+const PAGINA_DA_BUSCA = "encontrar-empresas";
+const TEXTO_DO_LINK = "Empresas ativas no app (com login)";
+const AVISO_DO_LINK =
+  "O link abre, no app e com login, a busca das empresas ativas com cadastro na Receita daquele estado ou " +
+  "setor: todas as do cadastro, não só as que este cartão contou.";
+
+function Lado({ titulo, lado, onde }: { titulo: string; lado: LadoDoRecorte; onde: (rotulo: string) => string }) {
   return (
     <div className="v2-recorte-lado">
       <p className="v2-recorte-titulo">{titulo}</p>
@@ -27,6 +36,15 @@ function Lado({ titulo, lado }: { titulo: string; lado: LadoDoRecorte }) {
             <span className="v2-recorte-conta">
               {barra.parte} de {barra.todo} ({barra.porcento})
             </span>
+            {barra.filtro_no_app && (
+              <a
+                className="v2-recorte-link"
+                href={linkDoApp(PAGINA_DA_BUSCA, barra.filtro_no_app)}
+                aria-label={`Empresas ativas ${onde(barra.rotulo)}, no app, com login`}
+              >
+                {TEXTO_DO_LINK}
+              </a>
+            )}
           </li>
         ))}
       </ul>
@@ -39,13 +57,20 @@ function Lado({ titulo, lado }: { titulo: string; lado: LadoDoRecorte }) {
   );
 }
 
+const temLink = (lado: LadoDoRecorte) => lado.barras.some((barra) => barra.filtro_no_app);
+
 function Recorte({ recorte }: { recorte: RecorteDoFato }) {
   return (
     <details className="v2-recorte">
       <summary>Por estado e por setor</summary>
-      <Lado titulo="Por estado da matriz" lado={recorte.por_uf} />
-      <Lado titulo="Por setor da matriz (seção da CNAE)" lado={recorte.por_setor} />
+      <Lado titulo="Por estado da matriz" lado={recorte.por_uf} onde={(uf) => `com sede em ${uf}`} />
+      <Lado
+        titulo="Por setor da matriz (seção da CNAE)"
+        lado={recorte.por_setor}
+        onde={(setor) => `do setor ${setor}`}
+      />
       <p className="v2-recorte-nota">{recorte.como_foi_calculado}</p>
+      {(temLink(recorte.por_uf) || temLink(recorte.por_setor)) && <p className="v2-recorte-nota">{AVISO_DO_LINK}</p>}
     </details>
   );
 }

@@ -1683,9 +1683,21 @@ def _rotulo_da_celula(dimensao: str, chave: str) -> str:
     return fechadas.cnae.SECOES[chave] if dimensao == "setor" else chave
 
 
+def _filtro_no_app(dimensao: str, chave: str) -> dict[str, str] | None:
+    """O filtro da tela Encontrar empresas que abre as empresas ativas daquele estado ou setor (o app lê só
+    `uf` e `setor` do endereço); None quando a busca não tem esse valor ("sem informação", seção fora dela)."""
+    # importa só aqui: a busca puxa o leitor da API, que o resto da vitrine não usa
+    from src.analista import busca
+
+    if dimensao == "uf":
+        return {"uf": chave} if chave in busca.UFS else None
+    return {"setor": chave} if chave in busca.SETORES else None
+
+
 def barras_do_recorte(celulas: Sequence[fechadas.Celula], dimensao: str) -> dict:
     """As células que saem, da maior parte para a menor, com a largura da barra (a parte sobre a maior parte,
-    em %), e os rótulos das que não saem."""
+    em %) e o filtro do app que abre as empresas ativas daquele estado ou setor, e os rótulos das que não
+    saem."""
     visiveis = sorted(
         (c for c in celulas if c.todo is not None and c.parte is not None),
         key=lambda c: (-(c.parte or 0), c.chave),
@@ -1698,6 +1710,7 @@ def barras_do_recorte(celulas: Sequence[fechadas.Celula], dimensao: str) -> dict
             "todo": _milhar(c.todo),
             "porcento": _porcento(c.parte, c.todo),
             "largura": round(100 * c.parte / maior, 1) if maior else 0.0,
+            "filtro_no_app": _filtro_no_app(dimensao, c.chave),
         }
         for c in visiveis
         if c.todo is not None and c.parte is not None

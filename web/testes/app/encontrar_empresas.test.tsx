@@ -86,8 +86,8 @@ const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ai
 const DE_PILOTO: BuscaDeEmpresasV1 = { ...PRIMEIRA, aviso_de_piloto: AVISO_DE_PILOTO };
 
 /** A API de mentira: o pedido sem filtro devolve as opções; com cursor, a segunda página; o resto, `busca`. */
-function abrir(busca: BuscaDeEmpresasV1) {
-  return abrirApp("/encontrar-empresas", {
+function abrir(busca: BuscaDeEmpresasV1, consulta = "") {
+  return abrirApp(`/encontrar-empresas${consulta}`, {
     rotas: (endereco, pedido) => {
       if (endereco === FICHA) return respostaJson(200, { estado: "nao_liberada", ficha: null, fontes: [], limites: LIMITES, o_que_vem: [] });
       if (endereco !== ROTA) return undefined;
@@ -265,6 +265,53 @@ describe("encontrar empresas", () => {
     expect(await screen.findByText("Nenhuma empresa com esses filtros.")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByRole("button", { name: "Baixar em Excel" })).toBeNull();
+  });
+
+  it("o setor e o estado do endereço (link dos cruzamentos do site) já abrem a busca com o filtro", async () => {
+    const { buscar } = abrir(PRIMEIRA, "?setor=C&uf=SP");
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)).toEqual([{}, { setores: ["C"], ufs: ["SP"] }]);
+    expect((screen.getByRole("checkbox", { name: "Indústrias de transformação" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: "SP" }) as HTMLInputElement).checked).toBe(true);
+    const etiquetas = screen.getByRole("list", { name: "Filtros em uso" });
+    expect(within(etiquetas).getAllByRole("listitem").map((i) => i.textContent)).toEqual([
+      "Setor: Indústrias de transformação ×",
+      "Estado: SP ×",
+    ]);
+  });
+
+  it("só o estado no endereço: busca só pelo estado", async () => {
+    const { buscar } = abrir(PRIMEIRA, "?uf=MG");
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)[1]).toEqual({ setores: [], ufs: ["MG"] });
+  });
+
+  it("no endereço, só setor e estado contam: outros parâmetros não viram filtro", async () => {
+    const { buscar } = abrir(PRIMEIRA, "?setor=J&idade_minima=10&capital_minimo=1&ordem=maior_capital&cnpj=1");
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)[1]).toEqual({ setores: ["J"], ufs: [] });
+    expect((screen.getByLabelText("Idade mínima (anos)") as HTMLInputElement).value).toBe("");
+  });
+
+  it.each([
+    ["setor e estado que o formulário não oferece", "?setor=Z&uf=XX"],
+    ["seção fora da busca e estado em minúscula", "?setor=O&uf=sp"],
+    ["valores vazios", "?setor=&uf="],
+    ["só outros parâmetros", "?idade_minima=10"],
+  ])("valor inválido no endereço (%s): filtro vazio, sem erro e sem busca", async (_caso, consulta) => {
+    const { buscar } = abrir(PRIMEIRA, consulta);
+    const botao = (await screen.findByRole("button", { name: "Encontrar empresas" })) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+    expect(screen.getByText(/Escolha ao menos um filtro/)).toBeTruthy();
+    expect(corpos(buscar)).toEqual([{}]);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
+  });
+
+  it("um valor bom e outro ruim: fica só o bom", async () => {
+    const { buscar } = abrir(PRIMEIRA, "?setor=Z&uf=SP");
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)[1]).toEqual({ setores: [], ufs: ["SP"] });
   });
 
   it("dado ainda não liberado: estado da tela, sem alerta de erro e com os limites à vista", async () => {

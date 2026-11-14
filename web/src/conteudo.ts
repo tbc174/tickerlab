@@ -411,6 +411,8 @@ export interface BarraDoRecorte {
   todo: string;
   porcento: string;
   largura: number; // a parte sobre a maior parte do recorte, em %
+  // o filtro da tela Encontrar empresas ({uf} ou {setor}) que abre as empresas ativas dali; null sem link
+  filtro_no_app?: Record<string, string> | null;
 }
 
 /** Um lado do recorte: as barras que saem e os rótulos das que não saem (contagem pequena). */

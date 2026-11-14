@@ -1053,6 +1053,7 @@ def test_o_recorte_vira_barras_da_maior_parte_para_a_menor():
         "todo": "5.000",
         "porcento": "20,0%",
         "largura": 100.0,
+        "filtro_no_app": {"uf": "SP"},
     }
     assert por_uf["barras"][1]["largura"] == 50.0
     setores = [b["rotulo"] for b in recorte["por_setor"]["barras"]]
@@ -1060,6 +1061,30 @@ def test_o_recorte_vira_barras_da_maior_parte_para_a_menor():
     for texto in (recorte["como_foi_calculado"], *setores):
         assert not PROIBIDAS_NOS_FATOS.search(texto), texto
     conferir_sem_pessoas(recorte, set())
+
+
+def test_cada_barra_leva_o_filtro_que_o_app_le_e_so_quando_a_busca_tem_o_valor():
+    from src.analista import busca
+
+    celulas = fechadas.celulas_que_saem(
+        {"SP": (900, 300), "MG": (800, 200), "nd": (700, 100)}
+    )
+    filtros = {
+        b["rotulo"]: b["filtro_no_app"]
+        for b in vitrine.barras_do_recorte(celulas, "uf")["barras"]
+    }
+    assert filtros == {
+        "SP": {"uf": "SP"},
+        "MG": {"uf": "MG"},
+        vitrine.ROTULO_SEM_INFORMACAO: None,
+    }
+    # a seção fora da busca do app (O, T e U) sai sem link; a que está nela leva a letra da seção
+    assert "O" not in busca.SETORES
+    setores = fechadas.celulas_que_saem({"C": (900, 300), "O": (800, 200)})
+    assert [
+        b["filtro_no_app"]
+        for b in vitrine.barras_do_recorte(setores, "setor")["barras"]
+    ] == [{"setor": "C"}, None]
 
 
 def test_fatos_da_base_le_o_recorte_ao_lado_da_fotografia(tmp_path):
