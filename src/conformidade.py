@@ -68,7 +68,10 @@ from src.sala.documentos import apagar_arquivos_da_conta
 # Versão 14 do aceite (texto 16 da política, linha 809): o vínculo da conta com a organização e o
 # registro das consultas a dados de pessoas são usos novos de dado da conta; a organização com a
 # permissão de ver pessoas (ADR 0128, Emenda 1) e a consulta da base pelo próprio responsável
-VERSAO_DOS_TERMOS = "2026-11-11.14"
+# Versão 15 do aceite (texto 18 da política, linha 903): no chat de IA, o texto da pergunta que a
+# pessoa escreve e as últimas trocas vão a um modelo de linguagem, um compartilhamento novo do que
+# ela escreve; os números de cada pergunta ficam, sem a conta, depois da exclusão
+VERSAO_DOS_TERMOS = "2026-11-14.15"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
