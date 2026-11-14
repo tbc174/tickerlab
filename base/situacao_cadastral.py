@@ -24,6 +24,7 @@ from collections.abc import Collection, Mapping
 import pandas as pd
 
 from base import cnpj_historico as historico
+from base.cnpj import FORMA as FORMA_DO_CNPJ
 
 log = logging.getLogger(__name__)
 
@@ -44,7 +45,6 @@ COLUNAS = (
     "cnpj", *CAMPOS, historico.MES, historico.DISPONIVEL_EM, historico.CONSTA,
 )  # fmt: skip
 TAMANHO_DA_RAIZ = 8
-DIGITOS_DO_CNPJ = 14
 TAMANHO_DO_CODIGO = 2  # a base guarda sem o zero à esquerda em alguns meses
 # Retrato da Receita com defeito conhecido → o mês em que as mudanças dele passam a contar. O de estabelecimentos
 # de 2024-10 trouxe 4.634.796 CNPJs em dobro (a cópia com `ordem` 1) e deixou 3.054.993 de fora; em 2024-11 as
@@ -62,12 +62,12 @@ def da_raiz(cnpj: pd.Series) -> pd.Series:
 
 
 def so_de_14_digitos(tabela: pd.DataFrame) -> pd.DataFrame:
-    """As linhas cujo CNPJ tem 14 dígitos; o resto sai (o descarte só é contado em `versoes`, nunca mostrado).
+    """As linhas cujo CNPJ tem a forma de 14 caracteres (12 de `0-9A-Z` e 2 dígitos, com o CNPJ alfanumérico).
 
-    CNPJ mais curto não prova pessoa jurídica: se o zero à esquerda se perdeu, a raiz de 8 caracteres é outra e
+    O resto sai (o descarte só é contado em `versoes`, nunca mostrado). CNPJ mais curto não prova pessoa jurídica: se o zero à esquerda se perdeu, a raiz de 8 caracteres é outra e
     não foi conferida na lista sem pessoa (a prova de `base/sem_pessoa_por_raiz.py` também o conta como fora).
     """
-    inteiro = tabela["cnpj"].astype(str).str.fullmatch(rf"\d{{{DIGITOS_DO_CNPJ}}}")
+    inteiro = tabela["cnpj"].astype(str).str.fullmatch(FORMA_DO_CNPJ.pattern)
     return tabela[inteiro].reset_index(drop=True)
 
 

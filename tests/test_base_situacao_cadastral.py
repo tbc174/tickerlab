@@ -127,6 +127,14 @@ def test_cnpj_sem_14_digitos_fica_de_fora_mesmo_com_a_raiz_na_lista(caplog):
     assert _versoes().equals(versoes)
 
 
+def test_cnpj_alfanumerico_de_14_caracteres_continua_na_tabela():
+    """O CNPJ novo da Receita (letras nas 12 primeiras posições) é pessoa jurídica válida e não pode sumir."""
+    novo = "A1B2C3D4000199"
+    retratos = [[*r, _estabelecimento(novo, "02", "2026-08-01")] for r in RETRATOS]
+    versoes = _versoes(retratos, raizes={*RAIZES_PJ, novo[:8]})
+    assert novo[:8] in set(versoes["cnpj_basico"])
+
+
 def test_sem_cnpj_curto_nada_e_logado(caplog):
     with caplog.at_level("WARNING", logger=sc.log.name):
         _versoes()
