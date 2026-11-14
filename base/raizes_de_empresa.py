@@ -63,7 +63,9 @@ def _arquivos_atuais(base: Path, tabela: str) -> dict[str, Path]:
 
 
 def _raizes_do_arquivo(arquivo: Path) -> pa.Array:
-    coluna = pq.read_table(arquivo, columns=[COLUNA_DA_RAIZ]).column(COLUNA_DA_RAIZ)
+    coluna = (
+        pq.ParquetFile(arquivo).read(columns=[COLUNA_DA_RAIZ]).column(COLUNA_DA_RAIZ)
+    )
     return pc.unique(coluna.cast(pa.string()))
 
 
