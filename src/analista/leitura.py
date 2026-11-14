@@ -8,8 +8,8 @@ pela API.
 
 A prontidão de piloto (D11) vale na tela como na API: só para a conta de uma organização com a marca de piloto
 (`permitido_na_tela(..., piloto=True)`, conferida no servidor pela rota) e sempre com o aviso de piloto na
-resposta. Hoje só a busca de empresas a usa (`src/analista/busca.py`); as outras leituras seguem só com a
-prontidão cheia.
+resposta. Usam o piloto a busca de empresas (`src/analista/busca.py`), a ficha (aqui), os eventos, os vínculos e
+o Comparar (linha 905): a leitura roda dentro de `com_aviso_de_piloto`, que abre o registro e marca o corpo.
 
 Três estados, para a tela nunca mostrar erro onde o certo é explicar:
 
@@ -20,8 +20,8 @@ Três estados, para a tela nunca mostrar erro onde o certo é explicar:
   não o conhece como empresa), sem dizer o motivo, como o 404 da API.
 """
 
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, field, replace
 from datetime import date
 from functools import cache
 
@@ -144,21 +144,31 @@ def permitido_na_tela(
     return permitido
 
 
-def ficha(
+def com_aviso_de_piloto(ler: Callable[[], Resposta]) -> Resposta:
+    """A leitura `ler` com o registro de piloto aberto (`piloto_.anotar`) e o corpo marcado com ele: se algum
+    campo saiu pelo piloto, todo bloco e o topo levam o aviso (D11.3); se nada saiu, o corpo fica igual."""
+    with piloto_.anotar() as liberados:
+        resposta = ler()
+    if resposta.corpo is None:
+        return resposta
+    return replace(resposta, corpo=piloto_.marcar(resposta.corpo, liberados))
+
+
+def ficha_sem_aviso(
     porta: Porta,
     cnpj: str,
     *,
     hoje: date,
     como_era_em: date | None = None,
     regras: Regras | None = None,
+    piloto: bool = False,
 ) -> Resposta:
-    """A ficha do CNPJ como era em `como_era_em` (hoje, se vazio ou no futuro), pelo `LeitorDeFicha` da API.
-
-    `ValueError` se o CNPJ é inválido (a rota responde 422)."""
+    """A ficha do CNPJ, ainda sem o aviso de piloto: só para quem já abriu o registro em volta e marca o
+    próprio corpo (o Comparar). Fora de um registro aberto, o campo de piloto é negado. Veja `ficha`."""
     if not cnpj_.normalizar_cnpj(cnpj):
         raise ValueError("CNPJ inválido")
     dia = hoje if como_era_em is None else min(como_era_em, hoje)
-    permitido = permitido_na_tela(ficha_.CONJUNTO, hoje, regras)
+    permitido = permitido_na_tela(ficha_.CONJUNTO, hoje, regras, piloto=piloto)
     fonte, campo = ANCORA
     if not permitido(fonte, campo, False):
         return Resposta(NAO_LIBERADA)
@@ -170,3 +180,29 @@ def ficha(
     limites = limites_da_tela(servida.corpo["limites"], AVISOS_DA_TELA)
     corpo = {**servida.corpo, "limites": list(limites)}
     return Resposta(PRONTA, corpo, fontes_da_resposta(servida.fontes), servida.linhas)
+
+
+def ficha(
+    porta: Porta,
+    cnpj: str,
+    *,
+    hoje: date,
+    como_era_em: date | None = None,
+    regras: Regras | None = None,
+    piloto: bool = False,
+) -> Resposta:
+    """A ficha do CNPJ como era em `como_era_em` (hoje, se vazio ou no futuro), pelo `LeitorDeFicha` da API.
+
+    `piloto`: a conta é de uma organização com a marca de piloto (D11, conferido pela rota no servidor). O que
+    sair pelo piloto leva o aviso em cada campo e no topo do corpo (`piloto_.AVISO`).
+    `ValueError` se o CNPJ é inválido (a rota responde 422)."""
+    return com_aviso_de_piloto(
+        lambda: ficha_sem_aviso(
+            porta,
+            cnpj,
+            hoje=hoje,
+            como_era_em=como_era_em,
+            regras=regras,
+            piloto=piloto,
+        )
+    )

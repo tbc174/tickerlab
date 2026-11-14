@@ -177,6 +177,12 @@ function Comparacao({ dados, rota, cnpjs }: { dados: ComparacaoDeEmpresasV1; rot
   return (
     <>
       <p className="apagado">Como a base conhecia em {formatarData(dados.como_era_em ?? "")}</p>
+      {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+      {dados.aviso_de_piloto ? (
+        <p className="erro-do-app" role="note">
+          {dados.aviso_de_piloto}
+        </p>
+      ) : null}
       {algumaPronta ? (
         <div className="acoes-da-ficha">
           <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={{ cnpjs }} nome={NOME_DA_PLANILHA} />
