@@ -10,6 +10,7 @@ import pytest
 
 from base import anm
 from base.parquet import GRAVADO, IGUAL, ler_tabela
+from base.raizes_de_empresa import RaizesDeEmpresa
 from scripts import carga_anm
 from src import rede
 from src.banco import coletas
@@ -26,10 +27,11 @@ ARQUIVOS = {
 }
 
 
-RAIZES_DO_EXEMPLO = (
+_RAIZES = (
     frozenset(anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)["cnpj"].str[:8])
     | frozenset(anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)["cnpj"].str[:8])
 ) - {""}
+RAIZES_DO_EXEMPLO = RaizesDeEmpresa.de_lista(_RAIZES)
 
 
 def _download(arquivos: dict[str, bytes]):
@@ -53,7 +55,7 @@ def _carregar(
     saida: Path,
     quando: date,
     arquivos: dict[str, bytes] | None = None,
-    raizes: frozenset[str] | None = None,
+    raizes: RaizesDeEmpresa | None = None,
 ):
     baixar = _download(arquivos or ARQUIVOS)
     resultados = {}
@@ -181,10 +183,10 @@ def test_cfem_so_grava_raiz_da_lista_e_sigbm_deixa_a_barragem_sem_cnpj(tmp_path:
     """Empresário individual e MEI (fora das listas) são pessoa: o CFEM tira a linha; a barragem fica sem CNPJ e sem nome."""
     cfem_inteiro = anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)
     sigbm_inteiro = anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)
-    fica = frozenset(sorted(RAIZES_DO_EXEMPLO)[:1])
-    assert len(RAIZES_DO_EXEMPLO) >= 2
-    _carregar("cfem", tmp_path, PRIMEIRA, raizes=fica)
-    _carregar("sigbm", tmp_path, PRIMEIRA, raizes=fica)
+    fica = frozenset(sorted(_RAIZES)[:1])
+    assert len(_RAIZES) >= 2
+    _carregar("cfem", tmp_path, PRIMEIRA, raizes=RaizesDeEmpresa.de_lista(fica))
+    _carregar("sigbm", tmp_path, PRIMEIRA, raizes=RaizesDeEmpresa.de_lista(fica))
     cfem = ler_tabela(tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet")
     assert 0 < len(cfem) < len(cfem_inteiro)
     assert set(cfem["cnpj"].str[:8]) == fica
@@ -207,20 +209,23 @@ def test_so_empresa_conta_o_que_saiu():
             "empreendedor": ["A", "B", ""],
         }
     )
-    cfem = carga_anm.so_empresa(tabela, frozenset({"11111111"}))
+    cfem = carga_anm.so_empresa(tabela, RaizesDeEmpresa.de_lista({"11111111"}))
     assert list(cfem["cnpj"]) == ["11111111000100"]
     assert cfem.attrs["fora_da_pj"] == 2
-    barragens = carga_anm.so_empresa(tabela, frozenset({"11111111"}), descartar=False)
+    barragens = carga_anm.so_empresa(
+        tabela, RaizesDeEmpresa.de_lista({"11111111"}), descartar=False
+    )
     assert list(barragens["empreendedor"]) == ["A", "", ""]
     assert barragens.attrs["fora_da_pj"] == 1
 
 
 def test_mudou_a_lista_de_empresas_a_tabela_refaz(tmp_path: Path):
     """A lista entra na origem: o mesmo CSV com outra lista não devolve `igual` e não guarda pessoa antiga."""
-    todas = RAIZES_DO_EXEMPLO
-    _carregar("cfem", tmp_path, PRIMEIRA, raizes=todas)
-    menos = frozenset(sorted(todas)[:1])
-    resultado = _carregar("cfem", tmp_path, PRIMEIRA, raizes=menos)
+    _carregar("cfem", tmp_path, PRIMEIRA, raizes=RAIZES_DO_EXEMPLO)
+    menos = frozenset(sorted(_RAIZES)[:1])
+    resultado = _carregar(
+        "cfem", tmp_path, PRIMEIRA, raizes=RaizesDeEmpresa.de_lista(menos)
+    )
     assert set(resultado.values()) == {"gravado"}
     cfem = ler_tabela(tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet")
     assert set(cfem["cnpj"].str[:8]) == menos
@@ -232,19 +237,3 @@ def test_cfem_e_sigbm_recusam_gravar_sem_a_lista_de_empresas(tmp_path: Path):
         with pytest.raises(ValueError, match="sem a lista de empresas"):
             carga_anm.carregar(tabela, tmp_path, PRIMEIRA, baixar)
     assert not (tmp_path / "anm_sigbm_barragens").exists()
-
-
-def test_raizes_de_empresa_e_a_intersecao_das_duas_listas_sem_as_versoes_antigas(
-    tmp_path: Path,
-):
-    for tabela, raizes in (
-        ("cnpj_empresas_pj", ["11111111", "22222222"]),
-        ("cnpj_estabelecimentos_pj", ["22222222", "33333333"]),
-    ):
-        pasta = tmp_path / tabela
-        pasta.mkdir()
-        pd.DataFrame({"cnpj_basico": raizes}).to_parquet(pasta / "00.parquet")
-        pd.DataFrame({"cnpj_basico": ["99999999"]}).to_parquet(pasta / "00.v1.parquet")
-    assert carga_anm.raizes_de_empresa(tmp_path) == {"22222222"}
-    with pytest.raises(FileNotFoundError):
-        carga_anm.raizes_de_empresa(tmp_path / "outra")
