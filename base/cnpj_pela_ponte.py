@@ -17,9 +17,12 @@ código e o CNPJ é o cadastro da própria fonte: `ans_operadoras` e `susep_cada
 Sem Streamlit; pandas só.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from pathlib import Path
 
 import pandas as pd
+
+from base.parquet import arquivos_atuais, origem_de_tabela
 
 CHAVE_AUXILIAR = "_chave_da_ponte"
 CNPJ_E_RAIZ = {
@@ -104,3 +107,22 @@ def com_cnpj_da_ponte(
         resultado.iloc[posicoes, coluna] = ligada[nova].to_numpy()
     contagem["ligadas"] = int(resultado[next(iter(saida))].notna().sum())
     return resultado, contagem
+
+
+def ler_ponte(
+    pasta: Path, raiz: Path, leitor: Callable[[Path], pd.DataFrame]
+) -> tuple[pd.DataFrame | None, list[dict[str, str]]]:
+    """A ponte gravada em `pasta` (todos os Parquets atuais, sem as versões guardadas) e as origens dela.
+
+    `leitor` é a função que lê um Parquet da base: quem a passa é o montador (`scripts/carga_*`), o único que
+    pode reler o que gravou (ADR 0077, item 9); este módulo não lê Parquet. Fica em `base/` (e não em
+    `scripts/`) porque a imagem das cargas de casa não leva a pasta `scripts/` além do próprio roteiro.
+
+    `None` e nenhuma origem quando a pasta ainda não existe (a ponte não foi montada). As origens são as
+    tabelas da ponte (`origem_de_tabela`, caminho a partir de `raiz`): a tabela que usa a ponte se refaz quando
+    a ponte muda, e a linhagem dela chega aos originais pela ponte (série 4)."""
+    arquivos = arquivos_atuais(pasta) if pasta.is_dir() else []
+    if not arquivos:
+        return None, []
+    ponte = pd.concat([leitor(a) for a in arquivos], ignore_index=True)
+    return ponte, [origem_de_tabela(arquivo, raiz) for arquivo in arquivos]
