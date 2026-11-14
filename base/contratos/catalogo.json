@@ -105,7 +105,7 @@
         "versao_maior": 3,
         "cruzada": {
           "data": "2026-11-12",
-          "prova": "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas (a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, 16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 60 de 60 pacotes lidos) 29310 valores comparados, 29310 iguais, nenhum diferente; ficaram sem par 123 valores da base, todos zeros da DRE",
+          "prova": "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas (a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, 16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 60 de 60 pacotes lidos) 29310 valores comparados, 29310 iguais, nenhum diferente; ficaram sem par 123 valores da base (zeros da conta 3.99 da DRE, que o ENET entrega em branco) e 186181 do ENET (183151 zeros e 3030 de contas que a base não guarda ou guarda em outro período), e nenhum conta como diferença",
           "independencia": "mesmo documento, outro canal: a base lê os dados abertos da CVM e a conferência baixa o XML da entrega no ENET"
         },
         "qualidade": {
