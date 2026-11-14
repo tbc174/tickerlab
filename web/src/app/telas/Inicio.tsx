@@ -4,6 +4,7 @@ import { conteudoDoApp, type PaginaDoApp } from "../../conteudo";
 import { cnpjDigitado } from "../BuscaGlobal";
 import { formatarData } from "../formatar";
 import { FundoDoApp } from "../FundoDoApp";
+import { comAPergunta, URL_DO_PERGUNTAR } from "../perguntaDaNavegacao";
 import { TELAS_DO_APP, temTelaPronta } from "../rotas";
 import type { OQueMudouV1, PulseV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
@@ -23,6 +24,15 @@ const FICHA = telaPronta("ficha_da_empresa");
 const ENCONTRAR = telaPronta("encontrar_empresas");
 const COBERTURA = telaPronta("dados_e_cobertura");
 const NOVIDADES_NO_INICIO = 3;
+// As perguntas que o Início oferece ao Perguntar (linha 903). As três primeiras são as do exemplo do chat
+// (src/chat/estado.py), que a base sabe responder; a quarta mostra o que ela não tem. Nenhuma cita empresa nem
+// pessoa. O clique só leva o texto à caixa do Perguntar: quem envia é a pessoa.
+const ATALHOS_DE_PERGUNTA = [
+  "Quais fabricantes de embalagens plásticas de Santa Catarina têm mais de 15 anos?",
+  "Quem compraria uma empresa de software de gestão para hospitais?",
+  "Compare as maiores companhias abertas de saneamento pela receita e pela dívida.",
+  "Que dados a base tem de uma empresa fechada, e quais ela não tem?",
+];
 const SEM_PARAMETROS = {};
 const inteiro = (n: number) => n.toLocaleString("pt-BR");
 
@@ -85,6 +95,31 @@ function PassosDoAnalista() {
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Perguntas para começar: cada uma abre o Perguntar com o texto na caixa, sem enviar. */
+function AtalhosDePergunta() {
+  const navegar = useNavigate();
+  if (URL_DO_PERGUNTAR === "") return null;
+  return (
+    <div className="atalhos-do-inicio">
+      <h2>Ou pergunte à base</h2>
+      <p className="apagado">Cada pergunta abre o Perguntar; com o chat disponível na sua conta, o texto já vem na caixa e você confere e envia.</p>
+      <ul aria-label="Perguntas para começar">
+        {ATALHOS_DE_PERGUNTA.map((pergunta) => (
+          <li key={pergunta}>
+            <button
+              type="button"
+              className="botao pequeno"
+              onClick={() => navegar(`/${URL_DO_PERGUNTAR}`, { state: comAPergunta(pergunta) })}
+            >
+              {pergunta}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -163,7 +198,7 @@ function Workspace() {
   );
 }
 
-/** O começo do app novo (linha 903, PR E): uma pergunta (qual empresa?), os três passos do analista e dois
+/** O começo do app novo (linha 903, PR E): uma pergunta (qual empresa?), os três passos do analista, os atalhos de pergunta e dois
  * painéis, o que a base tem e o que mudou. O Workspace fica embaixo, só para a conta que acompanha algum
  * ativo ou estratégia. */
 export function Inicio() {
@@ -177,6 +212,7 @@ export function Inicio() {
       </FundoDoApp>
       <h2>Ou siga pelos passos</h2>
       <PassosDoAnalista />
+      <AtalhosDePergunta />
       <div className="paineis-do-inicio">
         <OQueABaseTem />
         {O_QUE_MUDOU && <OQueMudouNoInicio pagina={O_QUE_MUDOU} />}

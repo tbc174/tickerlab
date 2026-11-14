@@ -2,8 +2,11 @@
 // (GET /v1/conectar, src/conectar.py): endereço, passos, comandos e perguntas prontas, cada um com o botão
 // de copiar. A chave que aparece é sempre o exemplo tld_...; a tela não pede nem guarda chave nenhuma.
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
+import { comAPergunta, URL_DO_PERGUNTAR } from "../perguntaDaNavegacao";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
+import { Carregando } from "../pecas/Carregando";
 import type { ConectarV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { Erro } from "../pecas/Erro";
@@ -33,6 +36,25 @@ function Copiavel({ texto, rotulo }: { texto: string; rotulo: string }) {
   );
 }
 
+/** Uma pergunta pronta: copia para colar na IA do usuário, ou abre o Perguntar daqui com o texto na caixa. */
+function PerguntaPronta({ pergunta }: { pergunta: string }) {
+  const navegar = useNavigate();
+  return (
+    <div>
+      <Copiavel texto={pergunta} rotulo="pergunta pronta" />
+      {URL_DO_PERGUNTAR !== "" && (
+        <button
+          type="button"
+          aria-label={`Perguntar aqui: ${pergunta}`}
+          onClick={() => navegar(`/${URL_DO_PERGUNTAR}`, { state: comAPergunta(pergunta) })}
+        >
+          Perguntar aqui
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Passos({ passos }: { passos: string[] }) {
   return (
     <ol>
@@ -48,11 +70,7 @@ export function Conectar({ pagina }: { pagina: PaginaDoApp }) {
   return (
     <section>
       <CabecalhoDaTela pagina={pagina} />
-      {pedido.estado === "carregando" && (
-        <p className="apagado" role="status">
-          Carregando…
-        </p>
-      )}
+      {pedido.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando o passo a passo…" />}
       {pedido.estado === "erro" && <Erro erro={pedido.erro} />}
       {pedido.estado === "pronto" && (
         <>
@@ -80,7 +98,7 @@ export function Conectar({ pagina }: { pagina: PaginaDoApp }) {
           <section aria-label="Perguntas prontas">
             <h2>Perguntas prontas</h2>
             {pedido.dados.perguntas_prontas.map((pergunta) => (
-              <Copiavel key={pergunta} texto={pergunta} rotulo="pergunta pronta" />
+              <PerguntaPronta key={pergunta} pergunta={pergunta} />
             ))}
           </section>
           <section aria-label="Limites">
