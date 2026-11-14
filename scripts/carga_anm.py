@@ -156,7 +156,7 @@ def so_empresa(
 
     `descartar`: a linha inteira sai (CFEM). Sem ele (barragens) a linha fica, sem CNPJ, raiz nem nome
     do empreendedor, como o leitor já faz com o documento incompleto."""
-    cnpj = tabela["cnpj"].astype(str)
+    cnpj = tabela["cnpj"].fillna("").astype(str)
     completo = cnpj.str.len() == 14
     na_lista = pd.Series(
         raizes.esta_na_lista(
