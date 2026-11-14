@@ -32,6 +32,7 @@ from base.arquivo import (
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
+    lote_cadastros_bcb_antt,
     lote_clima,
     lote_commodities,
     lote_commodities_oficiais,
@@ -1614,6 +1615,8 @@ FONTES: list[Fonte] = [
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
+    # lote 3 das 300 tabelas pelo CNPJ (linha 904): cadastros do Banco Central e da ANTT
+    *lote_cadastros_bcb_antt.fontes(),
     *lote_selic.fontes(),
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)

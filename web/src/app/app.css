@@ -6,6 +6,9 @@
   --e1: .25rem; --e2: .5rem; --e3: .75rem; --e4: 1rem; --e5: 1.5rem; --e6: 2rem; --e7: 3rem;
   --t-1: .8rem; --t0: 1rem; --t1: 1.1rem; --t2: 1.25rem; --t3: 1.75rem;
 }
+/* o fundo do `body` (um degradê do CSS do site) vai até o fim da tela: sem isto, numa tela curta (aviso de
+   erro, lista vazia) o `body` acaba antes e o degradê recomeça embaixo, em faixa */
+body { min-height: 100vh; min-height: 100dvh; }
 .marca .simbolo { display: inline-flex; }
 .marca .simbolo svg { width: 28px; height: 28px; color: var(--simbolo-topo); }
 /* o topo da casca (linha 903): a busca (Ctrl K) logo depois da marca e o link "O que mudou" */
@@ -65,6 +68,25 @@
 .telas-do-app { list-style: none; padding: 0; display: grid; gap: var(--e4);
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .telas-do-app a { font-weight: 700; }
+/* o Início (linha 903, PR E): a pergunta sobre o fundo, os passos numerados e os dois painéis */
+.pergunta-do-inicio { display: flex; flex-direction: column; gap: var(--e2); margin: var(--e4) 0 0; }
+.pergunta-do-inicio label { font-size: var(--t-1); font-weight: 700; }
+.pergunta-do-inicio-linha { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.pergunta-do-inicio input { flex: 1 1 14rem; min-width: 0; min-height: 44px; padding: var(--e2) var(--e3); border-radius: 8px;
+  border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit;
+  font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 16px; }
+.pergunta-do-inicio .botao { min-height: 44px; }
+.pergunta-do-inicio p { margin: 0; font-size: var(--t-1); }
+.numero-do-passo { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.paineis-do-inicio { display: grid; gap: var(--e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  margin: var(--e5) 0; }
+.painel-do-inicio { padding: var(--e4) var(--e5); border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
+.painel-do-inicio h2 { margin: 0 0 var(--e3); font-size: var(--t0); }
+.painel-do-inicio .numeros { grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); margin: 0 0 var(--e3); }
+.painel-do-inicio p { margin: var(--e2) 0 0; font-size: var(--t-1); }
+.novidades-do-inicio { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--e2); }
+.novidades-do-inicio li { display: flex; flex-wrap: wrap; gap: var(--e1) var(--e3); align-items: baseline; }
+.novidades-do-inicio .apagado { font-size: var(--t-1); font-variant-numeric: tabular-nums; }
 .aviso-do-app { max-width: 40rem; }
 .rodape-do-app { padding-block: var(--e5) var(--e7); border-top: 1px solid var(--linha); font-size: .88rem; }
 /* abas embaixo, só no celular (ADR 0066): ao alcance do polegar, toque de 44 px, acima da barra do iPhone */
@@ -91,12 +113,19 @@
   .busca-do-topo :is(.rotulo-da-busca, kbd) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .busca-do-topo .icone { width: 20px; height: 20px; }
   .topo .tema-escolha { margin-left: 0; }
+  /* alvo de toque de 44 px em cada tema (o desenho continua com 18 px); a moldura perde o respiro para caber */
+  .topo .tema-escolha { gap: 0; padding: 0; }
+  .topo .tema-escolha button { align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
   /* em tela estreita o nome da marca não cabe ao lado da busca, do tema e da conta: fica só o símbolo */
   @media (max-width: 480px) { .topo .marca > span:not(.simbolo) { display: none; } }
   .novidades-no-topo { display: none; }
   .app-atual-no-topo { display: none; }
   .nome-da-conta { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .topo .faixa { gap: var(--e2); }
+  /* abaixo de 375 px o topo aperta os vãos para os 44 px caberem; até 350 px (telas de 320 px) o alvo fica em
+     36 px, o maior que cabe numa linha sem cortar a marca nem a busca */
+  @media (max-width: 374px) { .topo .faixa, .topo .conta-no-topo { gap: var(--e1); } }
+  @media (max-width: 350px) { .topo .tema-escolha button { min-width: 36px; min-height: 36px; } }
 }
 .conta-no-topo { display: inline-flex; align-items: center; gap: var(--e3); font-size: .92rem; color: var(--apagado); }
 /* a lista "Todas as telas": no celular sobe de baixo, como uma folha; no computador abre no meio da tela */

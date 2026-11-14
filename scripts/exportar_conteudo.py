@@ -280,6 +280,18 @@ def _partes_da_ajuda(texto: str) -> list[dict[str, str | None]]:
     return partes
 
 
+def _base_no_inicio() -> dict[str, int]:
+    """O "O que a base tem" do Início do app: só as contagens do catálogo (o catálogo inteiro não vai ao app)."""
+    catalogo = vitrine.catalogo_publico(contrato.catalogo())
+    ligado = vitrine.ligado_pelo_cnpj(catalogo)
+    return {
+        "tabelas": len(catalogo["tabelas"]),
+        "ligadas_pelo_cnpj": ligado["tabelas"],
+        "orgaos": ligado["orgaos"],
+        "fontes": len(vitrine.fontes_do_catalogo(catalogo)),
+    }
+
+
 def _app() -> dict[str, object]:
     """O que o app em React mostra e vem do Python: o painel da visão geral e o "?" de cada número."""
     glossario = carregar_glossario()
@@ -299,6 +311,7 @@ def _app() -> dict[str, object]:
     return {
         "areas": _areas(),
         "menu": _menu(),
+        "base": _base_no_inicio(),
         "painel": {
             "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
             "legenda": analises.LEGENDA_DO_PAINEL,

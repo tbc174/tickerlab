@@ -109,7 +109,31 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("sigsif_habilitados", "dt_ocorrencia"): "aconteceu_em",
     ("sigsif_habilitados", "dt_suspensao"): "aconteceu_em",
     ("receita_transacoes_individual", "data_acordo"): "aconteceu_em",
-}
+    # linha 904 (lote 2 das 300 tabelas): os passos da fiscalização da ANEEL são fatos do processo; o
+    # `recebido_em` é o dia em que o agente recebeu o auto ou o termo, não o dia em que ficou público
+    **{
+        (tabela, coluna): "aconteceu_em"
+        for tabela, colunas in (
+            (
+                "aneel_autos_de_infracao",
+                ("lavrado_em", "recebido_em", "recurso_recebido_em", "decidido_em_juizo",
+                 "decidido_pela_diretoria_em", "encerrado_em"),
+            ),
+            (
+                "aneel_termos_de_notificacao",
+                ("lavrado_em", "recebido_em", "manifestado_em", "decidido_em"),
+            ),
+        )
+        for coluna in colunas
+    },
+    # linha 904 (lote 3): início de filial e de regime especial são fatos; a vigência do certificado e o fim da
+    # apólice são prazos (`ate`); o início da apólice é o dia em que ela passou a valer
+    ("bcb_filiais_de_consorcio", "inicio_em"): "aconteceu_em",
+    ("bcb_regimes_especiais", "inicio_em"): "aconteceu_em",
+    ("antt_operadores_multimodais", "vigencia_ate"): "ate",
+    ("antt_seguros_de_transportadores", "inicio_da_apolice"): "aconteceu_em",
+    ("antt_seguros_de_transportadores", "fim_da_apolice"): "ate",
+}  # fmt: skip
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160
 # ganharam nome na linha 440; ficam as das linhas que as trouxeram.

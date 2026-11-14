@@ -21,7 +21,7 @@ const abas = () => screen.getByRole("navigation", { name: "Telas, atalhos" });
 /** Espera o login terminar e a tela Início abrir (o login também tem um h1 e o fundo). O primeiro
  * teste do arquivo monta o app inteiro: com o PC ocupado passa de 1 s, a espera padrão. */
 const noInicio = () =>
-  screen.findByRole("heading", { name: "Por onde começar" }, { timeout: 5000 });
+  screen.findByRole("heading", { name: "Qual empresa você quer estudar?" }, { timeout: 5000 });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -128,6 +128,17 @@ describe("topo compacto e campos que não dão zoom", () => {
   it("campos com 16 px (o iPhone dá zoom em campo menor) e a página até a borda", () => {
     expect(CSS_DO_APP).toMatch(/\.formulario-do-app input, \.formulario-do-app select \{[^}]*font-size: 16px;/);
     expect(PAGINA_DO_APP).toContain('content="width=device-width, initial-scale=1, viewport-fit=cover"');
+  });
+
+  it("no celular cada tema tem 44 px de toque; até 350 px ficam 36 px, o que cabe numa linha em 320 px", () => {
+    expect(NO_CELULAR).toMatch(/\.topo \.tema-escolha button \{[^}]*min-width: 44px; min-height: 44px; \}/);
+    expect(NO_CELULAR).toMatch(/\.topo \.tema-escolha \{ gap: 0; padding: 0; \}/);
+    // os vãos apertam depois da regra geral do vão do topo, senão ela ganha
+    const depoisDoVao = NO_CELULAR.split(".topo .faixa { gap: var(--e2); }")[1];
+    expect(depoisDoVao).toMatch(/@media \(max-width: 374px\) \{ \.topo \.faixa, \.topo \.conta-no-topo \{ gap: var\(--e1\); \} \}/);
+    expect(depoisDoVao).toMatch(
+      /@media \(max-width: 350px\) \{ \.topo \.tema-escolha button \{ min-width: 36px; min-height: 36px; \} \}/,
+    );
   });
 
   it("no celular o topo fica compacto: da busca só o ícone, e o tema encosta nela", () => {
