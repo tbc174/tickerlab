@@ -114,12 +114,15 @@ def test_versao_18_da_politica_descreve_o_chat_de_ia():
         "nenhum outro dado da sua conta.",
         "pedimos que você não escreva dado pessoal na pergunta.",
         "Ficam também os números das perguntas ao chat de IA (a organização, a data, o modelo, os tokens, o tempo e o custo), ligados só à organização, sem o número da conta.",
+        "que continuam, ligados só à organização e sem o número da conta, quando ela é apagada",
     ):
         assert trecho in privacidade, trecho
     for promessa_antiga in (
         "nunca dados da sua conta",
         "À Anthropic não vai dado pessoal seu",
         "na exportação e na exclusão da conta",
+        # a organização da linha, junto com o registro de membro, ainda leva ao número da conta
+        "sem nada que aponte para a conta",
     ):
         assert promessa_antiga not in privacidade, promessa_antiga
 
@@ -278,7 +281,7 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
         "nunca para lhe oferecer algo como consumidor",
         "que um membro entrou nela, só com o número interno da conta apagada, e as consultas",
-        "sem nada que aponte para a conta apagada",
+        "e as consultas a dados de pessoas (a organização, a data, o tipo da consulta e quantas linhas vieram), ligadas só à organização, sem o número da conta.",
         "Para quem usa o TickerLab, pessoas aparecem nela só pela",
         "Elas ficam guardadas como o órgão publica e não aparecem para contas, organizações ou terceiros.",
         "a de trabalho análogo ao de escravo do MTE e a dívida ativa da União (PGFN), para conhecer",
