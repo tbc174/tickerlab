@@ -1627,9 +1627,10 @@ MOLDES_DOS_FATOS: Mapping[str, MoldeDoFato] = {
     "industria_e_marca": _molde(
         True,
         lambda parte, todo, pct: (
-            # "marca registrada" é frase vigiada no site (tests/test_site.py): aqui se diz o mesmo sem ela
-            f"das {todo} indústrias fechadas ativas acima do porte de pequena empresa têm marca no INPI, "
-            f"concedida ou pedida ({parte} empresas)."
+            # a tabela do INPI guarda o titular de cada pedido, sem a situação do processo: a frase não pode
+            # dizer "concedida" nem "registrada" ("marca registrada" é também frase vigiada em tests/test_site.py)
+            f"das {todo} indústrias fechadas ativas acima do porte de pequena empresa são titulares de ao menos "
+            f"um pedido de marca no INPI ({parte} empresas)."
         ),
         f"{RECEITA_DO_CNPJ} e INPI: titulares de marcas",
         (fechadas.MARCAS, fechadas.EMPRESAS, fechadas.ESTABELECIMENTOS),
