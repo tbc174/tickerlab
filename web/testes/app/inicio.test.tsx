@@ -28,11 +28,29 @@ const SEM_PULSE = {
   notas: [],
 };
 
+// o estado do chat, para o clique de um atalho abrir o Perguntar de verdade
+const CHAT_PRONTO = {
+  situacao: "pronto",
+  pode_perguntar: true,
+  mensagem: null,
+  perguntas_hoje: 0,
+  perguntas_por_dia: 20,
+  perguntas_no_mes: 0,
+  perguntas_por_mes: 300,
+  caracteres_da_pergunta: 2000,
+  perguntas_no_historico: 4,
+  caracteres_do_historico: 4000,
+  como_funciona: "O modelo só lê a base.",
+  exemplos: [],
+  limites: [],
+};
+
 function abrir(oQueMudou: () => Response = () => respostaJson(200, { entregas: ENTREGAS })) {
   return abrirApp("/", {
     rotas: (endereco) => {
       if (endereco.startsWith("/api/v1/pulse")) return respostaJson(200, SEM_PULSE);
       if (endereco.startsWith("/api/v1/o-que-mudou")) return oQueMudou();
+      if (endereco === "/api/v1/chat/estado") return respostaJson(200, CHAT_PRONTO);
       return undefined;
     },
   });
@@ -76,6 +94,34 @@ describe("a pergunta do Início abre a ficha pelo CNPJ", () => {
     await titulo();
     const link = within(formulario()).getByRole("link", { name: "Encontre empresas por setor e UF" });
     expect(link.getAttribute("href")).toBe("/encontrar-empresas");
+  });
+});
+
+describe("os atalhos de pergunta do Início", () => {
+  it("são quatro, em uma lista com nome, e nenhuma cita empresa ou pessoa", async () => {
+    abrir();
+    await titulo();
+    const lista = screen.getByRole("list", { name: "Perguntas para começar" });
+    const botoes = within(lista).getAllByRole("button");
+    expect(botoes).toHaveLength(4);
+    for (const botao of botoes) expect(botao.textContent).toMatch(/\?$|\.$/);
+  });
+
+  it("o clique abre o Perguntar com a pergunta na caixa, sem enviar e sem pôr o texto no endereço", async () => {
+    const { buscar } = abrir();
+    await titulo();
+    const botao = within(screen.getByRole("list", { name: "Perguntas para começar" })).getAllByRole("button")[1];
+    const pergunta = botao.textContent ?? "";
+    expect(pergunta).not.toBe("");
+    fireEvent.click(botao);
+    const caixa = (await screen.findByRole("textbox", { name: "Sua pergunta" }, { timeout: 5000 })) as HTMLTextAreaElement;
+    expect(caixa.value).toBe(pergunta);
+    await new Promise((fim) => setTimeout(fim, 50));
+    for (const [pedido] of buscar.mock.calls) {
+      expect(String(pedido)).not.toContain(encodeURIComponent(pergunta));
+      expect(String(pedido)).not.toContain(pergunta);
+    }
+    expect(buscar.mock.calls.some(([e]) => e === "/api/v1/chat")).toBe(false);
   });
 });
 
