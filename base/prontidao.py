@@ -64,8 +64,8 @@ PRONTIDAO: dict[str, Prontidao] = {
             prova=(
                 "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas "
                 "(a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, "
-                "16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 48 de 60 "
-                "pacotes lidos) 16238 valores comparados, 16238 iguais, nenhum diferente"
+                "16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 60 de 60 "
+                "pacotes lidos) 20087 valores comparados, 20087 iguais, nenhum diferente"
             ),
             independencia=(
                 "mesmo documento, outro canal: a base lê os dados abertos da CVM "
