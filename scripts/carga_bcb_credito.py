@@ -44,9 +44,9 @@ import requests
 import sqlalchemy as sa
 
 from base import bcb_ifdata, bcb_scr, cnpj_pela_ponte
-from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela
+from base.cnpj_pela_ponte import ler_ponte
+from base.parquet import GRAVADO, IGUAL, gravar_com_versoes, gravar_tabela, ler_tabela
 from base.publicacao import dia_da_coleta
-from scripts import carga_ponte
 from src import acervo, rede
 from src.banco.coletas import (
     coletas_guardadas,
@@ -187,7 +187,7 @@ def _gravar_valores_do_tipo(
     if all(bcb_ifdata.ler_valores(c).empty for _, c in lidos):
         return VAZIO
     ponte, origens_da_ponte = (
-        carga_ponte.ler_ponte(pasta / "ifdata" / "cadastro", pasta)
+        ler_ponte(pasta / "ifdata" / "cadastro", pasta, ler_tabela)
         if pasta
         else (None, [])
     )
