@@ -135,6 +135,12 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
   return (
     <section className="secao-do-relatorio" aria-labelledby="eventos-da-ficha">
       <h2 id="eventos-da-ficha">Documentos à CVM e trocas de auditor</h2>
+      {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+      {dados.aviso_de_piloto ? (
+        <p className="erro-do-app" role="note">
+          {dados.aviso_de_piloto}
+        </p>
+      ) : null}
       {dados.estado === "nao_liberada" ? (
         <p className="apagado">Dado ainda não liberado: os eventos da empresa entram quando a conferência terminar.</p>
       ) : eventos.length === 0 && naoConsultados.length > 0 ? (
