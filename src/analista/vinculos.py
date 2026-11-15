@@ -11,6 +11,10 @@ CNPJ: não existe, é pessoa ou a rede não o conhece como empresa), sem dizer o
 
 O tipo que o portão não libera para a tela não some em silêncio (linha 889, molde dos eventos no #1088): ele vai
 em `tipos_de_vinculo_nao_disponiveis` e os limites, os do leitor, avisam que a lista não diz nada sobre ele.
+
+A prontidão de piloto (D11) vale como na ficha: só para a conta de uma organização com a marca (`piloto=True`,
+conferido no servidor pela rota), e o corpo leva o aviso de piloto em cada campo e no topo
+(`leitura.com_aviso_de_piloto`).
 """
 
 from collections.abc import Callable
@@ -52,13 +56,26 @@ def vinculos(
     *,
     hoje: date,
     regras: Regras | None = None,
+    piloto: bool = False,
 ) -> leitura.Resposta:
     """Os vínculos do CNPJ como eram hoje, a um salto, no máximo `LINHAS_MAXIMAS`.
 
+    `piloto`: a conta é de uma organização com a marca de piloto (D11); o que sair por ele leva o aviso.
     `ValueError` se o CNPJ é inválido (a rota responde 422)."""
     if not cnpj_.normalizar_cnpj(cnpj):
         raise ValueError("CNPJ inválido")
-    permitido = leitura.permitido_na_tela(vinculos_.CONJUNTO, hoje, regras)
+    return leitura.com_aviso_de_piloto(
+        lambda: _lista(porta, cnpj, hoje, regras, piloto)
+    )
+
+
+def _lista(
+    porta: Porta, cnpj: str, hoje: date, regras: Regras | None, piloto: bool
+) -> leitura.Resposta:
+    """Os vínculos, ainda sem o aviso de piloto (quem chama abre o registro e marca o corpo)."""
+    permitido = leitura.permitido_na_tela(
+        vinculos_.CONJUNTO, hoje, regras, piloto=piloto
+    )
     if not _algum_campo_liberado(permitido):
         return leitura.Resposta(leitura.NAO_LIBERADA)
     leitor = vinculos_.LeitorDeVinculos(porta, permitido, LINHAS_MAXIMAS)

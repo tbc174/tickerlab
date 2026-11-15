@@ -83,6 +83,7 @@ const PRONTA: ComparacaoDeEmpresasV1 = {
   empresas: [MODELO, NAO_DISPONIVEL(OUTRA)],
   fontes: [{ fonte: "rfb-cnpj", licenca: "CC BY 4.0", atribuicao: "Receita Federal do Brasil" }],
   limites: LIMITES,
+  aviso_de_piloto: null,
 };
 const NAO_LIBERADA: ComparacaoDeEmpresasV1 = {
   estado: "nao_liberada",
@@ -91,6 +92,8 @@ const NAO_LIBERADA: ComparacaoDeEmpresasV1 = {
   fontes: [],
   limites: LIMITES,
 };
+
+const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
 
 function abrir(resposta: () => Response, endereco = "/comparar-empresas") {
   return abrirApp(endereco, {
@@ -262,5 +265,18 @@ describe("tipos da comparação", () => {
   it("ComparacaoDeEmpresasV1 e EmpresaComparadaV1 batem com o OpenAPI", () => {
     expect(Object.keys(PRONTA).sort()).toEqual(campos("ComparacaoDeEmpresasV1"));
     expect(Object.keys(MODELO).sort()).toEqual(campos("EmpresaComparadaV1"));
+  });
+
+  it("dado de piloto: o aviso do servidor fica à vista com a comparação", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, aviso_de_piloto: AVISO_DE_PILOTO }));
+    await comparar(EMPRESA, OUTRA);
+    expect((await screen.findByText(AVISO_DE_PILOTO)).getAttribute("role")).toBe("note");
+  });
+
+  it("sem piloto, nenhum aviso de piloto", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await comparar(EMPRESA, OUTRA);
+    await screen.findByText(/Como a base conhecia em/);
+    expect(screen.queryByText(/Dado de piloto/)).toBeNull();
   });
 });

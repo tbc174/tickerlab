@@ -13,6 +13,10 @@ entregas a base conhecia no dia e quantas atrasaram.
 Estados: `nao_liberada` se o portão não deixa sair o cadastro (decidido sem ler CNPJ nenhum, como na ficha);
 senão `pronta`, com o estado de cada empresa. `PedidoInvalido` (um `ValueError`) se o pedido foge da regra:
 menos de dois ou mais de cinco CNPJs, um inválido ou o mesmo duas vezes (a rota responde 422).
+
+A prontidão de piloto (D11) vale como na ficha: só para a conta de uma organização com a marca (`piloto=True`,
+conferido no servidor pela rota). Um registro só cobre a comparação inteira (as fichas e a busca), e com algum
+campo de piloto todo bloco e o topo levam o aviso (`leitura.com_aviso_de_piloto`).
 """
 
 from collections.abc import Mapping, Sequence
@@ -75,20 +79,42 @@ def cnpjs_do_pedido(cnpjs: Sequence[str]) -> tuple[str, ...]:
 
 
 def comparar(
-    porta: Porta, cnpjs: Sequence[str], *, hoje: date, regras: Regras | None = None
+    porta: Porta,
+    cnpjs: Sequence[str],
+    *,
+    hoje: date,
+    regras: Regras | None = None,
+    piloto: bool = False,
 ) -> leitura.Resposta:
-    """As empresas pedidas lado a lado, como a base as conhecia hoje (veja a docstring do módulo)."""
+    """As empresas pedidas lado a lado, como a base as conhecia hoje (veja a docstring do módulo).
+
+    `piloto`: a conta é de uma organização com a marca de piloto (D11); o que sair por ele leva o aviso."""
     normais = cnpjs_do_pedido(cnpjs)
+    return leitura.com_aviso_de_piloto(
+        lambda: _lado_a_lado(porta, normais, hoje, regras, piloto)
+    )
+
+
+def _lado_a_lado(
+    porta: Porta,
+    normais: tuple[str, ...],
+    hoje: date,
+    regras: Regras | None,
+    piloto: bool,
+) -> leitura.Resposta:
+    """A comparação, ainda sem o aviso de piloto (quem chama abre o registro e marca o corpo)."""
     fonte, campo = leitura.ANCORA
-    if not leitura.permitido_na_tela(ficha_.CONJUNTO, hoje, regras)(
-        fonte, campo, False
-    ):
+    ancora = leitura.permitido_na_tela(ficha_.CONJUNTO, hoje, regras, piloto=piloto)
+    if not ancora(fonte, campo, False):
         return leitura.Resposta(leitura.NAO_LIBERADA)
     fichas = {
-        cnpj: leitura.ficha(porta, cnpj, hoje=hoje, regras=regras) for cnpj in normais
+        cnpj: leitura.ficha_sem_aviso(
+            porta, cnpj, hoje=hoje, regras=regras, piloto=piloto
+        )
+        for cnpj in normais
     }
     servidas = tuple(cnpj for cnpj, ficha in fichas.items() if ficha.corpo is not None)
-    da_busca = _da_busca(porta, servidas, hoje, regras)
+    da_busca = _da_busca(porta, servidas, hoje, regras, piloto)
     empresas = [_linha(cnpj, fichas[cnpj], da_busca.corpo_de(cnpj)) for cnpj in normais]
     nomes_das_fontes = {
         f["fonte"]
@@ -119,12 +145,18 @@ class _DaBusca:
 
 
 def _da_busca(
-    porta: Porta, cnpjs: tuple[str, ...], hoje: date, regras: Regras | None
+    porta: Porta,
+    cnpjs: tuple[str, ...],
+    hoje: date,
+    regras: Regras | None,
+    piloto: bool,
 ) -> _DaBusca:
     """Os campos da busca dos CNPJs que a ficha serviu, no retrato público hoje; sem CNPJ, nada é lido."""
     if not cnpjs:
         return _DaBusca(leitura.Resposta(leitura.NAO_DISPONIVEL))
-    permitido = leitura.permitido_na_tela(prospeccao.CONJUNTO, hoje, regras)
+    permitido = leitura.permitido_na_tela(
+        prospeccao.CONJUNTO, hoje, regras, piloto=piloto
+    )
     pedido = prospeccao.Busca(cnpjs=cnpjs, situacoes=TODAS_AS_SITUACOES, limite=MAXIMO)
     servida = prospeccao.LeitorDeProspeccao(porta, permitido, MAXIMO).buscar(
         pedido, hoje
