@@ -21,10 +21,11 @@ def _gravar(pasta, nome, tabela):
     tabela.to_parquet(arquivo, index=False)
 
 
-def _acervo(pasta, raizes, coluna="cnpj"):
-    colunas_pj = {c: ["x"] * 2 for c in TABELAS[TABELA_PJ].colunas}
-    colunas_pj["cnpj_basico"] = [RAIZ_PJ, "22222222"]
-    colunas_pj[TABELAS[TABELA_PJ].datas["publico_em"]] = ["2024-07-31"] * 2
+def _acervo(pasta, raizes, coluna="cnpj", pj_extra=()):
+    raizes_pj = [RAIZ_PJ, "22222222", *pj_extra]
+    colunas_pj = {c: ["x"] * len(raizes_pj) for c in TABELAS[TABELA_PJ].colunas}
+    colunas_pj["cnpj_basico"] = raizes_pj
+    colunas_pj[TABELAS[TABELA_PJ].datas["publico_em"]] = ["2024-07-31"] * len(raizes_pj)
     _gravar(pasta, TABELA_PJ, pd.DataFrame(colunas_pj))
     tabela = {c: ["x"] * len(raizes) for c in TABELAS["eventos"].colunas}
     tabela[coluna] = [f"{r}000100" for r in raizes]
@@ -81,10 +82,11 @@ def test_cnpj_alfanumerico_cruza_pela_raiz_sem_cortar_as_letras(tmp_path):
 
 
 def test_cnpj_com_letra_na_raiz_cruza_pela_raiz_inteira(tmp_path):
-    _acervo(tmp_path, ["A1B2C3D4"])  # raiz alfanumérica que não está na lista
+    # a raiz com letra está na lista de PJ: só passa se as letras ficarem na raiz
+    _acervo(tmp_path, ["A1B2C3D4"], pj_extra=["A1B2C3D4"])
     with Porta(tmp_path) as porta:
         c = cruzar(porta, "eventos", "cnpj")
-    assert (c.raizes, c.fora_da_pj) == (1, 1)
+    assert (c.raizes, c.fora_da_pj) == (1, 0)
 
 
 def test_raiz_do_texto_diferente_da_coluna_de_raiz_reprova(tmp_path, monkeypatch):
