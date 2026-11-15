@@ -3,6 +3,7 @@
 // escreve nenhuma cobertura à mão: o que o catálogo não declara, a tela não mostra.
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
+import { Carregando } from "../pecas/Carregando";
 import type { DadosECoberturaV1, TabelaDaCoberturaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { Erro } from "../pecas/Erro";
@@ -21,11 +22,7 @@ export function DadosECobertura({ pagina }: { pagina: PaginaDoApp }) {
   return (
     <section>
       <CabecalhoDaTela pagina={pagina} />
-      {pedido.estado === "carregando" && (
-        <p className="apagado" role="status">
-          Carregando…
-        </p>
-      )}
+      {pedido.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando o catálogo…" />}
       {pedido.estado === "erro" && <Erro erro={pedido.erro} />}
       {pedido.estado === "pronto" && (
         <p className="apagado">Algumas tabelas só entram nesta lista depois de passarem na conferência de prontidão.</p>
