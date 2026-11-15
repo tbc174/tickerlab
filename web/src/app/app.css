@@ -78,6 +78,12 @@ body { min-height: 100vh; min-height: 100dvh; }
 .pergunta-do-inicio .botao { min-height: 44px; }
 .pergunta-do-inicio p { margin: 0; font-size: var(--t-1); }
 .numero-do-passo { font-family: "JetBrains Mono", ui-monospace, monospace; }
+/* os atalhos de pergunta do Início: botões que quebram a linha, como os exemplos do chat */
+.atalhos-do-inicio { margin: var(--e5) 0; }
+.atalhos-do-inicio h2 { margin: 0 0 var(--e2); }
+.atalhos-do-inicio p { margin: 0 0 var(--e3); font-size: var(--t-1); }
+.atalhos-do-inicio ul { display: flex; flex-wrap: wrap; gap: var(--e2); margin: 0; padding: 0; list-style: none; }
+.atalhos-do-inicio .botao { text-align: left; white-space: normal; }
 .paineis-do-inicio { display: grid; gap: var(--e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   margin: var(--e5) 0; }
 .painel-do-inicio { padding: var(--e4) var(--e5); border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
