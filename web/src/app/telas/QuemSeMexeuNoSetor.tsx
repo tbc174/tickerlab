@@ -21,6 +21,12 @@ const FRASE_DOS_SINAIS: Record<string, string> = {
   fundo_socio: "Fundo sócio de empresa do setor",
   controla_no_setor: "Companhia aberta com controlada no setor",
 };
+// o tipo na coluna "Tipo": o mesmo movimento da frase longa, em poucas palavras
+const TIPO_DOS_SINAIS: Record<string, string> = {
+  entrou_como_socio: "Entrou como sócia",
+  fundo_socio: "Fundo sócio",
+  controla_no_setor: "Controla no setor",
+};
 const DIGITOS_DO_CNAE = /^(\d{5}|\d{7})$/;
 const UFS = /^[A-Za-z]{2}$/;
 const MAXIMO_DE_ANOS = 10;
@@ -44,10 +50,24 @@ function oQueFez(exemplo: ExemploDeProvaV1, sinal: string): string {
   return `${nome}${onde}${fim}`;
 }
 
+function dataDoExemplo(exemplo: ExemploDeProvaV1): string | null {
+  const valor = (exemplo.campos["data_entrada"] ?? exemplo.campos["referencia"])?.valor;
+  return typeof valor === "string" && valor ? valor : null;
+}
+
 function quandoFoi(exemplo: ExemploDeProvaV1): string {
-  const campo = exemplo.campos["data_entrada"] ?? exemplo.campos["referencia"];
-  const valor = campo?.valor;
-  return typeof valor === "string" && valor ? formatarData(valor) : "Sem data";
+  const data = dataDoExemplo(exemplo);
+  return data ? formatarData(data) : "Sem data";
+}
+
+/** A data da coluna "Quando": a do registro mais recente entre os exemplos de todos os sinais (a data vem em
+ * ISO, então a comparação de texto é a de data). Sem nenhuma data nos exemplos, "Sem data". */
+function quandoDoComprador(comprador: CompradorDoSetorV1): string {
+  const datas = comprador.sinais.flatMap((sinal) =>
+    (comprador.provas[sinal]?.exemplos ?? []).map(dataDoExemplo).filter((d): d is string => d !== null),
+  );
+  const maisRecente = datas.reduce<string | null>((a, d) => (a === null || d > a ? d : a), null);
+  return maisRecente ? formatarData(maisRecente) : "Sem data";
 }
 
 /** O nome da fonte para quem lê: a atribuição que a resposta traz (o código interno só se ela faltar). */
@@ -100,6 +120,12 @@ const colunas = (fontes: FonteDaSecao[]): Coluna<CompradorDoSetorV1>[] => [
       </>
     ),
   },
+  {
+    chave: "tipo",
+    titulo: "Tipo",
+    celula: (c) => c.sinais.map((s) => TIPO_DOS_SINAIS[s] ?? s).join(" · "),
+  },
+  { chave: "quando", titulo: "Quando", celula: quandoDoComprador },
   { chave: "o_que_fez", titulo: "O que fez no setor", celula: (c) => <ProvasDe comprador={c} fontes={fontes} /> },
 ];
 
@@ -134,6 +160,24 @@ function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
           Mostrando os primeiros de {dados.total_de_compradores}. Estreite o setor para ver os demais.
         </p>
       ) : null}
+      <section className="quadro-como-ler" aria-labelledby="como-ler-quem-se-mexeu">
+        <h2 id="como-ler-quem-se-mexeu">Como ler esta lista</h2>
+        <ul>
+          <li>
+            Cada linha é movimento passado, não intenção de compra: quem aparece já fez algo no setor, não disse que quer
+            comprar ou vender. Holding de família e reorganização também entram, e entrar como sócia não é aquisição.
+          </li>
+          <li>
+            A ordem é pelo número de tipos de movimento (entrou como sócia, fundo sócio, controla no setor) e, depois, pelo
+            de entradas como sócia: não é uma classificação de quem compraria.
+          </li>
+          <li>
+            A coluna Quando traz a data do registro mais recente entre os exemplos de cada empresa; cada tipo mostra só
+            alguns exemplos, os mais recentes.
+          </li>
+          <li>Só pessoa jurídica: MEI, empresário individual e sócio pessoa física não entram.</li>
+        </ul>
+      </section>
       <Tabela
         legenda="Quem já se mexeu neste setor"
         colunas={colunas(dados.fontes)}
@@ -164,7 +208,7 @@ function Consulta({ pedido }: { pedido: Pedido }) {
 function ConsultaCompleta({ pedido }: { pedido: Pedido }) {
   return (
     <>
-      <NumerosDoSetor cnae={pedido.cnae} />
+      <NumerosDoSetor cnae={pedido.cnae} uf={pedido.uf} />
       <Consulta pedido={pedido} />
     </>
   );

@@ -187,6 +187,8 @@ def test_historico_vai_ao_modelo(cliente, casa, fabrica):
 
 
 def test_log_so_com_ids_e_numeros(banco, cliente, casa, fabrica, caplog):
+    """Nenhuma linha de log do chat leva o id da conta: o `pergunta_id` fica no banco depois de a conta ser
+    apagada, e o log não pode ligar a pergunta de volta a ela (política de privacidade, versão 18)."""
     caplog.set_level(logging.INFO)
     _linhas(_perguntar(cliente))
     assert "PERGUNTA-SECRETA" not in caplog.text
@@ -194,11 +196,13 @@ def test_log_so_com_ids_e_numeros(banco, cliente, casa, fabrica, caplog):
     assert "ana@exemplo.com" not in caplog.text
     (registro,) = [r for r in caplog.records if '"chat_pergunta"' in r.getMessage()]
     campos = json.loads(registro.getMessage())
-    assert campos["usuario_id"] == str(_ana(banco))
+    assert str(_ana(banco)) not in caplog.text
+    (linha,) = _perguntas(banco)
+    assert campos["pergunta_id"] == str(linha.id) and linha.usuario_id == _ana(banco)
     assert campos["organizacao_id"] == str(casa.id)
     assert campos["estado"] == "respondida" and campos["chamadas_de_ferramenta"] == 1
     assert set(campos) == {
-        "evento", "pergunta_id", "usuario_id", "organizacao_id", "modelo", "estado",
+        "evento", "pergunta_id", "organizacao_id", "modelo", "estado",
         "tokens_de_entrada", "tokens_de_saida", "tokens_lidos_do_cache",
         "tokens_gravados_no_cache", "custo_em_microdolares", "chamadas_de_ferramenta",
         "latencia_ms",

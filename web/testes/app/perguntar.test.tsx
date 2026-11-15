@@ -45,6 +45,21 @@ const DESLIGADO: EstadoDoChatV1 = {
   mensagem: "O chat de IA ainda não foi ligado.",
 };
 
+// o que o Início oferece (a mesma frase que o atalho leva à caixa do Perguntar)
+const ATALHO = "Quem compraria uma empresa de software de gestão para hospitais?";
+const UM_ATALHO = () => screen.findByRole("button", { name: ATALHO }, { timeout: 5000 });
+const CAIXA = () => screen.getByRole("textbox", { name: "Sua pergunta" }) as HTMLTextAreaElement;
+
+/** Abre o Perguntar como o app abre: pelo atalho do Início, que leva o texto no estado da navegação. */
+async function abrirPeloAtalhoDoInicio(estado: EstadoDoChatV1) {
+  const aberto = abrirApp("/", {
+    rotas: (endereco) => (endereco === ROTA_DO_ESTADO ? respostaJson(200, estado) : undefined),
+  });
+  fireEvent.click(await UM_ATALHO());
+  await screen.findByRole("textbox", { name: "Sua pergunta" }, { timeout: 5000 });
+  return aberto;
+}
+
 const FIM: EventoDoChat = {
   tipo: "fim",
   como_cheguei_aqui: [
@@ -99,6 +114,57 @@ describe("tela Perguntar", () => {
     expect((screen.getByRole("textbox", { name: "Sua pergunta" }) as HTMLTextAreaElement).disabled).toBe(true);
     expect(screen.getByText("Limite do chat 1.")).toBeTruthy();
     expect(buscar.mock.calls.some(([e]) => e === ROTA_DA_PERGUNTA)).toBe(false);
+  });
+
+  it("desligado: a linha de cota não aparece, porque a conta não pode perguntar", async () => {
+    abrirChat(DESLIGADO);
+    await screen.findByRole("region", { name: "O chat agora" }, { timeout: 5000 });
+    expect(screen.queryByLabelText("Cota e teto")).toBeNull();
+    expect(screen.queryByText(/Hoje: \d+ de \d+/)).toBeNull();
+  });
+
+  it.each(["sem_organizacao", "sem_chave"] as const)("%s: a linha de cota também não aparece", async (situacao) => {
+    abrirChat({ ...PRONTO, situacao, pode_perguntar: false, mensagem: "A conta não pode usar o chat." });
+    await screen.findByRole("region", { name: "O chat agora" }, { timeout: 5000 });
+    expect(screen.queryByLabelText("Cota e teto")).toBeNull();
+  });
+
+  it("cota do dia acabada: a linha de cota fica, porque diz o quanto já foi usado", async () => {
+    abrirChat({ ...PRONTO, situacao: "cota_do_dia", pode_perguntar: false, perguntas_hoje: 20, mensagem: "Limite de hoje." });
+    await screen.findByRole("region", { name: "O chat agora" }, { timeout: 5000 });
+    expect(screen.getByLabelText("Cota e teto").textContent).toContain("Hoje: 20 de 20");
+  });
+
+  it("pronto: o atalho do Início põe a pergunta na caixa e nada é enviado", async () => {
+    const { buscar } = await abrirPeloAtalhoDoInicio(PRONTO);
+    expect(CAIXA().value).toBe(ATALHO);
+    expect(CAIXA().disabled).toBe(false);
+    await new Promise((fim) => setTimeout(fim, 50));
+    expect(buscar.mock.calls.some(([e]) => e === ROTA_DA_PERGUNTA)).toBe(false);
+    // o texto nunca vai para o endereço: nenhum pedido o leva
+    for (const [pedido] of buscar.mock.calls) expect(String(pedido)).not.toContain("hospitais");
+    expect(screen.queryByRole("region", { name: "Exemplos de pergunta" })).not.toBeNull();
+  });
+
+  it("a pergunta que veio fica cortada no tamanho que a caixa aceita", async () => {
+    await abrirPeloAtalhoDoInicio({ ...PRONTO, caracteres_da_pergunta: 10 });
+    expect(CAIXA().value).toBe(ATALHO.slice(0, 10));
+  });
+
+  it("desligado: a pergunta que veio não entra na caixa travada", async () => {
+    await abrirPeloAtalhoDoInicio(DESLIGADO);
+    expect(CAIXA().value).toBe("");
+    expect(CAIXA().disabled).toBe(true);
+  });
+
+  it("a pergunta vale uma vez: voltar ao Perguntar pelo menu abre a caixa vazia", async () => {
+    await abrirPeloAtalhoDoInicio(PRONTO);
+    expect(CAIXA().value).toBe(ATALHO);
+    fireEvent.click(screen.getAllByRole("link", { name: "Início" })[0]);
+    await screen.findByRole("heading", { level: 1, name: "Qual empresa você quer estudar?" }, { timeout: 5000 });
+    fireEvent.click(screen.getAllByRole("link", { name: "Perguntar" })[0]);
+    await screen.findByRole("textbox", { name: "Sua pergunta" }, { timeout: 5000 });
+    expect(CAIXA().value).toBe("");
   });
 
   it("pronto: o exemplo preenche a caixa, e a cota e o teto ficam à vista", async () => {

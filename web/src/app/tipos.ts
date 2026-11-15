@@ -1014,6 +1014,8 @@ export interface FichaDaEmpresaV1 {
   fontes: FonteDaFichaV1[];
   limites: string[]; // "Limites e cuidados": sempre presentes
   o_que_vem: BlocoDaFichaV1[]; // os blocos da ficha e a fonte de cada um, para quando o dado não sai
+  // a frase fixa quando a resposta saiu pela prontidão de piloto (D11): vale para todos os campos dela
+  aviso_de_piloto?: string | null;
 }
 
 /** Um evento da empresa na ficha: documento à CVM (`ipe_filing`) ou troca de auditor (`auditor_change`). */
@@ -1032,6 +1034,8 @@ export interface EventosDaEmpresaV1 {
   tipos_nao_disponiveis?: string[]; // tipos que o portão não libera: não foram consultados (linha 878)
   fontes: FonteDaFichaV1[];
   limites: string[];
+  // a frase fixa quando a resposta saiu pela prontidão de piloto (D11): vale para todos os campos dela
+  aviso_de_piloto?: string | null;
 }
 
 /** Uma ponta do vínculo: a raiz do CNPJ (8 dígitos) e o nome do dia, quando a base tem. */
@@ -1057,6 +1061,8 @@ export interface VinculosDaEmpresaV1 {
   tipos_de_vinculo_nao_disponiveis?: string[]; // tipos que o portão não libera: não foram consultados (linha 889)
   fontes: FonteDaFichaV1[];
   limites: string[];
+  // a frase fixa quando a resposta saiu pela prontidão de piloto (D11): vale para todos os campos dela
+  aviso_de_piloto?: string | null;
 }
 
 // Comparar empresas (tela do analista, linha 798): uma empresa por linha, cada campo com a fonte e o dia.
@@ -1098,6 +1104,8 @@ export interface ComparacaoDeEmpresasV1 {
   empresas: EmpresaComparadaV1[];
   fontes: FonteDaFichaV1[];
   limites: string[];
+  // a frase fixa quando a resposta saiu pela prontidão de piloto (D11): vale para todos os campos dela
+  aviso_de_piloto?: string | null;
 }
 
 // O que mudou (linha 804): uma linha por entrega, a mais nova primeiro; url é o endereço da página no app

@@ -18,6 +18,7 @@ from src.banco.modelo import assinaturas, identidades, metadata, sessoes_de_logi
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
 from src.origem import Origem
+from src.planos import LIMITES_DO_CHAT
 from tests.test_compartilhamentos import _congelada
 
 
@@ -64,16 +65,66 @@ def test_nova_versao_dos_termos_pede_novo_aceite(conexao, ana, monkeypatch):
     assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
 
 
-def test_versao_14_do_aceite_pede_novo_aceite_a_quem_aceitou_a_13(
+def test_versao_14_do_aceite_pedia_novo_aceite_a_quem_aceitou_a_13(
     conexao, ana, monkeypatch
 ):
     """Texto 16 da política (linha 809): o vínculo com a organização e o registro das consultas a pessoas
     são usos novos de dado da conta, então quem aceitou a versão anterior aceita de novo."""
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-11.14"
+    assert conformidade.VERSAO_DOS_TERMOS >= "2026-11-11.14"
     monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2026-10-22.13")
     conformidade.registrar_aceite(conexao, ana.id)
     monkeypatch.undo()
     assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
+
+
+def test_versao_15_do_aceite_pede_novo_aceite_a_quem_aceitou_a_14(
+    conexao, ana, monkeypatch
+):
+    """Texto 18 da política (linha 903): a pergunta escrita no chat de IA vai a um modelo de linguagem, um
+    compartilhamento novo do que a pessoa escreve, então quem aceitou a versão anterior aceita de novo."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-14.15"
+    monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2026-11-11.14")
+    conformidade.registrar_aceite(conexao, ana.id)
+    monkeypatch.undo()
+    assert conformidade.precisa_aceitar_os_termos(buscar_por_id(conexao, ana.id))
+
+
+def test_versao_18_da_politica_descreve_o_chat_de_ia():
+    """Texto 18 (14/11): o que vai ao modelo no chat, o que fica guardado e o que sobra depois da exclusão.
+
+    A exclusão solta a conta da linha da pergunta e os números ficam (teto de gasto do mês): a política
+    diz isso, e não que as linhas são apagadas (tests/test_perguntas_do_chat.py confere o código).
+    """
+    privacidade = conformidade.carregar_texto("privacidade")
+    assert "versão 18" in privacidade
+    assert "esta versão pede novo aceite" in privacidade
+    assert (
+        privacidade.index("## Inteligência artificial nos relatórios")
+        < privacidade.index("## O chat de IA (tela Perguntar)")
+        < privacidade.index("## Com quem os dados são compartilhados")
+    )
+    trocas = LIMITES_DO_CHAT.perguntas_no_historico
+    for trecho in (
+        f"o texto da pergunta e as últimas trocas da conversa (até {trocas}) vão a um modelo de linguagem da Anthropic (EUA)",
+        "O modelo não recebe nome de sócio pessoa física, CPF nem contato, nem para a organização com a permissão de ver pessoas.",
+        "Não escreva na pergunta dado pessoal seu ou de outra pessoa.",
+        "nunca o texto da pergunta nem da resposta; isso entra na exportação dos seus dados.",
+        "Quando você apaga a conta, esses números ficam ligados só à organização, sem o número da conta.",
+        "com uma exceção: a pergunta que você escreve no chat de IA, descrita na seção seguinte",
+        "nenhum outro dado da sua conta.",
+        "pedimos que você não escreva dado pessoal na pergunta.",
+        "Ficam também os números das perguntas ao chat de IA (a organização, a data, o modelo, os tokens, o tempo e o custo), ligados só à organização, sem o número da conta.",
+        "que continuam, ligados só à organização e sem o número da conta, quando ela é apagada",
+    ):
+        assert trecho in privacidade, trecho
+    for promessa_antiga in (
+        "nunca dados da sua conta",
+        "À Anthropic não vai dado pessoal seu",
+        "na exportação e na exclusão da conta",
+        # a organização da linha, junto com o registro de membro, ainda leva ao número da conta
+        "sem nada que aponte para a conta",
+    ):
+        assert promessa_antiga not in privacidade, promessa_antiga
 
 
 def test_o_aceite_continua_depois_de_novo_login(conexao, ana):
@@ -230,7 +281,7 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
         "nunca para lhe oferecer algo como consumidor",
         "que um membro entrou nela, só com o número interno da conta apagada, e as consultas",
-        "sem nada que aponte para a conta apagada",
+        "e as consultas a dados de pessoas (a organização, a data, o tipo da consulta e quantas linhas vieram), ligadas só à organização, sem o número da conta.",
         "Para quem usa o TickerLab, pessoas aparecem nela só pela",
         "Elas ficam guardadas como o órgão publica e não aparecem para contas, organizações ou terceiros.",
         "a de trabalho análogo ao de escravo do MTE e a dívida ativa da União (PGFN), para conhecer",
@@ -288,7 +339,6 @@ def test_texto_17_diz_que_a_idade_do_titular_de_mei_e_de_individual_nao_e_conhec
         "no quadro de sócios, quem tem representante legal",
     ):
         assert promessa_antiga not in privacidade, promessa_antiga
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-11.14"
 
 
 def test_versao_13_dos_termos_diz_o_registro_de_acesso_ao_servidor_por_12_meses():
