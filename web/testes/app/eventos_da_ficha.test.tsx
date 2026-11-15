@@ -54,6 +54,8 @@ const PAGINA: EventosDaEmpresaV1 = {
   limites: ["Só o que a CVM classifica."],
 };
 
+const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
+
 afterEach(cleanup);
 
 function abrir(eventos: (corpo: unknown) => Response) {
@@ -175,5 +177,12 @@ describe("eventos da ficha", () => {
     await verFicha();
     expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
+  });
+
+  it("dado de piloto: o aviso do servidor fica à vista na seção", async () => {
+    abrir(() => respostaJson(200, { ...PAGINA, aviso_de_piloto: AVISO_DE_PILOTO }));
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByRole("note").textContent).toBe(AVISO_DE_PILOTO);
   });
 });

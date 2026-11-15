@@ -12,9 +12,10 @@ Nada aqui lê a base por outro caminho: a porta e as regras do portão são as d
 (`src/api_externa/rotas.py`, `abrir_porta` e `regras_da_api`), e a leitura é a do leitor da API
 (`src/analista/leitura.py`). Assim a tela mostra só o que a API mostraria.
 
-A busca de empresas vale também pela prontidão de piloto (D11): para a conta que é membro de uma organização
-com a marca de piloto vigente (`membros.e_do_piloto`, conferido aqui, no servidor, a cada pedido), e a
-resposta e a planilha levam o aviso de piloto. Para as outras contas nada muda: `nao_liberada`.
+A busca de empresas, a ficha, os eventos, os vínculos e o Comparar valem também pela prontidão de piloto
+(D11; a ficha, os eventos, os vínculos e o Comparar desde a linha 905): para a conta que é membro de uma
+organização com a marca de piloto vigente (`membros.e_do_piloto`, conferido aqui, no servidor, a cada pedido), e
+a resposta e a planilha levam o aviso de piloto. Para as outras contas nada muda: `nao_liberada`.
 
 É POST porque o CNPJ vai no corpo, não no endereço (não vai para o log de acesso); o log do app grava só o
 estado da resposta, e o nome do arquivo da planilha não leva o CNPJ.
@@ -129,16 +130,25 @@ def _porta() -> Generator[Porta]:
                 raise HTTPException(status_code=503, detail=BASE_FORA_DO_AR) from erro
 
 
-def _ficha_do_pedido(pedido: PedidoDaFichaV1) -> leitura.Resposta:
+def _e_do_piloto(conta: Usuario, dia: date) -> bool:
+    """A conta é membro de uma organização com a marca de piloto no dia? Conferido no servidor, a cada pedido."""
+    with obter_engine().connect() as banco:
+        return membros.e_do_piloto(banco, conta.id, dia)
+
+
+def _ficha_do_pedido(conta: Usuario, pedido: PedidoDaFichaV1) -> leitura.Resposta:
     if len(pedido.cnpj) > TAMANHO_MAXIMO_DO_CNPJ:
         raise HTTPException(status_code=422, detail=CNPJ_INVALIDO)
+    dia = hoje()
+    piloto = _e_do_piloto(conta, dia)
     with _porta() as porta:
         try:
             resposta = leitura.ficha(
                 porta,
                 pedido.cnpj,
-                hoje=hoje(),
+                hoje=dia,
                 regras=rotas_da_api_externa.regras_da_api(),
+                piloto=piloto,
             )
         except ValueError as erro:
             raise HTTPException(status_code=422, detail=CNPJ_INVALIDO) from erro
@@ -148,18 +158,22 @@ def _ficha_do_pedido(pedido: PedidoDaFichaV1) -> leitura.Resposta:
 
 @router.post("/ficha")
 def ficha_da_empresa(
-    _conta: Conta, pedido: PedidoDaFichaV1
+    conta: Conta, pedido: PedidoDaFichaV1
 ) -> esquemas.FichaDaEmpresaV1:
     """A ficha do CNPJ: o cadastro na Receita e, da companhia aberta, as entregas à CVM, cada campo com a
     fonte e o dia em que ficou público. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece
-    saem `nao_disponivel`, sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`."""
-    return esquemas.de_ficha_do_analista(_ficha_do_pedido(pedido), leitura.LIMITES)
+    saem `nao_disponivel`, sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`. O que sai
+    pela prontidão de piloto, só para a conta de organização com a marca, vem com `aviso_de_piloto`."""
+    return esquemas.de_ficha_do_analista(
+        _ficha_do_pedido(conta, pedido), leitura.LIMITES
+    )
 
 
 @router.post("/ficha/planilha", response_class=Response)
-def ficha_da_empresa_em_planilha(_conta: Conta, pedido: PedidoDaFichaV1) -> Response:
-    """A mesma ficha em Excel (mesmo acesso, mesmo plano), com a aba das fontes e o aviso."""
-    resposta = _ficha_do_pedido(pedido)
+def ficha_da_empresa_em_planilha(conta: Conta, pedido: PedidoDaFichaV1) -> Response:
+    """A mesma ficha em Excel (mesmo acesso, mesmo plano), com a aba das fontes e o aviso; dado de piloto
+    leva o aviso de piloto em cada campo e nas fontes."""
+    resposta = _ficha_do_pedido(conta, pedido)
     if resposta.corpo is None:
         raise HTTPException(status_code=404, detail=FICHA_INDISPONIVEL)
     corpo = resposta.corpo | {"fontes": resposta.fontes}
@@ -180,7 +194,7 @@ class PedidoDosEventosV1(BaseModel):
 
 @router.post("/ficha/eventos")
 def eventos_da_empresa(
-    _conta: Conta, pedido: PedidoDosEventosV1
+    conta: Conta, pedido: PedidoDosEventosV1
 ) -> esquemas.EventosDaEmpresaV1:
     """Os documentos à CVM e as trocas de auditor da empresa, do mais novo ao mais velho, por página. Mesmo
     acesso, mesmo plano e mesmos estados da ficha; `proximo_cursor` abre a página seguinte."""
@@ -191,14 +205,17 @@ def eventos_da_empresa(
         and len(pedido.cursor) > eventos.TAMANHO_MAXIMO_DO_CURSOR
     ):
         raise HTTPException(status_code=422, detail=CURSOR_INVALIDO)
+    dia = hoje()
+    piloto = _e_do_piloto(conta, dia)
     with _porta() as porta:
         try:
             resposta = eventos.eventos(
                 porta,
                 pedido.cnpj,
-                hoje=hoje(),
+                hoje=dia,
                 cursor=pedido.cursor,
                 regras=rotas_da_api_externa.regras_da_api(),
+                piloto=piloto,
             )
         except ValueError as erro:  # inclui eventos.PedidoInvalido
             detalhe = (
@@ -213,30 +230,27 @@ def eventos_da_empresa(
 
 @router.post("/ficha/vinculos")
 def vinculos_da_empresa(
-    _conta: Conta, pedido: PedidoDaFichaV1
+    conta: Conta, pedido: PedidoDaFichaV1
 ) -> esquemas.VinculosDaEmpresaV1:
     """Controle, coligação, participação e auditoria da empresa, a um salto, cada campo com fonte e dia. Mesmo
     acesso, mesmo plano e mesmos estados da ficha; pessoa natural nunca sai."""
     if len(pedido.cnpj) > TAMANHO_MAXIMO_DO_CNPJ:
         raise HTTPException(status_code=422, detail=CNPJ_INVALIDO)
+    dia = hoje()
+    piloto = _e_do_piloto(conta, dia)
     with _porta() as porta:
         try:
             resposta = vinculos.vinculos(
                 porta,
                 pedido.cnpj,
-                hoje=hoje(),
+                hoje=dia,
                 regras=rotas_da_api_externa.regras_da_api(),
+                piloto=piloto,
             )
         except ValueError as erro:
             raise HTTPException(status_code=422, detail=CNPJ_INVALIDO) from erro
     log.info("vínculos do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
     return esquemas.de_vinculos_do_analista(resposta, vinculos.LIMITES)
-
-
-def _e_do_piloto(conta: Usuario, dia: date) -> bool:
-    """A conta é membro de uma organização com a marca de piloto no dia? Conferido no servidor, a cada pedido."""
-    with obter_engine().connect() as banco:
-        return membros.e_do_piloto(banco, conta.id, dia)
 
 
 def _busca_do_pedido(
@@ -295,16 +309,24 @@ def encontrar_empresas_em_planilha(conta: Conta, pedido: PedidoDaBuscaV1) -> Res
     )
 
 
-def _comparacao_do_pedido(pedido: PedidoDaComparacaoV1) -> leitura.Resposta:
+def _comparacao_do_pedido(
+    conta: Usuario, pedido: PedidoDaComparacaoV1
+) -> leitura.Resposta:
     cnpjs = pedido.cnpjs
     if len(cnpjs) > comparacao.MAXIMO or any(
         len(cnpj) > TAMANHO_MAXIMO_DO_CNPJ for cnpj in cnpjs
     ):
         raise HTTPException(status_code=422, detail=COMPARACAO_INVALIDA)
+    dia = hoje()
+    piloto = _e_do_piloto(conta, dia)
     with _porta() as porta:
         try:
             resposta = comparacao.comparar(
-                porta, cnpjs, hoje=hoje(), regras=rotas_da_api_externa.regras_da_api()
+                porta,
+                cnpjs,
+                hoje=dia,
+                regras=rotas_da_api_externa.regras_da_api(),
+                piloto=piloto,
             )
         except (
             comparacao.PedidoInvalido
@@ -316,24 +338,25 @@ def _comparacao_do_pedido(pedido: PedidoDaComparacaoV1) -> leitura.Resposta:
 
 @router.post("/comparar")
 def comparar_empresas(
-    _conta: Conta, pedido: PedidoDaComparacaoV1
+    conta: Conta, pedido: PedidoDaComparacaoV1
 ) -> esquemas.ComparacaoDeEmpresasV1:
     """De dois a cinco CNPJs lado a lado: o cadastro na Receita, o porte, a abertura, a atividade, o lugar, o
     capital, os estabelecimentos e, da companhia aberta, a última entrega à CVM e os atrasos, cada campo com
     a fonte e o dia. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece saem `nao_disponivel`,
-    sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`."""
+    sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`. O que sai pela prontidão de
+    piloto, só para a conta de organização com a marca, vem com `aviso_de_piloto`."""
     return esquemas.de_comparacao_do_analista(
-        _comparacao_do_pedido(pedido), comparacao.LIMITES
+        _comparacao_do_pedido(conta, pedido), comparacao.LIMITES
     )
 
 
 @router.post("/comparar/planilha", response_class=Response)
 def comparar_empresas_em_planilha(
-    _conta: Conta, pedido: PedidoDaComparacaoV1
+    conta: Conta, pedido: PedidoDaComparacaoV1
 ) -> Response:
     """A mesma comparação em Excel (mesmo acesso, mesmo plano), uma linha por empresa, com a aba das fontes
-    e o aviso."""
-    resposta = _comparacao_do_pedido(pedido)
+    e o aviso; dado de piloto leva o aviso de piloto em cada linha e nas fontes."""
+    resposta = _comparacao_do_pedido(conta, pedido)
     if resposta.corpo is None:
         raise HTTPException(status_code=404, detail=COMPARACAO_INDISPONIVEL)
     corpo = resposta.corpo | {"fontes": resposta.fontes}

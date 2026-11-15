@@ -60,6 +60,8 @@ const NAO_LIBERADA: FichaDaEmpresaV1 = {
 };
 const NAO_DISPONIVEL: FichaDaEmpresaV1 = { ...NAO_LIBERADA, estado: "nao_disponivel" };
 
+const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
+
 function abrir(resposta: () => Response) {
   return abrirApp("/ficha-da-empresa", {
     rotas: (endereco) => (endereco === ROTA ? resposta() : undefined),
@@ -324,5 +326,21 @@ describe("ficha da empresa", () => {
     expect(JSON.parse(String(pedido?.body))).toEqual({ cnpj: CNPJ });
     expect(criar).toHaveBeenCalled();
     clicar.mockRestore();
+  });
+
+  it("dado de piloto: o aviso do servidor fica à vista no topo da ficha, em qualquer aba", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, aviso_de_piloto: AVISO_DE_PILOTO }));
+    await verFicha(CNPJ);
+    await screen.findByRole("region", { name: "Resumo da ficha" });
+    expect(screen.getByRole("note").textContent).toBe(AVISO_DE_PILOTO);
+    await abrirAba("Cadastro");
+    expect(screen.getByText(AVISO_DE_PILOTO)).toBeTruthy();
+  });
+
+  it("sem piloto, nenhum aviso de piloto", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await verFicha(CNPJ);
+    await screen.findByRole("region", { name: "Resumo da ficha" });
+    expect(screen.queryByText(/Dado de piloto/)).toBeNull();
   });
 });
