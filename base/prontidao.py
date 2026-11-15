@@ -55,8 +55,41 @@ class Falta(StrEnum):
     CONTRATO_MUDOU = "contrato_mudou"  # versão maior diferente da conferida
 
 
-# Nenhuma tabela está pronta ainda: falta a prova da 6, que vem do placar (linha 427, API A2b).
-PRONTIDAO: dict[str, Prontidao] = {}
+# Só entra tabela com as três provas (D10.5). As provas da 6 e da 7 vêm do placar e vencem em 90 dias.
+PRONTIDAO: dict[str, Prontidao] = {
+    "demonstracoes_como_era": Prontidao(
+        versao_maior=3,
+        cruzada=Prova(
+            data=date(2026, 11, 12),
+            prova=(
+                "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas "
+                "(a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, "
+                "16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 60 de 60 "
+                "pacotes lidos) 29310 valores comparados, 29310 iguais, nenhum diferente; ficaram sem par 123 valores da base (zeros da conta 3.99 da DRE, que o ENET entrega em branco) "
+                "e 186181 do ENET (183151 zeros e 3030 de contas que a base não guarda ou guarda em outro período), "
+                "e nenhum desses entra na conta de iguais nem na de diferentes"
+            ),
+            independencia=(
+                "mesmo documento, outro canal: a base lê os dados abertos da CVM "
+                "e a conferência baixa o XML da entrega no ENET"
+            ),
+        ),
+        qualidade=Prova(
+            data=date(2026, 11, 12),
+            prova=(
+                "placar de qualidade verde em 24328845 linhas: chave única, colunas "
+                "obrigatórias preenchidas, 2 achados todos explicados"
+            ),
+        ),
+        dicionario=Prova(
+            data=date(2026, 11, 14),
+            prova=(
+                "dicionário lido pelo dono do projeto em 14 de novembro de 2026, leitura própria e só "
+                "deste dicionário: resultado lido, sem correção pendente"
+            ),
+        ),
+    ),
+}
 
 
 def versao_maior(versao: str) -> int:
@@ -151,11 +184,6 @@ class ProntidaoDePiloto(NamedTuple):
 PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     "carteiras_dos_fundos": ProntidaoDePiloto(
         versao_maior=1,
-        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
-        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
-    ),
-    "demonstracoes_como_era": ProntidaoDePiloto(
-        versao_maior=3,
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
