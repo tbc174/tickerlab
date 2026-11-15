@@ -224,6 +224,12 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    # a ficha da empresa (linha 841): 23699215 linhas, zero achado no placar, zero raiz fora da lista de PJ
+    "cnpj_situacao_cadastral": ProntidaoDePiloto(
+        versao_maior=2,
+        qualidade=Prova(date(2026, 11, 14), "placar-qualidade-2026-11-14"),
+        dicionario=Prova(date(2026, 11, 14), "dicionario-escrito-2026-11-14"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
@@ -232,7 +238,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
 # ans_beneficiarios, ifdata_valores e susep_seguros (linha 904, lote 4): o CNPJ só vem da ponte da fonte, e a linha da ponte marcada como pessoa ou fora da fonte deixa o CNPJ vazio (tests/test_cnpj_pela_ponte.py)
-# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
+# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, cnpj_situacao_cadastral, demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "aneel_samp",
@@ -241,6 +247,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
+        "cnpj_situacao_cadastral",
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
         "eventos",
