@@ -44,6 +44,15 @@ describe("dados e cobertura", () => {
     expect(within(linhas[1]).getByText("mensal")).toBeTruthy();
   });
 
+  it("enquanto a API não responde, mostra o esqueleto e não um texto solto", async () => {
+    abrirApp("/dados-e-cobertura", {
+      rotas: (endereco) => (endereco === ENDERECO ? (new Promise<Response>(() => {}) as unknown as Response) : undefined),
+    });
+    const esqueleto = await screen.findByRole("status", { name: "Carregando o catálogo…" }, { timeout: 5000 });
+    expect(esqueleto.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByText("Carregando…")).toBeNull();
+  });
+
   it("sem nenhuma tabela: uma frase, não uma tabela vazia, e nenhuma promessa de cobertura", async () => {
     abrirApp("/dados-e-cobertura", {
       rotas: (endereco) => (endereco === ENDERECO ? respostaJson(200, { tabelas: [] }) : undefined),
