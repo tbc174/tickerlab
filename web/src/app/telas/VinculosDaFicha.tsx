@@ -101,6 +101,12 @@ export function VinculosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) 
   return (
     <section className="secao-do-relatorio" aria-labelledby="vinculos-da-ficha">
       <h2 id="vinculos-da-ficha">Vínculos com outras empresas</h2>
+      {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+      {dados.aviso_de_piloto ? (
+        <p className="erro-do-app" role="note">
+          {dados.aviso_de_piloto}
+        </p>
+      ) : null}
       {dados.estado === "nao_liberada" ? (
         <p className="apagado">Dado ainda não liberado: os vínculos da empresa entram quando a conferência terminar.</p>
       ) : dados.vinculos.length === 0 && naoConsultados.length > 0 ? (

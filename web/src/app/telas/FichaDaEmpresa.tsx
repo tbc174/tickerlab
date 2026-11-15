@@ -304,6 +304,12 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
           </>
         }
       />
+      {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+      {dados.aviso_de_piloto ? (
+        <p className="erro-do-app" role="note">
+          {dados.aviso_de_piloto}
+        </p>
+      ) : null}
       <Abas rotulo={ROTULO_DAS_ABAS} abas={abasDaFicha(dados, ficha, rota, cnpj)} parametro={PARAMETRO_DA_ABA} />
     </>
   );

@@ -8,6 +8,10 @@ Os três estados são os da ficha (`leitura`): `pronta` (o corpo do leitor, com 
 é maior que a página, e `tipos_nao_disponiveis` com os tipos que o portão não libera), `nao_liberada` (o portão ainda não libera nenhum campo de nenhum tipo; decide-se sem
 ler o CNPJ) e `nao_disponivel` (o leitor não serve o CNPJ: não existe, é pessoa ou a rede não o conhece como
 empresa), sem dizer o motivo.
+
+A prontidão de piloto (D11) vale como na ficha: só para a conta de uma organização com a marca (`piloto=True`,
+conferido no servidor pela rota), e o corpo leva o aviso de piloto em cada campo e no topo
+(`leitura.com_aviso_de_piloto`).
 """
 
 from collections.abc import Callable, Iterable
@@ -67,13 +71,31 @@ def eventos(
     hoje: date,
     cursor: str | None = None,
     regras: Regras | None = None,
+    piloto: bool = False,
 ) -> leitura.Resposta:
     """Os eventos do CNPJ como eram hoje, do mais novo ao mais velho, `LINHAS_POR_PAGINA` por vez.
 
+    `piloto`: a conta é de uma organização com a marca de piloto (D11); o que sair por ele leva o aviso.
     `ValueError` se o CNPJ é inválido; `PedidoInvalido` se o cursor não é nosso (a rota responde 422)."""
     if not cnpj_.normalizar_cnpj(cnpj):
         raise ValueError("CNPJ inválido")
-    permitido = leitura.permitido_na_tela(eventos_.CONJUNTO, hoje, regras)
+    return leitura.com_aviso_de_piloto(
+        lambda: _pagina(porta, cnpj, hoje, cursor, regras, piloto)
+    )
+
+
+def _pagina(
+    porta: Porta,
+    cnpj: str,
+    hoje: date,
+    cursor: str | None,
+    regras: Regras | None,
+    piloto: bool,
+) -> leitura.Resposta:
+    """Uma página de eventos, ainda sem o aviso de piloto (quem chama abre o registro e marca o corpo)."""
+    permitido = leitura.permitido_na_tela(
+        eventos_.CONJUNTO, hoje, regras, piloto=piloto
+    )
     if not _algum_campo_liberado(permitido):
         return leitura.Resposta(leitura.NAO_LIBERADA)
     leitor = eventos_.LeitorDeEventos(porta, permitido, LINHAS_POR_PAGINA)
