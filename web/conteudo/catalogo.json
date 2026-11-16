@@ -88,11 +88,15 @@
     },
     {
       "coletas": [
-        "mte-lista-suja"
+        "mte-lista-suja",
+        "mte-pat-beneficiarias",
+        "mte-pat-facilitadoras",
+        "mte-pat-fornecedoras"
       ],
       "familia": "mte",
       "licencas": [
-        "Cadastro de empregadores do MTE (dado público; citar o MTE)"
+        "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+        "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno"
       ],
       "link": "https://www.gov.br/trabalho-e-emprego/",
       "marca": "uso_interno",
@@ -123,11 +127,16 @@
     },
     {
       "coletas": [
-        "rfb-cnpj"
+        "rfb-cnpj",
+        "rfb-renuncias-regime-presumido",
+        "rfb-renuncias-regime-real",
+        "rfb-renuncias-regime-arbitrado",
+        "rfb-renuncias-regime-imunes"
       ],
       "familia": "rfb",
       "licencas": [
-        "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+        "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+        "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido"
       ],
       "link": "https://www.gov.br/receitafederal/",
       "marca": "vendavel",
@@ -163,6 +172,11 @@
         "bcb-leiloes-selic",
         "bcb-tarifas-instituicao",
         "bcb-cosif",
+        "bcb-supervisionadas",
+        "bcb-cooperativas",
+        "bcb-correspondentes",
+        "bcb-filiais-de-consorcio",
+        "bcb-regimes-especiais",
         "bcb-sgs-selic-meta",
         "bcb-focus-selic-anual",
         "bcb-relatorio-anual",
@@ -213,7 +227,9 @@
         "antt-pedagio",
         "antt-siade",
         "antt-autos-de-transito",
-        "antt-rntrc"
+        "antt-rntrc",
+        "antt-operadores-multimodais",
+        "antt-seguro-de-responsabilidade-civil"
       ],
       "familia": "antt",
       "licencas": [
@@ -278,16 +294,18 @@
         "anp-vendas-distribuidora",
         "anp-producao-poco",
         "anp-concessionarios",
+        "anp-tancagem",
         "anp-precos-ultimas-semanas",
         "anp-precos-semestral",
         "anp-precos-mensal"
       ],
       "familia": "anp",
       "licencas": [
-        "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)"
+        "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+        "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)"
       ],
       "link": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "ANP (petróleo, gás e combustíveis)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-14",
@@ -383,14 +401,18 @@
       "coletas": [
         "anatel-acessos",
         "anatel-outorgas",
+        "anatel-pados",
+        "anatel-homologados",
         "anatel-acessos-telefonia-fixa"
       ],
       "familia": "anatel",
       "licencas": [
-        "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)"
+        "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+        "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+        "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)"
       ],
       "link": "https://www.anatel.gov.br/dadosabertos/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "Anatel (telecomunicações)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-14",
@@ -474,14 +496,16 @@
     },
     {
       "coletas": [
-        "anm-cadastro-mineiro"
+        "anm-cadastro-mineiro",
+        "anm-tah"
       ],
       "familia": "anm",
       "licencas": [
-        "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)"
+        "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+        "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)"
       ],
       "link": "https://dadosabertos.anm.gov.br/",
-      "marca": "vendavel",
+      "marca": "a_confirmar",
       "orgao": "ANM (mineração)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-29",
@@ -2794,7 +2818,7 @@
           "Receita Federal"
         ],
         "tabelas": 4,
-        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional e o que mudou de um mês para o outro. Hoje estão montadas 4 de 10 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional, a forma de tributação do lucro declarada na ECF e o que mudou de um mês para o outro. Hoje estão montadas 4 de 11 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Cadastro e situação na Receita"
       },
       {
@@ -2806,7 +2830,7 @@
           "CVM"
         ],
         "tabelas": 4,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 4 de 12 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 4 de 14 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2822,7 +2846,7 @@
           "Ministério da Saúde (DATASUS)"
         ],
         "tabelas": 8,
-        "texto": "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 8 de 21 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 8 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -5581,6 +5605,132 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-supervisionadas",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-cooperativas",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-correspondentes",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-filiais-de-consorcio",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bcb-regimes-especiais",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "antt-operadores-multimodais",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "antt-seguro-de-responsabilidade-civil",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-presumido",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-real",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-arbitrado",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "rfb-renuncias-regime-imunes",
+      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "mte-pat-beneficiarias",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "mte-pat-facilitadoras",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "mte-pat-fornecedoras",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
+      "id": "anm-tah",
+      "licenca": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-29"
+    },
+    {
+      "id": "anatel-pados",
+      "licenca": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anatel-homologados",
+      "licenca": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-tancagem",
+      "licenca": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "bcb-sgs-selic-meta",

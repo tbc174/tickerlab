@@ -123,6 +123,23 @@ FICAM_EM_CASA = (
     "aneel_agentes",
     "aneel_autos_de_infracao",
     "aneel_termos_de_notificacao",
+    # linha 904 (lote 3): cadastros do Banco Central (ODbL) e da ANTT (CC BY), só com CNPJ; o envio ao VPS pede o
+    # "pode" da Diretoria com a prova de zero pessoa da 1ª carga e a leitura da ODbL escrita no PR
+    "bcb_supervisionadas",
+    "bcb_cooperativas",
+    "bcb_correspondentes",
+    "bcb_filiais_de_consorcio",
+    "bcb_regimes_especiais",
+    "antt_operadores_multimodais",
+    "antt_seguros_de_transportadores",
+    # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem; o envio ao VPS pede o "pode"
+    # da Diretoria com a prova de zero pessoa da 1ª carga (quatro delas com a licença a confirmar)
+    "receita_regime_tributario",
+    "mte_pat",
+    "anm_tah",
+    "anatel_pados",
+    "anatel_produtos_homologados",
+    "anp_tancagem",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

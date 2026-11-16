@@ -94,7 +94,7 @@ contourpy==1.4.0
 cycler==0.12.1
 kiwisolver==1.5.1
 pyparsing==3.3.3
-pypdf==6.21.2
+pypdf==6.21.4
 # prévia do Report Studio: páginas do PDF viram imagens (PDFium; BSD-3 e Apache-2.0)
 pypdfium2==5.14.0
 # rapidocr + onnxruntime: OCR de reserva do leitor de fatos relevantes, só quando o PDF volta

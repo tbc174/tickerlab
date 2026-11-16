@@ -44,6 +44,7 @@ from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.receita_codigos import codigos_do_municipio
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.porta_compartilhada import lembrar
 
 CONJUNTO = "prospecting"
 FONTE = "rfb-cnpj"
@@ -527,7 +528,15 @@ class LeitorDeProspeccao:
         self.linhas_maximas = linhas_maximas
 
     def _mes_do_retrato(self, como_era_em: date) -> str | None:
-        """O retrato mais novo já público em `como_era_em`, nas duas tabelas (o mesmo mês em ambas)."""
+        """O retrato mais novo já público em `como_era_em`, nas duas tabelas (o mesmo mês em ambas). Lido uma
+        vez por base e dia (3 a 4 s por pedido, linha 956)."""
+        return lembrar(
+            self.porta,
+            ("mes_do_retrato_busca", como_era_em),
+            lambda: self._ler_o_mes_do_retrato(como_era_em),
+        )
+
+    def _ler_o_mes_do_retrato(self, como_era_em: date) -> str | None:
         meses = []
         for tabela in (ESTABELECIMENTOS, EMPRESAS):
             condicao = condicao_como_era(self.porta.colunas(tabela), tabela)

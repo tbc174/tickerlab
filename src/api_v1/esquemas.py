@@ -1578,6 +1578,8 @@ class FichaDaEmpresaV1(BaseModel):
     o_que_vem: list[
         BlocoDaFichaV1
     ]  # o que a ficha traz, para a tela dizer antes de o dado sair
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
 
 
 def de_ficha_do_analista(
@@ -1595,6 +1597,7 @@ def de_ficha_do_analista(
             BlocoDaFichaV1.model_validate(bloco)
             for bloco in leitura_do_analista.blocos_como_lista()
         ],
+        aviso_de_piloto=(resposta.corpo or {}).get(piloto_da_api_externa.AVISO),
     )
 
 
@@ -1618,6 +1621,8 @@ class EventosDaEmpresaV1(BaseModel):
     tipos_nao_disponiveis: list[str]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
 
 
 def _evento_do_analista(linha: dict) -> EventoDaEmpresaV1:
@@ -1639,6 +1644,7 @@ def de_eventos_do_analista(
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
         # com eventos servidos, os limites do corpo (só dos tipos servidos); sem eles, o texto fixo
         limites=list(corpo.get("limites", limites)),
+        aviso_de_piloto=corpo.get(piloto_da_api_externa.AVISO),
     )
 
 
@@ -1670,6 +1676,8 @@ class VinculosDaEmpresaV1(BaseModel):
     tipos_de_vinculo_nao_disponiveis: list[str]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
 
 
 def _ponta_do_analista(ponta: dict) -> PontaDoVinculoV1:
@@ -1708,6 +1716,7 @@ def de_vinculos_do_analista(
         fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
         # com vínculos servidos, os limites do corpo (só dos tipos servidos); sem eles, o texto fixo
         limites=list(corpo.get("limites", limites)),
+        aviso_de_piloto=corpo.get(piloto_da_api_externa.AVISO),
     )
 
 
@@ -1834,6 +1843,8 @@ class ComparacaoDeEmpresasV1(BaseModel):
     empresas: list[EmpresaComparadaV1]
     fontes: list[FonteDaFichaV1]
     limites: list[str]
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
 
 
 def de_comparacao_do_analista(
@@ -1849,6 +1860,7 @@ def de_comparacao_do_analista(
         ],
         fontes=[FonteDaFichaV1.model_validate(fonte) for fonte in resposta.fontes],
         limites=list(limites),
+        aviso_de_piloto=corpo.get(piloto_da_api_externa.AVISO),
     )
 
 

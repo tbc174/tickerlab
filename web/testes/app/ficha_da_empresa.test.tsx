@@ -60,6 +60,8 @@ const NAO_LIBERADA: FichaDaEmpresaV1 = {
 };
 const NAO_DISPONIVEL: FichaDaEmpresaV1 = { ...NAO_LIBERADA, estado: "nao_disponivel" };
 
+const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
+
 function abrir(resposta: () => Response) {
   return abrirApp("/ficha-da-empresa", {
     rotas: (endereco) => (endereco === ROTA ? resposta() : undefined),
@@ -324,5 +326,50 @@ describe("ficha da empresa", () => {
     expect(JSON.parse(String(pedido?.body))).toEqual({ cnpj: CNPJ });
     expect(criar).toHaveBeenCalled();
     clicar.mockRestore();
+  });
+
+  it("dado de piloto: o aviso do servidor fica à vista no topo da ficha, em qualquer aba", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, aviso_de_piloto: AVISO_DE_PILOTO }));
+    await verFicha(CNPJ);
+    await screen.findByRole("region", { name: "Resumo da ficha" });
+    expect(screen.getByRole("note").textContent).toBe(AVISO_DE_PILOTO);
+    await abrirAba("Cadastro");
+    expect(screen.getByText(AVISO_DE_PILOTO)).toBeTruthy();
+  });
+
+  it("sem piloto, nenhum aviso de piloto", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await verFicha(CNPJ);
+    await screen.findByRole("region", { name: "Resumo da ficha" });
+    expect(screen.queryByText(/Dado de piloto/)).toBeNull();
+  });
+});
+
+describe("acabamento da ficha", () => {
+  it("'Empresas' no caminho é um link para o Explorar", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await verFicha(CNPJ);
+    const titulo = await screen.findByRole("heading", { level: 1, name: "EMPRESA MODELO S.A." });
+    const link = within(titulo.closest("header") as HTMLElement).getByRole("link", { name: "Empresas" });
+    expect(link.getAttribute("href")).toMatch(/\/encontrar-empresas$/);
+  });
+
+  it("depois da ficha: o aviso de que nada é recomendação e o link para o Relatório do setor", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await verFicha(CNPJ);
+    const rodape = await screen.findByRole("region", { name: "Rodapé da ficha" });
+    expect(within(rodape).getByText("Nada aqui é recomendação de investimento.")).toBeTruthy();
+    const link = within(rodape).getByRole("link", { name: "Ver o Relatório de um setor" });
+    expect(link.getAttribute("href")).toMatch(/\/relatorio-do-setor$/);
+    // o rodapé vem depois das abas, não antes
+    const abas = screen.getByRole("tablist");
+    expect(abas.compareDocumentPosition(rodape) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("sem ficha (não liberada) não há rodapé da ficha nem caminho clicável", async () => {
+    abrir(() => respostaJson(200, NAO_LIBERADA));
+    await verFicha(CNPJ);
+    await screen.findByText(/Dado ainda não liberado/);
+    expect(screen.queryByRole("region", { name: "Rodapé da ficha" })).toBeNull();
   });
 });

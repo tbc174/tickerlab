@@ -299,3 +299,20 @@ def test_ponto_da_versao_1_antes_do_bloco_360603_fica_como_esta(tmp_path):
     arquivo = _ponto_da_versao_1(tmp_path, 1_000, np.full(1_001, 5, np.int64))
 
     assert leitura._carregar_ponto(arquivo).histograma.sum() == 5 * 1_001
+
+
+def test_ponto_de_0_byte_vai_para_o_lado_e_vale_o_anterior(tmp_path):
+    no = NoFalso(_cadeia(10))
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=2)
+    pontos = leitura._listar_pontos(tmp_path)
+    ruim = pontos[-1]
+    ruim.write_bytes(
+        b""
+    )  # queda de energia depois do renomeio, antes de gravar no disco
+
+    estado = leitura._estado_valido(no, tmp_path, AGORA)
+
+    assert estado.altura == leitura._altura_do_ponto(pontos[-2])
+    assert not ruim.exists()
+    assert ruim.with_name(ruim.stem + ".ilegivel").exists()
+    assert leitura._listar_pontos(tmp_path) == pontos[:-1]

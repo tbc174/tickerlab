@@ -21,7 +21,9 @@ def main() -> int:
     for c in resultados:
         estado = "sem pessoa" if c.sem_pessoa else "RAIZ DE FORA"
         print(
-            f"{c.tabela}: {c.raizes} raízes, {c.fora_da_pj} fora da cnpj_empresas_pj: {estado}"
+            f"{c.tabela}: {c.raizes} raízes, {c.fora_da_pj} fora da cnpj_empresas_pj, "
+            f"{c.raiz_diferente} linhas com a raiz do texto diferente da coluna de raiz, "
+            f"{c.sem_documento} linhas sem raiz nem CNPJ: {estado}"
         )
     return 0 if all(c.sem_pessoa for c in resultados) else 1
 

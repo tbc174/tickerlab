@@ -207,7 +207,11 @@ def test_obter_grava_o_csv_filtrado_e_nao_deixa_o_bruto(tmp_path):
     assert [p.name for p in tmp_path.iterdir()] == ["saida.csv"]
 
 
-@pytest.mark.parametrize("conteudo", [_zip(CABECALHO, "a.txt"), b"isto nao e um zip"])
+@pytest.mark.parametrize(
+    "conteudo",
+    [_zip(CABECALHO, "a.txt"), b"isto nao e um zip"],
+    ids=["zip_sem_csv", "nao_e_zip"],
+)
 def test_obter_nao_deixa_arquivo_quando_o_zip_muda_de_forma(tmp_path, conteudo):
     servidor = Servidor({ZIP: conteudo})
     with pytest.raises((ValueError, zipfile.BadZipFile)):

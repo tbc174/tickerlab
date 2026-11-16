@@ -3,7 +3,7 @@
 // e baixa tudo em Excel. A rota usa o mesmo leitor e o mesmo portão da API externa: o que a API negaria
 // não aparece aqui. Como na Busca por CNPJ, o CNPJ vai no corpo do POST, nunca no endereço, e nada é
 // pedido antes de a pessoa buscar. "Limites e cuidados" fica sempre à vista depois da busca.
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
@@ -62,6 +62,21 @@ function camposNaoConsultados(deFora: string[]): string {
 /** As chaves da tela (não as de fora da API) dos campos do cadastro que não foram consultados. */
 const chavesBarradas = (ficha: FichaDoCnpjV1): ReadonlySet<string> =>
   new Set((ficha.campos_do_cadastro_nao_disponiveis ?? []).map((nome) => CHAVE_DO_CAMPO_DE_FORA[nome] ?? nome));
+
+const ROTA_DO_EXPLORAR = "/encontrar-empresas";
+const ROTA_DO_RELATORIO_DO_SETOR = "/relatorio-do-setor";
+const NAO_E_RECOMENDACAO = "Nada aqui é recomendação de investimento.";
+
+/** O rodapé das telas do analista, depois do resultado: o aviso de que nada é recomendação e, se a tela tem,
+ * o atalho para o passo seguinte. Fica fora de "Limites e cuidados", que vem da API e pode mudar de frase. */
+export function RodapeDaTela({ rotulo, children }: { rotulo: string; children?: ReactNode }) {
+  return (
+    <section className="rodape-da-tela" aria-label={rotulo}>
+      {children}
+      <p className="apagado">{NAO_E_RECOMENDACAO}</p>
+    </section>
+  );
+}
 
 function Cadastro({ ficha }: { ficha: FichaDoCnpjV1 }) {
   // o campo barrado não foi consultado: a tabela sem ele não pode parecer "a empresa não tem" (linha 899)
@@ -239,7 +254,13 @@ function FontesELimites({ dados }: { dados: FichaDaEmpresaV1 }) {
   );
 }
 
-function abasDaFicha(dados: FichaDaEmpresaV1, ficha: FichaDoCnpjV1, rota: string, cnpj: string) {
+function abasDaFicha(
+  dados: FichaDaEmpresaV1,
+  ficha: FichaDoCnpjV1,
+  rota: string,
+  cnpj: string,
+  avisoDaFicha: string | null,
+) {
   return [
     { chave: "resumo", rotulo: "Resumo", conteudo: <Resumo ficha={ficha} /> },
     {
@@ -254,7 +275,7 @@ function abasDaFicha(dados: FichaDaEmpresaV1, ficha: FichaDoCnpjV1, rota: string
     },
     { chave: "quem_controla", rotulo: "Quem controla", conteudo: <QuemControla rota={rota} cnpj={cnpj} /> },
     { chave: "sinais", rotulo: "Sinais", conteudo: <Sinais ficha={ficha} /> },
-    { chave: "eventos", rotulo: "Eventos", conteudo: <EventosDaFicha rota={rota} cnpj={cnpj} /> },
+    { chave: "eventos", rotulo: "Eventos", conteudo: <EventosDaFicha rota={rota} cnpj={cnpj} avisoJaMostrado={avisoDaFicha} /> },
     { chave: "vinculos", rotulo: "Vínculos", conteudo: <VinculosDaFicha rota={rota} cnpj={cnpj} /> },
     { chave: "fontes", rotulo: "Fontes e limites", conteudo: <FontesELimites dados={dados} /> },
   ];
@@ -290,7 +311,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
   return (
     <>
       <Cabecalho
-        olho="Empresas"
+        olho={<Link to={ROTA_DO_EXPLORAR}>Empresas</Link>}
         titulo={nomeDaEmpresa(ficha) ?? `CNPJ ${cnpjComPontuacao(ficha.cnpj)}`}
         descricao={`CNPJ ${cnpjComPontuacao(ficha.cnpj)} · como a base conhecia em ${formatarData(ficha.como_era_em)}`}
         selos={<SeloDaSituacao ficha={ficha} />}
@@ -304,7 +325,22 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
           </>
         }
       />
-      <Abas rotulo={ROTULO_DAS_ABAS} abas={abasDaFicha(dados, ficha, rota, cnpj)} parametro={PARAMETRO_DA_ABA} />
+      {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+      {dados.aviso_de_piloto ? (
+        <p className="erro-do-app" role="note">
+          {dados.aviso_de_piloto}
+        </p>
+      ) : null}
+      <Abas
+        rotulo={ROTULO_DAS_ABAS}
+        abas={abasDaFicha(dados, ficha, rota, cnpj, dados.aviso_de_piloto ?? null)}
+        parametro={PARAMETRO_DA_ABA}
+      />
+      <RodapeDaTela rotulo="Rodapé da ficha">
+        <p>
+          <Link to={ROTA_DO_RELATORIO_DO_SETOR}>Ver o Relatório de um setor</Link>
+        </p>
+      </RodapeDaTela>
     </>
   );
 }

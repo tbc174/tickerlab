@@ -19,6 +19,7 @@ from base.ponto_no_tempo import COLUNAS_DA_BASE
 from base.porta import Porta
 from src import setores
 from src.api_externa.conjuntos import comparaveis
+from src.api_externa.nomes import NOMES_DE_FORA
 
 DIA = date(2025, 6, 30)
 CVM_FCA, CVM_DFP = "cvm-hist-fca", "cvm-hist-dfp"
@@ -476,9 +477,9 @@ def test_sem_a_dfp_os_limites_nao_falam_dos_numeros_nem_das_medianas(pasta):
         comparaveis.RAZOES
     )
     assert corpo["limites"] == [
-        *comparaveis.LIMITES_GERAIS[:2],
+        *comparaveis.LIMITES_GERAIS[: comparaveis.GERAIS_ANTES_DOS_NUMEROS],
         comparaveis.LIMITE_DO_NUMERO_NAO_DISPONIVEL,
-        *comparaveis.LIMITES_GERAIS[2:],
+        *comparaveis.LIMITES_GERAIS[comparaveis.GERAIS_ANTES_DOS_NUMEROS :],
     ]
 
 
@@ -503,3 +504,18 @@ def test_pares_cortados_no_limite_do_plano(pasta):
 def test_cnpj_invalido_e_erro_de_quem_chama(pasta):
     with pytest.raises(ValueError):
         _ler(pasta, cnpj="123")
+
+
+def test_os_limites_avisam_que_o_grupo_junta_setores_e_apontam_o_setor_de_cada_par(
+    pasta,
+):
+    """Linha 955: em Saúde, hospital e cosmético saíam como pares sem aviso; o setor do FCA de cada par é o
+    jeito de separá-los, sem classificação inventada pelo TickerLab."""
+    assert (
+        len(setores.GRUPOS["saude"][1]) > 1
+    )  # o grupo de Saúde junta mais de um setor do FCA
+    corpo = _corpo(pasta)
+    aviso = next(frase for frase in corpo["limites"] if "junta setores" in frase)
+    assert "`sector`" in aviso and "grupo inteiro" in aviso
+    assert NOMES_DE_FORA["setor"] == "sector"  # o nome que o aviso cita é o de fora
+    assert corpo["limites"].index(aviso) < comparaveis.GERAIS_ANTES_DOS_NUMEROS

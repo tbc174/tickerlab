@@ -216,6 +216,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
             # conta nossa sobre as colunas booleanas da tabela (`ficha._situacao_entregue`)
             assert set(ficha.COLUNAS_DA_SITUACAO) <= colunas, linha
             continue
+        if (
+            linha.conjunto == ficha.CONJUNTO
+            and linha.campo in ficha.TEXTOS_DE_FORA_DA_TABELA
+        ):
+            # o texto de um código pela tabela da Receita (`base/receita_codigos`, linha 955): o código é coluna
+            assert ficha.ORIGEM_DO_CAMPO_NOVO[linha.campo] in colunas, linha
+            continue
         if linha.conjunto == comparaveis.CONJUNTO and linha.campo not in colunas:
             # conta nossa sobre as colunas da tabela: o grupo do setor, o fim do exercício, as somas e razões
             assert set(comparaveis.ORIGEM_DAS_CONTAS[linha.campo]) <= colunas, linha
@@ -293,6 +300,14 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             # `vinculos.LeitorDeVinculos._pontas`); a natureza de pessoa também não dá nome
             assert tabela == empresas.LISTA_DE_EMPRESAS, linha
             assert linha.campo in {vinculos.NOME, empresas.RETRATO_DO_CADASTRO}, linha
+            continue
+        if (
+            linha.conjunto == ficha.CONJUNTO
+            and linha.campo in ficha.TABELA_DO_CAMPO_NOVO
+        ):
+            # o estabelecimento do perfil sai da lista montada sem pessoa (linha 584), depois da trava do leitor de
+            # `companies`; o texto de cada código, da mesma tabela do código (linha 955)
+            assert tabela == ficha.TABELA_DO_CAMPO_NOVO[linha.campo], linha
             continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha

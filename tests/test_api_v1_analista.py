@@ -108,6 +108,7 @@ def test_pessoa_e_cnpj_que_nao_existe_dao_a_mesma_resposta(cliente, cnpj):
         "fontes": [],
         "limites": list(leitura.LIMITES),
         "o_que_vem": leitura.blocos_como_lista(),
+        "aviso_de_piloto": None,
     }
 
 

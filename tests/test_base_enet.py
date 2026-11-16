@@ -305,6 +305,26 @@ def test_itr_traz_o_trimestre_e_o_acumulado():
     }
 
 
+def test_itr_le_o_acumulado_do_ano_da_dva_com_o_nome_que_o_enet_usa():
+    """No ITR do ENET a DFC e a DVA trazem o acumulado do ano em `AcumuladoAtualExercicio`
+    (14/11/2026: o leitor não conhecia a tag e a conferência perdia esses valores)."""
+    dva = (
+        "<DemonstracaoValorAdicionado>"
+        + _conta(
+            "7.01",
+            "Receitas",
+            {"AcumuladoAtualExercicio": "900", "AcumuladoExercicioAnterior": "700"},
+        )
+        + "</DemonstracaoValorAdicionado>"
+    )
+    xml = _itr().replace(
+        b"</DfConsolidadas>", dva.encode("utf-8") + b"</DfConsolidadas>"
+    )
+    contas = ler_xml_enet(xml).contas
+    assert _valor(contas, "con", "7.01", inicio="2026-01-01") == 900
+    assert _valor(contas, "con", "7.01", "penultimo", inicio="2025-01-01") == 700
+
+
 def test_r5_compara_a_versao_1_com_a_2():
     v1 = ler_xml_enet(_dfp(versao=1, lucro="512.345"))
     v2 = ler_xml_enet(

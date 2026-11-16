@@ -320,4 +320,8 @@ describe("a busca do topo (Ctrl K)", () => {
     // campo de 16 px: o iPhone dá zoom em campo menor
     expect(CSS_DO_APP).toMatch(/\.busca-global input \{[^}]*font-size: 16px;/);
   });
+
+  it("o CSS: o fundo vai até o fim da tela, mesmo em tela curta (sem isto o degradê recomeça em faixa)", () => {
+    expect(CSS_DO_APP).toMatch(/^body \{ min-height: 100vh; min-height: 100dvh; \}$/m);
+  });
 });

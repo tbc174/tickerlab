@@ -15,7 +15,7 @@ import { Erro } from "../pecas/Erro";
 import { Baixar } from "../pecas/Baixar";
 import { Fontes } from "../pecas/Fonte";
 import { Limites } from "../pecas/Limites";
-import { TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
+import { RodapeDaTela, TAMANHO_MAXIMO_DO_CNPJ, cnpjComPontuacao, textoDoValor } from "./FichaDaEmpresa";
 
 const MINIMO = 2;
 const MAXIMO = 5;
@@ -35,52 +35,72 @@ type Campo = Exclude<
   | "entregas_com_atraso"
 >;
 
-/** Uma linha da tabela: o campo, o nome na tela e, se precisa, como o valor vira texto. */
+/** Os dois grupos da tabela, na ordem em que aparecem: quem a empresa é na Receita e o que ela entregou à CVM. */
+const GRUPOS = ["Cadastro", "Entregas à CVM"] as const;
+type Grupo = (typeof GRUPOS)[number];
+
+/** Uma linha da tabela: o campo, o grupo, o nome na tela e, se precisa, como o valor vira texto. */
 interface Linha {
   campo: Campo;
+  grupo: Grupo;
   nome: string;
   texto?: (empresa: EmpresaComparadaV1, campo: CampoComFonteV1) => string;
 }
 
 const comNome = (codigo: string, nome: string | null) => (nome ? `${codigo} · ${nome}` : codigo);
 
-// a ordem é a da conversa de um analista: quem é, o tamanho aproximado, onde está e o que faz, as entregas
+// a ordem é a da conversa de um analista: quem é, o tamanho aproximado, onde está e o que faz; depois, num grupo
+// à parte, as entregas à CVM
 const LINHAS: Linha[] = [
-  { campo: "razao_social", nome: "Razão social" },
-  { campo: "situacao_cadastral", nome: "Situação cadastral" },
-  { campo: "data_situacao_cadastral", nome: "Data da situação" },
-  { campo: "natureza_juridica", nome: "Natureza jurídica (código da Receita)" },
-  { campo: "porte", nome: "Porte (Receita)", texto: (e, c) => e.porte_descricao ?? String(c.valor) },
-  { campo: "data_inicio_atividade", nome: "Abertura" },
+  { campo: "razao_social", grupo: "Cadastro", nome: "Razão social" },
+  { campo: "situacao_cadastral", grupo: "Cadastro", nome: "Situação cadastral" },
+  { campo: "data_situacao_cadastral", grupo: "Cadastro", nome: "Data da situação" },
+  { campo: "natureza_juridica", grupo: "Cadastro", nome: "Natureza jurídica (código da Receita)" },
+  {
+    campo: "porte",
+    grupo: "Cadastro",
+    nome: "Porte (Receita)",
+    texto: (e, c) => e.porte_descricao ?? String(c.valor),
+  },
+  { campo: "data_inicio_atividade", grupo: "Cadastro", nome: "Abertura" },
   {
     campo: "cnae_principal",
+    grupo: "Cadastro",
     nome: "Atividade principal (CNAE)",
     texto: (e, c) => comNome(String(c.valor), e.cnae_descricao),
   },
-  { campo: "uf", nome: "UF" },
-  { campo: "municipio", nome: "Município", texto: (e, c) => e.municipio_nome ?? String(c.valor) },
-  { campo: "matriz", nome: "Matriz" },
+  { campo: "uf", grupo: "Cadastro", nome: "UF" },
+  {
+    campo: "municipio",
+    grupo: "Cadastro",
+    nome: "Município",
+    texto: (e, c) => e.municipio_nome ?? String(c.valor),
+  },
+  { campo: "matriz", grupo: "Cadastro", nome: "Matriz" },
   {
     campo: "capital_social",
+    grupo: "Cadastro",
     nome: "Capital social declarado (aproximação do tamanho)",
     texto: (_e, c) => (typeof c.valor === "number" ? REAIS.format(c.valor) : textoDoValor("capital_social", c.valor)),
   },
   {
     campo: "n_estabelecimentos",
+    grupo: "Cadastro",
     nome: "Estabelecimentos ativos (aproximação do tamanho)",
     texto: (_e, c) => (typeof c.valor === "number" ? INTEIRO.format(c.valor) : textoDoValor("", c.valor)),
   },
-  { campo: "optante_simples", nome: "Optante pelo Simples" },
-  { campo: "data_opcao_simples", nome: "Entrou no Simples em" },
-  { campo: "data_exclusao_simples", nome: "Saiu do Simples em" },
-  { campo: "ultima_entrega_documento", nome: "Última entrega à CVM" },
-  { campo: "ultima_entrega_referencia", nome: "Referência da última entrega" },
+  { campo: "optante_simples", grupo: "Cadastro", nome: "Optante pelo Simples" },
+  { campo: "data_opcao_simples", grupo: "Cadastro", nome: "Entrou no Simples em" },
+  { campo: "data_exclusao_simples", grupo: "Cadastro", nome: "Saiu do Simples em" },
+  { campo: "mes_do_retrato", grupo: "Cadastro", nome: "Mês do cadastro" },
+  { campo: "ultima_entrega_documento", grupo: "Entregas à CVM", nome: "Última entrega à CVM" },
+  { campo: "ultima_entrega_referencia", grupo: "Entregas à CVM", nome: "Referência da última entrega" },
   {
     campo: "ultima_entrega_situacao",
+    grupo: "Entregas à CVM",
     nome: "Situação da última entrega",
     texto: (_e, c) => textoDoValor("situacao_da_entrega", c.valor),
   },
-  { campo: "mes_do_retrato", nome: "Mês do cadastro" },
 ];
 
 function Celula({ empresa, linha }: { empresa: EmpresaComparadaV1; linha: Linha }) {
@@ -141,24 +161,36 @@ function Tabela({ empresas }: { empresas: EmpresaComparadaV1[] }) {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {linhas.map((linha) => (
-              <tr key={linha.campo}>
-                <th scope="row">{linha.nome}</th>
-                {empresas.map((empresa) => (
-                  <Celula key={empresa.cnpj} empresa={empresa} linha={linha} />
+          {GRUPOS.map((grupo) => {
+            const doGrupo = linhas.filter((linha) => linha.grupo === grupo);
+            const comAtrasosAqui = grupo === "Entregas à CVM" && comAtrasos;
+            if (doGrupo.length === 0 && !comAtrasosAqui) return null;
+            return (
+              <tbody key={grupo}>
+                <tr className="grupo-da-tabela">
+                  <th scope="rowgroup" colSpan={empresas.length + 1}>
+                    {grupo}
+                  </th>
+                </tr>
+                {doGrupo.map((linha) => (
+                  <tr key={linha.campo}>
+                    <th scope="row">{linha.nome}</th>
+                    {empresas.map((empresa) => (
+                      <Celula key={empresa.cnpj} empresa={empresa} linha={linha} />
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-            {comAtrasos ? (
-              <tr>
-                <th scope="row">Entregas à CVM com atraso</th>
-                {empresas.map((empresa) => (
-                  <CelulaDosAtrasos key={empresa.cnpj} empresa={empresa} />
-                ))}
-              </tr>
-            ) : null}
-          </tbody>
+                {comAtrasosAqui ? (
+                  <tr>
+                    <th scope="row">Entregas à CVM com atraso</th>
+                    {empresas.map((empresa) => (
+                      <CelulaDosAtrasos key={empresa.cnpj} empresa={empresa} />
+                    ))}
+                  </tr>
+                ) : null}
+              </tbody>
+            );
+          })}
         </table>
       </div>
     </section>
@@ -177,6 +209,12 @@ function Comparacao({ dados, rota, cnpjs }: { dados: ComparacaoDeEmpresasV1; rot
   return (
     <>
       <p className="apagado">Como a base conhecia em {formatarData(dados.como_era_em ?? "")}</p>
+      {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
+      {dados.aviso_de_piloto ? (
+        <p className="erro-do-app" role="note">
+          {dados.aviso_de_piloto}
+        </p>
+      ) : null}
       {algumaPronta ? (
         <div className="acoes-da-ficha">
           <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={{ cnpjs }} nome={NOME_DA_PLANILHA} />
@@ -201,6 +239,7 @@ function Resultado({ pagina, cnpjs }: { pagina: PaginaDoApp; cnpjs: string[] }) 
     <>
       <Comparacao dados={pedido.dados} rota={rota} cnpjs={cnpjs} />
       <Limites itens={pedido.dados.limites} />
+      <RodapeDaTela rotulo="Rodapé da comparação" />
     </>
   );
 }
@@ -235,7 +274,10 @@ export function CompararEmpresas({ pagina }: { pagina: PaginaDoApp }) {
   };
   return (
     <section>
-      <CabecalhoDaTela pagina={pagina} />
+      <CabecalhoDaTela
+        pagina={pagina}
+        titulo={comparado === null ? undefined : `Comparar ${new Set(comparado.cnpjs).size} empresas`}
+      />
       <p className="apagado">
         Não sabe o CNPJ? <Link to="/encontrar-empresas">Encontre empresas pelo setor, estado ou tamanho</Link> e
         escolha, pelo nome, as que quer comparar.

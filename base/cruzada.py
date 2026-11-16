@@ -343,7 +343,7 @@ def _com_datas_em_texto(contas: pd.DataFrame) -> pd.DataFrame:
 def _preparar_enet(
     tabelas: Mapping[str, pd.DataFrame],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Nossa leitura da DFP (dados abertos) × a mesma DFP lida do pacote do ENET, só o último exercício."""
+    """Nossa leitura da DFP ou do ITR (dados abertos) × o mesmo documento lido do pacote do ENET, só o último período."""
     nossa = tabelas["demonstracoes_como_era"]
     enet = tabelas["enet_amostra"]
     return (
@@ -364,6 +364,19 @@ PARES: tuple[Par, ...] = (
         descricao=(
             "Contas da DFP do último exercício de uma amostra sorteada (`base/conferidas/amostra_enet.csv`): "
             "nossa leitura dos dados abertos da CVM × o mesmo documento no pacote do ENET"
+        ),
+        chave=CHAVE_DA_CONTA,
+        tolerancia=Tolerancia(relativa=0.02),
+        independencia=MESMO_DOCUMENTO,
+        preparar=_preparar_enet,
+        tabelas=("demonstracoes_como_era",),
+    ),
+    Par(
+        nome="itr_enet_x_nossa_leitura",
+        descricao=(
+            "Contas do ITR do último período (três trimestres de 2025) de uma amostra sorteada "
+            "(`base/conferidas/amostra_enet_itr.csv`): nossa leitura dos dados abertos da CVM × o mesmo "
+            "documento no pacote do ENET"
         ),
         chave=CHAVE_DA_CONTA,
         tolerancia=Tolerancia(relativa=0.02),

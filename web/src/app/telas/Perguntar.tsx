@@ -4,7 +4,11 @@
 //
 // O estado vem de GET /v1/chat/estado: se dá para perguntar, a cota da conta e se o teto do mês pausou o
 // chat (o gasto em dinheiro não vem). Com o chat desligado (`TICKERLAB_CHAT`), a tela abre e diz que ele
-// ainda não foi ligado e o que vai fazer; a caixa da pergunta fica travada.
+// ainda não foi ligado e o que vai fazer; a caixa da pergunta fica travada, e a linha de cota some (ela só
+// aparece para quem pode usar o chat).
+//
+// Outra tela (os atalhos do Início, as perguntas prontas do Conectar) pode abrir o Perguntar com um texto, pelo
+// estado da navegação (perguntaDaNavegacao.ts): ele só entra na caixa, nunca é enviado sozinho.
 //
 // Pessoa física não aparece aqui: as ferramentas do chat são as do conector, pelo caminho sem pessoa.
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -25,15 +29,17 @@ import {
   trocaNova,
 } from "../chat";
 import { useConta } from "../conta";
+import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
 import { formatarData } from "../formatar";
 import { Markdown } from "../Markdown";
+import { perguntaDoEstado } from "../perguntaDaNavegacao";
 import { Cabecalho } from "../pecas/Cabecalho";
 import { Carregando } from "../pecas/Carregando";
 import { Erro } from "../pecas/Erro";
 import { Fonte } from "../pecas/Fonte";
 import { Limites } from "../pecas/Limites";
 import { Selo } from "../pecas/Selo";
-import type { ConsultaDoChat, EstadoDoChatV1, FonteDaConsulta } from "../tipos";
+import type { ConsultaDoChat, EstadoDoChatV1, FonteDaConsulta, SituacaoDoChat } from "../tipos";
 import { usarPedido } from "../usarPedido";
 
 const SEM_PARAMETROS = {};
@@ -194,7 +200,12 @@ function NestaConversa({ trocas, comoFunciona }: { trocas: Troca[]; comoFunciona
   );
 }
 
+// Só quem pode usar o chat tem cota para mostrar: com o chat desligado, sem organização ou sem chave da API, a
+// linha "Hoje: 0 de 20" prometeria uma pergunta que a conta não pode fazer.
+const SITUACOES_COM_COTA: ReadonlySet<SituacaoDoChat> = new Set(["pronto", "cota_do_dia", "cota_do_mes", "pausado"]);
+
 function CotaETeto({ estado, feitasAqui }: { estado: EstadoDoChatV1; feitasAqui: number }) {
+  if (!SITUACOES_COM_COTA.has(estado.situacao)) return null;
   const hoje = Math.min(estado.perguntas_hoje + feitasAqui, estado.perguntas_por_dia);
   const noMes = Math.min(estado.perguntas_no_mes + feitasAqui, estado.perguntas_por_mes);
   return (
@@ -241,10 +252,18 @@ function Exemplos({ exemplos, escolher }: { exemplos: string[]; escolher(texto: 
   );
 }
 
-function Conversa({ estado, rotaDoEstado }: { estado: EstadoDoChatV1; rotaDoEstado: string }) {
+interface PropriedadesDaConversa {
+  estado: EstadoDoChatV1;
+  rotaDoEstado: string;
+  /** A pergunta que outra tela mandou para a caixa (vazia se nenhuma). Nunca é enviada sozinha. */
+  perguntaInicial: string;
+}
+
+function Conversa({ estado, rotaDoEstado, perguntaInicial }: PropriedadesDaConversa) {
   const token = useConta()?.token ?? null;
   const [trocas, setTrocas] = useState<Troca[]>([]);
-  const [texto, setTexto] = useState("");
+  // com o chat parado a caixa está travada: um texto preenchido nela só confundiria
+  const [texto, setTexto] = useState(estado.pode_perguntar ? perguntaInicial.slice(0, estado.caracteres_da_pergunta) : "");
   const [feitasAqui, setFeitasAqui] = useState(0);
   // a recusa da cota (do dia ou do mês) que a pergunta ouviu: vale até a tela abrir de novo
   const [recusa, setRecusa] = useState<string | null>(null);
@@ -385,11 +404,16 @@ function Conversa({ estado, rotaDoEstado }: { estado: EstadoDoChatV1; rotaDoEsta
 
 export function Perguntar({ pagina }: { pagina: PaginaDoApp }) {
   const pedido = usarPedido<EstadoDoChatV1>(pagina.contrato?.rota ?? "", SEM_PARAMETROS);
+  // lida uma vez só e apagada do histórico: sair da conta e entrar com outra não traz a pergunta de volta
+  const vindoDaNavegacao = useEstadoDaNavegacaoUmaVez();
+  const perguntaInicial = perguntaDoEstado(vindoDaNavegacao);
   return (
     <section className="tela-do-chat">
       {pedido.estado === "carregando" ? <Carregando tipo="lista" rotulo="Abrindo o chat…" /> : null}
       {pedido.estado === "erro" ? <Erro erro={pedido.erro} /> : null}
-      {pedido.estado === "pronto" ? <Conversa estado={pedido.dados} rotaDoEstado={pagina.contrato?.rota ?? ""} /> : null}
+      {pedido.estado === "pronto" ? (
+        <Conversa estado={pedido.dados} rotaDoEstado={pagina.contrato?.rota ?? ""} perguntaInicial={perguntaInicial} />
+      ) : null}
     </section>
   );
 }

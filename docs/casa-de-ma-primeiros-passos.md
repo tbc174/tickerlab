@@ -163,7 +163,7 @@ Se a produção não estiver liberada no dia, o mesmo roteiro roda contra a API 
 4. `$env:TICKERLAB_API_URL = "http://127.0.0.1:8765"`, `tickerlab login` e o roteiro da seção 3.
 
 **O que responde, rota por rota (ensaio de 10/11/2026, recorte do degrau 2 e fichas de 07/11; cada "sim" vale "com
-prontidão de ensaio", não com a prontidão real da linha 784):**
+prontidão de ensaio"; só `demonstracoes_como_era` tem prontidão real, desde a linha 784, e as outras tabelas seguem na de ensaio):**
 
 | Rota | Resposta | O que a faz responder / falta |
 |---|---|---|

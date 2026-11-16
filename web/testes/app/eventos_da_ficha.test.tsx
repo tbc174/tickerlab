@@ -54,6 +54,8 @@ const PAGINA: EventosDaEmpresaV1 = {
   limites: ["Só o que a CVM classifica."],
 };
 
+const AVISO_DE_PILOTO = "Dado de piloto: passou na qualidade automática, mas ainda não na conferência cruzada com outra fonte.";
+
 afterEach(cleanup);
 
 function abrir(eventos: (corpo: unknown) => Response) {
@@ -175,5 +177,48 @@ describe("eventos da ficha", () => {
     await verFicha();
     expect(screen.getByRole("tablist")).toBeTruthy();
     expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
+  });
+
+  it("dado de piloto: o aviso do servidor fica à vista na seção", async () => {
+    abrir(() => respostaJson(200, { ...PAGINA, aviso_de_piloto: AVISO_DE_PILOTO }));
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByRole("note").textContent).toBe(AVISO_DE_PILOTO);
+  });
+});
+
+describe("um aviso de piloto só na aba Eventos", () => {
+  const AVISO_DA_FICHA = "Dado de piloto da ficha.";
+
+  function abrirComAvisoNaFicha(avisoDosEventos: string | null) {
+    return abrirApp("/ficha-da-empresa", {
+      rotas: (endereco) => {
+        if (endereco === ROTA_DA_FICHA) return respostaJson(200, { ...FICHA, aviso_de_piloto: AVISO_DA_FICHA });
+        if (endereco === ROTA_DOS_EVENTOS) return respostaJson(200, { ...PAGINA, aviso_de_piloto: avisoDosEventos });
+        return undefined;
+      },
+    });
+  }
+
+  it("a ficha e os eventos com a mesma frase: ela aparece uma vez só", async () => {
+    abrirComAvisoNaFicha(AVISO_DA_FICHA);
+    await verFicha();
+    await screen.findByRole("region", { name: SECAO });
+    expect(screen.getAllByText(AVISO_DA_FICHA)).toHaveLength(1);
+  });
+
+  it("os eventos com outra frase (só eles são de piloto): as duas ficam à vista", async () => {
+    abrirComAvisoNaFicha(AVISO_DE_PILOTO);
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByText(AVISO_DE_PILOTO)).toBeTruthy();
+    expect(screen.getByText(AVISO_DA_FICHA)).toBeTruthy();
+  });
+
+  it("a ficha sem piloto e os eventos de piloto: o aviso dos eventos fica (nunca some)", async () => {
+    abrir(() => respostaJson(200, { ...PAGINA, aviso_de_piloto: AVISO_DE_PILOTO }));
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByText(AVISO_DE_PILOTO)).toBeTruthy();
   });
 });

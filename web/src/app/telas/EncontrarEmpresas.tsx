@@ -5,7 +5,7 @@
 // negaria não aparece aqui. As opções do formulário vêm da API (um pedido sem filtro, que não lê a base);
 // "Limites e cuidados" fica sempre à vista depois da busca.
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, pedir } from "../api";
@@ -17,6 +17,8 @@ import { Vazio } from "../pecas/Vazio";
 import { Carregando } from "../pecas/Carregando";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
+import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
+import { secaoDoCnae } from "../secaoDoCnae";
 import type { BuscaDeEmpresasV1, CampoComFonteV1, EmpresaDaBuscaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { Erro } from "../pecas/Erro";
@@ -31,6 +33,15 @@ const SEM_VALOR = "—";
 const CNPJ_SO_DIGITOS = /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/;
 const FALHA = "Não deu agora. Tente de novo em instantes.";
 const REAIS = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+// o capital das etiquetas, curto ("R$ 5 mi"): a etiqueta é um rótulo, o valor exato fica na tabela e no Excel
+const REAIS_CURTO = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+const CNAE_DO_SETOR = /^(\d{5}|\d{7})$/;
+const ORDEM_PELO_CNPJ = "número do CNPJ";
 const APROXIMACAO =
   "Capital social e estabelecimentos ativos são só uma aproximação do tamanho: nenhum dos dois mede faturamento.";
 
@@ -53,6 +64,10 @@ const textoDe = (campo: CampoComFonteV1 | null) =>
 /** O capital declarado em reais, sem centavos (o Excel leva o valor exato). */
 const reaisDe = (campo: CampoComFonteV1 | null | undefined) =>
   typeof campo?.valor === "number" ? REAIS.format(campo.valor) : SEM_VALOR;
+
+/** O valor da etiqueta em reais, curto: "R$ 5 mi", "R$ 1,5 bi" (sem valor, nada). */
+const reaisCurto = (valor: number | undefined) =>
+  valor === undefined ? "" : REAIS_CURTO.format(valor).replace(/ /g, " "); // o Intl põe espaço que não quebra
 
 /** O código e, ao lado, o nome da Receita (o nome pode faltar: o código nunca some). */
 const comNome = (campo: CampoComFonteV1 | null, nome: string | null) =>
@@ -158,6 +173,12 @@ function BandejaDeComparacao({ escolhidas, aoLimpar }: { escolhidas: EmpresaDaBu
   );
 }
 
+/** A ordem da lista pelo nome que a tela dá a ela no formulário (sem ordem, é pelo número do CNPJ). */
+function nomeDaOrdem(filtros: Filtros, resposta: BuscaDeEmpresasV1): string {
+  const nome = resposta.ordens.find((o) => o.codigo === filtros.ordem)?.nome;
+  return nome ? nome.toLowerCase() : ORDEM_PELO_CNPJ;
+}
+
 /** A primeira página veio pronta; "Carregar mais" pede a seguinte pelo cursor e junta embaixo. */
 function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota: string; filtros: Filtros }) {
   const token = useConta()?.token ?? null;
@@ -188,7 +209,10 @@ function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota:
       <p>
         {empresas.length} {empresas.length === 1 ? "empresa" : "empresas"}
         {cursor === null ? "" : " até aqui"}
-        <span className="apagado"> · como a base conhecia em {formatarData(primeira.como_era_em ?? "")}</span>
+        <span className="apagado">
+          {" "}
+          · ordem: {nomeDaOrdem(filtros, primeira)} · como a base conhecia em {formatarData(primeira.como_era_em ?? "")}
+        </span>
       </p>
       <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={filtros} nome={NOME_DA_PLANILHA} />
       <Tabela
@@ -266,10 +290,12 @@ function Formulario({
   opcoes,
   inicial,
   aoBuscar,
+  aoLimpar,
 }: {
   opcoes: BuscaDeEmpresasV1;
   inicial: Filtros | null;
   aoBuscar: (filtros: Filtros) => void;
+  aoLimpar: () => void;
 }) {
   const [setores, setSetores] = useState<string[]>(inicial?.setores ?? []);
   const [ufs, setUfs] = useState<string[]>(inicial?.ufs ?? []);
@@ -381,6 +407,9 @@ function Formulario({
       </fieldset>
       <button className="botao primario" type="submit" disabled={vazio}>
         Encontrar empresas
+      </button>{" "}
+      <button className="botao" type="button" disabled={vazio && ordem === ""} onClick={aoLimpar}>
+        Limpar filtros
       </button>
     </form>
   );
@@ -410,8 +439,8 @@ function etiquetasDosFiltros(filtros: Filtros, opcoes: BuscaDeEmpresasV1): Etiqu
       semEla: sem({ ufs: filtros.ufs.filter((u) => u !== uf) }),
     })),
     ...numero("idade_minima", `Idade mínima: ${filtros.idade_minima} anos`, filtros.idade_minima),
-    ...numero("capital_minimo", `Capital social mínimo: ${filtros.capital_minimo}`, filtros.capital_minimo),
-    ...numero("capital_maximo", `Capital social máximo: ${filtros.capital_maximo}`, filtros.capital_maximo),
+    ...numero("capital_minimo", `Capital social mínimo: ${reaisCurto(filtros.capital_minimo)}`, filtros.capital_minimo),
+    ...numero("capital_maximo", `Capital social máximo: ${reaisCurto(filtros.capital_maximo)}`, filtros.capital_maximo),
     ...numero(
       "estabelecimentos_minimo",
       `Estabelecimentos ativos, no mínimo: ${filtros.estabelecimentos_minimo}`,
@@ -456,42 +485,127 @@ function EtiquetasDeFiltro({
   );
 }
 
-export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
-  const rota = pagina.contrato?.rota ?? "";
-  const opcoes = usarPedido<BuscaDeEmpresasV1>(rota, {}, SEM_FILTRO);
-  const [buscado, setBuscado] = useState<{ filtros: Filtros; vez: number } | null>(null);
+/** O que o Setor manda ao abrir esta tela: o filtro já pronto (se o CNAE tem seção nesta busca) e a nota que diz
+ * de onde ele veio e por que a busca é mais ampla que o CNAE. */
+export interface AberturaDoSetor {
+  filtros: Filtros | null;
+  nota: string;
+}
+
+/** O pedido que o Setor guardou no estado da navegação (o CNAE e a UF, nunca no endereço): só vale se o CNAE é de
+ * uma divisão do CNAE; o resto do estado se ignora. A busca filtra pela seção do CNAE, e só entra o que o formulário
+ * oferece (a seção fora da busca e a UF desconhecida ficam de fora, com a nota dizendo). */
+export function aberturaDoSetor(estado: unknown, opcoes: BuscaDeEmpresasV1): AberturaDoSetor | null {
+  if (typeof estado !== "object" || estado === null || !("doSetor" in estado)) return null;
+  const pedido = estado.doSetor;
+  if (typeof pedido !== "object" || pedido === null || !("cnae" in pedido)) return null;
+  const { cnae } = pedido;
+  if (typeof cnae !== "string" || !CNAE_DO_SETOR.test(cnae)) return null;
+  const secao = secaoDoCnae(cnae);
+  if (secao === null) return null;
+  const uf = "uf" in pedido && typeof pedido.uf === "string" && opcoes.ufs.includes(pedido.uf) ? pedido.uf : null;
+  const setor = opcoes.setores.find((s) => s.codigo === secao);
+  const filtros: Filtros = { setores: setor ? [secao] : [], ufs: uf ? [uf] : [] };
+  const onde = uf ? ` em ${uf}` : "";
+  const nota = setor
+    ? `Aberto a partir do CNAE ${cnae}${onde}: esta busca filtra pela seção do CNAE, ${setor.nome}, que é mais ampla do que o CNAE.`
+    : `Aberto a partir do CNAE ${cnae}${onde}: a seção dele não está nesta busca.${uf ? " Só o estado entrou no filtro." : " Nenhum filtro foi aplicado."}`;
+  return { filtros: temFiltro(filtros) ? filtros : null, nota };
+}
+
+/** O setor e o estado que chegam no endereço (o link dos cruzamentos do site, linha 925): só `setor` e `uf`,
+ * um de cada, e só valores que o formulário oferece; o resto se ignora, sem erro, e sem nenhum dos dois a
+ * tela abre com o filtro vazio. */
+export function filtrosDoEndereco(busca: URLSearchParams, opcoes: BuscaDeEmpresasV1): Filtros | null {
+  const setor = busca.get("setor");
+  const uf = busca.get("uf");
+  const filtros: Filtros = {
+    setores: setor !== null && opcoes.setores.some((s) => s.codigo === setor) ? [setor] : [],
+    ufs: uf !== null && opcoes.ufs.includes(uf) ? [uf] : [],
+  };
+  return temFiltro(filtros) ? filtros : null;
+}
+
+/** O filtro com que a busca começa: o que o Setor mandou vale primeiro (um clique de dentro do app, que vale uma vez
+ * só), mesmo sem filtro, porque a nota dele diz o que entrou; sem ele, o do endereço. */
+export function filtroInicial(abertura: AberturaDoSetor | null, doEndereco: Filtros | null): Filtros | null {
+  return abertura ? abertura.filtros : doEndereco;
+}
+
+const AVISO_DE_COMECO = (
+  <p className="apagado">
+    Escolha ao menos um filtro. Aparecem só empresas com cadastro ativo na Receita Federal, uma linha por empresa;
+    pessoa física, MEI e empresário individual não aparecem. Nada aqui é recomendação de investimento.
+  </p>
+);
+
+/** O formulário, as etiquetas e a lista, depois que as opções chegaram; a busca já começa com o filtro que o Setor
+ * mandou ou, sem ele, com o do endereço, se houver. */
+function Busca({
+  rota,
+  opcoes,
+  abertura,
+  doEndereco,
+}: {
+  rota: string;
+  opcoes: BuscaDeEmpresasV1;
+  abertura: AberturaDoSetor | null;
+  doEndereco: Filtros | null;
+}) {
+  const inicial = filtroInicial(abertura, doEndereco);
+  const [buscado, setBuscado] = useState<{ filtros: Filtros; vez: number } | null>(
+    inicial ? { filtros: inicial, vez: 1 } : null,
+  );
   const [vezDoFormulario, setVezDoFormulario] = useState(0);
+  const [comNota, setComNota] = useState(true);
   // buscar de novo (formulário ou etiqueta) abre uma lista nova, sem a escolha da lista anterior
   const buscarDe = (filtros: Filtros | null) => {
     setBuscado(filtros === null ? null : { filtros, vez: (buscado?.vez ?? 0) + 1 });
     setVezDoFormulario((v) => v + 1);
   };
+  const limpar = () => {
+    setComNota(false); // a nota fala do filtro que veio do Setor: sem ele, não há o que explicar
+    buscarDe(null);
+  };
+  return (
+    <>
+      {abertura && comNota ? (
+        <p className="apagado" role="note">
+          {abertura.nota}
+        </p>
+      ) : null}
+      <Formulario key={vezDoFormulario} opcoes={opcoes} inicial={buscado?.filtros ?? null} aoBuscar={buscarDe} aoLimpar={limpar} />
+      {buscado === null ? (
+        AVISO_DE_COMECO
+      ) : (
+        <>
+          <EtiquetasDeFiltro filtros={buscado.filtros} opcoes={opcoes} aoMudar={buscarDe} />
+          <Resultado key={buscado.vez} rota={rota} filtros={buscado.filtros} />
+        </>
+      )}
+    </>
+  );
+}
+
+export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
+  const rota = pagina.contrato?.rota ?? "";
+  const opcoes = usarPedido<BuscaDeEmpresasV1>(rota, {}, SEM_FILTRO);
+  const doSetor = useEstadoDaNavegacaoUmaVez(); // o CNAE e a UF do Setor valem uma vez só, como o CNPJ da ficha
+  const [endereco] = useSearchParams();
   return (
     <section>
       <CabecalhoDaTela pagina={pagina} />
       {opcoes.estado === "carregando" && <Carregando tipo="painel" rotulo="Abrindo o formulário…" />}
       {opcoes.estado === "erro" && <Erro erro={opcoes.erro} />}
-      {opcoes.estado === "pronto" && (
-        <>
-          <Formulario
-            key={vezDoFormulario}
-            opcoes={opcoes.dados}
-            inicial={buscado?.filtros ?? null}
-            aoBuscar={buscarDe}
-          />
-          {buscado === null ? null : (
-            <EtiquetasDeFiltro filtros={buscado.filtros} opcoes={opcoes.dados} aoMudar={buscarDe} />
-          )}
-        </>
-      )}
-      {buscado === null ? (
-        <p className="apagado">
-          Escolha ao menos um filtro. Aparecem só empresas com cadastro ativo na Receita Federal, uma linha por
-          empresa; pessoa física, MEI e empresário individual não aparecem. Nada aqui é recomendação de
-          investimento.
-        </p>
+      {opcoes.estado === "pronto" ? (
+        <Busca
+          rota={rota}
+          opcoes={opcoes.dados}
+          abertura={aberturaDoSetor(doSetor, opcoes.dados)}
+          doEndereco={filtrosDoEndereco(endereco, opcoes.dados)}
+        />
       ) : (
-        <Resultado key={buscado.vez} rota={rota} filtros={buscado.filtros} />
+        AVISO_DE_COMECO
       )}
     </section>
   );

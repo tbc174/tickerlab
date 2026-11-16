@@ -6,6 +6,9 @@
   --e1: .25rem; --e2: .5rem; --e3: .75rem; --e4: 1rem; --e5: 1.5rem; --e6: 2rem; --e7: 3rem;
   --t-1: .8rem; --t0: 1rem; --t1: 1.1rem; --t2: 1.25rem; --t3: 1.75rem;
 }
+/* o fundo do `body` (um degradê do CSS do site) vai até o fim da tela: sem isto, numa tela curta (aviso de
+   erro, lista vazia) o `body` acaba antes e o degradê recomeça embaixo, em faixa */
+body { min-height: 100vh; min-height: 100dvh; }
 .marca .simbolo { display: inline-flex; }
 .marca .simbolo svg { width: 28px; height: 28px; color: var(--simbolo-topo); }
 /* o topo da casca (linha 903): a busca (Ctrl K) logo depois da marca e o link "O que mudou" */
@@ -75,6 +78,12 @@
 .pergunta-do-inicio .botao { min-height: 44px; }
 .pergunta-do-inicio p { margin: 0; font-size: var(--t-1); }
 .numero-do-passo { font-family: "JetBrains Mono", ui-monospace, monospace; }
+/* os atalhos de pergunta do Início: botões que quebram a linha, como os exemplos do chat */
+.atalhos-do-inicio { margin: var(--e5) 0; }
+.atalhos-do-inicio h2 { margin: 0 0 var(--e2); }
+.atalhos-do-inicio p { margin: 0 0 var(--e3); font-size: var(--t-1); }
+.atalhos-do-inicio ul { display: flex; flex-wrap: wrap; gap: var(--e2); margin: 0; padding: 0; list-style: none; }
+.atalhos-do-inicio .botao { text-align: left; white-space: normal; }
 .paineis-do-inicio { display: grid; gap: var(--e4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   margin: var(--e5) 0; }
 .painel-do-inicio { padding: var(--e4) var(--e5); border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
@@ -407,6 +416,10 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .cnpjs-da-comparacao { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; }
 .cnpjs-da-comparacao .botao { min-height: 44px; }
 .celula-comparada small { display: block; }
+.tabela-do-app .grupo-da-tabela th { background: var(--superficie); color: var(--apagado); font-size: var(--t-1); text-transform: uppercase; letter-spacing: .04em; }
+.rodape-da-tela { margin-top: var(--e5); padding-top: var(--e3); border-top: 1px solid var(--linha); }
+.rodape-da-tela p { margin: 0 0 var(--e2); }
+.cabecalho-da-tela .olho a { color: inherit; }
 /* peças únicas do app (web/src/app/pecas, plano de 13/11/2026): uma cara só em toda tela */
 .cabecalho-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e2) var(--e3); margin-bottom: var(--e2); }
 .app-corpo main .cabecalho-titulo h1 { margin: 0; }
@@ -461,6 +474,17 @@ button.resultado-da-busca { margin-top: var(--e3); }
   background: var(--azul-texto);
   opacity: 0.75;
   border-radius: 2px 2px 0 0;
+}
+/* Setor: a barra de cada UF (largura proporcional à maior; o número fica na coluna ao lado) e o quadro "Como ler
+   esta lista" da aba Quem já se mexeu */
+.uf-com-barra { display: flex; align-items: center; gap: var(--e3); min-width: 0; }
+.trilho-da-uf { flex: 1; min-width: 3rem; height: .6rem; border-radius: 3px; background: var(--superficie); }
+.barra-da-uf { display: block; height: 100%; border-radius: 3px; background: var(--azul-texto); opacity: 0.75; }
+.quadro-como-ler { margin: var(--e4) 0; padding: var(--e3) var(--e4); border: 1px solid var(--linha-forte);
+  border-radius: var(--e2); background: var(--superficie); }
+.quadro-como-ler h2 { margin: 0 0 var(--e2); font-size: 1rem; }
+.quadro-como-ler ul { margin: 0; padding-left: var(--e4); }
+.quadro-como-ler li + li { margin-top: var(--e1); }
 /* Perguntar (linha 903): a conversa na coluna principal e "Nesta conversa" ao lado; no celular, uma coluna só,
    com a caixa da pergunta presa embaixo */
 .grade-do-chat { display: grid; gap: var(--e5); margin-top: var(--e4); }
