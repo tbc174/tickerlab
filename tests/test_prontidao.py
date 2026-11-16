@@ -404,6 +404,19 @@ def test_tabela_com_cnpj_precisa_da_marca_por_linha() -> None:
     assert (sem, com, sem_cnpj) == (False, True, True)
 
 
+def test_a_rede_entra_no_piloto_na_versao_maior_do_contrato_e_com_as_duas_provas() -> (
+    None
+):
+    """Linha 784: entidades, ligacoes e identificadores, com o placar de 16/11/2026 e o dicionario escrito."""
+    versoes = versoes_maiores()
+    for nome in sorted(prontidao.TABELAS_DA_REDE):
+        entrada = prontidao.PRONTIDAO_DE_PILOTO[nome]
+        assert entrada.versao_maior == versoes[nome]
+        assert entrada.qualidade is not None and entrada.qualidade.prova.strip()
+        assert entrada.dicionario is not None and entrada.dicionario.prova.strip()
+        assert nome not in PRONTIDAO
+
+
 def test_rede_e_montagem_sem_pessoa_contam_como_decididas() -> None:
     for nome in prontidao.TABELAS_DA_REDE | prontidao.SEM_PESSOA_NA_MONTAGEM:
         assert prontidao.pessoa_decidida(
