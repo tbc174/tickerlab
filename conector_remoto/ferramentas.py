@@ -213,7 +213,8 @@ def mensagem_de_resposta_grande(ferramenta: str, tamanho: int) -> str:
 
 
 def cortar_pares(corpo: object, limite: int) -> object:
-    """Os `limite` primeiros pares, na ordem da API (maior receita primeiro), com `truncated` e o aviso
+    """Os `limite` primeiros pares, na ordem da API (pela receita, da maior para a menor, quando a chave
+    pode ver a receita; senão pelo CNPJ), com `truncated` e o aviso
     em `limits` quando cortou. As medianas ficam como vieram: a API as calcula sobre todos os pares."""
     if not isinstance(corpo, dict):
         return corpo
@@ -223,7 +224,7 @@ def cortar_pares(corpo: object, limite: int) -> object:
     limites = corpo.get("limits")
     aviso = (
         f"O conector entregou os {limite} primeiros dos {len(pares)} pares que a API mandou, na ordem dela "
-        f"(maior receita primeiro); peça mais com `limite` (até {LIMITE_MAXIMO_DOS_PARES}). As medianas em "
+        f"(pela receita, da maior para a menor, quando a chave pode vê-la; senão pelo CNPJ); peça mais com `limite` (até {LIMITE_MAXIMO_DOS_PARES}). As medianas em "
         "`peer_medians` usam todos os pares."
     )
     return corpo | {
@@ -461,13 +462,14 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             Field(
                 ge=1,
                 le=LIMITE_MAXIMO_DOS_PARES,
-                description="Quantos pares entregar, os de maior receita primeiro (até 50).",
+                description="Quantos pares entregar (até 50), na ordem da API: pela receita, ou pelo CNPJ se a chave não a vê.",
             ),
         ] = LIMITE_PADRAO_DOS_PARES,
     ) -> str:
         """As companhias abertas comparáveis à pedida (o mesmo grupo de setores pelo FCA), cada uma com
         receita, EBITDA, lucro, patrimônio, dívida líquida e as razões do último DFP entregue, e a mediana de cada
-        razão entre todos os pares. Os pares vêm do de maior receita para o de menor, até `limite`; quando há mais,
+        razão entre todos os pares. Os pares vêm do de maior receita para o de menor (pelo CNPJ, se a chave
+        não pode ver a receita), até `limite`; quando há mais,
         `truncated` vem true e `limits` diz quantos eram (as medianas continuam sobre todos).
         Serve para situar uma companhia aberta entre as parecidas.
         Fonte: FCA e DFP entregues à CVM.
