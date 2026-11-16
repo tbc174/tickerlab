@@ -338,7 +338,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
       />
       <RodapeDaTela rotulo="Rodapé da ficha">
         <p>
-          <Link to={ROTA_DO_RELATORIO_DO_SETOR}>Ver o Relatório do setor</Link>
+          <Link to={ROTA_DO_RELATORIO_DO_SETOR}>Ver o Relatório de um setor</Link>
         </p>
       </RodapeDaTela>
     </>

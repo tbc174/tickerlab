@@ -276,7 +276,7 @@ export function CompararEmpresas({ pagina }: { pagina: PaginaDoApp }) {
     <section>
       <CabecalhoDaTela
         pagina={pagina}
-        titulo={comparado === null ? undefined : `Comparar ${comparado.cnpjs.length} empresas`}
+        titulo={comparado === null ? undefined : `Comparar ${new Set(comparado.cnpjs).size} empresas`}
       />
       <p className="apagado">
         Não sabe o CNPJ? <Link to="/encontrar-empresas">Encontre empresas pelo setor, estado ou tamanho</Link> e

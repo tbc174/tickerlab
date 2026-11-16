@@ -359,7 +359,7 @@ describe("acabamento da ficha", () => {
     await verFicha(CNPJ);
     const rodape = await screen.findByRole("region", { name: "Rodapé da ficha" });
     expect(within(rodape).getByText("Nada aqui é recomendação de investimento.")).toBeTruthy();
-    const link = within(rodape).getByRole("link", { name: "Ver o Relatório do setor" });
+    const link = within(rodape).getByRole("link", { name: "Ver o Relatório de um setor" });
     expect(link.getAttribute("href")).toMatch(/\/relatorio-do-setor$/);
     // o rodapé vem depois das abas, não antes
     const abas = screen.getByRole("tablist");

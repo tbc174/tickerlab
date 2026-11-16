@@ -299,6 +299,12 @@ describe("acabamento do Comparar", () => {
     expect(screen.queryByRole("heading", { level: 1, name: "Comparar empresas" })).toBeNull();
   });
 
+  it("CNPJ repetido conta uma vez só no título", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, empresas: [MODELO, NAO_DISPONIVEL(OUTRA)] }));
+    await comparar(EMPRESA, OUTRA, EMPRESA);
+    expect(await screen.findByRole("heading", { level: 1, name: "Comparar 2 empresas" })).toBeTruthy();
+  });
+
   it("as linhas vêm em grupos: Cadastro e Entregas à CVM", async () => {
     abrir(() => respostaJson(200, PRONTA));
     await comparar(EMPRESA, OUTRA);
