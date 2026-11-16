@@ -6018,10 +6018,10 @@ Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento po
 
 Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data. Só pessoa jurídica (CNPJ válido); nenhum nome, CPF, endereço ou texto livre. Uso interno, licença a confirmar.
 
-- **Fonte:** TCE-CE, SIM (arquivos postos à mão; sem coleta automática ainda)
+- **Fonte:** TCE-CE, SIM (api-dados-abertos.tce.ce.gov.br)
 - **Licença:** TCE-CE: licença não localizada; risco assumido (ADR 0122)
 - **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
-- **Frequência:** Sem rotina: carga manual de arquivos baixados
+- **Frequência:** Anual (um pedido por município e ano, com pausa e retomada; rodado à mão, sem agendamento)
 - **Atraso de divulgação:** Sem data de publicação na fonte: a linha vale desde o download
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
 - **Chaves:** `codigo_municipio`, `numero_contrato`, `data_contrato`, `cnpj`
