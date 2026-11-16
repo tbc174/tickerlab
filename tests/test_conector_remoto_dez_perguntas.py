@@ -46,6 +46,7 @@ from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa import rotas
 from src.api_externa.conjuntos import prospeccao
 from tests import ajudantes_do_conector as aj
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado, meio
 from tests.test_api_externa_prospeccao import CARIMBOS, _gravar
 from tests.test_conector_remoto_ponta_a_ponta import (  # noqa: F401 (fixtures)
     cenario,
@@ -756,7 +757,7 @@ RESPOSTAS_COM_PESSOA = {
     "campo de sócio": {"partners": [{"name": _campo("NOME DE MENTIRA")}]},
     "campo de sócio em outra grafia": {"socio_nome": _campo("NOME DE MENTIRA")},
     "e-mail no texto": {"contact": _campo("pessoa@exemplo.invalid")},
-    "CPF formatado no texto": {"note": _campo("titular 123.456.789-09")},
+    "CPF formatado no texto": {"note": _campo(f"titular {formatado(CPF_DE_TESTE)}")},
 }
 
 
@@ -772,7 +773,7 @@ def test_o_conector_barra_pessoa_fisica_que_a_api_mandar(sinal):
             cliente_mcp, aj.CHAVE_DE_MENTIRA, "ficha_da_empresa", cnpj=ALFA
         )
     assert erro and ferramentas.MENSAGEM_DE_PESSOA in texto
-    assert "NOME DE MENTIRA" not in texto and "123.456.789" not in texto
+    assert "NOME DE MENTIRA" not in texto and meio(CPF_DE_TESTE) not in texto
     assert "exemplo.invalid" not in texto
 
 
