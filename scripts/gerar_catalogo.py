@@ -11,6 +11,8 @@ Fontes (públicas):
   NEGOCIADOS no pregão (os sem negócio deixariam a lista pesada e cheia de ativos mortos);
 - EUA: as empresas do S&P 500 do projeto "datasets" (licença ODC-PDDL, domínio público);
 - índices, criptomoedas e câmbio: lista fixa abaixo, com o código do Yahoo Finance.
+
+Roda: outro script (exportar_conteudo.py); citado em catalogo.py.
 """
 
 import io

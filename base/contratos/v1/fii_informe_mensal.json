@@ -1,0 +1,178 @@
+{
+  "tabela": "fii_informe_mensal",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): o fundo ou a classe",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Mês a que o informe se refere (a `Data_Referencia`)",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do informe; o reenvio traz número maior",
+      "unidade": "número inteiro"
+    },
+    "entregue_em": {
+      "descricao": "Dia em que o informe chegou à CVM (`Data_Entrega`)",
+      "unidade": "data (dia)"
+    },
+    "tipo_fundo_classe": {
+      "descricao": "Fundo ou classe, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "nome_do_fundo": {
+      "descricao": "Nome do fundo ou da classe, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "publico_alvo": {
+      "descricao": "Público-alvo, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "codigo_isin": {
+      "descricao": "Código ISIN da cota, quando informado",
+      "unidade": "texto"
+    },
+    "fundo_exclusivo": {
+      "descricao": "Se é fundo exclusivo (S/N)",
+      "unidade": "texto"
+    },
+    "mandato": {
+      "descricao": "Mandato do fundo (renda, desenvolvimento, títulos...), como a CVM escreve",
+      "unidade": "texto"
+    },
+    "segmento_de_atuacao": {
+      "descricao": "Segmento de atuação (logística, lajes, shoppings...), como a CVM escreve",
+      "unidade": "texto"
+    },
+    "tipo_de_gestao": {
+      "descricao": "Gestão ativa ou passiva",
+      "unidade": "texto"
+    },
+    "prazo_de_duracao": {
+      "descricao": "Prazo de duração, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "negocia_em_bolsa": {
+      "descricao": "Se a cota negocia em bolsa (S/N)",
+      "unidade": "texto"
+    },
+    "funciona_desde": {
+      "descricao": "Data de início de funcionamento",
+      "unidade": "data (dia)"
+    },
+    "cnpj_administrador": {
+      "descricao": "CNPJ do administrador (só o CNPJ, sem o nome)",
+      "unidade": "texto"
+    },
+    "cotistas": {
+      "descricao": "Número de cotistas",
+      "unidade": "número inteiro"
+    },
+    "cotistas_pessoa_fisica": {
+      "descricao": "Quantos cotistas são pessoa física (só a contagem)",
+      "unidade": "número inteiro"
+    },
+    "valor_do_ativo": {
+      "descricao": "Valor do ativo, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "patrimonio_liquido": {
+      "descricao": "Patrimônio líquido, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "cotas_emitidas": {
+      "descricao": "Cotas emitidas",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_patrimonial_da_cota": {
+      "descricao": "Valor patrimonial da cota, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "taxa_de_administracao_pct": {
+      "descricao": "Despesa com taxa de administração, em % do patrimônio",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "rentabilidade_efetiva_no_mes": {
+      "descricao": "Rentabilidade efetiva do mês, como a CVM informa",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "rentabilidade_patrimonial_no_mes": {
+      "descricao": "Rentabilidade patrimonial do mês, como a CVM informa",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "dividend_yield_no_mes": {
+      "descricao": "Dividend yield do mês, como a CVM informa",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_na_fonte": {
+      "descricao": "Identificador da linha no arquivo da fonte",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: no 1º arquivo, a `Data_Entrega` do informe (o dia em que chegou à CVM), nunca depois do dia do arquivo; depois dele, o dia do arquivo em que a linha nova ou a mudança apareceu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "referencia": "referencia",
+    "entregue_em": "publico_em",
+    "funciona_desde": "aconteceu_em",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-10-25",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Um ZIP por ano, republicado inteiro (o arquivista olha toda semana)",
+  "atraso": "`disponivel_em` é a `Data_Entrega` do informe, nunca depois do dia em que o ZIP foi guardado; informe que só aparece num arquivo seguinte vale do dia desse arquivo",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

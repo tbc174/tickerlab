@@ -22,17 +22,42 @@ class Atualizacao:
 ATUALIZACOES: tuple[Atualizacao, ...] = (
     Atualizacao(
         data=date(2026, 11, 5),
-        titulo="Relatório do setor, café, preços de referência, pregão do dia e busca por CNPJ ampliada",
+        titulo=(
+            "Relatório do setor, café, pregão do dia, busca por CNPJ ampliada, relatório da empresa "
+            "mais completo e a API com documentação aberta"
+        ),
         resumo=(
             "Telas novas para entender um setor e o mercado do café, o resumo do pregão no site, a "
-            "faixa de 52 semanas no relatório da empresa e a busca por CNPJ para empresas que não "
-            "são de capital aberto. Cada número tem a data e a fonte."
+            "busca por CNPJ para empresas que não são de capital aberto, o Formulário de Referência "
+            "e a revisão do ITR no relatório da empresa, a fonte de cada número como link, dezenas "
+            "de tabelas novas na base e o site da TickerLab Data, a API de dados. Cada número tem a "
+            "data e a fonte."
         ),
         novidades=(
             (
                 "Relatório do setor: escolha um setor e veja quem está nele, o tamanho do mercado, a "
                 "concentração (CR4 e HHI, com a faixa do CADE), as empresas lado a lado e o que "
-                "ainda não temos, com a fonte de cada número."
+                "ainda não temos, com a fonte de cada número. Nas elétricas, também o mercado de "
+                "energia: o PLD mensal por submercado (CCEE), o corte de geração (curtailment) de "
+                "eólicas e solares e a capacidade instalada por tipo de usina (ONS), como eram na "
+                "data."
+            ),
+            (
+                "Relatório da empresa: a mínima e a máxima de 52 semanas e a variação em 12 meses "
+                "do preço; o capital social por tipo de ação e os empregados por posição e região, "
+                "do Formulário de Referência; a revisão do auditor em cada ITR e o patrimônio por "
+                "componente (DMPL) dos últimos três exercícios; e o anexo com as linhas da "
+                "demonstração de fluxo de caixa (DFC) e da demonstração do valor adicionado (DVA)."
+            ),
+            (
+                "Busca por CNPJ: além das companhias abertas, agora mostra o cadastro da Receita, o "
+                "Simples e o MEI, os sócios e o que mudou em 12 meses, com a data e a fonte de "
+                "cada linha."
+            ),
+            (
+                "A fonte vira link: no relatório da empresa, no relatório do setor e no relatório "
+                "semanal público, a fonte de cada número leva ao endereço público da base de origem "
+                "(CVM, ANEEL, Banco Central, IBGE e outras)."
             ),
             (
                 "Painel do café: arábica ou conilon, com preço de referência, câmbio, fundos, "
@@ -52,6 +77,11 @@ ATUALIZACOES: tuple[Atualizacao, ...] = (
                 "mensal do Banco Mundial e do FMI, com a fonte e a data de cada número."
             ),
             (
+                "Prazos maiores: Juros e inflação mostra todo o acervo do Banco Central desde 2010, "
+                "Preços de referência vai até 1960 e Pessoas de dentro ganha janelas de 2 e 5 anos, "
+                "com botões de 1 ano a Tudo e o aviso de desde quando há dado."
+            ),
+            (
                 "Pregão do dia: o resumo de cada dia útil no site, a partir do fechamento oficial "
                 "da B3, com o Ibovespa e os contratos de juros e dólar. Mostra o que o mercado fez, "
                 "não por quê."
@@ -61,24 +91,43 @@ ATUALIZACOES: tuple[Atualizacao, ...] = (
                 "baixar."
             ),
             (
-                "Relatório da empresa: a mínima e a máxima de 52 semanas e a variação em 12 meses "
-                "do preço, e o anexo com as linhas da demonstração de fluxo de caixa (DFC) e da "
-                "demonstração do valor adicionado (DVA)."
-            ),
-            (
-                "Busca por CNPJ: além das companhias abertas, agora mostra o cadastro da Receita, o "
-                "Simples e o MEI, os sócios e o que mudou em 12 meses, com a data e a fonte de "
-                "cada linha."
-            ),
-            (
                 "Sala de dados: os documentos de cada operação num lugar cifrado, visível só para "
                 "a sua conta, com a origem de cada número e o checklist do que falta."
+            ),
+            (
+                "A base cresceu: licitações, contratos e despesas dos tribunais de contas de PE, SP, "
+                "CE e RS, estabelecimentos de saúde do CNES (DATASUS), barragens e produção mineral "
+                "da ANM, preços máximos de medicamentos da CMED, financiamentos do BNDES e da Finep, "
+                "operadoras da ANS, cadastro da SUSEP, embargos do IBAMA e a Lista Suja do trabalho "
+                "escravo (MTE), entre outras. Cada tabela está na página Dados, com contrato, "
+                "licença e data."
+            ),
+            (
+                "Página inicial do site: a seção “Um CNPJ, muitas fontes” mostra, por tema, o que a "
+                "base liga pelo CNPJ de uma empresa, com um número novo no painel da abertura."
+            ),
+            (
+                "TickerLab Data: a API de dados ganhou site e documentação em api.tickerlab.com.br, "
+                "com as rotas, os exemplos e as regras de uso. Está em beta fechado, sem cobrança."
             ),
         ),
         correcoes=(
             (
                 'Página Dados: o selo "Em uso" passou a valer só para fonte que uma tela lê. CCEE, '
                 "DJEN e FAOSTAT estão guardadas no nosso acervo e voltaram a aparecer assim."
+            ),
+            (
+                "Relatório da empresa: as notas seguem a metodologia do setor da empresa, e os "
+                "dados do IF.data (Banco Central) entram só nos bancos."
+            ),
+            "Juros e inflação: a meta da Selic não aparece mais em dias depois da última coleta.",
+            (
+                "Parâmetros: os que ainda não mudam nenhum número aparecem travados, em vez de "
+                "parecer que funcionam."
+            ),
+            (
+                'Página Produto: Testes de robustez e Trilhas apareciam como "em breve", mas já '
+                "estão no app."
             ),
         ),
     ),

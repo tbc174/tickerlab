@@ -6,6 +6,8 @@
 Roda fora do app (no servidor, uma vez por dia); o app só lê o que foi gravado. Usa o banco de
 `TICKERLAB_DATABASE_URL` (o mesmo do app) e aplica as migrações antes. Se a CVM falhar, não apaga
 nada e sai com erro (o próximo dia tenta de novo).
+
+Roda: cron do VPS (todo dia às 7h00); citado em eventos.py, acontecimentos.py.
 """
 
 import argparse

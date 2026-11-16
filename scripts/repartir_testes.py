@@ -16,6 +16,8 @@ repetir em várias máquinas. Arquivo novo, ainda sem tempo guardado, conta como
 
 Os tempos se refazem com `python -m pytest -n 4 --dist loadgroup --gravar-duracoes` (só precisa
 quando as partes ficarem muito desiguais: um tempo velho não quebra nada, só equilibra pior).
+
+Roda: CI (testes.yml); outro script (portao_do_agente.py).
 """
 
 import json

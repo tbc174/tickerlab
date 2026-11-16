@@ -14,6 +14,8 @@ poupança mês a mês, os últimos 12 meses da PTAX de cada moeda e as taxas do 
 Cada parte leva a data a que se refere: se o BC falhar numa parte, fica a do arquivo anterior, com a
 data dela (a página avisa quando o dado está velho), e a última linha da saída é `FALHAS: ...` para
 o aviso do Kuma (saída 1).
+
+Roda: cron do VPS (todo dia às 9h10 e 13h40); citado em series_mensais.py.
 """
 
 import argparse

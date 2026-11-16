@@ -37,6 +37,7 @@ import numpy as np
 import pandas as pd
 
 from trader import freios
+from trader.criterio_quant import FATOR_DO_PLATO_ABAIXO, FATOR_DO_PLATO_ACIMA
 from trader.custos_br import PADRAO, CustosBR, custo_de_negociar
 
 VERSAO = "0.1"
@@ -322,10 +323,10 @@ def variacoes_do_plato(parametros: ParametrosC1 | None = None) -> list[Parametro
     """As seis vizinhas do platô (A3): ±20% na janela da σ, no teto e na banda."""
     base = parametros or ParametrosC1()
     return [
-        replace(base, janela=round(base.janela * 0.8)),
-        replace(base, janela=round(base.janela * 1.2)),
-        replace(base, teto=base.teto * 0.8),
-        replace(base, teto=base.teto * 1.2),
-        replace(base, banda=base.banda * 0.8),
-        replace(base, banda=base.banda * 1.2),
+        replace(base, janela=round(base.janela * FATOR_DO_PLATO_ABAIXO)),
+        replace(base, janela=round(base.janela * FATOR_DO_PLATO_ACIMA)),
+        replace(base, teto=base.teto * FATOR_DO_PLATO_ABAIXO),
+        replace(base, teto=base.teto * FATOR_DO_PLATO_ACIMA),
+        replace(base, banda=base.banda * FATOR_DO_PLATO_ABAIXO),
+        replace(base, banda=base.banda * FATOR_DO_PLATO_ACIMA),
     ]

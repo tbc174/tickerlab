@@ -22,6 +22,9 @@ deram 404; de 202302 em diante, 200). Se o BC mexe nessa janela, 404 é "não pu
 fica: quem já baixou guarda o que o servidor um dia apagar. Ritmo mensal; o app não depende dela. Licença do BCB a confirmar, só uso interno (ADR 0102,
 Emenda 2); nada é perguntado à fonte. Recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0
 tudo certo; 1 se alguma competência falhou.
+
+Roda: manual (python -m scripts.carga_estban); coberto por test_carga_estban.py; citado em
+registro.py.
 """
 
 import argparse

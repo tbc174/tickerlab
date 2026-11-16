@@ -15,6 +15,8 @@ lugar do documento, a coleta para sem erro e continua na próxima rodada. Uma p�
 tentativa daquele documento (ele pode estar quebrado na fonte); depois de três, ele vai para o fim da
 fila. Roda de hora em hora aos 30 min, entre os ratings (xx:05) e a rotulagem por IA (xx:40). Recusa
 rodar sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: cron de casa pelo coletar-ma-textos.sh (minuto 30 de cada hora); citado em ma_textos.py.
 """
 
 import argparse

@@ -14,7 +14,12 @@ import pytest
 
 from base import vitrine
 from base.contrato import PASTA
-from base.dossie import conferir_sem_pessoas, normalizar_nome
+from base.dicionario import TABELAS
+from base.dossie import (
+    conferir_sem_pessoas,
+    normalizar_nome,
+    pode_consultar_aberto,
+)
 
 CVM = "ODbL (dados abertos da CVM; citar a fonte)"
 BCB = "ODbL (dados abertos do Banco Central; citar a fonte)"
@@ -54,7 +59,10 @@ def _catalogo_falso() -> dict:
 
 
 def _catalogo_real() -> dict:
-    return json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    """O catálogo como o site o vê (sem as tabelas só internas)."""
+    return vitrine.catalogo_publico(
+        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    )
 
 
 # --- fontes --------------------------------------------------------------------------------------
@@ -159,6 +167,65 @@ def test_todo_texto_de_licenca_do_catalogo_real_cai_em_um_orgao():
 # --- módulos -------------------------------------------------------------------------------------
 
 
+def test_orgaos_publicos_tira_quem_nao_e_do_estado_e_nao_repete_o_mesmo_orgao():
+    nomes = [
+        "CVM",
+        "Receita Federal",
+        "Assessorias de M&A",
+        "Receita Federal (renúncias)",
+        "CMED (Anvisa)",
+        "GLEIF",
+        "Anvisa",
+        "Receita Federal (transações)",
+        "Imprensa e páginas públicas",
+    ]
+
+    assert vitrine.orgaos_publicos(nomes) == ["CVM", "Receita Federal", "Anvisa"]
+
+
+def test_as_listas_da_conta_de_orgaos_so_citam_nomes_que_existem():
+    nomes = {orgao for _, orgao in vitrine.ORGAOS}
+
+    assert nomes >= vitrine.ORGAOS_QUE_NAO_SAO_PUBLICOS
+    assert nomes >= set(vitrine.MESMO_ORGAO)
+    assert (
+        set(vitrine.MESMO_ORGAO.values()) <= nomes - vitrine.ORGAOS_QUE_NAO_SAO_PUBLICOS
+    )
+
+
+# os nomes de `ORGAOS` que alguém já conferiu serem órgão ou entidade pública (linha 927)
+ORGAOS_PUBLICOS_CONFERIDOS = frozenset(
+    {
+        "ANAC", "ANEEL", "ANM", "ANP", "ANS", "ANTT", "Anatel", "Ancine", "Anvisa", "BNDES", "Banco Central",
+        "CFTC", "CGU", "CNJ", "CONAB", "CVM", "Finep", "Governo do ES", "IBAMA", "INPI", "MAPA", "MDIC", "MME",
+        "MTE", "Ministério da Saúde (DATASUS)", "PGFN", "Receita Federal", "SEF-MG", "SEFAZ-PE", "SUSEP",
+        "Sefa-PR", "TCE-CE", "TCE-PE", "TCE-RS", "TCE-SP", "Tesouro Nacional", "USDA",
+    }
+)  # fmt: skip
+
+
+def test_nome_novo_de_orgao_obriga_a_decidir_se_entra_na_conta():
+    """Fonte nova em `ORGAOS` não entra na conta sozinha: ou vai para uma das listas, ou para cá, conferida."""
+    nomes = {orgao for _, orgao in vitrine.ORGAOS}
+
+    assert set(vitrine.orgaos_publicos(sorted(nomes))) == ORGAOS_PUBLICOS_CONFERIDOS
+
+
+def test_a_conta_de_orgaos_do_catalogo_real_so_tem_orgao_publico():
+    catalogo = vitrine.catalogo_publico(_catalogo_real())
+    ligadas = vitrine.tabelas_ligadas_pelo_cnpj(catalogo)
+    todos = vitrine._orgaos(catalogo, ligadas)
+
+    contados = vitrine.orgaos_publicos(todos)
+
+    assert vitrine.ligado_pelo_cnpj(catalogo)["orgaos"] == len(contados)
+    assert not set(contados) & vitrine.ORGAOS_QUE_NAO_SAO_PUBLICOS
+    assert not set(contados) & set(vitrine.MESMO_ORGAO)
+    assert len(contados) < len(
+        todos
+    )  # hoje há fonte privada e a Receita com três nomes
+
+
 def test_modulos_do_catalogo():
     modulos = vitrine.modulos_do_catalogo(_catalogo_falso())
 
@@ -196,7 +263,30 @@ def test_tabelas_do_catalogo_levam_o_que_a_linha_mostra():
     assert a.frequencia == "Mensal"
     assert a.atraso == "Até 45 dias depois do trimestre"
     assert a.historico_desde == "2010-01-01"
+    assert (
+        a.consultavel is False
+    )  # "a" não está no dicionário: só tabela real entra na consulta
     assert [t.tabela for t in linhas] == ["a", "b", "c"]  # a ordem do catálogo
+
+
+def test_consultavel_segue_a_regra_de_mostrar_e_a_porta():
+    """`consultavel` sai da mesma regra da API aberta (`pode_consultar`): tabela que pode ser mostrada
+    e que a porta serve por Parquet; a de pessoa, a barrada e a fora da porta ficam só na ficha."""
+    frases = dict.fromkeys(TABELAS, "Uma frase.")
+
+    linhas = {
+        t.tabela: t for t in vitrine.tabelas_do_catalogo(_catalogo_real(), frases)
+    }
+
+    assert linhas["pgfn_divida"].consultavel is True
+    assert (
+        linhas["cnpj_simples"].consultavel is False
+    )  # pode mostrar, mas está fora da porta
+    assert linhas["sancoes_cgu"].consultavel is False  # tabela de pessoa
+    assert all(
+        t.consultavel == pode_consultar_aberto(nome) for nome, t in linhas.items()
+    )
+    assert sum(t.consultavel for t in linhas.values()) > 50
 
 
 # --- texto que sai para o site aberto ------------------------------------------------------------
@@ -451,7 +541,7 @@ NOMES_DO_MUNDO_FALSO = (
     "DELTA PAPEL S.A.",
     "AUDITORES UM",
     "AUDITORES DOIS",
-    "JOAO DA SILVA",
+    "PESSOA INVENTADA LICITACAO",
 )
 LUCRO = "Lucro/Prejuízo Consolidado do Período"
 MILHAO = 1e6
@@ -753,17 +843,14 @@ def test_parecer_com_duvida_e_insolvencia_em_24_meses():
     )
 
 
-def test_o_atraso_so_entra_como_contagem():
-    """O rótulo de atraso não pode aparecer na ficha de uma companhia (`base/dossie.py`), mas pode ser
-    contado no site; as outras tabelas dos cruzamentos podem ser mostradas."""
+def test_todas_as_tabelas_dos_cruzamentos_podem_ser_mostradas():
+    """Desde a virada de 5/11/2026 o rótulo de atraso sai como fato datado, como as outras tabelas dos
+    cruzamentos: nenhuma é só contagem."""
     from base import dossie
 
-    assert vitrine.ROTULOS_DE_ATRASO in vitrine.TABELAS_SO_EM_CONTAGEM
+    assert vitrine.ROTULOS_DE_ATRASO in vitrine.TABELAS_DOS_CRUZAMENTOS
     for tabela in vitrine.TABELAS_DOS_CRUZAMENTOS:
-        if tabela in vitrine.TABELAS_SO_EM_CONTAGEM:
-            assert not dossie.pode_mostrar(tabela) and dossie.pode_contar(tabela)
-        else:
-            assert dossie.pode_mostrar(tabela)
+        assert dossie.pode_mostrar(tabela)
 
 
 def test_cruzamentos_recusam_tabela_fora_do_catalogo():

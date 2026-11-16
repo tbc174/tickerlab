@@ -24,6 +24,7 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
 """
 
 import json
+import logging
 import re
 from collections.abc import Sequence
 
@@ -32,6 +33,8 @@ import pandas as pd
 from base.cnpj import raiz as raiz_do_cnpj
 from base.fca import vale_na_data
 from base.setoriais import revisoes
+
+log = logging.getLogger(__name__)
 
 API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
 PRIMEIRO_ANO = 2000
@@ -151,7 +154,23 @@ def ler_valores(conteudo_json: bytes) -> pd.DataFrame:
         valores[coluna] = _texto_limpo(valores[coluna])
     valores["relatorio"] = valores["relatorio"].astype(int)
     valores["saldo"] = valores["saldo"].astype(float)
-    return valores.reset_index(drop=True)
+    return _sem_linhas_identicas(valores).reset_index(drop=True)
+
+
+def _sem_linhas_identicas(valores: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha de cada: a resposta da data-base 2025-09 veio com a mesma linha cerca de três vezes
+    (medido em 12/11/2026, linha 877). Só sai a linha idêntica em todas as colunas; a chave repetida
+    com valor diferente fica (não há como saber qual vale) e só entra no log, com a contagem."""
+    identicas = valores.duplicated()
+    unicas = valores[~identicas]
+    chave_repetida = int(unicas.duplicated(list(CHAVE_DOS_VALORES)).sum())
+    if identicas.any() or chave_repetida:
+        log.warning(
+            "IF.data: %d linhas idênticas tiradas da resposta; %d linhas com a chave repetida e valor diferente",
+            int(identicas.sum()),
+            chave_repetida,
+        )
+    return unicas
 
 
 def ler_cadastro(conteudo_json: bytes) -> pd.DataFrame:

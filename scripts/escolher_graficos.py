@@ -28,6 +28,8 @@ a resposta guardada (mesma ficha, mesmo texto, mesmo guia) nunca é paga de novo
 `escolhas/` (a resposta bruta de cada modelo), `cegas/` (o veredito da porta 2), `graficos/` (a
 escolha final com a linhagem, uma por modelo, para comparar na prova) e `manifesto.json` (o gasto). A
 chave fica em `ANTHROPIC_API_KEY` (nunca no código).
+
+Roda: manual no servidor (registro na pasta privada); citado em exibicao.py.
 """
 
 import argparse

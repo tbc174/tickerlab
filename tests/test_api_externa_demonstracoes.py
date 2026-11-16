@@ -352,6 +352,54 @@ def test_fonte_negada_some_e_as_outras_ficam(cliente, cenario, monkeypatch):
     corpo = _get(cliente, cenario).json()
     assert {r["document"]["value"] for r in corpo["rows"]} == {"DFP"}
     assert [f["source"] for f in corpo["sources"]] == ["cvm-hist-dfp"]
+    # o ITR barrado não some em silêncio (linha 882): sem ele, as linhas leriam como "não entregou ITR"
+    assert corpo["unavailable_filings"] == ["ITR"]
+    assert corpo["limits"] == [demonstracoes.LIMITE_DO_DOCUMENTO_NAO_DISPONIVEL]
+    assert "unavailable_filings" in corpo["limits"][0]
+
+
+def test_com_tudo_liberado_a_lista_dos_documentos_sai_vazia(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo["unavailable_filings"] == []
+    assert corpo["limits"] == []
+
+
+def test_sem_documento_liberado_nada_e_consultado(tmp_path):
+    class PortaQueNaoPodeSerLida:
+        def ler(self, *_args, **_kwargs):
+            raise AssertionError("o leitor não consulta a base sem documento liberado")
+
+    leitor = demonstracoes.LeitorDeDemonstracoes(
+        PortaQueNaoPodeSerLida(),  # type: ignore[arg-type]
+        lambda *_: False,
+        1_000,
+    )
+    assert leitor.demonstracoes(EMPRESA, AGORA.date()) is None
+
+
+def test_duas_organizacoes_so_a_do_contrato_ve_a_lista(banco, monkeypatch, pasta):
+    # a do contrato de `financials`, sem o ITR, recebe a lista; a outra (só `funds`), 404 sem ela
+    ator = aj.admin(banco)
+    com = aj.organizacao(banco, ator)
+    chave_com = aj.chave(banco, ator, com)
+    aj.contrato(banco, ator, com, conjunto="financials")
+    sem = aj.organizacao(banco, ator)
+    chave_sem = aj.chave(banco, ator, sem)
+    aj.contrato(banco, ator, sem, conjunto="funds")
+
+    def regras():
+        return dataclasses.replace(
+            _regras_das_demonstracoes(), negadas=frozenset({"cvm-hist-itr"})
+        )
+
+    monkeypatch.setattr(rotas, "regras_da_api", regras)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    deu = cliente.get(ROTA, headers=aj.bearer(chave_com.valor))
+    assert deu.status_code == 200
+    assert deu.json()["unavailable_filings"] == ["ITR"]
+    negou = cliente.get(ROTA, headers=aj.bearer(chave_sem.valor))
+    assert negou.status_code == 404
+    assert negou.json() == {"detail": "not_available"}
 
 
 def test_campo_sem_direito_nao_aparece(cliente, cenario, monkeypatch):
@@ -419,3 +467,18 @@ def test_sem_base_neste_servidor_da_503(cliente, cenario, monkeypatch):
 
     monkeypatch.setattr(rotas, "abrir_porta", sem_base)
     assert _get(cliente, cenario).status_code == 503
+
+
+def test_404_de_hoje_e_so_a_falta_de_prontidao_da_tabela():
+    """Linha 792: no dia do teste (`AGORA`, 10/11/2026) as provas reais da prontidão de
+    `demonstracoes_como_era` (12 e 14/11/2026, `base/prontidao.py`) ainda não existiam: com as regras de
+    verdade o portão nega `/financials` por `sem_prontidao`, não por contrato, marca ou licença. Com a
+    prontidão de ensaio a rota abre. O teste fixa o dia de propósito: não depende do relógio."""
+    hoje = AGORA.date()
+    for fonte in ("cvm-hist-dfp", "cvm-hist-itr"):
+        pedido = portao.Pedido(
+            fonte, demonstracoes.CONJUNTO, "valor", portao.Canal.API_EXTERNA.value,
+            portao.Finalidade.ANALISE.value,
+        )  # fmt: skip
+        assert portao.decidir(pedido, hoje).motivo is portao.Motivo.SEM_PRONTIDAO
+        assert portao.decidir(pedido, hoje, _regras_das_demonstracoes()).libera

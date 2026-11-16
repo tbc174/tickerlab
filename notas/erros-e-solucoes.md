@@ -445,9 +445,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Data:** 14/10/2026 (PR #226)
 
 ## SSH pelo nome do Tailscale: "Host key verification failed"
-- **Sintoma:** fora da rede de casa, `ssh granserver@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
-- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`192.168.15.5`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
-- **Solução:** `ssh -o HostKeyAlias=192.168.15.5 granserver@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
+- **Sintoma:** fora da rede de casa, `ssh <usuario>@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
+- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`<ip-da-rede-de-casa>`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
+- **Solução:** `ssh -o HostKeyAlias=<ip-da-rede-de-casa> <usuario>@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
 - **Data:** 14/10/2026
 
 ## Sessão SSH presa ao disparar uma carga longa com `setsid ... &`

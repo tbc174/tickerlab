@@ -161,12 +161,12 @@ def test_baixar_le_o_last_modified_e_trata_404_como_nao_publicada(monkeypatch):
     ]
 
 
-def test_fonte_do_estban_tem_licenca_propria_e_so_uso_interno():
+def test_fonte_do_estban_tem_licenca_propria_e_risco_assumido():
     endereco = estban.endereco_da_competencia(202602).split("://", 1)[1]
     casam = [p for p in FAMILIA_DO_ENDERECO if endereco.startswith(p)]
     assert FAMILIA_DO_ENDERECO[max(casam, key=len)] == "estban"
     assert estban.FONTE.startswith("estban")
     assert "ODbL" not in coletas.licenca_da_fonte(estban.FONTE)
-    assert "a confirmar" in coletas.licenca_da_fonte(estban.FONTE)
-    assert coletas.revenda_da_fonte(estban.FONTE) == coletas.A_CONFIRMAR
+    assert "risco assumido" in coletas.licenca_da_fonte(estban.FONTE)
+    assert coletas.revenda_da_fonte(estban.FONTE) == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert "estban" in coletas.COLETA_E_GUARDA

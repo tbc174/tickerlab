@@ -9,6 +9,9 @@ Lê os arquivos anuais do IPE (`cvm-hist-ipe`) e os documentos que o coletor gua
 padrão: `<TICKERLAB_ACERVO>/base/ratings/ratings.parquet`, com manifesto (só regrava o que mudou).
 Feita para o servidor de casa (ADR 0031), depois das rodadas do coletor; recusa rodar sem a versão do
 código (exigência 13 da ADR 0055). Saída 0 tudo certo, mesmo sem nenhum documento baixado ainda.
+
+Roda: cron de casa pelo montar-ratings.sh (todo dia às 8h45); manual no servidor pelo
+ratings-tabela-no-servidor.sh; citado em dicionario.py.
 """
 
 import argparse

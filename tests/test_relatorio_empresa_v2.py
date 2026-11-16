@@ -185,6 +185,51 @@ def test_ficha_tecnica_sem_o_pro_nao_mostra_o_auditor(entradas_da_cpfl):
     )
 
 
+def test_ficha_tecnica_free_float_e_tag_along_sem_numero_inventado(ficha_da_cpfl):
+    """A ficha de exemplo da CPFL não traz o dossiê da base: o motivo fica escrito, e o tag along (que a
+    base ainda não tem) nunca é deduzido do segmento de listagem."""
+    ficha = _itens(ficha_da_cpfl, "ficha_tecnica")
+    assert ficha["free_float"].texto == "—"
+    assert ficha["free_float"].motivo == re_.SEM_FICHA_DA_BASE
+    assert ficha["tag_along"].texto == "—"
+    assert "estatuto" in ficha["tag_along"].motivo
+    assert ficha["tag_along"].valor is None
+
+
+def test_ficha_tecnica_sem_o_pro_nao_mostra_o_free_float(entradas_da_cpfl):
+    ficha = _itens(re_.montar(entradas_da_cpfl), "ficha_tecnica")
+    assert ficha["free_float"].texto == "—"
+    assert "Pro" in ficha["free_float"].motivo
+
+
+def test_ficha_tecnica_traz_o_free_float_do_dossie_com_a_data_do_fre(entradas_da_cpfl):
+    item = re_.Item(
+        "free_float", "Free float (ações em circulação)", "38,8%", 0.388, "fração",
+        "2026-07-10", fonte="CVM",
+    )  # fmt: skip
+    secao = re_.Secao("governanca", "Governança", [item])
+    achados = re_._free_float_e_tag_along(entradas_da_cpfl, [secao], "pro")
+    assert [i.chave for i in achados] == ["free_float", "tag_along"]
+    assert achados[0] is item
+    assert achados[0].texto == "38,8%"
+
+
+def test_ficha_tecnica_governanca_sem_o_item_diz_que_o_fre_nao_tem_o_15_7(
+    entradas_da_cpfl,
+):
+    secao = re_.Secao("governanca", "Governança", [])
+    achados = re_._free_float_e_tag_along(entradas_da_cpfl, [secao], "pro")
+    assert achados[0].texto == "—"
+    assert achados[0].motivo == re_.SEM_FREE_FLOAT
+
+
+def test_ficha_tecnica_governanca_trancada_nao_vaza_o_free_float(entradas_da_cpfl):
+    item = re_.Item("free_float", "Free float", "38,8%", 0.388, "fração", "2026-07-10")
+    trancada = re_.Secao("governanca", "Governança", [item], trancada=True)
+    achados = re_._free_float_e_tag_along(entradas_da_cpfl, [trancada], None)
+    assert achados[0].texto == "—"
+
+
 def test_ficha_tecnica_prazo_da_dfp_reapresentada():
     documentos = pd.DataFrame(
         {

@@ -103,6 +103,7 @@ from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
 from src.relatorio_do_setor_pdf import relatorio_do_setor as pdf_do_setor
 from src.relatorio_empresa import Relatorio
 from src.relatorio_empresa import montar as montar_relatorio
+from src.relatorio_empresa_markdown import relatorio_em_markdown
 from src.simulacoes import (
     endereco_no_app_novo,
     restaurar_estado,
@@ -1047,6 +1048,23 @@ def relatorio_da_empresa_em_deck(
     )
 
 
+@router.get("/relatorio-empresa/markdown", response_class=Response)
+def relatorio_da_empresa_em_markdown(conta: Conta, ticker: Ticker) -> Response:
+    """A ficha da empresa em Markdown para ler com uma IA: o mesmo texto do botão da página (as seções
+    na ordem da tela, "Limites e cuidados" e o anexo de como cada número foi calculado), com o mesmo
+    acesso e o mesmo plano da rota JSON. O nome do arquivo vem do ticker da própria ficha."""
+    relatorio = _relatorio_da_empresa_do_ticker(conta, ticker)
+    sigla = relatorio.ticker.removesuffix(".SA")
+    return Response(
+        content=relatorio_em_markdown(relatorio),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="tickerlab-empresa-{sigla}.md"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 class PedidoDeBuscaPorCnpjV1(BaseModel):
     cnpj: str  # com ou sem pontuação, com letras; sem limite aqui para o 422 não repetir o texto
 
@@ -1167,13 +1185,23 @@ def openapi_v1() -> dict:
     """O esquema OpenAPI só da v1 (o contrato publicado em `docs/api/openapi-v1.json`)."""
     from fastapi import FastAPI
 
+    from src.api_v1.analista import router as router_do_analista
+    from src.api_v1.chat import router as router_do_chat
+    from src.api_v1.conectar import router as router_do_conectar
     from src.api_v1.conta import router as router_da_conta
+    from src.api_v1.dados_e_cobertura import router as router_dos_dados
     from src.api_v1.entrada import router as router_da_entrada
+    from src.api_v1.o_que_mudou import router as router_do_que_mudou
 
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
+    app.include_router(router_do_analista)
     app.include_router(router_da_conta)
     app.include_router(router_da_entrada)
+    app.include_router(router_do_que_mudou)
+    app.include_router(router_dos_dados)
+    app.include_router(router_do_conectar)
+    app.include_router(router_do_chat)
     return app.openapi()
 
 

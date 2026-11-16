@@ -6,7 +6,7 @@
 import { planos } from "../conteudo";
 import { AvisoDeAcesso, ListaDeCartoes } from "../site/comum";
 import { TopoDaPagina } from "../site/Fundo";
-import { EMAIL_DE_CONTATO, linkDoApp } from "../site/textos";
+import { EMAIL_DE_CONTATO, URL_DA_API, linkDoApp } from "../site/textos";
 
 export const DADOS = {
   caminho: "/precos.html",
@@ -276,6 +276,19 @@ export function Precos() {
         <p className="subtitulo">
           O Casa tem os mesmos limites do Pessoa, por assento, e está em construção.
         </p>
+      </section>
+
+      <section className="faixa secao v2-api" aria-labelledby="titulo-api">
+        <p className="olho">Por API</p>
+        <h2 id="titulo-api">A mesma base no seu sistema</h2>
+        <p className="subtitulo">
+          A TickerLab Data entrega as tabelas da base por API, consultadas por data, com fonte,
+          data e licença em cada resposta. Está em beta fechado e sem cobrança; o preço dela,
+          como o dos planos, é definido antes do lançamento.
+        </p>
+        <a className="seta" href={URL_DA_API} rel="noopener">
+          Documentação e regras de uso
+        </a>
       </section>
 
       <section className="faixa secao" aria-labelledby="titulo-contam">

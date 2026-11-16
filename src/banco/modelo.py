@@ -16,6 +16,8 @@ CONVENCAO_DE_NOMES = {
 }
 
 PAPEIS = ("usuario", "admin")
+# por que uma conta foi bloqueada no incidente (0045): só o código, nunca texto livre
+MOTIVOS_DO_BLOQUEIO = ("abuso", "acesso_de_terceiro", "incidente", "pedido_do_titular")
 PLANOS = ("gratuito", "plus", "pro")
 TIPOS_DE_RELATORIO = (
     "ativo",
@@ -66,8 +68,20 @@ usuarios = sa.Table(
     # versão dos termos de uso e da política de privacidade que a pessoa aceitou, e quando
     sa.Column("termos_versao", sa.String(20)),
     sa.Column("termos_aceitos_em", sa.DateTime(timezone=True)),
+    # bloqueio de uma conta só, no incidente (0045): o login e as sessões param, nada se apaga
+    sa.Column("bloqueada_em", sa.DateTime(timezone=True)),
+    sa.Column("motivo_do_bloqueio", sa.String(30)),
     sa.CheckConstraint("papel IN ('usuario', 'admin')", name="papel"),
     sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
+    sa.CheckConstraint(
+        "motivo_do_bloqueio IS NULL OR motivo_do_bloqueio IN ("
+        + ", ".join(f"'{m}'" for m in MOTIVOS_DO_BLOQUEIO)
+        + ")",
+        name="motivo_do_bloqueio",
+    ),
+    sa.CheckConstraint(
+        "(bloqueada_em IS NULL) = (motivo_do_bloqueio IS NULL)", name="bloqueio"
+    ),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
 
@@ -1369,6 +1383,61 @@ direitos_da_organizacao = sa.Table(
         "vigente_ate IS NULL OR vigente_ate >= vigente_desde", name="vigencia"
     ),
 )
+
+# A conta com login que é de uma organização (ADR 0128, Emenda 1): uma conta, uma organização. O
+# vínculo sozinho não mostra nada: a tela só mostra pessoa física do cadastro da Receita se o contrato
+# da organização tiver a linha `pessoa_na_tela` vigente (`src/banco/membros_da_organizacao.py`).
+membros_da_organizacao = sa.Table(
+    "membros_da_organizacao",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column(
+        "organizacao_id",
+        sa.Uuid,
+        sa.ForeignKey("organizacoes.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    _momento("vinculado_em"),
+    _quem_fez("vinculado_por"),
+)
+sa.Index(
+    "ix_membros_da_organizacao_organizacao_id", membros_da_organizacao.c.organizacao_id
+)
+
+# O chat de IA do app (linha 903, 0048): uma linha por pergunta, gravada antes de chamar o modelo (conta na
+# cota) e completada no fim. Só ids e números: nem a pergunta nem a resposta. Apagar a conta solta a linha
+# (SET NULL), que fica para o gasto do mês somar certo.
+ESTADOS_DA_PERGUNTA_DO_CHAT = ("em_curso", "respondida", "recusada", "erro")
+perguntas_do_chat = sa.Table(
+    "perguntas_do_chat",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("usuario_id", sa.Uuid, sa.ForeignKey("usuarios.id", ondelete="SET NULL")),
+    sa.Column(
+        "organizacao_id", sa.Uuid, sa.ForeignKey("organizacoes.id", ondelete="SET NULL")
+    ),
+    sa.Column("feita_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("modelo", sa.String(64), nullable=False),
+    sa.Column("estado", sa.String(16), nullable=False),
+    sa.Column("tokens_de_entrada", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("tokens_de_saida", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("tokens_lidos_do_cache", sa.Integer, nullable=False, server_default="0"),
+    sa.Column(
+        "tokens_gravados_no_cache", sa.Integer, nullable=False, server_default="0"
+    ),
+    sa.Column(
+        "custo_em_microdolares", sa.BigInteger, nullable=False, server_default="0"
+    ),
+    sa.Column("latencia_ms", sa.Integer),
+    sa.Column("chamadas_de_ferramenta", sa.Integer, nullable=False, server_default="0"),
+    sa.CheckConstraint(_entre("estado", ESTADOS_DA_PERGUNTA_DO_CHAT), name="estado"),
+)
+sa.Index(
+    "ix_perguntas_do_chat_usuario_id",
+    perguntas_do_chat.c.usuario_id,
+    perguntas_do_chat.c.feita_em,
+)
+sa.Index("ix_perguntas_do_chat_feita_em", perguntas_do_chat.c.feita_em)
 
 # O botão de parar um conjunto para todas as organizações (B-32a, PR 6): fonte que mudou a licença ou
 # dado que saiu errado. Vale também para contrato concedido depois; reativar não mexe no direito que

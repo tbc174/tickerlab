@@ -1,0 +1,202 @@
+{
+  "tabela": "receita_ecf_renuncia",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ do estabelecimento (14 caracteres, com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "cod_scp": {
+      "descricao": "Código da sociedade em conta de participação (SCP) da escrituração, quando há",
+      "unidade": "texto"
+    },
+    "dt_ini": {
+      "descricao": "Primeiro dia do período da escrituração",
+      "unidade": "data (dia)"
+    },
+    "dt_fin": {
+      "descricao": "Último dia do período da escrituração",
+      "unidade": "data (dia)"
+    },
+    "forma_trib": {
+      "descricao": "Forma de tributação do lucro, código da ECF",
+      "unidade": "texto"
+    },
+    "forma_apur": {
+      "descricao": "Forma de apuração, código da ECF",
+      "unidade": "texto"
+    },
+    "qualif_pj": {
+      "descricao": "Qualificação da pessoa jurídica, código da ECF",
+      "unidade": "texto"
+    },
+    "sit_especial": {
+      "descricao": "Situação especial da escrituração, código da ECF",
+      "unidade": "texto"
+    },
+    "cnae": {
+      "descricao": "CNAE informado na escrituração",
+      "unidade": "texto"
+    },
+    "cod_nat": {
+      "descricao": "Natureza jurídica, código da ECF",
+      "unidade": "texto"
+    },
+    "horario_eleitoral_deducao_lalur": {
+      "descricao": "Benefício `horario_eleitoral_deducao_lalur` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "prouni_universidade_para_todos": {
+      "descricao": "Benefício `prouni_universidade_para_todos` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "sudam_sudene_isencao_proj_ind_agric": {
+      "descricao": "Benefício `sudam_sudene_isencao_proj_ind_agric` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "sudam_sudene_isencao_proj_tec_dig": {
+      "descricao": "Benefício `sudam_sudene_isencao_proj_tec_dig` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "sudam_sudene_reducao_75_proj_setor_priorit": {
+      "descricao": "Benefício `sudam_sudene_reducao_75_proj_setor_priorit` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "sudam_sudene_red_escal_setor_prior_proj_ind_agric": {
+      "descricao": "Benefício `sudam_sudene_red_escal_setor_prior_proj_ind_agric` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "padis": {
+      "descricao": "Benefício `padis` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "sudam_sudene_red_reinv": {
+      "descricao": "Benefício `sudam_sudene_red_reinv` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "finor": {
+      "descricao": "Benefício `finor` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "finam": {
+      "descricao": "Benefício `finam` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "pronac_deducao_ir": {
+      "descricao": "Benefício `pronac_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "pat_deducao_ir": {
+      "descricao": "Benefício `pat_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "atividade_audiov_deducao_ir": {
+      "descricao": "Benefício `atividade_audiov_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "fundos_direitos_crianca_adolescente": {
+      "descricao": "Benefício `fundos_direitos_crianca_adolescente` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "fundos_idoso": {
+      "descricao": "Benefício `fundos_idoso` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "incentivo_desporto": {
+      "descricao": "Benefício `incentivo_desporto` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "pronon_deducao_ir": {
+      "descricao": "Benefício `pronon_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "pronas_pcd_deducao_ir": {
+      "descricao": "Benefício `pronas_pcd_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "empresa_cidada_deducao_ir": {
+      "descricao": "Benefício `empresa_cidada_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "rota_2030_deducao_ir": {
+      "descricao": "Benefício `rota_2030_deducao_ir` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "prouni_deducao_csll": {
+      "descricao": "Benefício `prouni_deducao_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "rota_2030_deducao_csll": {
+      "descricao": "Benefício `rota_2030_deducao_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "perse_irpj": {
+      "descricao": "Benefício `perse_irpj` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "perse_csll": {
+      "descricao": "Benefício `perse_csll` da ECF, em reais (vazio: não declarado; zero: declarado sem valor)",
+      "unidade": "reais (R$)"
+    },
+    "exercicio": {
+      "descricao": "Ano-calendário da escrituração",
+      "unidade": "ano"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "cod_scp",
+    "dt_ini",
+    "dt_fin"
+  ],
+  "datas": {
+    "aconteceu_em": "dt_fin",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "dt_ini": "a_conferir",
+    "dt_fin": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-09-19",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido (ADR 0122)",
+  "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
+  "pessoa": false,
+  "frequencia": "Anual (a Receita regrava o arquivo inteiro)",
+  "atraso": "A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que o arquivo foi modificado na Receita, que é o `disponivel_em`",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

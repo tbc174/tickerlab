@@ -20,6 +20,7 @@ para a leitura, em vez de chutar.
 Sem olhar o futuro: `cortar_futuro` tira o que ainda não aconteceu em `hoje`.
 """
 
+from calendar import monthrange
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -37,6 +38,9 @@ SEM_NUMERO = {"X", "..", "...", ""}  # sigilo, não se aplica, não disponível
 ZERO_ABSOLUTO = "-"
 TAMANHO_DO_MES = 6  # AAAAMM
 TAMANHO_DO_ANO = 4  # AAAA
+MESES_DO_TRIMESTRE = 3
+TRIMESTRES_POR_ANO = 4
+NOME_MAXIMO_DA_SERIE = 120  # a coluna `series.nome`
 VALORES_POR_PEDIDO_NO_SIDRA = (
     50_000  # acima disso o SIDRA responde 400 (visto em 19/10/2026)
 )
@@ -82,10 +86,13 @@ class Valor:
     nome_do_local: str = field(default="", compare=False)
     nome_da_variavel: str = field(default="", compare=False)
     nome_da_categoria: str = field(default="", compare=False)
+    frequencia: str = field(
+        default="mensal", compare=False
+    )  # lê o período: AAAAMM ou AAAATT
 
     @property
     def referencia(self) -> date:
-        return data_de_referencia(self.periodo)
+        return data_de_referencia(self.periodo, self.frequencia)
 
 
 def montar_url(
@@ -109,13 +116,29 @@ def montar_url(
     return f"{URL_DO_SIDRA}/{'/'.join(partes)}"
 
 
-def data_de_referencia(periodo: str) -> date:
-    """AAAAMM → 1º dia do mês (como as séries mensais do BC); AAAA → 31/12 (como o Focus anual)."""
+def data_de_referencia(periodo: str, frequencia: str = "mensal") -> date:
+    """AAAAMM → 1º dia do mês (como as séries mensais do BC); AAAA → 31/12 (como o Focus anual).
+
+    Nas tabelas **trimestrais** os 6 dígitos são AAAATT (`202602` = 2º trimestre de 2026) e vão
+    para o último dia do trimestre, como o anual vai para 31/12: pela leitura mensal, `202602`
+    viraria fevereiro. A PNAD (trimestre móvel) devolve AAAAMM do mês em que o trimestre termina
+    e segue como mensal."""
+    if frequencia == "trimestral":
+        return _fim_do_trimestre(periodo)
     if len(periodo) == TAMANHO_DO_MES and periodo.isdigit():
         return date(int(periodo[:4]), int(periodo[4:]), 1)
     if len(periodo) == TAMANHO_DO_ANO and periodo.isdigit():
         return date(int(periodo), 12, 31)
     raise RespostaInesperada(f"Período que não conheço: {periodo!r}")
+
+
+def _fim_do_trimestre(periodo: str) -> date:
+    if len(periodo) == TAMANHO_DO_MES and periodo.isdigit():
+        ano, trimestre = int(periodo[:4]), int(periodo[4:])
+        if 1 <= trimestre <= TRIMESTRES_POR_ANO:
+            mes = trimestre * MESES_DO_TRIMESTRE
+            return date(ano, mes, monthrange(ano, mes)[1])
+    raise RespostaInesperada(f"Trimestre que não conheço: {periodo!r}")
 
 
 def _numero(texto: str) -> float | None:
@@ -138,8 +161,11 @@ def _colunas_de_categoria(linha: Mapping[str, str]) -> list[int]:
     return [p for p in posicoes if p > 3]
 
 
-def ler_resposta(linhas: Sequence[Mapping[str, str]]) -> list[Valor]:
-    """A resposta JSON do SIDRA (a 1ª linha é o cabeçalho) em valores."""
+def ler_resposta(
+    linhas: Sequence[Mapping[str, str]], frequencia: str = "mensal"
+) -> list[Valor]:
+    """A resposta JSON do SIDRA (a 1ª linha é o cabeçalho) em valores; `frequencia` diz como ler
+    o período de 6 dígitos (mês ou trimestre)."""
     if not isinstance(linhas, list):
         raise RespostaInesperada(
             f"O SIDRA não devolveu uma tabela: {str(linhas)[:200]}"
@@ -159,6 +185,7 @@ def ler_resposta(linhas: Sequence[Mapping[str, str]]) -> list[Valor]:
                 nome_do_local=linha["D1N"],
                 nome_da_variavel=linha["D2N"],
                 nome_da_categoria=" ".join(linha[f"D{p}N"] for p in categorias),
+                frequencia=frequencia,
             )
         )
     return valores
@@ -183,11 +210,49 @@ def codigo_da_serie(tabela: int, valor: Valor) -> str:
     return f"ibge-sidra-{tabela}-{valor.variavel}-{categoria}-{_rotulo_do_local(valor)}"
 
 
-def serie_do_acervo(tabela: int, valor: Valor, frequencia: str) -> SerieDoAcervo:
-    partes = [valor.nome_da_variavel, valor.nome_da_categoria, valor.nome_do_local]
+SEPARADOR_DO_NOME = " · "
+
+
+def _encurtar(partes: list[str], orcamento: int) -> list[str]:
+    """Corta, de um caractere por vez, a mais longa das partes (com "…") até caberem no orçamento."""
+    cortes = [0] * len(partes)
+
+    def texto() -> list[str]:
+        return [
+            parte[: len(parte) - corte].rstrip(" ,") + "…" if corte else parte
+            for parte, corte in zip(partes, cortes, strict=True)
+        ]
+
+    while (
+        sum(map(len, texto())) + len(SEPARADOR_DO_NOME) * (len(partes) - 1) > orcamento
+    ):
+        restante = [
+            len(parte) - corte for parte, corte in zip(partes, cortes, strict=True)
+        ]
+        if max(restante) <= 1:
+            break
+        cortes[restante.index(max(restante))] += 1
+    return texto()
+
+
+def _nome_da_serie(valor: Valor, rotulo_do_periodo: str) -> str:
+    """`variável · categoria · local (rótulo; IBGE/SIDRA)`, em até 120 caracteres: se passar,
+    cortam-se a variável e a categoria (as partes longas), nunca o local nem o rótulo do período."""
+    fonte = (
+        f" ({rotulo_do_periodo}; IBGE/SIDRA)" if rotulo_do_periodo else " (IBGE/SIDRA)"
+    )
+    fixa = f"{SEPARADOR_DO_NOME}{valor.nome_do_local}" if valor.nome_do_local else ""
+    longas = [p for p in (valor.nome_da_variavel, valor.nome_da_categoria) if p]
+    orcamento = NOME_MAXIMO_DA_SERIE - len(fixa) - len(fonte)
+    return SEPARADOR_DO_NOME.join(_encurtar(longas, orcamento)) + fixa + fonte
+
+
+def serie_do_acervo(
+    tabela: int, valor: Valor, frequencia: str, rotulo_do_periodo: str = ""
+) -> SerieDoAcervo:
     return SerieDoAcervo(
         codigo_da_serie(tabela, valor),
-        " · ".join(p for p in partes if p) + " (IBGE/SIDRA)",
+        _nome_da_serie(valor, rotulo_do_periodo),
         valor.unidade,
         frequencia,
     )
@@ -258,9 +323,12 @@ class Coleta:
     variaveis: tuple[int, ...]
     classificacoes: Mapping[int, tuple[int, ...]]
     territorios: tuple[str, ...]
-    frequencia: str  # "mensal" ou "anual"
+    frequencia: str  # "mensal", "trimestral" (AAAATT) ou "anual"
     soma_o_total_do_cafe: bool = False
     descarta_series_vazias: bool = False
+    rotulo_do_periodo: str = (
+        ""  # vai no nome da série (PNAD: o período é um trimestre móvel)
+    )
 
     def urls(self, periodo: str) -> list[str]:
         """Um pedido por território; o período se divide em blocos que cabem no limite do SIDRA."""
@@ -281,36 +349,45 @@ class Coleta:
         )
 
     def blocos_de_periodos(self, territorio: str) -> int:
-        """Quantos períodos (meses ou anos) cabem em um pedido deste território."""
+        """Quantos períodos (meses, trimestres ou anos) cabem em um pedido deste território."""
         return max(
             1, VALORES_POR_PEDIDO_NO_SIDRA // self._celulas_por_periodo(territorio)
         )
 
     def _blocos(self, periodo: str, territorio: str = "n1/all") -> list[str]:
-        """`AAAA-AAAA` ou `AAAAMM-AAAAMM` em blocos; outro formato ("last 3") vai inteiro."""
+        """`AAAA-AAAA`, `AAAAMM-AAAAMM` ou `AAAATT-AAAATT` em blocos; outro formato ("last 3")
+        vai inteiro."""
         primeiro, _, ultimo = periodo.partition("-")
-        mensal = len(primeiro) == TAMANHO_DO_MES
         if not (ultimo and primeiro.isdigit() and ultimo.isdigit()):
             return [periodo]
         por_pedido = self.blocos_de_periodos(territorio)
-        de, ate = _indice(primeiro), _indice(ultimo)
+        de, ate = _indice(primeiro, self.frequencia), _indice(ultimo, self.frequencia)
         return [
-            f"{_texto(inicio, mensal)}-{_texto(min(inicio + por_pedido - 1, ate), mensal)}"
+            f"{_texto(inicio, self.frequencia)}-"
+            f"{_texto(min(inicio + por_pedido - 1, ate), self.frequencia)}"
             for inicio in range(de, ate + 1, por_pedido)
         ]
 
 
-def _indice(periodo: str) -> int:
-    """AAAAMM → meses desde o ano 0; AAAA → o ano."""
+def _periodos_por_ano(frequencia: str) -> int:
+    return TRIMESTRES_POR_ANO if frequencia == "trimestral" else 12
+
+
+def _indice(periodo: str, frequencia: str | None = None) -> int:
+    """AAAAMM → meses desde o ano 0; AAAATT → trimestres desde o ano 0; AAAA → o ano.
+
+    Sem `frequencia`, 6 dígitos são um mês (como as coletas mensais sempre leram)."""
     if len(periodo) == TAMANHO_DO_MES:
-        return int(periodo[:4]) * 12 + int(periodo[4:]) - 1
+        por_ano = _periodos_por_ano(frequencia or "mensal")
+        return int(periodo[:4]) * por_ano + int(periodo[4:]) - 1
     return int(periodo)
 
 
-def _texto(indice: int, mensal: bool) -> str:
-    if mensal:
-        return f"{indice // 12}{indice % 12 + 1:02d}"
-    return str(indice)
+def _texto(indice: int, frequencia: str) -> str:
+    if frequencia == "anual":
+        return str(indice)
+    por_ano = _periodos_por_ano(frequencia)
+    return f"{indice // por_ano}{indice % por_ano + 1:02d}"
 
 
 def _municipios_da_uf(uf: int) -> str:
@@ -387,6 +464,25 @@ PEVS_PRODUTOS = (0, 3455, 3458, 33253, 33254)
 PEVS_AREA_ESPECIES = (0, 39326, 39327)
 PPM_REBANHOS = (2670, 32794, 32796)  # bovino, suíno e galináceos
 PPM_PRODUTOS = (2682, 2685)  # leite e ovos de galinha
+# lote 2, trimestral (ids conferidos nos metadados do SIDRA em 05/11/2026)
+# PIB (5932 taxas, 1621 índice com ajuste sazonal, 1846 valores correntes), Brasil: o total, três
+# setores e a demanda; as taxas são ano contra ano, trimestre contra trimestre e 4 trimestres
+PIB_SETORES = (90707, 90687, 90691, 90696, 93404, 93406, 93407, 93408)
+PIB_TAXAS_VARIAVEIS = (6561, 6564, 6562)
+# abate (1092 bovinos, 1093 suínos, 1094 frangos) e leite (1086): total do trimestre, inspeção total
+ABATE_VARIAVEIS = (284, 285)  # cabeças e peso das carcaças (kg)
+TOTAL_DO_TRIMESTRE, INSPECAO_TOTAL, REBANHO_BOVINO_TOTAL = 115236, 118225, 992
+# as classificações na ordem das colunas da resposta (o SIDRA devolve na ordem da tabela)
+ABATE_TOTAIS = {12716: (TOTAL_DO_TRIMESTRE,), 12529: (INSPECAO_TOTAL,)}
+ABATE_BOVINOS_TOTAIS = {
+    12716: (TOTAL_DO_TRIMESTRE,),
+    18: (REBANHO_BOVINO_TOTAL,),
+    12529: (INSPECAO_TOTAL,),
+}
+LEITE_VARIAVEIS = (282, 2522)  # adquirido (mil litros) e preço médio (R$ por litro)
+# PNAD contínua mensal: o período é o trimestre móvel que termina no mês (AAAAMM), e a data da
+# série é o 1º dia desse mês
+ROTULO_DA_PNAD = "trimestre móvel terminado em"
 
 COLETAS = (
     Coleta(
@@ -418,5 +514,15 @@ COLETAS = (
     Coleta("ppm-rebanhos", 3939, (105,), {79: PPM_REBANHOS}, ("n1/all", "n3/all"), "anual"),
     Coleta("ppm-origem-animal", 74, (106, 215), {80: PPM_PRODUTOS}, ("n1/all", "n3/all"), "anual"),
     Coleta("populacao", 6579, (9324,), {}, ("n1/all", "n3/all"), "anual"),
+    Coleta("pib-taxas", 5932, PIB_TAXAS_VARIAVEIS, {11255: PIB_SETORES}, ("n1/all",), "trimestral"),
+    Coleta("pib-indice", 1621, (584,), {11255: PIB_SETORES}, ("n1/all",), "trimestral"),
+    Coleta("pib-valores", 1846, (585,), {11255: PIB_SETORES}, ("n1/all",), "trimestral"),
+    Coleta("abate-bovinos", 1092, ABATE_VARIAVEIS, ABATE_BOVINOS_TOTAIS, ("n1/all", "n3/all"), "trimestral"),
+    Coleta("abate-suinos", 1093, ABATE_VARIAVEIS, ABATE_TOTAIS, ("n1/all", "n3/all"), "trimestral"),
+    Coleta("abate-frangos", 1094, ABATE_VARIAVEIS, ABATE_TOTAIS, ("n1/all", "n3/all"), "trimestral"),
+    Coleta("leite", 1086, LEITE_VARIAVEIS, ABATE_TOTAIS, ("n1/all", "n3/all"), "trimestral"),
+    Coleta("pnad-desocupacao", 6381, (4099,), {}, ("n1/all",), "mensal", rotulo_do_periodo=ROTULO_DA_PNAD),
+    Coleta("pnad-rendimento", 6390, (5933,), {}, ("n1/all",), "mensal", rotulo_do_periodo=ROTULO_DA_PNAD),
+    Coleta("pnad-massa", 6392, (6293,), {}, ("n1/all",), "mensal", rotulo_do_periodo=ROTULO_DA_PNAD),
 )  # fmt: skip
 COLETAS_POR_NOME = {c.nome: c for c in COLETAS}

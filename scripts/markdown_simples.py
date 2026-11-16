@@ -2,6 +2,8 @@
 
 Usado pelo exportador do site (`scripts/exportar_conteudo.py`): títulos, parágrafos, listas, tabelas,
 negrito, itálico, código e links.
+
+Roda: outro script (exportar_conteudo.py).
 """
 
 import html

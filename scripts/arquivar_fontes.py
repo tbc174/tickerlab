@@ -13,6 +13,9 @@ catálogo mudou, ou uma página vigiada caiu no desafio anti-robô do site (avis
 
 Quando algo falha, a última linha da saída padrão é `FALHAS: fonte (motivo); ...`, curta, para o
 aviso do Kuma dizer o porquê (quem lê o e-mail nem sempre alcança o log do servidor).
+
+Roda: cron de casa pelo arquivar-fontes.sh (todo dia às 2h00 e 22h00; todo domingo às 3h00 e 4h00) e
+por outros scripts do servidor; citado em fontes.py.
 """
 
 import argparse

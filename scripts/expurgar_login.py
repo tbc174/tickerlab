@@ -5,6 +5,8 @@
 Sessões vencidas ou encerradas há mais de 90 dias e códigos de entrada vencidos há mais de 1 dia
 (eles não têm `usuario_id`, então a exclusão da conta não os alcança). Pensado para rodar uma vez
 por dia (cron). Nenhum e-mail aparece nos registros (logs): só as contagens.
+
+Roda: cron do VPS (todo dia às 4h15); outro script (portao_do_agente.py).
 """
 
 import logging

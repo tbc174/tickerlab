@@ -3,6 +3,7 @@
 import json
 import re
 
+from base import vitrine
 from base.contrato import PASTA
 from scripts import exportar_conteudo as exp
 from src import marca, modulos, planos
@@ -155,6 +156,16 @@ def test_paginas_e_areas_levam_a_area_para_o_menu_do_app_novo():
         and ativo["frase"] == AREAS["ativo"].frase
     )
     assert ativo["paginas"] == [p.chave for p in paginas_da_area("ativo")]
+    # o menu de sete itens (linha 903): só as páginas que existem; item que espera a tela vai vazio
+    from src.paginas import MENU_DO_APP
+
+    menu = json.loads(exp.em_json(exp.conteudo()["app"]))["menu"]
+    assert [i["rotulo"] for i in menu] == [i.rotulo for i in MENU_DO_APP]
+    por_chave = {i["chave"]: i for i in menu}
+    assert por_chave["empresas"]["paginas"][0] == "encontrar_empresas"
+    assert por_chave["dados"]["secundario"] and not por_chave["empresas"]["secundario"]
+    for item in menu:
+        assert all(chave in POR_CHAVE for chave in item["paginas"]), item["chave"]
     conta = next(a for a in areas if a["chave"] == "conta")
     assert (
         "admin" not in conta["paginas"]
@@ -169,6 +180,20 @@ def test_paginas_de_admin_ficam_fora_do_bundle_publico():
     texto = exp.em_json(exp.conteudo()["paginas"])
     assert '"somente_admin": true' not in texto
     assert "registro de ações de administrador" not in texto
+
+
+def test_app_leva_as_contagens_da_base_iguais_as_do_catalogo():
+    """O "O que a base tem" do Início do app mostra os mesmos números da página inicial do site."""
+    tudo = exp.conteudo()
+    base = json.loads(exp.em_json(tudo["app"]))["base"]
+    catalogo = json.loads(exp.em_json(tudo["catalogo"]))
+    assert base == {
+        "tabelas": catalogo["totais"]["tabelas"],
+        "ligadas_pelo_cnpj": catalogo["ligado_pelo_cnpj"]["tabelas"],
+        "orgaos": catalogo["ligado_pelo_cnpj"]["orgaos"],
+        "fontes": catalogo["totais"]["fontes"],
+    }
+    assert all(isinstance(n, int) and n > 0 for n in base.values())
 
 
 def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
@@ -301,9 +326,9 @@ def test_site_nao_leva_mais_a_fita_nem_os_exemplos_da_busca():
 
 def test_catalogo_do_site_vem_do_contrato():
     """A página Dados conta as tabelas e as fontes do `catalogo.json`; nada é digitado à mão."""
-    contrato = json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))[
-        "tabelas"
-    ]
+    contrato = vitrine.catalogo_publico(
+        json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))
+    )["tabelas"]
     catalogo = exp.conteudo()["catalogo"]
 
     assert catalogo["totais"]["tabelas"] == len(contrato) == len(catalogo["tabelas"])

@@ -10,6 +10,7 @@ import {
   ASSINATURA,
   AVISO,
   EMAIL_DE_CONTATO,
+  URL_DA_API,
   URL_DO_CODIGO,
   URL_DO_SITE,
   linkDoApp,
@@ -152,6 +153,9 @@ function Rodape({ aviso }: { aviso: string }) {
           <a href="/sobre.html">Sobre</a>
           <a href="/produto.html">Produto</a>
           <a href="/dados.html">Dados</a>
+          <a href={URL_DA_API} rel="noopener">
+            API (TickerLab Data)
+          </a>
           <a href="/relatorios.html">Relatórios</a>
           <a href="/metodologia.html">Fontes e metodologia</a>
           <a href="/ferramentas.html">Ferramentas grátis</a>

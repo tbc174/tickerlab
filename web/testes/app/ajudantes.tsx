@@ -1,7 +1,7 @@
 // Ajudantes dos testes do app novo: respostas da API, um Google de mentira e abrir o app num endereço.
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 import { App } from "../../src/app/App";
 
 export const TOKEN = "eyJ0b2tlbi1kby1nb29nbGUifQ.token-de-teste.assinatura";
@@ -110,4 +110,11 @@ export function abrirApp(caminho: string, opcoes: Opcoes = {}) {
     </MemoryRouter>,
   );
   return { buscar, google };
+}
+
+/** Abre uma aba da ficha pelo nome e espera o painel dela aparecer (a ficha em abas só monta a aba aberta). */
+export async function abrirAba(nome: string) {
+  const aba = await screen.findByRole("tab", { name: nome });
+  fireEvent.click(aba);
+  await waitFor(() => expect(screen.getByRole("tab", { name: nome }).getAttribute("aria-selected")).toBe("true"));
 }

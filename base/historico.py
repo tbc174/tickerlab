@@ -55,6 +55,9 @@ class Tabela:
     # outras fontes do arquivista que entram na mesma tabela (CRI, CRA e OTS são três fontes); os
     # arquivos de todas as fontes do mesmo ano vão juntos para o `<ano>.parquet`
     outras_fontes: tuple[str, ...] = ()
+    # a fonte guarda mais de um tipo de arquivo (o informe mensal de CRI e CRA vem com os `dfin_*`
+    # e um `meta_*.txt`): só entra o original cujo endereço tem este trecho; vazio = todos
+    so_url_com: str = ""
 
 
 FONTES_DE_SECURITIZACAO = ("cvm-cra", "cvm-securitizadoras-ots")
@@ -93,11 +96,13 @@ TABELAS = {
         "cvm-cri",
         securitizacao.ler_certificados,
         outras_fontes=FONTES_DE_SECURITIZACAO,
+        so_url_com="inf_mensal",
     ),
     "securitizacao_cedente_devedor": Tabela(
         "cvm-cri",
         securitizacao.ler_cedentes_e_devedores,
         outras_fontes=FONTES_DE_SECURITIZACAO,
+        so_url_com="inf_mensal",
     ),
     # série B13: controladas e coligadas pelo FRE (base/controladas.py), desde 2010
     "controladas": Tabela("cvm-hist-fre", controladas.ler_controladas_do_fre),
@@ -156,6 +161,8 @@ def montar(
     lidos: list[tuple[int, pd.DataFrame, list[dict[str, str]]]] = []
     for fonte in (tabela.fonte, *tabela.outras_fontes):
         for original in originais_mais_recentes(conexao, fonte):
+            if tabela.so_url_com and tabela.so_url_com not in original.url:
+                continue
             ano = ano_do_arquivo(original.url)
             conteudo = acervo.ler_original(original.caminho_do_original)
             if ano is None or conteudo is None:

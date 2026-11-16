@@ -16,9 +16,13 @@ from base.arquivo import (
     lote_cadastros,
     lote_clima,
     lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
+    lote_documentais,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
     lote_patentes,
     lote_reguladores,
     lote_sec,
@@ -73,6 +77,12 @@ _IBOVESPA_FORA_DO_CATALOGO = (
 
 def _ids(prefixo: str, *sufixos: str) -> tuple[str, ...]:
     return tuple(f"{prefixo}-{sufixo}" for sufixo in sufixos)
+
+
+_LOTE_EUROPA_RBA_SO_ARQUIVO = (
+    "séries de institutos de estatística europeus e da RBA, guardadas como publicadas; "
+    "a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria"
+)
 
 
 _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
@@ -150,6 +160,11 @@ _LOTE_ORGANISMOS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+_LOTE_NORDICOS_SO_ARQUIVO = (
+    "juros e câmbio dos bancos centrais nórdicos guardados como a fonte publica; a tabela com contrato "
+    "no catálogo ainda não existe"
+)
+
 _LOTE_EUA_SO_ARQUIVO = (
     "dado público do governo dos EUA guardado como publicado; a tabela com contrato no catálogo "
     "ainda não existe (sem pessoa física nas tabelas derivadas)"
@@ -209,6 +224,11 @@ _LOTE_REGULADORES_SO_ARQUIVO = (
     "não existe"
 )
 
+_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO = (
+    "preço de commodity de órgão público guardado como o órgão publica (Comissão Europeia, citando a fonte e "
+    "indicando as mudanças); o leitor com tabela no catálogo ainda não existe"
+)
+
 _LOTE_COMMODITIES_SO_ARQUIVO = (
     "série de café, commodities ou clima guardada como a fonte publica (USDA, FAO, OIC, CONAB, CFTC, CHC, "
     "INMET e MapBiomas, citando a fonte); o leitor com tabela no catálogo ainda não existe"
@@ -220,12 +240,26 @@ _REGULADORES_PLANEJADAS = {
     "ccee-risco-hidrologico": _planejada(
         "hidreletricas/gsf", "GSF e repasse do risco hidrológico por usina e mês"
     ),
-    "aneel-fiscalizacao": _planejada(
-        "distribuidoras/ficha",
-        "indicadores gerenciais e autos de infração por distribuidora",
+    # dos indicadores gerenciais (INDGER), só os comerciais viram tabela (linha 904); os técnicos
+    # (subestações, linhas, alimentadores) seguem só no acervo. Os autos de infração (CPF ou CNPJ na mesma
+    # coluna: só a linha de CNPJ entra) e os termos de notificação viram tabela no lote 2
+    "aneel-fiscalizacao": _tabela(
+        "aneel_indicadores_comerciais",
+        "aneel_autos_de_infracao",
+        "aneel_termos_de_notificacao",
     ),
-    # das pastas da ANS no lote, só as penalidades viram tabela; o resto segue só no acervo
-    "ans-qualidade": _tabela("ans_penalidades"),
+    "aneel-agentes": _tabela("aneel_agentes"),
+    # lote 3 das 300 tabelas pelo CNPJ (linha 904): cadastros do Banco Central e da ANTT, só pessoa jurídica
+    "bcb-supervisionadas": _tabela("bcb_supervisionadas"),
+    "bcb-cooperativas": _tabela("bcb_cooperativas"),
+    "bcb-correspondentes": _tabela("bcb_correspondentes"),
+    "bcb-filiais-de-consorcio": _tabela("bcb_filiais_de_consorcio"),
+    "bcb-regimes-especiais": _tabela("bcb_regimes_especiais"),
+    "antt-operadores-multimodais": _tabela("antt_operadores_multimodais"),
+    "antt-seguro-de-responsabilidade-civil": _tabela("antt_seguros_de_transportadores"),
+    "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
+    # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
+    "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),
 }
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
@@ -267,6 +301,7 @@ DESTINOS: dict[str, Destino] = {
         "fre_capital_social",
         "fre_empregados",
         "fre_acionistas",
+        "fre_distribuicao_capital",
         "fre_partes_relacionadas",
         "fre_eventos_de_capital",
         "fre_proventos",
@@ -347,7 +382,14 @@ DESTINOS: dict[str, Destino] = {
     "tesouro-br-divida": _planejada(
         "serie-T/T7", "estoque e emissões da dívida federal, CAPAG e dívida dos estados"
     ),
-    "rfb-cnpj": _tabela("cnpj_situacao_especial", "cnpj_situacao_cadastral"),
+    "rfb-cnpj": _tabela(
+        "cnpj_situacao_especial",
+        "cnpj_situacao_cadastral",
+        "cnpj_simples_historico",
+        "cnpj_empresas_historico",
+        "cnpj_empresas_pj",
+        "cnpj_estabelecimentos_pj",
+    ),
     "pgfn-divida": _tabela("pgfn_divida"),
     # setoriais
     "anp-vendas-distribuidora": _tabela("anp_vendas"),
@@ -367,7 +409,7 @@ DESTINOS: dict[str, Destino] = {
     "susep-cadastro": _tabela("susep_cadastro"),
     "antt-pedagio": _planejada("serie-5/PR1", "praças de pedágio e tráfego"),
     "antt-siade": _tabela("antt_siade"),
-    "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
+    "comexstat": _tabela("comex_cafe", "comex_preco_medio", "comex_urf", "comex_via"),
     # governo, sanções e identificadores
     "cgu-ceis": _tabela("sancoes_cgu"),
     "cgu-cnep": _tabela("sancoes_cgu"),
@@ -378,6 +420,8 @@ DESTINOS: dict[str, Destino] = {
         "processos_comunicacoes", "processos_partes", "processos"
     ),
     "cnj-tpu": _tabela("processos"),
+    # só uso interno (`coletas.FONTES_SO_INTERNAS`): a tabela nunca sai em tela, API nem exportação
+    "datajud-processos": _tabela("processos_datajud", "processos_datajud_movimentos"),
     "antt-autos-de-transito": _planejada(
         "ficha-clara/sinais", "autos de infração de trânsito por CNPJ (espera o layout)"
     ),
@@ -394,9 +438,28 @@ DESTINOS: dict[str, Destino] = {
     "mme-reidi": _tabela("mme_reidi"),
     "aneel-cde": _tabela("aneel_cde"),
     "bcb-rde-ied": _tabela("bcb_rde_ied"),
+    "sefazpe-beneficios": _tabela(
+        "sefaz_pe_beneficios"
+    ),  # incentivo estadual (linha 578)
+    "sefazpe-ordem-cronologica": _tabela("sefaz_pe_ordem_cronologica"),
+    "esdados-ordem-cronologica": _tabela("es_ordem_cronologica"),
+    "sefapr-divida-ativa": _tabela(
+        "sefa_pr_divida_ativa"
+    ),  # dívida ativa do Paraná (linha 755)
+    "sefmg-divida-ativa": _tabela(
+        "sef_mg_divida_ativa", "sef_mg_parcelamentos"
+    ),  # dívida ativa de Minas Gerais (linha 755)
     # financiamentos por CNPJ (`base/financiamentos.py`; o BNDES vem do lote Brasil 2, abaixo)
     "finep-contratacao": _tabela("financiamentos_finep"),
     **{f.id: _tabela("bcb_selic_focus") for f in lote_selic.fontes()},
+    # fontes pouco visíveis (ADR 0124): os fatos aprovados viram as tabelas do PR B
+    **{
+        f.id: _planejada(
+            "fontes-pouco-visiveis/PR-B",
+            "fatos de dívida e de fundos regionais com página e prova",
+        )
+        for f in lote_documentais.fontes()
+    },
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),
@@ -480,6 +543,11 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_PATENTES_SO_ARQUIVO)
         for f in lote_patentes.fontes()
     },
+    # linha 904 (lote 2): depois dos lotes acima, que também listam estas fontes como "só arquivo"
+    "inpi-marcas": _tabela("inpi_marcas_titulares"),
+    "inpi-patentes-partes": _tabela("inpi_patentes_depositantes"),
+    "inpi-desenhos": _tabela("inpi_desenhos_depositantes"),
+    "inpi-programas": _tabela("inpi_programas_titulares"),
     # lote acervos históricos (rodada 4, linha 292): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ACERVOS_SO_ARQUIVO)
@@ -491,14 +559,18 @@ DESTINOS: dict[str, Destino] = {
         for f in lote_cvm.fontes()
     },
     "cvm-securitizadoras-ots": _tabela(*_INFORME_DE_SECURITIZACAO),
+    # linha 904 (lote 1 das 300 pelo CNPJ): `base/cvm_fip_fii.py`
+    "cvm-fip-trimestral": _tabela("fip_informe"),
+    "cvm-fip-quadrimestral": _tabela("fip_informe"),
+    "cvm-fii-administradores": _tabela("fii_administradores"),
     "cvm-fundos-informe-diario": _planejada(
         "cvm-lote-2/cota-por-fundo",
         "cota, patrimônio e captação diária de cada fundo 555",
     ),
-    "cvm-fii-mensal": _planejada("cvm-lote-2/tela-de-fii", "informe mensal dos FII"),
-    "cvm-fii-trimestral": _planejada(
-        "cvm-lote-2/tela-de-fii", "informe trimestral dos FII"
-    ),
+    "cvm-fii-mensal": _tabela("fii_informe_mensal"),
+    # do informe trimestral, só os ativos viram tabela: a parte geral repete o mensal, e imóveis e
+    # terrenos trazem endereço
+    "cvm-fii-trimestral": _tabela("fii_ativos"),
     "cvm-fii-anual": _planejada("cvm-lote-2/tela-de-fii", "informe anual dos FII"),
     "cvm-fii-demonstracoes": _planejada(
         "cvm-lote-2/tela-de-fii", "demonstrações dos FII"
@@ -540,17 +612,30 @@ DESTINOS: dict[str, Destino] = {
             "termos-iex",
             "termos-banco-mundial",
             *lote_eua.termos(),
+            *lote_europa_rba.termos(),
+            *lote_nordicos.termos(),
             *lote_cadastros.termos(),
             *lote_atencao.termos(),
             *lote_clima.termos(),
             *lote_patentes.termos(),
+            *lote_commodities_oficiais.termos(),
         )
+    },
+    # lote nórdico (linha 511, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("dados-escondidos/nordicos", _LOTE_NORDICOS_SO_ARQUIVO)
+        for f in lote_nordicos.fontes()
     },
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): guardado como as agências
     # publicam; a carga na base de ML (tabelas, contratos, dicionário) é uma fila própria
     **{
         f.id: _planejada("lote-eua/carga", _LOTE_EUA_SO_ARQUIVO)
         for f in lote_eua.fontes()
+    },
+    # lote Europa e RBA (linha 512, 05/11/2026): guardado no acervo, tabelas ainda não escritas
+    **{
+        f.id: _planejada("lote-europa-rba/carga", _LOTE_EUROPA_RBA_SO_ARQUIVO)
+        for f in lote_europa_rba.fontes()
     },
     # lote SEC (rodada 4, 23/10/2026): idem, a carga na base de ML é uma fila própria
     **{
@@ -581,6 +666,11 @@ DESTINOS: dict[str, Destino] = {
     # lote café, commodities e clima (linha 204 da fila, 03/11/2026): guardado no acervo; leitores depois
     **{
         f.id: _pesquisa(_LOTE_COMMODITIES_SO_ARQUIVO) for f in lote_commodities.fontes()
+    },
+    # lote commodities oficiais (linha 396 da fila, 05/11/2026): guardado no acervo; leitores depois
+    **{
+        f.id: _pesquisa(_LOTE_COMMODITIES_OFICIAIS_SO_ARQUIVO)
+        for f in lote_commodities_oficiais.fontes()
     },
     # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
     "contrapartes-cafe": _tabela("contraparte_cafe"),

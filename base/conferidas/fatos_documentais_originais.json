@@ -1,0 +1,106 @@
+{
+  "conferido_em": "2026-11-04",
+  "como": "SHA-256 das cópias da pesquisa de 04/11/2026 (Codex), conferido de novo em 05/11/2026 nas cópias locais",
+  "originais": [
+    {
+      "fonte": "divida-documental",
+      "url": "https://auniao.pb.gov.br/servicos/copy_of_jornal-a-uniao/2026/abril/jornal-em-pdf-23-04-26-cdepc.pdf",
+      "pagina_que_publicou": "https://auniao.pb.gov.br/servicos/copy_of_jornal-a-uniao/2026/abril",
+      "sha256": "76405c8580752e840f1daa91387d5076f14d074c35e15be3f51d2296756500e8",
+      "bytes": 17198464,
+      "paginas": 34,
+      "data_declarada": "2026-04-23",
+      "descricao": "A União de 23/04/2026: balanço 2025 da São Braz (pp. 27-28); sem camada de texto"
+    },
+    {
+      "fonte": "divida-documental",
+      "url": "https://digital.jornaldocomercio.com/jcomercio/2026/04/17/144286/issue14177.pdf",
+      "pagina_que_publicou": "https://digital.jornaldocomercio.com/jcomercio/2026/04/17/144286/",
+      "sha256": "40b2ec357fd4e2e38ca2a18c3f2f8007eb84f1dd00dad4ab9accccc94374ab5d",
+      "bytes": 5680449,
+      "paginas": 21,
+      "data_declarada": "2026-04-17",
+      "descricao": "Jornal do Comércio de 17/04/2026: balanço 2025 da Alibem (pp. 19-20)"
+    },
+    {
+      "fonte": "divida-documental",
+      "url": "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=1064843",
+      "pagina_que_publicou": "https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=1064843",
+      "sha256": "a9c76be19d3a8bd38cb45a27d38cb144c696ff4e5b8bf54f30a0e585d324f6da",
+      "bytes": 365528,
+      "paginas": 3,
+      "data_declarada": "",
+      "descricao": "FNET 1064843: bookbuilding do CRA da Alibem (2025)"
+    },
+    {
+      "fonte": "divida-documental",
+      "url": "https://ecoagro.agr.br/public/storage/Arquivo/1759975869CRA_BEM_BRASIL_DEFINITIVO_418_EMISSAO_REDUZIDO.pdf",
+      "pagina_que_publicou": "https://ecoagro.agr.br/emissoes-integra/660",
+      "sha256": "a588b0345f058ded8e346f6f54e22ea268be1a74921cdd6fe8ca8aed4f891d44",
+      "bytes": 18908608,
+      "paginas": 939,
+      "data_declarada": "",
+      "descricao": "prospecto definitivo da emissão 418 da Eco (Bem Brasil); nota 22 na p. 882 (impressa 876)"
+    },
+    {
+      "fonte": "sudeco-fdco",
+      "url": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos/3-fdco_projetoscontratadosvaloresatuaiseanterioresagosto2026.pdf/@@display-file/file",
+      "pagina_que_publicou": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos",
+      "sha256": "3412258066cd73d7f2cbd6e9a5bb691a8e87f256feebc9910a14989614cbedf7",
+      "bytes": 576205,
+      "paginas": 1,
+      "data_declarada": "2026-09-30",
+      "descricao": "FDCO: projetos contratados (título diz setembro/2026, o arquivo diz agosto2026)"
+    },
+    {
+      "fonte": "sudeco-fdco",
+      "url": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos/4-liberacoesano_agosto2026.pdf/@@display-file/file",
+      "pagina_que_publicou": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos",
+      "sha256": "32af200f462c2d76641b599aec9fdb986e39faa7ff47eb3091f0b96f34439eff",
+      "bytes": 581231,
+      "paginas": 1,
+      "data_declarada": "",
+      "descricao": "FDCO: liberações por ano, 2014 a 2026"
+    },
+    {
+      "fonte": "sudeco-fdco",
+      "url": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos/ADFHFSAdministraoeInvestimentosLTDA.pdf/@@display-file/file",
+      "pagina_que_publicou": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos",
+      "sha256": "73b906c7a656fa17fac8dd87bad39d82b0713ae28150cea03a5f74b9c2363b3e",
+      "bytes": 84619,
+      "paginas": 3,
+      "data_declarada": "2025-09-24",
+      "descricao": "ADF da HFS (filial 0004)"
+    },
+    {
+      "fonte": "sudeco-fdco",
+      "url": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos/FricIndstriaeComrciodeAlimentosLTDAAtestadodeDisponibil.pdf/@@display-file/file",
+      "pagina_que_publicou": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos",
+      "sha256": "133baec59d9083e3f57f2150b00f3d1f85d644549536e50d1c4dd5b1c79ceebc",
+      "bytes": 239752,
+      "paginas": 2,
+      "data_declarada": "2023-09-22",
+      "descricao": "ADF da Fricó"
+    },
+    {
+      "fonte": "sudeco-fdco",
+      "url": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos/28SEI_SUDECO0403295ADFUFVFelizNatal.pdf/@@display-file/file",
+      "pagina_que_publicou": "https://www.gov.br/sudeco/pt-br/assuntos/fundo-de-desenvolvimento-do-centro-oeste/projetos",
+      "sha256": "8652ca5a8ee2417424e50ddbe4ef8bf10da7dbd26c42b7317f108df1f22d07b8",
+      "bytes": 207231,
+      "paginas": 2,
+      "data_declarada": "",
+      "descricao": "ADF da UFV Feliz Natal (agosto/2024)"
+    },
+    {
+      "fonte": "sudam-fda",
+      "url": "https://www.gov.br/sudam/pt-br/01.07.25projetos.pdf",
+      "pagina_que_publicou": "https://www.gov.br/sudam/pt-br",
+      "sha256": "5ae0754c159622bba863a22764ad99e8b03710a26cc2c7dc43259c6a42c9273a",
+      "bytes": 660143,
+      "paginas": 1,
+      "data_declarada": "2025-07-01",
+      "descricao": "FDA: projetos aprovados e cancelados em 01/07/2025"
+    }
+  ]
+}

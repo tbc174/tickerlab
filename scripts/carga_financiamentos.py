@@ -10,6 +10,8 @@ cliente, título e resumo nunca (ADR 0075). Saída padrão: `<TICKERLAB_ACERVO>/
 bndes.parquet` e `financiamentos_finep/finep.parquet`. Feita para o servidor de casa (ADR 0031), todo mês depois do
 arquivista; recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1
 nenhum arquivo de financiamento guardado.
+
+Roda: cron de casa pelo carga-conferencias.sh (todo mês, dia 14, às 5h00); citado em dicionario.py.
 """
 
 import argparse

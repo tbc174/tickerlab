@@ -90,6 +90,9 @@ ITENS_FORA_DA_ENTRADA = frozenset(
         "payout",
         "crescimento_do_dividendo",
         "acoes_em_circulacao",
+        # free float e tag along na ficha técnica (linha 403, 05/11)
+        "free_float",
+        "tag_along",
         # os de preço da linha 55 (25/10): fora como todo número com o preço, e fora também das
         # perguntas em aberto dos limites
         "dividend_yield_medio",

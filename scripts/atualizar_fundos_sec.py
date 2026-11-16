@@ -6,6 +6,8 @@
 Baixa a lista de bases da página da SEC e lê só as que ainda não leu (cada uma tem ~100 MB e
 sai por trimestre). O código CUSIP vira ticker pelos arquivos de "falhas de entrega" da SEC dos
 últimos meses. Exige `TICKERLAB_CONTATO`, como as outras coletas da SEC.
+
+Roda: cron do VPS (todo dia às 7h50); citado em donos.py.
 """
 
 import argparse

@@ -194,7 +194,7 @@ def test_qsa_nunca_le_faixa_nem_representante():
 
 
 def test_qsa_recusa_cpf_inteiro():
-    texto = _socio("33000167", "2", "MARIA DA SILVA", "52998224725")
+    texto = _socio("33000167", "2", "MARIA DA SILVA", "88800000127")
     with pytest.raises(rr.ErroDeCpfInteiro):
         list(rr.ler_qsa([_zip(texto)]))
 

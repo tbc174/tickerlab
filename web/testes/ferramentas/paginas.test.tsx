@@ -8,8 +8,9 @@ import { PREVIAS } from "../../src/ferramentas/previas";
 import { ROTAS } from "../../src/rotas";
 
 const PAGINAS_DE_FERRAMENTA = FERRAMENTAS_DO_SITE.map((f) => f.arquivo);
-// a busca aberta da inicial e o pregão mais novo, que o script pede à API (site/PregaoAoVivo.tsx)
-const OUTRAS_COM_SCRIPT = ["index.html", "pregao-do-dia.html", "relatorios.html"];
+// a busca aberta da inicial, o pregão mais novo, que o script pede à API (site/PregaoAoVivo.tsx), e a
+// consulta às tabelas da base na página Dados (site/ConsultaDaBase.tsx)
+const OUTRAS_COM_SCRIPT = ["index.html", "pregao-do-dia.html", "relatorios.html", "dados.html"];
 
 describe("páginas das ferramentas", () => {
   it("cada ferramenta da vitrine tem uma rota que carrega o script das calculadoras", () => {

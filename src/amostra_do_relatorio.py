@@ -111,10 +111,17 @@ def montar(ficha: dossie.Ficha | None = None) -> Amostra:
     return Amostra(cortada, destaques, relatorio)
 
 
+def _colunas_do_site(linhas: list[dict[str, str]]) -> list[str]:
+    """As colunas da tabela no site, sem a da fonte original: a página já põe o link de cada linha
+    na última coluna (`links`), e o texto público não muda."""
+    colunas = list(linhas[0]) if linhas else []
+    return [c for c in colunas if c != dossie.ROTULO_DO_LINK]
+
+
 def _tabelas_para_o_site(ficha: dossie.Ficha, secao: Secao) -> list[dict[str, object]]:
     tabelas = []
     for chave, linhas in secao.tabelas.items():
-        colunas = list(linhas[0]) if linhas else []
+        colunas = _colunas_do_site(linhas)
         links = dossie.links_da_tabela(ficha, secao.chave, chave)
         tabelas.append(
             {

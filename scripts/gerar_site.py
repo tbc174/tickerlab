@@ -13,6 +13,9 @@ vêm do React (`web/`, com `npm run site`). Aqui fica só o que depende do códi
 
 O site inteiro, do zero: `python -m scripts.gerar_site`, `python -m scripts.exportar_conteudo` e, em
 `web/`, `npm run site`. Há testes que conferem que cada parte de `site/` está em dia.
+
+Roda: hook do Claude Code no PC (travas.py); outro script (juntar_main.py); citado em
+amostra_do_relatorio.py, marca.py.
 """
 
 import json

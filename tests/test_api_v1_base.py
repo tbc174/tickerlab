@@ -31,8 +31,8 @@ def test_destaques_publicos_sao_so_tres_agregados_com_fonte_e_data(ficha):
 
 def test_pessoa_e_texto_livre_nao_saem_na_resposta(ficha):
     for secao in ficha.secoes:
-        secao.paragrafos.append("Pessoa Privada 529.982.247-25")
-        secao.fontes = ["Pessoa Privada 529.982.247-25"]
+        secao.paragrafos.append("Pessoa Privada 888.000.001-27")
+        secao.fontes = ["Pessoa Privada 888.000.001-27"]
         for linhas in secao.tabelas.values():
             for linha in linhas:
                 linha["nome_pessoa"] = "Pessoa Privada"
@@ -92,7 +92,7 @@ def test_busca_sem_login_por_cnpj_nome_ou_ticker(cliente, q):
 
 
 @pytest.mark.parametrize(
-    "q", ["52998224725", "00000000000000", "02.429.144/0001-00", "", "a" * 121]
+    "q", ["88800000127", "00000000000000", "02.429.144/0001-00", "", "a" * 121]
 )
 def test_entrada_invalida_e_422(cliente, q):
     assert cliente.get(ROTA, params={"q": q}).status_code == 422

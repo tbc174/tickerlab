@@ -5,8 +5,8 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
-import { Carregando } from "../Carregando";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
+import { Carregando } from "../pecas/Carregando";
 import { SEM_NUMERO, formatarData, formatarDecimal, formatarMes, formatarPct } from "../formatar";
 import { GraficoDeLinha } from "../graficos/GraficoDeLinha";
 import type {
@@ -26,7 +26,7 @@ import type {
   TermometroDaConabV1,
 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const TIPOS = [
   { id: "arabica", nome: "Arábica" },
@@ -524,7 +524,7 @@ export function PainelDoCafe({ pagina }: { pagina: PaginaDoApp }) {
       {pedido.estado === "carregando" ? (
         <Carregando tipo="painel" rotulo="Montando o painel do café…" />
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Resultado dados={pedido.dados} />
       )}

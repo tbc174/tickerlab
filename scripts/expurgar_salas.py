@@ -7,6 +7,8 @@ que deixa os arquivos ilegíveis na hora), do disco e, em até 14 dias, do backu
 Pastas sem operação também são apagadas. Pensado para rodar uma vez por dia (cron, de madrugada,
 antes do backup da sala). Nenhum nome de operação, de arquivo ou de pessoa aparece nos registros
 (logs): só as contagens. Sai com erro (1) se algo ficou por apagar, para o Kuma avisar.
+
+Roda: cron do VPS (todo dia às 3h00); citado em expurgo.py.
 """
 
 import logging

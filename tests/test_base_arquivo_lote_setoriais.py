@@ -12,7 +12,14 @@ import requests
 from base.arquivo import lote_setoriais, registro, robots
 from base.arquivo.coleta import ErroDeDescoberta, Resposta
 from base.arquivo.fontes import FONTES, POR_ID
-from src.banco.coletas import Marca, licenca_da_fonte, marca_da_fonte
+from src.banco.coletas import (
+    VENDAVEL_COM_ATRIBUICAO,
+    VENDAVEL_RISCO_ASSUMIDO,
+    Marca,
+    licenca_da_fonte,
+    marca_da_fonte,
+    revenda_da_fonte,
+)
 
 AGORA = datetime(2026, 10, 22, 14, tzinfo=UTC)
 DUBLES = Path(__file__).parent / "arquivos" / "setoriais" / "lote"
@@ -114,17 +121,16 @@ def test_toda_fonte_do_lote_tem_licenca_marca_e_data_dos_termos(fonte):
     familia = fonte.split("-", 1)[0]
     assert registro.TERMOS_LIDOS_EM[familia] >= date(2026, 10, 14)
     sem_licenca_aberta = {"inep", "senatran", "inpi"}
-    esperada = (
-        Marca.A_CONFIRMAR
-        if familia in sem_licenca_aberta or fonte == "ans-demonstracoes"
-        else Marca.VENDAVEL
-    )
-    assert marca_da_fonte(fonte) == esperada
+    assumida = familia in sem_licenca_aberta or fonte == "ans-demonstracoes"
+    # sem licença aberta: vendável por risco assumido (ADR 0122, 05/11/2026)
+    assert marca_da_fonte(fonte) == Marca.VENDAVEL
+    assert (revenda_da_fonte(fonte) == VENDAVEL_RISCO_ASSUMIDO) == assumida
 
 
 def test_as_demonstracoes_da_ans_nao_herdam_o_cc_by_dos_beneficiarios():
     assert marca_da_fonte("ans-beneficiarios") == Marca.VENDAVEL
-    assert marca_da_fonte("ans-demonstracoes") == Marca.A_CONFIRMAR
+    assert revenda_da_fonte("ans-beneficiarios") == VENDAVEL_COM_ATRIBUICAO
+    assert revenda_da_fonte("ans-demonstracoes") == VENDAVEL_RISCO_ASSUMIDO
     assert "sem licença declarada" in licenca_da_fonte("ans-demonstracoes")
 
 
