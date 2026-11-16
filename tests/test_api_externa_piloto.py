@@ -1,7 +1,8 @@
 """A prontidão de piloto pela rota (ADR 0108, Emenda 2, D11): a marca por organização e o aviso em cada bloco.
 
 Base de mentira das demonstrações (a mesma de `test_api_externa_demonstracoes.py`), sem internet; o CNPJ é de
-ninguém. A tabela das demonstrações fica **sem** a prontidão cheia e com o registro de piloto em dia: só a
+ninguém. As regras aqui são de mentira: a tabela das demonstrações fica **sem** a prontidão cheia (a de verdade a
+tem desde a linha 784, mas o mecanismo de piloto segue valendo para outras tabelas) e com o registro de piloto em dia: só a
 organização com a marca (a linha de contrato `prontidao_de_piloto`) a recebe, e cada bloco leva a marca e a frase.
 """
 

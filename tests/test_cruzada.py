@@ -120,9 +120,9 @@ def test_relatorio_sem_pessoas() -> None:
 
 
 def test_pares_declaram_independencia_e_tolerancia() -> None:
-    assert len(PARES) == 4
+    assert len(PARES) == 5
     assert {p.independencia for p in PARES} >= {OUTRO_ORGAO, MESMO_DOCUMENTO}
-    assert len({p.nome for p in PARES}) == 4
+    assert len({p.nome for p in PARES}) == 5
 
 
 def test_par_selic_com_dados_de_exemplo() -> None:

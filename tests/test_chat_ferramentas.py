@@ -58,8 +58,13 @@ def _executar(caixa, nome, entrada):
 # ---------------------------------------------------------------- a lista
 
 
+# `ativos` entrou no conector (linha 901) e ainda não no chat: o dono do chat (linha 903) decide depois de 20/11
+SO_NO_CONECTOR = frozenset({"ativos"})
+
+
 def test_lista_do_chat_e_a_do_conector():
-    assert set(CONJUNTOS_DA_FERRAMENTA) == fe.NOMES_DAS_FERRAMENTAS
+    assert set(CONJUNTOS_DA_FERRAMENTA) - SO_NO_CONECTOR == fe.NOMES_DAS_FERRAMENTAS
+    assert set(CONJUNTOS_DA_FERRAMENTA) >= SO_NO_CONECTOR
     assert len(fe.NOMES_DAS_FERRAMENTAS) == 12
 
 

@@ -470,8 +470,10 @@ def test_sem_base_neste_servidor_da_503(cliente, cenario, monkeypatch):
 
 
 def test_404_de_hoje_e_so_a_falta_de_prontidao_da_tabela():
-    """Linha 792: com as regras de verdade o portão nega `/financials` por `sem_prontidao`, não por
-    contrato, marca ou licença; quando a 784 der a prontidão de `demonstracoes_como_era`, a rota abre."""
+    """Linha 792: no dia do teste (`AGORA`, 10/11/2026) as provas reais da prontidão de
+    `demonstracoes_como_era` (12 e 14/11/2026, `base/prontidao.py`) ainda não existiam: com as regras de
+    verdade o portão nega `/financials` por `sem_prontidao`, não por contrato, marca ou licença. Com a
+    prontidão de ensaio a rota abre. O teste fixa o dia de propósito: não depende do relógio."""
     hoje = AGORA.date()
     for fonte in ("cvm-hist-dfp", "cvm-hist-itr"):
         pedido = portao.Pedido(

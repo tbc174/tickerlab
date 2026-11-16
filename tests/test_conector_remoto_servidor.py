@@ -17,6 +17,7 @@ from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa.conjuntos import (
+    ativos,
     comparaveis,
     compradores,
     demonstracoes,
@@ -191,6 +192,100 @@ def test_toda_ferramenta_tem_titulo_curto_em_portugues():
         assert "_" not in titulo, titulo
 
 
+# Regra do diretório de conectores do Claude: a descrição diz o que a ferramenta devolve, nunca instrui o modelo.
+# Formas no imperativo (ou dirigidas a quem lê) que não podem aparecer numa descrição de ferramenta ou de
+# argumento; a orientação ao modelo mora nas `INSTRUCOES` do servidor.
+PALAVRAS_QUE_INSTRUEM = re.compile(
+    r"\b(diga|digam|use|usem|chame|leia|cite|anote|peça|pergunte|responda|mostre|informe|confira|"
+    r"complete|acrescente|estime|ignore|siga|você|vocês|deve|devem|sempre|claude|chatgpt|"
+    r"you|must|should|always|never|important|importante)\b",
+    re.IGNORECASE,
+)
+# texto público lido pelo modelo do cliente: sem preço, promessa nem recomendação
+PALAVRAS_DE_PROMESSA = re.compile(r"R\$|preço|garant|recomend|promet", re.IGNORECASE)
+PARTES_DA_DESCRICAO = ("Serve para", "Fonte:", "Não traz:")
+
+
+def _ferramentas_listadas() -> list[dict]:
+    with _conector() as cliente:
+        return aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
+            "tools"
+        ]
+
+
+def _descricoes_dos_argumentos(ferramenta: dict) -> dict[str, str]:
+    propriedades = ferramenta["inputSchema"].get("properties", {})
+    return {nome: p.get("description", "") for nome, p in propriedades.items()}
+
+
+def test_toda_ferramenta_descreve_o_que_devolve_quando_serve_a_fonte_e_o_que_nao_traz():
+    lista = _ferramentas_listadas()
+    assert sorted(f["name"] for f in lista) == sorted(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    for ferramenta in lista:
+        descricao = ferramenta.get("description") or ""
+        assert ferramenta.get("title"), ferramenta["name"]
+        for parte in PARTES_DA_DESCRICAO:
+            assert descricao.count(parte) == 1, (ferramenta["name"], parte)
+        # a descrição começa pelo que devolve, não pelas partes fixas
+        assert descricao.index("Serve para") > 0, ferramenta["name"]
+
+
+def test_nenhuma_descricao_instrui_o_modelo_nem_promete():
+    for ferramenta in _ferramentas_listadas():
+        textos = {"(descrição)": ferramenta.get("description") or ""}
+        textos |= _descricoes_dos_argumentos(ferramenta)
+        for onde, texto in textos.items():
+            achado = PALAVRAS_QUE_INSTRUEM.search(texto)
+            assert achado is None, (ferramenta["name"], onde, achado and achado.group())
+            promessa = PALAVRAS_DE_PROMESSA.search(texto)
+            assert promessa is None, (
+                ferramenta["name"],
+                onde,
+                promessa and promessa.group(),
+            )
+
+
+def test_todo_argumento_tem_descricao():
+    for ferramenta in _ferramentas_listadas():
+        for nome, descricao in _descricoes_dos_argumentos(ferramenta).items():
+            assert descricao.strip(), (ferramenta["name"], nome)
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "Diga ao analista que falta.",
+        "Ao citar, nunca complete o texto.",
+        "use com a UF",
+        "You must call this first.",
+        "Leia os limits.",
+    ],
+)
+def test_a_regra_pega_o_imperativo(texto):
+    assert PALAVRAS_QUE_INSTRUEM.search(texto)
+
+
+def test_o_que_nao_ha_aparece_nas_descricoes():
+    descricoes = {f["name"]: f["description"] for f in _ferramentas_listadas()}
+    sem_faturamento = [
+        n for n, d in descricoes.items() if "faturamento de empresa fechada" in d
+    ]
+    sem_pessoa = [n for n, d in descricoes.items() if "pessoa física" in d]
+    assert {"ficha_da_empresa", "demonstracoes"} <= set(sem_faturamento)
+    assert {
+        "buscar_empresas",
+        "ficha_da_empresa",
+        "vinculos",
+        "compradores_do_setor",
+    } <= set(sem_pessoa)
+
+
+def test_orientacao_do_recorte_das_novidades_mora_nas_instrucoes():
+    assert "excerpt_cut" in servidor.INSTRUCOES and "recorte" in servidor.INSTRUCOES
+
+
 def test_ficha_explica_os_campos_do_cadastro_nao_consultados():
     with _conector() as cliente:
         lista = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
@@ -205,7 +300,7 @@ def test_conjuntos_das_ferramentas_sao_os_da_api():
     da_api = {
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
         demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
-        eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO,
+        eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO, ativos.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api
@@ -730,3 +825,91 @@ def test_tipos_de_evento_sao_os_da_cli_e_os_da_api():
         eventos.DOCUMENTO_DO_IPE,
         eventos.TROCA_DE_AUDITOR,
     }
+
+
+# ---------------------------------------------------------------- ativos (pergunta 7 do analista)
+
+# a forma da resposta de `/companies/{cnpj}/assets` (nomes de `src/api_externa/nomes.py`), com dados de mentira
+ATIVOS_DA_API = {
+    "cnpj": "11111111000191",
+    "known_at": "2026-03-31",
+    "oil_gas_contracts": {
+        "found": True,
+        "source": "anp-concessionarios",
+        "latest_published_at": "2026-03-01",
+        "coverage": "Contratos de exploração e produção da ANP.",
+        "truncated": False,
+        "items": [
+            {
+                "contract_number": _envelope("48000.000/2000", "anp-concessionarios"),
+                "bid_round": _envelope("Rodada 0", "anp-concessionarios"),
+                "phase": _envelope("Produção", "anp-concessionarios"),
+                "field_or_block_name": _envelope(
+                    "CAMPO DE TESTE", "anp-concessionarios"
+                ),
+                "basin": _envelope("Bacia de Teste", "anp-concessionarios"),
+                "onshore_offshore": _envelope("Terra", "anp-concessionarios"),
+                "contract_share_pct": _envelope(60.0, "anp-concessionarios"),
+                "is_operator": _envelope(True, "anp-concessionarios"),
+            }
+        ],
+    },
+    "not_covered": ["Mineração: barragens e royalties ainda não saem por esta rota."],
+    "limits": ["Não achado não quer dizer que a empresa não tem o ativo."],
+    "sources": [{"source": "anp-concessionarios", "attribution": "Fonte: ANP."}],
+}
+
+
+def test_ativos_pede_a_rota_da_api_com_a_data_e_entrega_a_resposta():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/assets": httpx.Response(200, json=ATIVOS_DA_API)
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        corpo = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "ativos",
+            cnpj="11.111.111/0001-91", como_era_em="2026-03-31",
+        )  # fmt: skip
+        aj.chamar_ok(cliente, aj.CHAVE_DE_MENTIRA, "ativos", cnpj="11111111000191")
+    assert corpo == ATIVOS_DA_API  # os nomes de saída passam pelo filtro de pessoa
+    com_data, sem_data = [p for p in pedidos if p.url.path.endswith("/assets")]
+    assert dict(com_data.url.params) == {"known_at": "2026-03-31"}
+    assert dict(sem_data.url.params) == {}  # sem data, a API usa hoje
+
+
+def test_ativos_so_aparece_para_quem_ve_o_conjunto_assets():
+    pedidos: list[httpx.Request] = []
+    with _conector(conjuntos=("links",), pedidos=pedidos) as cliente:
+        nomes = aj.nomes_das_ferramentas(cliente, aj.CHAVE_DE_MENTIRA)
+        erro, texto = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "ativos", cnpj="11111111000191"
+        )
+    assert "ativos" not in nomes and "vinculos" in nomes
+    assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
+    assert not [p for p in pedidos if p.url.path.endswith("/assets")]
+
+
+@pytest.mark.parametrize(
+    "cnpj", ["888.000.000-46", "88800000046", "11111111000191/../../usage"]
+)
+def test_ativos_recusa_cpf_e_caminho_montado_antes_da_api(cnpj):
+    pedidos: list[httpx.Request] = []
+    with _conector(pedidos=pedidos) as cliente:
+        erro, texto = aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, "ativos", cnpj=cnpj)
+    assert erro and "não é um CNPJ" in texto
+    assert [p.url.path for p in pedidos] == ["/data/v1/catalog"]
+
+
+def test_ativos_sem_dado_ou_com_pessoa_vira_frase_sem_o_conteudo():
+    com_pessoa = {**ATIVOS_DA_API, "partners": [{"name": "FULANO DE TAL"}]}
+    rotas = {"/companies/22222222000191/assets": httpx.Response(200, json=com_pessoa)}
+    with _conector(rotas) as cliente:
+        erro_404, texto_404 = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "ativos", cnpj="11111111000191"
+        )
+        erro_pessoa, texto_pessoa = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "ativos", cnpj="22222222000191"
+        )
+    assert erro_404 and "Não disponível" in texto_404
+    assert erro_pessoa and ferramentas.MENSAGEM_DE_PESSOA in texto_pessoa
+    assert "FULANO" not in texto_pessoa

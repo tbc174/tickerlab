@@ -110,6 +110,21 @@ def test_so_pj_a_raiz_fora_da_lista_some_da_historia_inteira():
     assert set(versoes["cnpj_basico"]) == RAIZES_PJ
 
 
+def test_cnpj_alfanumerico_fica_na_tabela_com_a_raiz_certa():
+    """O CNPJ novo da Receita (letras nas posições 9 a 12, a ordem do estabelecimento) é filial de PJ válida:
+    a montagem o mantém, formatado, com o `cnpj_basico` igual aos 8 primeiros caracteres. Valor inventado."""
+    novo = "44444444AB0145"
+    retratos = [[*r, _estabelecimento(novo, "02", "2026-08-01")] for r in RETRATOS]
+    versoes = _versoes(retratos, raizes={*RAIZES_PJ, novo[:8]})
+    linha = versoes[versoes["cnpj_basico"] == novo[:8]]
+    assert not linha.empty
+    assert set(linha["cnpj"]) == {"44.444.444/AB01-45"}
+    assert (
+        linha["cnpj"].str.replace(r"[./-]", "", regex=True).str[:8]
+        == linha["cnpj_basico"]
+    ).all()
+
+
 def test_so_as_colunas_da_situacao_saem_e_o_cnpj_formatado():
     versoes = _versoes()
     assert list(versoes.columns) == list(sc.COLUNAS)
