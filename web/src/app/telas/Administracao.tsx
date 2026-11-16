@@ -5,7 +5,7 @@
 // O `administrador` de /v1/eu só poupa o pedido e esconde o atalho do menu: não autoriza nada.
 // A tela não liga permissão nem direito: conceder direito, vincular conta e ligar "pessoa na tela" são do
 // dono, pelo script. De uma chave aparece só o prefixo; o valor, só na caixa de quem acabou de emitir.
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { ENDERECO_DA_ADMINISTRACAO, TITULO_DA_ADMINISTRACAO } from "../administracao";
 import { mudar } from "../api";
 import { linkDoClassico } from "../classico";
@@ -448,12 +448,20 @@ interface PropriedadesDoPainelPedido {
   motivos: string[];
   /** Algo mudou que a lista mostra (a suspensão), ou o servidor deixou de achar o que a tela mostrava. */
   aoMudarALista(): void;
+  /** Diz à tela se há uma chave nova à vista: enquanto houver, ela não cria organização (trocaria de painel). */
+  aoTerChaveNaTela(tem: boolean): void;
 }
 
-function Painel({ id, motivos, aoMudarALista }: PropriedadesDoPainelPedido) {
+function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDoPainelPedido) {
   const { pedido, recarregar } = usarLeitura<PainelDaOrganizacaoV1>(ROTA_DA_ORGANIZACAO, { id });
   // a chave nova e o aviso ficam aqui, fora do painel: se a releitura falhar, a chave emitida não some
   const [chaveNova, setChaveNova] = useState<ChaveNovaV1 | null>(null);
+  const temChaveNova = chaveNova !== null;
+  // ao sair (troca de organização), a chave some junto com o painel: a tela volta a poder criar
+  useEffect(() => {
+    aoTerChaveNaTela(temChaveNova);
+    return () => aoTerChaveNaTela(false);
+  }, [temChaveNova, aoTerChaveNaTela]);
   const [aviso, setAviso] = useState<string | null>(null);
   const { ocupada, falha, executar } = useAcao(() => {
     recarregar();
@@ -477,12 +485,12 @@ function Painel({ id, motivos, aoMudarALista }: PropriedadesDoPainelPedido) {
   }
   // uma chave por vez na tela: a segunda apagaria, sem aviso, o valor da primeira, que não dá para ver de novo
   function pedirChave(rota: string, corpo: unknown) {
-    if (chaveNova !== null) return;
+    if (temChaveNova) return;
     agir<ChaveNovaV1>(rota, corpo, mostrarAChave);
   }
   const acoes: AcoesDoPainel = {
     ocupada,
-    chaveNaTela: chaveNova !== null,
+    chaveNaTela: temChaveNova,
     emitir: () => pedirChave(ROTA_DE_EMITIR, { organizacao_id: id }),
     trocar: (chave) => pedirChave(ROTA_DE_TROCAR, { organizacao_id: id, chave_id: chave.id }),
     revogar: (chave) =>
@@ -522,6 +530,8 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
   const [pedida, setPedida] = useState<string | null>(null);
   const [criando, setCriando] = useState(organizacoes.length === 0);
   const [aviso, setAviso] = useState<string | null>(null);
+  // criar uma organização abre o painel dela, e o valor de uma chave ainda na tela sumiria sem aviso
+  const [chaveNaTela, setChaveNaTela] = useState(false);
   // a pedida vale enquanto estiver na lista (a recém-criada entra quando a lista recarrega); senão, a primeira
   const escolhida = organizacoes.find((organizacao) => organizacao.id === pedida)?.id ?? organizacoes[0]?.id ?? null;
   function escolher(id: string) {
@@ -558,12 +568,25 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
           Nova organização
         </button>
       </div>
-      {criando ? <NovaOrganizacao planos={lista.planos_da_api} aoCriar={criada} aoNaoAchar={recarregar} /> : null}
+      {criando ? (
+        <NovaOrganizacao
+          planos={lista.planos_da_api}
+          chaveNaTela={chaveNaTela}
+          aoCriar={criada}
+          aoNaoAchar={recarregar}
+        />
+      ) : null}
       <Aviso texto={aviso} />
       {escolhida === null ? (
         <Vazio frase="Nenhuma organização cadastrada. Crie a primeira no formulário acima." />
       ) : (
-        <Painel key={escolhida} id={escolhida} motivos={lista.motivos_da_suspensao} aoMudarALista={recarregar} />
+        <Painel
+          key={escolhida}
+          id={escolhida}
+          motivos={lista.motivos_da_suspensao}
+          aoMudarALista={recarregar}
+          aoTerChaveNaTela={setChaveNaTela}
+        />
       )}
     </>
   );

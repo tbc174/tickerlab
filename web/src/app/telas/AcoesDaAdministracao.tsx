@@ -166,11 +166,13 @@ export function ChaveNova({ chave, aoTirar }: { chave: ChaveNovaV1; aoTirar(): v
 
 interface PropriedadesDaNovaOrganizacao {
   planos: PlanoDaApiV1[];
+  /** Há uma chave nova ainda na tela: criar abriria a organização nova e apagaria, sem aviso, o valor dela. */
+  chaveNaTela: boolean;
   aoCriar(criada: OrganizacaoDaListaV1): void;
   aoNaoAchar(): void;
 }
 
-export function NovaOrganizacao({ planos, aoCriar, aoNaoAchar }: PropriedadesDaNovaOrganizacao) {
+export function NovaOrganizacao({ planos, chaveNaTela, aoCriar, aoNaoAchar }: PropriedadesDaNovaOrganizacao) {
   const [nome, setNome] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [plano, setPlano] = useState(planos[0]?.plano_da_api ?? "");
@@ -178,7 +180,7 @@ export function NovaOrganizacao({ planos, aoCriar, aoNaoAchar }: PropriedadesDaN
   const semNome = nome.trim() === "";
   function enviar(evento: FormEvent) {
     evento.preventDefault();
-    if (semNome) return;
+    if (semNome || chaveNaTela) return;
     const corpo = { nome: nome.trim(), cnpj: cnpj.trim() === "" ? null : cnpj.trim(), plano_da_api: plano };
     executar((token) => mudar<OrganizacaoDaListaV1>("POST", ROTA_DAS_ORGANIZACOES, token, corpo), aoCriar);
   }
@@ -203,10 +205,16 @@ export function NovaOrganizacao({ planos, aoCriar, aoNaoAchar }: PropriedadesDaN
             ))}
           </select>
         </label>
-        <button type="submit" className="botao primario" disabled={ocupada || semNome}>
+        <button type="submit" className="botao primario" disabled={ocupada || semNome || chaveNaTela}>
           Criar organização
         </button>
       </div>
+      {chaveNaTela ? (
+        <p className="apagado">
+          Copie a chave nova e tire-a da tela antes de criar: a organização criada abre no lugar desta, e o valor da
+          chave sumiria.
+        </p>
+      ) : null}
       <Falha texto={falha} />
     </form>
   );

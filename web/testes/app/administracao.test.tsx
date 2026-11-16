@@ -487,6 +487,29 @@ describe("emitir, trocar e revogar chaves", () => {
     expect(screen.queryByText(/Tire a chave nova da tela/)).toBeNull();
   });
 
+  it("com uma chave na tela, não dá para criar organização (abrir a criada apagaria o valor sem aviso)", async () => {
+    const { buscar } = abrir({
+      mudar: (endereco) => respostaJson(200, endereco === ROTA_DE_EMITIR ? CHAVE_NOVA : GAMA),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Emitir chave nova" }));
+    const caixa = await screen.findByRole("region", { name: "Chave nova" });
+    fireEvent.click(screen.getByRole("button", { name: "Nova organização" }));
+    const formulario = screen.getByRole("form", { name: "Nova organização" });
+    preencher(formulario, "Organização Gama");
+    const criar = within(formulario).getByRole("button", { name: "Criar organização" }) as HTMLButtonElement;
+    expect(criar.disabled).toBe(true);
+    expect(within(formulario).getByText(/Copie a chave nova e tire-a da tela antes de criar/)).toBeTruthy();
+    // nem o Enter no campo manda o pedido
+    fireEvent.submit(formulario);
+    expect(escritas(buscar)).toHaveLength(1);
+    expect(screen.getByText(CHAVE_NOVA.valor)).toBeTruthy();
+    fireEvent.click(within(caixa).getByRole("button", { name: "Já copiei: tirar da tela" }));
+    expect(criar.disabled).toBe(false);
+    expect(within(formulario).queryByText(/Copie a chave nova e tire-a da tela antes de criar/)).toBeNull();
+    fireEvent.click(criar);
+    await waitFor(() => expect(escritas(buscar)).toHaveLength(2));
+  });
+
   it("trocar de organização tira a chave da tela", async () => {
     abrir({ mudar: () => respostaJson(200, CHAVE_NOVA) });
     fireEvent.click(await screen.findByRole("button", { name: "Emitir chave nova" }));
