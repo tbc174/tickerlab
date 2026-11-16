@@ -18,6 +18,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base import cnpj as cnpjs
+from base import retratos as motor
 from base import sancoes
 from base.ancoragem import parquets_sem_manifesto
 from base.setoriais.revisoes import como_era_em
@@ -444,3 +445,29 @@ def test_comando_monta_e_sem_nada_guardado_sai_com_1(banco, tmp_path, monkeypatc
     assert carga_sancoes.main(["--pasta", str(tmp_path / "b")]) == 0
     tabela = pd.read_parquet(tmp_path / "b" / "sancoes_cgu" / "ceis.parquet")
     assert tabela["trata_como_pessoa"].all()  # sem a Receita guardada: o conservador
+
+
+def test_a_montagem_comum_dos_retratos_da_o_mesmo_resumo_das_sancoes(
+    banco, tmp_path, monkeypatch
+):
+    """`montar_cadastros` (base/retratos.py) feita com as peças das sanções = `sancoes.montar`."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _ceis_no_dia(banco, date(2026, 10, 14), _ceis("1", EMPRESA))
+    pelas_sancoes = _montar(banco, tmp_path / "a")
+    with banco.connect() as conexao:
+        pela_comum = motor.montar_cadastros(
+            conexao,
+            tmp_path / "b" / "base",
+            AGORA,
+            list(sancoes.CADASTROS.values()),
+            ler=sancoes.ler_retrato,
+            juntar=sancoes.juntar_retratos,
+            para_gravar=sancoes._para_gravar,
+            ordem=sancoes.ORDEM,
+            pessoas=set(),
+        )
+    assert pela_comum == pelas_sancoes
+    assert pela_comum["ceis"]["na_tabela"] == 1
+    de_a = pd.read_parquet(tmp_path / "a" / "base" / "sancoes_cgu" / "ceis.parquet")
+    de_b = pd.read_parquet(tmp_path / "b" / "base" / "sancoes_cgu" / "ceis.parquet")
+    pd.testing.assert_frame_equal(de_a, de_b)

@@ -31,7 +31,9 @@ Regras (testes em `tests/test_base_arquivo_lote_nordicos.py`):
 - **Statistics Finland** (StatFin) e **Statistics Iceland** (Hagstofa): CC BY 4.0, vendável citando a fonte (lido
   em 29/10/2026). PxWeb v1: a tabela inteira vem por POST com a consulta vazia e saída `csv`, e o arquivista
   guarda o CSV como veio (BOM e separador incluídos);
-- **fora daqui**: SSB, Danmarks Nationalbank, Bank of Finland e Seðlabanki (licença ainda não lida).
+- **fora daqui**: Danmarks Nationalbank, Bank of Finland e Seðlabanki (licença ainda não lida). O SSB (Statistics
+  Norway, CC BY 4.0, lido em 06/11/2026) tem licença lida, mas não é deste lote: entra em
+  `base/arquivo/lote_commodities_oficiais.py` (`ssb-salmao-semanal`).
 """
 
 import json

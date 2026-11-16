@@ -252,11 +252,32 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    "anvisa_por_empresa": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 13), "placar-qualidade-2026-11-13"),
+        dicionario=Prova(date(2026, 11, 13), "dicionario-escrito-2026-11-13"),
+    ),
     # a ficha da empresa (linha 841): 23699215 linhas, zero achado no placar, zero raiz fora da lista de PJ
     "cnpj_situacao_cadastral": ProntidaoDePiloto(
         versao_maior=2,
         qualidade=Prova(date(2026, 11, 14), "placar-qualidade-2026-11-14"),
         dicionario=Prova(date(2026, 11, 14), "dicionario-escrito-2026-11-14"),
+    ),
+    # a rede (linha 784): placar de 16/11/2026 sem vermelho; 95051, 2309558 e 194604 linhas; os dois achados de ligacoes e identificadores têm explicação escrita
+    "entidades": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
+        dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
+    ),
+    "ligacoes": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
+        dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
+    ),
+    "identificadores": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
+        dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
     ),
 }
 
