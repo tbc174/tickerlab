@@ -51,6 +51,21 @@ TERMOS_LIDOS_EM: dict[str, date] = {
         2026, 11, 3
     ),  # relido em 03/11 (linha 639): data.bis.org/help/legal e robots.txt
     "nasa": date(2026, 10, 22),
+    "dgagri": date(
+        2026, 10, 24
+    ),  # aviso legal da Comissão, lido na rodada de 24/10 (linha 396)
+    "dgener": date(
+        2026, 11, 6
+    ),  # aviso na planilha: reprodução autorizada citando a fonte (linha 396)
+    "ssb": date(2026, 11, 6),  # CC BY 4.0, página de licença lida na hora (linha 396)
+    "boc": date(2026, 11, 5),  # termos do Banco relidos na hora (linha 396)
+    # bancos centrais nórdicos (linha 511; termos lidos na rodada recorrente de 29/10/2026)
+    "riksbank": date(2026, 10, 29),
+    "norges": date(2026, 10, 29),
+    "dst": date(2026, 10, 29),
+    "scb": date(2026, 10, 29),
+    "statfi": date(2026, 10, 29),
+    "statice": date(2026, 10, 29),
     "noaa": date(2026, 10, 22),
     # lote EUA (rodada 1 da pesquisa de dados escondidos)
     "treasury": date(2026, 10, 22),
@@ -98,6 +113,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # rodada 1 da pesquisa de dados escondidos (licencas-por-fonte.md): BCB e Tesouro Transparente
 # relidos em 22/10/2026, depois da auditoria; vale o dia mais novo
 TERMOS_LIDOS_EM |= dict.fromkeys(("bcb", "tesouro"), date(2026, 10, 22))
+# fontes pouco visíveis (ADR 0124): rodapés do gov.br da Sudeco e da Sudam lidos em 04/11/2026; a
+# família "divida" fica sem data porque os termos dos sites dos PDFs não foram lidos um a um
+TERMOS_LIDOS_EM |= dict.fromkeys(("sudeco", "sudam"), date(2026, 11, 4))
 # lote setoriais Brasil (licencas-por-fonte.md): as licenças lidas na rodada 3 (ANS, ANAC), na
 # rodada 1 (EPE, INEP, Senatran, INPI, ANEEL e Comex Stat); Anatel e ANP seguem o balanço prévio de
 # 14/10/2026 (licença declarada no conjunto do dados.gov.br)
@@ -108,11 +126,23 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 TERMOS_LIDOS_EM |= dict.fromkeys(("anatel", "anp"), date(2026, 10, 14))
 # Ficha Clara, licenças e registros: a licença declarada no conjunto do dados.gov.br (CC BY), como a
 # da Anatel; robots.txt e termos dos portais ainda não lidos (`COLETA_E_GUARDA`: não lida)
-TERMOS_LIDOS_EM |= dict.fromkeys(
-    ("anvisa", "mapa", "anm", "ancine"), date(2026, 10, 29)
-)
+TERMOS_LIDOS_EM |= dict.fromkeys(("mapa", "anm", "ancine"), date(2026, 10, 29))
+# linha 860: Anvisa lida de novo em 12/11/2026 (ficha CC Attribution no dados.gov.br, sem robots.txt, página de
+# dados abertos do gov.br: "livremente usá-los, reutilizá-los e redistribuí-los", no máximo creditar a autoria)
+TERMOS_LIDOS_EM["anvisa"] = date(2026, 11, 12)
 # Ficha Clara, incentivos: a licença dita no portal do MME ("Outra (Aberta)", sem nome)
 TERMOS_LIDOS_EM["mme"] = date(2026, 10, 29)
+# linhas 658 e 688: robots.txt e licença dos CKAN de GO (CC BY), MS (CC BY no conjunto; uso a confirmar) e
+# SP capital (CC0) lidos em 05/11/2026; GO e MS: Disallow /api/ e Crawl-Delay 10; SP: Disallow /
+TERMOS_LIDOS_EM |= dict.fromkeys(("goias", "msestado", "spcapital"), date(2026, 11, 5))
+# linha 578: benefícios fiscais da SEFAZ-PE; licença CC BY lida em 03/11/2026, robots.txt (Disallow /api/,
+# Crawl-Delay 10) em 05/11/2026
+TERMOS_LIDOS_EM["sefazpe"] = date(2026, 11, 5)
+# linha 755: dívida ativa da Sefa-PR; o portal não tem robots.txt (404) nem termos de uso da lista, lido em 06/11/2026
+TERMOS_LIDOS_EM["sefapr"] = date(2026, 11, 6)
+TERMOS_LIDOS_EM["esdados"] = date(2026, 11, 6)  # CC BY no CKAN do ES (linha 755)
+# linha 755: dívida ativa da SEF-MG; sem robots.txt (404) nem termos de uso da lista, só a base legal (CTN 198 §3º II), lido em 06/11/2026
+TERMOS_LIDOS_EM["sefmg"] = date(2026, 11, 6)
 # lote licitações e contratos (licencas-por-fonte.md, rodada 4, lido em 22/10/2026)
 TERMOS_LIDOS_EM |= dict.fromkeys(
     ("seges", "comprasgov", "transferegov", "pncp", "tcu", "govmg", "govsc"),
@@ -152,6 +182,12 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 # lote patentes e marcas (licencas-por-fonte.md, rodada 4): EPO e WIPO lidos em 22/10/2026; o INPI já
 # tem a data da rodada 1
 TERMOS_LIDOS_EM |= dict.fromkeys(("epo", "wipo"), date(2026, 10, 22))
+# lote Europa e RBA (linha 512): licenças lidas na fonte primária em 29/10/2026 (pesquisa recorrente, tema 2);
+# o SNB só ganha a marca não comercial (aviso do site), sem coleta
+TERMOS_LIDOS_EM |= dict.fromkeys(
+    ("statat", "statbel", "cbs", "cso", "ines", "istat", "rba", "snb"),
+    date(2026, 10, 29),
+)
 # lote acervos históricos (rodada 4, linha 292): IPEADATA sem termos publicados, lido em 22/10/2026
 TERMOS_LIDOS_EM |= dict.fromkeys(("ipea",), date(2026, 10, 22))
 # base de CNPJ (família "rfb", fonte `rfb-cnpj`): ficha do conjunto lida em 20/10/2026 e rodapé em
@@ -254,6 +290,22 @@ FONTES_LIDAS_PELO_APP: dict[str, tuple[str, str]] = {
     "fmi": ("src/commodities/painel_de_precos.py", "FMI"),  # preços de referência
 }
 
+# tabela do catálogo que nenhuma tela, relatório ou rota da API lê ainda (ela existe na base e na porta
+# de dados, mas não chega ao usuário): não conta para o selo "em uso" da página Dados (linha 663). Quem
+# ligar uma tela a ela tira o nome daqui; um teste procura o nome em `src/`, `telas/` e `web/src/`.
+TABELAS_SEM_LEITOR: frozenset[str] = frozenset(
+    {
+        "faostat_cafe",  # FAOSTAT: café
+        "processos",  # DJEN: carga e conferência no servidor, sem tela
+        "processos_comunicacoes",
+        "processos_partes",
+        "processos_nas_notas",
+        # DataJud: só uso interno (`coletas.FONTES_SO_INTERNAS`); nenhuma tela pode ler, nunca
+        "processos_datajud",
+        "processos_datajud_movimentos",
+    }
+)
+
 Uso = Literal["em_uso", "guardada"]
 
 
@@ -275,12 +327,16 @@ def _fontes_da_familia(familia: str) -> list[str]:
 
 
 def _licencas_do_catalogo(catalogo: dict) -> set[str]:
-    return {t["licenca"] for t in catalogo["tabelas"].values()}
+    return {
+        t["licenca"]
+        for nome, t in catalogo["tabelas"].items()
+        if nome not in TABELAS_SEM_LEITOR
+    }
 
 
 def uso_da_familia(familia: str, catalogo: dict) -> Uso:
-    """ "em_uso" se algum número do TickerLab sai da família: tabela do catálogo com a licença de uma
-    coleta dela, uso citado sem cobrança (`USOS_SEM_COBRANCA`) ou módulo do app que a lê."""
+    """ "em_uso" se algum número do TickerLab sai da família: tabela do catálogo que alguma tela lê
+    (`TABELAS_SEM_LEITOR` fica de fora) com a licença de uma coleta dela, uso citado sem cobrança (`USOS_SEM_COBRANCA`) ou módulo do app que a lê."""
     no_catalogo = _licencas_do_catalogo(catalogo)
     if any(licenca_da_fonte(f) in no_catalogo for f in _fontes_da_familia(familia)):
         return "em_uso"

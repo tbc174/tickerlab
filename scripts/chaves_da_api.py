@@ -9,11 +9,19 @@ Comandos: `criar-organizacao`, `conceder-direito`, `suspender-direito`, `reativa
 `reativar-organizacao`, `ver` (chaves pelo prefixo, direitos vigentes e consumo do mês) e, para todas
 as organizações de uma vez, `suspender-conjunto`, `reativar-conjunto` e `conjuntos-suspensos`.
 
+Membros (ADR 0128, Emenda 1): `vincular-membro` e `desvincular-membro` ligam a conta de quem entra no
+app à organização, pelo e-mail que ela **confirmou** num login (conta sem e-mail confirmado, ou e-mail
+confirmado por mais de uma conta, é recusada). A tela com login só mostra pessoa física do cadastro da
+Receita a membro de organização com o direito `pessoa_na_tela` (finalidade `analise`) vigente, dado
+pelo `conceder-direito` e tirado pelo `suspender-direito`. A saída e a auditoria levam só o id da conta.
+
 Só roda para quem está em `TICKERLAB_ADMINS` **e** é administrador no banco (já entrou no app pelo
 Google); `--admin` é dispensável quando a lista tem um e-mail só. Cada comando é uma transação.
 A chave nova sai **uma vez**, no stdout, depois do commit: não vai para log, arquivo nem
 auditoria (a auditoria leva só ids e o prefixo). Saída 0 deu certo, 1 nada mudou ou erro, 2 recusa
 de quem pede ou argumento inválido.
+
+Roda: manual no servidor (registro na pasta privada); citado em administracao_das_chaves.py.
 """
 
 import argparse
@@ -24,17 +32,21 @@ from datetime import UTC, date, datetime
 
 import sqlalchemy as sa
 
-from src.administracao import PermissaoNegadaError, exigir_admin
+from src.administracao import (
+    PermissaoNegadaError,
+    admin_do_servidor,
+    ator_do_servidor,
+)
 from src.administracao_das_chaves import ERROS_ESPERADOS
-from src.autenticacao import VARIAVEL_DOS_ADMINS, emails_de_admin
+from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.banco import chaves_da_api as cb
+from src.banco import membros_da_organizacao as mb
 from src.banco.conexao import criar_engine
 from src.banco.modelo import (
     FINALIDADES_DA_ORGANIZACAO,
     MOTIVOS_DA_SUSPENSAO,
     PLANOS_DA_API,
 )
-from src.banco.usuarios import buscar_por_email
 from src.chaves_da_api import ChaveNova
 from src.configuracao import url_do_banco
 
@@ -48,34 +60,6 @@ class NadaMudouError(Exception):
 def _hoje() -> date:
     # o mesmo dia (UTC) que a medição do consumo usa
     return datetime.now(UTC).date()
-
-
-def _escolher_admin(pedido: str | None) -> str:
-    """O e-mail de quem pede: precisa estar em `TICKERLAB_ADMINS` (a lista do servidor)."""
-    lista = emails_de_admin()
-    if not lista:
-        raise PermissaoNegadaError(f"{VARIAVEL_DOS_ADMINS} está vazia neste servidor.")
-    if pedido is None:
-        if len(lista) > 1:
-            raise PermissaoNegadaError(
-                f"{VARIAVEL_DOS_ADMINS} tem mais de um e-mail: diga qual com --admin."
-            )
-        return lista[0]
-    email = pedido.strip().lower()
-    if email not in lista:
-        raise PermissaoNegadaError(f"Este e-mail não está em {VARIAVEL_DOS_ADMINS}.")
-    return email
-
-
-def _ator(conexao: sa.Connection, email: str) -> uuid.UUID:
-    """O id do administrador, conferido no banco (a lista sozinha não basta)."""
-    usuario = buscar_por_email(conexao, email)
-    if usuario is None:
-        raise PermissaoNegadaError(
-            "Nenhum administrador com este e-mail no banco: entre no app pelo Google antes."
-        )
-    exigir_admin(conexao, usuario.id)
-    return usuario.id
 
 
 def _mudou(
@@ -221,6 +205,33 @@ def _reativar_conjunto(
     )
 
 
+def _vincular_membro(
+    conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
+) -> str:
+    membro = mb.vincular_membro(
+        conexao,
+        organizacao_id=args.organizacao,
+        usuario_id=mb.conta_do_email_confirmado(conexao, args.email),
+        ator_id=ator,
+    )
+    return f"Membro vinculado: conta {membro.usuario_id}"
+
+
+def _desvincular_membro(
+    conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
+) -> str:
+    # pelo id, tirar um membro nunca depende de o e-mail dele continuar confirmado e único
+    conta = args.conta or mb.conta_do_email_confirmado(conexao, args.email)
+    mudou = mb.desvincular_membro(
+        conexao, organizacao_id=args.organizacao, usuario_id=conta, ator_id=ator
+    )
+    return _mudou(
+        mudou,
+        f"Membro desvinculado: conta {conta}",
+        "a conta não é membro desta organização",
+    )
+
+
 def _conjuntos_suspensos(
     conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID
 ) -> str:
@@ -265,6 +276,11 @@ def _ver(conexao: sa.Connection, args: argparse.Namespace, ator: uuid.UUID) -> s
             f"  {d.id}  {d.conjunto}  {d.finalidade}  até {d.vigente_ate or 'sem fim'}"
             for d in cb.direitos_vigentes(conexao, organizacao.id, hoje)
         ),
+    ]
+    membros = mb.listar_membros(conexao, organizacao.id)
+    linhas += [
+        f"Membros (contas com login): {len(membros)}",
+        *(f"  {m.usuario_id}  desde {m.vinculado_em:%Y-%m-%d}" for m in membros),
     ]
     consumo = cb.consumo_do_mes(conexao, organizacao.id, hoje)
     linhas.append(
@@ -341,7 +357,22 @@ def _montar_argumentos() -> argparse.ArgumentParser:
     com_organizacao(
         comando("reativar-organizacao", _reativar_organizacao, "as chaves voltam")
     )
-    com_organizacao(comando("ver", _ver, "chaves, direitos e consumo do mês"))
+    com_organizacao(comando("ver", _ver, "chaves, direitos, membros e consumo do mês"))
+    ajuda_do_email = "e-mail que a pessoa confirmou ao entrar no app"
+    com_organizacao(
+        comando(
+            "vincular-membro", _vincular_membro, "a conta passa a ser da organização"
+        )
+    ).add_argument("--email", required=True, help=ajuda_do_email)
+    quem_sai = com_organizacao(
+        comando("desvincular-membro", _desvincular_membro, "a conta deixa de ser")
+    ).add_mutually_exclusive_group(required=True)
+    quem_sai.add_argument("--email", help=ajuda_do_email)
+    quem_sai.add_argument(
+        "--conta",
+        type=uuid.UUID,
+        help="id da conta (o `ver` mostra): tira o membro mesmo se o e-mail mudou",
+    )
 
     suspender_conjunto = comando(
         "suspender-conjunto",
@@ -368,7 +399,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     motor = criar_engine(url_do_banco())
     try:
         with motor.begin() as conexao:
-            ator = _ator(conexao, _escolher_admin(args.admin))
+            ator = ator_do_servidor(conexao, admin_do_servidor(args.admin))
             texto = args.funcao(conexao, args, ator)
     except PermissaoNegadaError as erro:
         print(f"Recusado: {erro}", file=sys.stderr)

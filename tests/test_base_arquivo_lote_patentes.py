@@ -93,7 +93,7 @@ def test_toda_fonte_do_lote_tem_licenca_marca_data_e_destino():
 def test_as_tres_familias_estao_representadas_com_a_marca_de_cada_uma():
     assert {f.id.split("-", 1)[0] for f in lote.fontes()} == FAMILIAS
     esperada = {
-        "inpi": Marca.A_CONFIRMAR,
+        "inpi": Marca.VENDAVEL,  # risco assumido (ADR 0122)
         "epo": Marca.VENDAVEL,
         "wipo": Marca.USO_INTERNO,
     }
@@ -150,7 +150,7 @@ def test_lgpd_depositante_so_fica_se_o_documento_for_cnpj_de_quatorze_digitos():
         "ACME FOREIGN",
         "SEM INFORMACAO",
         "12345678901",
-        "123.456.789-09",
+        "888.000.000-46",
         "***123456***",
     ):
         assert pessoa not in saida, pessoa
@@ -249,7 +249,7 @@ def test_csv_do_inpi_com_marca_de_ordem_de_bytes_e_lido_normalmente():
         ("12345678000190", True),
         ("12.345.678/0001-90", True),
         ("***123456***", False),
-        ("123.456.789-09", False),
+        ("888.000.000-46", False),
         ("", False),
         ("N/D", False),
     ],

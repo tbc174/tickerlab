@@ -12,6 +12,8 @@ A CVM limita os downloads por endereço: uma pausa entre os pedidos e, à primei
 documento, a coleta para sem erro e continua na próxima rodada. Roda de hora em hora fora dos minutos
 da rotulagem por IA (que baixa do mesmo sistema). Recusa rodar sem a versão do código (exigência 13
 da ADR 0055).
+
+Roda: manual (python -m scripts.coletar_ratings_pdf); sem uso registrado em 05/11/2026.
 """
 
 import argparse

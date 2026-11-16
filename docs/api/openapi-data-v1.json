@@ -1,0 +1,4246 @@
+{
+  "components": {
+    "schemas": {
+      "Error": {
+        "properties": {
+          "detail": {
+            "description": "o código do erro, em inglês",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LoteDeEmpresas": {
+        "description": "O corpo do lote: até 100 CNPJs e um `known_at` para todos.",
+        "properties": {
+          "cnpjs": {
+            "items": {},
+            "title": "Cnpjs",
+            "type": "array"
+          },
+          "known_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known At"
+          }
+        },
+        "required": [
+          "cnpjs"
+        ],
+        "title": "LoteDeEmpresas",
+        "type": "object"
+      },
+      "LoteDeFundos": {
+        "description": "O corpo do lote: até 100 CNPJs, um `known_at` e um `assumed_return` para todos.",
+        "properties": {
+          "assumed_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assumed Return"
+          },
+          "cnpjs": {
+            "items": {},
+            "title": "Cnpjs",
+            "type": "array"
+          },
+          "known_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known At"
+          }
+        },
+        "required": [
+          "cnpjs"
+        ],
+        "title": "LoteDeFundos",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "TickerLab Data API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/data/v1/buyers": {
+      "get": {
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal\nque não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em\n`unavailable_signals`: a lista não diz nada sobre ele.",
+        "operationId": "compradores_do_setor_data_v1_buyers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cnae",
+            "required": true,
+            "schema": {
+              "title": "Cnae",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Years"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Compradores Do Setor Data V1 Buyers Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Compradores Do Setor"
+      }
+    },
+    "/data/v1/catalog": {
+      "get": {
+        "description": "O que esta chave pode pedir hoje: conjuntos, campos, licença e atribuição de cada fonte.",
+        "operationId": "catalogo_data_v1_catalog_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Catalogo Data V1 Catalog Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano"
+          }
+        },
+        "summary": "Catalogo"
+      }
+    },
+    "/data/v1/companies": {
+      "get": {
+        "description": "Busca de empresas (só pessoa jurídica: sem MEI nem empresário individual) por atividade (CNAE),\nUF, município, porte, natureza jurídica, situação, abertura, matriz, capital social (`capital_min`,\n`capital_max`) e número mínimo de estabelecimentos ativos (`branches_min`), no retrato da Receita que\nvalia em `known_at`. Registros na Anvisa: `anvisa_active_min` e `anvisa_total_min` (de 1 em diante)\nfiltram pela contagem do tipo `anvisa_type` (`cosmetics`, `health_products`, `sanitizers`; sem tipo,\n`products`, a soma desses três; medicamentos e alimentos entram quando a licença deles for lida); a\ncontagem sai em `anvisa_registrations_active` e `anvisa_registrations_total`, com fonte e dia do retrato.\n`sort` ordena por `capital`, `branches` ou `anvisa` (registros ativos; `-` na frente é decrescente); sem\nele, por CNPJ. Capital, estabelecimentos e registros são sinais aproximados de porte, não faturamento. Pelo menos um\nfiltro; 50 por página (máximo 100); `next_cursor` traz a seguinte.",
+        "operationId": "busca_de_empresas_data_v1_companies_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cnae",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Cnae",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "State",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "municipality",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Municipality",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Size",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "legal_nature",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Legal Nature",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "registration_status",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Registration Status",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "opened_before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opened Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "opened_after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Opened After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "head_office",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head Office"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capital_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capital Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "capital_max",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Capital Max"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branches_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branches Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_active_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Active Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "anvisa_total_min",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anvisa Total Min"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Busca De Empresas Data V1 Companies Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cursor"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cursor`: `cursor` que não veio da página anterior desta rota"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Busca De Empresas"
+      }
+    },
+    "/data/v1/companies/batch": {
+      "post": {
+        "description": "O mesmo de `/companies/{cnpj}` para cada CNPJ; conta um pedido por CNPJ válido e distinto.",
+        "operationId": "lote_de_empresas_data_v1_companies_batch_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoteDeEmpresas"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Lote De Empresas Data V1 Companies Batch Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_batch"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_batch`: o lote está vazio ou passa de 100 CNPJs"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Lote De Empresas"
+      }
+    },
+    "/data/v1/companies/{cnpj}": {
+      "get": {
+        "description": "A situação cadastral do estabelecimento na Receita como era em `known_at` (o retrato mensal mais\nnovo já público); MEI, empresário individual e o que não é empresa saem `not_available`. O campo do\ncadastro que não foi consultado (a situação, o nome, o Simples) vem em `unavailable_registration_fields`,\ncom o aviso em `limits`.",
+        "operationId": "empresa_data_v1_companies__cnpj__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Empresa Data V1 Companies  Cnpj  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/assets": {
+      "get": {
+        "description": "Os ativos físicos da empresa como eram em `known_at`, um bloco por base aberta de agência. Hoje sai um\nbloco: os contratos de exploração e produção de petróleo e gás da ANP (`oil_gas_contracts`), com a parte\nda empresa em cada um. Mineração (barragens e royalties da ANM) ainda não sai, e `not_covered` diz isso.\nO bloco diz se achou a empresa, a fonte e o dia do dado mais novo; `not_covered` diz o que a rota não\ntraz. A lista vai até o limite de linhas do plano (`truncated`). MEI, empresário individual e o que não é\nempresa saem `not_available`.",
+        "operationId": "ativos_da_empresa_data_v1_companies__cnpj__assets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Ativos Da Empresa Data V1 Companies  Cnpj  Assets Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Ativos Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/comparables": {
+      "get": {
+        "description": "Os comparáveis da companhia aberta como eram em `known_at`: as companhias do mesmo grupo de setores\n(pelo setor do FCA), cada uma com os números do último DFP já entregue (receita, EBITDA, lucro, dívida\nlíquida e as razões), e a mediana de cada razão entre os pares. O número ou a razão que o portão não\nlibera para a organização vem em `unavailable_figures`: os pares e as medianas não dizem nada sobre ele.\nEmpresa sem FCA no dia, MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "operationId": "comparaveis_da_empresa_data_v1_companies__cnpj__comparables_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Comparaveis Da Empresa Data V1 Companies  Cnpj  Comparables Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Comparaveis Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/deck": {
+      "get": {
+        "description": "O perfil da empresa (o mesmo de `/companies/{cnpj}/profile`, com o mesmo contrato `profiles`) como\ndeck `.pptx`: o cadastro e as entregas à CVM, com a fonte e o dia de cada tabela, as fontes e os\nlimites. Conta na quota como o JSON.",
+        "operationId": "deck_da_empresa_data_v1_companies__cnpj__deck_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": {}
+            },
+            "description": "o deck (.pptx)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Deck Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/events": {
+      "get": {
+        "description": "Os eventos da empresa como eram em `known_at`, do mais novo ao mais velho: cada documento entregue à\nCVM pelo IPE (`ipe_filing`: fato relevante, comunicado, assembleia...) e cada troca de auditor\n(`auditor_change`). `types` filtra; a página vai até `limit` linhas (sem ele, até o limite do plano; o\nplano é o teto) e `next_cursor` traz a seguinte. Um tipo pedido que não está disponível para a organização\nvem em `unavailable_event_types` (não foi consultado: a lista não diz nada sobre ele); se nenhum tipo pedido\nestá, a resposta é `not_available`, como para MEI, empresário individual e o que não é empresa.",
+        "operationId": "eventos_da_empresa_data_v1_companies__cnpj__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Types",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Eventos Da Empresa Data V1 Companies  Cnpj  Events Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj",
+                        "invalid_cursor",
+                        "invalid_event_type"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ; `invalid_cursor`: `cursor` que não veio da página anterior desta rota; `invalid_event_type`: `types` com um tipo de evento que não existe"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Eventos Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/financials": {
+      "get": {
+        "description": "As DFP e os ITR da companhia como eram em `known_at`: um valor por conta e período, com o documento,\na versão e a origem; `period_end` traz só o período que termina nesse dia. O documento que a organização\nnão tem vai em `unavailable_filings` (sem as linhas dele não é \"não entregou\"), com o aviso em `limits`.",
+        "operationId": "demonstracoes_da_empresa_data_v1_companies__cnpj__financials_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period End"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Demonstracoes Da Empresa Data V1 Companies  Cnpj  Financials Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Demonstracoes Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/links": {
+      "get": {
+        "description": "Os vínculos da empresa como eram em `known_at`, de 1 a 3 saltos (`depth`): de quem ela era controlada,\ncoligada ou participada e quem ela controlava (`subsidiary_of`, `affiliate_of`, `investee_of`, pelo FRE) e\na firma que a auditava (`audits`, pelo FCA). `types` filtra; a lista vai até o limite de linhas do plano\n(`truncated`). O tipo pedido que não está disponível para a organização não foi consultado e vem em\n`unavailable_link_types` (os `limits` não falam da fonte dele); se nenhum tipo pedido está disponível, a\nresposta é `not_available`. MEI, empresário individual e o que não é empresa saem `not_available`.",
+        "operationId": "vinculos_da_empresa_data_v1_companies__cnpj__links_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Types",
+              "type": "array"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Vinculos Da Empresa Data V1 Companies  Cnpj  Links Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj",
+                        "invalid_link_type",
+                        "invalid_depth"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ; `invalid_link_type`: `types` com um tipo de vínculo que não existe; `invalid_depth`: `depth` fora de 1 a 3"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Vinculos Da Empresa"
+      }
+    },
+    "/data/v1/companies/{cnpj}/profile": {
+      "get": {
+        "description": "O perfil da empresa como era em `known_at`: o cadastro na Receita (o mesmo de `/companies/{cnpj}`)\ne, da companhia aberta, cada DFP e ITR que ela devia até o dia, com o prazo da CVM, a entrega e a\nsituação da entrega. O documento (DFP, ITR) que não foi consultado vem em `unavailable_filings`: a lista\nde entregas não diz nada sobre ele. O campo do cadastro que não foi consultado (a situação cadastral, o\nSimples) vem em `unavailable_registration_fields`. MEI, empresário individual e o que não é empresa saem\n`not_available`.",
+        "operationId": "perfil_da_empresa_data_v1_companies__cnpj__profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Perfil Da Empresa Data V1 Companies  Cnpj  Profile Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Perfil Da Empresa"
+      }
+    },
+    "/data/v1/credit/batch": {
+      "post": {
+        "description": "O mesmo de `/credit/{cnpj}` para cada CNPJ (os sacados de uma carteira, por exemplo); conta um\npedido por CNPJ válido e distinto.",
+        "operationId": "lote_de_credito_data_v1_credit_batch_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoteDeEmpresas"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Lote De Credito Data V1 Credit Batch Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_batch"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_batch`: o lote está vazio ou passa de 100 CNPJs"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Lote De Credito"
+      }
+    },
+    "/data/v1/credit/{cnpj}": {
+      "get": {
+        "description": "Os fatos da ficha de crédito da empresa (cedente ou sacado) como eram em `known_at`, cada um com a\nfonte e o dia em que ficou público; fatos, sem regra, nota nem opinião. MEI, empresário individual e\no que não é empresa saem `not_available`.",
+        "operationId": "ficha_de_credito_data_v1_credit__cnpj__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Ficha De Credito Data V1 Credit  Cnpj  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Ficha De Credito"
+      }
+    },
+    "/data/v1/funds/batch": {
+      "post": {
+        "description": "O mesmo de `/funds/{cnpj}` para cada CNPJ; conta um pedido por CNPJ válido e distinto.",
+        "operationId": "lote_de_fundos_data_v1_funds_batch_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoteDeFundos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Lote De Fundos Data V1 Funds Batch Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_batch"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_batch`: o lote está vazio ou passa de 100 CNPJs"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Lote De Fundos"
+      }
+    },
+    "/data/v1/funds/{cnpj}": {
+      "get": {
+        "description": "Taxas, custo da taxa e carteira do fundo como eram em `known_at`; o custo só com `assumed_return`.\nO bloco pedido que a organização não tem vai em `unavailable_sections` (a carteira vazia não é \"sem\nposição\"), com o aviso em `limits`.",
+        "operationId": "fundo_data_v1_funds__cnpj__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnpj",
+            "required": true,
+            "schema": {
+              "title": "Cnpj",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assumed_return",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assumed Return"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Fundo Data V1 Funds  Cnpj  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at",
+                        "invalid_cnpj",
+                        "invalid_assumed_return"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro; `invalid_cnpj`: o CNPJ do endereço não é um CNPJ; `invalid_assumed_return`: `assumed_return` não é um número ou está fora do plausível"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "service_unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+          }
+        },
+        "summary": "Fundo"
+      }
+    },
+    "/data/v1/research/news": {
+      "get": {
+        "description": "As fontes que a pesquisa provou nos últimos `days` dias (padrão 7, até 30): cada uma com o órgão\npúblico, a data, o trecho literal e o sha256 do original. Só o que tem prova gravada; sem nada novo, a\nlista vem vazia.",
+        "operationId": "novidades_da_pesquisa_data_v1_research_news_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Days"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Novidades Da Pesquisa Data V1 Research News Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_days"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_days`: `days` fora de 1 a 30"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          }
+        },
+        "summary": "Novidades Da Pesquisa"
+      }
+    },
+    "/data/v1/sectors": {
+      "get": {
+        "description": "Os setores que a última noite gravou, com o dia dela; não serve dado (não gasta a quota do mês).",
+        "operationId": "lista_de_setores_data_v1_sectors_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Lista De Setores Data V1 Sectors Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano"
+          }
+        },
+        "summary": "Lista De Setores"
+      }
+    },
+    "/data/v1/sectors/{key}": {
+      "get": {
+        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a\norganização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,\ncom o aviso em `limits`.",
+        "operationId": "setor_data_v1_sectors__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Setor Data V1 Sectors  Key  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          }
+        },
+        "summary": "Setor"
+      }
+    },
+    "/data/v1/sectors/{key}/deck": {
+      "get": {
+        "description": "O setor (o mesmo de `/sectors/{key}`, com o mesmo contrato `sectors` e o mesmo corte do plano) como\ndeck `.pptx`: a concentração, a parte de cada companhia e quem são, com a fonte e o dia de cada\ntabela, as fontes e os limites. Conta na quota como o JSON.",
+        "operationId": "deck_do_setor_data_v1_sectors__key__deck_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known At"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": {}
+            },
+            "description": "o deck (.pptx)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url",
+                        "invalid_known_at"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho; `invalid_known_at`: `known_at` no futuro"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "not_available"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`not_available`: nada a servir: o CNPJ não existe na base, não é empresa (MEI, empresário individual), o contrato ou o direito de redistribuir não cobre, ou a tabela não está pronta; a resposta não diz qual (D2.2)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited",
+                        "monthly_quota_exceeded"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano; `monthly_quota_exceeded`: passou da quota do mês do plano (o lote inteiro volta, sem ler nenhum CNPJ)"
+          }
+        },
+        "summary": "Deck Do Setor"
+      }
+    },
+    "/data/v1/usage": {
+      "get": {
+        "description": "O consumo do mês da própria organização, os limites do plano e o que falta da quota.",
+        "operationId": "consumo_data_v1_usage_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Consumo Data V1 Usage Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "api_key_in_url"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`api_key_in_url`: a chave veio na URL; ela vai só no cabeçalho"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "invalid_api_key"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`invalid_api_key`: chave ausente, errada ou revogada, ou organização suspensa (o motivo não sai)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "enum": [
+                        "rate_limited"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "description": "`rate_limited`: passou do limite de pedidos por minuto do plano"
+          }
+        },
+        "summary": "Consumo"
+      }
+    }
+  }
+}

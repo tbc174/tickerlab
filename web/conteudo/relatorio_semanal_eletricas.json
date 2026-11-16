@@ -53,17 +53,7 @@
     },
     {
       "fonte": "nenhuma coletada ainda",
-      "kpi": "PLD e CMO",
-      "motivo": "A base ainda não tem este número."
-    },
-    {
-      "fonte": "nenhuma coletada ainda",
-      "kpi": "Curtailment",
-      "motivo": "A base ainda não tem este número."
-    },
-    {
-      "fonte": "nenhuma coletada ainda",
-      "kpi": "Capacidade instalada",
+      "kpi": "CMO",
       "motivo": "A base ainda não tem este número."
     },
     {

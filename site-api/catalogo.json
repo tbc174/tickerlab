@@ -1,0 +1,246 @@
+{
+  "assets": {
+    "fontes": {
+      "anp-concessionarios": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)"
+    },
+    "campos": [
+      "ambiente",
+      "bacia",
+      "bid",
+      "fase",
+      "nome_fantasia",
+      "numero_do_contrato",
+      "operador",
+      "participacao_pct"
+    ]
+  },
+  "buyers": {
+    "fontes": {
+      "cvm-fidc-base": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fre": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "Tipo_Fundo",
+      "cnae_principal",
+      "data_entrada",
+      "data_inicio_atividade",
+      "participacao",
+      "razao_social",
+      "referencia",
+      "tipo",
+      "uf"
+    ]
+  },
+  "companies": {
+    "fontes": {
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "data_exclusao_simples",
+      "data_opcao_simples",
+      "data_situacao_cadastral",
+      "matriz",
+      "mes_do_retrato",
+      "mes_do_retrato_do_cadastro",
+      "motivo_situacao",
+      "natureza_juridica",
+      "optante_simples",
+      "razao_social",
+      "situacao_cadastral"
+    ]
+  },
+  "comparables": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "cnpj",
+      "divida_liquida",
+      "divida_liquida_sobre_ebitda",
+      "ebitda",
+      "empresa",
+      "exercicio",
+      "grupo_de_setores",
+      "lucro_liquido",
+      "margem_ebitda",
+      "margem_liquida",
+      "patrimonio_liquido",
+      "receita",
+      "roe",
+      "setor"
+    ]
+  },
+  "credit": {
+    "fontes": {
+      "cvm-fidc": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "carteira_dos_fundos_em_que_cede",
+      "fatos_relevantes_12_meses",
+      "fundos_em_que_cede",
+      "maior_inadimplencia_dos_fundos_em_que_cede",
+      "maior_participacao_como_cedente",
+      "situacao_cadastral_na_receita",
+      "situacao_especial_na_receita"
+    ]
+  },
+  "events": {
+    "fontes": {
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "anos_com_o_anterior",
+      "anterior",
+      "categoria",
+      "efetiva_em",
+      "link",
+      "novo",
+      "protocolo",
+      "referencia",
+      "tipo"
+    ]
+  },
+  "financials": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-itr": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "ate",
+      "conta",
+      "demonstracao",
+      "descricao",
+      "documento",
+      "fim",
+      "grupo",
+      "inicio",
+      "origem",
+      "referencia",
+      "valor",
+      "versao"
+    ]
+  },
+  "funds": {
+    "fontes": {
+      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-cda-recente": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-cda": "ODbL (dados abertos da CVM; citar a fonte)"
+    },
+    "campos": [
+      "classe",
+      "codigo",
+      "com_taxa",
+      "competencia",
+      "data_do_patrimonio_liquido",
+      "emissor",
+      "ficou_com_a_taxa",
+      "fracao_do_resultado",
+      "isin",
+      "nome",
+      "patrimonio_liquido",
+      "quantidade",
+      "sem_taxa",
+      "situacao",
+      "taxa_administracao_pct_ao_ano",
+      "taxa_performance_pct",
+      "texto_taxa_administracao",
+      "texto_taxa_performance",
+      "tipo",
+      "valor"
+    ]
+  },
+  "links": {
+    "fontes": {
+      "cvm-hist-fca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-fre": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "aconteceu_em",
+      "ate",
+      "mes_do_retrato_do_cadastro",
+      "participacao",
+      "razao_social",
+      "tipo"
+    ]
+  },
+  "profiles": {
+    "fontes": {
+      "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
+      "cvm-hist-itr": "ODbL (dados abertos da CVM; citar a fonte)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "data_exclusao_simples",
+      "data_opcao_simples",
+      "data_situacao_cadastral",
+      "dias_uteis_de_atraso",
+      "documento",
+      "matriz",
+      "mes_do_retrato",
+      "mes_do_retrato_do_cadastro",
+      "motivo_situacao",
+      "natureza_juridica",
+      "optante_simples",
+      "prazo",
+      "primeira_entrega",
+      "razao_social",
+      "referencia",
+      "situacao_cadastral",
+      "situacao_da_entrega"
+    ]
+  },
+  "prospecting": {
+    "fontes": {
+      "anvisa-produtos": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
+      "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
+    },
+    "campos": [
+      "capital_social",
+      "cnae_principal",
+      "data_inicio_atividade",
+      "matriz",
+      "municipio",
+      "n_estabelecimentos",
+      "natureza_juridica",
+      "porte",
+      "razao_social",
+      "registros_anvisa_ativos",
+      "registros_anvisa_total",
+      "situacao_cadastral",
+      "uf"
+    ]
+  },
+  "sectors": {
+    "fontes": {
+      "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "aneel-samp": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "ans-beneficiarios": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "bcb-ifdata": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "cvm-cadastros": "ODbL (dados abertos da CVM; citar a fonte)",
+      "susep-ses": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas"
+    },
+    "campos": [
+      "ano",
+      "cnpj",
+      "cr4",
+      "delta_hhi",
+      "empresa",
+      "faixa",
+      "hhi",
+      "meses",
+      "motivo",
+      "participacao",
+      "participantes",
+      "por_entidade",
+      "total",
+      "ultimo_mes",
+      "valor"
+    ]
+  }
+}

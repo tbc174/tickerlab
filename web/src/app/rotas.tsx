@@ -9,14 +9,21 @@ import { navegador } from "./navegador";
 import { Backtest } from "./telas/Backtest";
 import { BoasVindasDoBeta } from "./telas/BoasVindasDoBeta";
 import { BuscaPorCnpj } from "./telas/BuscaPorCnpj";
+import { EncontrarEmpresas } from "./telas/EncontrarEmpresas";
+import { FichaDaEmpresa } from "./telas/FichaDaEmpresa";
 import { Comparar } from "./telas/Comparar";
+import { CompararEmpresas } from "./telas/CompararEmpresas";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
 import { MapaDoCafe } from "./telas/MapaDoCafe";
 import { MeusDados } from "./telas/MeusDados";
+import { Conectar } from "./telas/Conectar";
+import { DadosECobertura } from "./telas/DadosECobertura";
+import { OQueMudou } from "./telas/OQueMudou";
 import { PainelDoCafe } from "./telas/PainelDoCafe";
 import { Planos } from "./telas/Planos";
+import { Perguntar } from "./telas/Perguntar";
 import { PrecosDeReferencia } from "./telas/PrecosDeReferencia";
 import { RelatorioDoSetor } from "./telas/RelatorioDoSetor";
 import { RelatorioEmpresa } from "./telas/RelatorioEmpresa";
@@ -41,6 +48,12 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   planos: (pagina) => <Planos pagina={pagina} />,
   relatorio_empresa: (pagina) => <RelatorioEmpresa pagina={pagina} />,
   busca_por_cnpj: (pagina) => <BuscaPorCnpj pagina={pagina} />,
+  ficha_da_empresa: (pagina) => <FichaDaEmpresa pagina={pagina} />,
+  encontrar_empresas: (pagina) => <EncontrarEmpresas pagina={pagina} />,
+  comparar_empresas: (pagina) => <CompararEmpresas pagina={pagina} />,
+  o_que_mudou: (pagina) => <OQueMudou pagina={pagina} />,
+  dados_e_cobertura: (pagina) => <DadosECobertura pagina={pagina} />,
+  conectar: (pagina) => <Conectar pagina={pagina} />,
   relatorio_do_setor: (pagina) => <RelatorioDoSetor pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
@@ -48,6 +61,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   boas_vindas_beta: (pagina) => <BoasVindasDoBeta pagina={pagina} />,
   mapa_do_cafe: (pagina) => <MapaDoCafe pagina={pagina} />,
   painel_do_cafe: (pagina) => <PainelDoCafe pagina={pagina} />,
+  perguntar: (pagina) => <Perguntar pagina={pagina} />,
   // o Pulse é o Workspace: o Início do app novo
   pulse: () => <Navigate to="/" replace />,
 };

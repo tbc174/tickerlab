@@ -18,9 +18,11 @@ from src.banco.pdfs_originais import (
     pdfs_guardados,
     pode_guardar,
 )
+from src.banco.usuarios import esta_valendo
 from src.planos import limites_do
 from telas.compartilhar import compartilhar_pdf
 from telas.comum import PAGINAS_DO_MENU, PERIODOS_DO_TOPO
+from telas.conta.guarda import so_com_a_conta_valendo
 from telas.relatorios.estudio import NOMES_DOS_MODELOS, _aplicar_secoes
 
 ABRIR_O_RELATORIO_DA_EMPRESA = "biblioteca_abrir_relatorio_empresa"
@@ -71,6 +73,7 @@ def _reabrir(relatorio):
     )
 
 
+@so_com_a_conta_valendo
 def _excluir(usuario, relatorio_id):
     try:
         with obter_engine().begin() as conexao:
@@ -96,6 +99,8 @@ def _versoes(itens):
 def _pdf_original(usuario_id, relatorio_id):
     """Lê o PDF guardado só na hora do clique (a lista não carrega os arquivos)."""
     with obter_engine().connect() as conexao:
+        if not esta_valendo(conexao, usuario_id):  # conta bloqueada ou apagada
+            raise PermissionError("Conta bloqueada ou apagada: o download não sai.")
         pdf = baixar_pdf_original(conexao, usuario_id, relatorio_id)
     if pdf is None:  # venceu entre a tela e o clique, ou o hash não conferiu
         logging.getLogger(__name__).error("PDF original indisponível no download")

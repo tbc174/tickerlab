@@ -11,7 +11,7 @@
       "titulo": "Não quer aceitar? Baixe ou apague os seus dados"
     },
     "titulo": "Antes de começar",
-    "versao": "2026-10-22.13"
+    "versao": "2026-11-14.15"
   },
   "areas": [
     {
@@ -20,13 +20,26 @@
       "icone": "inicio",
       "paginas": [
         "inicio",
+        "perguntar",
         "pulse"
       ],
       "rotulo": "Início"
     },
     {
+      "chave": "empresas",
+      "frase": "Estude uma empresa pelo CNPJ: encontre, abra a ficha, compare e veja o setor.",
+      "icone": "empresas",
+      "paginas": [
+        "encontrar_empresas",
+        "ficha_da_empresa",
+        "comparar_empresas",
+        "relatorio_do_setor"
+      ],
+      "rotulo": "Empresas"
+    },
+    {
       "chave": "ativo",
-      "frase": "Entenda um ativo: preço, risco, a empresa e quem tem a ação.",
+      "frase": "Entenda um ativo da bolsa: preço, risco, a empresa e quem tem a ação.",
       "icone": "ativo",
       "paginas": [
         "visao_geral",
@@ -41,28 +54,22 @@
         "comparar",
         "relatorio"
       ],
-      "rotulo": "Ativo"
+      "rotulo": "Companhias abertas"
     },
     {
-      "chave": "estrategias",
-      "frase": "Teste regras de compra e venda no passado, com custos.",
-      "icone": "estrategias",
+      "chave": "mais",
+      "frase": "Regras testadas no passado, com custos, e o que você acompanha: teses, carteira, alertas, juros e inflação.",
+      "icone": "mais",
       "paginas": [
+        "dados_e_cobertura",
+        "conectar",
         "backtest",
         "ranking",
         "carteira",
         "experimentos",
         "regimes",
         "aprendizado",
-        "pares"
-      ],
-      "rotulo": "Estratégias"
-    },
-    {
-      "chave": "acompanhar",
-      "frase": "O que você acompanha: acontecimentos, teses, carteira, alertas, juros e inflação.",
-      "icone": "acompanhar",
-      "paginas": [
+        "pares",
         "research",
         "diario_de_teses",
         "carteira_b3",
@@ -70,7 +77,6 @@
         "precos_de_referencia",
         "simulador_de_trava",
         "busca_por_cnpj",
-        "relatorio_do_setor",
         "newsletter",
         "carteira_research",
         "alertas",
@@ -79,13 +85,14 @@
         "mapa_do_cafe",
         "painel_do_cafe"
       ],
-      "rotulo": "Acompanhar"
+      "rotulo": "Mais"
     },
     {
       "chave": "conta",
       "frase": "O que é seu: simulações guardadas, plano e privacidade.",
       "icone": "conta",
       "paginas": [
+        "o_que_mudou",
         "simulacoes",
         "meus_dados",
         "planos",
@@ -495,6 +502,12 @@
       ]
     }
   },
+  "base": {
+    "fontes": 49,
+    "ligadas_pelo_cnpj": 152,
+    "orgaos": 31,
+    "tabelas": 186
+  },
   "comparacao": {
     "atalhos": [
       {
@@ -862,6 +875,78 @@
       }
     ]
   },
+  "menu": [
+    {
+      "chave": "inicio",
+      "icone": "inicio",
+      "novo": false,
+      "paginas": [
+        "inicio"
+      ],
+      "rotulo": "Início",
+      "secundario": false
+    },
+    {
+      "chave": "perguntar",
+      "icone": "perguntar",
+      "novo": true,
+      "paginas": [
+        "perguntar"
+      ],
+      "rotulo": "Perguntar",
+      "secundario": false
+    },
+    {
+      "chave": "empresas",
+      "icone": "empresas",
+      "novo": false,
+      "paginas": [
+        "encontrar_empresas",
+        "ficha_da_empresa",
+        "comparar_empresas"
+      ],
+      "rotulo": "Empresas",
+      "secundario": false
+    },
+    {
+      "chave": "setores",
+      "icone": "setores",
+      "novo": false,
+      "paginas": [
+        "relatorio_do_setor"
+      ],
+      "rotulo": "Setores",
+      "secundario": false
+    },
+    {
+      "chave": "monitorar",
+      "icone": "monitorar",
+      "novo": false,
+      "paginas": [],
+      "rotulo": "Monitorar",
+      "secundario": false
+    },
+    {
+      "chave": "dados",
+      "icone": "dados",
+      "novo": false,
+      "paginas": [
+        "dados_e_cobertura"
+      ],
+      "rotulo": "Dados e cobertura",
+      "secundario": true
+    },
+    {
+      "chave": "conectar",
+      "icone": "conectar",
+      "novo": false,
+      "paginas": [
+        "conectar"
+      ],
+      "rotulo": "Conectar",
+      "secundario": true
+    }
+  ],
   "painel": {
     "frase_do_cvar": "Perda média nos piores dias (CVaR {confianca}%): {cvar}. Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o passado, não um limite de perda.",
     "itens": [

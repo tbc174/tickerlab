@@ -95,6 +95,8 @@ COLUNAS_DE_VALOR = {
     "ITR": {
         "TrimestreAtual": ("ultimo", "trimestre"),
         "AcumuladoExercicioAtual": ("ultimo", "acumulado"),
+        # o fluxo de caixa e o valor adicionado trazem o acumulado do ano com outro nome
+        "AcumuladoAtualExercicio": ("ultimo", "acumulado"),
         "TrimestreAnterior": ("penultimo", "trimestre"),
         "AcumuladoExercicioAnterior": ("penultimo", "acumulado"),
         "ExercicioAnterior": ("penultimo", "fim_do_ano"),

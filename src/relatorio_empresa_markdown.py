@@ -106,14 +106,18 @@ def _tabela(chave: str, linhas: list[dict]) -> list[str]:
         "",
         *(
             "- "
-            + "; ".join(
-                f"{como_texto_de_dado(c)}: {como_texto_de_dado(v)}"
-                for c, v in zip(cabecalho, linha, strict=False)
-            )
+            + "; ".join(_celula(c, v) for c, v in zip(cabecalho, linha, strict=False))
             for linha in corpo
         ),
         "",
     ]
+
+
+def _celula(coluna: object, valor: object) -> str:
+    """`coluna: valor`; o link da fonte original sai como endereço (só http(s)), não como texto."""
+    if coluna == dossie.ROTULO_DO_LINK:
+        return f"{como_texto_de_dado(coluna)}: {_endereco(str(valor))}"
+    return f"{como_texto_de_dado(coluna)}: {como_texto_de_dado(valor)}"
 
 
 def _lista_de_destaques(linhas: list[dict]) -> list[str]:

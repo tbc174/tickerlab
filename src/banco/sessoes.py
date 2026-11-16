@@ -71,7 +71,7 @@ def abrir(
 def conta_da_sessao(
     conexao: sa.Connection, token: str, agora: datetime | None = None
 ) -> Usuario | None:
-    """A conta ativa da sessão aberta e não vencida desse token; None em qualquer outro caso."""
+    """A conta ativa e não bloqueada da sessão aberta e não vencida desse token; None no resto."""
     token = (token or "").strip()
     if not token or len(token) > TAMANHO_MAXIMO_DO_TOKEN:
         return None
@@ -99,7 +99,9 @@ def conta_da_sessao(
             .where(sessoes_de_login.c.id == linha.id)
             .values(ultimo_uso=agora)
         )
-    return buscar_por_id(conexao, linha.usuario_id)
+    conta = buscar_por_id(conexao, linha.usuario_id)
+    # a conta bloqueada no incidente não usa sessão nenhuma, nem a aberta numa corrida com o bloqueio
+    return None if conta is None or conta.bloqueada_em is not None else conta
 
 
 def encerrar(conexao: sa.Connection, token: str, agora: datetime | None = None) -> bool:

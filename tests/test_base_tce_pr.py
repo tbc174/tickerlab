@@ -1,7 +1,7 @@
 """PIT do TCE-PR (base/tce_pr.py): só os atributos da lista, nenhuma pessoa, e só o que mudou.
 
 Recortes com o formato real do PIT (atributos e codificação medidos em 17/10/2026), mas com nomes e
-CPF inventados: o CPF 123.456.789-09 tem DV válido e é o exemplo clássico de documentação, nunca de
+CPF inventados: o CPF com DV válido é montado na hora (`tests/ajudantes_de_cpf.py`), nunca o de
 uma pessoa daqui. CNPJ 11.222.333/0001-81: exemplo com DV válido; ...-82, o mesmo com DV errado.
 """
 
@@ -21,9 +21,10 @@ from base import cnpj, tce_pr
 from base.arquivo import coleta, fontes
 from base.arquivo.coleta import Resposta
 from base.arquivo.obter import TextoDoXml, decodificar_xml
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, OUTRO_CPF_DE_TESTE
 
 AGORA = datetime(2026, 10, 18, 9, tzinfo=UTC)  # domingo, 6h em Brasília
-CPF_INVENTADO = "00012345678909"  # como o PIT manda: 14 posições, zeros à esquerda
+CPF_INVENTADO = "000" + CPF_DE_TESTE  # como o PIT manda: 14 posições, zeros à esquerda
 CNPJ_BOM = "11222333000181"
 CNPJ_DV_ERRADO = "11222333000182"
 # raiz antiga (00.000.208, como as dos bancos mais velhos), com os DVs certos: passa como CNPJ e como CPF
@@ -108,7 +109,7 @@ def test_licitante_pf_vira_linha_anonima():
     assert "nrDocParticipanteLicitacao" not in linhas[1]
     assert 'tipoDocumento="cnpj_dv_errado"' in linhas[2]
     assert CNPJ_DV_ERRADO not in participantes
-    assert "12345678909" not in participantes and "Fulano" not in participantes
+    assert CPF_DE_TESTE not in participantes and "Fulano" not in participantes
 
 
 def test_vencedor_sem_sigla_decide_pelo_dv():
@@ -128,7 +129,7 @@ def test_vencedor_sem_sigla_decide_pelo_dv():
         ("CPF", CPF_INVENTADO, ("cpf", None)),
         ("CPF", CNPJ_BOM, ("cpf", None)),  # a fonte diz CPF: vale a fonte
         (None, CPF_INVENTADO, ("cpf", None)),  # sem sigla: o DV do CPF decide
-        (None, "12345678909", ("cpf", None)),
+        (None, CPF_DE_TESTE, ("cpf", None)),
         # 5 zeros ou mais à esquerda passam nos dois DVs: a raiz do Banco do Brasil fica como CNPJ
         # (uma por agência; 39 dos 40 casos do ensaio), as outras saem sem o número
         (None, "00000000000191", ("cnpj", "00000000000191")),
@@ -362,13 +363,13 @@ def test_xml_acima_do_limite_e_falha_e_nao_vai_para_o_acervo(monkeypatch):
 
 # --- PR 2: o tema `Despesa` (empenho, liquidação, pagamento e estornos) ---------------------------
 
-CPF_DO_CREDOR = "00012345678909"
+CPF_DO_CREDOR = "000" + CPF_DE_TESTE
 EMPENHOS = (
     "<root>"
     '<Empenho cdIBGE="410740" idPessoa="12277" idEmpenho="901" nrEmpenho="1" nrAnoEmpenho="2025" '
     'dtEmpenho="2025-03-10T00:00:00" vlEmpenho="5000.00" cdFuncao="12" cdElemento="30" '
     f'sgDocCredor="CNPJ        " nrDocCredor="{CNPJ_BOM}" nmCredor="Empresa Inventada Ltda" '
-    'nmOrdernador="Beltrano Inventado" sgDocOrdenador="CPF" nrDocOrdernador="00098765432100" '
+    f'nmOrdernador="Beltrano Inventado" sgDocOrdenador="CPF" nrDocOrdernador="000{OUTRO_CPF_DE_TESTE}" '
     'dsHistorico="Pagamento da consulta do paciente Fulano de Tal" nmOrgao="Saúde Inventada" '
     'ultimoEnvioSIMAMNesteExercicio="2025/09" DataReferencia="2026/09 "/>'
     '<Empenho cdIBGE="410740" idPessoa="12277" idEmpenho="902" nrEmpenho="2" nrAnoEmpenho="2025" '
@@ -437,7 +438,7 @@ def test_credor_pf_nunca_chega_ao_acervo():
     assert re.findall(r'idPagamento="(\d+)"', pagamentos) == ["8001"]
     assert "idEstornoPagamento" not in xmls["2025_410740_EmpenhoPagamentoEstorno.xml"]
     tudo = "".join(xmls.values())
-    assert "12345678909" not in tudo and "Fulano" not in tudo
+    assert CPF_DE_TESTE not in tudo and "Fulano" not in tudo
 
 
 def test_despesa_sem_ordenador_liquidante_responsavel_historico():

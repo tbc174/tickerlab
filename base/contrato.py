@@ -52,7 +52,7 @@ def contrato_da_tabela(nome: str, tabela: Tabela) -> dict:
         },
         "chaves": list(tabela.chaves),
         "datas": dict(tabela.datas),
-        "sinonimos_de_tempo": sinonimos_de_tempo(tabela),
+        "sinonimos_de_tempo": sinonimos_de_tempo(tabela, nome),
         "historico_desde": tabela.historico_desde,
         "granularidade_do_publico_em": tabela.granularidade_do_publico_em,
         "licenca": licenca_da_fonte(tabela.familia_da_fonte),
@@ -62,6 +62,11 @@ def contrato_da_tabela(nome: str, tabela: Tabela) -> dict:
         "atraso": tabela.atraso,
         # só quando há: o catálogo das tabelas que nunca renomearam nada não muda
         **({"renomeadas": dict(tabela.renomeadas)} if tabela.renomeadas else {}),
+        **(
+            {"linhas_de_pessoa": tabela.linhas_de_pessoa}
+            if tabela.linhas_de_pessoa
+            else {}
+        ),
     }
 
 

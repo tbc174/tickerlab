@@ -25,6 +25,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from base.cpf_no_texto import mascarar_cpf
+
 URL_DO_IPE = (
     "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{ano}.zip"
 )
@@ -139,7 +141,7 @@ def ler_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
                 "empresa": linha.Nome_Companhia.strip(),
                 "categoria": linha.Categoria.strip(),
                 "tipo": linha.Tipo.strip(),
-                "assunto": linha.Assunto.strip(),
+                "assunto": mascarar_cpf(linha.Assunto.strip()),
                 "rotulo": classe.rotulo,
                 "tema": classe.tema,
                 "materialidade": classe.materialidade,

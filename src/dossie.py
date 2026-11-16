@@ -72,9 +72,20 @@ TAMANHO_DO_ANO = (
 TAMANHO_DO_MES = 7  # "2025-12"
 TAMANHO_DO_DIA = 10  # "2025-12-31" (ou "2025-12-31T00:00:00", que perde a hora)
 FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
+# a coluna do link para o documento original, nas tabelas que o carregam (a tela a faz clicável, o
+# Markdown a escreve como endereço e o site a tira, porque já põe o link na última coluna)
+ROTULO_DO_LINK = "Fonte original"
+TAMANHO_DO_CODIGO_DO_ORIGINAL = (
+    12  # o começo do SHA-256 do original no acervo basta para achá-lo
+)
 
 TITULOS_DAS_TABELAS = {
+    "pld_mensal": "PLD médio por mês e submercado",
+    "curtailment_mensal": "Eólicas e solares: energia não gerada por ordem do operador",
+    "capacidade_por_tipo": "Capacidade instalada em operação, por tipo de usina",
     "pareceres_do_auditor": "Parecer do auditor nos últimos exercícios",
+    "pareceres_do_itr": "Revisão do auditor nos últimos ITRs",
+    "dmpl_por_exercicio": "Patrimônio líquido por componente (DMPL) nos últimos exercícios",
     "trocas_de_auditor": "Trocas de auditor",
     "controladas": "Controladas e coligadas no FRE mais recente",
     "controladoras": "Quem controla a companhia",
@@ -95,6 +106,9 @@ TITULOS_DAS_TABELAS = {
     "dfc_dva_por_exercicio": "DFC e DVA de cada exercício (DFP)",
     "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
     "comites": "Comitês no FRE mais recente",
+    "free_float_por_ano": "Free float e acionistas declarados em cada FRE",
+    "capital_social": "Capital social no FRE mais recente",
+    "empregados_do_fre": "Empregados no FRE mais recente",
     "remuneracao_por_exercicio": "Remuneração da administração por exercício",
     "remuneracao_por_orgao": "Remuneração no último exercício, por órgão",
     "remuneracao_da_diretoria_por_exercicio": "Remuneração da Diretoria Estatutária por exercício",
@@ -110,6 +124,8 @@ TITULOS_DAS_TABELAS = {
     "ma_por_ano": "Negócios de M&A por ano em que ficaram conhecidos",
     "ma_recentes": "Últimos negócios de M&A conhecidos",
     "registros_de_insolvencia": "Registros de insolvência e situação especial",
+    "inscricoes_na_divida_ativa": "Inscrições em dívida ativa da União, por retrato da PGFN",
+    "entregas_de_dfp_e_itr": "Entregas de DFP e ITR, com o prazo da CVM",
     "ligacoes_da_rede": "Ligações da companhia na rede",
     "identificadores_da_empresa": "Identificadores públicos da companhia",
 } | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
@@ -602,6 +618,10 @@ _PALAVRAS_COM_ACENTO = {
     "atribuicao": "atribuição",
     "estavel": "estável",
     "observacao": "observação",
+    "nao": "não",
+    "previdenciaria": "previdenciária",
+    "corresponsavel": "corresponsável",
+    "solidario": "solidário",
 }
 
 
@@ -614,6 +634,15 @@ def _codigo(valor: object) -> str:
     """Um código da base ("em_observacao_negativa") em português ("Em observação negativa")."""
     palavras = [_PALAVRAS_COM_ACENTO.get(p, p) for p in str(valor).split("_")]
     return " ".join(palavras).capitalize()
+
+
+def _codigo_do_original(valor: object) -> str:
+    """O começo do SHA-256 do original no acervo, o bastante para achá-lo sem tomar a linha.
+
+    É um código hexadecimal, não um nome: não passa pelo filtro de CPF (`_texto`), que cortaria por
+    acaso um trecho de onze dígitos que fechasse como CPF.
+    """
+    return str(valor)[:TAMANHO_DO_CODIGO_DO_ORIGINAL]
 
 
 def _escritor_da_unidade(unidade: str) -> Callable[[object], str]:
@@ -683,6 +712,28 @@ def _dia_ate_a_ficha(valor: object, gerado_em: datetime | None = None) -> str:
 # cada coluna de cada tabela da ficha: (coluna, rótulo, como escrever); o que não está aqui não sai
 Coluna = tuple[str, str, Any]
 COLUNAS: dict[str, list[Coluna]] = {
+    "pld_mensal": [
+        ("referencia", "Mês", mes),
+        ("submercado", "Submercado", lambda v: str(v).capitalize()),
+        ("pld", "PLD médio (R$/MWh)", lambda v: decimal(v, 2)),
+        ("disponivel_em", "Público em", dia),
+    ],
+    "curtailment_mensal": [
+        ("mes", "Mês", mes),
+        (
+            "tipo",
+            "Fonte",
+            lambda v: "Eólica" if v == "eolica" else "Solar fotovoltaica",
+        ),
+        ("mwh", "Energia não gerada (MWh)", inteiro),
+        ("disponivel_em", "Público em", dia),
+    ],
+    "capacidade_por_tipo": [
+        ("tipo_de_usina", "Tipo de usina", lambda v: str(v).capitalize()),
+        ("unidades", "Unidades", inteiro),
+        ("potencia_mw", "Potência efetiva (MW)", inteiro),
+        ("disponivel_em", "Última entrada em", dia),
+    ],
     "pareceres_do_auditor": [
         ("referencia", "Exercício", dia),
         ("versao", "Versão", inteiro),
@@ -690,6 +741,21 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("enfase", "Ênfase", _sim_ou_nao_do_parecer),
         ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
         ("disponivel_em", "Publicado em", dia),
+    ],
+    "pareceres_do_itr": [
+        ("referencia", "Trimestre", dia),
+        ("versao", "Versão", inteiro),
+        ("opiniao", "Conclusão", _opiniao_do_auditor),
+        ("enfase", "Ênfase", _sim_ou_nao_do_parecer),
+        ("continuidade_operacional", "Continuidade", _sim_ou_nao_do_parecer),
+        ("disponivel_em", "Publicado em", dia),
+    ],
+    "dmpl_por_exercicio": [
+        ("referencia", "Exercício", dia),
+        ("demonstracao", "Demonstração", _texto),
+        ("componente", "Componente", _texto),
+        ("valor", "Saldo final", reais),
+        ("publicado_em", "Publicado em", dia),
     ],
     "trocas_de_auditor": [
         ("efetiva_em", "Desde", dia),
@@ -813,6 +879,29 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("comite", "Comitê", _texto),
         ("membros", "Membros", inteiro),
     ],
+    "free_float_por_ano": [
+        ("ano", "FRE", _ano),
+        ("entregue_em", "Entregue em", dia),
+        ("assembleia_em", "Assembleia de", dia),
+        ("free_float", "Free float", fracao),
+        ("acoes_em_circulacao", "Ações em circulação", inteiro),
+        ("acionistas_pf", "Pessoas físicas", inteiro),
+        ("acionistas_pj", "Pessoas jurídicas", inteiro),
+        ("acionistas_institucionais", "Institucionais", inteiro),
+    ],
+    "capital_social": [
+        ("tipo_capital", "Capital", lambda v: str(v).capitalize()),
+        ("valor_capital", "Valor", reais),
+        ("acoes_ordinarias", "Ações ordinárias", inteiro),
+        ("acoes_preferenciais", "Ações preferenciais", inteiro),
+        ("acoes_total", "Total de ações", inteiro),
+    ],
+    "empregados_do_fre": [
+        ("recorte", "Recorte", _texto),
+        ("grupo", "Grupo", _texto),
+        ("total", "Empregados", inteiro),
+        ("mulheres", "Mulheres", inteiro),
+    ],
     "remuneracao_por_exercicio": [
         ("exercicio", "Exercício", _ano),
         ("total", "Total pago", reais),
@@ -837,6 +926,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("perspectiva", "Perspectiva", _codigo),
         ("acao", "Ação", _codigo),
         ("publico_em", "Publicado em", dia),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "ratings_janelas": [
         ("janela", "Período", _texto),
@@ -868,6 +958,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("publico_em", "Data", dia),
         ("especie", "Documento", _texto),
         ("assunto", "Assunto, como a empresa escreveu", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "assembleias_de_aperto": [
         ("publico_em", "Data", dia),
@@ -883,6 +974,7 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("publicado_em", "Data", dia),
         ("rotulo", "Documento", _texto),
         ("assunto", "Assunto, como a empresa escreveu", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "negocios_por_ano": [
         ("ano", "Ano", _ano),
@@ -908,6 +1000,36 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("veiculo", "Veículo", _texto),
         ("situacao", "Situação", _texto),
         ("contestacao", "Contestação da empresa", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+    ],
+    # virada de 5/11/2026 (fase 1): dívida ativa e entrega no prazo como fato datado, com a fonte ao
+    # lado; os rótulos evitam sigla no meio (a tela passa o cabeçalho por `capitalize`)
+    "inscricoes_na_divida_ativa": [
+        ("aconteceu_em", "Data do retrato", dia),
+        ("publico_em", "Público desde", dia),
+        ("tipo_divida", "Tipo de dívida", _codigo),
+        ("tipo_situacao", "Situação", _texto),
+        ("situacao_inscricao", "Situação da inscrição", _texto),
+        ("ajuizado", "Ajuizada", _sim_ou_nao),
+        ("inscricoes", "Inscrições", inteiro),
+        ("valor_consolidado", "Valor consolidado", reais),
+        ("regiao", "Região", _texto),
+        ("tipo_devedor", "Tipo de devedor", _codigo),
+        ("veiculo", "Veículo", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
+        ("origem", "Original no acervo", _codigo_do_original),
+    ],
+    "entregas_de_dfp_e_itr": [
+        ("documento", "Documento", _texto),
+        ("referencia", "Referência", dia),
+        ("prazo", "Prazo de entrega", dia),
+        ("primeira_entrega", "Primeira entrega", dia),
+        ("publico_em", "Público desde", dia),
+        ("dias_uteis_de_atraso", "Dias úteis de atraso", inteiro),
+        ("rotulo", "Rótulo", _texto),
+        ("regra", "Regra que deu o rótulo", _texto),
+        ("veiculo", "Veículo", _texto),
+        ("link", ROTULO_DO_LINK, _texto),
     ],
     "ligacoes_da_rede": [
         ("relacao", "Relação", _texto),
@@ -1072,9 +1194,13 @@ _DA_DFP = "DFP entregue à CVM: DRE, DFC e DVA, como eram públicas no dia (tabe
 _DO_MA = "negócios de M&A publicados por assessorias independentes (tabelas ma_assessorias, ma_partes, ma_negocios e ma_datas)"
 _DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
 _DO_PARECER = "relatório do auditor independente sobre a DFP entregue à CVM (tabela pareceres_dfp)"
+_DO_PARECER_DO_ITR = "revisão especial do auditor independente sobre o ITR entregue à CVM (tabela pareceres_itr)"
 FONTES_DOS_ITENS = {
     "parecer_opiniao": _DO_PARECER,
     "parecer_enfase": _DO_PARECER,
+    "parecer_itr_opiniao": _DO_PARECER_DO_ITR,
+    "parecer_itr_enfase": _DO_PARECER_DO_ITR,
+    "parecer_itr_continuidade": _DO_PARECER_DO_ITR,
     "parecer_continuidade": _DO_PARECER,
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
     "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
@@ -1103,6 +1229,9 @@ FONTES_DOS_ITENS = {
     "conselho_independentes": f"{_DO_FRE} (tabela fre_conselho)",
     "conselho_eleitos_por_minoritarios": f"{_DO_FRE} (tabela fre_conselho)",
     "comites": f"{_DO_FRE} (tabela fre_comites)",
+    "acoes_integralizadas": f"{_DO_FRE} (tabela fre_capital_social)",
+    "free_float": f"{_DO_FRE} (tabela fre_distribuicao_capital, item 15.7)",
+    "empregados": f"{_DO_FRE} (tabela fre_empregados)",
     "mulheres_no_conselho": f"{_DO_FRE} (tabela fre_diversidade)",
     "remuneracao_da_administracao": f"{_DO_FRE} (tabelas fre_remuneracao e fre_remuneracao_extremos)",
     "ebitda": _DA_DFP,
@@ -1319,6 +1448,9 @@ _COMPARACOES = (
         "fcf": _contra_o_ano_anterior("caixa_por_exercicio", "fcf", "exercicio"),
         "remuneracao_da_administracao": _contra_o_ano_anterior(
             "remuneracao_por_exercicio", "total", "exercicio"
+        ),
+        "free_float": _contra_o_ano_anterior(
+            "free_float_por_ano", "free_float", "ano", "no FRE de"
         ),
         "auditor_atual": _contra_o_auditor_anterior,
         "auditor_desde": _contra_o_auditor_anterior,

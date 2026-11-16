@@ -11,6 +11,8 @@ pôr o pedido na Central.
 
 A nota é o registro de que o aviso saiu: ela fica em `esperando/` depois de respondida, e o mesmo rascunho
 nunca ganha outra. Rascunho sem o JSON (gravado por último) não saiu inteiro e não é avisado.
+
+Roda: hook do Claude Code no PC (inicio_da_sessao.py).
 """
 
 import argparse

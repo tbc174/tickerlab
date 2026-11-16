@@ -24,6 +24,7 @@ from base.arquivo import (
     chirps_v3,
     cnj_tpu,
     contrapartes,
+    datajud,
     djen,
     finep,
     lote_acervos,
@@ -31,15 +32,23 @@ from base.arquivo import (
     lote_bcb,
     lote_brasil2,
     lote_cadastros,
+    lote_cadastros_bcb_antt,
     lote_clima,
     lote_commodities,
+    lote_commodities_oficiais,
     lote_cvm,
+    lote_divida_estadual,
+    lote_documentais,
     lote_eua,
+    lote_europa_rba,
     lote_licitacoes,
+    lote_nordicos,
+    lote_ordem_cronologica,
     lote_organismos,
     lote_patentes,
     lote_reguladores,
     lote_sec,
+    lote_sefaz_pe,
     lote_selic,
     lote_setoriais,
     lote_tesouro,
@@ -126,8 +135,11 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    **lote_commodities_oficiais.termos(),  # aviso legal da Comissão Europeia (DG AGRI, linha 396)
+    **lote_nordicos.termos(),  # Riksbank e Norges Bank (linha 511, 05/11/2026)
     **lote_organismos.termos(),  # BCE, Eurostat, BIS, NASA POWER e NOAA (rodada 1, 22/10/2026)
     **lote_eua.termos(),  # páginas de termos das agências dos EUA (lidas em 22/10/2026)
+    **lote_europa_rba.termos(),  # CBS, Istat e RBA (linha 512, 05/11/2026)
     **lote_licitacoes.termos(),  # sem vigia de termos neste lote (motivos em _SEM_VIGIA)
     **lote_cadastros.termos(),  # Wikidata, UE e OFSI (rodada 4, 22/10/2026)
     **lote_atencao.termos(),  # Querido Diário, Crossref, OpenAlex e Senado (rodada 4)
@@ -1193,7 +1205,7 @@ PRIMEIRO_ANO_DO_INMET = (
     2000  # as estações automáticas começam aí; zip por ano, ~100 MB nos recentes
 )
 CHIRPS_MENSAL = (
-    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/"
+    "https://data.chc.ucsb.edu/products/CHIRPS/v2.0/global_monthly/tifs/"
     "chirps-v2.0.{ano}.{mes:02d}.tif.gz"
 )
 PRIMEIRO_ANO_DO_CHIRPS = 1991  # início da normal climatológica de 1991–2020 (OMM)
@@ -1571,10 +1583,14 @@ FONTES: list[Fonte] = [
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY-SA, termos do site de 21/10/2026, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
+    *lote_nordicos.fontes(),  # Riksbank e Norges Bank: juros e câmbio (linha 511)
     *lote_organismos.fontes(),  # BCE, OCDE, Eurostat, BIS, FMI, Banco Mundial, NASA, NOAA, GLEIF
     # lote EUA (rodada 1 da pesquisa de dados escondidos, 22/10/2026): SEC, Fed, Tesouro, BLS, EIA,
     # OFR, NY Fed, TIC, USDA e Census, todos em domínio público e sem chave
     *lote_eua.fontes(),
+    # lote Europa e RBA (linha 512, licenças lidas em 29/10/2026): institutos de estatística da Áustria,
+    # Bélgica, Países Baixos, Irlanda, Espanha e Itália, e as tabelas próprias da RBA
+    *lote_europa_rba.fontes(),
     # lote SEC (rodada 4, 23/10/2026): mais conjuntos da Data Library, corretoras, Form ADV e os
     # pacotes diários do EDGAR (linha 201 da fila)
     *lote_sec.fontes(),
@@ -1592,11 +1608,15 @@ FONTES: list[Fonte] = [
     # e cada processo já ligado a uma companhia, pelo número (acha a comunicação que só intima a outra
     # parte; PR 1b)
     djen.fonte_dos_processos(),
+    # e cada um desses processos no DataJud, só para uso interno (PR 3; `coletas.FONTES_SO_INTERNAS`)
+    datajud.fonte(),
     # as classes processuais da TPU do CNJ, para o nome e o ramo da classe de cada processo (PR 1b)
     cnj_tpu.fonte(),
     # lote BCB e SICONFI da rodada 1 da pesquisa de dados escondidos (22/10/2026): Olinda, COSIF dos
     # bancos listados e as contas dos estados e capitais (linha 242 da fila)
     *lote_bcb.fontes(),
+    # lote 3 das 300 tabelas pelo CNPJ (linha 904): cadastros do Banco Central e da ANTT
+    *lote_cadastros_bcb_antt.fontes(),
     *lote_selic.fontes(),
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
@@ -1607,6 +1627,12 @@ FONTES: list[Fonte] = [
     # lote Brasil, segunda camada (22/10/2026): Portal da Transparência, BNDES, INSS e SUSEP, só CNPJ
     # e agregados (linhas 259, 260 e 262 da fila)
     *lote_brasil2.fontes(),
+    # benefícios fiscais de Pernambuco por CNPJ (SEFAZ-PE, CC BY; linha 578 da fila), um CSV por ano,
+    # sem a razão social; descoberta pela página porque o robots.txt fecha /api/
+    *lote_sefaz_pe.fontes(),
+    # dívida ativa estadual (Sefa-PR; linha 755 da fila): o ZIP do dia, só CNPJ e sem o nome
+    *lote_divida_estadual.fontes(),
+    *lote_ordem_cronologica.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),
@@ -1622,6 +1648,8 @@ FONTES: list[Fonte] = [
     # lote café, commodities e clima (linha 204): USDA PSD inteiro, FAOSTAT, I-CIP da OIC, séries e boletins da
     # CONAB, outras famílias do COT, CHIRTS, SPEI e SPI do CHC, normais do INMET e MapBiomas por bioma
     *lote_commodities.fontes(),
+    # commodities oficiais com licença aberta (linha 396): DG AGRI e, nos PRs seguintes, BCPI, Eurostat, SSB, REQ e DG ENER
+    *lote_commodities_oficiais.fontes(),
     # ponte da troca do CHIRPS v2 (acaba em dez/2026): a v3 `rnl` pela cópia Zarr do Hugging Face, que o
     # robots.txt do CHC não deixa coletar direto; fonte própria, nunca soma com a v2 (linha 126 da fila)
     *chirps_v3.fontes(),
@@ -1631,6 +1659,8 @@ FONTES: list[Fonte] = [
     # lote acervos históricos (rodada 4, linha 292): COTAHIST anual da B3, relatórios e SGS antigo do BCB,
     # FTP do IBGE, pacotes de dívida do Tesouro e IPEADATA; nenhuma fonte com pessoa física
     *lote_acervos.fontes(),
+    # fontes pouco visíveis (plano de 05/11/2026, ADR 0124): PDFs de dívida documental, FDCO e FDA
+    *lote_documentais.fontes(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

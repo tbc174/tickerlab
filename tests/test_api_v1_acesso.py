@@ -273,7 +273,7 @@ PAGINA_PAGA = paginas.Pagina(
     paginas.GRUPO_AVANCADO,
     ":material/lock:",
     "Só existe no teste.",
-    area=paginas.AREA_ESTRATEGIAS,
+    area=paginas.AREA_MAIS,
     recurso=PARES,
     contrato=paginas.Contrato("GET", ROTA_PAGA, (), "PagoDeTesteV1"),
 )

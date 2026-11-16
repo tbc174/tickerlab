@@ -4,6 +4,8 @@
 
 Lê cada Parquet de cada tabela, confere contra o dicionário e grava `conferencia_do_contrato` no manifesto
 ao lado (`base/reconferir.py`). Sem `--tabelas`, as da API. Saída 0 se todas passaram; 1 se alguma reprovou.
+
+Roda: manual (python -m scripts.reconferir_manifestos); sem uso registrado em 05/11/2026.
 """
 
 import argparse

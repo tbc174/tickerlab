@@ -1,4 +1,4 @@
-"""Administração: planos e papéis dos usuários (só para admins).
+"""Administração: planos, papéis e bloqueio das contas (só para admins).
 
 Saiu do `app.py` sem mudar comportamento. Regra de `telas/`: nenhum estado mutável no módulo
 (um módulo importado é do processo inteiro, isto é, de todos os usuários).
@@ -15,7 +15,7 @@ from src import exportacao_do_acervo as exp
 from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
 from src.autenticacao import emails_de_admin
 from src.banco.conexao import obter_engine
-from src.banco.modelo import PAPEIS, PLANOS
+from src.banco.modelo import MOTIVOS_DO_BLOQUEIO, PAPEIS, PLANOS
 from telas.comum import cabecalho_da_pagina
 from telas.conta.admin_chaves import secao_de_chaves
 
@@ -30,10 +30,16 @@ def _admin_aplicar(usuario, tipo):
         with obter_engine().begin() as conexao:
             if tipo == "plano":
                 adm.alterar_plano(conexao, usuario.id, alvo_id, valor)
-            else:
+            elif tipo == "papel":
                 adm.alterar_papel(
                     conexao, usuario.id, alvo_id, valor, emails_de_admin()
                 )
+            elif tipo == "bloqueio":
+                adm.bloquear_conta(
+                    conexao, usuario.id, alvo_id, st.session_state.get("admin_motivo")
+                )
+            else:
+                adm.desbloquear_conta(conexao, usuario.id, alvo_id)
     except (PermissaoNegadaError, OperacaoInvalidaError) as erro:
         st.toast(str(erro))
         return
@@ -94,6 +100,12 @@ def _quando(momento):
     return f"{momento:%d/%m/%Y %H:%M}" if momento else "—"
 
 
+def _bloqueio(linha):
+    if linha.bloqueada_em is None:
+        return "—"
+    return f"{_quando(linha.bloqueada_em)} ({linha.motivo_do_bloqueio})"
+
+
 def pagina_admin():
     cabecalho_da_pagina("admin")
     usuario = st.session_state.get("usuario")
@@ -136,6 +148,7 @@ def pagina_admin():
         st.dataframe(
             pd.DataFrame(
                 {
+                    "Id": [str(l.id) for l in linhas],
                     "Nome": [l.nome or "—" for l in linhas],
                     "E-mail": [l.email for l in linhas],
                     "Plano": [l.plano for l in linhas],
@@ -144,6 +157,7 @@ def pagina_admin():
                     "Simulações": [l.simulacoes for l in linhas],
                     "Criada em": [_quando(l.criado_em) for l in linhas],
                     "Último acesso": [_quando(l.ultimo_acesso) for l in linhas],
+                    "Bloqueada": [_bloqueio(l) for l in linhas],
                 }
             ),
             width="stretch",
@@ -159,7 +173,7 @@ def pagina_admin():
             ),
             key="admin_alvo",
         )
-        col_plano, col_papel = st.columns(2)
+        col_plano, col_papel, col_bloqueio = st.columns(3)
         with col_plano:
             st.selectbox("Plano", list(PLANOS), key="admin_plano")
             st.button(
@@ -176,8 +190,25 @@ def pagina_admin():
                 on_click=_admin_aplicar,
                 args=(usuario, "papel"),
             )
+        with col_bloqueio:
+            st.selectbox(
+                "Motivo do bloqueio", list(MOTIVOS_DO_BLOQUEIO), key="admin_motivo"
+            )
+            st.button(
+                "Bloquear conta",
+                key="admin_bloquear",
+                on_click=_admin_aplicar,
+                args=(usuario, "bloqueio"),
+            )
+            st.button(
+                "Desbloquear conta",
+                key="admin_desbloquear",
+                on_click=_admin_aplicar,
+                args=(usuario, "desbloqueio"),
+            )
         st.caption(
-            "Mudar o plano aqui não cria nem cancela assinatura no Stripe. Toda mudança "
+            "Mudar o plano aqui não cria nem cancela assinatura no Stripe. Bloquear (incidente) "
+            "encerra as sessões da conta na hora e para o login; não apaga nada. Toda mudança "
             "fica no registro abaixo."
         )
 

@@ -23,6 +23,8 @@ nunca vê um pela metade. Um pacote que não dá para montar não apaga o da noi
 
 Roda toda noite no servidor de casa: saída 0 tudo certo; 1 alguma falha (tabela que faltou, pacote
 que não saiu), com a última linha `FALHAS: ...` (vai para o aviso do Kuma), como os dossiês.
+
+Roda: cron de casa pelo gerar-pacotes-cafe.sh (todo dia às 6h50).
 """
 
 import argparse

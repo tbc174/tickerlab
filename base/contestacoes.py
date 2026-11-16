@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from base.contrapartes.cafe import palavras_vedadas_em
 from base.dossie import NOMES_DOS_REGISTROS
 from base.fidc import documento_de_empresa
+from base.palavras_vedadas import palavras_vedadas_em
 
 CAMINHO = Path(__file__).resolve().parent / "conferidas" / "contestacoes.csv"
 COLUNAS = ("cnpj", "registro", "aconteceu_em", "recebida_em", "texto")

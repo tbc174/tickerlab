@@ -16,6 +16,9 @@ de um endereço entra como uma coleta (`base/setoriais/revisoes.py`), e a tabela
 valor diferente, com o dia em que a revisão foi vista. Um Parquet por arquivo da fonte: o SAMP por ano
 (`aneel/<ano>`), a Anatel por CSV (`anatel/<nome do CSV>`), a ANS e a SUSEP por ano da competência
 (`ans/<ano>`, `susep/<ano>`).
+
+Roda: cron de casa pelo carga-serie4.sh (todo mês, dia 13, às 9h00) e pelo carga-cafe.sh (todo dia
+às 6h20, só o CFTC); outro script (carga_cafe.py); citado em dicionario.py.
 """
 
 import argparse
@@ -30,8 +33,10 @@ from typing import NamedTuple
 import pandas as pd
 import sqlalchemy as sa
 
+from base import cnpj_pela_ponte
+from base.cnpj_pela_ponte import ler_ponte
 from base.commodities import cftc_cot
-from base.parquet import gravar_com_versoes, gravar_se_mudou
+from base.parquet import gravar_com_versoes, gravar_se_mudou, ler_tabela
 from base.setoriais import (
     anac,
     anatel,
@@ -42,6 +47,7 @@ from base.setoriais import (
     antt_siade,
     ccee,
     comex_preco_medio,
+    comex_tabelas,
     ligacao,
     ons,
     ons_capacidade,
@@ -98,6 +104,8 @@ class Revisada(NamedTuple):
     foto: bool = (
         False  # sem data própria: o 1º valor vale desde o dia da coleta que o trouxe
     )
+    fonte_dos_originais: str = ""  # tabela de apoio de outra fonte: de quem são os originais (vazio: a própria chave)
+    ponte: str = ""  # tabela da base (cadastro da fonte) que liga o código da fonte ao CNPJ (linha 904, lote 4)
 
 
 def _ano_do_samp(url: str) -> str | None:
@@ -127,12 +135,12 @@ REVISADAS = {
     ans.FONTE: Revisada(
         "ans", ans.CHAVE, ans.CARIMBOS, lambda url: "ans" if url == ans.URL else None,
         lambda c, _: ans.ler(c), ans.FONTE_DA_LIGACAO, "cd_operadora",
-        lambda t: t["beneficiarios"], por_ano=True,
+        lambda t: t["beneficiarios"], por_ano=True, ponte="ans_operadoras",
     ),
     susep.FONTE: Revisada(
         "susep", susep.CHAVE, (), lambda url: "susep" if url.endswith("#" + susep.ARQUIVO) else None,
         lambda c, _: susep.ler(c), susep.FONTE, "coenti", lambda t: t["premio_direto"],
-        por_ano=True,
+        por_ano=True, ponte="susep_cadastro",
     ),
     ons_restricao.FONTE: Revisada(
         "ons_restricao", list(ons_restricao.CHAVE), ons_restricao.CARIMBOS, ons_restricao.destino,
@@ -156,6 +164,16 @@ REVISADAS = {
     comex_preco_medio.FONTE: Revisada(
         "comex_preco_medio", list(comex_preco_medio.CHAVE), comex_preco_medio.CARIMBOS,
         comex_preco_medio.destino, comex_preco_medio.ler, "", "", lambda t: t["kg_liquido"],
+    ),
+    "comex_urf": Revisada(
+        "comex_urf", list(comex_tabelas.CHAVE_DA_URF), comex_tabelas.CARIMBOS,
+        comex_tabelas.destino_da_urf, comex_tabelas.ler_urf, "", "", lambda t: t["urf"].str.len(),
+        foto=True, fonte_dos_originais=comex_tabelas.FONTE_DOS_ORIGINAIS,
+    ),
+    "comex_via": Revisada(
+        "comex_via", list(comex_tabelas.CHAVE_DA_VIA), comex_tabelas.CARIMBOS,
+        comex_tabelas.destino_da_via, comex_tabelas.ler_via, "", "", lambda t: t["via"].str.len(),
+        foto=True, fonte_dos_originais=comex_tabelas.FONTE_DOS_ORIGINAIS,
     ),
 }  # fmt: skip
 
@@ -257,6 +275,28 @@ def _coletas(
     return origens, montar
 
 
+def _com_cnpj_da_ponte(
+    montar: Callable[[], pd.DataFrame],
+    origens: list[dict[str, str]],
+    revisada: Revisada,
+    base: Path,
+) -> tuple[Callable[[], pd.DataFrame], list[dict[str, str]]]:
+    """A montagem acrescida de `cnpj` e `cnpj_basico` pela ponte da fonte (`base/cnpj_pela_ponte.py`), e as
+    origens com a ponte: a tabela se refaz quando a ponte muda. Sem ponte na base, as colunas saem vazias."""
+    if not revisada.ponte:
+        return montar, origens
+    ponte, origens_da_ponte = ler_ponte(base / revisada.ponte, base, ler_tabela)
+
+    def com_cnpj() -> pd.DataFrame:
+        tabela, contagem = cnpj_pela_ponte.com_cnpj_da_ponte(
+            montar(), revisada.coluna_da_ligacao, ponte, cnpj_pela_ponte.CNPJ_E_RAIZ
+        )
+        log.info("%s: CNPJ pela ponte %s", revisada.pasta, contagem)
+        return tabela
+
+    return com_cnpj, [*origens, *origens_da_ponte]
+
+
 def _buracos_da_revisada(
     tabela: pd.DataFrame,
     fonte: str,
@@ -320,7 +360,9 @@ def carregar_revisada(
     urls = sorted(
         {
             lin.url
-            for lin in originais_mais_recentes(conexao, fonte)
+            for lin in originais_mais_recentes(
+                conexao, revisada.fonte_dos_originais or fonte
+            )
             if revisada.destino(lin.url)
         }
     )
@@ -328,6 +370,7 @@ def carregar_revisada(
     partes = []
     for url in urls:
         origens, montar = _coletas(conexao, url, revisada)
+        montar, origens = _com_cnpj_da_ponte(montar, origens, revisada, base)
         if revisada.por_ano:
             tabela = _gravar_por_ano(montar, pasta, origens, revisada.chave)
         else:

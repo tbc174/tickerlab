@@ -322,6 +322,25 @@ def test_hash_em_pedacos_e_o_mesmo_da_tabela_inteira(monkeypatch):
     )
 
 
+def test_guardar_versao_anterior_nao_deixa_a_tabela_sem_parquet(
+    tabela, tmp_path, monkeypatch
+):
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "cda" / "2025"
+    gravar_tabela(tabela, destino, ORIGENS, ["cnpj", "ano"])
+    original = destino.with_suffix(".parquet").read_bytes()
+    manifesto = destino.with_suffix(".json").read_bytes()
+
+    versao = parquet.guardar_versao_anterior(destino)
+
+    # a vigente segue no lugar, legível, até a troca atômica da nova
+    assert destino.with_suffix(".parquet").read_bytes() == original
+    assert conferir_tabela(destino.with_suffix(".parquet"))
+    # e a versão guardada é igual ao original
+    assert versao.with_name(versao.name + ".parquet").read_bytes() == original
+    assert versao.with_name(versao.name + ".json").read_bytes() == manifesto
+
+
 # --- lápide: oposição ou eliminação atendida regrava as versões sem a pessoa (plano, D7) ---------
 PESSOA, OUTRA = "P" + "1" * 20, "P" + "2" * 20
 EMPRESA_A, EMPRESA_B = "E" + "a" * 20, "E" + "b" * 20

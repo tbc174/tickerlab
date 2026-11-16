@@ -11,6 +11,8 @@ todo PR sai da mesma conta, então o CI só reconhece o agente pelo ramo. Este p
 Uso no CI (job "o que mudou", só em PR): `python3 scripts/portao_do_agente.py BASE`, com o ramo
 em `RAMO`, o evento em `ACAO` e os rótulos (JSON) em `ROTULOS`. Ramo que não é do agente passa
 sem olhar nada. Roda antes de instalar as dependências: só usa a biblioteca padrão.
+
+Roda: CI (testes.yml); hook do Claude Code no PC (fila_do_agente.py).
 """
 
 import json

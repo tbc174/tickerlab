@@ -1,0 +1,143 @@
+{
+  "tabela": "tce_pe_licitacoes",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "codigo_licitacao": {
+      "descricao": "Código do processo licitatório no TCE-PE",
+      "unidade": "texto"
+    },
+    "numero_processo": {
+      "descricao": "Número do processo",
+      "unidade": "texto"
+    },
+    "ano_processo": {
+      "descricao": "Ano do processo",
+      "unidade": "texto"
+    },
+    "numero_modalidade": {
+      "descricao": "Número da licitação na modalidade",
+      "unidade": "texto"
+    },
+    "ano_modalidade": {
+      "descricao": "Ano da licitação na modalidade",
+      "unidade": "texto"
+    },
+    "codigo_modalidade": {
+      "descricao": "Código da modalidade, como a fonte codifica",
+      "unidade": "texto"
+    },
+    "modalidade": {
+      "descricao": "Nome da modalidade, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "codigo_ug": {
+      "descricao": "Código da unidade gestora",
+      "unidade": "texto"
+    },
+    "unidade_gestora": {
+      "descricao": "Nome da unidade gestora (órgão público)",
+      "unidade": "texto"
+    },
+    "codigo_municipio": {
+      "descricao": "Código do município no TCE-PE",
+      "unidade": "texto"
+    },
+    "natureza": {
+      "descricao": "Natureza do objeto, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "fundamento_legal": {
+      "descricao": "Código do fundamento legal, como a fonte codifica",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação da licitação, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "estagio": {
+      "descricao": "Estágio da licitação, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "quantidade_licitantes": {
+      "descricao": "Quantidade de licitantes",
+      "unidade": "texto"
+    },
+    "link": {
+      "descricao": "Endereço do documento na fonte",
+      "unidade": "texto"
+    },
+    "data_edital": {
+      "descricao": "Dia da emissão do edital",
+      "unidade": "data (dia)"
+    },
+    "data_homologacao": {
+      "descricao": "Dia da publicação da homologação",
+      "unidade": "data (dia)"
+    },
+    "valor_estimado": {
+      "descricao": "Valor estimado do orçamento, em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "valor_adjudicado": {
+      "descricao": "Total adjudicado ao vencedor (a linha é a do licitante vencedor), em reais",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "tribunal": {
+      "descricao": "Tribunal de contas de origem: `pe`, `sp`, `ce` ou `rs`",
+      "unidade": "texto"
+    },
+    "tabela": {
+      "descricao": "Assunto da linha dentro do tribunal (contratos, aditivos, despesas)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do contratado ou fornecedor, só os 14 dígitos com o dígito verificador certo. Linha de pessoa física, de CPF ou de CNPJ inválido não entra; nome, endereço e texto livre nunca são gravados",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Dia do download. Nenhuma das fontes diz quando a linha ficou pública, então o dado só vale a partir do dia em que a coleta o viu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "codigo_licitacao",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "data_homologacao",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "data_edital": "a_conferir",
+    "data_homologacao": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-04",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "TCE-PE: licença não localizada; a confirmar, só interno (ADR 0102)",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": true,
+  "frequencia": "Anual, fatiado por ano e modalidade (um pedido por fatia, com pausa); refazer o ano corrente a cada trimestre",
+  "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
+}

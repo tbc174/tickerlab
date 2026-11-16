@@ -55,7 +55,9 @@ TEXTOS = [
     "motivo_do_descredenciamento",
 ]
 DATAS = ["registrada_em", "descredenciada_em"]
-VALORES = ["cnpj", *TEXTOS, *DATAS, "situacao"]
+# `consta` entra nos valores comparados: sem ele, o registro que sai do arquivo não vira a linha
+# `consta` falso e continua constando (linha 907)
+VALORES = ["cnpj", *TEXTOS, *DATAS, "situacao", "consta"]
 COLUNAS = [
     "id_na_fonte", "cnpj", "cnpj_basico", *TEXTOS, *DATAS, "situacao",
 ]  # fmt: skip

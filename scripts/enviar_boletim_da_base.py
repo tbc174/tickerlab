@@ -11,6 +11,8 @@ não ser com `--forcar`). Variáveis: `TICKERLAB_BOLETIM_PARA` (um endereço só
 `ANTHROPIC_API_KEY` (opcional), `TICKERLAB_BOLETIM_TAREFAS` (pasta das marcas `.ok`/`.falha`) e
 `TICKERLAB_BOLETIM_DIARIAS` (as tarefas diárias, separadas por espaço).
 Saída 0 enviado (ou já enviado hoje); 1 com uma linha `FALHAS: ...` (vai para o Kuma).
+
+Roda: cron de casa pelo boletim-da-base.sh (todo dia às 9h30).
 """
 
 import argparse

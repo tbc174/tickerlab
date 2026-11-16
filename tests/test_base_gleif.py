@@ -47,7 +47,7 @@ def test_cpf_e_empresario_individual_nunca_entram():
     ponte = gleif.ler_gleif(PAGINA)
     texto = ponte.astype(str).to_string()
     assert (
-        "529982247" not in texto and "FULANO" not in texto and "BELTRANO" not in texto
+        "999000003" not in texto and "FULANO" not in texto and "BELTRANO" not in texto
     )
 
 

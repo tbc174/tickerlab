@@ -7,6 +7,8 @@ O site carregava os TTF inteiros (~350 KB, uns 70% da primeira visita). Em WOFF2
 latim estendido (o português e nomes de fora, como Škoda e Ørsted), as duas ficam com ~86 KB; um
 caractere fora da faixa cai na fonte do sistema. Os TTF continuam em `static/fontes` para o PDF e o
 Streamlit. Rode de novo só quando trocar a versão de uma fonte, e faça o commit dos .woff2.
+
+Roda: manual (python -m scripts.gerar_fontes_web); coberto por test_site.py.
 """
 
 from pathlib import Path

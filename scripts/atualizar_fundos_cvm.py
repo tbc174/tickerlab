@@ -6,6 +6,8 @@
 Roda fora do app (no servidor, uma vez por dia); o app só lê. O arquivo de um mês sai cerca de 40
 dias depois e é refeito quando fundos atrasados entregam, por isso os meses recentes são lidos de
 novo a cada coleta (o mais novo substitui o guardado). Mês que ainda não existe é pulado.
+
+Roda: cron do VPS (todo dia às 7h40); citado em donos.py.
 """
 
 import argparse
