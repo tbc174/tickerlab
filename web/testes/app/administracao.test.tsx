@@ -193,7 +193,10 @@ describe("a Administração para o administrador", () => {
 
   it("sem organização nenhuma, diz isso e não pede painel", async () => {
     const { buscar } = abrir({ lista: () => respostaJson(200, { organizacoes: [] }) });
-    expect(await screen.findByText(/Nenhuma organização cadastrada/)).toBeTruthy();
+    // criar uma organização ainda é na tela antiga: a frase não pode mandar o administrador a um script
+    expect(
+      await screen.findByText(/Nenhuma organização cadastrada.*criar uma organização é na Administração antiga/),
+    ).toBeTruthy();
     expect(pedidosDaAdministracao(buscar)).toEqual([ROTA_DA_LISTA]);
   });
 
@@ -207,7 +210,9 @@ describe("a Administração para o administrador", () => {
     abrir();
     const link = await screen.findByRole("link", { name: "Abrir a Administração antiga" });
     expect(link.getAttribute("href")).toBe("/classico/admin");
-    expect(screen.getByText(/continuam na Administração antiga/)).toBeTruthy();
+    expect(
+      screen.getByText(/continuam na Administração antiga.*criar, suspender e reativar uma organização/),
+    ).toBeTruthy();
   });
 
   it("tem a Administração no menu da conta", async () => {

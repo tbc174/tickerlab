@@ -235,7 +235,9 @@ function Painel({ id }: { id: string }) {
 function Organizacoes({ organizacoes }: { organizacoes: OrganizacaoDaListaV1[] }) {
   const [escolhida, setEscolhida] = useState(organizacoes[0]?.id ?? "");
   if (organizacoes.length === 0) {
-    return <Vazio frase="Nenhuma organização cadastrada. Quem cria uma organização é o dono, pelo script." />;
+    return (
+      <Vazio frase="Nenhuma organização cadastrada. Por enquanto, criar uma organização é na Administração antiga." />
+    );
   }
   return (
     <>
@@ -278,7 +280,7 @@ function AdministracaoAberta() {
       />
       <p className="apagado">
         As contas do app, o registro de ações, os eventos de cobrança e o acervo continuam na Administração antiga,
-        assim como emitir, trocar e revogar chaves.
+        assim como criar, suspender e reativar uma organização e emitir, trocar e revogar chaves.
       </p>
       {lista.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando as organizações…" />}
       {lista.estado === "erro" && <Erro erro={lista.erro} />}
