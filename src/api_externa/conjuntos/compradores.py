@@ -53,6 +53,7 @@ from base.porta.rede import views
 from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.porta_compartilhada import lembrar
 
 CONJUNTO = "buyers"
 RECEITA, FRE, REGISTRO = "rfb-cnpj", "cvm-hist-fre", "cvm-fidc-base"
@@ -172,6 +173,9 @@ LIMITES = tuple(limites(SINAIS))
 TAMANHO_DO_CACHE = 64
 _CACHE: OrderedDict[tuple, "CompradoresServidos"] = OrderedDict()
 _TRAVA = threading.Lock()
+_EM_CURSO: dict[
+    tuple, threading.Lock
+] = {}  # pedidos sendo calculados (um só por chave de cada vez)
 TABELAS_LIDAS = (
     ESTABELECIMENTOS,
     EMPRESAS,
@@ -240,7 +244,15 @@ def cnae_do_parametro(cnae: str) -> str:
 
 def mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
     """O retrato da Receita mais novo já público no dia, o mesmo mês nas duas tabelas sem pessoa do CNPJ
-    (None se alguma ainda não tinha retrato público)."""
+    (None se alguma ainda não tinha retrato público). Lido uma vez por base e dia (3 a 6 s por pedido, linha 956)."""
+    return lembrar(
+        porta,
+        ("mes_do_retrato_compradores", como_era_em),
+        lambda: _ler_o_mes_do_retrato(porta, como_era_em),
+    )
+
+
+def _ler_o_mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
     meses = []
     for tabela in (ESTABELECIMENTOS, EMPRESAS):
         condicao = condicao_como_era(porta.colunas(tabela), tabela)
@@ -343,6 +355,24 @@ class LeitorDeCompradores:
         if not impressao:  # sem arquivos para vigiar o cache ficaria cego: não guarda
             return self._montar(pedido, como_era_em, sinais)
         chave = (pedido, como_era_em, self.linhas_maximas, sinais, impressao)
+        with _TRAVA:
+            vez = _EM_CURSO.setdefault(chave, threading.Lock())
+        # o mesmo pedido duas vezes ao mesmo tempo (o cliente desistiu aos 30 s e repetiu, ou duas telas) espera
+        # o primeiro terminar e lê do cache, em vez de refazer a conta (linha 956)
+        with vez:
+            try:
+                return self._do_cache_ou_montar(chave, pedido, como_era_em, sinais)
+            finally:
+                with _TRAVA:  # só depois de guardar: quem chega agora já acha o resultado no cache
+                    _EM_CURSO.pop(chave, None)
+
+    def _do_cache_ou_montar(
+        self,
+        chave: tuple,
+        pedido: PedidoDeCompradores,
+        como_era_em: date,
+        sinais: tuple[str, ...],
+    ) -> CompradoresServidos | None:
         with _TRAVA:
             guardado = _CACHE.get(chave)
             if guardado is not None:
@@ -515,12 +545,19 @@ class _Consulta:
         """A razão social e o dia em que ficou pública, no retrato do dia; quem não está ali não é PJ aqui."""
         if not raizes:
             return {}
+        # a lista vai no `IN` (e não numa junção): com a lista no filtro o DuckDB descarta os grupos de linhas do
+        # Parquet pelo mínimo e máximo da raiz e lê só o que sobra; juntando, lia a tabela inteira (linha 956:
+        # 18 s contra 7,5 s para 400 raízes, na máquina do servidor)
+        parametros: dict[str, object] = {"mes": self.mes}
+        marcas = []
+        for i, raiz in enumerate(sorted(raizes)):
+            parametros[f"r{i}"] = raiz
+            marcas.append(f"$r{i}")
         tabela = self._df(
             f"SELECT p.cnpj_basico AS raiz, any_value(p.razao_social) AS razao_social, "
             f"max(p.{PUBLICADO_EM}) AS publico_em FROM {_view(EMPRESAS)} p "
-            f"JOIN pedidas r ON r.raiz = p.cnpj_basico WHERE p.{MES} = $mes GROUP BY 1",
-            {"mes": self.mes},
-            pedidas=pd.DataFrame({"raiz": sorted(raizes)}),
+            f"WHERE p.{MES} = $mes AND p.cnpj_basico IN ({', '.join(marcas)}) GROUP BY 1",
+            parametros,
         )
         return {
             str(linha["raiz"]): (

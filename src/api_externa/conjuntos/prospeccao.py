@@ -44,6 +44,7 @@ from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.receita_codigos import codigos_do_municipio
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.porta_compartilhada import lembrar
 
 CONJUNTO = "prospecting"
 FONTE = "rfb-cnpj"
@@ -432,12 +433,6 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
         condicoes.append(_em("e.uf", busca.ufs, "u", parametros))
     if busca.municipios:
         condicoes.append(_em("e.municipio", busca.municipios, "m", parametros))
-    if busca.portes:
-        condicoes.append(_em("p.porte", busca.portes, "p", parametros))
-    if busca.naturezas:
-        condicoes.append(
-            _prefixos("p.natureza_juridica", busca.naturezas, "n", parametros)
-        )
     if busca.aberta_antes:
         condicoes.append("e.data_inicio_atividade < CAST($antes AS DATE)")
         parametros["antes"] = busca.aberta_antes.isoformat()
@@ -447,6 +442,22 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
     if busca.matriz is not None:
         condicoes.append("e.matriz = $matriz")
         parametros["matriz"] = busca.matriz
+    condicoes += _onde_da_empresa(busca, parametros)
+    condicoes += _onde_da_anvisa(busca, parametros)
+    if busca.depois_de:
+        condicoes.append(_depois_do_cursor(busca, parametros))
+    return condicoes, parametros
+
+
+def _onde_da_empresa(busca: Busca, parametros: dict[str, object]) -> list[str]:
+    """As condições que olham só colunas da empresa (porte, natureza, capital, filiais)."""
+    condicoes = []
+    if busca.portes:
+        condicoes.append(_em("p.porte", busca.portes, "p", parametros))
+    if busca.naturezas:
+        condicoes.append(
+            _prefixos("p.natureza_juridica", busca.naturezas, "n", parametros)
+        )
     if busca.capital_min is not None:
         condicoes.append("p.capital_social >= $capital_min")
         parametros["capital_min"] = busca.capital_min
@@ -456,10 +467,7 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
     if busca.filiais_min is not None:
         condicoes.append("p.n_estabelecimentos >= $filiais_min")
         parametros["filiais_min"] = busca.filiais_min
-    condicoes += _onde_da_anvisa(busca, parametros)
-    if busca.depois_de:
-        condicoes.append(_depois_do_cursor(busca, parametros))
-    return condicoes, parametros
+    return condicoes
 
 
 def _onde_da_anvisa(busca: Busca, parametros: dict[str, object]) -> list[str]:
@@ -527,7 +535,15 @@ class LeitorDeProspeccao:
         self.linhas_maximas = linhas_maximas
 
     def _mes_do_retrato(self, como_era_em: date) -> str | None:
-        """O retrato mais novo já público em `como_era_em`, nas duas tabelas (o mesmo mês em ambas)."""
+        """O retrato mais novo já público em `como_era_em`, nas duas tabelas (o mesmo mês em ambas). Lido uma
+        vez por base e dia (3 a 4 s por pedido, linha 956)."""
+        return lembrar(
+            self.porta,
+            ("mes_do_retrato_busca", como_era_em),
+            lambda: self._ler_o_mes_do_retrato(como_era_em),
+        )
+
+    def _ler_o_mes_do_retrato(self, como_era_em: date) -> str | None:
         meses = []
         for tabela in (ESTABELECIMENTOS, EMPRESAS):
             condicao = condicao_como_era(self.porta.colunas(tabela), tabela)
@@ -637,6 +653,19 @@ class LeitorDeProspeccao:
         if busca.usa_anvisa():
             campos += ", a.registros_anvisa_total, a.registros_anvisa_ativos"
             juncao += _juncao_da_anvisa(busca)
+        da_empresa = _onde_da_empresa(
+            busca, {}
+        )  # o mesmo texto, os parâmetros já estão em `parametros`
+        if da_empresa:
+            # a mesma exigência vista pelo lado da empresa, antes da junção: o DuckDB filtra as empresas e só
+            # então junta aos estabelecimentos (repetir a condição não muda o resultado; medido na máquina do
+            # servidor, a busca por natureza sem UF foi de 16 para 10 s, linha 956)
+            condicoes = [
+                *condicoes,
+                f"e.cnpj_basico IN (SELECT p.cnpj_basico FROM {empresa} p WHERE p.{MES} = $mes AND "
+                + " AND ".join(da_empresa)
+                + ")",
+            ]
         onde = " AND ".join(condicoes)
         if not _depende_da_empresa(busca):
             achadas = self.porta.con.execute(
