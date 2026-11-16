@@ -100,7 +100,23 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Diária no servidor de casa (carga do ENET às 0h30); a base é remontada por ano",
-      "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
+      "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento",
+      "prontidao": {
+        "versao_maior": 3,
+        "cruzada": {
+          "data": "2026-11-12",
+          "prova": "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas (a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, 16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 60 de 60 pacotes lidos) 29310 valores comparados, 29310 iguais, nenhum diferente; ficaram sem par 123 valores da base (zeros da conta 3.99 da DRE, que o ENET entrega em branco) e 186181 do ENET (183151 zeros e 3030 de contas que a base não guarda ou guarda em outro período), e nenhum desses entra na conta de iguais nem na de diferentes",
+          "independencia": "mesmo documento, outro canal: a base lê os dados abertos da CVM e a conferência baixa o XML da entrega no ENET"
+        },
+        "qualidade": {
+          "data": "2026-11-12",
+          "prova": "placar de qualidade verde em 24328845 linhas: chave única, colunas obrigatórias preenchidas, 2 achados todos explicados"
+        },
+        "dicionario": {
+          "data": "2026-11-14",
+          "prova": "dicionário lido pelo dono do projeto em 14 de novembro de 2026, leitura própria e só deste dicionário: resultado lido, sem correção pendente"
+        }
+      }
     },
     "dmpl_como_era": {
       "tabela": "dmpl_como_era",

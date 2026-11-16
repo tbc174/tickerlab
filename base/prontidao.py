@@ -55,8 +55,41 @@ class Falta(StrEnum):
     CONTRATO_MUDOU = "contrato_mudou"  # versão maior diferente da conferida
 
 
-# Nenhuma tabela está pronta ainda: falta a prova da 6, que vem do placar (linha 427, API A2b).
-PRONTIDAO: dict[str, Prontidao] = {}
+# Só entra tabela com as três provas (D10.5). As provas da 6 e da 7 vêm do placar e vencem em 90 dias.
+PRONTIDAO: dict[str, Prontidao] = {
+    "demonstracoes_como_era": Prontidao(
+        versao_maior=3,
+        cruzada=Prova(
+            data=date(2026, 11, 12),
+            prova=(
+                "DFP e ITR lidos da base contra o mesmo documento no ENET, em amostras sorteadas "
+                "(a data da prova é a da DFP, em 12 de novembro de 2026): DFP 16055 valores comparados, "
+                "16055 iguais, nenhum diferente; ITR (14 de novembro de 2026, três trimestres de 2025, 60 de 60 "
+                "pacotes lidos) 29310 valores comparados, 29310 iguais, nenhum diferente; ficaram sem par 123 valores da base (zeros da conta 3.99 da DRE, que o ENET entrega em branco) "
+                "e 186181 do ENET (183151 zeros e 3030 de contas que a base não guarda ou guarda em outro período), "
+                "e nenhum desses entra na conta de iguais nem na de diferentes"
+            ),
+            independencia=(
+                "mesmo documento, outro canal: a base lê os dados abertos da CVM "
+                "e a conferência baixa o XML da entrega no ENET"
+            ),
+        ),
+        qualidade=Prova(
+            data=date(2026, 11, 12),
+            prova=(
+                "placar de qualidade verde em 24328845 linhas: chave única, colunas "
+                "obrigatórias preenchidas, 2 achados todos explicados"
+            ),
+        ),
+        dicionario=Prova(
+            data=date(2026, 11, 14),
+            prova=(
+                "dicionário lido pelo dono do projeto em 14 de novembro de 2026, leitura própria e só "
+                "deste dicionário: resultado lido, sem correção pendente"
+            ),
+        ),
+    ),
+}
 
 
 def versao_maior(versao: str) -> int:
@@ -154,11 +187,6 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
-    "demonstracoes_como_era": ProntidaoDePiloto(
-        versao_maior=3,
-        qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
-        dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
-    ),
     "fca_geral": ProntidaoDePiloto(
         versao_maior=1,
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
@@ -224,6 +252,12 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    # a ficha da empresa (linha 841): 23699215 linhas, zero achado no placar, zero raiz fora da lista de PJ
+    "cnpj_situacao_cadastral": ProntidaoDePiloto(
+        versao_maior=2,
+        qualidade=Prova(date(2026, 11, 14), "placar-qualidade-2026-11-14"),
+        dicionario=Prova(date(2026, 11, 14), "dicionario-escrito-2026-11-14"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
@@ -232,7 +266,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
 # ans_beneficiarios, ifdata_valores e susep_seguros (linha 904, lote 4): o CNPJ só vem da ponte da fonte, e a linha da ponte marcada como pessoa ou fora da fonte deixa o CNPJ vazio (tests/test_cnpj_pela_ponte.py)
-# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
+# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, cnpj_situacao_cadastral, demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "aneel_samp",
@@ -241,6 +275,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
+        "cnpj_situacao_cadastral",
         "demonstracoes_como_era",
         "entradas_de_socio_pj",
         "eventos",
