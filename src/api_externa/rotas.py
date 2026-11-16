@@ -22,9 +22,8 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
-from base import porta as porta_da_base
 from base.porta import Porta
-from src.api_externa import acesso, deck, lote, piloto
+from src.api_externa import acesso, deck, lote, piloto, porta_compartilhada
 from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
 from src.api_externa.conjuntos import (
     Permitido,
@@ -71,8 +70,10 @@ def regras_da_api() -> Regras | None:
 
 
 def abrir_porta(banco: sa.Connection) -> Porta:
-    """A porta da base, com o registro de coletas para a linhagem (os testes trocam esta função)."""
-    return porta_da_base.abrir(banco=banco)
+    """A porta da base para um pedido, com o registro de coletas para a linhagem (os testes trocam esta
+    função). É um cursor da porta que o processo abriu uma vez: abrir uma porta por pedido levava de 8 a 12 s
+    na máquina do servidor, antes de qualquer consulta (linha 956)."""
+    return porta_compartilhada.porta_do_pedido(banco)
 
 
 def _fora_do_ar() -> HTTPException:
