@@ -5,7 +5,7 @@
 // O `administrador` de /v1/eu só poupa o pedido e esconde o atalho do menu: não autoriza nada.
 // A tela não liga permissão nem direito: conceder direito, vincular conta e ligar "pessoa na tela" são do
 // dono, pelo script. De uma chave aparece só o prefixo; o valor, só na caixa de quem acabou de emitir.
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { ENDERECO_DA_ADMINISTRACAO, TITULO_DA_ADMINISTRACAO } from "../administracao";
 import { mudar } from "../api";
 import { linkDoClassico } from "../classico";
@@ -448,21 +448,18 @@ interface PropriedadesDoPainelPedido {
   motivos: string[];
   /** Algo mudou que a lista mostra (a suspensão), ou o servidor deixou de achar o que a tela mostrava. */
   aoMudarALista(): void;
-  /** Diz à tela de qual organização é a chave nova à vista (ou que não há): enquanto houver, a tela não
-   * troca de painel sozinha nem cria organização. */
-  aoTerChaveNaTela(organizacao: string | null): void;
+  /** A chave nova desta organização que está à vista. Quem a guarda é a tela, não o painel: o valor não
+   * dá para ver de novo, então ele não pode depender de o painel continuar montado nem de uma releitura. */
+  chaveNova: ChaveNovaV1 | null;
+  /** O servidor respondeu com uma chave nova (pode ser depois de a pessoa ter deixado este painel). */
+  aoChegarAChave(nova: ChaveNovaV1): void;
+  aoTirarAChave(): void;
 }
 
-function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDoPainelPedido) {
+function Painel(propriedades: PropriedadesDoPainelPedido) {
+  const { id, motivos, aoMudarALista, chaveNova, aoChegarAChave, aoTirarAChave } = propriedades;
   const { pedido, recarregar } = usarLeitura<PainelDaOrganizacaoV1>(ROTA_DA_ORGANIZACAO, { id });
-  // a chave nova e o aviso ficam aqui, fora do painel: se a releitura falhar, a chave emitida não some
-  const [chaveNova, setChaveNova] = useState<ChaveNovaV1 | null>(null);
   const temChaveNova = chaveNova !== null;
-  // ao sair (troca de organização), a chave some junto com o painel: a tela volta a poder criar
-  useEffect(() => {
-    aoTerChaveNaTela(temChaveNova ? id : null);
-    return () => aoTerChaveNaTela(null);
-  }, [temChaveNova, id, aoTerChaveNaTela]);
   const [aviso, setAviso] = useState<string | null>(null);
   const { ocupada, falha, executar } = useAcao(() => {
     recarregar();
@@ -473,7 +470,7 @@ function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDo
     executar((token) => mudar<T>("POST", rota, token, corpo), aoDarCerto);
   }
   function mostrarAChave(nova: ChaveNovaV1) {
-    setChaveNova(nova);
+    aoChegarAChave(nova);
     recarregar();
   }
   function feito(texto: string) {
@@ -509,7 +506,7 @@ function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDo
   };
   return (
     <>
-      {chaveNova ? <ChaveNova key={chaveNova.id} chave={chaveNova} aoTirar={() => setChaveNova(null)} /> : null}
+      {chaveNova ? <ChaveNova key={chaveNova.id} chave={chaveNova} aoTirar={aoTirarAChave} /> : null}
       <Aviso texto={aviso} />
       <Falha texto={falha} />
       {pedido.estado === "carregando" && <Carregando tipo="painel" rotulo="Carregando a organização…" />}
@@ -528,21 +525,34 @@ function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDo
 
 const A_CRIADA_ESPERA = " Ela abre quando você tirar a chave nova da tela.";
 
+interface ChaveDaOrganizacao {
+  organizacao: string;
+  nova: ChaveNovaV1;
+}
+
 function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar(): void }) {
   const { organizacoes } = lista;
   const [pedida, setPedida] = useState<string | null>(null);
   const [criando, setCriando] = useState(organizacoes.length === 0);
   const [criada, setCriada] = useState<OrganizacaoDaListaV1 | null>(null);
-  // a organização da chave nova que está na tela: o valor não dá para ver de novo, então só a própria pessoa
-  // tira esse painel (escolhendo outra organização ou tirando a chave); a tela, sozinha, não troca
-  const [comChave, setComChave] = useState<string | null>(null);
+  // a chave nova à vista e de qual organização ela é. O valor não dá para ver de novo, então só a própria
+  // pessoa tira esse painel (escolhendo outra organização ou tirando a chave); a tela, sozinha, não troca.
+  // Fica aqui, mudado na mesma hora que o resto da escolha: um aviso do painel por efeito chegaria depois
+  // do desenho e podia desfazer a troca de organização feita nesse intervalo
+  const [chaveNova, setChaveNova] = useState<ChaveDaOrganizacao | null>(null);
   const naLista = (id: string | null) => organizacoes.find((organizacao) => organizacao.id === id)?.id;
+  const comChave = naLista(chaveNova?.organizacao ?? null) ?? null;
   // a pedida vale enquanto estiver na lista (a recém-criada entra quando a lista recarrega); senão, a primeira
-  const escolhida = naLista(comChave) ?? naLista(pedida) ?? organizacoes[0]?.id ?? null;
+  const escolhida = comChave ?? naLista(pedida) ?? organizacoes[0]?.id ?? null;
   function escolher(id: string) {
     setPedida(id);
-    setComChave(null);
+    setChaveNova(null);
     setCriada(null);
+  }
+  // a resposta pode chegar depois de a pessoa trocar de organização: a chave já existe no servidor, então o
+  // painel dela volta com o valor. Com outra chave à vista, a que está fica (uma não apaga a outra)
+  function aoChegarAChave(organizacao: string, nova: ChaveNovaV1) {
+    setChaveNova((atual) => atual ?? { organizacao, nova });
   }
   // a resposta de um criar pode chegar depois de uma chave aparecer (o pedido saiu antes): aqui só se anota
   // a criada; quem decide o painel é o `escolhida` acima, com o estado de agora
@@ -595,7 +605,9 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
           id={escolhida}
           motivos={lista.motivos_da_suspensao}
           aoMudarALista={recarregar}
-          aoTerChaveNaTela={setComChave}
+          chaveNova={chaveNova !== null && chaveNova.organizacao === escolhida ? chaveNova.nova : null}
+          aoChegarAChave={(nova) => aoChegarAChave(escolhida, nova)}
+          aoTirarAChave={() => setChaveNova(null)}
         />
       )}
     </>
