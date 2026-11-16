@@ -258,6 +258,22 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 14), "placar-qualidade-2026-11-14"),
         dicionario=Prova(date(2026, 11, 14), "dicionario-escrito-2026-11-14"),
     ),
+    # a rede (linha 784): placar de 16/11/2026 sem vermelho; 95051, 2309558 e 194604 linhas; os dois achados de ligacoes e identificadores têm explicação escrita
+    "entidades": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
+        dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
+    ),
+    "ligacoes": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
+        dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
+    ),
+    "identificadores": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
+        dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
