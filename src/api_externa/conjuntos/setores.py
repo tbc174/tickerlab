@@ -50,6 +50,8 @@ COLUNAS_DA_CONCENTRACAO = (
 COLUNAS_DA_PARTICIPACAO = (
     "cnpj", "empresa", "ano", "valor", "participacao", "meses", "ultimo_mes",
 )  # fmt: skip
+# quem é a companhia: sem uma delas, a linha da participação seria um número solto (ano, meses, valor), sem dono
+COLUNAS_DA_COMPANHIA = ("cnpj", "empresa")
 COLUNAS_DOS_MEMBROS = ("cnpj", "empresa", "motivo")
 TAMANHO_DO_CNPJ = 14
 TAMANHO_DO_DIA = 10  # "2025-12-31" (a noite pode gravar "2025-12-31T00:00:00")
@@ -122,6 +124,7 @@ class LeitorDeSetores:
         self._cortada = False
         self._fontes: set[str] = set()
         self._series_de_fora: list[str] = []
+        self._participacao_de_fora = False
 
     def _liberada(self, fonte: str, colunas: tuple[str, ...], derivado: bool) -> bool:
         """O portão libera alguma das colunas dessa fonte."""
@@ -189,7 +192,7 @@ class LeitorDeSetores:
             da_serie = [
                 linha for linha in participacao if linha.get("serie") == serie.nome
             ]
-            partes = self._linhas(da_serie, COLUNAS_DA_PARTICIPACAO, fonte, dia, True)
+            partes = self._participacao(da_serie, fonte, dia)
             if concentracao or partes:
                 series.append(
                     {
@@ -199,6 +202,14 @@ class LeitorDeSetores:
                     }
                 )
         return series
+
+    def _participacao(self, linhas: list[dict], fonte: str, dia: date) -> list[dict]:
+        """A participação de cada companhia na série, se o portão libera quem é a companhia (a série pode sair
+        só com a concentração: a participação barrada vai na lista dos blocos, linha 957)."""
+        if not self._liberada(fonte, COLUNAS_DA_COMPANHIA, True):
+            self._participacao_de_fora = True
+            return []
+        return self._linhas(linhas, COLUNAS_DA_PARTICIPACAO, fonte, dia, True)
 
     def setor(self, chave: str, como_era_em: date) -> SetorServido | None:
         """O setor como a noite o deixou, se `como_era_em` é dela em diante; None se nada sai."""
@@ -218,11 +229,17 @@ class LeitorDeSetores:
         linhas = self.linhas_maximas - self._restantes
         if linhas == 0:
             return None
-        blocos_de_fora = (
-            []
-            if self._liberada(FONTE_DOS_MEMBROS, COLUNAS_DOS_MEMBROS, False)
-            else [TABELA_DOS_MEMBROS]
-        )
+        blocos_de_fora = [
+            bloco
+            for bloco, de_fora in (
+                (
+                    TABELA_DOS_MEMBROS,
+                    not self._liberada(FONTE_DOS_MEMBROS, COLUNAS_DOS_MEMBROS, False),
+                ),
+                (TABELA_DA_PARTICIPACAO, self._participacao_de_fora),
+            )
+            if de_fora
+        ]
         corpo = {
             "setor": chave,
             "nome": setor.nome,

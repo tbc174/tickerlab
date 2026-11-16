@@ -3772,7 +3772,7 @@
     },
     "/data/v1/sectors/{key}": {
       "get": {
-        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a\norganização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,\ncom o aviso em `limits`.",
+        "description": "O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem\nsão, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a\norganização não tem vai em `unavailable_series`, e a lista das companhias ou a participação delas barrada,\nem `unavailable_sections`, com o aviso em `limits`.",
         "operationId": "setor_data_v1_sectors__key__get",
         "parameters": [
           {
