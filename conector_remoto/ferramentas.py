@@ -630,11 +630,13 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
     )
     async def ativos(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
         """Os ativos físicos da empresa como eram no dia, um bloco por base aberta de agência. Hoje sai um
-        bloco: os contratos de exploração e produção de petróleo e gás da ANP em que a empresa é sócia
-        (`oil_gas_contracts`: rodada, fase, campo ou bloco, bacia, terra ou mar, participação e se opera).
-        Cada bloco diz se achou a empresa (`found`), a fonte e o dia do dado mais novo da base; `not_covered`
-        lista o que a resposta não traz (mineração, por exemplo). Não achado não quer dizer que a empresa não
-        tem o ativo, como explicam os `limits`. Só pessoa jurídica: os outros sócios do consórcio não saem."""
+        bloco: os contratos de exploração e produção de petróleo e gás em que a empresa é sócia (`oil_gas_contracts`:
+        rodada, fase, campo ou bloco, bacia, terra ou mar, participação e se opera). Cada bloco diz se achou a empresa
+        (`found`), a fonte e o dia do dado mais novo da base; não achar não quer dizer que a empresa não tem o ativo,
+        como explicam os `limits`. Serve para a pergunta de que ativos e concessões uma empresa tem.
+        Fonte: contratos de E&P da ANP.
+        Não traz: o que `not_covered` lista (mineração, por exemplo), os outros sócios do consórcio nem pessoa
+        física."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir(
             "ativos",
