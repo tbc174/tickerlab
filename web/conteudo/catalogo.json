@@ -84,7 +84,7 @@
       "orgao": "IBAMA (autos e embargos)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -103,7 +103,7 @@
       "orgao": "Ministério do Trabalho (Lista Suja)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -123,7 +123,7 @@
       "orgao": "GLEIF (identificador LEI)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-21",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -1514,7 +1514,7 @@
       "orgao": "INPI (patentes e marcas)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2417,7 +2417,30 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 58
+      "tabelas": 65
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANEEL",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 7
+    },
+    {
+      "historico_desde": "2002-01-01",
+      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "ANM",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 6
     },
     {
       "historico_desde": "2010-01-01",
@@ -2445,6 +2468,18 @@
       "tabelas": 5
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
       "historico_desde": "2026-10-16",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto",
       "modulos": [
@@ -2453,6 +2488,28 @@
       "orgao": "Assessorias de M&A",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "INPI",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MDIC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 4
     },
     {
@@ -2479,24 +2536,12 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "modulos": [
         "governo_e_sancoes",
         "mercado_e_empresas"
       ],
-      "orgao": "ANEEL",
-      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
+      "orgao": "ANTT",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2514,12 +2559,12 @@
       "tabelas": 2
     },
     {
-      "historico_desde": "2026-10-14",
-      "licenca": "Dados abertos, uso livre e comercial (MDIC, LAI de 21/10/2026; citar Secex/MDIC)",
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
       "modulos": [
-        "mercado_e_empresas"
+        "governo_e_sancoes"
       ],
-      "orgao": "MDIC",
+      "orgao": "Anvisa",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2537,6 +2582,18 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "SUSEP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
       "modulos": [
         "mercado_e_empresas"
@@ -2548,44 +2605,11 @@
     },
     {
       "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos da ANM, Cadastro Mineiro, no dados.gov.br; citar a ANM)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "ANM",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANTT",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
       "licenca": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
       "modulos": [
         "governo_e_sancoes"
       ],
       "orgao": "Ancine",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos da Anvisa no dados.gov.br; citar a Anvisa)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Anvisa",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -2679,6 +2703,28 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC0 (GLEIF, Global LEI Index)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "GLEIF",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "IBAMA",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1981-01-31",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
       "modulos": [
@@ -2734,6 +2780,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-14",
+      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MTE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY-SA (citar Souza et al. 2020)",
       "modulos": [
@@ -2753,17 +2810,6 @@
       "orgao": "PGFN",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "SUSEP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
       "tabelas": 1
     },
     {
@@ -2790,8 +2836,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 18,
-    "tabelas": 86,
+    "orgaos": 22,
+    "tabelas": 112,
     "temas": [
       {
         "chave": "cvm",
@@ -2808,8 +2854,8 @@
           "Receita Federal",
           "CVM"
         ],
-        "tabelas": 6,
-        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 6 de 9 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 7,
+        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 7 de 9 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Quem é dono e quem controla"
       },
       {
@@ -2827,26 +2873,34 @@
           "PGFN",
           "CGU",
           "ANS",
+          "ANEEL",
+          "MTE",
+          "IBAMA",
           "CVM"
         ],
-        "tabelas": 4,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 4 de 14 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 8,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 8 de 14 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
         "chave": "licencas",
         "orgaos": [
+          "ANS",
+          "SUSEP",
           "Anvisa",
           "ANP",
+          "ANTT",
           "MAPA",
+          "ANEEL",
           "Anatel",
           "ANM",
           "CMED (Anvisa)",
           "Ancine",
-          "Ministério da Saúde (DATASUS)"
+          "Ministério da Saúde (DATASUS)",
+          "INPI"
         ],
-        "tabelas": 8,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 8 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 19,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 19 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -2868,17 +2922,17 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 59
+      "tabelas": 69
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 22
+      "tabelas": 37
     },
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 14
+      "tabelas": 20
     },
     {
       "chave": "macro",
@@ -7473,6 +7527,28 @@
       "tabela": "comex_preco_medio"
     },
     {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Nome de cada URF (unidade da Receita: porto, aeroporto ou posto) do Comex Stat, para ler o código que comex_preco_medio guarda (coluna urf).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "licenciada",
+      "tabela": "comex_urf"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Nome de cada via de transporte do Comex Stat, para ler o código que comex_preco_medio guarda (a via de transporte dos CSVs do MDIC).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "licenciada",
+      "tabela": "comex_via"
+    },
+    {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
       "consultavel": true,
       "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003.",
@@ -7581,6 +7657,17 @@
       "orgao": "CVM",
       "situacao": "licenciada",
       "tabela": "fre_empregados"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o free float (fora o controlador, os administradores e a tesouraria), com a quantidade e o percentual por espécie.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_distribuicao_capital"
     },
     {
       "atraso": null,
@@ -7836,6 +7923,17 @@
       "tabela": "entradas_de_socio_pj"
     },
     {
+      "atraso": "A fonte publica o estado de hoje sem dizer desde quando",
+      "consultavel": false,
+      "frase": "Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas práticas).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Anvisa",
+      "situacao": "licenciada",
+      "tabela": "anvisa_por_empresa"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -7878,6 +7976,17 @@
       "orgao": "Anvisa",
       "situacao": "licenciada",
       "tabela": "anvisa_registros"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-29",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_rntrc"
     },
     {
       "atraso": null,
@@ -7992,6 +8101,226 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_operadoras"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência, capitalização).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-16",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SUSEP",
+      "situacao": "licenciada",
+      "tabela": "susep_cadastro"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Cadastro de Empregadores do MTE (a \"lista suja\" do trabalho análogo ao escravo), só pessoa jurídica.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MTE",
+      "situacao": "em consulta",
+      "tabela": "mte_lista_suja"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Termos de embargo do IBAMA por CNPJ do embargado, um por linha.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "IBAMA",
+      "situacao": "em consulta",
+      "tabela": "ibama_embargos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Titulares de marcas depositadas no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_marcas_titulares"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Depositantes de patentes no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_patentes_depositantes"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Depositantes de desenhos industriais no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_desenhos_depositantes"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Titulares de registros de programas de computador no INPI.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "INPI",
+      "situacao": "licenciada",
+      "tabela": "inpi_programas_titulares"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "O informe mensal de cada classe de Fiagro (Fundo de Investimento nas Cadeias Produtivas Agroindustriais) por CNPJ: cotistas, balanço resumido, rentabilidade e dividend yield do mês.",
+      "frequencia": "Mensal",
+      "historico_desde": "2025-10-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cvm_fiagro"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "A ponte entre o LEI (código global de entidade jurídica, do GLEIF) e o CNPJ das entidades do Brasil: uma linha por valor diferente de cada par LEI e CNPJ.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "GLEIF",
+      "situacao": "licenciada",
+      "tabela": "gleif_ponte"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "O informe dos Fundos de Investimento em Participações (FIP) por CNPJ do fundo ou da classe: patrimônio, cotas, cotistas por tipo, capital comprometido, subscrito e integralizado.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fip_informe"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "O informe mensal dos Fundos de Investimento Imobiliário (FII) por CNPJ do fundo ou da classe: segmento, mandato, gestão, ISIN, administrador (só o CNPJ), cotistas, ativo, patrimônio, cota.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fii_informe_mensal"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Os títulos e valores mobiliários que cada FII declara no informe trimestral (CRI, ações, debêntures, cotas de outros fundos...), com o CNPJ do emissor.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fii_ativos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Quem a CVM registrou para administrar FII, pelo CNPJ: razão social, nome comercial, situação e as datas do registro, da situação e do cancelamento.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fii_administradores"
+    },
+    {
+      "atraso": "A ANEEL escreve a data de geração do conjunto",
+      "consultavel": false,
+      "frase": "Os indicadores de inadimplência que cada distribuidora de energia manda à ANEEL, por CNPJ, indicador e mês: quanto deixa de receber dos consumidores, em cada recorte que a ANEEL pede.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_inadimplencia"
+    },
+    {
+      "atraso": "A ANEEL escreve a data de geração do conjunto",
+      "consultavel": false,
+      "frase": "Os indicadores comerciais de cada distribuidora de energia por CNPJ, município e mês (INDGER): unidades consumidoras ativas e faturadas, faturas sem leitura, refaturamentos.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_indicadores_comerciais"
+    },
+    {
+      "atraso": "A ANS publica a avaliação de um ano no ano seguinte",
+      "consultavel": false,
+      "frase": "O Índice de Desempenho da Saúde Suplementar (IDSS) de cada operadora de plano de saúde, por CNPJ, índice (o IDSS e as dimensões dele) e ano de avaliação, desde 2009.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_idss"
+    },
+    {
+      "atraso": "A ANEEL regera o cadastro todo mês e escreve a data de geração no arquivo",
+      "consultavel": false,
+      "frase": "As empresas cadastradas como agentes do setor elétrico na ANEEL, por CNPJ: se o cadastro está ativo e em quais atividades a empresa atua (geração, transmissão, distribuição, comercialização).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-13",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_agentes"
+    },
+    {
+      "atraso": "A ANEEL regera o arquivo todo mês",
+      "consultavel": false,
+      "frase": "Os autos de infração que a ANEEL e as agências estaduais conveniadas lavraram contra empresas do setor elétrico, por CNPJ: penalidade (multa, advertência, embargo), valor.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-25",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_autos_de_infracao"
+    },
+    {
+      "atraso": "A ANEEL regera o arquivo todo mês",
+      "consultavel": false,
+      "frase": "Os termos de notificação da fiscalização da ANEEL e das agências estaduais conveniadas, por CNPJ, objeto e decisão: o primeiro passo da fiscalização.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-13",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_termos_de_notificacao"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -8010,6 +8339,61 @@
       "orgao": "Ministério da Saúde (DATASUS)",
       "situacao": "licenciada",
       "tabela": "cnes_competencias"
+    },
+    {
+      "atraso": "A linha vale desde a data em que a ANM a criou",
+      "consultavel": true,
+      "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
+      "frequencia": "Mensal",
+      "historico_desde": "2002-01-01",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_cfem_arrecadacao"
+    },
+    {
+      "atraso": "O SIGBM não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Barragens de mineração do SIGBM da ANM, com a categoria de risco (CRI) e o dano potencial (DPA) como o empreendedor declarou.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_sigbm_barragens"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Produção mineral bruta do Anuário Mineral (minério ROM, venda, consumo e transferência) por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_bruta"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Produção mineral beneficiada do Anuário Mineral por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_producao_beneficiada"
+    },
+    {
+      "atraso": "O Anuário não guarda histórico: a linha vale desde o dia em que a coleta a viu",
+      "consultavel": true,
+      "frase": "Água mineral do Anuário Mineral: litros e valor por tipo de embalagem, por ano, UF e substância.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-04",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANM",
+      "situacao": "licenciada",
+      "tabela": "anm_amb_agua_mineral"
     },
     {
       "atraso": null,
@@ -8065,6 +8449,17 @@
       "orgao": "CVM",
       "situacao": "licenciada",
       "tabela": "pareceres_itr"
+    },
+    {
+      "atraso": "A entrega do informe à CVM",
+      "consultavel": true,
+      "frase": "Um certificado de recebíveis (CRI, CRA ou outro título de securitização, OTS) por mês, lido do informe mensal da CVM (quadro geral): a securitizadora, o código do certificado, a emissão.",
+      "frequencia": "Semanal",
+      "historico_desde": "2019-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "securitizacao_certificados"
     },
     {
       "atraso": "A entrega à CVM",
@@ -8355,10 +8750,10 @@
   ],
   "totais": {
     "familias": 133,
-    "familias_em_uso": 39,
-    "fontes": 34,
-    "fontes_em_consulta": 5,
+    "familias_em_uso": 43,
+    "fontes": 38,
+    "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 112
+    "tabelas": 143
   }
 }
