@@ -4,6 +4,10 @@ import pytest
 
 from base import cnpj as cnpjs
 from base.arquivo.obter_pj import e_pessoa_juridica, item_so_pj
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, no_formato
+
+CPF = CPF_DE_TESTE
+CPF_COM_MASCARA = no_formato(CPF, "ddd.ddd.ddd-dd")
 
 
 def _cnpj_alfanumerico_valido(base: str = "12ABC34501DE") -> str:
@@ -23,8 +27,8 @@ def test_cnpj_alfanumerico_valido_passa_com_e_sem_mascara():
 @pytest.mark.parametrize(
     "valor",
     [
-        "123.456.789-09",  # CPF com máscara
-        "12345678909",  # CPF sem máscara
+        CPF_COM_MASCARA,
+        CPF,
         "**.***.101/***-**",  # CNPJ mascarado
         "12ABC34501DE00",  # letras, mas dígito verificador errado
         "12ABC34501DE",  # 12 caracteres
@@ -43,4 +47,4 @@ def test_documento_em_branco_e_cnpj_de_14_digitos_continuam_passando():
 def test_item_da_api_com_cnpj_alfanumerico_nao_e_descartado():
     item = {"cnpjFornecedor": _cnpj_alfanumerico_valido(), "valor": 10}
     assert item_so_pj(item) == item
-    assert item_so_pj({"cnpjFornecedor": "123.456.789-09", "valor": 10}) is None
+    assert item_so_pj({"cnpjFornecedor": CPF_COM_MASCARA, "valor": 10}) is None
