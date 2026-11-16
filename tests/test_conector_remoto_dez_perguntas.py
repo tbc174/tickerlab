@@ -41,6 +41,7 @@ from starlette.testclient import TestClient
 
 from base.porta import Porta
 from conector_remoto import ferramentas, servidor
+from conector_remoto.pessoa import sinais_de_pessoa
 from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa import rotas
 from src.api_externa.conjuntos import prospeccao
@@ -62,21 +63,6 @@ CONJUNTOS = (
     "prospecting", "profiles", "companies", "comparables", "financials", "sectors", "funds",
     "events", "links", "buyers", "research", "assets",
 )  # fmt: skip
-SEM_PESSOA = frozenset(
-    {
-        "partners",
-        "cpf",
-        "socios",
-        "email",
-        "phone",
-        "address",
-        "qsa",
-        "person",
-        "persons",
-    }
-)
-_CPF = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
-_EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 _LINHA_DA_TABELA = re.compile(
     r"^\| (\d+) \| (respondida|fraca|sem ferramenta) \| ([a-z_, ]+) \|", re.MULTILINE
 )
@@ -235,6 +221,24 @@ def _rotas_de_mentira() -> dict[str, httpx.Response]:
                 "class": _campo("FIP", "cvm-fundos", "2026-10-31"),
                 "net_assets": _campo(250_000_000.0, "cvm-fundos", "2026-10-31"),
                 "sources": _fontes("cvm-fundos"),
+            }
+        ),
+        f"/companies/{ALFA}/financials": _json(
+            {
+                "cnpj": ALFA,
+                "periods": [
+                    {
+                        "period_end": "2025-12-31",
+                        "accounts": [
+                            {
+                                "code": "3.01",
+                                "name": "Receita de Venda de Bens e/ou Serviços",
+                                "amount": _campo(1_000_000.0, "cvm-dfp", "2026-03-31"),
+                            }
+                        ],
+                    }
+                ],
+                "limits": limites,
             }
         ),
         f"/companies/{ALFA}/assets": _json(
@@ -465,26 +469,26 @@ def test_as_instrucoes_citam_as_ferramentas_das_perguntas_que_o_conector_respond
 # ---------------------------------------------------------------- a forma de toda resposta
 
 
-def _chaves(no: object) -> Iterator[str]:
+def _campos_sem_fonte_e_data(no: object, caminho: str = "") -> Iterator[str]:
+    """Onde há um campo com `value` sem `source` ou sem `published_at` (o caminho, sem o valor)."""
     if isinstance(no, dict):
+        if "value" in no and not (no.get("source") and no.get("published_at")):
+            yield caminho or "(raiz)"
         for chave, filho in no.items():
-            yield chave
-            yield from _chaves(filho)
+            yield from _campos_sem_fonte_e_data(filho, f"{caminho}.{chave}")
     elif isinstance(no, list):
-        for filho in no:
-            yield from _chaves(filho)
+        for indice, filho in enumerate(no):
+            yield from _campos_sem_fonte_e_data(filho, f"{caminho}[{indice}]")
 
 
-def _com_fonte_e_data(no: object) -> Iterator[dict]:
-    """Cada objeto que traz `source` e `published_at` preenchidos, em qualquer profundidade."""
+def _blocos_com_fonte_e_data(no: object) -> int:
+    """Quantos objetos trazem `source` e `published_at` preenchidos, em qualquer profundidade."""
     if isinstance(no, dict):
-        if no.get("source") and no.get("published_at"):
-            yield no
-        for filho in no.values():
-            yield from _com_fonte_e_data(filho)
-    elif isinstance(no, list):
-        for filho in no:
-            yield from _com_fonte_e_data(filho)
+        aqui = 1 if no.get("source") and no.get("published_at") else 0
+        return aqui + sum(_blocos_com_fonte_e_data(f) for f in no.values())
+    if isinstance(no, list):
+        return sum(_blocos_com_fonte_e_data(f) for f in no)
+    return 0
 
 
 # resposta que não é dado de empresa e, por isso, não tem bloco com fonte e dia
@@ -495,14 +499,18 @@ SEM_BLOCO_DE_FONTE = {
 
 
 def conferir_a_forma(chamada: Chamada) -> None:
-    """Resposta de dado: JSON, fonte e data em algum bloco, nenhuma pessoa física."""
+    """Resposta de dado: JSON, fonte e data em TODO campo com `value`, nenhuma pessoa física."""
     corpo = chamada.corpo
     if chamada.ferramenta not in SEM_BLOCO_DE_FONTE:
-        assert list(_com_fonte_e_data(corpo)), (
+        assert _blocos_com_fonte_e_data(corpo), (
             f"{chamada.ferramenta}: nenhum bloco com fonte e data"
         )
-    assert not set(_chaves(corpo)) & SEM_PESSOA, chamada.ferramenta
-    assert not _CPF.search(chamada.texto) and not _EMAIL.search(chamada.texto)
+        sem_fonte = list(_campos_sem_fonte_e_data(corpo))
+        assert not sem_fonte, (
+            f"{chamada.ferramenta}: campo sem fonte ou data: {sem_fonte}"
+        )
+    # o mesmo filtro do conector (chaves por palavra, CPF com ou sem pontos, e-mail), não uma lista nossa
+    assert not sinais_de_pessoa(corpo), chamada.ferramenta
 
 
 # ---------------------------------------------------------------- as dez perguntas
@@ -542,6 +550,8 @@ def pergunta_2(analista: Analista) -> None:
 
 def pergunta_3(analista: Analista) -> None:
     """Quanto a empresa fechada fatura, em qual ano e com qual prova?"""
+    aberta = analista.perguntar("demonstracoes", cnpj=ALFA)
+    assert aberta.corpo["periods"][0]["accounts"][0]["amount"]["source"] == "cvm-dfp"
     resposta = analista.perguntar("demonstracoes", cnpj=GAMA)
     assert resposta.erro
     assert FRASE_SEM_FATURAMENTO in resposta.texto
@@ -691,34 +701,95 @@ def test_nenhuma_resposta_leva_a_chave_e_o_erro_e_uma_frase_curta(numero, analis
 # ---------------------------------------------------------------- as frases honestas das lacunas
 
 
-def test_o_conector_diz_o_que_nao_tem_onde_a_pergunta_e_fraca(analista):
+# a lacuna que o conector confessa em cada pergunta "fraca": (onde, trecho). "instrucoes" é o texto do
+# `initialize`; o resto é o nome da ferramenta, e o trecho está na descrição dela.
+LACUNA_DITA_POR_PERGUNTA_FRACA = {
+    # faturamento de fechada
+    3: (
+        ("instrucoes", "faturamento de empresa fechada"),
+        ("demonstracoes", "não traz faturamento de fechada"),
+    ),
+    # os fundos são só os FIPs sócios de empresas do setor
+    6: (("compradores_do_setor", "fundos (FIP)"),),
+    # sem nada novo, a lista vem vazia e a ferramenta manda dizer que não há fonte provada
+    8: (("novidades", "não há fonte nova provada"),),
+    # o dossiê é composto pela IA, com a lacuna anotada em vez de preenchida
+    10: (("instrucoes", servidor.ORIENTACAO_DO_DOSSIE),),
+}
+
+
+def _onde_esta(onde: str, no_conector: dict[str, dict], instrucoes: str) -> str:
+    return instrucoes if onde == "instrucoes" else _descricao(no_conector[onde])
+
+
+def test_toda_pergunta_fraca_da_tabela_tem_a_lacuna_conferida(analista):
+    """A coluna 'situação' vale: virar 'fraca' sem lacuna dita (ou 'respondida' com uma) falha."""
+    fracas = {
+        n for n, (situacao, _f) in tabela_do_topo().items() if situacao == "fraca"
+    }
+    assert fracas == set(LACUNA_DITA_POR_PERGUNTA_FRACA), (
+        f"A tabela do topo marca como fracas {sorted(fracas)}, e as lacunas conferidas são "
+        f"{sorted(LACUNA_DITA_POR_PERGUNTA_FRACA)}. Ajuste os dois lados juntos."
+    )
     no_conector = _ferramentas_do_conector(analista.cliente)
     instrucoes = _instrucoes(analista.cliente)
-    # 3: faturamento de fechada
-    assert "faturamento de empresa fechada" in instrucoes
-    assert "não traz faturamento de fechada" in _descricao(no_conector["demonstracoes"])
-    # 5 e 6: compradores são movimento passado, e os fundos são os FIPs sócios do setor
+    for numero, trechos in LACUNA_DITA_POR_PERGUNTA_FRACA.items():
+        for onde, trecho in trechos:
+            assert trecho in _onde_esta(onde, no_conector, instrucoes), (
+                f"Pergunta {numero}: o conector deixou de dizer {trecho!r} em {onde}."
+            )
+
+
+def test_a_pergunta_5_avisa_que_compradores_sao_movimento_passado(analista):
+    # 5 é "respondida", mas a ressalva "não intenção de compra" é o que a mantém honesta
+    no_conector = _ferramentas_do_conector(analista.cliente)
     assert "não intenção de compra" in _descricao(no_conector["compradores_do_setor"])
-    assert "fundos (FIP)" in _descricao(no_conector["compradores_do_setor"])
-    # 8: sem nada novo, a lista vem vazia e a ferramenta manda dizer que não há fonte provada
-    assert "não há fonte nova provada" in _descricao(no_conector["novidades"])
-    # 10: o dossiê é composto pela IA, com a lacuna anotada em vez de preenchida
-    assert servidor.ORIENTACAO_DO_DOSSIE in instrucoes
 
 
-def test_toda_instrucao_sobre_pessoa_fisica_a_recusa(analista):
+def test_as_instrucoes_dizem_que_a_base_nao_tem_pessoa_fisica(analista):
     instrucoes = _instrucoes(analista.cliente)
-    assert "pessoa física" in instrucoes
+    assert "dado de pessoa física (sócio pessoa física, CPF, contato)" in instrucoes
+
+
+# o que a API não deveria mandar, mas, se mandar, o conector tem de barrar (sem repetir o valor)
+RESPOSTAS_COM_PESSOA = {
+    "campo de sócio": {"partners": [{"name": _campo("NOME DE MENTIRA")}]},
+    "campo de sócio em outra grafia": {"socio_nome": _campo("NOME DE MENTIRA")},
+    "e-mail no texto": {"contact": _campo("pessoa@exemplo.invalid")},
+    "CPF formatado no texto": {"note": _campo("titular 123.456.789-09")},
+}
+
+
+@pytest.mark.parametrize("sinal", RESPOSTAS_COM_PESSOA)
+def test_o_conector_barra_pessoa_fisica_que_a_api_mandar(sinal):
+    """Sem isto, as conferências de 'sem pessoa' do arquivo só olhariam o próprio dublê."""
+    pessoa = RESPOSTAS_COM_PESSOA[sinal]
+    perfil = _json(_cadastro(ALFA, "ALFA TECNOLOGIA S.A.", matriz=True) | pessoa)
+    rotas_de_mentira = _rotas_de_mentira() | {f"/companies/{ALFA}/profile": perfil}
+    transporte = aj.api_de_mentira(rotas_de_mentira, conjuntos=CONJUNTOS)
+    with aj.conector(transporte) as cliente_mcp:
+        erro, texto = aj.chamar(
+            cliente_mcp, aj.CHAVE_DE_MENTIRA, "ficha_da_empresa", cnpj=ALFA
+        )
+    assert erro and ferramentas.MENSAGEM_DE_PESSOA in texto
+    assert "NOME DE MENTIRA" not in texto and "123.456.789" not in texto
+    assert "exemplo.invalid" not in texto
 
 
 # ---------------------------------------------------------------- o tamanho das respostas
 
 
-def test_a_maior_resposta_de_cada_ferramenta_cabe_no_teto(analista):
+def test_a_maior_resposta_de_dado_de_cada_ferramenta_cabe_no_teto(analista):
+    """Mede só resposta de dado (frase de erro não conta). Com dado de mentira (poucas centenas de
+    caracteres) isto só prova que toda ferramenta foi medida; o pior caso de verdade, a busca com 100
+    empresas pela API de verdade, é o teste de baixo. As outras páginas cheias se medem em produção
+    (roteiro privado do ensaio das dez perguntas)."""
     for numero in range(1, 11):
         _responder(numero, analista)
     maiores: dict[str, int] = {}
     for chamada in analista.chamadas:
+        if chamada.erro:
+            continue
         maiores[chamada.ferramenta] = max(
             maiores.get(chamada.ferramenta, 0), len(chamada.texto)
         )
