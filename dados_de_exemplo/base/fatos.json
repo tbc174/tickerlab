@@ -8,11 +8,11 @@
     "no_prazo_refeitos": 411
   },
   "auditor": {
-    "balancos_sem_troca": 6413,
-    "refeitos_sem_troca": 378,
-    "trocas": 2129,
-    "trocas_com_balanco": 1560,
-    "trocas_refeitas": 123
+    "balancos_sem_troca": 6426,
+    "refeitos_sem_troca": 380,
+    "trocas": 2110,
+    "trocas_com_balanco": 1546,
+    "trocas_refeitas": 121
   },
   "dividendo": {
     "acima_do_lucro": 255,
@@ -23,6 +23,69 @@
     "primeiro_exercicio": 2010,
     "ultimo_exercicio": 2022
   },
+  "fechadas": {
+    "caidos": [
+      {
+        "chave": "saiu_do_simples",
+        "motivo": "cnpj_simples_historico: não está montada na porta"
+      },
+      {
+        "chave": "capital_estrangeiro",
+        "motivo": "contagem abaixo de 10"
+      },
+      {
+        "chave": "tce_e_sancao",
+        "motivo": "tce_pe_contratos: guarda pessoa sem a marca que separa a empresa; sancoes_cgu: a fonte não é vendável (só uso interno ou sem resposta)"
+      },
+      {
+        "chave": "recuperacao_e_divida",
+        "motivo": "contagem abaixo de 10"
+      }
+    ],
+    "cartoes": [
+      {
+        "chave": "tres_filiais",
+        "parte": 4906,
+        "todo": 8588883
+      },
+      {
+        "chave": "bndes_e_finep",
+        "parte": 270,
+        "todo": 2543
+      },
+      {
+        "chave": "socia_entrou",
+        "parte": 72280,
+        "todo": 8588883
+      },
+      {
+        "chave": "tres_niveis",
+        "parte": 30696,
+        "todo": 354667
+      },
+      {
+        "chave": "bndes_e_divida",
+        "parte": 84,
+        "todo": 1383
+      },
+      {
+        "chave": "anvisa_e_divida",
+        "parte": 8130,
+        "todo": 102547
+      },
+      {
+        "chave": "industria_e_marca",
+        "parte": 29233,
+        "todo": 55515
+      },
+      {
+        "chave": "finep_e_patente",
+        "parte": 847,
+        "todo": 3620
+      }
+    ],
+    "medido_em": "2026-11-14"
+  },
   "lucros": {
     "balancos": 7959,
     "companhias": 1051,
@@ -31,13 +94,13 @@
     "refeitos": 498,
     "ultimo_exercicio": 2025
   },
-  "medido_em": "2026-10-29",
+  "medido_em": "2026-11-14",
   "parecer": {
     "com_duvida": 455,
     "com_duvida_e_insolvencia": 24,
     "companhias_com_duvida": 134,
     "primeiro_exercicio": 2010,
-    "sem_duvida": 8421,
+    "sem_duvida": 8423,
     "sem_duvida_e_insolvencia": 125,
     "ultimo_exercicio": 2024
   },

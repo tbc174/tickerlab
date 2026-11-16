@@ -405,6 +405,8 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: var(--azul-texto); }
 .v2-fato-fonte { color: var(--apagado); font-size: .84rem; }
 .v2-fato .como-foi-calculado { margin: .3rem 0 0; font-size: .88rem; }
+.v2-fatos-grupo + .v2-fatos-grupo { margin-top: 2rem; }
+.v2-fatos-pergunta { margin: 0 0 .8rem; font-size: 1.1rem; }
 
 /* as quatro regras da base, recolhidas, em duas colunas */
 .v2-regras-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .8rem; }
@@ -494,7 +496,10 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-bento .v2-larga { grid-template-columns: 1fr; }
   .v2-bento .v2-faixa-cartao { flex-direction: column; align-items: start; }
   .v2-regras-lista { grid-template-columns: 1fr; }
-  .v2-vagas, .v2-fatos, .v2-temas-cnpj { grid-template-columns: 1fr; }
+  .v2-vagas, .v2-temas-cnpj { grid-template-columns: 1fr; }
+  /* no celular cada pergunta vira uma fileira que corre de lado: a seção não cresce sem fim para baixo */
+  .v2-fatos { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: .8rem; padding-bottom: .4rem; }
+  .v2-fatos .v2-fato { flex: 0 0 85%; scroll-snap-align: start; }
   .v2-vaga, .v2-vaga.breve { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
