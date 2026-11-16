@@ -40,6 +40,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "eventos": frozenset({"events"}),
     "fundo": frozenset({"funds"}),
     "vinculos": frozenset({"links"}),
+    "ativos": frozenset({"assets"}),
     "compradores_do_setor": frozenset({"buyers"}),
     "novidades": frozenset({"research"}),
     "setores": frozenset({"sectors"}),
@@ -55,6 +56,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "eventos": "Eventos de uma empresa",
     "fundo": "Fundo de investimento",
     "vinculos": "Participações e auditor de uma empresa",
+    "ativos": "Ativos físicos de uma empresa",
     "compradores_do_setor": "Quem já se mexeu no setor",
     "novidades": "Fontes novas provadas pela pesquisa",
     "setores": "Setores acompanhados",
@@ -549,7 +551,7 @@ def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
 
 
 def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> None:
-    """Eventos, vínculos, compradores do setor e fundo (à parte, para a
+    """Eventos, vínculos, ativos, compradores do setor e fundo (à parte, para a
     `registrar_ferramentas` não crescer demais); chamada no meio dela, para a ordem da lista ficar."""
 
     @servidor.tool(
@@ -644,6 +646,27 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "depth": str(profundidade),  # como a CLI
             "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
         })  # fmt: skip
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["ativos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def ativos(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
+        """Os ativos físicos da empresa como eram no dia, um bloco por base aberta de agência. Hoje sai um
+        bloco: os contratos de exploração e produção de petróleo e gás em que a empresa é sócia (`oil_gas_contracts`:
+        rodada, fase, campo ou bloco, bacia, terra ou mar, participação e se opera). Cada bloco diz se achou a empresa
+        (`found`), a fonte e o dia do dado mais novo da base; não achar não quer dizer que a empresa não tem o ativo,
+        como explicam os `limits`. Serve para a pergunta de que ativos e concessões uma empresa tem.
+        Fonte: contratos de E&P da ANP.
+        Não traz: o que `not_covered` lista (mineração, por exemplo), os outros sócios do consórcio nem pessoa
+        física."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir(
+            "ativos",
+            f"/companies/{numeros}/assets",
+            {"known_at": _dia(como_era_em)},
+        )
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["compradores_do_setor"],

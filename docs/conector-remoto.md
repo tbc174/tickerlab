@@ -105,7 +105,8 @@ Cada comando de leitura da CLI `tickerlab` tem uma ferramenta no conector, e a f
 mesmos pedidos que o comando faz: mesma rota e mesmos parâmetros, portanto a mesma regra. O teste
 `tests/test_conector_remoto_paridade_cli.py` falha quando um comando novo da CLI não tem ferramenta. Nesse
 caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como já está para `login`,
-`logout` e `instrucoes`, que não leem a base.
+`logout` e `instrucoes`, que não leem a base, `deck`, que grava um arquivo, e `dossie`, que a IA compõe
+com as ferramentas que existem.
 
 | CLI | Conector |
 |---|---|
@@ -118,11 +119,12 @@ caso, ou se cria a ferramenta ou se escreve o motivo em `SEM_FERRAMENTA`, como j
 | `setor` | `setores` e `setor` |
 | `catalogo` e `consumo` | `o_que_posso_ver` |
 | `vinculos` | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
+| `ativos` | `ativos` (a data; conjunto `assets`, hoje os contratos de E&P da ANP) |
+| `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
+| `novidades` | `novidades` (`dias` de 1 a 30) |
 
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
-quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje está lá
-`compradores_do_setor`, que chama `/buyers` (conjunto `buyers`, linha 810): `cnae` (classe ou subclasse),
-`uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data.
+quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista está vazia.
 
 Cada ferramenta tem um título (`title`, em `TITULOS_DAS_FERRAMENTAS`), que é o que o analista vê no
 cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico (`buscar_empresas`) não muda,

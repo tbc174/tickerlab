@@ -87,6 +87,8 @@ MAPA_DAS_PERGUNTAS = (
     "de um setor (CNAE) numa UF ou município, por porte, idade ou só matrizes: `buscar_empresas`. "
     "Demonstrações (DFP e ITR) de companhia aberta: `demonstracoes`. Comparáveis de companhia aberta, "
     "com a mediana dos pares: `comparaveis`. Controladas, coligadas, participadas e auditor: `vinculos`. "
+    "Ativos físicos da empresa nas bases das agências (hoje, os contratos de exploração e produção de "
+    "petróleo e gás da ANP): `ativos`. "
     "Documentos entregues à CVM e trocas de auditor: `eventos`. Quem já se mexeu num setor (empresas e "
     "FIPs que entraram como sócios, companhias abertas com controlada nele; movimento passado, não "
     "intenção de compra): `compradores_do_setor`. Um fundo pelo CNPJ dele: "
