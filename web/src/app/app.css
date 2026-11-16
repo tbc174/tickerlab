@@ -416,6 +416,10 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .cnpjs-da-comparacao { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; }
 .cnpjs-da-comparacao .botao { min-height: 44px; }
 .celula-comparada small { display: block; }
+.tabela-do-app .grupo-da-tabela th { background: var(--superficie); color: var(--apagado); font-size: var(--t-1); text-transform: uppercase; letter-spacing: .04em; }
+.rodape-da-tela { margin-top: var(--e5); padding-top: var(--e3); border-top: 1px solid var(--linha); }
+.rodape-da-tela p { margin: 0 0 var(--e2); }
+.cabecalho-da-tela .olho a { color: inherit; }
 /* peças únicas do app (web/src/app/pecas, plano de 13/11/2026): uma cara só em toda tela */
 .cabecalho-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e2) var(--e3); margin-bottom: var(--e2); }
 .app-corpo main .cabecalho-titulo h1 { margin: 0; }

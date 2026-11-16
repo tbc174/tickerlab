@@ -189,10 +189,37 @@ def test_registro_so_tem_tabela_do_dicionario() -> None:
     assert set(PRONTIDAO) <= set(TABELAS)
 
 
-def test_registro_comeca_vazio() -> None:
-    """D10: nenhuma tabela tem as três provas ainda (o placar da 427 é a A2b). Quando a primeira
-    entrar, por PR de nível 2 da mesa Dados, este teste sai junto."""
-    assert prontidao.PRONTIDAO == {}
+def test_registro_de_verdade_so_tem_as_tabelas_com_as_tres_provas() -> None:
+    """D10.5: só entra tabela com 6, 7 e 8 e a versão maior de hoje. Tabela nova aqui = PR de nível 2
+    da mesa Dados, e este teste sobe junto com ela."""
+    assert set(prontidao.PRONTIDAO) == {"demonstracoes_como_era"}
+    hoje = date(2026, 11, 14)
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",), prontidao.PRONTIDAO, versoes_maiores(), hoje
+        )
+        is None
+    )
+    # a versão maior do contrato mudou: a prova velha não vale
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",),
+            prontidao.PRONTIDAO,
+            {"demonstracoes_como_era": 4},
+            hoje,
+        )
+        is prontidao.Falta.CONTRATO_MUDOU
+    )
+    # a prova da 6 passou de 90 dias
+    assert (
+        negacao_da_prontidao(
+            ("demonstracoes_como_era",),
+            prontidao.PRONTIDAO,
+            versoes_maiores(),
+            date(2027, 3, 1),
+        )
+        is prontidao.Falta.PRONTIDAO_VENCIDA
+    )
 
 
 # ---- ensaio local (linha 800): a regra só liga com TICKERLAB_AMBIENTE=ensaio ----
@@ -210,11 +237,11 @@ def test_fora_do_ensaio_o_registro_e_o_de_verdade(ambiente) -> None:
 
 def test_no_ensaio_toda_tabela_do_dicionario_vale_como_pronta() -> None:
     ambiente = {"TICKERLAB_AMBIENTE": " Ensaio "}
-    registro = prontidao.registro_vigente(ambiente, HOJE)
+    registro = prontidao.registro_vigente(ambiente, date(2026, 11, 14))
     assert set(registro) >= set(TABELAS)
     assert (
         negacao_da_prontidao(
-            ("demonstracoes_como_era",), registro, versoes_maiores(), HOJE
+            ("demonstracoes_como_era",), registro, versoes_maiores(), date(2026, 11, 14)
         )
         is None
     )
@@ -227,13 +254,13 @@ def test_no_ensaio_o_registro_de_verdade_tem_precedencia(monkeypatch) -> None:
     assert registro["demonstracoes_como_era"] is real
 
 
-def test_em_producao_o_portao_segue_negando(monkeypatch) -> None:
+def test_em_producao_o_portao_segue_negando_o_que_nao_tem_registro(monkeypatch) -> None:
     """Mesmo com a tabela no dicionário e o ambiente de produção, sem registro o portão nega."""
     monkeypatch.setenv("TICKERLAB_AMBIENTE", "producao")
     registro = prontidao.registro_vigente()
     assert (
         negacao_da_prontidao(
-            ("demonstracoes_como_era",), registro, versoes_maiores(), HOJE
+            ("dmpl_como_era",), registro, versoes_maiores(), date(2026, 11, 14)
         )
         is Falta.SEM_PRONTIDAO
     )
@@ -375,6 +402,19 @@ def test_tabela_com_cnpj_precisa_da_marca_por_linha() -> None:
         "x", pessoa=False, colunas=("ano", "valor"), linhas_de_pessoa=""
     )
     assert (sem, com, sem_cnpj) == (False, True, True)
+
+
+def test_a_rede_entra_no_piloto_na_versao_maior_do_contrato_e_com_as_duas_provas() -> (
+    None
+):
+    """Linha 784: entidades, ligacoes e identificadores, com o placar de 16/11/2026 e o dicionario escrito."""
+    versoes = versoes_maiores()
+    for nome in sorted(prontidao.TABELAS_DA_REDE):
+        entrada = prontidao.PRONTIDAO_DE_PILOTO[nome]
+        assert entrada.versao_maior == versoes[nome]
+        assert entrada.qualidade is not None and entrada.qualidade.prova.strip()
+        assert entrada.dicionario is not None and entrada.dicionario.prova.strip()
+        assert nome not in PRONTIDAO
 
 
 def test_rede_e_montagem_sem_pessoa_contam_como_decididas() -> None:

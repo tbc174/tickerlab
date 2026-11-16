@@ -224,7 +224,7 @@ describe("encontrar empresas", () => {
     expect((within(bandeja).getByRole("button", { name: "Comparar" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("checkbox", { name: "Escolher EMPRESA GAMA LTDA para comparar" }));
     fireEvent.click(within(screen.getByRole("region", { name: "Comparar" })).getByRole("button", { name: "Comparar" }));
-    expect(await screen.findByRole("heading", { name: "Comparar empresas" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Comparar 2 empresas" })).toBeTruthy();
     expect((screen.getAllByLabelText(/^CNPJ/)[0] as HTMLInputElement).value).toBe("11111111000191");
     expect((screen.getAllByLabelText(/^CNPJ/)[1] as HTMLInputElement).value).toBe("33333333000191");
     expect(buscar.mock.calls.map(([e]) => String(e)).some((e) => e.includes("11111111000191"))).toBe(false);
