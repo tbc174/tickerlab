@@ -1,0 +1,793 @@
+"""As dez perguntas do analista pelo conector MCP (linha 831), uma a uma, pelo servidor MCP de verdade.
+
+As dez vêm do relatório de 11/11 (`reports/2026-11-11-tema-0-dados-empresariais-por-ia.md`, seção 5). Cada
+pergunta é feita como o Claude da casa de M&A a faria: `tools/call` no `/mcp` do conector, com a chave de
+mentira, contra a API de mentira (`ajudantes_do_conector.api_de_mentira`); as respostas de mentira têm a
+forma da API (campo com `value`, `source` e `published_at`), e os CNPJs são de ninguém. O teste confere o
+caminho (qual ferramenta, quais parâmetros chegam à API) e a forma da resposta: tem fonte e data, não tem
+pessoa física e, onde a base não tem o dado, a frase honesta. Não confere o dado em si: isso é da API.
+
+A tabela abaixo é a fonte única do placar: o teste a lê daqui e falha se ela deixar de bater com o conector
+(ferramenta citada que não existe, ferramenta que existe e está marcada "sem ferramenta", ferramenta
+registrada que nenhuma pergunta usa). Quando a ferramenta `ativos` entrar no conector (linha 901), troque
+só a linha 7: "sem ferramenta" vira "respondida" (ou "fraca"). Situações: "respondida" (a pergunta fecha
+com as ferramentas da linha), "fraca" (responde em parte e diz o que falta) e "sem ferramenta" (ainda não
+há ferramenta, e o conector não finge que há).
+
+| # | situação | ferramentas | o que falta |
+|---|---|---|---|
+| 1 | respondida | ficha_da_empresa | nada: cadastro, situação e matriz ou filial |
+| 2 | respondida | buscar_empresas | a primeira página não é o universo: o `next_cursor` avisa |
+| 3 | fraca | demonstracoes | faturamento de empresa fechada não existe na base: diz "não temos" |
+| 4 | respondida | vinculos | só pessoa jurídica; controle e coligação só da companhia aberta |
+| 5 | respondida | compradores_do_setor | é movimento passado, não intenção de compra |
+| 6 | fraca | compradores_do_setor, fundo | só os FIPs que são sócios de empresas do setor; sem busca por segmento |
+| 7 | sem ferramenta | ativos | a ferramenta de ativos e autorizações ainda não entrou no conector |
+| 8 | fraca | eventos, novidades | sem protesto, baixa ou atraso de crédito; sinal não é intenção de venda |
+| 9 | respondida | comparaveis, setores, setor | só companhia aberta; sem múltiplo de transação |
+| 10 | fraca | buscar_empresas, ficha_da_empresa, eventos, vinculos, comparaveis, o_que_posso_ver | o conector devolve texto: não exporta arquivo |
+"""
+
+import json
+import re
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
+from datetime import date
+
+import httpx
+import pandas as pd
+import pytest
+from starlette.testclient import TestClient
+
+from base.porta import Porta
+from conector_remoto import ferramentas, servidor
+from conector_remoto.saida import TETO_DE_CARACTERES
+from src.api_externa import rotas
+from src.api_externa.conjuntos import prospeccao
+from tests import ajudantes_do_conector as aj
+from tests.test_api_externa_prospeccao import CARIMBOS, _gravar
+from tests.test_conector_remoto_ponta_a_ponta import (  # noqa: F401 (fixtures)
+    cenario,
+    cliente,
+)
+
+HOJE = date(2026, 11, 16)
+ALFA = "11111111000191"  # companhia aberta de mentira
+ALFA_FILIAL = "11111111000272"
+GAMA = "33333333000191"  # empresa fechada de mentira
+FIP = "44444444000191"  # um fundo de mentira
+CNAE_DO_SETOR = "62015"
+# os conjuntos do catálogo de mentira: os 11 de sempre e o dos ativos (linha 845)
+CONJUNTOS = (
+    "prospecting", "profiles", "companies", "comparables", "financials", "sectors", "funds",
+    "events", "links", "buyers", "research", "assets",
+)  # fmt: skip
+SEM_PESSOA = frozenset(
+    {
+        "partners",
+        "cpf",
+        "socios",
+        "email",
+        "phone",
+        "address",
+        "qsa",
+        "person",
+        "persons",
+    }
+)
+_CPF = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+_LINHA_DA_TABELA = re.compile(
+    r"^\| (\d+) \| (respondida|fraca|sem ferramenta) \| ([a-z_, ]+) \|", re.MULTILINE
+)
+# uma frase de erro cabe em poucas linhas; erro grande seria dado vazando
+TAMANHO_MAXIMO_DA_FRASE_DE_ERRO = 1000
+FRASE_SEM_FATURAMENTO = "Faturamento de empresa fechada a base não tem"
+
+
+def _campo(valor: object, fonte: str = "rfb-cnpj", dia: str = "2026-09-30") -> dict:
+    return {"value": valor, "source": fonte, "published_at": dia, "observed_at": None}
+
+
+def _fontes(*nomes: str) -> list[dict]:
+    return [
+        {"source": n, "license": "CC BY", "attribution": f"Fonte: {n}"} for n in nomes
+    ]
+
+
+def _json(corpo: dict) -> httpx.Response:
+    return httpx.Response(200, json=corpo)
+
+
+def _cadastro(cnpj: str, nome: str, matriz: bool) -> dict:
+    return {
+        "cnpj": cnpj,
+        "legal_name": _campo(nome),
+        "head_office": _campo(matriz),
+        "registration_status": _campo("ativa"),
+        "opened_at": _campo("2010-05-01"),
+        "cnae_code": _campo("6201501"),
+        "size": _campo("other"),
+    }
+
+
+def _empresa_da_busca(cnpj: str, nome: str) -> dict:
+    return _cadastro(cnpj, nome, matriz=True) | {"state_code": _campo("SP")}
+
+
+def _exemplo(alvo: str, sinal: str) -> dict:
+    return {
+        "target_cnpj": alvo,
+        "signal": sinal,
+        "source": "rfb-cnpj",
+        "published_at": "2026-09-30",
+    }
+
+
+def _comprador(cnpj: str, nome: str, tipo: str, sinal: str) -> dict:
+    return {
+        "cnpj": cnpj,
+        "legal_name": _campo(nome),
+        "buyer_type": tipo,
+        "signal_count": 2,
+        "signals": [{"signal": sinal, "examples": [_exemplo(ALFA, sinal)]}],
+    }
+
+
+def _par(cnpj: str, nome: str, receita: float) -> dict:
+    return {
+        "cnpj": cnpj,
+        "legal_name": _campo(nome, "cvm-dfp", "2026-03-31"),
+        "revenue": _campo(receita, "cvm-dfp", "2026-03-31"),
+        "ebitda": _campo(receita / 4, "cvm-dfp", "2026-03-31"),
+    }
+
+
+def _rotas_de_mentira() -> dict[str, httpx.Response]:
+    """O que a API de mentira responde a cada rota que as dez perguntas usam."""
+    limites = [{"code": "sem_pessoa", "text": "Só pessoa jurídica."}]
+    return {
+        f"/companies/{ALFA}/profile": _json(
+            _cadastro(ALFA, "ALFA TECNOLOGIA S.A.", True)
+            | {"sources": _fontes("rfb-cnpj"), "limits": limites}
+        ),
+        f"/companies/{ALFA_FILIAL}/profile": _json(
+            _cadastro(ALFA_FILIAL, "ALFA TECNOLOGIA S.A.", False)
+            | {"sources": _fontes("rfb-cnpj")}
+        ),
+        "/companies": _json(
+            {
+                "known_at": HOJE.isoformat(),
+                "companies": [
+                    _empresa_da_busca(ALFA, "ALFA TECNOLOGIA S.A."),
+                    _empresa_da_busca("22222222000191", "BETA SOFTWARE LTDA"),
+                ],
+                "truncated": True,
+                "next_cursor": "MjIyMjIyMjIwMDAxOTE",
+                "sources": _fontes("rfb-cnpj"),
+            }
+        ),
+        # GAMA e CNPJ sem demonstração: 404 `not_available`, que é a resposta padrão do dublê
+        f"/companies/{ALFA}/links": _json(
+            {
+                "known_at": HOJE.isoformat(),
+                "links": [
+                    {
+                        "type": "subsidiary_of",
+                        "from": {
+                            "cnpj_root": "11111111",
+                            "legal_name": "ALFA TECNOLOGIA S.A.",
+                        },
+                        "to": {
+                            "cnpj_root": "55555555",
+                            "legal_name": "OMEGA HOLDING S.A.",
+                        },
+                        "capital_share": _campo(60.0, "cvm-fre", "2026-05-31"),
+                        "valid_from": "2026-05-31",
+                    },
+                    {
+                        "type": "audits",
+                        "from": {
+                            "cnpj_root": "66666666",
+                            "legal_name": "AUDITORES ASSOCIADOS",
+                        },
+                        "to": {
+                            "cnpj_root": "11111111",
+                            "legal_name": "ALFA TECNOLOGIA S.A.",
+                        },
+                        "source": "cvm-fca",
+                        "published_at": "2026-05-31",
+                    },
+                ],
+                "limits": [
+                    {
+                        "code": "so_companhia_aberta",
+                        "text": "Controle: só companhia aberta.",
+                    }
+                ],
+                "sources": _fontes("cvm-fre", "cvm-fca"),
+            }
+        ),
+        "/buyers": _json(
+            {
+                "known_at": HOJE.isoformat(),
+                "buyers": [
+                    _comprador(
+                        "77777777000191",
+                        "SIGMA PARTICIPACOES S.A.",
+                        "company",
+                        "entered_as_partner",
+                    ),
+                    _comprador(FIP, "FIP TECNOLOGIA I", "fund", "fip_partner"),
+                ],
+                "limits": [
+                    {
+                        "code": "movimento_passado",
+                        "text": "Movimento passado, não intenção.",
+                    }
+                ],
+                "sources": _fontes("rfb-cnpj"),
+            }
+        ),
+        f"/funds/{FIP}": _json(
+            {
+                "cnpj": FIP,
+                "class": _campo("FIP", "cvm-fundos", "2026-10-31"),
+                "net_assets": _campo(250_000_000.0, "cvm-fundos", "2026-10-31"),
+                "sources": _fontes("cvm-fundos"),
+            }
+        ),
+        f"/companies/{ALFA}/assets": _json(
+            {
+                "known_at": HOJE.isoformat(),
+                "assets": [
+                    {
+                        "kind": "mining_dam",
+                        "identifier": _campo(
+                            "BARRAGEM-0001", "anm-sigbm-barragens", "2026-10-01"
+                        ),
+                        "status": _campo("ativa", "anm-sigbm-barragens", "2026-10-01"),
+                    }
+                ],
+                "sources": _fontes("anm-sigbm-barragens"),
+            }
+        ),
+        f"/companies/{ALFA}/events": _json(
+            {
+                "known_at": HOJE.isoformat(),
+                "events": [
+                    {
+                        "type": "ipe_filing",
+                        "category": _campo("Fato Relevante", "cvm-ipe", "2026-10-20"),
+                        "protocol": _campo("00000000001", "cvm-ipe", "2026-10-20"),
+                    },
+                    {
+                        "type": "auditor_change",
+                        "new_auditor": _campo(
+                            "AUDITORES ASSOCIADOS", "cvm-fca", "2026-08-15"
+                        ),
+                    },
+                ],
+                "sources": _fontes("cvm-ipe", "cvm-fca"),
+            }
+        ),
+        "/research/news": _json(
+            {
+                "news": [
+                    {
+                        "agency": "CADE",
+                        "source": "cade-atos",
+                        "published_at": "2026-11-12",
+                        "excerpt": "Ato de concentração envolvendo empresa do setor de software.",
+                        "excerpt_cut": None,
+                        "sha256": "a" * 64,
+                    }
+                ],
+                "sources": _fontes("cade-atos"),
+            }
+        ),
+        f"/companies/{ALFA}/comparables": _json(
+            {
+                "known_at": HOJE.isoformat(),
+                "company": _par(ALFA, "ALFA TECNOLOGIA S.A.", 800.0),
+                "peers": [
+                    _par("88888888000191", "PI TECNOLOGIA S.A.", 900.0),
+                    _par("99999999000191", "TAU SISTEMAS S.A.", 700.0),
+                ],
+                "peer_median": {"revenue": _campo(800.0, "cvm-dfp", "2026-03-31")},
+                "sources": _fontes("cvm-dfp"),
+            }
+        ),
+        "/sectors": _json(
+            {
+                "sectors": [{"key": "software", "name": "Software"}],
+                "sources": _fontes("cvm-dfp"),
+            }
+        ),
+        "/sectors/software": _json(
+            {
+                "key": "software",
+                "concentration": {"cr4": _campo(0.4, "cvm-dfp", "2026-03-31")},
+                "sources": _fontes("cvm-dfp"),
+            }
+        ),
+        "/usage": _json(
+            {
+                "month": "2026-11",
+                "requests": {"used": 12, "limit": 5000},
+                "rows": {"used": 340},
+            }
+        ),
+    }
+
+
+@dataclass(frozen=True)
+class Chamada:
+    """Uma chamada de ferramenta: o que voltou do servidor MCP."""
+
+    ferramenta: str
+    erro: bool
+    texto: str
+
+    @property
+    def corpo(self) -> dict:
+        assert not self.erro, self.texto
+        corpo = json.loads(self.texto)
+        assert isinstance(corpo, dict)
+        return corpo
+
+
+@dataclass
+class Analista:
+    """O Claude do analista: faz as chamadas ao conector e guarda cada uma, e o que chegou à API."""
+
+    cliente: TestClient
+    pedidos: list[httpx.Request]
+    chamadas: list[Chamada] = field(default_factory=list)
+
+    def perguntar(self, ferramenta: str, **argumentos: object) -> Chamada:
+        erro, texto = aj.chamar(
+            self.cliente, aj.CHAVE_DE_MENTIRA, ferramenta, **argumentos
+        )
+        chamada = Chamada(ferramenta, erro, texto)
+        self.chamadas.append(chamada)
+        return chamada
+
+    def pedido_a_api(self, caminho: str) -> httpx.Request:
+        (pedido,) = [p for p in self.pedidos if p.url.path == f"/data/v1{caminho}"]
+        return pedido
+
+
+@pytest.fixture
+def analista() -> Iterator[Analista]:
+    pedidos: list[httpx.Request] = []
+    transporte = aj.api_de_mentira(
+        _rotas_de_mentira(), conjuntos=CONJUNTOS, pedidos=pedidos
+    )
+    with aj.conector(transporte) as cliente_mcp:
+        yield Analista(cliente_mcp, pedidos)
+
+
+# ---------------------------------------------------------------- a tabela do topo
+
+
+def tabela_do_topo() -> dict[int, tuple[str, tuple[str, ...]]]:
+    """número da pergunta -> (situação, ferramentas), lido da tabela do docstring deste arquivo."""
+    linhas = _LINHA_DA_TABELA.findall(__doc__ or "")
+    return {
+        int(numero): (
+            situacao,
+            tuple(f.strip() for f in lista.split(",")),
+        )
+        for numero, situacao, lista in linhas
+    }
+
+
+def _ferramentas_do_conector(cliente_mcp: TestClient) -> dict[str, dict]:
+    resposta = aj.rpc(cliente_mcp, aj.CHAVE_DE_MENTIRA, "tools/list")
+    assert resposta.status_code == 200, resposta.text
+    return {f["name"]: f for f in resposta.json()["result"]["tools"]}
+
+
+def _descricao(ferramenta: dict) -> str:
+    """A descrição como a IA a lê: o docstring quebra linha no meio das frases."""
+    return " ".join(ferramenta["description"].split())
+
+
+def _instrucoes(cliente_mcp: TestClient) -> str:
+    resposta = aj.rpc(
+        cliente_mcp,
+        aj.CHAVE_DE_MENTIRA,
+        "initialize",
+        {
+            "protocolVersion": aj.VERSAO_DO_PROTOCOLO,
+            "capabilities": {},
+            "clientInfo": {"name": "ensaio-dez-perguntas", "version": "1"},
+        },
+    )
+    assert resposta.status_code == 200, resposta.text
+    return resposta.json()["result"]["instructions"]
+
+
+def test_a_tabela_do_topo_tem_as_dez_perguntas_em_ordem():
+    assert list(tabela_do_topo()) == list(range(1, 11))
+
+
+def test_a_tabela_do_topo_bate_com_as_ferramentas_do_conector(analista):
+    no_conector = _ferramentas_do_conector(analista.cliente)
+    for numero, (situacao, citadas) in tabela_do_topo().items():
+        existem = [f in no_conector for f in citadas]
+        if situacao == "sem ferramenta":
+            assert not all(existem), (
+                f"Pergunta {numero}: a tabela diz 'sem ferramenta', mas {citadas} já estão no "
+                "conector. Troque a situação da linha na tabela do topo do arquivo (e confira a "
+                "chamada da pergunta)."
+            )
+        else:
+            assert all(existem), (
+                f"Pergunta {numero}: a tabela diz '{situacao}', mas faltam no conector: "
+                f"{[f for f in citadas if f not in no_conector]}."
+            )
+
+
+def test_toda_ferramenta_do_conector_serve_a_alguma_pergunta(analista):
+    citadas = {f for _s, lista in tabela_do_topo().values() for f in lista}
+    sobram = set(_ferramentas_do_conector(analista.cliente)) - citadas
+    assert not sobram, (
+        f"Ferramenta nova no conector sem pergunta na tabela do topo: {sorted(sobram)}. "
+        "Ponha-a na linha da pergunta que ela responde (ou explique por que nenhuma)."
+    )
+
+
+def test_so_as_ferramentas_do_conector_estao_na_tabela_ou_em_ativos():
+    registradas = set(ferramentas.CONJUNTOS_DA_FERRAMENTA)
+    citadas = {f for _s, lista in tabela_do_topo().values() for f in lista}
+    assert citadas - registradas <= {"ativos"}, citadas - registradas
+
+
+def test_as_instrucoes_citam_as_ferramentas_das_perguntas_que_o_conector_responde(
+    analista,
+):
+    instrucoes = _instrucoes(analista.cliente)
+    no_conector = _ferramentas_do_conector(analista.cliente)
+    for numero, (situacao, citadas) in tabela_do_topo().items():
+        if situacao == "sem ferramenta":
+            # o conector não promete o que não tem
+            assert not any(f"`{f}`" in instrucoes for f in citadas), numero
+            continue
+        for ferramenta in citadas:
+            assert ferramenta in no_conector
+            assert f"`{ferramenta}`" in instrucoes, (
+                f"Pergunta {numero}: as instruções do servidor não citam `{ferramenta}`."
+            )
+
+
+# ---------------------------------------------------------------- a forma de toda resposta
+
+
+def _chaves(no: object) -> Iterator[str]:
+    if isinstance(no, dict):
+        for chave, filho in no.items():
+            yield chave
+            yield from _chaves(filho)
+    elif isinstance(no, list):
+        for filho in no:
+            yield from _chaves(filho)
+
+
+def _com_fonte_e_data(no: object) -> Iterator[dict]:
+    """Cada objeto que traz `source` e `published_at` preenchidos, em qualquer profundidade."""
+    if isinstance(no, dict):
+        if no.get("source") and no.get("published_at"):
+            yield no
+        for filho in no.values():
+            yield from _com_fonte_e_data(filho)
+    elif isinstance(no, list):
+        for filho in no:
+            yield from _com_fonte_e_data(filho)
+
+
+# resposta que não é dado de empresa e, por isso, não tem bloco com fonte e dia
+SEM_BLOCO_DE_FONTE = {
+    "setores": "só a lista de chaves dos setores",
+    "o_que_posso_ver": "catálogo e consumo da própria chave",
+}
+
+
+def conferir_a_forma(chamada: Chamada) -> None:
+    """Resposta de dado: JSON, fonte e data em algum bloco, nenhuma pessoa física."""
+    corpo = chamada.corpo
+    if chamada.ferramenta not in SEM_BLOCO_DE_FONTE:
+        assert list(_com_fonte_e_data(corpo)), (
+            f"{chamada.ferramenta}: nenhum bloco com fonte e data"
+        )
+    assert not set(_chaves(corpo)) & SEM_PESSOA, chamada.ferramenta
+    assert not _CPF.search(chamada.texto) and not _EMAIL.search(chamada.texto)
+
+
+# ---------------------------------------------------------------- as dez perguntas
+
+
+def pergunta_1(analista: Analista) -> None:
+    """Quem é esta empresa pelo CNPJ, e é matriz ou filial?"""
+    matriz = analista.perguntar("ficha_da_empresa", cnpj=ALFA)
+    filial = analista.perguntar("ficha_da_empresa", cnpj="11.111.111/0002-72")
+    assert matriz.corpo["head_office"]["value"] is True
+    assert filial.corpo["head_office"]["value"] is False
+    assert matriz.corpo["legal_name"]["value"] == "ALFA TECNOLOGIA S.A."
+    assert analista.pedido_a_api(
+        f"/companies/{ALFA_FILIAL}/profile"
+    )  # a pontuação saiu
+
+
+def pergunta_2(analista: Analista) -> None:
+    """Quais matrizes ativas, com mais de cinco anos, atuam neste segmento e região?"""
+    cinco_anos_atras = HOJE.replace(year=HOJE.year - 5).isoformat()
+    busca = analista.perguntar(
+        "buscar_empresas",
+        cnae=["62"],
+        uf=["SP"],
+        so_matriz=True,
+        aberta_antes_de=cinco_anos_atras,
+        limite=20,
+    )
+    parametros = analista.pedido_a_api("/companies").url.params
+    assert parametros["head_office"] == "true"
+    assert parametros["opened_before"] == cinco_anos_atras
+    assert parametros["state"] == "SP" and parametros["cnae"] == "62"
+    assert [e["cnpj"] for e in busca.corpo["companies"]] == [ALFA, "22222222000191"]
+    # a primeira página não é o universo: a resposta diz que há mais
+    assert busca.corpo["truncated"] is True and busca.corpo["next_cursor"]
+
+
+def pergunta_3(analista: Analista) -> None:
+    """Quanto a empresa fechada fatura, em qual ano e com qual prova?"""
+    resposta = analista.perguntar("demonstracoes", cnpj=GAMA)
+    assert resposta.erro
+    assert FRASE_SEM_FATURAMENTO in resposta.texto
+    assert "não estima" in resposta.texto
+    # a frase é a resposta: nada de número no lugar dela
+    assert not re.search(r"R\$\s*\d", resposta.texto)
+
+
+def pergunta_4(analista: Analista) -> None:
+    """Quais empresas controlam esta empresa e quais controladas ela tem?"""
+    vinculos = analista.perguntar("vinculos", cnpj=ALFA, profundidade=1)
+    assert analista.pedido_a_api(f"/companies/{ALFA}/links").url.params["depth"] == "1"
+    tipos = {v["type"] for v in vinculos.corpo["links"]}
+    assert "subsidiary_of" in tipos
+    # só pessoa jurídica (raiz de CNPJ nas duas pontas) e a ressalva de quem informa o controle
+    assert all(
+        "cnpj_root" in v["from"] and "cnpj_root" in v["to"]
+        for v in vinculos.corpo["links"]
+    )
+    assert any(
+        "companhia aberta" in limite["text"] for limite in vinculos.corpo["limits"]
+    )
+
+
+def pergunta_5(analista: Analista) -> None:
+    """Quem comprou empresas deste setor e poderia integrar uma lista inicial de compradores?"""
+    compradores = analista.perguntar(
+        "compradores_do_setor", cnae=CNAE_DO_SETOR, uf="SP", anos=3, limite=10
+    )
+    parametros = analista.pedido_a_api("/buyers").url.params
+    assert parametros["cnae"] == CNAE_DO_SETOR and parametros["state"] == "SP"
+    assert parametros["years"] == "3"
+    assert {b["cnpj"] for b in compradores.corpo["buyers"]} == {
+        "77777777000191",
+        FIP,
+    }
+    # a ressalva "movimento passado, não intenção de compra" vem na resposta
+    assert compradores.corpo["limits"]
+
+
+def pergunta_6(analista: Analista) -> None:
+    """Quais fundos já investem em empresas deste segmento?"""
+    compradores = analista.perguntar(
+        "compradores_do_setor", cnae=CNAE_DO_SETOR, uf="SP"
+    ).corpo["buyers"]
+    (fip,) = [b["cnpj"] for b in compradores if b["buyer_type"] == "fund"]
+    fundo = analista.perguntar("fundo", cnpj=fip)
+    assert fundo.corpo["class"]["value"] == "FIP"
+    assert fundo.corpo["class"]["source"] == "cvm-fundos"
+
+
+def pergunta_7(analista: Analista) -> None:
+    """Quais ativos ou autorizações regulatórias estão vinculados a este CNPJ?"""
+    ativos = analista.perguntar("ativos", cnpj=ALFA)
+    if tabela_do_topo()[7][0] == "sem ferramenta":
+        # o conector não finge: a ferramenta não existe, e chamá-la devolve a frase de ferramenta
+        # indisponível, nunca um dado
+        assert ativos.erro and ferramentas.MENSAGEM_NAO_LIBERADA in ativos.texto
+        return
+    assert ativos.corpo["assets"]
+
+
+def pergunta_8(analista: Analista) -> None:
+    """Quais sinais públicos justificam investigar esta empresa agora?"""
+    eventos = analista.perguntar("eventos", cnpj=ALFA, limite=20)
+    novidades = analista.perguntar("novidades", dias=7)
+    tipos = {e["type"] for e in eventos.corpo["events"]}
+    assert tipos == {"ipe_filing", "auditor_change"}
+    assert analista.pedido_a_api("/research/news").url.params["days"] == "7"
+    (noticia,) = novidades.corpo["news"]
+    # o trecho vem com o hash do original: a prova de que o texto está lá
+    assert len(noticia["sha256"]) == 64 and noticia["excerpt"]
+
+
+def pergunta_9(analista: Analista) -> None:
+    """Quais pares são comparáveis e quais valores podem ser comparados?"""
+    pares = analista.perguntar("comparaveis", cnpj=ALFA)
+    lista = analista.perguntar("setores")
+    (setor,) = lista.corpo["sectors"]
+    contexto = analista.perguntar("setor", chave=setor["key"])
+    assert len(pares.corpo["peers"]) == 2
+    assert pares.corpo["peer_median"]["revenue"]["source"] == "cvm-dfp"
+    assert contexto.corpo["concentration"]["cr4"]["published_at"]
+
+
+def pergunta_10(analista: Analista) -> None:
+    """Monte uma lista curta e uma ficha com fontes, lacunas e consumo, e exporte o resultado."""
+    lista = analista.perguntar("buscar_empresas", cnae=["62"], uf=["SP"], limite=3)
+    alvo = lista.corpo["companies"][0]["cnpj"]
+    # a ficha do dossiê: as quatro ferramentas, com o mesmo CNPJ, na ordem das instruções
+    analista.perguntar("ficha_da_empresa", cnpj=alvo)
+    analista.perguntar("eventos", cnpj=alvo)
+    analista.perguntar("vinculos", cnpj=alvo, profundidade=1)
+    analista.perguntar("comparaveis", cnpj=alvo)
+    # a lacuna: companhia fechada não tem comparáveis, e a ferramenta diz "Não disponível"
+    sem_pares = analista.perguntar("comparaveis", cnpj=GAMA)
+    consumo = analista.perguntar("o_que_posso_ver")
+    assert sem_pares.erro and "Não disponível" in sem_pares.texto
+    assert consumo.corpo["usage"]["requests"]["used"] == 12
+    assert consumo.corpo["catalog"]["datasets"]
+
+
+RESPONDEDORES: dict[int, Callable[[Analista], None]] = {
+    1: pergunta_1,
+    2: pergunta_2,
+    3: pergunta_3,
+    4: pergunta_4,
+    5: pergunta_5,
+    6: pergunta_6,
+    7: pergunta_7,
+    8: pergunta_8,
+    9: pergunta_9,
+    10: pergunta_10,
+}
+
+
+def _responder(numero: int, analista: Analista) -> None:
+    """Faz a pergunta e confere o que ela confere sozinha; a forma geral é de quem chama."""
+    RESPONDEDORES[numero](analista)
+
+
+@pytest.mark.parametrize("numero", range(1, 11))
+def test_a_pergunta_usa_so_as_ferramentas_da_tabela(numero, analista):
+    _responder(numero, analista)
+    usadas = {c.ferramenta for c in analista.chamadas}
+    assert usadas == set(tabela_do_topo()[numero][1])
+
+
+@pytest.mark.parametrize("numero", range(1, 11))
+def test_toda_resposta_de_dado_tem_fonte_e_data_e_nenhuma_pessoa(numero, analista):
+    _responder(numero, analista)
+    for chamada in analista.chamadas:
+        # erro é a frase honesta (conferida na pergunta); só dado entra aqui
+        if not chamada.erro:
+            conferir_a_forma(chamada)
+
+
+@pytest.mark.parametrize("numero", range(1, 11))
+def test_nenhuma_resposta_leva_a_chave_e_o_erro_e_uma_frase_curta(numero, analista):
+    _responder(numero, analista)
+    for chamada in analista.chamadas:
+        assert aj.CHAVE_DE_MENTIRA not in chamada.texto
+        if chamada.erro:
+            assert len(chamada.texto) < TAMANHO_MAXIMO_DA_FRASE_DE_ERRO
+
+
+# ---------------------------------------------------------------- as frases honestas das lacunas
+
+
+def test_o_conector_diz_o_que_nao_tem_onde_a_pergunta_e_fraca(analista):
+    no_conector = _ferramentas_do_conector(analista.cliente)
+    instrucoes = _instrucoes(analista.cliente)
+    # 3: faturamento de fechada
+    assert "faturamento de empresa fechada" in instrucoes
+    assert "não traz faturamento de fechada" in _descricao(no_conector["demonstracoes"])
+    # 5 e 6: compradores são movimento passado, e os fundos são os FIPs sócios do setor
+    assert "não intenção de compra" in _descricao(no_conector["compradores_do_setor"])
+    assert "fundos (FIP)" in _descricao(no_conector["compradores_do_setor"])
+    # 8: sem nada novo, a lista vem vazia e a ferramenta manda dizer que não há fonte provada
+    assert "não há fonte nova provada" in _descricao(no_conector["novidades"])
+    # 10: o dossiê é composto pela IA, com a lacuna anotada em vez de preenchida
+    assert servidor.ORIENTACAO_DO_DOSSIE in instrucoes
+
+
+def test_toda_instrucao_sobre_pessoa_fisica_a_recusa(analista):
+    instrucoes = _instrucoes(analista.cliente)
+    assert "pessoa física" in instrucoes
+
+
+# ---------------------------------------------------------------- o tamanho das respostas
+
+
+def test_a_maior_resposta_de_cada_ferramenta_cabe_no_teto(analista):
+    for numero in range(1, 11):
+        _responder(numero, analista)
+    maiores: dict[str, int] = {}
+    for chamada in analista.chamadas:
+        maiores[chamada.ferramenta] = max(
+            maiores.get(chamada.ferramenta, 0), len(chamada.texto)
+        )
+    medidas = {
+        f: t for f, t in maiores.items() if f in ferramentas.CONJUNTOS_DA_FERRAMENTA
+    }
+    assert set(medidas) == set(ferramentas.CONJUNTOS_DA_FERRAMENTA), (
+        "ferramenta sem resposta medida: "
+        f"{sorted(set(ferramentas.CONJUNTOS_DA_FERRAMENTA) - set(medidas))}"
+    )
+    acima = {f: t for f, t in medidas.items() if t >= TETO_DE_CARACTERES}
+    assert not acima, f"resposta acima do teto de {TETO_DE_CARACTERES}: {acima}"
+    print("maior resposta por ferramenta (caracteres):", medidas)
+
+
+LINHAS_DA_PAGINA_CHEIA = 100
+
+
+@pytest.fixture
+def pasta(tmp_path, monkeypatch):
+    """100 empresas de mentira do mesmo CNAE e UF, para a busca devolver a página inteira."""
+    base = tmp_path / "base"
+    estabelecimentos, empresas = [], []
+    for i in range(LINHAS_DA_PAGINA_CHEIA + 20):
+        raiz = f"{20_000_000 + i:08d}"
+        estabelecimentos.append(
+            (raiz + "000191", raiz, True, "02", "2010-05-01", "6201501", "SP", "7107", "2026-09", "2026-09-30")
+        )  # fmt: skip
+        empresas.append(
+            (raiz, f"EMPRESA DE TESTE {i:03d} TECNOLOGIA E SERVICOS LTDA", "2062", "pequeno", 100_000.0, 1, "2026-09", "2026-09-30")
+        )  # fmt: skip
+    tabela = pd.DataFrame(
+        estabelecimentos,
+        columns=[
+            "cnpj", "cnpj_basico", "matriz", "situacao_cadastral", "data_inicio_atividade",
+            "cnae_principal", "uf", "municipio", "mes_do_retrato", "disponivel_em",
+        ],
+    )  # fmt: skip
+    tabela["data_inicio_atividade"] = pd.to_datetime(tabela["data_inicio_atividade"])
+    tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
+    donas = pd.DataFrame(
+        empresas,
+        columns=[
+            "cnpj_basico", "razao_social", "natureza_juridica", "porte", "capital_social",
+            "n_estabelecimentos", "mes_do_retrato", "disponivel_em",
+        ],
+    )  # fmt: skip
+    donas["disponivel_em"] = pd.to_datetime(donas["disponivel_em"]).dt.date
+    _gravar(base, prospeccao.ESTABELECIMENTOS, tabela.assign(**CARIMBOS))
+    _gravar(base, prospeccao.EMPRESAS, donas.assign(**CARIMBOS))
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    return base
+
+
+def test_a_pagina_cheia_da_busca_com_a_api_de_verdade_cabe_no_teto(cliente, cenario):  # noqa: F811
+    """A maior página da ferramenta que mais pesa (100 empresas), com a API de verdade e sem rede."""
+    erro, texto = aj.chamar(
+        cliente,
+        cenario["chave_com_busca"].valor,
+        "buscar_empresas",
+        cnae=["62"],
+        uf=["SP"],
+        limite=ferramentas.LIMITE_MAXIMO_DA_BUSCA,
+    )
+    assert not erro, texto[:300]
+    empresas = json.loads(texto)["companies"]
+    assert len(empresas) == ferramentas.LIMITE_MAXIMO_DA_BUSCA
+    print(
+        f"busca com {len(empresas)} empresas: {len(texto)} caracteres "
+        f"({len(texto) * 100 // TETO_DE_CARACTERES}% do teto de {TETO_DE_CARACTERES})"
+    )
+    assert len(texto) < TETO_DE_CARACTERES
