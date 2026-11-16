@@ -178,10 +178,31 @@ def test_membros_barrados_vao_na_lista_dos_blocos(cliente, cenario, monkeypatch)
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(sem_o_cadastro))
     corpo = _get(cliente, cenario).json()
     assert corpo["members"] == []
-    assert corpo["unavailable_sections"] == ["members"]
+    # a participação de cada companhia também depende do cadastro (linha 957): a série sai só com a
+    # concentração, e a participação vazia vai na lista dos blocos, não lê como "nenhuma companhia participa"
+    [serie] = corpo["by_series"]
+    assert serie["series"] == "aneel_consumidores"
+    assert serie["concentration"]
+    assert serie["member_shares"] == []
+    assert corpo["unavailable_sections"] == ["members", "member_shares"]
     assert corpo["unavailable_series"] == []
     assert corpo["limits"] == [setores.LIMITE_DO_BLOCO_NAO_DISPONIVEL]
-    assert [s["series"] for s in corpo["by_series"]] == ["aneel_consumidores"]
+
+
+def test_participacao_sem_a_companhia_liberada_nao_sai_como_numero_solto(pasta):
+    """O portão libera o valor e a participação, mas não quem é a companhia: a participação não sai."""
+
+    def sem_a_companhia(_fonte: str, nome: str, _derivado: bool) -> bool:
+        return nome not in setores.COLUNAS_DA_COMPANHIA
+
+    leitor = setores.LeitorDeSetores(sem_a_companhia, 10_000)
+    servido = leitor.setor("eletricas", date.fromisoformat(DIA_DA_NOITE))
+    assert servido is not None
+    corpo = servido.corpo
+    assert corpo["por_serie"]
+    assert all(s["concentracao"] for s in corpo["por_serie"])
+    assert all(s[setores.TABELA_DA_PARTICIPACAO] == [] for s in corpo["por_serie"])
+    assert "member_shares" in corpo[setores.BLOCOS_NAO_DISPONIVEIS]
 
 
 def test_o_aviso_cita_o_nome_de_fora_das_listas():
