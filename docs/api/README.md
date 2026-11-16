@@ -378,7 +378,8 @@ ficam fora desta versão.
 
 A série cuja fonte a organização não tem (ou cuja tabela não está pronta) vai em `unavailable_series`, com o
 nome dela, em vez de sumir; a lista das companhias barrada sai vazia e vai em `unavailable_sections`
-(`members`). O deck do setor leva o mesmo aviso nos limites.
+(`members`), e a participação de cada companhia barrada também (`member_shares`: a série sai só com a
+concentração). O deck do setor leva o mesmo aviso nos limites.
 
 ## Mudou uma rota da `/data/v1`?
 

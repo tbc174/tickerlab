@@ -781,8 +781,8 @@ def lista_de_setores(contexto: ChaveSemQuota) -> object:
 def setor(key: str, contexto: Chave, known_at: date | None = None) -> object:
     """O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem
     são, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a
-    organização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,
-    com o aviso em `limits`."""
+    organização não tem vai em `unavailable_series`, e a lista das companhias ou a participação delas barrada,
+    em `unavailable_sections`, com o aviso em `limits`."""
     dia = _dia_pedido(known_at)
     return _pedido_contado(
         contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)
