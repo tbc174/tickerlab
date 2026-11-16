@@ -52,10 +52,12 @@ def _pgfn(cnpj, situacao, valor, retrato="2026-06-30", visto="2026-10-14", deved
             "disponivel_em": _ts(visto)}  # fmt: skip
 
 
-def _cadastral(cnpj, mes, visto, codigo, matriz=True) -> dict:
+def _cadastral(cnpj, mes, visto, codigo, matriz=True, consta=True) -> dict:
+    """Uma versão de um estabelecimento (linha 841): nasce no mês em que algum campo mudou."""
     return {"cnpj": _f(cnpj), "cnpj_basico": cnpj[:8], "matriz": matriz,
             "situacao_cadastral": codigo, "data_situacao_cadastral": _ts("2005-11-03"),
-            "motivo_situacao": "00", "mes_do_retrato": mes, "disponivel_em": _ts(visto)}  # fmt: skip
+            "motivo_situacao": "00", "mes_do_retrato": mes, "disponivel_em": _ts(visto),
+            "consta": consta}  # fmt: skip
 
 
 def _mudanca(cnpj, id_na_fonte, visto, consta=True, pessoa=False, **outras) -> dict:
@@ -173,14 +175,15 @@ PGFN = [
     _pgfn(GPA, SU, 101_207_100.0),
     _pgfn(MEI, EC, 70.0, pessoa=True),
 ]
+FILIAL_DA_OUTRA = OUTRA[:8] + "000282"
 CADASTRAL = [
-    _cadastral(cnpj, "2026-09", "2026-10-10", "02") for cnpj in (MUNDIAL, RD, GPA)
-] + [
+    _cadastral(cnpj, "2024-05", "2024-06-10", "02") for cnpj in (MUNDIAL, RD, GPA)
+] + [  # a versão de 2024 ainda vale em 2026: nada mudou desde então
     _cadastral(OUTRA, "2026-08", "2026-09-10", "02"),
     _cadastral(
         OUTRA, "2026-09", "2026-10-10", "8"
     ),  # sem o zero à esquerda, como em alguns meses
-    _cadastral(OUTRA, "2026-09", "2026-10-10", "02", matriz=False),
+    _cadastral(FILIAL_DA_OUTRA, "2026-08", "2026-09-10", "02", matriz=False),
 ]
 _PRAZO = {"inicio": _ts("2026-05-01"), "fim": _ts("2028-05-01")}
 CGU = [
@@ -329,9 +332,14 @@ PUBLICO_EM = {
 }
 
 
-def _porta(pasta, corte: date | None = None, sem: tuple[str, ...] = ()) -> Porta:
+def _porta(
+    pasta,
+    corte: date | None = None,
+    sem: tuple[str, ...] = (),
+    trocas: dict[str, list[dict]] | None = None,
+) -> Porta:
     extras = {}
-    for nome, linhas in TABELAS.items():
+    for nome, linhas in {**TABELAS, **(trocas or {})}.items():
         if nome in sem:
             continue
         tabela = pd.DataFrame(linhas)
@@ -406,6 +414,19 @@ def test_situacao_cadastral_do_retrato_mais_novo_da_matriz(porta):
     assert outra.valor == "Baixada" and outra.disponivel_em == date(2026, 10, 31)
     antes = _sinais(porta, OUTRA, date(2026, 10, 15))["situacao_cadastral_na_receita"]
     assert antes.valor == "Ativa"
+
+
+def test_situacao_cadastral_de_quem_saiu_do_arquivo_nao_conta(tmp_path):
+    """A matriz saiu do arquivo da Receita em 2026-10: vale a filial; sem nenhum, não observada."""
+    saiu = _cadastral(OUTRA, "2026-10", "2026-10-12", None, matriz=None, consta=False)
+    with _porta(tmp_path, trocas={"cnpj_situacao_cadastral": [*CADASTRAL, saiu]}) as p:
+        assert _sinais(p, OUTRA)["situacao_cadastral_na_receita"].valor == "Ativa"
+    sem_filial = [linha for linha in CADASTRAL if linha["cnpj"] != _f(FILIAL_DA_OUTRA)]
+    (tmp_path / "2").mkdir()
+    trocas = {"cnpj_situacao_cadastral": [*sem_filial, saiu]}
+    with _porta(tmp_path / "2", trocas=trocas) as p:
+        f = _sinais(p, OUTRA)["situacao_cadastral_na_receita"]
+    assert f.valor is None and f.motivo == si.SEM_O_CNPJ.format(fonte="Receita")
 
 
 def test_situacao_cadastral_sem_o_cnpj_fica_nao_observada(porta):

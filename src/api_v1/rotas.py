@@ -1185,13 +1185,23 @@ def openapi_v1() -> dict:
     """O esquema OpenAPI só da v1 (o contrato publicado em `docs/api/openapi-v1.json`)."""
     from fastapi import FastAPI
 
+    from src.api_v1.analista import router as router_do_analista
+    from src.api_v1.chat import router as router_do_chat
+    from src.api_v1.conectar import router as router_do_conectar
     from src.api_v1.conta import router as router_da_conta
+    from src.api_v1.dados_e_cobertura import router as router_dos_dados
     from src.api_v1.entrada import router as router_da_entrada
+    from src.api_v1.o_que_mudou import router as router_do_que_mudou
 
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
+    app.include_router(router_do_analista)
     app.include_router(router_da_conta)
     app.include_router(router_da_entrada)
+    app.include_router(router_do_que_mudou)
+    app.include_router(router_dos_dados)
+    app.include_router(router_do_conectar)
+    app.include_router(router_do_chat)
     return app.openapi()
 
 

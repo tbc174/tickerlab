@@ -126,9 +126,10 @@ TERMOS_LIDOS_EM |= dict.fromkeys(
 TERMOS_LIDOS_EM |= dict.fromkeys(("anatel", "anp"), date(2026, 10, 14))
 # Ficha Clara, licenças e registros: a licença declarada no conjunto do dados.gov.br (CC BY), como a
 # da Anatel; robots.txt e termos dos portais ainda não lidos (`COLETA_E_GUARDA`: não lida)
-TERMOS_LIDOS_EM |= dict.fromkeys(
-    ("anvisa", "mapa", "anm", "ancine"), date(2026, 10, 29)
-)
+TERMOS_LIDOS_EM |= dict.fromkeys(("mapa", "anm", "ancine"), date(2026, 10, 29))
+# linha 860: Anvisa lida de novo em 12/11/2026 (ficha CC Attribution no dados.gov.br, sem robots.txt, página de
+# dados abertos do gov.br: "livremente usá-los, reutilizá-los e redistribuí-los", no máximo creditar a autoria)
+TERMOS_LIDOS_EM["anvisa"] = date(2026, 11, 12)
 # Ficha Clara, incentivos: a licença dita no portal do MME ("Outra (Aberta)", sem nome)
 TERMOS_LIDOS_EM["mme"] = date(2026, 10, 29)
 # linhas 658 e 688: robots.txt e licença dos CKAN de GO (CC BY), MS (CC BY no conjunto; uso a confirmar) e

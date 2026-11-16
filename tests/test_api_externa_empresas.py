@@ -91,6 +91,9 @@ def _retratos(linhas=RETRATOS) -> pd.DataFrame:
     tabela["cnpj_basico"] = tabela["cnpj"].str[:8]
     tabela["cnpj"] = tabela["cnpj"].map(_formatado)
     tabela["matriz"] = True
+    tabela["consta"] = (
+        True  # uma linha por versão (linha 841); falso: saiu do arquivo da Receita
+    )
     tabela["data_situacao_cadastral"] = pd.to_datetime(
         tabela["data_situacao_cadastral"]
     ).dt.date
@@ -125,7 +128,8 @@ def _identificadores() -> pd.DataFrame:
 
 # o histórico datado da raiz da EMPRESA (o mês vale pelo último dia, como a situação): o nome mudou em
 # 2025-06 e em 2025-07; o Simples foi excluído em 2025-03 e a raiz saiu do arquivo do Simples em 2025-06. O MEI também
-# tem histórico, e nada dele pode sair.
+# tem histórico, e nada dele pode sair. O nome e a natureza saem do retrato da lista sem pessoa (`LISTA_DO_NOME`,
+# os mesmos meses, sem o MEI), nunca do histórico do nome (linha 861).
 EMPRESAS_HISTORICO = "cnpj_empresas_historico"
 SIMPLES_HISTORICO = "cnpj_simples_historico"
 # fmt: off
@@ -134,6 +138,12 @@ VERSOES_DO_NOME = [
     (EMPRESA[:8], "2025-06", "2025-06-21", True, "2054", "ALFA S.A."),
     (EMPRESA[:8], "2025-07", "2025-07-21", True, "2054", "ALFA HOLDING S.A."),
     (MEI[:8], "2023-05", "2023-05-21", True, "2135", None),
+]
+# a lista sem pessoa (`cnpj_empresas_pj`) dos mesmos meses: o MEI não entra nela
+LISTA_DO_NOME = [
+    (raiz, nome, natureza, "05", mes, disponivel)
+    for raiz, mes, disponivel, _, natureza, nome in VERSOES_DO_NOME
+    if raiz != MEI[:8]
 ]
 VERSOES_DO_SIMPLES = [
     (EMPRESA[:8], "2023-05", "2023-05-21", True, True, "2018-01-01", None, False),
@@ -181,14 +191,28 @@ def _gravar_historicos(base, nome: pd.DataFrame, simples: pd.DataFrame) -> None:
 
 
 def _gravar_base(
-    base, retratos: pd.DataFrame, com_rede: bool = True, historicos: bool = True
+    base,
+    retratos: pd.DataFrame,
+    com_rede: bool = True,
+    historicos: bool = True,
+    lista_pj: list | None = None,
 ) -> None:
+    """A base de teste; com os históricos vem também a lista sem pessoa dos mesmos meses (`LISTA_DO_NOME`),
+    a não ser que `lista_pj` diga outra."""
     pasta = base / TABELA
     pasta.mkdir(parents=True, exist_ok=True)
     for mes, linhas in retratos.groupby("mes_do_retrato"):
         linhas.to_parquet(pasta / f"{mes}.parquet", index=False)
     if historicos:
         _gravar_historicos(base, _historico_do_nome(), _historico_do_simples())
+    lista = (
+        lista_pj if lista_pj is not None else (LISTA_DO_NOME if historicos else None)
+    )
+    if lista is not None:
+        (base / empresas.LISTA_DE_EMPRESAS).mkdir(parents=True, exist_ok=True)
+        _lista_pj(lista).to_parquet(
+            base / empresas.LISTA_DE_EMPRESAS / "00.parquet", index=False
+        )
     if com_rede:
         (base / "rede").mkdir(exist_ok=True)
         _entidades().to_parquet(base / "rede" / "entidades.parquet", index=False)
@@ -362,6 +386,25 @@ def test_known_at_antes_do_retrato_da_not_available(cliente, cenario, banco):
     assert resposta.json() == {"detail": "not_available"}
 
 
+def test_cnpj_que_saiu_do_arquivo_da_receita_da_not_available(
+    tmp_path, cenario, monkeypatch
+):
+    """A versão de quem saiu do arquivo vem sem campos e com `consta` falso: dali em diante, nada sai."""
+    saiu = _retratos([(EMPRESA, "02", "2010-05-01", "00", "2025-09", "2025-09-15")])
+    saiu[["situacao_cadastral", "motivo_situacao"]] = None
+    saiu = saiu.astype({"situacao_cadastral": "string", "motivo_situacao": "string"})
+    saiu = saiu.assign(consta=False, matriz=pd.array([None], dtype="boolean"))
+    base = tmp_path / "saiu"
+    _gravar_base(base, pd.concat([_retratos(), saiu], ignore_index=True))
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    antes = _get(cliente, cenario, known_at="2025-09-29").json()
+    assert antes["registration_status"]["value"] == "08"
+    resposta = _get(cliente, cenario, known_at="2025-09-30")
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
 # ---------------------------------------------------------------- sem pessoa
 
 
@@ -508,8 +551,13 @@ def test_cortar_o_futuro_nao_muda_o_passado(tmp_path, cenario, monkeypatch):
     inteira = _get(cliente, cenario, known_at=dia).json()
     base = tmp_path / "cortada"
     retratos = _retratos()
+    # o retrato da lista sem pessoa de julho ainda não era público em 15/07: some da base cortada
+    ja_publica = [linha for linha in LISTA_DO_NOME if linha[4] < "2025-07"]
     _gravar_base(
-        base, retratos[retratos["mes_do_retrato"] < "2025-06"], historicos=False
+        base,
+        retratos[retratos["mes_do_retrato"] < "2025-06"],
+        historicos=False,
+        lista_pj=ja_publica,
     )
     _gravar_historicos(
         base,
@@ -569,6 +617,136 @@ def test_campo_sem_direito_nao_aparece(cliente, cenario, monkeypatch):
     corpo = _get(cliente, cenario).json()
     assert "registration_status_reason" not in corpo
     assert corpo["registration_status"]["value"] == "08"
+
+
+# ---------------------------------------------------------------- o campo não disponível (linha 898)
+
+LISTA_DE_FORA = "unavailable_registration_fields"
+SIMPLES_DE_FORA = [
+    "simples_nacional",
+    "simples_nacional_since",
+    "simples_nacional_until",
+]
+NOME_DE_FORA = ["legal_name", "legal_nature_code", "registry_snapshot_month"]
+
+
+def _so_a_situacao_pronta():
+    return _regras_das_empresas((TABELA,))
+
+
+def test_com_tudo_liberado_a_lista_sai_vazia_e_os_limites_tambem(cliente, cenario):
+    corpo = _get(cliente, cenario).json()
+    assert corpo[LISTA_DE_FORA] == []
+    assert corpo["limits"] == []
+
+
+def test_historico_e_lista_sem_prontidao_vao_na_lista_com_o_aviso(
+    cliente, cenario, monkeypatch
+):
+    """O caso do piloto: sem a lista, a resposta só com a situação leria como "a empresa não tem Simples"."""
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    corpo = _get(cliente, cenario).json()
+    assert corpo["registration_status"]["value"] == "08"
+    assert corpo[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    assert corpo["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+    # o aviso cita o nome de fora da lista, o mesmo da resposta, e só fala desta resposta
+    assert (
+        f"{LISTA_DE_FORA} não estão disponíveis para esta organização"
+        in empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL
+    )
+    assert empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL.endswith(
+        "o cadastro nesta resposta não diz nada sobre eles."
+    )
+
+
+def test_um_campo_sem_direito_vai_sozinho_na_lista(cliente, cenario, monkeypatch):
+    regras = _regras_das_empresas()
+    sem_o_motivo = tuple(
+        linha
+        for linha in regras.linhas
+        if not (linha.conjunto == "companies" and linha.campo == "motivo_situacao")
+    )
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: dataclasses.replace(regras, linhas=sem_o_motivo)
+    )
+    corpo = _get(cliente, cenario).json()
+    assert corpo[LISTA_DE_FORA] == ["registration_status_reason"]
+    assert corpo["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+
+
+def test_base_sem_as_tabelas_conta_os_campos_delas_como_nao_consultados(
+    tmp_path, cenario, monkeypatch
+):
+    base = tmp_path / "sem_historico"
+    _gravar_base(base, _retratos(), historicos=False)
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    corpo = _get(aj.cliente_da_api(monkeypatch, AGORA), cenario).json()
+    assert corpo[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    assert corpo["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+
+
+def test_campo_consultado_sem_versao_no_dia_nao_vai_na_lista(
+    tmp_path, cenario, monkeypatch
+):
+    """A lista está na base e liberada, mas o retrato dela ainda não era público: o nome foi consultado e não
+    veio; só o Simples, sem a tabela, conta como não consultado."""
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    corpo = _get(cliente, cenario, known_at="2025-01-31").json()
+    assert "legal_name" not in corpo
+    assert corpo[LISTA_DE_FORA] == SIMPLES_DE_FORA
+
+
+def test_duas_organizacoes_cada_uma_ve_so_o_que_o_contrato_dela_da(
+    banco, cenario, monkeypatch
+):
+    """A organização com o contrato de `companies` recebe a lista; a outra, com contrato de outro conjunto, recebe
+    o 404 de sempre, sem a lista nem o aviso."""
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    com_contrato = _get(cliente, cenario).json()
+    assert com_contrato[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    ator = aj.admin(banco)
+    outra = aj.organizacao(banco, ator)
+    chave = aj.chave(banco, ator, outra)
+    aj.contrato(banco, ator, outra, conjunto="financials")
+    resposta = cliente.get(ROTA, headers=aj.bearer(chave.valor))
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_empresa_que_nao_sai_nao_ganha_a_lista(cliente, cenario, monkeypatch):
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    resposta = _get(cliente, cenario, f"/data/v1/companies/{MEI}")
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_o_lote_le_o_catalogo_da_base_uma_vez_so(pasta, monkeypatch):
+    """A lista não depende do CNPJ: o leitor a conta uma vez por pedido (revisão cruzada da linha 898)."""
+    chamadas = []
+
+    def views_contadas(con):
+        chamadas.append(con)
+        return views_de_verdade(con)
+
+    views_de_verdade = empresas.views
+    monkeypatch.setattr(empresas, "views", views_contadas)
+    with Porta(pasta) as porta:
+        leitor = empresas.LeitorDeEmpresas(porta, lambda fonte, campo, derivado: True)
+        primeira = leitor.campos_de_fora()
+        assert leitor.campos_de_fora() == primeira
+    assert len(chamadas) == 1
+
+
+def test_lote_leva_a_lista_e_o_aviso_em_cada_item_que_sai(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", _so_a_situacao_pronta)
+    corpo = _post(cliente, cenario, {"cnpjs": [EMPRESA, MEI]}).json()
+    empresa_, mei = corpo["items"]
+    assert empresa_[LISTA_DE_FORA] == [*SIMPLES_DE_FORA, *NOME_DE_FORA]
+    assert empresa_["limits"] == [empresas.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL]
+    assert set(mei) == {"cnpj", "status"}
 
 
 # ---------------------------------------------------------------- erros e consumo
@@ -702,3 +880,173 @@ def test_lote_que_passa_da_quota_volta_inteiro(cliente, cenario, banco):
 def test_o_conjunto_e_o_do_catalogo():
     assert empresas.CONJUNTO == "companies"
     assert acesso is not None
+
+
+# ---------------------------------------------------------------- o nome do retrato da lista sem pessoa
+# (linha 861) A razão social e a natureza vêm do retrato de `cnpj_empresas_pj` (só PJ, sem MEI nem empresário
+# individual), só se o retrato já era público no dia, e a resposta diz de que mês ele é; o histórico do nome não
+# é lido (ele não está no VPS, tem pessoa e não tem prova). Aqui a base não tem os históricos. O retrato de 2025-06 (baixado em 21/06) vale pelo último dia do mês: 30/06.
+RETRATO_PJ = "2025-06"
+# fmt: off
+LISTA_PJ = [
+    (EMPRESA[:8], "BETA COMERCIO LTDA", "2062", "05", RETRATO_PJ, "2025-06-21"),
+]
+# fmt: on
+
+
+def _lista_pj(linhas=LISTA_PJ) -> pd.DataFrame:
+    tabela = pd.DataFrame(
+        list(linhas),
+        columns=[
+            "cnpj_basico", "razao_social", "natureza_juridica", "porte", "mes_do_retrato", "disponivel_em",
+        ],
+    )  # fmt: skip
+    tabela["disponivel_em"] = pd.to_datetime(tabela["disponivel_em"]).dt.date
+    return tabela.assign(**_CARIMBOS)
+
+
+def _base_sem_historico(
+    tmp_path,
+    monkeypatch,
+    nome: str = "sem_historico_pj",
+    lista=LISTA_PJ,
+    historicos=False,
+):
+    base = tmp_path / nome
+    _gravar_base(base, _retratos(), historicos=historicos, lista_pj=lista)
+    monkeypatch.setattr(rotas, "abrir_porta", lambda banco_: Porta(base, banco_))
+    return aj.cliente_da_api(monkeypatch, AGORA)
+
+
+def test_sem_o_historico_o_nome_vem_do_retrato_pj_com_o_mes(
+    tmp_path, cenario, monkeypatch
+):
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    corpo = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert corpo["legal_name"] == {
+        "value": "BETA COMERCIO LTDA",
+        "source": "rfb-cnpj",
+        "published_at": "2025-06-30",  # o retrato vale pelo último dia do mês
+        "observed_at": None,
+    }
+    assert corpo["legal_nature_code"]["value"] == "2062"
+    # a resposta diz de que retrato o nome saiu (não é "como era": é o retrato daquele mês)
+    assert corpo["registry_snapshot_month"]["value"] == RETRATO_PJ
+    assert corpo["registry_snapshot_month"]["published_at"] == "2025-06-30"
+    # o Simples não tem lista sem pessoa: sem o histórico dele, não sai
+    assert not {
+        "simples_nacional",
+        "simples_nacional_since",
+        "simples_nacional_until",
+    } & set(corpo)
+
+
+@pytest.mark.parametrize("dia", ["2025-01-31", "2025-06-21", "2025-06-29"])
+def test_retrato_pj_ainda_nao_publico_no_dia_nao_sai(
+    tmp_path, cenario, monkeypatch, dia
+):
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    corpo = _get(cliente, cenario, known_at=dia).json()
+    assert (
+        corpo["registration_status"]["value"] == "02"
+    )  # a situação de jan/2025 já valia
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        corpo
+    )
+
+
+def test_com_dois_retratos_vale_o_mais_novo_ja_publico(tmp_path, cenario, monkeypatch):
+    # o retrato de maio já é público em 15/06; o de junho (outro nome) ainda não: sai o de maio, com o mês dele
+    dois = [
+        (EMPRESA[:8], "BETA COMERCIO LTDA", "2062", "05", "2025-05", "2025-05-21"),
+        (EMPRESA[:8], "BETA NOVA LTDA", "2062", "05", RETRATO_PJ, "2025-06-21"),
+    ]
+    cliente = _base_sem_historico(tmp_path, monkeypatch, "dois_retratos", lista=dois)
+    em_junho = _get(cliente, cenario, known_at="2025-06-15").json()
+    assert em_junho["legal_name"]["value"] == "BETA COMERCIO LTDA"
+    assert em_junho["registry_snapshot_month"]["value"] == "2025-05"
+    depois = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert depois["legal_name"]["value"] == "BETA NOVA LTDA"
+    assert depois["registry_snapshot_month"]["value"] == RETRATO_PJ
+
+
+def test_raiz_fora_do_retrato_mais_novo_nao_leva_o_nome_de_um_mais_velho(
+    tmp_path, cenario, monkeypatch
+):
+    # P2 da revisão cruzada do #1075 (linha 867): a raiz está no retrato de maio, mas o de junho (já público)
+    # não a traz; o nome de maio não sai mais, embora a raiz não tenha retrato mais novo que ele
+    saiu = [
+        (EMPRESA[:8], "BETA COMERCIO LTDA", "2062", "05", "2025-05", "2025-05-21"),
+        ("99999999", "OUTRA LTDA", "2062", "05", RETRATO_PJ, "2025-06-21"),
+    ]
+    cliente = _base_sem_historico(tmp_path, monkeypatch, "saiu_da_lista", lista=saiu)
+    em_junho = _get(cliente, cenario, known_at="2025-06-15").json()
+    assert em_junho["legal_name"]["value"] == "BETA COMERCIO LTDA"
+    depois = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        depois
+    )
+
+
+def test_sem_o_historico_cortar_o_futuro_nao_muda_o_passado(
+    tmp_path, cenario, monkeypatch
+):
+    dia = "2025-06-29"
+    inteira = _get(
+        _base_sem_historico(tmp_path, monkeypatch), cenario, known_at=dia
+    ).json()
+    # cortar o futuro tira as linhas, não a tabela: o único retrato da lista ainda não era público no dia, e a
+    # lista fica vazia (sem a tabela, o nome conta como não consultado: `unavailable_registration_fields`)
+    sem_o_retrato = _base_sem_historico(tmp_path, monkeypatch, "cortada", lista=[])
+    assert _get(sem_o_retrato, cenario, known_at=dia).json() == inteira
+
+
+def test_com_o_historico_do_nome_na_base_o_nome_vem_do_retrato(
+    tmp_path, cenario, monkeypatch
+):
+    # o histórico do nome diz ALFA HOLDING S.A. em 31/07; o retrato da lista sem pessoa diz BETA: sai o retrato,
+    # com o mês dele (o portão julga a tabela lida, `cnpj_empresas_pj`)
+    cliente = _base_sem_historico(tmp_path, monkeypatch, historicos=True)
+    corpo = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert corpo["legal_name"]["value"] == "BETA COMERCIO LTDA"
+    assert corpo["registry_snapshot_month"]["value"] == RETRATO_PJ
+    # antes de o retrato ser público, o histórico não entra no lugar dele
+    antes = _get(cliente, cenario, known_at="2025-05-31").json()
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        antes
+    )
+
+
+@pytest.mark.parametrize(
+    "lista",
+    [
+        # a rede diz empresa, mas o retrato diz empresário individual (natureza de pessoa): nada do retrato sai
+        [(EMPRESA[:8], "NOME FICTICIO", "2135", "01", RETRATO_PJ, "2025-06-21")],
+        # natureza vazia conta como pessoa
+        [(EMPRESA[:8], "BETA COMERCIO LTDA", None, "05", RETRATO_PJ, "2025-06-21")],
+        # a raiz duas vezes no mesmo retrato: na dúvida, não
+        [*LISTA_PJ, (EMPRESA[:8], "GAMA LTDA", "2062", "05", RETRATO_PJ, "2025-06-21")],
+        # a raiz não está na lista
+        [("99999999", "BETA COMERCIO LTDA", "2062", "05", RETRATO_PJ, "2025-06-21")],
+    ],
+    ids=["natureza_de_pessoa", "natureza_vazia", "raiz_repetida", "fora_da_lista"],
+)
+def test_retrato_pj_duvidoso_nao_da_nome(tmp_path, cenario, monkeypatch, lista):
+    cliente = _base_sem_historico(tmp_path, monkeypatch, lista=lista)
+    corpo = _get(cliente, cenario, known_at="2025-07-31").json()
+    assert corpo["registration_status"]["value"] == "08"
+    assert not {"legal_name", "legal_nature_code", "registry_snapshot_month"} & set(
+        corpo
+    )
+
+
+def test_sem_o_historico_nada_de_pessoa_sai(tmp_path, cenario, monkeypatch):
+    cliente = _base_sem_historico(tmp_path, monkeypatch)
+    for corpo in (
+        _get(cliente, cenario, known_at="2025-07-31").json(),
+        _post(
+            cliente, cenario, {"cnpjs": [EMPRESA, MEI, EMPRESARIO_INDIVIDUAL]}
+        ).json(),
+    ):
+        conferir_sem_pessoas(corpo, set())
+        assert not aj.chaves_de(corpo) & COLUNAS_DE_PESSOA

@@ -4,6 +4,7 @@ Uma conta pode ter várias formas de entrar (identidades: Google, Microsoft, e-m
 forma de entrar nova só se junta a uma conta existente pelo e-mail quando ele foi confirmado nos dois
 lados: o provedor provou o e-mail agora, e a conta já tinha uma identidade com esse e-mail provado.
 Sem isso, quem declarasse o e-mail de outra pessoa entraria na conta dela (ou ficaria com ela).
+Conta vinculada a uma organização não recebe forma de entrar nova pelo e-mail (`_conta_para_juntar`).
 
 Toda função recebe uma `Connection` aberta pelo chamador (`with motor.begin() as conexao:`), para
 várias operações poderem fazer parte da mesma transação.
@@ -21,6 +22,7 @@ from src.banco.modelo import (
     PLANOS,
     PROVEDORES_DE_LOGIN,
     identidades,
+    membros_da_organizacao,
     usuarios,
 )
 
@@ -186,8 +188,9 @@ def entrar_por_identidade(
     """Registra um login por qualquer provedor. Devolve (usuário, é a primeira vez?).
 
     A conta é, nesta ordem: a da própria identidade; a do `google_sub` (conta do Google sem
-    identidade gravada); a conta ativa mais antiga com uma identidade de e-mail confirmado igual ao
-    deste login, se ele também veio confirmado; ou uma conta nova. Nas seguintes, atualiza o último
+    identidade gravada); a conta ativa mais antiga, que não seja de uma organização, com uma
+    identidade de e-mail confirmado igual ao deste login, se ele também veio confirmado; ou uma conta
+    nova. Nas seguintes, atualiza o último
     acesso (e nome, foto e e-mail, quando vieram). Vira administrador quem entra pelo Google com o
     e-mail confirmado e listado em `emails_de_admin`. Conta bloqueada levanta `ContaBloqueadaError`
     antes de gravar qualquer coisa nela (nem a forma de entrar nova se junta).
@@ -278,9 +281,17 @@ def _conta_da_identidade(
 def _conta_para_juntar(
     conexao: sa.Connection, identidade: IdentidadeDoProvedor
 ) -> Usuario | None:
-    """A conta ativa mais antiga que já provou o mesmo e-mail (só se este login também provou)."""
+    """A conta ativa mais antiga que já provou o mesmo e-mail (só se este login também provou).
+
+    Conta de organização fica de fora: o endereço da empresa pode ter passado para outra pessoa, que
+    prova o e-mail mas não é o membro, e ao se juntar herdaria o vínculo (linha 812; achado da revisão
+    cruzada do PR 982). O membro segue entrando pela forma que já tinha; a forma nova vira outra conta.
+    """
     if not identidade.email_confirmado:
         return None
+    e_de_organizacao = sa.exists().where(
+        membros_da_organizacao.c.usuario_id == usuarios.c.id
+    )
     linha = conexao.execute(
         sa.select(usuarios)
         .join(identidades, identidades.c.usuario_id == usuarios.c.id)
@@ -288,6 +299,7 @@ def _conta_para_juntar(
             identidades.c.email == identidade.email,
             identidades.c.email_confirmado.is_(True),
             usuarios.c.excluido_em.is_(None),
+            ~e_de_organizacao,
         )
         .order_by(usuarios.c.criado_em, usuarios.c.id)
     ).first()

@@ -59,6 +59,7 @@ PASSAM_AS_MARCAS = {
     "msestado",  # CC BY, "pode" do Tiago em 05/11/2026 (linha 688)
     "sefazpe",  # CC BY, linha 578 (nível 2: fonte já licenciada)
     "esdados",  # CC BY, linha 755 (nível 2: fonte já licenciada)
+    "anvisa",  # CC Attribution nas fichas do dados.gov.br e sem robots.txt, lidos em 12/11/2026 (linha 860)
 }
 
 
@@ -125,3 +126,53 @@ def test_bis_foi_lido_em_03_11_e_coleta_aberta_sem_prazo() -> None:
     assert resposta.guarda is Guarda.SEM_PRAZO
     assert TERMOS_LIDOS_EM["bis"] == date(2026, 11, 3)
     assert coletas.marca_da_fonte("bis") is coletas.Marca.VENDAVEL
+
+
+DIA_DA_LEITURA_DA_ANVISA = date(2026, 11, 12)
+
+
+def test_anvisa_foi_lida_em_12_11_e_coleta_aberta_sem_prazo() -> None:
+    """Linha 860: ficha CC Attribution no dados.gov.br, sem robots.txt em dados.anvisa.gov.br (404)."""
+    from base.arquivo.registro import TERMOS_LIDOS_EM
+
+    resposta = coletas.COLETA_E_GUARDA["anvisa"]
+    assert resposta.coleta is Coleta.ABERTA
+    assert resposta.guarda is Guarda.SEM_PRAZO
+    assert TERMOS_LIDOS_EM["anvisa"] == DIA_DA_LEITURA_DA_ANVISA
+    regras = portao_externo.regras_vigentes()
+    for fonte in ("anvisa", "anvisa-produtos", "anvisa-empresas"):
+        assert (
+            portao_externo._negacao_das_marcas(fonte, DIA_DA_LEITURA_DA_ANVISA, regras)
+            is None
+        ), fonte
+
+
+def test_anvisa_cmed_continua_nao_lida_e_negada() -> None:
+    """Os termos da lista de preços da CMED são outra leitura: a de 12/11 não vale para ela."""
+    resposta = coletas.COLETA_E_GUARDA["anvisa-cmed"]
+    assert resposta.coleta is Coleta.NAO_LIDA
+    assert resposta.guarda is Guarda.NAO_DIZ
+    regras = portao_externo.regras_vigentes()
+    assert (
+        portao_externo._negacao_das_marcas(
+            "anvisa-cmed", DIA_DA_LEITURA_DA_ANVISA, regras
+        )
+        is not None
+    )
+
+
+def test_a_licenca_da_anvisa_nao_abre_a_tabela_de_pessoa() -> None:
+    """A família liberada não libera `anvisa_registros` (pessoa=True): nenhuma linha vigente a nomeia e
+    nenhum campo dela sai pela API externa, mesmo com a coleta aberta."""
+    regras = portao_externo.regras_vigentes()
+    assert all("anvisa_registros" not in linha.tabelas for linha in regras.linhas)
+    for campo in ("cnpj", "situacao", "numero_do_registro", "vence_em", "tipo"):
+        pedido = portao_externo.Pedido(
+            "anvisa-empresas",
+            "anvisa_registros",
+            campo,
+            portao_externo.Canal.API_EXTERNA,
+            portao_externo.Finalidade.ANALISE,
+        )
+        decisao = portao_externo.decidir(pedido, DIA_DA_LEITURA_DA_ANVISA, regras)
+        assert not decisao.libera, campo

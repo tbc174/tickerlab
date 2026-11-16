@@ -12,6 +12,7 @@ from hypothesis import strategies as st
 from base import cnpj_historico as historico
 from base.receita_diff import diff, disponivel_em
 from base.receita_retrato import ErroDeLayout
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, OUTRO_CPF_DE_TESTE
 
 CHAVE = ["cnpj_basico"]
 CAMPOS = ["natureza_juridica", "optante"]
@@ -174,12 +175,12 @@ def test_leitor_guarda_a_razao_social_so_de_quem_nao_e_pessoa():
         [
             _linha("11111111", "INDUSTRIA EXEMPLO S.A.", "2054"),
             _linha(
-                "22222222", "FULANO DE TAL 12345678909", "2135"
+                "22222222", f"FULANO DE TAL {CPF_DE_TESTE}", "2135"
             ),  # MEI / empresário individual
             _linha(
                 "33333333", "CONTRIBUINTE INDIVIDUAL", "4014"
             ),  # grupo 4: pessoa física
-            _linha("44444444", "BELTRANO 98765432100 LTDA", "2062"),
+            _linha("44444444", f"BELTRANO {OUTRO_CPF_DE_TESTE} LTDA", "2062"),
         ]
     )
     (tabela,) = list(historico.ler_empresas(arquivo))
@@ -188,7 +189,7 @@ def test_leitor_guarda_a_razao_social_so_de_quem_nao_e_pessoa():
     assert por_raiz.loc["11111111", "razao_social"] == "INDUSTRIA EXEMPLO S.A."
     assert pd.isna(por_raiz.loc["22222222", "razao_social"])
     assert pd.isna(por_raiz.loc["33333333", "razao_social"])
-    assert "98765432100" not in por_raiz.loc["44444444", "razao_social"]
+    assert OUTRO_CPF_DE_TESTE not in por_raiz.loc["44444444", "razao_social"]
     assert por_raiz.loc["22222222", "natureza_juridica"] == "2135"
     assert "1000,00" not in tabela.to_string()  # capital e porte nem são lidos
 
@@ -197,3 +198,30 @@ def test_leitor_quebra_se_a_receita_mudar_o_layout():
     arquivo = _zip_de_empresas([_linha("11111111", "X S.A.", "2054") + ';"a mais"'])
     with pytest.raises(ErroDeLayout):
         list(historico.ler_empresas(arquivo))
+
+
+def test_data_vazia_no_vigente_confere_consigo_mesma():
+    """Regressão (linha 841): no pandas 3 a data vazia virava `nan` no texto e `nan != nan`."""
+    campos = ["data"]
+    vigente = pd.DataFrame(
+        {
+            "cnpj_basico": ["11111111", "22222222"],
+            "data": pd.to_datetime(["2020-01-02", None]),
+        }
+    )
+    versoes = historico.versoes_das_mudancas(
+        vigente, pd.DataFrame(), CHAVE, campos, MESES[-1]
+    )
+    historico.conferir_com_o_vigente(versoes, vigente, CHAVE, campos)
+    preenchida = vigente.assign(data=pd.to_datetime(["2020-01-02", "2021-03-04"]))
+    with pytest.raises(historico.HistoricoNaoConfere):
+        historico.conferir_com_o_vigente(versoes, preenchida, CHAVE, campos)
+    with pytest.raises(historico.HistoricoNaoConfere):
+        historico.conferir_com_o_vigente(
+            historico.versoes_das_mudancas(
+                preenchida, pd.DataFrame(), CHAVE, campos, MESES[-1]
+            ),
+            vigente,
+            CHAVE,
+            campos,
+        )

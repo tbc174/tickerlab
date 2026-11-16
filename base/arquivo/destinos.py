@@ -240,12 +240,26 @@ _REGULADORES_PLANEJADAS = {
     "ccee-risco-hidrologico": _planejada(
         "hidreletricas/gsf", "GSF e repasse do risco hidrológico por usina e mês"
     ),
-    "aneel-fiscalizacao": _planejada(
-        "distribuidoras/ficha",
-        "indicadores gerenciais e autos de infração por distribuidora",
+    # dos indicadores gerenciais (INDGER), só os comerciais viram tabela (linha 904); os técnicos
+    # (subestações, linhas, alimentadores) seguem só no acervo. Os autos de infração (CPF ou CNPJ na mesma
+    # coluna: só a linha de CNPJ entra) e os termos de notificação viram tabela no lote 2
+    "aneel-fiscalizacao": _tabela(
+        "aneel_indicadores_comerciais",
+        "aneel_autos_de_infracao",
+        "aneel_termos_de_notificacao",
     ),
-    # das pastas da ANS no lote, só as penalidades viram tabela; o resto segue só no acervo
-    "ans-qualidade": _tabela("ans_penalidades"),
+    "aneel-agentes": _tabela("aneel_agentes"),
+    # lote 3 das 300 tabelas pelo CNPJ (linha 904): cadastros do Banco Central e da ANTT, só pessoa jurídica
+    "bcb-supervisionadas": _tabela("bcb_supervisionadas"),
+    "bcb-cooperativas": _tabela("bcb_cooperativas"),
+    "bcb-correspondentes": _tabela("bcb_correspondentes"),
+    "bcb-filiais-de-consorcio": _tabela("bcb_filiais_de_consorcio"),
+    "bcb-regimes-especiais": _tabela("bcb_regimes_especiais"),
+    "antt-operadores-multimodais": _tabela("antt_operadores_multimodais"),
+    "antt-seguro-de-responsabilidade-civil": _tabela("antt_seguros_de_transportadores"),
+    "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
+    # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
+    "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),
 }
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
@@ -373,6 +387,8 @@ DESTINOS: dict[str, Destino] = {
         "cnpj_situacao_cadastral",
         "cnpj_simples_historico",
         "cnpj_empresas_historico",
+        "cnpj_empresas_pj",
+        "cnpj_estabelecimentos_pj",
     ),
     "pgfn-divida": _tabela("pgfn_divida"),
     # setoriais
@@ -527,6 +543,11 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_PATENTES_SO_ARQUIVO)
         for f in lote_patentes.fontes()
     },
+    # linha 904 (lote 2): depois dos lotes acima, que também listam estas fontes como "só arquivo"
+    "inpi-marcas": _tabela("inpi_marcas_titulares"),
+    "inpi-patentes-partes": _tabela("inpi_patentes_depositantes"),
+    "inpi-desenhos": _tabela("inpi_desenhos_depositantes"),
+    "inpi-programas": _tabela("inpi_programas_titulares"),
     # lote acervos históricos (rodada 4, linha 292): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ACERVOS_SO_ARQUIVO)
@@ -538,14 +559,18 @@ DESTINOS: dict[str, Destino] = {
         for f in lote_cvm.fontes()
     },
     "cvm-securitizadoras-ots": _tabela(*_INFORME_DE_SECURITIZACAO),
+    # linha 904 (lote 1 das 300 pelo CNPJ): `base/cvm_fip_fii.py`
+    "cvm-fip-trimestral": _tabela("fip_informe"),
+    "cvm-fip-quadrimestral": _tabela("fip_informe"),
+    "cvm-fii-administradores": _tabela("fii_administradores"),
     "cvm-fundos-informe-diario": _planejada(
         "cvm-lote-2/cota-por-fundo",
         "cota, patrimônio e captação diária de cada fundo 555",
     ),
-    "cvm-fii-mensal": _planejada("cvm-lote-2/tela-de-fii", "informe mensal dos FII"),
-    "cvm-fii-trimestral": _planejada(
-        "cvm-lote-2/tela-de-fii", "informe trimestral dos FII"
-    ),
+    "cvm-fii-mensal": _tabela("fii_informe_mensal"),
+    # do informe trimestral, só os ativos viram tabela: a parte geral repete o mensal, e imóveis e
+    # terrenos trazem endereço
+    "cvm-fii-trimestral": _tabela("fii_ativos"),
     "cvm-fii-anual": _planejada("cvm-lote-2/tela-de-fii", "informe anual dos FII"),
     "cvm-fii-demonstracoes": _planejada(
         "cvm-lote-2/tela-de-fii", "demonstrações dos FII"

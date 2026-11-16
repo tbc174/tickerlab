@@ -11,6 +11,7 @@ source =
     trader
     app
     cli
+    conector_remoto
 omit =
     # o painel do trader só roda no Windows: no CI (Linux) os testes dele são pulados
     trader/interface/*

@@ -8,11 +8,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# dependências primeiro: esta camada só é refeita quando o requirements-prod.txt muda
+# dependências primeiro: esta camada só é refeita quando o requirements-prod.txt ou o requirements.txt
+# muda (o segundo entra só como restrição, -c: o que o pip puxa sem pedir fica na versão conferida; linha 758)
 # (o pip que vem na imagem do Python fica velho: o trivy acusou falha corrigida em versão nova)
-COPY requirements-prod.txt .
+COPY requirements.txt requirements-prod.txt ./
 RUN pip install --upgrade pip==26.2.1 \
-    && pip install -r requirements-prod.txt
+    && pip install -r requirements-prod.txt -c requirements.txt
 
 COPY .streamlit ./.streamlit
 COPY static ./static
@@ -29,6 +30,8 @@ COPY migracoes ./migracoes
 COPY conteudo ./conteudo
 COPY site-api ./site-api
 COPY dados_de_exemplo ./dados_de_exemplo
+# o conector remoto dos analistas (servidor MCP, linha 570): contêiner tickerlab-mcp, só lê a API
+COPY conector_remoto ./conector_remoto
 
 # o commit deste código, para a linhagem dos números (ADR 0055, exigência 13):
 #   docker build --build-arg TICKERLAB_VERSAO="$(git rev-parse HEAD)" .

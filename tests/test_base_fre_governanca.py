@@ -288,12 +288,12 @@ def test_acionistas_empresa_com_nome_e_cnpj_e_pessoa_so_somada():
 def test_pessoas_do_mesmo_grupo_viram_uma_linha_e_quem_e_acionista_de_pessoa_perde_o_id():
     linhas = [
         {**_documento(ESTRELA), "ID_Acionista": "1", "Acionista": "PESSOA FICTICIA A",
-         "Tipo_Pessoa_Acionista": "PF", "CPF_CNPJ_Acionista": "123.456.789-09",
+         "Tipo_Pessoa_Acionista": "PF", "CPF_CNPJ_Acionista": "888.000.000-46",
          "Quantidade_Total_Acoes_Circulacao": "100", "Percentual_Total_Acoes_Circulacao": "1.5",
          "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N",
          "Representante_Legal": "REPRESENTANTE FICTICIA A"},
         {**_documento(ESTRELA), "ID_Acionista": "2", "Acionista": "PESSOA FICTICIA B",
-         "Tipo_Pessoa_Acionista": "PJ", "CPF_CNPJ_Acionista": "98765432100",
+         "Tipo_Pessoa_Acionista": "PJ", "CPF_CNPJ_Acionista": "88800000470",
          "Quantidade_Total_Acoes_Circulacao": "50", "Percentual_Total_Acoes_Circulacao": "0.5",
          "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N"},
         {**_documento(ESTRELA), "ID_Acionista": "3", "Acionista": "PESSOA FICTICIA C",
@@ -302,7 +302,7 @@ def test_pessoas_do_mesmo_grupo_viram_uma_linha_e_quem_e_acionista_de_pessoa_per
         {**_documento(ESTRELA), "ID_Acionista": "4", "Acionista": "Holding Fictícia Ltda.",
          "Tipo_Pessoa_Acionista": "PJ", "CPF_CNPJ_Acionista": "11.222.333/0001-81",
          "ID_Acionista_Relacionado": "7657227", "Tipo_Pessoa_Acionista_Relacionado": "PF",
-         "CPF_CNPJ_Acionista_Relacionado": "123.456.789-09", "Percentual_Total_Acoes_Circulacao": "10",
+         "CPF_CNPJ_Acionista_Relacionado": "888.000.000-46", "Percentual_Total_Acoes_Circulacao": "10",
          "Acionista_Controlador": "N", "Participante_Acordo_Acionistas": "N"},
     ]  # fmt: skip
     acionistas = governanca.ler_acionistas(_acrescentar(RECORTE, ACIONISTAS, linhas))
@@ -323,7 +323,7 @@ def test_pessoas_do_mesmo_grupo_viram_uma_linha_e_quem_e_acionista_de_pessoa_per
 
 
 def test_cpf_que_escapa_da_regra_para_a_carga():
-    for texto in ("Empresa Fictícia S.A. 123.456.789-09", "Empresa 12345678909"):
+    for texto in ("Empresa Fictícia S.A. 888.000.000-46", "Empresa 88800000046"):
         with pytest.raises(ValueError, match="CPF"):
             governanca.conferir_sem_cpf(
                 pd.DataFrame({"acionista": [texto]}), ("acionista",)
@@ -394,7 +394,7 @@ def test_parte_pessoa_sem_tipo_e_cpf_no_documento_sao_somadas():
         {**_documento(ESTRELA), "Parte_Relacionada": "PESSOA FICTICIA X", "Tipo_Pessoa": "",
          "Relacao_Emissor": "Diretor", "Montante_Envolvido": "1000.00", "Taxa_Juros": "3,5%"},
         {**_documento(ESTRELA), "Parte_Relacionada": "Outra Ficticia Ltda",
-         "Tipo_Pessoa": "PJ", "Documento_Parte_Relacionada": "123.456.789-09",
+         "Tipo_Pessoa": "PJ", "Documento_Parte_Relacionada": "888.000.000-46",
          "Relacao_Emissor": "Diretor", "Montante_Envolvido": "500.00"},
         {**_documento(ESTRELA), "Parte_Relacionada": "Fornecedora Fictícia S.A.",
          "Tipo_Pessoa": "PJ", "Documento_Parte_Relacionada": "11.222.333/0001-81",

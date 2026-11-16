@@ -9,7 +9,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from base.prontidao import PRAZO_DA_PROVA, Prontidao, Prova
+from base.prontidao import PRAZO_DA_PROVA, Prontidao, ProntidaoDePiloto, Prova
 from src import portao_externo as portao
 from src.banco import coletas
 from src.banco.coletas import Coleta, ColetaEGuarda, Guarda
@@ -665,3 +665,136 @@ def test_nenhuma_tela_nem_a_api_do_app_usa_o_portao_externo() -> None:
 
 def test_coleta_e_guarda_so_de_familias_do_licencas() -> None:
     assert set(coletas.COLETA_E_GUARDA) <= set(coletas.LICENCAS)
+
+
+# --- D11 (Emenda 2): a prontidão de piloto, só para a organização do piloto ---
+
+DE_PILOTO = ProntidaoDePiloto(versao_maior=2, qualidade=PROVA, dicionario=PROVA)
+
+
+def _regras_de_piloto(*linhas: LinhaDeDireito, **outros: object) -> Regras:
+    """A tabela sem a prontidão cheia, com o registro de piloto em dia e a marca de pessoa decidida."""
+    base = {
+        "prontidao": {},
+        "prontidao_de_piloto": {TABELA: DE_PILOTO},
+        "pessoa_decidida": frozenset({TABELA}),
+    }
+    return _regras(*(linhas or (_linha(),)), **(base | outros))
+
+
+def test_organizacao_do_piloto_sai_pelo_piloto_e_a_comum_nao() -> None:
+    regras = _regras_de_piloto()
+    do_piloto = decidir(_pedido(piloto=True), HOJE, regras)
+    comum = decidir(_pedido(), HOJE, regras)
+    assert do_piloto.libera and do_piloto.piloto
+    assert do_piloto.motivo is Motivo.LIBERADO_PELO_PILOTO
+    assert do_piloto.coleta is Coleta.ABERTA
+    assert comum == Decisao(False, Motivo.SEM_PRONTIDAO)
+    assert not comum.piloto
+
+
+def test_tabela_pronta_sai_pela_prontidao_cheia_mesmo_para_o_piloto() -> None:
+    """O aviso é só do que não tem a prontidão cheia: a tabela pronta sai sem ele."""
+    regras = _regras_de_piloto(prontidao={TABELA: PRONTA})
+    decisao = decidir(_pedido(piloto=True), HOJE, regras)
+    assert decisao.motivo is Motivo.LIBERADO and not decisao.piloto
+
+
+def test_piloto_com_prova_7_vencida_nega() -> None:
+    """No limite dos 90 dias ainda sai; no dia seguinte, não (o motivo no log segue o da prontidão cheia)."""
+    limite = PROVA.data + PRAZO_DA_PROVA
+    depois = limite + timedelta(days=1)
+    termos = dict.fromkeys(("cvm", "bcb", "conab"), limite)
+    regras = _regras_de_piloto(termos_lidos_em=termos)
+    assert decidir(_pedido(piloto=True), limite, regras).piloto
+    assert decidir(_pedido(piloto=True), depois, regras) == Decisao(
+        False, Motivo.SEM_PRONTIDAO
+    )
+
+
+def test_piloto_com_versao_maior_diferente_nega() -> None:
+    regras = _regras_de_piloto(versoes_maiores={TABELA: DE_PILOTO.versao_maior + 1})
+    assert decidir(_pedido(piloto=True), HOJE, regras) == Decisao(
+        False, Motivo.SEM_PRONTIDAO
+    )
+
+
+def test_piloto_sem_a_marca_de_pessoa_decidida_nega() -> None:
+    regras = _regras_de_piloto(pessoa_decidida=frozenset())
+    assert not decidir(_pedido(piloto=True), HOJE, regras).libera
+
+
+def test_piloto_sem_registro_de_piloto_nega() -> None:
+    regras = _regras_de_piloto(prontidao_de_piloto={})
+    assert not decidir(_pedido(piloto=True), HOJE, regras).libera
+
+
+def test_piloto_com_linha_sem_tabela_nega() -> None:
+    regras = _regras_de_piloto(_linha(tabelas=()))
+    assert decidir(_pedido(piloto=True), HOJE, regras) == Decisao(
+        False, Motivo.SEM_TABELA
+    )
+
+
+@pytest.mark.parametrize("campo", CAMPOS_DE_PESSOA_E_DE_RISCO)
+def test_piloto_nunca_solta_campo_de_pessoa(campo: str) -> None:
+    """Direito e pessoa vêm antes do piloto e não mudam (D11.4)."""
+    regras = _regras_de_piloto(_linha(campo=campo))
+    assert decidir(_pedido(campo=campo, piloto=True), HOJE, regras) == Decisao(
+        False, Motivo.NUNCA_SAI
+    )
+
+
+def test_piloto_nao_solta_categoria_de_pessoa_nem_sem_direito() -> None:
+    pessoa = _regras_de_piloto(_linha(categoria=Categoria.PESSOA_NATURAL))
+    sem_linha = _regras_de_piloto(_linha(campo="outro"))
+    negada = _regras_de_piloto(_linha(fonte="b3-negocios"))
+    assert decidir(_pedido(piloto=True), HOJE, pessoa).motivo is Motivo.NUNCA_SAI
+    assert (
+        decidir(_pedido(piloto=True), HOJE, sem_linha).motivo
+        is Motivo.SEM_LINHA_DE_DIREITO
+    )
+    assert not decidir(_pedido(fonte="b3-negocios", piloto=True), HOJE, negada).libera
+
+
+def test_piloto_nao_solta_familia_sem_marcas() -> None:
+    regras = _regras_de_piloto(termos_lidos_em={})
+    assert decidir(_pedido(piloto=True), HOJE, regras).motivo is Motivo.TERMOS_SEM_DATA
+
+
+@pytest.mark.parametrize("canal", sorted(portao.CANAIS_DO_APP))
+def test_canais_do_app_ignoram_a_marca_de_piloto(canal: Canal) -> None:
+    """Conta do app (com ou sem organização): a regra é a da ADR 0102, com ou sem a marca."""
+    regras = _regras_de_piloto()
+    com, sem = (
+        decidir(_pedido(canal=canal, piloto=marca), HOJE, regras)
+        for marca in (True, False)
+    )
+    assert com == sem and com.motivo is Motivo.REGRA_DO_APP and not com.piloto
+
+
+def test_regras_vigentes_leem_o_registro_de_piloto_e_a_marca_de_pessoa() -> None:
+    from base import prontidao
+
+    regras = portao.regras_vigentes()
+    assert regras.prontidao_de_piloto is prontidao.PRONTIDAO_DE_PILOTO
+    assert regras.pessoa_decidida == prontidao.tabelas_com_pessoa_decidida()
+
+
+def test_hoje_nada_sai_pelo_piloto() -> None:
+    """O registro de piloto nasce vazio: nem a organização do piloto recebe nada até a mesa Dados gravar."""
+    for linha in portao.DIREITOS_DA_API_EXTERNA:
+        pedido = Pedido(
+            fonte=linha.fonte, conjunto=linha.conjunto, campo=linha.campo,
+            canal=Canal.API_EXTERNA, finalidade=linha.finalidade, piloto=True,
+        )  # fmt: skip
+        assert not decidir(pedido, HOJE).piloto
+
+
+def test_conjunto_da_marca_nunca_e_conjunto_de_dado() -> None:
+    """A linha de contrato da marca de piloto não pode virar, sem querer, o contrato de um conjunto servido."""
+    from src.banco.chaves_da_api import CONJUNTO_DO_PILOTO
+
+    assert all(
+        linha.conjunto != CONJUNTO_DO_PILOTO for linha in portao.DIREITOS_DA_API_EXTERNA
+    )

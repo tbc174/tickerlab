@@ -2,10 +2,10 @@
 #   python -m pip install -r requirements-trader.txt
 -r requirements.txt
 scikit-learn==1.9.1
+scipy==1.18.1  # base/cripto/c1 e trader/arima.py; o scikit-learn puxa
+joblib==1.6.0  # trader/pipeline.py; o scikit-learn puxa
 lightgbm==4.7.0
 statsmodels==0.15.0
-pyarrow==25.0.1
-xlrd==2.0.2  # planilha de dividendos de Shiller (Pesquisa 2)
 numba==0.68.0  # acelera laços do trader (exige numpy 2.5.x; 0.62 rebaixava o numpy)
 llvmlite==0.50.0
 # H4 (deep learning, critério v0.2): no Windows o PyPI só tem a versão para CPU, que é o que o

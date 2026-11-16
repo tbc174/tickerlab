@@ -176,6 +176,35 @@ class Porta:
             )
         return hashes
 
+    def nomes_de_pessoa_da_rede(self) -> list[str]:
+        """Os nomes que o acervo guarda das entidades que a rede trata como pessoa (marca vazia
+        conta como pessoa), que a view `entidades` esconde na saída (linha 787). Só para a trava que
+        barra um texto que cite um deles (a ficha do dossiê); nunca para servir: nenhuma rota chama
+        isto. Sem a rede ou sem as colunas, nenhum."""
+        padrao = self.arquivos.get("entidades")
+        arquivos = (
+            [a.as_posix() for a in arquivos_da_tabela(self.pasta, padrao)]
+            if padrao
+            else []
+        )
+        if not arquivos:
+            return []
+        colunas = {
+            nome
+            for nome, *_ in self.con.execute(
+                "DESCRIBE SELECT * FROM read_parquet($arquivos, union_by_name=true)",
+                {"arquivos": arquivos},
+            ).fetchall()
+        }
+        if not {"nome", "trata_como_pessoa"} <= colunas:
+            return []
+        linhas = self.con.execute(
+            "SELECT DISTINCT nome FROM read_parquet($arquivos, union_by_name=true) "
+            "WHERE coalesce(trata_como_pessoa, true) AND nome IS NOT NULL",
+            {"arquivos": arquivos},
+        ).fetchall()
+        return sorted(nome for (nome,) in linhas)
+
     def _onde(
         self,
         tabela: str,
@@ -361,6 +390,54 @@ class Porta:
             f"WHERE {_nome(coluna)} IS NOT NULL"
         ).fetchall()
         return {linha[0] for linha in linhas}
+
+    def perfil(
+        self,
+        tabela: str,
+        chave: Sequence[str],
+        periodo: str | None = None,
+        valor: str | None = None,
+    ) -> dict[str, object]:
+        """Medidas de qualidade da tabela vigente, feitas no DuckDB (exigência 7 da ADR 0027): linhas,
+        vazios em cada coluna da `chave`, linhas repetidas na `chave` e, com `periodo` (uma data) e
+        `valor`, as linhas e a mediana do valor (sem os zeros) por ano. Só mede e nunca corrige."""
+        view = self._view(tabela, None)
+        usadas = [*chave, *(c for c in (periodo, valor) if c)]
+        existentes = self.colunas(tabela)
+        if faltam := [c for c in usadas if c not in existentes]:
+            raise ValueError(f"{tabela}: coluna {faltam[0]!r} não existe")
+        agrupar = ", ".join(_nome(c) for c in chave)
+        um = self.con.execute
+
+        def numero_de(sql: str) -> int:
+            linha = um(sql).fetchone()
+            return int(linha[0]) if linha else 0
+
+        linhas = numero_de(f"SELECT count(*) FROM {_nome(view)}")
+        vazios = {
+            c: numero_de(f"SELECT count(*) FROM {_nome(view)} WHERE {_nome(c)} IS NULL")
+            for c in chave
+        }
+        repetidas = numero_de(
+            f"SELECT coalesce(sum(n - 1), 0) FROM (SELECT count(*) AS n FROM {_nome(view)} "
+            f"GROUP BY {agrupar} HAVING count(*) > 1)"
+        )
+        por_ano: dict[int, tuple[int, float | None]] = {}
+        if periodo:
+            numero = f"TRY_CAST({_nome(valor)} AS DOUBLE)" if valor else "NULL"
+            mediana = f"median({numero}) FILTER (WHERE {numero} <> 0)"  # zero não diz a escala
+            ano = f"year(TRY_CAST({_nome(periodo)} AS DATE))"
+            for a, n, m in um(
+                f"SELECT {ano}, count(*), {mediana} FROM {_nome(view)} "
+                f"WHERE {ano} IS NOT NULL GROUP BY 1 ORDER BY 1"
+            ).fetchall():
+                por_ano[int(a)] = (int(n), None if m is None else float(m))
+        return {
+            "linhas": linhas,
+            "vazios_na_chave": vazios,
+            "repetidas": repetidas,
+            "por_ano": por_ano,
+        }
 
     def contar(
         self,

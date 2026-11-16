@@ -293,7 +293,9 @@ def montar(pasta: Path, agora: datetime) -> list[str]:
                 log.info("%s: %d anos", nome, len(anos))
             except historico.ArquivoIlegivel as erro:
                 falhas.append(str(erro))
-        log.info("trocas_de_auditor: %d", auditores.montar_trocas(pasta, agora))
+        log.info(
+            "trocas_de_auditor: %d", auditores.montar_trocas(conexao, pasta, agora)
+        )
         if not rotulo.montar(conexao, pasta, agora):
             falhas.append(
                 "rotulos_atraso: nada montado (sem índice da DFP/ITR ou sem cadastro)"

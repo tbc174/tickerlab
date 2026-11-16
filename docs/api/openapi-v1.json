@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AberturasPorAnoV1": {
+        "properties": {
+          "aberturas": {
+            "title": "Aberturas",
+            "type": "integer"
+          },
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ano",
+          "aberturas"
+        ],
+        "title": "AberturasPorAnoV1",
+        "type": "object"
+      },
       "AceiteV1": {
         "description": "A versão dos termos que a tela mostrou (uma aba velha não aceita os termos novos).",
         "properties": {
@@ -529,6 +547,30 @@
           "conteudo"
         ],
         "title": "BlocoDaBienalidadeV1",
+        "type": "object"
+      },
+      "BlocoDaFichaV1": {
+        "description": "Um bloco da ficha: o título, a fonte e o que ele traz (sem data nem número).",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "o_que_traz": {
+            "title": "O Que Traz",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "fonte",
+          "o_que_traz"
+        ],
+        "title": "BlocoDaFichaV1",
         "type": "object"
       },
       "BlocoDaSafraV1": {
@@ -1213,6 +1255,109 @@
         "title": "BoasVindasDoBetaV1",
         "type": "object"
       },
+      "BuscaDeEmpresasV1": {
+        "description": "A resposta da busca: o estado, as empresas (só quando pronta), o cursor da página seguinte, as fontes,\nos limites e as opções do formulário, sempre.",
+        "properties": {
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "empresas": {
+            "items": {
+              "$ref": "#/components/schemas/EmpresaDaBuscaV1"
+            },
+            "title": "Empresas",
+            "type": "array"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "ordens": {
+            "items": {
+              "$ref": "#/components/schemas/OrdemDaBuscaV1"
+            },
+            "title": "Ordens",
+            "type": "array"
+          },
+          "proximo_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Cursor"
+          },
+          "setores": {
+            "items": {
+              "$ref": "#/components/schemas/SetorDaBuscaV1"
+            },
+            "title": "Setores",
+            "type": "array"
+          },
+          "ufs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ufs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "empresas",
+          "cortada",
+          "proximo_cursor",
+          "fontes",
+          "limites",
+          "setores",
+          "ufs",
+          "ordens"
+        ],
+        "title": "BuscaDeEmpresasV1",
+        "type": "object"
+      },
       "BuscaPorCnpjV1": {
         "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
         "properties": {
@@ -1408,6 +1553,60 @@
         "title": "CambioDoCafeV1",
         "type": "object"
       },
+      "CampoComFonteV1": {
+        "description": "Um campo no envelope da API externa: o valor, a fonte e o dia em que ficou público.",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "publico_em": {
+            "format": "date",
+            "title": "Publico Em",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "visto_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visto Em"
+          }
+        },
+        "required": [
+          "valor",
+          "fonte",
+          "publico_em",
+          "visto_em"
+        ],
+        "title": "CampoComFonteV1",
+        "type": "object"
+      },
       "ChecagemV1": {
         "properties": {
           "explicacao": {
@@ -1460,6 +1659,86 @@
           "temperatura"
         ],
         "title": "ClimaDaRegiaoV1",
+        "type": "object"
+      },
+      "ComandoDaCliV1": {
+        "description": "Um comando da CLI para copiar, com o que ele faz.",
+        "properties": {
+          "comando": {
+            "title": "Comando",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "comando"
+        ],
+        "title": "ComandoDaCliV1",
+        "type": "object"
+      },
+      "ComparacaoDeEmpresasV1": {
+        "description": "A resposta da comparação: o estado, as empresas na ordem do pedido (só quando pronta), as fontes e os\nlimites, sempre.",
+        "properties": {
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "empresas": {
+            "items": {
+              "$ref": "#/components/schemas/EmpresaComparadaV1"
+            },
+            "title": "Empresas",
+            "type": "array"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "empresas",
+          "fontes",
+          "limites"
+        ],
+        "title": "ComparacaoDeEmpresasV1",
         "type": "object"
       },
       "ComparacaoDoAtivoV1": {
@@ -1587,6 +1866,198 @@
           "aviso"
         ],
         "title": "ComparacaoV1",
+        "type": "object"
+      },
+      "CompradorDoSetorV1": {
+        "description": "Quem já se mexeu no setor: a raiz do CNPJ, o nome do retrato da Receita, os sinais (pelo nome de dentro:\n`entrou_como_socio`, `fundo_socio`, `controla_no_setor`) e as provas de cada um. Só pessoa jurídica.",
+        "properties": {
+          "provas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProvaDoSinalV1"
+            },
+            "title": "Provas",
+            "type": "object"
+          },
+          "raiz_do_cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raiz Do Cnpj"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sinais": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sinais",
+            "type": "array"
+          }
+        },
+        "required": [
+          "raiz_do_cnpj",
+          "razao_social",
+          "sinais",
+          "provas"
+        ],
+        "title": "CompradorDoSetorV1",
+        "type": "object"
+      },
+      "CompradoresDoSetorV1": {
+        "description": "Quem já se mexeu num setor, na tela (linha 903, PR D): o estado, a lista, as fontes e os limites,\nsempre. Movimento passado, não intenção de compra.",
+        "properties": {
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "compradores": {
+            "items": {
+              "$ref": "#/components/schemas/CompradorDoSetorV1"
+            },
+            "title": "Compradores",
+            "type": "array"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "setor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetorPedidoV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sinais_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sinais Nao Disponiveis",
+            "type": "array"
+          },
+          "total_de_compradores": {
+            "title": "Total De Compradores",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "setor",
+          "compradores",
+          "total_de_compradores",
+          "cortada",
+          "sinais_nao_disponiveis",
+          "fontes",
+          "limites"
+        ],
+        "title": "CompradoresDoSetorV1",
+        "type": "object"
+      },
+      "ConectarV1": {
+        "description": "O texto da página Conectar (`src/conectar.py`): conector de IA e CLI, com a chave só de exemplo.",
+        "properties": {
+          "chave_de_exemplo": {
+            "title": "Chave De Exemplo",
+            "type": "string"
+          },
+          "comandos_da_cli": {
+            "items": {
+              "$ref": "#/components/schemas/ComandoDaCliV1"
+            },
+            "title": "Comandos Da Cli",
+            "type": "array"
+          },
+          "cuidado_com_a_chave": {
+            "title": "Cuidado Com A Chave",
+            "type": "string"
+          },
+          "endereco_do_conector": {
+            "title": "Endereco Do Conector",
+            "type": "string"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "passos_no_chatgpt": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passos No Chatgpt",
+            "type": "array"
+          },
+          "passos_no_claude": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passos No Claude",
+            "type": "array"
+          },
+          "perguntas_prontas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Perguntas Prontas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "endereco_do_conector",
+          "chave_de_exemplo",
+          "passos_no_claude",
+          "passos_no_chatgpt",
+          "cuidado_com_a_chave",
+          "comandos_da_cli",
+          "perguntas_prontas",
+          "limites"
+        ],
+        "title": "ConectarV1",
         "type": "object"
       },
       "ConfiguracaoV1": {
@@ -1718,6 +2189,23 @@
         "title": "CurvaV1",
         "type": "object"
       },
+      "DadosECoberturaV1": {
+        "description": "O que a base serve de verdade (`GET /v1/base/tabelas` sem as colunas), na ordem do catálogo.",
+        "properties": {
+          "tabelas": {
+            "items": {
+              "$ref": "#/components/schemas/TabelaDaCoberturaV1"
+            },
+            "title": "Tabelas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tabelas"
+        ],
+        "title": "DadosECoberturaV1",
+        "type": "object"
+      },
       "DestaqueDaAnaliseV1": {
         "description": "Uma seção da ficha puxada para perto de uma parte do texto.",
         "properties": {
@@ -1811,6 +2299,455 @@
         "title": "DocumentoUsadoV1",
         "type": "object"
       },
+      "EmpresaComparadaV1": {
+        "description": "Uma empresa na comparação, numa linha: o cadastro da ficha, os campos da busca e o resumo das entregas\nà CVM, cada campo com a fonte e o dia (None se o portão não serve ou se a empresa não está disponível).",
+        "properties": {
+          "capital_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnae_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Descricao"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "data_exclusao_simples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_inicio_atividade": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_opcao_simples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entregas_com_atraso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas Com Atraso"
+          },
+          "entregas_conhecidas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas Conhecidas"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "matriz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mes_do_retrato": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo_situacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio Nome"
+          },
+          "n_estabelecimentos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "natureza_juridica": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "optante_simples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Porte Descricao"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_entrega_documento": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_entrega_referencia": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ultima_entrega_situacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cnpj",
+          "estado"
+        ],
+        "title": "EmpresaComparadaV1",
+        "type": "object"
+      },
+      "EmpresaDaBuscaV1": {
+        "description": "Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão\nnão serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita.",
+        "properties": {
+          "capital_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnae_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Descricao"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "data_inicio_atividade": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matriz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "municipio_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio Nome"
+          },
+          "n_estabelecimentos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "natureza_juridica": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porte_descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Porte Descricao"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao_cadastral": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "EmpresaDaBuscaV1",
+        "type": "object"
+      },
+      "EmpresasPorUfV1": {
+        "properties": {
+          "empresas_ativas": {
+            "title": "Empresas Ativas",
+            "type": "integer"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uf",
+          "empresas_ativas"
+        ],
+        "title": "EmpresasPorUfV1",
+        "type": "object"
+      },
       "EncerradasV1": {
         "properties": {
           "encerradas": {
@@ -1901,6 +2838,36 @@
         "title": "EntradaDoNumeroV1",
         "type": "object"
       },
+      "EntregaDoDiaV1": {
+        "description": "Uma linha de \"O que mudou\": o dia, o que entrou e a página para abrir.",
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "o_que": {
+            "title": "O Que",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "o_que",
+          "titulo",
+          "url"
+        ],
+        "title": "EntregaDoDiaV1",
+        "type": "object"
+      },
       "ErroDaSafraV1": {
         "properties": {
           "erro_mil_sacas": {
@@ -1945,6 +2912,102 @@
           "casas"
         ],
         "title": "EscalaDoGraficoV1",
+        "type": "object"
+      },
+      "EstadoDoChatV1": {
+        "description": "Se a conta pode perguntar agora e, se não, por quê; com a cota, os limites e o que dizer na tela.",
+        "properties": {
+          "caracteres_da_pergunta": {
+            "title": "Caracteres Da Pergunta",
+            "type": "integer"
+          },
+          "caracteres_do_historico": {
+            "title": "Caracteres Do Historico",
+            "type": "integer"
+          },
+          "como_funciona": {
+            "title": "Como Funciona",
+            "type": "string"
+          },
+          "exemplos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exemplos",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "mensagem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensagem"
+          },
+          "perguntas_hoje": {
+            "title": "Perguntas Hoje",
+            "type": "integer"
+          },
+          "perguntas_no_historico": {
+            "title": "Perguntas No Historico",
+            "type": "integer"
+          },
+          "perguntas_no_mes": {
+            "title": "Perguntas No Mes",
+            "type": "integer"
+          },
+          "perguntas_por_dia": {
+            "title": "Perguntas Por Dia",
+            "type": "integer"
+          },
+          "perguntas_por_mes": {
+            "title": "Perguntas Por Mes",
+            "type": "integer"
+          },
+          "pode_perguntar": {
+            "title": "Pode Perguntar",
+            "type": "boolean"
+          },
+          "situacao": {
+            "enum": [
+              "desligado",
+              "sem_organizacao",
+              "sem_chave",
+              "pausado",
+              "cota_do_dia",
+              "cota_do_mes",
+              "pronto"
+            ],
+            "title": "Situacao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "situacao",
+          "pode_perguntar",
+          "mensagem",
+          "perguntas_hoje",
+          "perguntas_por_dia",
+          "perguntas_no_mes",
+          "perguntas_por_mes",
+          "caracteres_da_pergunta",
+          "perguntas_no_historico",
+          "caracteres_do_historico",
+          "como_funciona",
+          "exemplos",
+          "limites"
+        ],
+        "title": "EstadoDoChatV1",
         "type": "object"
       },
       "EstrategiaAcompanhadaV1": {
@@ -2077,6 +3140,159 @@
           "limites"
         ],
         "title": "EuV1",
+        "type": "object"
+      },
+      "EventoDaEmpresaV1": {
+        "description": "Um evento da empresa: o tipo (`ipe_filing` ou `auditor_change`) e os campos dele, cada um com fonte e dia.",
+        "properties": {
+          "campos": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Campos",
+            "type": "object"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "campos"
+        ],
+        "title": "EventoDaEmpresaV1",
+        "type": "object"
+      },
+      "EventosDaEmpresaV1": {
+        "description": "Os eventos da empresa na ficha (linha 798, PR 4): o estado, a página, o cursor da seguinte, as fontes e\nos limites, sempre.",
+        "properties": {
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "eventos": {
+            "items": {
+              "$ref": "#/components/schemas/EventoDaEmpresaV1"
+            },
+            "title": "Eventos",
+            "type": "array"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "proximo_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proximo Cursor"
+          },
+          "tipos_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tipos Nao Disponiveis",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "eventos",
+          "cortada",
+          "proximo_cursor",
+          "tipos_nao_disponiveis",
+          "fontes",
+          "limites"
+        ],
+        "title": "EventosDaEmpresaV1",
+        "type": "object"
+      },
+      "ExemploDeProvaV1": {
+        "description": "Um exemplo de prova: a empresa do setor onde o movimento aconteceu, a UF dela e os campos do sinal\n(data de entrada, tipo, participação...), cada um com fonte e dia. `ainda_socio` só vale para a entrada.",
+        "properties": {
+          "ainda_socio": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ainda Socio"
+          },
+          "campos": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Campos",
+            "type": "object"
+          },
+          "empresa_do_setor": {
+            "$ref": "#/components/schemas/PontaDoVinculoV1"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "empresa_do_setor",
+          "uf",
+          "campos"
+        ],
+        "title": "ExemploDeProvaV1",
         "type": "object"
       },
       "ExpectativaV1": {
@@ -2363,6 +3579,127 @@
         "title": "FichaDaContraparteV1",
         "type": "object"
       },
+      "FichaDaEmpresaV1": {
+        "description": "A resposta da tela: o estado, a ficha (só quando pronta), as fontes e os limites, sempre.",
+        "properties": {
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "ficha": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FichaDoCnpjV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "o_que_vem": {
+            "items": {
+              "$ref": "#/components/schemas/BlocoDaFichaV1"
+            },
+            "title": "O Que Vem",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "ficha",
+          "fontes",
+          "limites",
+          "o_que_vem"
+        ],
+        "title": "FichaDaEmpresaV1",
+        "type": "object"
+      },
+      "FichaDoCnpjV1": {
+        "description": "A ficha como a base a conhecia no dia, com as chaves do leitor da API externa (em português).",
+        "properties": {
+          "cadastro_na_receita": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Cadastro Na Receita",
+            "type": "object"
+          },
+          "campos_do_cadastro_nao_disponiveis": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Campos Do Cadastro Nao Disponiveis",
+            "type": "array"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "como_era_em": {
+            "format": "date",
+            "title": "Como Era Em",
+            "type": "string"
+          },
+          "entregas": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/CampoComFonteV1"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entregas"
+          },
+          "entregas_nao_disponiveis": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Entregas Nao Disponiveis",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cnpj",
+          "como_era_em",
+          "cadastro_na_receita"
+        ],
+        "title": "FichaDoCnpjV1",
+        "type": "object"
+      },
       "FichaV1": {
         "description": "A ficha \"Foi sorte?\" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`.",
         "properties": {
@@ -2420,6 +3757,30 @@
           "nota"
         ],
         "title": "FichaV1",
+        "type": "object"
+      },
+      "FonteDaFichaV1": {
+        "description": "Uma fonte usada na ficha, com a licença e a frase de atribuição que ela pede.",
+        "properties": {
+          "atribuicao": {
+            "title": "Atribuicao",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "licenca": {
+            "title": "Licenca",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fonte",
+          "licenca",
+          "atribuicao"
+        ],
+        "title": "FonteDaFichaV1",
         "type": "object"
       },
       "FraseDaAnaliseV1": {
@@ -3829,6 +5190,23 @@
         "title": "NumeroDeJurosV1",
         "type": "object"
       },
+      "OQueMudouV1": {
+        "description": "O que entrou no app a cada dia (`src/o_que_mudou.py`), a mais nova primeiro.",
+        "properties": {
+          "entregas": {
+            "items": {
+              "$ref": "#/components/schemas/EntregaDoDiaV1"
+            },
+            "title": "Entregas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entregas"
+        ],
+        "title": "OQueMudouV1",
+        "type": "object"
+      },
       "OpcaoDeRegiaoV1": {
         "properties": {
           "id": {
@@ -3850,6 +5228,25 @@
           "tipo_predominante"
         ],
         "title": "OpcaoDeRegiaoV1",
+        "type": "object"
+      },
+      "OrdemDaBuscaV1": {
+        "description": "Uma ordem que a tela oferece além da do CNPJ (o código vai de volta no pedido).",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "OrdemDaBuscaV1",
         "type": "object"
       },
       "PainelDeNumerosV1": {
@@ -4175,6 +5572,133 @@
         "title": "PassoDoBetaV1",
         "type": "object"
       },
+      "PedidoDaBuscaV1": {
+        "properties": {
+          "capital_maximo": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Maximo"
+          },
+          "capital_minimo": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Minimo"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "estabelecimentos_minimo": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estabelecimentos Minimo"
+          },
+          "idade_minima": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idade Minima"
+          },
+          "ordem": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordem"
+          },
+          "setores": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Setores",
+            "type": "array"
+          },
+          "ufs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 27,
+            "title": "Ufs",
+            "type": "array"
+          }
+        },
+        "title": "PedidoDaBuscaV1",
+        "type": "object"
+      },
+      "PedidoDaComparacaoV1": {
+        "properties": {
+          "cnpjs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cnpjs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cnpjs"
+        ],
+        "title": "PedidoDaComparacaoV1",
+        "type": "object"
+      },
+      "PedidoDaFichaV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDaFichaV1",
+        "type": "object"
+      },
       "PedidoDeBacktestV1": {
         "properties": {
           "capital_inicial": {
@@ -4369,6 +5893,231 @@
         "title": "PedidoDeSimulacaoV1",
         "type": "object"
       },
+      "PedidoDoChatV1": {
+        "properties": {
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/TrocaAnteriorV1"
+            },
+            "maxItems": 4,
+            "title": "Historico",
+            "type": "array"
+          },
+          "pergunta": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Pergunta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta"
+        ],
+        "title": "PedidoDoChatV1",
+        "type": "object"
+      },
+      "PedidoDoPerfilV1": {
+        "properties": {
+          "cnae": {
+            "title": "Cnae",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnae"
+        ],
+        "title": "PedidoDoPerfilV1",
+        "type": "object"
+      },
+      "PedidoDoSetorV1": {
+        "properties": {
+          "anos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anos"
+          },
+          "cnae": {
+            "title": "Cnae",
+            "type": "string"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "cnae"
+        ],
+        "title": "PedidoDoSetorV1",
+        "type": "object"
+      },
+      "PedidoDosEventosV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDosEventosV1",
+        "type": "object"
+      },
+      "PerfilDoSetorV1": {
+        "description": "Os números de um setor por CNAE (linha 903, tela de Setor): só contagens, só pessoa jurídica. O bloco que\no portão não libera vem `None` (nunca zero) e o nome dele em `blocos_nao_disponiveis`.",
+        "properties": {
+          "aberturas_por_ano": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AberturasPorAnoV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aberturas Por Ano"
+          },
+          "blocos_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocos Nao Disponiveis",
+            "type": "array"
+          },
+          "cnae_principal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnae Principal"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "data_do_retrato": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Do Retrato"
+          },
+          "empresas_ativas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresas Ativas"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "por_uf": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmpresasPorUfV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Por Uf"
+          },
+          "publico_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publico Em"
+          }
+        },
+        "required": [
+          "estado",
+          "cnae_principal",
+          "como_era_em",
+          "data_do_retrato",
+          "publico_em",
+          "empresas_ativas",
+          "por_uf",
+          "aberturas_por_ano",
+          "blocos_nao_disponiveis",
+          "fontes",
+          "limites"
+        ],
+        "title": "PerfilDoSetorV1",
+        "type": "object"
+      },
       "PiorQuedaV1": {
         "properties": {
           "data_fundo": {
@@ -4426,6 +6175,38 @@
           "data_recuperacao"
         ],
         "title": "PiorQuedaV1",
+        "type": "object"
+      },
+      "PontaDoVinculoV1": {
+        "description": "Uma ponta do vínculo: a raiz do CNPJ e a razão social do retrato mensal da Receita mais novo já público no\ndia (sem nome quando a raiz não está nele).",
+        "properties": {
+          "raiz_do_cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raiz Do Cnpj"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "raiz_do_cnpj",
+          "razao_social"
+        ],
+        "title": "PontaDoVinculoV1",
         "type": "object"
       },
       "PontoAnualDoCafeV1": {
@@ -5077,6 +6858,28 @@
         "title": "PrecosDeReferenciaV1",
         "type": "object"
       },
+      "ProvaDoSinalV1": {
+        "description": "As provas de um sinal: quantas são e até cinco exemplos.",
+        "properties": {
+          "exemplos": {
+            "items": {
+              "$ref": "#/components/schemas/ExemploDeProvaV1"
+            },
+            "title": "Exemplos",
+            "type": "array"
+          },
+          "quantas": {
+            "title": "Quantas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "quantas",
+          "exemplos"
+        ],
+        "title": "ProvaDoSinalV1",
+        "type": "object"
+      },
       "PulseV1": {
         "properties": {
           "acontecimentos": {
@@ -5688,6 +7491,67 @@
         "title": "SecaoDoRelatorioV1",
         "type": "object"
       },
+      "SetorDaBuscaV1": {
+        "description": "Um setor que a tela oferece: a letra da seção do CNAE e o nome do IBGE.",
+        "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "SetorDaBuscaV1",
+        "type": "object"
+      },
+      "SetorPedidoV1": {
+        "description": "O setor pedido: o CNAE, a UF (se houver), a janela em anos e quantas empresas ativas ele tem.",
+        "properties": {
+          "anos": {
+            "title": "Anos",
+            "type": "integer"
+          },
+          "cnae_principal": {
+            "title": "Cnae Principal",
+            "type": "string"
+          },
+          "desde": {
+            "format": "date",
+            "title": "Desde",
+            "type": "string"
+          },
+          "empresas_ativas": {
+            "title": "Empresas Ativas",
+            "type": "integer"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "cnae_principal",
+          "uf",
+          "anos",
+          "desde",
+          "empresas_ativas"
+        ],
+        "title": "SetorPedidoV1",
+        "type": "object"
+      },
       "SetorV1": {
         "description": "Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias.",
         "properties": {
@@ -5814,6 +7678,65 @@
           "endereco"
         ],
         "title": "SimulacaoV1",
+        "type": "object"
+      },
+      "TabelaDaCoberturaV1": {
+        "description": "Uma tabela da base como o catálogo público a declara: o que traz, de onde vem e com que licença.",
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "frase": {
+            "title": "Frase",
+            "type": "string"
+          },
+          "frequencia": {
+            "title": "Frequencia",
+            "type": "string"
+          },
+          "historico_desde": {
+            "title": "Historico Desde",
+            "type": "string"
+          },
+          "licenca": {
+            "title": "Licenca",
+            "type": "string"
+          },
+          "modulo": {
+            "title": "Modulo",
+            "type": "string"
+          },
+          "n_colunas": {
+            "title": "N Colunas",
+            "type": "integer"
+          },
+          "orgao": {
+            "title": "Orgao",
+            "type": "string"
+          },
+          "situacao_da_licenca": {
+            "title": "Situacao Da Licenca",
+            "type": "string"
+          },
+          "tabela": {
+            "title": "Tabela",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tabela",
+          "modulo",
+          "frase",
+          "fonte",
+          "orgao",
+          "licenca",
+          "historico_desde",
+          "frequencia",
+          "situacao_da_licenca",
+          "n_colunas"
+        ],
+        "title": "TabelaDaCoberturaV1",
         "type": "object"
       },
       "TabelaDoRelatorioV1": {
@@ -5959,6 +7882,27 @@
         "title": "TermometroDaConabV1",
         "type": "object"
       },
+      "TrocaAnteriorV1": {
+        "description": "Uma pergunta e a resposta de antes, que a tela reenvia para o modelo ter o contexto.",
+        "properties": {
+          "pergunta": {
+            "maxLength": 2000,
+            "title": "Pergunta",
+            "type": "string"
+          },
+          "resposta": {
+            "maxLength": 4000,
+            "title": "Resposta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta",
+          "resposta"
+        ],
+        "title": "TrocaAnteriorV1",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -6061,6 +8005,111 @@
         "title": "VereditoV1",
         "type": "object"
       },
+      "VinculoDaEmpresaV1": {
+        "description": "Uma ligação `de` → `para`: `tipo` diz o que `de` é de `para` (controlada, coligada, participada, auditora).",
+        "properties": {
+          "campos": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CampoComFonteV1"
+            },
+            "title": "Campos",
+            "type": "object"
+          },
+          "de": {
+            "$ref": "#/components/schemas/PontaDoVinculoV1"
+          },
+          "para": {
+            "$ref": "#/components/schemas/PontaDoVinculoV1"
+          },
+          "salto": {
+            "title": "Salto",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "salto",
+          "de",
+          "para",
+          "campos"
+        ],
+        "title": "VinculoDaEmpresaV1",
+        "type": "object"
+      },
+      "VinculosDaEmpresaV1": {
+        "description": "Os vínculos da empresa na ficha (linha 798, PR 5): o estado, a lista, as fontes e os limites, sempre.",
+        "properties": {
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "cortada": {
+            "title": "Cortada",
+            "type": "boolean"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "tipos_de_vinculo_nao_disponiveis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tipos De Vinculo Nao Disponiveis",
+            "type": "array"
+          },
+          "vinculos": {
+            "items": {
+              "$ref": "#/components/schemas/VinculoDaEmpresaV1"
+            },
+            "title": "Vinculos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "como_era_em",
+          "vinculos",
+          "cortada",
+          "tipos_de_vinculo_nao_disponiveis",
+          "fontes",
+          "limites"
+        ],
+        "title": "VinculosDaEmpresaV1",
+        "type": "object"
+      },
       "VisaoGeralV1": {
         "properties": {
           "ativo": {
@@ -6138,6 +8187,375 @@
           }
         },
         "summary": "Registrar O Aceite"
+      }
+    },
+    "/v1/analista/comparar": {
+      "post": {
+        "description": "De dois a cinco CNPJs lado a lado: o cadastro na Receita, o porte, a abertura, a atividade, o lugar, o\ncapital, os estabelecimentos e, da companhia aberta, a última entrega à CVM e os atrasos, cada campo com\na fonte e o dia. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece saem `nao_disponivel`,\nsem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`. O que sai pela prontidão de\npiloto, só para a conta de organização com a marca, vem com `aviso_de_piloto`.",
+        "operationId": "comparar_empresas_v1_analista_comparar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaComparacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparacaoDeEmpresasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comparar Empresas"
+      }
+    },
+    "/v1/analista/comparar/planilha": {
+      "post": {
+        "description": "A mesma comparação em Excel (mesmo acesso, mesmo plano), uma linha por empresa, com a aba das fontes\ne o aviso; dado de piloto leva o aviso de piloto em cada linha e nas fontes.",
+        "operationId": "comparar_empresas_em_planilha_v1_analista_comparar_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaComparacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comparar Empresas Em Planilha"
+      }
+    },
+    "/v1/analista/empresas": {
+      "post": {
+        "description": "Uma página de empresas (a matriz ativa) pelos filtros da tela, cada campo com a fonte e o dia\nem que ficou público, e as opções do formulário. Sem filtro sai `sem_filtro`, sem ler a base; o que o\nportão ainda não libera sai `nao_liberada`. O que sai pela prontidão de piloto, só para a conta de\norganização com a marca, vem com `aviso_de_piloto`.",
+        "operationId": "encontrar_empresas_v1_analista_empresas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaBuscaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuscaDeEmpresasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encontrar Empresas"
+      }
+    },
+    "/v1/analista/empresas/planilha": {
+      "post": {
+        "description": "A mesma busca em Excel (mesmo acesso, mesmo plano): até dez páginas, com os nomes ao lado dos códigos,\na aba das fontes e o aviso; dado de piloto leva o aviso de piloto em cada linha e nas fontes.",
+        "operationId": "encontrar_empresas_em_planilha_v1_analista_empresas_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaBuscaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Encontrar Empresas Em Planilha"
+      }
+    },
+    "/v1/analista/ficha": {
+      "post": {
+        "description": "A ficha do CNPJ: o cadastro na Receita e, da companhia aberta, as entregas à CVM, cada campo com a\nfonte e o dia em que ficou público. Pessoa (MEI, empresário individual) e CNPJ que a base não conhece\nsaem `nao_disponivel`, sem dizer o motivo; o que o portão ainda não libera sai `nao_liberada`. O que sai\npela prontidão de piloto, só para a conta de organização com a marca, vem com `aviso_de_piloto`.",
+        "operationId": "ficha_da_empresa_v1_analista_ficha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FichaDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ficha Da Empresa"
+      }
+    },
+    "/v1/analista/ficha/eventos": {
+      "post": {
+        "description": "Os documentos à CVM e as trocas de auditor da empresa, do mais novo ao mais velho, por página. Mesmo\nacesso, mesmo plano e mesmos estados da ficha; `proximo_cursor` abre a página seguinte.",
+        "operationId": "eventos_da_empresa_v1_analista_ficha_eventos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDosEventosV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventosDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Eventos Da Empresa"
+      }
+    },
+    "/v1/analista/ficha/planilha": {
+      "post": {
+        "description": "A mesma ficha em Excel (mesmo acesso, mesmo plano), com a aba das fontes e o aviso; dado de piloto\nleva o aviso de piloto em cada campo e nas fontes.",
+        "operationId": "ficha_da_empresa_em_planilha_v1_analista_ficha_planilha_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ficha Da Empresa Em Planilha"
+      }
+    },
+    "/v1/analista/ficha/vinculos": {
+      "post": {
+        "description": "Controle, coligação, participação e auditoria da empresa, a um salto, cada campo com fonte e dia. Mesmo\nacesso, mesmo plano e mesmos estados da ficha; pessoa natural nunca sai.",
+        "operationId": "vinculos_da_empresa_v1_analista_ficha_vinculos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VinculosDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vinculos Da Empresa"
+      }
+    },
+    "/v1/analista/setor/compradores": {
+      "post": {
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\nativa do CNAE, os FIPs sócios e as companhias abertas com controlada no setor, cada campo com fonte e dia.\nMesmo leitor e mesmo portão da API externa, sem o contrato da organização; movimento passado, não intenção\nde compra. O sinal que o portão não libera vem em `sinais_nao_disponiveis`.",
+        "operationId": "compradores_do_setor_v1_analista_setor_compradores_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoSetorV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompradoresDoSetorV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compradores Do Setor"
+      }
+    },
+    "/v1/analista/setor/perfil": {
+      "post": {
+        "description": "Os números do setor por CNAE: empresas ativas, por UF e aberturas por ano. Só contagens e só pessoa\njurídica (MEI e empresário individual não entram), no retrato da Receita do dia, com o mesmo portão e o\nmesmo leitor da API externa. O bloco que o portão não libera vem vazio e nomeado em `blocos_nao_disponiveis`.",
+        "operationId": "perfil_do_setor_v1_analista_setor_perfil_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoPerfilV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilDoSetorV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perfil Do Setor"
       }
     },
     "/v1/apagar-simulacao": {
@@ -6308,6 +8726,62 @@
         "summary": "Busca Por Cnpj Em Pdf"
       }
     },
+    "/v1/chat": {
+      "post": {
+        "description": "A resposta do chat, um evento JSON por linha (`application/x-ndjson`).",
+        "operationId": "perguntar_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDoChatV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Perguntar"
+      }
+    },
+    "/v1/chat/estado": {
+      "get": {
+        "description": "O estado do chat para a tela \"Perguntar\": a primeira recusa que a pergunta ouviria, ou \"pronto\".\n\nA ordem é a de `POST /v1/chat`. Com o chat desligado a tela ainda abre, para dizer que ele não foi\nligado e o que vai fazer.",
+        "operationId": "estado_do_chat_v1_chat_estado_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoDoChatV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Estado Do Chat"
+      }
+    },
     "/v1/commodities/cafe/mapa": {
       "get": {
         "description": "Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia\nos deixou; 503 se o pacote ainda não chegou a este servidor.",
@@ -6444,6 +8918,25 @@
         "summary": "Comparacao"
       }
     },
+    "/v1/conectar": {
+      "get": {
+        "description": "O endereço do conector, os passos, os comandos da CLI e as perguntas prontas.",
+        "operationId": "como_conectar_v1_conectar_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConectarV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Como Conectar"
+      }
+    },
     "/v1/configuracao": {
       "get": {
         "description": "Pública (sem token), mas só com a API ligada, como as outras.",
@@ -6524,6 +9017,25 @@
           }
         },
         "summary": "Entrar"
+      }
+    },
+    "/v1/dados-e-cobertura": {
+      "get": {
+        "description": "As tabelas consultáveis da base, na ordem do catálogo, com a fonte e a licença de cada uma.",
+        "operationId": "dados_e_cobertura_v1_dados_e_cobertura_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DadosECoberturaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dados E Cobertura"
       }
     },
     "/v1/entrada/codigo": {
@@ -6784,6 +9296,25 @@
           }
         },
         "summary": "Meus Dados"
+      }
+    },
+    "/v1/o-que-mudou": {
+      "get": {
+        "description": "As entregas visíveis do app, a mais nova primeiro.",
+        "operationId": "o_que_mudou_no_app_v1_o_que_mudou_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OQueMudouV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "O Que Mudou No App"
       }
     },
     "/v1/pagamento-da-assinatura": {

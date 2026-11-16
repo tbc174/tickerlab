@@ -133,8 +133,21 @@ export interface AreaDoApp {
   paginas: string[]; // chaves das páginas
 }
 
+/** Um item do menu do app (`ItemDoMenu` de src/paginas.py): um assunto e as telas dele, na ordem. */
+export interface ItemDoMenuDoApp {
+  chave: string;
+  rotulo: string;
+  icone: string; // o nome do desenho em web/src/app/Icone.tsx
+  paginas: string[]; // chaves das páginas que já existem no mapa
+  secundario: boolean; // fica depois do divisor, no fim do menu
+  novo: boolean; // ganha o selo "Novo"
+}
+
 export const conteudoDoApp: {
   areas: AreaDoApp[];
+  menu: ItemDoMenuDoApp[];
+  /** As contagens do catálogo que o Início mostra ("O que a base tem"). */
+  base: { tabelas: number; ligadas_pelo_cnpj: number; orgaos: number; fontes: number };
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };

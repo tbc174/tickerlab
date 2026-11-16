@@ -5,29 +5,56 @@ português (a rota traduz na saída), a situação cadastral do estabelecimento 
 novo que já era público em `como_era_em`. O retrato do mês vale pelo último dia do mês em que foi baixado (a
 porta faz o corte): o CNPJ baixado em junho e publicado em julho continua ativo até 31/07.
 
-Da empresa (a raiz do CNPJ) saem também a razão social, a natureza jurídica e a opção pelo Simples, cada uma
-da versão do histórico datado (`cnpj_empresas_historico` e `cnpj_simples_historico`, `base/cnpj_historico.py`)
-que já era pública em `como_era_em`, com a data dela no envelope ("pode 8" do Tiago em 05/11/2026). Campo sem
-versão pública na data, de raiz que tinha saído do arquivo ou de tabela que a base não tem fica de fora; a
-situação cadastral continua sendo a âncora: sem ela, a empresa não sai.
+Da empresa (a raiz do CNPJ) sai também a opção pelo Simples, da versão do histórico datado
+(`cnpj_simples_historico`, `base/cnpj_historico.py`) que já era pública em `como_era_em`, com a data dela no
+envelope ("pode 8" do Tiago em 05/11/2026). Campo sem versão pública na data, de raiz que tinha saído do arquivo
+ou de tabela que a base não tem fica de fora; a situação cadastral continua sendo a âncora: sem ela, a empresa
+não sai.
 
-Pessoa não sai (ADR 0108 D2.2): o CNPJ só é servido se a rede o conhece como empresa e não o trata como
-pessoa (MEI, empresário individual e as naturezas de pessoa física, `trata_como_pessoa`). O que a rede não
-conhece, o que é fundo ou outra coisa, e o conflito (o mesmo CNPJ em duas entidades) saem como
-`not_available`, igual a um CNPJ que não existe: a resposta não diz qual foi o motivo. A rede usada é a de
-hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
+A razão social e a natureza jurídica saem do retrato da lista sem pessoa (`cnpj_empresas_pj`, linha 861), na
+leitura estreita do "sem olhar o futuro": só se o retrato já era público em `como_era_em` (a porta corta pelo
+último dia do mês) e a raiz está nele uma só vez, com natureza informada que não é de pessoa. A resposta diz de
+que retrato saíram (`mes_do_retrato_do_cadastro`): é o retrato daquele mês, não "como era" no dia. Não saem
+mais do histórico datado (`cnpj_empresas_historico`): ele não está no VPS nem em casa, tem pessoa e não tem prova
+de prontidão, e o portão julga a tabela que foi lida (a Diretoria, 12/11/2026). O Simples não tem lista sem
+pessoa: sem o histórico dele, não sai.
+
+Pessoa não sai (ADR 0108 D2.2). Quando a rede conhece o CNPJ (algum identificador dela tem o CNPJ ou a raiz),
+decide ela: só sai se ela o conhece como uma só empresa que não trata como pessoa (MEI, empresário individual e
+as naturezas de pessoa física, `trata_como_pessoa`); fundo ou outra coisa e conflito (o mesmo CNPJ em duas
+entidades) saem como `not_available`, igual a um CNPJ que não existe, e **não** caem para as listas. A rede
+usada é a de hoje: quem hoje se sabe pessoa não sai nem numa data em que ainda não se sabia.
+
+O que a rede não conhece (a empresa fechada: ela só tem as companhias da CVM e dos reguladores, linha 843) e,
+onde ela não está, qualquer CNPJ, decidem as listas sem pessoa da Receita do retrato mais novo, o mesmo nas
+duas (linha 584): o estabelecimento tem de estar em `cnpj_estabelecimentos_pj` (sem MEI) e a raiz em
+`cnpj_empresas_pj` (sem empresário individual nem grupo 4), com a natureza informada (a natureza vazia conta
+como pessoa, como na rede desde a linha 787). Sem a rede nem as duas listas, nada sai.
+
+O campo que o portão da organização não libera, ou cuja tabela a base não tem, não some em silêncio (linha 898,
+no molde do perfil da linha 891, `src/api_externa/nao_disponivel.py`): ele vai em
+`campos_do_cadastro_nao_disponiveis`, com o nome de fora, e os limites avisam que o cadastro nesta resposta não
+diz nada sobre ele. Sem a lista, a resposta só com a situação leria como "a empresa não tem Simples". O campo
+liberado que falta porque a base não tem a versão do dia (a raiz que saiu do arquivo do Simples) não entra: ele
+foi consultado. A lista só é montada para a empresa que sai: o `not_available` continua sem dizer nada.
 """
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
 import pandas as pd
 
 from base import cnpj as cnpj_
+from base.cnpj import SEPARADORES
 from base.porta import Porta
-from base.porta.rede import resolver, views
+from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
+from base.porta.rede import ID_DE_ENTIDADE, OUTROS_SISTEMAS, resolver, views
+from base.rede.entidades import natureza_de_pessoa
+from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.nomes import NOMES_DE_FORA
 
 CONJUNTO = "companies"
 TABELA = "cnpj_situacao_cadastral"
@@ -44,6 +71,10 @@ RAIZ = "cnpj_basico"
 MES = "mes_do_retrato"
 CONSTA = "consta"
 TAMANHO_DA_RAIZ = 8
+# as listas sem pessoa de `scripts/montar_empresas_pj.py`, a trava onde a rede não está
+LISTA_DE_EMPRESAS = "cnpj_empresas_pj"
+LISTA_DE_ESTABELECIMENTOS = "cnpj_estabelecimentos_pj"
+_LISTA = "(SELECT unnest(${}))"  # um parâmetro com lista, como tabela (junção por hash)
 
 
 @dataclass(frozen=True)
@@ -55,16 +86,36 @@ class Historico:
 
 
 HISTORICOS = (
-    Historico("cnpj_empresas_historico", ("razao_social", "natureza_juridica")),
     Historico(
         "cnpj_simples_historico",
         ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
     ),
 )
-TABELAS = (TABELA, *(historico.tabela for historico in HISTORICOS))
+# o nome e a natureza: do retrato da lista sem pessoa, com o mês dele (linha 861)
+CAMPOS_DO_RETRATO_PJ = ("razao_social", "natureza_juridica")
+RETRATO_DO_CADASTRO = "mes_do_retrato_do_cadastro"
+TABELAS = (TABELA, *(historico.tabela for historico in HISTORICOS), LISTA_DE_EMPRESAS)
 CAMPOS_DATADOS = tuple(campo for historico in HISTORICOS for campo in historico.campos)
 DATAS = ("data_situacao_cadastral", "data_opcao_simples", "data_exclusao_simples")
 SIM_OU_NAO = ("matriz", "optante_simples")
+# cada campo do cadastro com a tabela de onde sai: a mesma da linha de direito que o portão julga
+TABELA_DO_CAMPO_DO_CADASTRO = {
+    **dict.fromkeys(CAMPOS, TABELA),
+    **{nome: historico.tabela for historico in HISTORICOS for nome in historico.campos},
+    **dict.fromkeys((*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO), LISTA_DE_EMPRESAS),
+}  # fmt: skip
+# o nome de dentro da lista dos campos do cadastro que o portão não libera (ou sem a tabela na base)
+CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS = "campos_do_cadastro_nao_disponiveis"
+LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL = nao_disponivel.aviso(
+    CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "campos", "o cadastro nesta resposta"
+)
+# o que o leitor põe no corpo além do cadastro: quem lê só o cadastro (o perfil) separa por aqui
+CHAVES_DO_AVISO = (CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS, "limites")
+
+
+def limites(campos_de_fora: Sequence[str]) -> list[str]:
+    """Os limites do cadastro: só o aviso, quando algum campo ficou de fora."""
+    return [LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL] if campos_de_fora else []
 
 
 @dataclass(frozen=True)
@@ -92,32 +143,316 @@ def _sim(valor: object) -> bool:
     return valor is None or bool(pd.isna(valor)) or bool(valor)  # type: ignore[arg-type]
 
 
+def e_empresa(porta: Porta, cnpj: str) -> bool:
+    """O CNPJ (14 caracteres, sem pontuação) é de uma só empresa que não é pessoa; qualquer dúvida é não.
+
+    A rede de hoje decide se conhece o CNPJ (como pessoa, conflito ou outra coisa que não empresa, não); o
+    que ela não conhece decidem as listas sem pessoa da Receita, se a porta as tem; sem nenhuma, não (linha
+    843: a rede do VPS só tem as companhias da CVM e dos reguladores, e a empresa fechada vem das listas).
+    Também serve à rota de crédito (`conjuntos/credito.py`): as duas tiram pessoa do mesmo jeito. Para
+    muitos CNPJs de uma vez, `e_empresas`: a mesma resposta (há teste), sem uma ida à base por CNPJ."""
+    existem = views(porta.con)
+    if "entidades" in existem:
+        pela_rede = _pela_rede(porta, cnpj)
+        if pela_rede is not None:
+            return pela_rede
+    if {LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS} <= existem:
+        return _pelas_listas_sem_pessoa(porta, cnpj)
+    return False
+
+
+def _pares_de_mencao(cnpj: str) -> list[tuple[str, str]]:
+    """Os (sistema, valor) em que a rede pode conhecer o texto: os mesmos que o `resolver` procura."""
+    texto = SEPARADORES.sub("", cnpj.strip()).upper()
+    return [
+        ("cnpj", texto),
+        ("cnpj_raiz", texto[:TAMANHO_DA_RAIZ]),
+        *((sistema, texto) for sistema in OUTROS_SISTEMAS),
+    ]
+
+
+def _a_rede_menciona(porta: Porta, cnpj: str) -> bool:
+    """Algum identificador da rede tem o CNPJ, a raiz dele ou o texto dele em outro sistema (os mesmos que o
+    `resolver` procura): a rede conhece o CNPJ, ainda que em mais de uma entidade. Sem a view `identificadores`
+    (rede pela metade), conta como conhecido: na dúvida, não."""
+    if "identificadores" not in views(porta.con):
+        return True
+    achados = porta.con.execute(
+        "SELECT count(*) FROM identificadores WHERE list_contains($pares, [sistema, valor])",
+        {"pares": [list(par) for par in _pares_de_mencao(cnpj)]},
+    ).fetchone()
+    return achados != (0,)
+
+
+def _e_uma_empresa(id_entidade: str | None, achadas: list[tuple]) -> bool:
+    """O id é de uma só entidade (`achadas`: as linhas dela em `entidades`), do tipo empresa, que não é MEI
+    nem tratada como pessoa. Id vazio (identificador sem entidade) ou de pessoa: não."""
+    if id_entidade is None or id_entidade.startswith(PREFIXO_DE_PESSOA):
+        return False
+    if len(achadas) != 1:
+        return False
+    tipo, mei, trata_como_pessoa = achadas[0]
+    return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
+
+
+def _pela_rede(porta: Porta, cnpj: str) -> bool | None:
+    """Se a rede conhece o CNPJ: se ele é uma só entidade, empresa, que não é MEI nem tratada como pessoa.
+    None se ela não o conhece (nem em mais de uma entidade, que é conflito: não)."""
+    con = porta.con
+    try:
+        id_entidade: str | None = resolver(con, cnpj, None)
+    except LookupError:
+        return False if _a_rede_menciona(porta, cnpj) else None
+    if (
+        id_entidade is None
+    ):  # o identificador existe, mas sem entidade: a rede o conhece; na dúvida, não
+        return False
+    achadas = con.execute(
+        "SELECT tipo, mei, trata_como_pessoa FROM entidades WHERE id_entidade = $id",
+        {"id": id_entidade},
+    ).fetchall()
+    return _e_uma_empresa(id_entidade, achadas)
+
+
+def _view(tabela: str) -> str:
+    return '"' + nome_da_view(tabela) + '"'
+
+
+def mes_do_retrato_publico(porta: Porta, como_era_em: date) -> str | None:
+    """O mês do retrato mais novo de `cnpj_empresas_pj` já público em `como_era_em`; None se a base não tem a
+    lista ou se nenhum retrato era público. A raiz só vale se estiver neste retrato: a que saiu da lista não
+    leva o nome de um retrato mais velho (P2 da revisão cruzada do #1075)."""
+    if LISTA_DE_EMPRESAS not in views(porta.con):
+        return None
+    existentes = porta.colunas(LISTA_DE_EMPRESAS)
+    (mes,) = porta.con.execute(
+        f"SELECT max({MES}) FROM {_view(LISTA_DE_EMPRESAS)} "
+        f"WHERE {condicao_como_era(existentes, LISTA_DE_EMPRESAS)}",
+        {"dia": dia_de(como_era_em)},
+    ).fetchone() or (None,)
+    return None if mes is None else str(mes)
+
+
+def retratos_de_empresa(
+    porta: Porta, raizes: Iterable[str], como_era_em: date, campos: tuple[str, ...]
+) -> dict[str, pd.Series]:
+    """Por raiz, a linha de `cnpj_empresas_pj` no retrato mais novo já público em `como_era_em` (com `campos`,
+    o mês e o dia público), só das raízes que estão nele uma só vez com natureza de empresa (na dúvida, não)."""
+    pedidas = sorted(set(raizes))
+    mes = mes_do_retrato_publico(porta, como_era_em) if pedidas else None
+    if mes is None:
+        return {}
+    linhas = porta.ler(
+        LISTA_DE_EMPRESAS,
+        como_era_em=como_era_em,
+        filtros={RAIZ: pedidas, MES: mes},
+        colunas=[
+            RAIZ,
+            *dict.fromkeys((*campos, "natureza_juridica")),
+            MES,
+            PUBLICADO_EM,
+        ],
+    )
+    return {
+        str(raiz): da_raiz.iloc[0]
+        for raiz, da_raiz in linhas.groupby(RAIZ, sort=True)
+        if _natureza_de_empresa(list(da_raiz["natureza_juridica"]))
+    }
+
+
+def _retrato_das_duas_listas(porta: Porta) -> str | None:
+    """O mês mais novo, se é o mesmo nas duas listas; senão None (uma lista de outro mês não tira o MEI
+    nem a pessoa daquele mês)."""
+    meses = {
+        porta.con.execute(f"SELECT max({MES}) FROM {_view(tabela)}").fetchone()
+        for tabela in (LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS)
+    }
+    if len(meses) != 1:
+        return None
+    (mes,) = meses.pop() or (None,)
+    return None if mes is None else str(mes)
+
+
+def _natureza_de_empresa(naturezas: list[object]) -> bool:
+    """A raiz está uma só vez na lista, com uma natureza informada que não é de pessoa."""
+    if len(naturezas) != 1:
+        return False
+    natureza = naturezas[0]
+    if natureza is None or pd.isna(natureza) or not str(natureza).strip():  # type: ignore[arg-type]
+        return False
+    return not natureza_de_pessoa(str(natureza).strip())
+
+
+def _pelas_listas_sem_pessoa(porta: Porta, cnpj: str) -> bool:
+    """No retrato mais novo, o mesmo nas duas listas, o estabelecimento está na lista sem MEI e a raiz, uma só
+    vez, na lista de empresas com uma natureza informada que não é de pessoa."""
+    mes = _retrato_das_duas_listas(porta)
+    if mes is None:
+        return False
+    con = porta.con
+    estabelecimentos = con.execute(
+        f"SELECT count(*) FROM {_view(LISTA_DE_ESTABELECIMENTOS)} WHERE cnpj = $cnpj AND {MES} = $mes",
+        {"cnpj": cnpj, "mes": mes},
+    ).fetchone()
+    if estabelecimentos != (1,):
+        return False
+    naturezas = con.execute(
+        f"SELECT natureza_juridica FROM {_view(LISTA_DE_EMPRESAS)} WHERE {RAIZ} = $raiz AND {MES} = $mes",
+        {"raiz": cnpj[:TAMANHO_DA_RAIZ], "mes": mes},
+    ).fetchall()
+    return _natureza_de_empresa([natureza for (natureza,) in naturezas])
+
+
+# ---------------------------------------------------------------- a mesma trava, em lote (linha 806)
+
+
+def _tentativas(texto: str) -> list[list[tuple[str, str]]]:
+    """Os (sistema, valor) por onde procurar o texto, na ordem do `resolver` da rede: o CNPJ inteiro (o
+    fundo), a raiz (a empresa) e, por fim, os outros sistemas."""
+    tentativas: list[list[tuple[str, str]]] = []
+    if len(texto) == cnpj_.TAMANHO:
+        tentativas += [[("cnpj", texto)], [("cnpj_raiz", texto[:TAMANHO_DA_RAIZ])]]
+    elif len(texto) == TAMANHO_DA_RAIZ:
+        tentativas.append([("cnpj_raiz", texto)])
+    tentativas.append([(sistema, texto) for sistema in OUTROS_SISTEMAS])
+    return tentativas
+
+
+def _ids_por_identificador(
+    porta: Porta, pares: set[tuple[str, str]]
+) -> dict[tuple[str, str], set[str | None]]:
+    """Os ids da rede de cada (sistema, valor) pedido, numa consulta só."""
+    achados = porta.con.execute(
+        "SELECT DISTINCT sistema, valor, id_entidade FROM identificadores "
+        f"WHERE sistema IN {_LISTA.format('sistemas')} AND valor IN {_LISTA.format('valores')}",
+        {
+            "sistemas": sorted({sistema for sistema, _ in pares}),
+            "valores": sorted({valor for _, valor in pares}),
+        },
+    ).fetchall()
+    ids: dict[tuple[str, str], set[str | None]] = {}
+    for sistema, valor, id_entidade in achados:
+        ids.setdefault((sistema, valor), set()).add(id_entidade)
+    return ids
+
+
+def _linhas_por_id(porta: Porta, ids: set[str]) -> dict[str, list[tuple]]:
+    """As linhas de `entidades` (tipo, MEI e pessoa) de cada id pedido, numa consulta só."""
+    achadas = porta.con.execute(
+        "SELECT id_entidade, tipo, mei, trata_como_pessoa FROM entidades "
+        f"WHERE id_entidade IN {_LISTA.format('ids')}",
+        {"ids": sorted(ids)},
+    ).fetchall()
+    linhas: dict[str, list[tuple]] = {}
+    for id_entidade, *linha in achadas:
+        linhas.setdefault(id_entidade, []).append(tuple(linha))
+    return linhas
+
+
+def _id_pelos_identificadores(
+    tentativas: list[list[tuple[str, str]]],
+    ids: dict[tuple[str, str], set[str | None]],
+) -> str | None:
+    """O id da primeira tentativa que acha alguém; None se nenhuma acha ou se ela acha mais de um."""
+    for pares in tentativas:
+        achados = set().union(*(ids.get(par, set()) for par in pares))
+        if achados:
+            return achados.pop() if len(achados) == 1 else None
+    return None
+
+
+def _pela_rede_em_lote(
+    porta: Porta, pedidos: list[str], existem: set[str]
+) -> dict[str, bool | None]:
+    """`_pela_rede` de cada pedido, com uma consulta aos identificadores e uma às entidades para o lote."""
+    com_identificadores = "identificadores" in existem
+    pares = {par for cnpj in pedidos for par in _pares_de_mencao(cnpj)}
+    ids = _ids_por_identificador(porta, pares) if com_identificadores else {}
+    candidatos = {i for achados in ids.values() for i in achados if i is not None}
+    linhas = _linhas_por_id(porta, candidatos | set(pedidos))
+    respostas: dict[str, bool | None] = {}
+    for cnpj in pedidos:
+        if (
+            cnpj in linhas
+        ):  # o texto já é um id de `entidades`: vale por si, como no `resolver`
+            respostas[cnpj] = _e_uma_empresa(cnpj, linhas[cnpj])
+        elif not com_identificadores:  # rede pela metade: na dúvida, não
+            respostas[cnpj] = False
+        elif not any(par in ids for par in _pares_de_mencao(cnpj)):
+            respostas[cnpj] = None  # a rede não o conhece: decidem as listas
+        elif ID_DE_ENTIDADE.match(
+            cnpj
+        ):  # id que `entidades` não tem: o `resolver` não procura mais
+            respostas[cnpj] = False
+        else:
+            texto = SEPARADORES.sub("", cnpj.strip()).upper()
+            id_entidade = _id_pelos_identificadores(_tentativas(texto), ids)
+            respostas[cnpj] = _e_uma_empresa(
+                id_entidade, linhas.get(id_entidade or "", [])
+            )
+    return respostas
+
+
+def _pelas_listas_em_lote(porta: Porta, cnpjs: list[str]) -> dict[str, bool]:
+    """`_pelas_listas_sem_pessoa` de cada CNPJ, com uma consulta a cada lista para o lote."""
+    mes = _retrato_das_duas_listas(porta)
+    if mes is None:
+        return dict.fromkeys(cnpjs, False)
+    con = porta.con
+    contagens = dict(
+        con.execute(
+            f"SELECT cnpj, count(*) FROM {_view(LISTA_DE_ESTABELECIMENTOS)} "
+            f"WHERE cnpj IN {_LISTA.format('cnpjs')} AND {MES} = $mes GROUP BY cnpj",
+            {"cnpjs": sorted(set(cnpjs)), "mes": mes},
+        ).fetchall()
+    )
+    naturezas: dict[str, list[object]] = {}
+    for raiz, natureza in con.execute(
+        f"SELECT {RAIZ}, natureza_juridica FROM {_view(LISTA_DE_EMPRESAS)} "
+        f"WHERE {RAIZ} IN {_LISTA.format('raizes')} AND {MES} = $mes",
+        {"raizes": sorted({cnpj[:TAMANHO_DA_RAIZ] for cnpj in cnpjs}), "mes": mes},
+    ).fetchall():
+        naturezas.setdefault(raiz, []).append(natureza)
+    return {
+        cnpj: contagens.get(cnpj) == 1
+        and _natureza_de_empresa(naturezas.get(cnpj[:TAMANHO_DA_RAIZ], []))
+        for cnpj in cnpjs
+    }
+
+
+def e_empresas(porta: Porta, cnpjs: Iterable[str]) -> dict[str, bool]:
+    """De cada CNPJ, o mesmo que `e_empresa` (há teste, item a item), sem uma ida à base por CNPJ.
+
+    A trava de pessoa em lote (ADR 0108 D2.2; linha 806: os comparáveis perguntam por todas as candidatas do
+    grupo): uma consulta aos identificadores e uma às entidades para o lote inteiro e, do que a rede não
+    conhece, uma a cada lista sem pessoa da Receita. Mesmo caminho e mesmas regras de `e_empresa`: a rede
+    decide o que conhece (pessoa, fundo e conflito não caem para as listas); o resto, as listas (linha 843)."""
+    pedidos = list(dict.fromkeys(cnpjs))
+    if not pedidos:
+        return {}
+    existem = views(porta.con)
+    respostas: dict[str, bool | None] = dict.fromkeys(pedidos)
+    if "entidades" in existem:
+        respostas = _pela_rede_em_lote(porta, pedidos, existem)
+    resto = [cnpj for cnpj, resposta in respostas.items() if resposta is None]
+    pelas_listas = (
+        _pelas_listas_em_lote(porta, resto)
+        if resto and {LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS} <= existem
+        else {}
+    )
+    return {
+        cnpj: resposta if resposta is not None else pelas_listas.get(cnpj, False)
+        for cnpj, resposta in respostas.items()
+    }
+
+
 class LeitorDeEmpresas:
     """Lê a situação cadastral de uma empresa de uma porta para um pedido."""
 
     def __init__(self, porta: Porta, permitido: Permitido) -> None:
         self.porta = porta
         self.permitido = permitido
-
-    def _e_empresa(self, cnpj: str) -> bool:
-        """A rede de hoje conhece o CNPJ como uma só empresa que não é pessoa; qualquer dúvida é não."""
-        con = self.porta.con
-        if "entidades" not in views(con):
-            return False
-        try:
-            id_entidade = resolver(con, cnpj, None)
-        except LookupError:
-            return False
-        if id_entidade.startswith(PREFIXO_DE_PESSOA):
-            return False
-        achadas = con.execute(
-            "SELECT tipo, mei, trata_como_pessoa FROM entidades WHERE id_entidade = $id",
-            {"id": id_entidade},
-        ).fetchall()
-        if len(achadas) != 1:
-            return False
-        tipo, mei, trata_como_pessoa = achadas[0]
-        return tipo == EMPRESA and not _sim(mei) and not _sim(trata_como_pessoa)
+        self._de_fora: tuple[str, ...] | None = None  # o mesmo para todo CNPJ do pedido
 
     def _versao(
         self, historico: Historico, raiz: str, como_era_em: date
@@ -146,30 +481,71 @@ class LeitorDeEmpresas:
             if self.permitido(FONTE, nome, False)
         }  # fmt: skip
 
+    def _do_retrato_pj(self, raiz: str, como_era_em: date) -> dict[str, dict]:
+        """A razão social e a natureza do retrato mais novo de `cnpj_empresas_pj` já
+        público em `como_era_em`, com o mês dele; nada se a base não tem a lista, se o retrato ainda não era
+        público ou se a raiz não está nele (nem que esteja num retrato mais velho) uma só vez com natureza de
+        empresa (na dúvida, não)."""
+        linha = retratos_de_empresa(
+            self.porta, [raiz], como_era_em, CAMPOS_DO_RETRATO_PJ
+        ).get(raiz)
+        if linha is None:
+            return {}
+        linha = linha.copy()
+        linha[RETRATO_DO_CADASTRO] = linha[MES]
+        return self._servidos(linha, (*CAMPOS_DO_RETRATO_PJ, RETRATO_DO_CADASTRO))
+
+    def campos_de_fora(self) -> list[str]:
+        """Os campos do cadastro que o portão não libera ou cuja tabela a base não tem, na ordem do cadastro:
+        não foram consultados. O que falta por não haver versão no dia não entra: foi consultado. Não depende do
+        CNPJ: a conta é feita uma vez por leitor (o lote de 100 não lê o catálogo da base 100 vezes)."""
+        if self._de_fora is None:
+            existem = views(self.porta.con)
+            self._de_fora = tuple(
+                nome
+                for nome, tabela in TABELA_DO_CAMPO_DO_CADASTRO.items()
+                if tabela not in existem or not self.permitido(FONTE, nome, False)
+            )
+        return list(self._de_fora)
+
     def empresa(self, cnpj: str, como_era_em: date) -> EmpresaServida | None:
-        """A situação cadastral do CNPJ no retrato mais novo já público em `como_era_em` e, da raiz, a
-        versão do histórico datado que valia no dia, só com o que o portão libera; None se o CNPJ não é de
-        empresa, se não há retrato público da situação ou se nada sai."""
+        """A situação cadastral do CNPJ na versão mais nova já pública em `como_era_em` e, da raiz, o nome
+        do retrato sem pessoa e o Simples do histórico datado que valiam no dia, só com o que o portão libera; None se o CNPJ não é de
+        empresa, se não há versão pública da situação, se o estabelecimento tinha saído do arquivo ou se
+        nada sai."""
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
-        if not self._e_empresa(normal):
+        if not e_empresa(self.porta, normal):
             return None
         retratos = self.porta.ler(
             TABELA,
             como_era_em=como_era_em,
             filtros={"cnpj": cnpj_.formatar(normal)},
-            colunas=[*CAMPOS, PUBLICADO_EM],
+            colunas=[*CAMPOS, CONSTA, PUBLICADO_EM],
         )
         if retratos.empty:
             return None
         retrato = retratos.sort_values([MES, PUBLICADO_EM]).iloc[-1]
+        if not bool(retrato[CONSTA]):
+            return None  # o estabelecimento tinha saído do arquivo da Receita no dia pedido
         servidos = self._servidos(retrato, CAMPOS)
+        raiz = normal[:TAMANHO_DA_RAIZ]
         for historico in HISTORICOS:
-            versao = self._versao(historico, normal[:TAMANHO_DA_RAIZ], como_era_em)
+            versao = self._versao(historico, raiz, como_era_em)
             if versao is not None:
                 servidos |= self._servidos(versao, historico.campos)
+        servidos |= self._do_retrato_pj(raiz, como_era_em)
         if not servidos:
             return None
-        corpo = {"cnpj": normal, "como_era_em": como_era_em.isoformat(), **servidos}
+        de_fora = self.campos_de_fora()
+        corpo = {
+            "cnpj": normal,
+            "como_era_em": como_era_em.isoformat(),
+            **servidos,
+            CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS: [
+                NOMES_DE_FORA[nome] for nome in de_fora
+            ],
+            "limites": limites(de_fora),
+        }
         return EmpresaServida(corpo, {FONTE}, 1)

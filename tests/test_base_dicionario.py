@@ -140,8 +140,18 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         **_colunas_das_ofertas_e_conselhos(),
         "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
         "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
-        "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
-        "susep_seguros": [*setoriais_susep.COLUNAS, "visto_em"],
+        "ans_beneficiarios": [
+            *setoriais_ans.COLUNAS,
+            "visto_em",
+            "cnpj",
+            "cnpj_basico",
+        ],  # CNPJ pela ponte (linha 904)
+        "susep_seguros": [
+            *setoriais_susep.COLUNAS,
+            "visto_em",
+            "cnpj",
+            "cnpj_basico",
+        ],  # CNPJ pela ponte (linha 904)
         "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
@@ -248,6 +258,7 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
             *bcb_ifdata.ler_valores(_ifdata("valores_202506_t1_r1.json")).columns,
             "disponivel_em",
             "visto_em",
+            "cnpj_basico",  # a raiz pelo cadastro (linha 904, lote 4)
         ],
         "ifdata_cadastro": [*cadastro.columns, "disponivel_em", "visto_em"],
         "ligacao_dos_bancos": list(
@@ -327,7 +338,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     ]  # fmt: skip
     situacao = [
         "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo",
-        "data_situacao_especial", "mes_do_retrato", "disponivel_em",
+        "data_situacao_especial", "mes_do_retrato", "disponivel_em", "trata_como_pessoa",
     ]  # fmt: skip
     curva = [
         "data_base", "curva", "prazo_anos", "taxa", "titulos", "maior_prazo_anos",
@@ -340,17 +351,6 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "eventos_de_capital": [*fre.COLUNAS_DOS_EVENTOS, *da_historica],
         "insolvencia": [*rotulos.COLUNAS, *da_historica],
         "cnpj_situacao_especial": [*situacao, *origem],
-        "cnpj_situacao_cadastral": [
-            "cnpj",
-            "cnpj_basico",
-            "matriz",
-            "situacao_cadastral",
-            "data_situacao_cadastral",
-            "motivo_situacao",
-            "mes_do_retrato",
-            "disponivel_em",
-            *origem,
-        ],
         "auditores": [*auditores.COLUNAS, *da_historica],
         "pareceres_dfp": [*pareceres.COLUNAS, *da_historica],
         "pareceres_itr": [*pareceres.COLUNAS, *da_historica],
@@ -365,6 +365,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         ],
         "trocas_de_auditor": [
             *auditores.COLUNAS_DAS_TROCAS,
+            "trata_como_pessoa",
             "montado_em",
             "versao_do_codigo",
         ],
@@ -434,15 +435,32 @@ def test_contrato_comeca_na_versao_1():
     mesma chave; quem lia a tabela inteira passa a ver o valor antigo e o revisado), e `ifdata_cadastro` e
     `scr_credito` 2.0.0 (25/10/2026), o mesmo: a chave ganhou o `visto_em`, e `demonstracoes_como_era` 3.0.0 e
     `dmpl_como_era` 2.0.0 (03/11/2026, API A3), a chave ganhou `ordem`, `inicio` e `fim` (a DRE do ITR traz o
-    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas)."""
+    trimestre e o acumulado; sem elas a chave se repetia em milhões de linhas), e `cnpj_situacao_cadastral`
+    2.0.0 (11/11/2026, linha 841), uma linha por versão de cada estabelecimento em vez do retrato de cada mês
+    (quem pegava o último mês passa a ter de pegar a última versão de cada CNPJ)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
+    assert maiores.pop("cnpj_situacao_cadastral") == "2"
     assert maiores.pop("demonstracoes_como_era") == "3"
     assert maiores.pop("dmpl_como_era") == "2"
     assert maiores.pop("ifdata_valores") == "2"
     assert maiores.pop("ifdata_cadastro") == "2"
     assert maiores.pop("scr_credito") == "2"
     assert set(maiores.values()) == {"1"}
+
+
+def test_dado_de_pessoa_diz_quando_a_rota_tira_as_linhas():
+    from base.dicionario import _dado_de_pessoa
+
+    for nome in ("cnpj_empresas_historico", "cnpj_simples_historico"):
+        texto = _dado_de_pessoa(TABELAS[nome])
+        assert texto.startswith("sim em casa") and "MEI" in texto and "rota" in texto
+        assert (
+            "Contém dado de pessoa:** não"
+            not in documento_em_markdown().split(f"## `{nome}`")[1].split("\n## ")[0]
+        )
+    assert _dado_de_pessoa(TABELAS["pgfn_divida"]).startswith("sim em casa")
+    assert _dado_de_pessoa(TABELAS["demonstracoes_como_era"]) == "não"

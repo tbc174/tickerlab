@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from base.dicionario import TABELAS
-from base.dossie import pode_consultar
+from base.dossie import pode_consultar_aberto
 from scripts import gerar_site as gs
 from scripts.markdown_simples import markdown_para_html
 from src import marca, planos
@@ -120,7 +120,7 @@ def test_links_para_a_api_sao_o_csv_das_tabelas_consultaveis():
     """A página Dados aponta o CSV de cada tabela consultável para a API, que mora no endereço do app
     (virada de 5/11/2026, fase 1, PR 3): só a rota de exportação, só tabela que a porta serve, e
     toda tabela consultável tem o seu link."""
-    consultaveis = {nome for nome in TABELAS if pode_consultar(nome)}
+    consultaveis = {nome for nome in TABELAS if pode_consultar_aberto(nome)}
     exportacao = re.compile(r"v1/base/tabelas/([a-z0-9_]+)\.csv")
     apontadas: set[str] = set()
     for arquivo in PAGINAS_HTML:
@@ -274,7 +274,9 @@ def test_o_site_abre_claro_e_tem_o_botao_do_tema_escuro():
 def test_o_site_usa_o_simbolo_e_a_assinatura_do_manual():
     inicio = (SITE / "index.html").read_text(encoding="utf-8")
     assert marca.TRACO_DO_TOPO in inicio and marca.TRACO_DA_HASTE in inicio
-    assert "Dados auditáveis para quem analisa empresas no Brasil." in inicio
+    assert (
+        "A CLI e o conector de M&amp;A e análise de investimento no Brasil." in inicio
+    )
     assert 'content="https://tickerlab.com.br/marca/compartilhamento.png"' in inicio
     assert (SITE / "marca" / "compartilhamento.png").exists()
 

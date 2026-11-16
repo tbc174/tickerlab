@@ -23,7 +23,7 @@ Nada é copiado: cada view lê os Parquets vigentes da tabela no acervo (as vers
 import json
 import re
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import duckdb
@@ -33,7 +33,9 @@ from base.contrato import PASTA as PASTA_DOS_CONTRATOS
 from base.contrato import versao_em_numeros
 from base.dicionario import TABELAS, Tabela
 from base.parquet import VERSAO_GUARDADA
+from base.rede.ids import PREFIXO_DE_PESSOA
 from base.rede.ligacoes import VIGENTE
+from base.rede.vistas import TIPOS_NEGATIVOS
 
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parents[2]
 APELIDOS = ("aconteceu_em", "publico_em", "coletado_em")
@@ -56,6 +58,8 @@ ARQUIVOS: dict[str, str] = {
     "cadastro_de_fundos": "fidc/cadastro/cad_fi.parquet",
     "cadastro_gestor_hist": "fidc/cadastro/hist_gestor.parquet",
     "cadastro_admin_hist": "fidc/cadastro/hist_admin.parquet",
+    "registro_de_fundos": "fidc/cadastro/registro_fundo.parquet",
+    "fips_registrados": "fips_registrados/*.parquet",  # só no VPS (linha 844)
     "painel_dos_fundos": "fundos/painel_*/*.parquet",  # os dois: o por empresa não tem `emissor`
     "cobertura_dos_fundos": "fundos/cobertura.parquet",
     "buracos_dos_fundos": "fundos/buracos.parquet",
@@ -106,6 +110,9 @@ ARQUIVOS: dict[str, str] = {
     "cnpj_situacao_cadastral": "cnpj_situacao_cadastral/*.parquet",
     "cnpj_simples_historico": "cnpj_simples_historico/*.parquet",
     "cnpj_empresas_historico": "cnpj_empresas_historico/*.parquet",
+    "cnpj_empresas_pj": "cnpj_empresas_pj/*.parquet",
+    "cnpj_estabelecimentos_pj": "cnpj_estabelecimentos_pj/*.parquet",
+    "entradas_de_socio_pj": "entradas_de_socio_pj/*.parquet",
     "pgfn_divida": "pgfn_divida/*/*.parquet",
     "sancoes_cgu": "sancoes_cgu/*.parquet",
     "ans_penalidades": "ans_penalidades/*.parquet",
@@ -113,6 +120,13 @@ ARQUIVOS: dict[str, str] = {
     "processos": "processos/*.parquet",
     "processos_partes": "processos_partes/*.parquet",
     "anvisa_registros": "anvisa_registros/*.parquet",
+    "anvisa_por_empresa": "anvisa_por_empresa/*.parquet",
+    "receita_dirbi": "receita_dirbi/*.parquet",
+    "receita_ecf_renuncia": "receita_ecf_renuncia/*.parquet",
+    "sigsif_habilitados": "sigsif_habilitados/*.parquet",
+    "sigsif_estabelecimentos": "sigsif_estabelecimentos/*.parquet",
+    "receita_transacoes_individual": "receita_transacoes_individual/*.parquet",
+    "receita_transacoes_adesao": "receita_transacoes_adesao/*.parquet",
     "antt_rntrc": "antt_rntrc/*.parquet",
     "mapa_sipeagro": "mapa_sipeagro/*.parquet",
     "anatel_outorgas": "anatel_outorgas/*.parquet",
@@ -125,7 +139,28 @@ ARQUIVOS: dict[str, str] = {
     "susep_cadastro": "susep_cadastro/*.parquet",
     "mte_lista_suja": "mte_lista_suja/*.parquet",
     "ibama_embargos": "ibama_embargos/*.parquet",
+    "inpi_marcas_titulares": "inpi_marcas_titulares/*.parquet",
+    "inpi_patentes_depositantes": "inpi_patentes_depositantes/*.parquet",
+    "inpi_desenhos_depositantes": "inpi_desenhos_depositantes/*.parquet",
+    "inpi_programas_titulares": "inpi_programas_titulares/*.parquet",
     "cvm_fiagro": "cvm_fiagro/*.parquet",
+    "fip_informe": "fip_informe/*.parquet",
+    "fii_informe_mensal": "fii_informe_mensal/*.parquet",
+    "fii_ativos": "fii_ativos/*.parquet",
+    "fii_administradores": "fii_administradores/*.parquet",
+    "aneel_inadimplencia": "aneel_inadimplencia/*.parquet",
+    "aneel_indicadores_comerciais": "aneel_indicadores_comerciais/*.parquet",
+    "ans_idss": "ans_idss/*.parquet",
+    "aneel_agentes": "aneel_agentes/*.parquet",
+    "aneel_autos_de_infracao": "aneel_autos_de_infracao/*.parquet",
+    "aneel_termos_de_notificacao": "aneel_termos_de_notificacao/*.parquet",
+    "bcb_supervisionadas": "bcb_supervisionadas/*.parquet",
+    "bcb_cooperativas": "bcb_cooperativas/*.parquet",
+    "bcb_correspondentes": "bcb_correspondentes/*.parquet",
+    "bcb_filiais_de_consorcio": "bcb_filiais_de_consorcio/*.parquet",
+    "bcb_regimes_especiais": "bcb_regimes_especiais/*.parquet",
+    "antt_operadores_multimodais": "antt_operadores_multimodais/*.parquet",
+    "antt_seguros_de_transportadores": "antt_seguros_de_transportadores/*.parquet",
     "gleif_ponte": "gleif_ponte/*.parquet",
     "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
     "cnes_competencias": "cnes_competencias/*.parquet",
@@ -168,6 +203,7 @@ ARQUIVOS: dict[str, str] = {
     "noticias_fatos": "noticias_fatos/*.parquet",
     "noticias_numeros": "noticias_numeros/*.parquet",
     "controladas": "controladas/*.parquet",
+    "controladas_pj": "controladas_pj/*.parquet",  # só no VPS (linha 844)
     "rotulos_atraso": "rotulos_atraso/rotulos_atraso.parquet",
     "colunas_atraso": "colunas_atraso/colunas_atraso.parquet",
     "empresa_serie": "empresa_serie/empresa_serie.parquet",
@@ -313,6 +349,91 @@ def _sem_as_linhas_de_pessoa(select: str, tabela: Tabela, colunas: list[str]) ->
     return f"{select} WHERE NOT coalesce({_nome(tabela.linhas_de_pessoa)}, true)"
 
 
+# --- a rede sem pessoa (linha 787; ADR 0075 e `base/rede/vistas.py`) ------------------------------
+SEM_EMPRESAS = "SELECT CAST(NULL AS VARCHAR) AS id_entidade WHERE false"
+
+
+def _empresas_da_rede(con: duckdb.DuckDBPyConnection, fontes: Mapping[str, str]) -> str:
+    """SQL com os `id_entidade` que a rede diz que não são pessoa. Sem a tabela de entidades, ou sem a
+    marca nela, nenhum: na dúvida, é pessoa."""
+    fonte = fontes.get("entidades")
+    if fonte is None or not {"id_entidade", "trata_como_pessoa"} <= set(
+        _colunas(con, fonte)
+    ):
+        return SEM_EMPRESAS
+    return (
+        f"SELECT id_entidade FROM {fonte} "
+        "WHERE id_entidade IS NOT NULL AND NOT coalesce(trata_como_pessoa, true)"
+    )
+
+
+def _sem_nome_de_pessoa(select: str, colunas: list[str]) -> str:
+    """`entidades`: a linha fica (é ela que diz que o id é de pessoa), o nome de quem é tratado como
+    pessoa sai. Sem a marca no arquivo, nenhum nome sai."""
+    if "nome" not in colunas:
+        return select
+    nome = (
+        "CASE WHEN coalesce(trata_como_pessoa, true) THEN NULL ELSE nome END"
+        if "trata_como_pessoa" in colunas
+        else "NULL"
+    )
+    return f"SELECT * REPLACE (CAST({nome} AS VARCHAR) AS nome) FROM ({select})"
+
+
+SISTEMAS_DE_CNPJ = ("cnpj_raiz", "cnpj")
+TAMANHO_DA_RAIZ = 8  # a raiz do CNPJ: os 8 primeiros dígitos
+
+
+def _sem_ids_de_pessoa(select: str, colunas: list[str]) -> str:
+    """`identificadores` sem o id de pessoa (P..., só da vista interna; o hash sai do CPF). O CNPJ de
+    quem é tratado como pessoa fica, porque é por ele que as rotas, o crédito e a API externa sabem
+    que aquele CNPJ é de pessoa (sem a linha, o "não achou" viraria empresa):
+
+    - leva à entidade E marcada (MEI, EI), que sai sem o nome; o id E não esconde ninguém (é o
+      SHA-256 da raiz);
+    - se leva a uma pessoa da rede, o id sai sem o hash: `P` e a raiz da própria linha (um por
+      raiz, para que a rede de uma pessoa não junte os CNPJs de todas).
+
+    Outro identificador de pessoa (CPF, por exemplo) não sai. Sem o `id_entidade` ou o `sistema`
+    no arquivo, nenhum."""
+    if not {"id_entidade", "sistema"} <= set(colunas):
+        return f"{select} WHERE false"
+    pessoa = _texto(PREFIXO_DE_PESSOA)
+    de_cnpj = ", ".join(_texto(s) for s in SISTEMAS_DE_CNPJ)
+    return (
+        f"SELECT * REPLACE (CASE WHEN starts_with(id_entidade, {pessoa}) "
+        f"THEN {pessoa} || left(valor, {TAMANHO_DA_RAIZ}) "
+        f"ELSE id_entidade END AS id_entidade) FROM ({select}) "
+        f"WHERE NOT starts_with(id_entidade, {pessoa}) OR sistema IN ({de_cnpj})"
+    )
+
+
+def _ligacoes_publicadas(select: str, colunas: list[str], empresas: str) -> str:
+    """`ligacoes` como a vista publicada (`base/rede/vistas.py::vista_publicada`): sem ponta vazia,
+    sem aresta de pessoa e sem sinal negativo sobre quem não é empresa. Sem as pontas ou o tipo no
+    arquivo, nenhuma (não dá para saber quem é pessoa)."""
+    if not {"de", "para", "tipo"} <= set(colunas):
+        return f"{select} WHERE false"
+    pessoa = _texto(PREFIXO_DE_PESSOA)
+    negativos = ", ".join(_texto(t) for t in TIPOS_NEGATIVOS)
+    return (
+        f"SELECT * FROM ({select}) WHERE de IS NOT NULL AND para IS NOT NULL "
+        f"AND NOT starts_with(de, {pessoa}) AND NOT starts_with(para, {pessoa}) "
+        f"AND (coalesce(tipo NOT IN ({negativos}), true) OR de IN ({empresas}))"
+    )
+
+
+def _rede_sem_pessoa(nome: str, select: str, colunas: list[str], empresas: str) -> str:
+    """O que a porta serve das três tabelas da rede: nada que seja pessoa, para quem quer que leia."""
+    if nome == "entidades":
+        return _sem_nome_de_pessoa(select, colunas)
+    if nome == "identificadores":
+        return _sem_ids_de_pessoa(select, colunas)
+    if nome == "ligacoes":
+        return _ligacoes_publicadas(select, colunas, empresas)
+    return select
+
+
 def _contratos_congelados(pasta: Path, nome: str) -> dict[int, dict]:
     congelados = {}
     for arquivo in pasta.glob(f"v*/{nome}.json"):
@@ -360,7 +481,10 @@ def _views_das_versoes(
         )
 
 
-def _fonte_dos_arquivos(arquivos: list[Path]) -> str:
+def fonte_dos_arquivos(arquivos: Sequence[Path]) -> str:
+    """A fonte SQL que lê estes Parquets juntos (colunas pelo nome). Pública para quem confere uma saída de
+    montador já gravada (o recorte da rede só PJ, `base/rede/recorte_so_pj.py`) sem ler Parquet por fora da
+    porta."""
     lista = ", ".join(_texto(a.as_posix()) for a in arquivos)
     return f"read_parquet([{lista}], union_by_name = true)"
 
@@ -445,21 +569,27 @@ def conectar(
         for nome, padrao in arquivos.items():
             achados = arquivos_da_tabela(pasta, padrao)
             if achados:
-                fontes[nome] = _fonte_dos_arquivos(achados)
+                fontes[nome] = fonte_dos_arquivos(achados)
         for nome, caminho in conferidas.items():
             if (RAIZ_DO_REPOSITORIO / caminho).is_file():
                 fontes[nome] = _fonte_da_conferida(RAIZ_DO_REPOSITORIO / caminho)
         for nome, tabela in (extras or {}).items():
             con.register(f"_extra_{nome}", tabela)
             fontes[nome] = _nome(f"_extra_{nome}")
+        empresas = _empresas_da_rede(con, fontes)
         for nome, fonte in fontes.items():
             if nome not in tabelas:
                 continue
             colunas = _colunas(con, fonte)
-            select = _sem_as_linhas_de_pessoa(
-                _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
-                tabelas[nome],
+            select = _rede_sem_pessoa(
+                nome,
+                _sem_as_linhas_de_pessoa(
+                    _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
+                    tabelas[nome],
+                    colunas,
+                ),
                 colunas,
+                empresas,
             )
             con.execute(f"CREATE VIEW {_nome(nome)} AS {select}")
             _views_das_versoes(con, nome, tabelas[nome], contratos)

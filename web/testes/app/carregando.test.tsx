@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Carregando } from "../../src/app/Carregando";
-import { Vazio } from "../../src/app/Vazio";
+import { Carregando } from "../../src/app/pecas/Carregando";
+import { Vazio } from "../../src/app/pecas/Vazio";
 import { abrirApp } from "./ajudantes";
 
 const CSS = readFileSync(join(process.cwd(), "src", "app", "app.css"), "utf8");
@@ -42,11 +42,11 @@ describe("esqueleto de carregamento", () => {
     expect(reduzido).toMatch(/\.esqueleto \{[^}]*animation: none;/);
   });
 
-  it("o 'O que mudou' do Início espera com o esqueleto de lista", async () => {
+  it("o Início não espera o Workspace: os passos aparecem já, sem esqueleto que some depois", async () => {
+    // o Workspace só aparece para quem acompanha algo (linha 822): um esqueleto piscaria para o analista
     abrirApp("/", { rotas: NUNCA });
-    const espera = await screen.findByRole("status", { name: /conferindo as suas estratégias/ });
-    expect(espera.querySelectorAll(".esqueleto")).toHaveLength(3);
-    expect(screen.queryByText(/conferindo as suas estratégias/)).toBeNull();
+    expect(await screen.findByRole("list", { name: "Passos" }, { timeout: 5000 })).toBeTruthy();
+    expect(document.querySelector("main .esqueleto")).toBeNull();
   });
 });
 

@@ -10,7 +10,9 @@ import sys
 from datetime import date
 from functools import cache
 from pathlib import Path
+from unittest import mock
 
+from src import demonstracoes as dm
 from src import dossie
 from src import relatorio_empresa as re_
 from src.analise_escrita import entrada as en
@@ -21,12 +23,31 @@ CORTE = date(2026, 10, 17)  # o dia da ficha do dossiê de exemplo
 PAR_DA_CPFL = Path(__file__).parent / "arquivos" / "analise" / "cpfl"
 
 
+def _dados_com_o_capex_de_17_10():
+    """Os dados da CPFL com o capex como a ficha de 17/10 o calculava (só imobilizado e intangível).
+
+    As análises que o Tiago aprovou (gabarito de 18/10) citam esse capex (R$ 0,39 bi em 2025). A linha
+    594 passou a somar o ativo contratual da concessão (R$ 5,35 bi): o texto novo só entra na próxima
+    rodada de textos, como o título da ponte; até lá o par dados → texto fica congelado.
+    """
+    with (
+        mock.patch.object(dm, "_ATIVO_DE_CAPEX", r"imobiliz|intangiv"),
+        mock.patch.object(
+            dm,
+            "_COMPRA_DE_ATIVO",
+            r"^(?:aquisic|compra|adic|investiment|aplicac|no |em |imobilizado|intangivel"
+            r"|ativo imobilizado|ativo intangivel)",
+        ),
+    ):
+        return ficha_v2._dados()
+
+
 @cache
 def entradas_da_cpfl() -> re_.Entradas:
     ficha = dossie.ler_ficha(FICHA_DE_17_10)
     assert ficha is not None
     return re_.Entradas(
-        dados=ficha_v2._dados(),
+        dados=_dados_com_o_capex_de_17_10(),
         cnpj=ficha_v2.CPFL,
         empresa="CPFL ENERGIA S.A.",
         ticker="CPFE3.SA",

@@ -141,10 +141,10 @@ def test_a_mascara_do_cnpj_de_mg_vira_cnpj_formatado():
     for ruim in (
         "11.222333/0001-82",  # dígito errado
         "11.222.333/0001-81",  # sem a máscara
-        "11.222333/0001-81 - EMPRESA 123.456.789-09",  # texto junto
+        "11.222333/0001-81 - EMPRESA 888.000.000-46",  # texto junto
         "",
         None,
-        "123.456.789-09",  # CPF
+        "888.000.000-46",  # CPF
         INSCRICAO_ESTADUAL,  # espaço na frente: 13 dígitos, nunca um CNPJ com o zero apagado
         "  . 12345/0001-81",  # CPF na planilha de parcelamentos: "000"+CPF não pode virar CNPJ
     ):
@@ -166,24 +166,24 @@ def test_filtro_guarda_so_cnpj_sem_nome_e_sem_cpf_no_nome():
             _cda(EMPRESA, 1, "CALCADOS BIRU LTDA"),
             _cda(COM_ZERO, 2, "FORTQUIM LTDA", 99.0),
             _cda("11.222333/0001-82", 3, "DIGITO ERRADO"),
-            _cda("123.456.789-09", 4, "JOAO DA SILVA"),
-            _cda(OUTRA, 5, "JOAO ADOEZIO 123.456.789-09"),  # CPF no nome
+            _cda("888.000.000-46", 4, "PESSOA INVENTADA LICITACAO"),
+            _cda(OUTRA, 5, "JOAO ADOEZIO 888.000.000-46"),  # CPF no nome
             _cda("", 6, "SEM DOCUMENTO"),
         ]
     )
     assert linhas[0] == list(lote.COLUNAS_DAS_CDAS_DE_MG.values())
     assert [l[0] for l in linhas[1:]] == ["11.222.333/0001-81", "00.123.456/0001-49"]
     guardado = "\n".join(";".join(l) for l in linhas)
-    for nome_ou_cpf in ("BIRU", "FORTQUIM", "JOAO", "123.456.789-09", "Devedor"):
+    for nome_ou_cpf in ("BIRU", "FORTQUIM", "JOAO", "888.000.000-46", "Devedor"):
         assert nome_ou_cpf not in guardado
 
 
 def test_cpf_no_nome_sem_pontuacao_tambem_tira_a_linha():
     linhas = _filtrar(
         [
-            _cda(EMPRESA, 1, "JOAO 12345678909"),
-            _cda(EMPRESA, 2, "MARIA 123456789-09"),
-            _cda(EMPRESA, 3, "FIRMA 123.456.789-09 ME"),
+            _cda(EMPRESA, 1, "JOAO 88800000046"),
+            _cda(EMPRESA, 2, "MARIA 888000000-46"),
+            _cda(EMPRESA, 3, "FIRMA 888.000.000-46 ME"),
             _cda(OUTRA, 4, "EMPRESA 2000 LTDA"),  # número que não é CPF
         ]
     )

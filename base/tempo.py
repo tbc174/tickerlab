@@ -37,6 +37,8 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "data_registro", "data_registro_oferta", "data_requerimento",
         "DT_CONST", "DT_REG", "DT_INI_ATIV", "DT_INI_CLASSE", "DT_INI_SIT",
         "DT_INI_GESTOR", "DT_INI_ADMIN",
+        # o registro de fundos da CVM 175 (`registro_de_fundos`)
+        "Data_Registro", "Data_Constituicao", "Data_Inicio_Situacao", "Data_Adaptacao_RCVM175",
         "registro", "registrada_desde", "inicio_listagem", "inicio_negociacao",
         "entrada_em_operacao", "entrada_em_teste", "fechamento_em", "infracao_em",
         "primeira_inscricao", "ultima_inscricao", "inscrito_em", "parcelado_em",  # a dívida ativa do PR e de MG
@@ -45,13 +47,15 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
+        "registrado_em", "funciona_desde",  # linha 904: registro do administrador de FII; início do FII
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
         # linha 440: carimbo do arquivo na fonte, dia do fato e prazo (o `datas` já os tem assim)
         "gerado_em", "atualizado_em", "data", "prazo",
     ),
     "ate": (
-        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
+        "ate", "valido_ate", "vence_em", "execucao_ate", "cancelado_em", "cancelada_em", "cancelamento", "DT_CANCEL", "Data_Cancelamento", "DT_FIM_GESTOR", "DT_FIM_ADMIN", "desativada_em", "fim_listagem",
         "confidencial_ate", "data_vencimento",  # linha 440: fim do sigilo; vencimento (como `vence_em`)
+        "vencimento",  # linha 904: vencimento do ativo do FII
         "vigencia_fim", "fim_negociacao", "desembargada_em", "descredenciada_em", "data_encerramento", "data_encerramento_oferta",
         "data_exclusao_mei", "data_exclusao_mei_antes", "data_exclusao_mei_depois",
         "data_exclusao_simples", "data_exclusao_simples_antes", "data_exclusao_simples_depois",
@@ -59,6 +63,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
     "referencia": (
         "referencia", "competencia", "data_base", "exercicio", "inicio", "fim",
         "inicio_do_exercicio", "fim_do_exercicio", "DT_INI_EXERC", "DT_FIM_EXERC",
+        "Data_Inicio_Exercicio_Social", "Data_Fim_Exercicio_Social", "Data_Patrimonio_Liquido",
         "DT_PATRIM_LIQ", "acumulado_inicio", "acumulado_fim", "anual_fim", "balanco_fim",
         "receita_exercicio_fim", "composicao_em", "data_do_retrato", "relatorio",
         "ultima_referencia",
@@ -96,7 +101,39 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("cnpj_estabelecimentos_mudancas", "mes"): "visto_em",
     ("cnpj_qsa_mudancas", "mes"): "visto_em",
     ("cnpj_simples_mudancas", "mes"): "visto_em",
-}
+    # linha 904 (lote 3 das 300 tabelas): o período a que a declaração se refere e as datas do SIGSIF
+    ("receita_dirbi", "periodo"): "referencia",
+    ("receita_ecf_renuncia", "dt_ini"): "referencia",
+    ("receita_ecf_renuncia", "dt_fin"): "referencia",
+    ("sigsif_habilitados", "dt_validade"): "ate",
+    ("sigsif_habilitados", "dt_ocorrencia"): "aconteceu_em",
+    ("sigsif_habilitados", "dt_suspensao"): "aconteceu_em",
+    ("receita_transacoes_individual", "data_acordo"): "aconteceu_em",
+    # linha 904 (lote 2 das 300 tabelas): os passos da fiscalização da ANEEL são fatos do processo; o
+    # `recebido_em` é o dia em que o agente recebeu o auto ou o termo, não o dia em que ficou público
+    **{
+        (tabela, coluna): "aconteceu_em"
+        for tabela, colunas in (
+            (
+                "aneel_autos_de_infracao",
+                ("lavrado_em", "recebido_em", "recurso_recebido_em", "decidido_em_juizo",
+                 "decidido_pela_diretoria_em", "encerrado_em"),
+            ),
+            (
+                "aneel_termos_de_notificacao",
+                ("lavrado_em", "recebido_em", "manifestado_em", "decidido_em"),
+            ),
+        )
+        for coluna in colunas
+    },
+    # linha 904 (lote 3): início de filial e de regime especial são fatos; a vigência do certificado e o fim da
+    # apólice são prazos (`ate`); o início da apólice é o dia em que ela passou a valer
+    ("bcb_filiais_de_consorcio", "inicio_em"): "aconteceu_em",
+    ("bcb_regimes_especiais", "inicio_em"): "aconteceu_em",
+    ("antt_operadores_multimodais", "vigencia_ate"): "ate",
+    ("antt_seguros_de_transportadores", "inicio_da_apolice"): "aconteceu_em",
+    ("antt_seguros_de_transportadores", "fim_da_apolice"): "ate",
+}  # fmt: skip
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160
 # ganharam nome na linha 440; ficam as das linhas que as trouxeram.

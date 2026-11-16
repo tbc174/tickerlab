@@ -1,8 +1,8 @@
 """Leitores dos contratos dos TCEs (base/contratos_tces.py): só pessoa jurídica, sem nomes nem CPF.
 
 Recortes no formato real medido em 03/11/2026, com nomes e documentos inventados. CNPJ
-11.222.333/0001-81 tem DV certo; ...-82 é o mesmo com DV errado; o CPF 123.456.789-09 é o de
-documentação.
+11.222.333/0001-81 tem DV certo; ...-82 é o mesmo com DV errado; o CPF de teste, que confere, é montado
+na hora a partir de nove dígitos inventados (`tests/ajudantes_de_cpf.py`).
 """
 
 import io
@@ -11,11 +11,12 @@ import zipfile
 from datetime import date
 
 from base import contratos_tces as t
+from tests.ajudantes_de_cpf import CPF_DE_TESTE
 
 HOJE = date(2026, 11, 3)
 CNPJ = "11222333000181"
 CNPJ_RUIM = "11222333000182"
-CPF14 = "00012345678909"
+CPF14 = "000" + CPF_DE_TESTE
 
 
 def _pe(itens: list[dict]) -> bytes:
@@ -105,7 +106,7 @@ def test_sp_so_cnpj_e_valor_com_virgula_sem_nome_do_fornecedor() -> None:
             "evento": "Empenhado",
             "nr_empenho": "516-2025",
             "id_fornecedor": f"CNPJ - PESSOA JURÍDICA - {CNPJ}",
-            "nm_fornecedor": "FULANO 11813999805",
+            "nm_fornecedor": "FULANO 88800000984",
             "dt_emissao_despesa": "21/01/2025",
             "vl_despesa": "2.959,50",
         },
@@ -147,7 +148,7 @@ def test_ce_junta_contratado_e_contrato_guarda_id_pncp_e_descarta_pessoal() -> N
                 "fone_negociante": "NÃO ENTRA",
                 "data_referencia_doc": 202502,
             },
-            {**base, "numero_documento_negociante": "12345678909"},
+            {**base, "numero_documento_negociante": "88800000046"},
         ]
     )
     contratos = _ce(
@@ -216,11 +217,11 @@ def test_rs_so_tp_documento_j_e_nao_abre_pessoas_csv() -> None:
         [
             CABECALHO_RS,
             f"70701;CAMARA;5;2025;J;{CNPJ};01/02/2025;01/02/2026;1500.50;30/01/2025;NÃO ENTRA",
-            "70701;CAMARA;6;2025;F;12345678909;01/02/2025;01/02/2026;10;30/01/2025;x",
+            "70701;CAMARA;6;2025;F;88800000046;01/02/2025;01/02/2026;10;30/01/2025;x",
             f"70701;CAMARA;7;2025;J;{CNPJ_RUIM};01/02/2025;01/02/2026;10;30/01/2025;x",
         ]
     )
-    pacote = _zip_rs({"contrato.csv": contrato, "pessoas.csv": "CPF\n123.456.789-09"})
+    pacote = _zip_rs({"contrato.csv": contrato, "pessoas.csv": "CPF\n888.000.000-46"})
     lido = t.ler_rs(pacote, HOJE)
     assert lido.descartadas == 2
     (linha,) = lido.linhas

@@ -732,7 +732,7 @@ def test_ficha_sem_pessoas_passa() -> None:
 def test_ficha_com_cpf_da_erro() -> None:
     ficha = _ficha()
     ficha["secoes"][0]["tabelas"]["negocios"][0]["assunto"] = (
-        "Venda ao Sr. 123.456.789-09"
+        "Venda ao Sr. 888.000.000-46"
     )
     with pytest.raises(dossie.PessoaNaFichaError, match="CPF"):
         dossie.conferir_sem_pessoas(ficha, set())

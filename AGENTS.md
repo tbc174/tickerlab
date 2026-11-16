@@ -227,6 +227,14 @@ de sócios da Receita, linha do tempo, atividades com o ano de cada fonte, confe
 descartados à vista, o que não foi achado, comparação e fontes. Sem CPF, menor de idade, contato ou endereço
 residencial. O relatório de companhia aberta continua seguindo a análise completa da ADR 0100.
 
+**Exceção** (Tiago, 10/11/2026, ADR 0128 Emenda 1: "eu quero que isso fique para a equipe"; alcance "Nome e
+contato"): na tela com login, a organização com a permissão `pessoa_na_tela`, desligada por padrão, vê do
+cadastro público da Receita o nome do sócio pessoa física, a qualificação e a data de entrada, MEI e empresário
+individual, e telefone, e-mail e endereço do estabelecimento. Sem CPF, sem menor de idade, nada de pessoa fora
+da Receita; API por chave, CLI, site e conector remoto seguem sem pessoa; nenhum dado de pessoa real em teste,
+exemplo ou log. A permissão se confere no servidor (`src/banco/membros_da_organizacao.py`), com teste de duas
+organizações e de conta sem organização; ligar a permissão numa organização em produção é só do Tiago.
+
 ## `trader/` (pesquisa de trading)
 
 Regras próprias em `trader/AGENTS.md`. Resumo: só leitura (há teste que
@@ -247,7 +255,7 @@ internet nem de segredos; se um teste precisar de PostgreSQL e não houver, anot
 
 | Risco | Onde |
 |---|---|
-| **Alto** | login e admins (`src/autenticacao.py`, `src/administracao.py`; OAuth do Google, `TICKERLAB_ADMINS`, `TICKERLAB_AMBIENTE`); API (`src/api.py`, `src/api_v1/`); cobrança e webhook do Stripe (`src/cobranca.py`: assinatura verificada, idempotência, eventos fora de ordem); limites dos planos (`src/planos.py` e quem os confere); **consulta ao banco sem filtro por `usuario_id`** (vazamento entre contas); SQL montado com texto; migrações (`migracoes/versions/`); compartilhamento por link (`src/compartilhamentos.py`, `src/api_v1/compartilhados.py`); coletas que baixam URL vinda de dado (SSRF); PDF e e-mail com texto do usuário; `Dockerfile`, `compose.yaml`, `.github/workflows/` |
+| **Alto** | login e admins (`src/autenticacao.py`, `src/administracao.py`; OAuth do Google, `TICKERLAB_ADMINS`, `TICKERLAB_AMBIENTE`); API (`src/api.py`, `src/api_v1/`); cobrança e webhook do Stripe (`src/cobranca.py`: assinatura verificada, idempotência, eventos fora de ordem); limites dos planos (`src/planos.py` e quem os confere); **pessoa física na tela** (`src/banco/membros_da_organizacao.py` e as rotas que a consultam: a permissão `pessoa_na_tela` é por organização, desligada por padrão e conferida no servidor); **consulta ao banco sem filtro por `usuario_id`** (vazamento entre contas); SQL montado com texto; migrações (`migracoes/versions/`); compartilhamento por link (`src/compartilhamentos.py`, `src/api_v1/compartilhados.py`); coletas que baixam URL vinda de dado (SSRF); PDF e e-mail com texto do usuário; `Dockerfile`, `compose.yaml`, `.github/workflows/` |
 | **Alto (dados)** | **olhar o futuro**: em `base/`, `src/backtest.py`, indicadores e rótulos, um dado só pode ser usado a partir da data em que ficou público (colunas como `disponivel_em`, `visto_em`) |
 | **Médio** | regras de negócio (backtest, Research, Radar), estado gravado no banco, telas que mostram dados da conta, exportação e exclusão da conta (LGPD, `src/conformidade.py`) |
 | **Baixo** | textos, CSS, documentação, logs (exceto log com e-mail ou nome: isso é médio) |

@@ -7,9 +7,10 @@
 Lê os CSV de https://dadosabertos.anm.gov.br (`base/anm.py`) e grava, com manifesto e versões
 (`base/parquet.py::gravar_com_versoes`):
 - `anm_cfem_arrecadacao/<faixa>.parquet`: um arquivo por faixa de anos da ANM (`2022_2026`...), só pessoa
-  jurídica com CNPJ completo (pessoa física e documento mascarado são descartados e contados no log);
+  jurídica com CNPJ completo (pessoa física e documento mascarado são descartados e contados no log) e só
+  de raiz que está na `cnpj_empresas_pj` e `cnpj_estabelecimentos_pj` (empresário individual e MEI são pessoa: saem e são contados);
 - `anm_sigbm_barragens/barragens.parquet`: uma linha por barragem, com a categoria de risco e o dano potencial
-  como a ANM declarou;
+  como a ANM declarou; empreendedor de raiz fora das duas listas fica sem CNPJ e sem nome;
 - `anm_amb_producao_bruta`, `anm_amb_producao_beneficiada` e `anm_amb_agua_mineral` (`atual.parquet`): o
   Anuário, série setorial sem CNPJ.
 
@@ -35,9 +36,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import pyarrow as pa
 
 from base import anm
 from base.parquet import gravar_com_versoes, ler_tabela
+from base.raizes_de_empresa import RaizesDeEmpresa, raizes_de_empresa
 from src import acervo, rede
 from src.versao_do_codigo import exigir_versao_do_codigo
 
@@ -55,6 +58,7 @@ FAIXAS_PADRAO = (
 SEPARADOR = "\x1f"
 
 Leitor = Callable[[bytes, date], pd.DataFrame]
+GRUPOS_COM_CNPJ = frozenset({"cfem", "sigbm"})
 
 
 @dataclass(frozen=True)
@@ -145,21 +149,66 @@ def manter_a_data_da_primeira_coleta(
     return resultado
 
 
+def so_empresa(
+    tabela: pd.DataFrame, raizes: RaizesDeEmpresa, descartar: bool = True
+) -> pd.DataFrame:
+    """Tira da tabela o que é de CNPJ fora da lista de empresas; conta o que saiu em `fora_da_pj`.
+
+    `descartar`: a linha inteira sai (CFEM). Sem ele (barragens) a linha fica, sem CNPJ, raiz nem nome
+    do empreendedor, como o leitor já faz com o documento incompleto."""
+    cnpj = tabela["cnpj"].fillna("").astype(str)
+    completo = cnpj.str.len() == 14
+    na_lista = pd.Series(
+        raizes.esta_na_lista(
+            pa.array(cnpj.str[:8].tolist(), type=pa.string())
+        ).to_numpy(zero_copy_only=False),
+        index=tabela.index,
+    ).astype(bool)
+    fora = completo & ~na_lista
+    if descartar:
+        saida = tabela[completo & ~fora].reset_index(drop=True)
+        conta = int((~(completo & ~fora)).sum())
+    else:
+        saida = tabela.copy()
+        saida.loc[fora, ["cnpj", "cnpj_raiz", "empreendedor"]] = ""
+        saida = saida.reset_index(drop=True)
+        conta = int(fora.sum())
+    saida.attrs = {**tabela.attrs, "fora_da_pj": conta}
+    return saida
+
+
 def carregar(
     tabela: Tabela,
     saida: Path,
     coletado_em: date,
     baixar_arquivo: Callable[[str], bytes] = baixar,
     forcar: bool = False,
+    raizes: RaizesDeEmpresa | None = None,
 ) -> str:
-    """Baixa, lê e grava uma tabela; devolve `GRAVADO` ou `IGUAL`."""
+    """Baixa, lê e grava uma tabela; devolve `GRAVADO` ou `IGUAL`.
+
+    CFEM e SIGBM trazem CNPJ de empreendedor e só se gravam com a lista de raízes de empresa: sem ela,
+    a carga recusa (empresário individual e MEI são pessoa)."""
+    if tabela.grupo in GRUPOS_COM_CNPJ and raizes is None:
+        raise ValueError(
+            f"{tabela.nome}: sem a lista de empresas (raizes) não se grava CNPJ"
+        )
     conteudo = baixar_arquivo(tabela.url)
     origem = {"url": tabela.url, "sha256": hashlib.sha256(conteudo).hexdigest()}
+    if raizes is not None and tabela.grupo in GRUPOS_COM_CNPJ:
+        origem["raizes_sha256"] = raizes.impressao
     destino = saida / tabela.nome
     arquivo = destino.with_suffix(".parquet")
 
     def montar() -> pd.DataFrame:
         lida = tabela.leitor(conteudo, coletado_em)
+        if raizes is not None and tabela.grupo in GRUPOS_COM_CNPJ:
+            lida = so_empresa(lida, raizes, descartar=tabela.grupo == "cfem")
+            log.info(
+                "%s: %d linhas de fora da lista de empresas (pessoa ou sem CNPJ) tiradas ou sem CNPJ",
+                tabela.fonte,
+                lida.attrs["fora_da_pj"],
+            )
         if lida.attrs.get("descartadas"):
             log.info(
                 "%s: %d linhas sem CNPJ completo descartadas",
@@ -194,6 +243,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     argumentos.add_argument("--pasta", type=Path, default=None)
     argumentos.add_argument("--forcar", action="store_true")
+    argumentos.add_argument(
+        "--base-pj",
+        type=Path,
+        default=None,
+        help="pasta base/ que tem a cnpj_empresas_pj (padrão: a base do acervo)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -204,10 +259,24 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
-    falhas = 0
-    for tabela in tabelas_pedidas(opcoes.faixa, opcoes.so, hoje):
+    base_da_pj = (
+        opcoes.base_pj
+        or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
+    )
+    pedidas = tabelas_pedidas(opcoes.faixa, opcoes.so, hoje)
+    raizes = None
+    if any(t.grupo in GRUPOS_COM_CNPJ for t in pedidas):
         try:
-            resultado = carregar(tabela, saida, hoje, forcar=opcoes.forcar)
+            raizes = raizes_de_empresa(base_da_pj)
+        except (OSError, KeyError, ValueError) as erro:
+            log.error("sem a lista de empresas: %s", erro)
+            return 1
+    falhas = 0
+    for tabela in pedidas:
+        try:
+            resultado = carregar(
+                tabela, saida, hoje, forcar=opcoes.forcar, raizes=raizes
+            )
         except (TypeError, ValueError, OSError) as erro:
             log.error("%s falhou: %s", tabela.nome, erro)
             falhas += 1

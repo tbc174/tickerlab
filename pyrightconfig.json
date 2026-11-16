@@ -3,7 +3,8 @@
   // src/, scripts/ e telas/ (desde o fim da Fase E, 12/10/2026). O trader entra depois: é o código
   // da pesquisa (critério pré-registrado).
   // base/ (série 1 da base de ML, 13/10/2026) entra desde o começo.
-  "include": ["src", "scripts", "telas", "base", "cli"],
+  "include": ["src", "scripts", "telas", "base", "cli", "conector_remoto"],
+  // conector_remoto/ (linha 570): o servidor MCP remoto, fora do src/ porque roda num contêiner sem o app
   // cli/ (linha 772): o pacote da CLI fica fora do src/ e é importado como `tickerlab`
   "extraPaths": ["cli"],
   "typeCheckingMode": "basic",

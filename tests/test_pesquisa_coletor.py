@@ -280,6 +280,31 @@ def test_extrair_le_pdf_e_xlsx_baixados(tmp_path: Path):
     assert "dado" in planilha["aviso"]  # type: ignore[operator]
 
 
+CSV_DA_CVM = (
+    "CNPJ_CIA;DENOM_SOCIAL;SIT\n"
+    "33.000.167/0001-01;PETRÓLEO BRASILEIRO S.A. - PETROBRAS;ATIVO\n"
+).encode("latin-1")
+
+
+def test_csv_baixado_e_lido_e_o_fato_confirmado(tmp_path: Path):
+    """Regressão: o tipo era descoberto no temporário `.tmp`, e todo CSV virava "desconhecido"
+    (rodada real no cadastro da CVM em 10/11/2026: nada se lia, nenhum fato se confirmava)."""
+    url = f"{SITE}/dados/cad_cia_aberta.csv"
+    pesquisador, _ = _pesquisador(tmp_path, {url: CSV_DA_CVM})
+    baixado = pesquisador.baixar_documento(url)
+    assert baixado["ok"] and baixado["tipo"] == "csv"
+    sha = str(baixado["sha256"])
+    extracao = pesquisador.extrair(sha, contem=["PETROBRAS"])
+    assert extracao["ok"] and extracao["tabelas"]  # type: ignore[index]
+    fato = pesquisador.validar_fato(
+        "CNPJ da Petrobras no cadastro da CVM",
+        "33.000.167/0001-01",
+        "33.000.167/0001-01 | PETRÓLEO BRASILEIRO S.A. - PETROBRAS",
+        sha,
+    )
+    assert fato["situacao"] == "confirmado", fato
+
+
 @pytest.mark.parametrize("sha", ["../../etc/passwd", "abc", "z" * 64, "0" * 64])
 def test_extrair_recusa_hash_invalido_ou_desconhecido(tmp_path: Path, sha: str):
     pesquisador, _ = _pesquisador(tmp_path, {})

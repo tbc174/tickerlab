@@ -53,7 +53,7 @@ def _situacao(cnpj, mes, visto, rotulo, matriz=True) -> dict:
     return {"cnpj": _formatado(cnpj), "cnpj_basico": cnpj[:8], "matriz": matriz,
             "situacao_especial": rotulo.upper(), "rotulo": rotulo,
             "data_situacao_especial": pd.Timestamp("2026-01-01"), "mes_do_retrato": mes,
-            "disponivel_em": pd.Timestamp(visto)}  # fmt: skip
+            "trata_como_pessoa": False, "disponivel_em": pd.Timestamp(visto)}  # fmt: skip
 
 
 def _insolvencia(cnpj, protocolo, versao, rotulo, conhecido_em) -> dict:

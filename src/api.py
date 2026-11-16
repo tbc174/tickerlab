@@ -12,15 +12,16 @@ import html
 import json
 import logging
 import os
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import stripe
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from base.prontidao import AVISO_DO_ENSAIO, CABECALHO_DO_ENSAIO, em_ensaio
 from src.api_externa import api_externa_ligada
 from src.api_v1 import api_v1_ligada
 from src.banco import newsletter_por_email, novidades_por_email
@@ -188,6 +189,16 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     )
     nova.include_router(router)
     nova.include_router(router, prefix="/api")
+    if em_ensaio(ambiente):
+        # ensaio local (linha 800): toda resposta diz que é ensaio, com dado sem prontidão conferida
+        @nova.middleware("http")
+        async def _anunciar_o_ensaio(
+            pedido: Request, seguir: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
+            resposta = await seguir(pedido)
+            resposta.headers[CABECALHO_DO_ENSAIO] = AVISO_DO_ENSAIO
+            return resposta
+
     # os limites por IP da v1 leem daqui (src/api_v1/compartilhados.py: ip_de_quem_pede)
     nova.state.proxies_confiaveis = proxies_pelo_ambiente(ambiente)
     registro = registro_pelo_ambiente(ambiente)
@@ -199,13 +210,19 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     if api_v1_ligada(ambiente):
         # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
         from src.api_v1.acesso import CABECALHO_DO_MOTIVO
+        from src.api_v1.analista import router as router_do_analista
+        from src.api_v1.analista_pessoas import router as router_das_pessoas
         from src.api_v1.base_publica import router as router_da_base_publica
         from src.api_v1.base_tabelas import router as router_das_tabelas_da_base
+        from src.api_v1.chat import router as router_do_chat
         from src.api_v1.compartilhados import router as router_compartilhados
+        from src.api_v1.conectar import router as router_do_conectar
         from src.api_v1.conta import router as router_da_conta
+        from src.api_v1.dados_e_cobertura import router as router_dos_dados
         from src.api_v1.entrada import router as router_da_entrada
         from src.api_v1.estudos import router as router_dos_estudos
         from src.api_v1.ferramentas import router as router_das_ferramentas
+        from src.api_v1.o_que_mudou import router as router_do_que_mudou
         from src.api_v1.rotas import router as router_v1
         from src.api_v1.sala import router as router_da_sala
         from src.api_v1.sala_garantias import router as router_das_garantias
@@ -238,13 +255,21 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
             router_do_painel_da_sala,
             router_do_trabalho_na_sala,
             router_das_garantias,
+            router_do_analista,
+            router_das_pessoas,
+            router_do_que_mudou,
+            router_dos_dados,
+            router_do_conectar,
+            router_do_chat,
         ):
             nova.include_router(rotas)
             nova.include_router(rotas, prefix="/api")
     if api_externa_ligada(ambiente):
         # a API paga da TickerLab Data (B-32a): desligada até o "pode" do Tiago para ligar
+        from src.api_externa.compressao import GzipSoNaApiExterna
         from src.api_externa.rotas import router as router_da_api_externa
 
+        nova.add_middleware(GzipSoNaApiExterna)  # o financials de 1,2 MB (linha 848)
         nova.include_router(router_da_api_externa)
         nova.include_router(router_da_api_externa, prefix="/api")
     _montar_site_da_api(nova)

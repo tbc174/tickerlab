@@ -11,7 +11,7 @@ e a frase da tabela e o atraso perdem o que é conversa interna (código, ADR, s
 import json
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar
+from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar_aberto
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import (
     FONTES_SO_INTERNAS,
@@ -65,8 +65,11 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da Finep\b", "Finep"),
     (r"empregadores do MTE", "MTE"),
     (r"do IBAMA\b", "IBAMA"),
+    (r"\bINPI\b", "INPI"),
     (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
+    (r"Receita \(DIRBI", "Receita Federal (renúncias)"),
+    (r"Transações da Receita", "Receita Federal (transações)"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),
     (r"da CGU\b", "CGU"),
@@ -82,6 +85,31 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bMapBiomas\b", "MapBiomas"),
     (r"guardadas? só como prova", "Imprensa e páginas públicas"),
 )
+# A conta "N órgãos públicos" da página inicial e do Início do app (linha 927) só conta órgão ou entidade
+# pública. Ficam de fora as fontes que não são do Estado: associação civil ou fundação privada (CCEE, ONS,
+# GLEIF, Internet Archive, MapBiomas), organismo internacional (FAO), as assessorias de M&A e a imprensa.
+# Elas continuam na lista de fontes e nos cartões dos temas, com o nome; só não entram neste número. Na
+# dúvida, a fonte fica de fora.
+ORGAOS_QUE_NAO_SAO_PUBLICOS: frozenset[str] = frozenset(
+    {
+        "Assessorias de M&A",
+        "CCEE",
+        "FAO",
+        "ONS",
+        "GLEIF",
+        "Internet Archive",
+        "MapBiomas",
+        "Imprensa e páginas públicas",
+    }
+)
+# o mesmo órgão com mais de um nome em `ORGAOS` (uma licença por conjunto de dados) conta uma vez só; a CMED
+# é uma câmara cuja secretaria é da Anvisa, e por isso conta com ela; o INMET é um instituto do MAPA
+MESMO_ORGAO: dict[str, str] = {
+    "Receita Federal (renúncias)": "Receita Federal",
+    "Receita Federal (transações)": "Receita Federal",
+    "CMED (Anvisa)": "Anvisa",
+    "INMET": "MAPA",
+}
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {
     "mercado_e_empresas": "Mercado e empresas",
@@ -185,18 +213,23 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
 # Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
 # por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
 TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
+# Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
+# mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.
+COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
 
 
 def catalogo_publico(catalogo: dict) -> dict:
     """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
     DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
     no dicionário do repositório, mas o site não anuncia dado que não pode sair em tela, relatório,
-    API nem exportação."""
+    API nem exportação. As cópias reduzidas (`COPIAS_REDUZIDAS`) também ficam de fora: a tabela de onde
+    saem já está no catálogo."""
     internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
     tabelas = {
         nome: tabela
         for nome, tabela in catalogo["tabelas"].items()
-        if tabela["licenca"] not in internas and nome not in TABELAS_SO_INTERNAS
+        if tabela["licenca"] not in internas
+        and nome not in TABELAS_SO_INTERNAS | COPIAS_REDUZIDAS
     }
     return {**catalogo, "tabelas": tabelas}
 
@@ -257,7 +290,7 @@ def tabelas_do_catalogo(catalogo: dict, frases: dict[str, str]) -> list[TabelaDo
             frequencia=frequencia_do_site(t["frequencia"]),
             atraso=atraso_do_site(t["atraso"]),
             historico_desde=t["historico_desde"],
-            consultavel=pode_consultar(nome),
+            consultavel=pode_consultar_aberto(nome),
         )
         for nome, t in catalogo["tabelas"].items()
     ]
@@ -447,6 +480,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         (
             "cnpj_qsa",
             "cnpj_qsa_mudancas",
+            "entradas_de_socio_pj",
             "fre_acionistas",
             "fre_distribuicao_capital",
             "controladas",
@@ -469,12 +503,14 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cnpj_simples_mudancas",
             "cnpj_simples_historico",
             "cnpj_empresas_historico",
+            "cnpj_empresas_pj",
+            "cnpj_estabelecimentos_pj",
         ),
     ),
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
+        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, liquidações e outros regimes especiais do Banco Central, o cadastro de "
         "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
@@ -484,6 +520,9 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sef_mg_parcelamentos",
             "sancoes_cgu",
             "ans_penalidades",
+            "aneel_autos_de_infracao",
+            "aneel_termos_de_notificacao",
+            "bcb_regimes_especiais",
             "mte_lista_suja",
             "ibama_embargos",
             "processos_partes",
@@ -493,16 +532,27 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "licencas",
         "Licenças e registros nas agências",
-        "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
-        "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
-        "a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "Autorizações da Anvisa, concessões da ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
+        "os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
+        "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
+        "patentes, desenhos e programas de computador no INPI.",
         (
             "ans_operadoras",
             "susep_cadastro",
             "anvisa_registros",
+            "anvisa_por_empresa",
             "anp_concessionarios",
             "antt_rntrc",
+            "antt_operadores_multimodais",
+            "antt_seguros_de_transportadores",
+            "bcb_supervisionadas",
+            "bcb_cooperativas",
+            "bcb_correspondentes",
+            "bcb_filiais_de_consorcio",
             "mapa_sipeagro",
+            "sigsif_habilitados",
+            "sigsif_estabelecimentos",
+            "aneel_agentes",
             "anatel_outorgas",
             "anm_titulos",
             "anm_sigbm_barragens",
@@ -510,6 +560,10 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cmed_precos",
             "ancine_agentes",
             "cnes_estabelecimentos",
+            "inpi_marcas_titulares",
+            "inpi_patentes_depositantes",
+            "inpi_desenhos_depositantes",
+            "inpi_programas_titulares",
         ),
     ),
     TemaDoCnpj(
@@ -523,7 +577,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
         "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
-        "Pernambuco, a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento "
+        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento "
         "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
@@ -540,6 +594,10 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sefaz_pe_beneficios",
             "sefaz_pe_ordem_cronologica",
             "es_ordem_cronologica",
+            "receita_dirbi",
+            "receita_ecf_renuncia",
+            "receita_transacoes_individual",
+            "receita_transacoes_adesao",
         ),
     ),
 )
@@ -583,6 +641,17 @@ def _orgaos(catalogo: dict, tabelas: Sequence[str]) -> list[str]:
     )
 
 
+def orgaos_publicos(orgaos: Iterable[str]) -> list[str]:
+    """Só os órgãos públicos, cada um uma vez, na ordem em que aparecem (a conta da página inicial)."""
+    return list(
+        dict.fromkeys(
+            MESMO_ORGAO.get(orgao, orgao)
+            for orgao in orgaos
+            if orgao not in ORGAOS_QUE_NAO_SAO_PUBLICOS
+        )
+    )
+
+
 def ligado_pelo_cnpj(
     catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
 ) -> dict:
@@ -611,7 +680,7 @@ def ligado_pelo_cnpj(
         )
     return {
         "tabelas": len(ligadas),
-        "orgaos": len(_orgaos(catalogo, ligadas)),
+        "orgaos": len(orgaos_publicos(_orgaos(catalogo, ligadas))),
         "temas": cartoes,
     }
 

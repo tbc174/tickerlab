@@ -86,6 +86,13 @@ class Leitor:
             tabela, como_era_em=como_era_em, filtros=filtros, colunas=escolhidas
         )
 
+    def nomes_de_pessoa(self) -> list[str]:
+        """Os nomes de pessoa da rede que a porta esconde na saída, para a trava da ficha (o hash
+        das entidades vai para o manifesto como o de toda tabela lida)."""
+        if not self._existe("entidades"):
+            return []
+        return self.porta.nomes_de_pessoa_da_rede()
+
     def somar(
         self,
         tabela: str,
@@ -260,11 +267,10 @@ def _empresas(tickers: pd.DataFrame) -> pd.DataFrame:
     return tabela.drop_duplicates("cnpj").reset_index(drop=True)
 
 
-def _pessoas(entidades: pd.DataFrame) -> set[str]:
-    if entidades.empty:
-        return set()
-    pessoas = entidades[entidades["trata_como_pessoa"].fillna(False).astype(bool)]
-    return {n for n in pessoas["nome"].dropna().map(dossie.normalizar_nome) if n}
+def _pessoas(nomes: list[str]) -> set[str]:
+    """Os nomes de pessoa da rede, normalizados para a trava da ficha. Vêm de fora da view
+    (`Porta.nomes_de_pessoa_da_rede`), que os esconde na saída (linha 787)."""
+    return {n for n in map(dossie.normalizar_nome, nomes) if n}
 
 
 def ler_serie(
@@ -475,7 +481,7 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         grupos={
             s.nome: ler_grupos(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS if s.grupo
         },
-        pessoas=_pessoas(entidades),
+        pessoas=_pessoas(leitor.nomes_de_pessoa()),
         rede=_rede(leitor, hoje, entidades, controladas),
         hoje=_dia(hoje),
         negocios_de_ma=_negocios_de_ma(leitor, _dia(hoje)),

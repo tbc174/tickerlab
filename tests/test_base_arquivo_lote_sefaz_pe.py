@@ -140,10 +140,10 @@ def test_filtro_guarda_so_cnpj_sem_a_razao_social_e_sem_cpf():
         CABECALHO
         + _linha("MAQUINAS PESADAS", cnpj, "C B H BIRU OCULOS LTDA ME")
         + _linha(
-            "PRODEPE", "12345678909", "JOAO DA SILVA"
+            "PRODEPE", "88800000046", "PESSOA INVENTADA LICITACAO"
         )  # CPF na coluna do documento
         + _linha(
-            "PRODEPE", "00184780000177", "JOAO ADOEZIO CUNHA 12345678909"
+            "PRODEPE", "00184780000177", "JOAO ADOEZIO CUNHA 88800000046"
         )  # CPF no nome
         + _linha("PRODEPE", "", "SEM DOCUMENTO LTDA")
         + _linha("PEAP", "00220359000506", "FORTQUIM LTDA")
@@ -153,7 +153,7 @@ def test_filtro_guarda_so_cnpj_sem_a_razao_social_e_sem_cpf():
     assert linhas[0] == '"programa";"cnpj";"cacepe";"termo_inicial";"termo_final"'
     assert len(linhas) == 3
     assert cnpj in linhas[1] and "00220359000506" in linhas[2]
-    for nome_ou_cpf in ("BIRU", "FORTQUIM", "JOAO", "12345678909", "empresa"):
+    for nome_ou_cpf in ("BIRU", "FORTQUIM", "JOAO", "88800000046", "empresa"):
         assert nome_ou_cpf not in guardado
 
 

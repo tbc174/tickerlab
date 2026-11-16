@@ -45,6 +45,12 @@ PR 2, o que muda:
   respondeu em 22/10 e segue na fila;
 - **Comex Stat:** as tabelas de correspondência têm o nome `NCM_SH`, `NCM_CUCI`, `NCM_ISIC`, `NCM_CGCE`...
   (os nomes `SH`, `CUCI`... devolvem uma página HTML com 200, não o CSV).
+
+Lote 2 das 300 tabelas pelo CNPJ (13/11/2026), o que muda:
+- **ANEEL:** `agentes-do-setor-eletrico` (fonte nova `aneel-agentes`) e `termo-de-notificacao` (na
+  `aneel-fiscalizacao`). As duas têm coluna só de CNPJ (`NumCnpj`, `NumCNPJ`), diferente da
+  `agentes-de-geracao-de-energia-eletrica`, que segue de fora; o nome da empresa vem no arquivo e fica só no
+  acervo, a tabela (`base/aneel_fiscalizacao.py`) não o leva.
 """
 
 import re
@@ -88,7 +94,10 @@ PACOTES_DA_ANEEL: dict[str, tuple[str, ...]] = {
         "auto-de-infracao",
         "indger-indicadores-gerenciais-da-distribuicao",
         "samp-balanco",
+        "termo-de-notificacao",
     ),
+    # cadastro dos agentes (CNPJ e atividade; só CNPJ em 13/11/2026, e a tabela tira o que não for), lote 2
+    "aneel-agentes": ("agentes-do-setor-eletrico",),
 }
 
 # id da fonte -> (ritmo, pacotes do portal do ONS, pesada)
