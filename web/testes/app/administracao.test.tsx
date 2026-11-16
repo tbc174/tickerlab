@@ -280,6 +280,14 @@ const CHAVE_NOVA: ChaveNovaV1 = {
   valor: "tld_inventada3_valor-de-mentira-so-do-teste",
   antiga_vale_por_dias: null,
 };
+// também inventada
+const OUTRA_CHAVE: ChaveNovaV1 = {
+  id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+  prefixo: "tld_inventada4",
+  valor: "tld_inventada4_outro-valor-de-mentira-do-teste",
+  antiga_vale_por_dias: null,
+};
+const OUTRA_CHAVE_ESPERA = "Há outra chave nova esperando: ela aparece quando você tirar esta da tela.";
 const RECUSA_DO_SERVIDOR = { detail: "Not Found" };
 
 const guardado = () => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage });
@@ -623,6 +631,42 @@ describe("emitir, trocar e revogar chaves", () => {
     fireEvent.click(within(caixa).getByRole("button", { name: "Já copiei: tirar da tela" }));
     expect(await screen.findByRole("region", { name: "Organização Beta" })).toBeTruthy();
     expect(screen.queryByText(CHAVE_NOVA.valor)).toBeNull();
+  });
+
+  it("a chave que chega com outra à vista espera a vez: aparece quando a primeira sai da tela", async () => {
+    const soltar = new Map<string, (resposta: Response) => void>();
+    abrir({
+      mudar: (_endereco, corpo) =>
+        new Promise<Response>((resolver) => {
+          soltar.set((corpo as { organizacao_id: string }).organizacao_id, resolver);
+        }),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Emitir chave nova" }));
+    // sem esperar a resposta, a pessoa vai para a Beta e emite outra
+    fireEvent.change(screen.getByRole("combobox", { name: "Organização" }), { target: { value: ID_BETA } });
+    const beta = await screen.findByRole("region", { name: "Organização Beta" });
+    fireEvent.click(within(beta).getByRole("button", { name: "Emitir chave nova" }));
+    await waitFor(() => expect(soltar.size).toBe(2));
+    // a da Beta responde primeiro e fica à vista
+    soltar.get(ID_BETA)?.(respostaJson(200, CHAVE_NOVA));
+    expect(await screen.findByText(CHAVE_NOVA.valor)).toBeTruthy();
+    // a da Alfa chega com a outra à vista: não apaga a que está nem se perde
+    soltar.get(ID_ALFA)?.(respostaJson(200, OUTRA_CHAVE));
+    expect(await screen.findByText(OUTRA_CHAVE_ESPERA)).toBeTruthy();
+    expect(screen.getByText(CHAVE_NOVA.valor)).toBeTruthy();
+    expect(screen.queryByText(OUTRA_CHAVE.valor)).toBeNull();
+    expect(screen.getByRole("region", { name: "Organização Beta" })).toBeTruthy();
+    // tirada a primeira, a segunda aparece, no painel da organização dela
+    fireEvent.click(screen.getByRole("button", { name: "Já copiei: tirar da tela" }));
+    expect(await screen.findByText(OUTRA_CHAVE.valor)).toBeTruthy();
+    expect(screen.queryByText(CHAVE_NOVA.valor)).toBeNull();
+    expect(screen.queryByText(OUTRA_CHAVE_ESPERA)).toBeNull();
+    expect(await screen.findByRole("region", { name: "Organização Alfa" })).toBeTruthy();
+    // tirada a segunda, a tela volta para a organização que a pessoa tinha escolhido
+    fireEvent.click(screen.getByRole("button", { name: "Já copiei: tirar da tela" }));
+    expect(await screen.findByRole("region", { name: "Organização Beta" })).toBeTruthy();
+    expect(screen.queryByText(OUTRA_CHAVE.valor)).toBeNull();
+    expect(screen.queryByRole("region", { name: "Chave nova" })).toBeNull();
   });
 
   it("copiar manda o valor para a área de transferência", async () => {

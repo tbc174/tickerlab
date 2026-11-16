@@ -524,6 +524,7 @@ function Painel(propriedades: PropriedadesDoPainelPedido) {
 // --- a tela -----------------------------------------------------------------------------------
 
 const A_CRIADA_ESPERA = " Ela abre quando você tirar a chave nova da tela.";
+const OUTRA_CHAVE_ESPERA = "Há outra chave nova esperando: ela aparece quando você tirar esta da tela.";
 
 interface ChaveDaOrganizacao {
   organizacao: string;
@@ -535,24 +536,28 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
   const [pedida, setPedida] = useState<string | null>(null);
   const [criando, setCriando] = useState(organizacoes.length === 0);
   const [criada, setCriada] = useState<OrganizacaoDaListaV1 | null>(null);
-  // a chave nova à vista e de qual organização ela é. O valor não dá para ver de novo, então só a própria
-  // pessoa tira esse painel (escolhendo outra organização ou tirando a chave); a tela, sozinha, não troca.
-  // Fica aqui, mudado na mesma hora que o resto da escolha: um aviso do painel por efeito chegaria depois
-  // do desenho e podia desfazer a troca de organização feita nesse intervalo
-  const [chaveNova, setChaveNova] = useState<ChaveDaOrganizacao | null>(null);
+  // as chaves novas que o servidor devolveu e a pessoa ainda não tirou da tela, na ordem de chegada; a
+  // primeira é a que está à vista, com a organização dela. O valor não dá para ver de novo, então só a
+  // própria pessoa tira esse painel (escolhendo outra organização ou tirando a chave); a tela, sozinha, não
+  // troca. Fica aqui, mudado na mesma hora que o resto da escolha: um aviso do painel por efeito chegaria
+  // depois do desenho e podia desfazer a troca de organização feita nesse intervalo
+  const [chaves, setChaves] = useState<ChaveDaOrganizacao[]>([]);
+  const chaveNova = chaves[0] ?? null;
+  const tirarAChave = () => setChaves((atuais) => atuais.slice(1));
   const naLista = (id: string | null) => organizacoes.find((organizacao) => organizacao.id === id)?.id;
   const comChave = naLista(chaveNova?.organizacao ?? null) ?? null;
   // a pedida vale enquanto estiver na lista (a recém-criada entra quando a lista recarrega); senão, a primeira
   const escolhida = comChave ?? naLista(pedida) ?? organizacoes[0]?.id ?? null;
   function escolher(id: string) {
     setPedida(id);
-    setChaveNova(null);
+    tirarAChave();
     setCriada(null);
   }
   // a resposta pode chegar depois de a pessoa trocar de organização: a chave já existe no servidor, então o
-  // painel dela volta com o valor. Com outra chave à vista, a que está fica (uma não apaga a outra)
+  // painel dela volta com o valor. Com outra chave à vista, a que chegou espera a vez (uma não apaga a outra,
+  // e nenhuma fica ativa no servidor sem ninguém ter visto o valor)
   function aoChegarAChave(organizacao: string, nova: ChaveNovaV1) {
-    setChaveNova((atual) => atual ?? { organizacao, nova });
+    setChaves((atuais) => [...atuais, { organizacao, nova }]);
   }
   // a resposta de um criar pode chegar depois de uma chave aparecer (o pedido saiu antes): aqui só se anota
   // a criada; quem decide o painel é o `escolhida` acima, com o estado de agora
@@ -597,6 +602,7 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
         />
       ) : null}
       <Aviso texto={aviso} />
+      <Aviso texto={chaves.length > 1 ? OUTRA_CHAVE_ESPERA : null} />
       {escolhida === null ? (
         <Vazio frase="Nenhuma organização cadastrada. Crie a primeira no formulário acima." />
       ) : (
@@ -607,7 +613,7 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
           aoMudarALista={recarregar}
           chaveNova={chaveNova !== null && chaveNova.organizacao === escolhida ? chaveNova.nova : null}
           aoChegarAChave={(nova) => aoChegarAChave(escolhida, nova)}
-          aoTirarAChave={() => setChaveNova(null)}
+          aoTirarAChave={tirarAChave}
         />
       )}
     </>
