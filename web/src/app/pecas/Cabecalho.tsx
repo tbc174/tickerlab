@@ -6,7 +6,7 @@ import { type PaginaDoApp, conteudoDoApp } from "../../conteudo";
 
 interface Propriedades {
   titulo: string;
-  olho?: string;
+  olho?: ReactNode;
   descricao?: ReactNode;
   /** Selos ao lado do título (peça `Selo`): situação da empresa, "Companhia aberta". */
   selos?: ReactNode;
@@ -32,8 +32,17 @@ export function Cabecalho({ titulo, olho, descricao, selos, acoes }: Propriedade
 
 /** O cabeçalho de uma tela do mapa de páginas: o olho é a área dela (a "Mais" não diz nada sobre a tela e
  * fica sem olho), o título e a descrição vêm de `src/paginas.py`. */
-export function CabecalhoDaTela({ pagina, acoes }: { pagina: PaginaDoApp; acoes?: ReactNode }) {
+export function CabecalhoDaTela({
+  pagina,
+  acoes,
+  titulo,
+}: {
+  pagina: PaginaDoApp;
+  acoes?: ReactNode;
+  /** Quando a tela dá um título mais exato que o da página (o Comparar diz quantas empresas são). */
+  titulo?: string;
+}) {
   // direto do conteúdo (não de areas.ts): areas.ts lê rotas.tsx, que lê as telas, que leem este arquivo
   const area = conteudoDoApp.areas.find((a) => a.chave === pagina.area && a.chave !== "mais");
-  return <Cabecalho olho={area?.rotulo} titulo={pagina.titulo} descricao={pagina.descricao} acoes={acoes} />;
+  return <Cabecalho olho={area?.rotulo} titulo={titulo ?? pagina.titulo} descricao={pagina.descricao} acoes={acoes} />;
 }

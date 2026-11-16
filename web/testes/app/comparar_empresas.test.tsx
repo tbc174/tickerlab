@@ -280,3 +280,59 @@ describe("tipos da comparação", () => {
     expect(screen.queryByText(/Dado de piloto/)).toBeNull();
   });
 });
+
+describe("acabamento do Comparar", () => {
+  const SEM_ENTREGAS: EmpresaComparadaV1 = {
+    ...MODELO,
+    ultima_entrega_documento: null,
+    ultima_entrega_situacao: null,
+    entregas_conhecidas: null,
+    entregas_com_atraso: null,
+  };
+
+  it("o título diz quantas empresas são, e só depois de comparar", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, empresas: [MODELO, NAO_DISPONIVEL(OUTRA), NAO_DISPONIVEL("33444555000166")] }));
+    await screen.findByLabelText("CNPJ 1");
+    expect(screen.getByRole("heading", { level: 1, name: "Comparar empresas" })).toBeTruthy();
+    await comparar(EMPRESA, OUTRA, "33444555000166");
+    expect(await screen.findByRole("heading", { level: 1, name: "Comparar 3 empresas" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1, name: "Comparar empresas" })).toBeNull();
+  });
+
+  it("as linhas vêm em grupos: Cadastro e Entregas à CVM", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await comparar(EMPRESA, OUTRA);
+    const tabela = await screen.findByRole("region", { name: "Lado a lado" });
+    const cadastro = within(tabela).getByText("Cadastro").closest("tbody") as HTMLElement;
+    const entregas = within(tabela).getByText("Entregas à CVM").closest("tbody") as HTMLElement;
+    expect(cadastro).not.toBe(entregas);
+    expect(within(cadastro).getByRole("row", { name: /^UF/ })).toBeTruthy();
+    expect(within(cadastro).getByRole("row", { name: /Mês do cadastro|Razão social/ })).toBeTruthy();
+    expect(within(cadastro).queryByRole("row", { name: /Última entrega à CVM/ })).toBeNull();
+    expect(within(entregas).getByRole("row", { name: /Última entrega à CVM/ })).toBeTruthy();
+    expect(within(entregas).getByRole("row", { name: /Entregas à CVM com atraso/ })).toBeTruthy();
+  });
+
+  it("grupo sem nenhuma linha com valor não aparece", async () => {
+    abrir(() => respostaJson(200, { ...PRONTA, empresas: [SEM_ENTREGAS, NAO_DISPONIVEL(OUTRA)] }));
+    await comparar(EMPRESA, OUTRA);
+    const tabela = await screen.findByRole("region", { name: "Lado a lado" });
+    expect(within(tabela).getByText("Cadastro")).toBeTruthy();
+    expect(within(tabela).queryByText("Entregas à CVM")).toBeNull();
+  });
+
+  it("depois do resultado: o aviso de que nada é recomendação", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await comparar(EMPRESA, OUTRA);
+    const rodape = await screen.findByRole("region", { name: "Rodapé da comparação" });
+    expect(within(rodape).getByText("Nada aqui é recomendação de investimento.")).toBeTruthy();
+    const limites = screen.getByRole("region", { name: "Limites e cuidados" });
+    expect(limites.compareDocumentPosition(rodape) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("antes de comparar não há rodapé do resultado", async () => {
+    abrir(() => respostaJson(200, PRONTA));
+    await screen.findByLabelText("CNPJ 1");
+    expect(screen.queryByRole("region", { name: "Rodapé da comparação" })).toBeNull();
+  });
+});
