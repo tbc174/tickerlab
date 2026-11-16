@@ -1,7 +1,8 @@
-// Os cruzamentos da página inicial (plano do site para quem analisa, PR 6, tarefa 10): fatos que só
-// aparecem juntando duas tabelas da base ou mais. Os textos vêm prontos de `base/vitrine.py`
-// (`fatos_agregados`), com a fonte, a data e a conta recolhida; aqui não se digita número nem nome.
-import { type FatoDaBase, fatosDaBase } from "../conteudo";
+// Os cruzamentos da página inicial (plano do site para quem analisa, PR 6, tarefa 10; empresas fechadas
+// desde a linha 925): fatos que só aparecem juntando duas tabelas da base ou mais, agrupados pela pergunta
+// que respondem. Os textos, o parágrafo e os grupos vêm prontos de `base/vitrine.py` (`fatos_da_base`),
+// com a fonte, a data e a conta recolhida; aqui não se digita número nem nome.
+import { type FatoDaBase, type GrupoDeFatos, fatosDaBase } from "../conteudo";
 import { ComoFoiCalculado } from "./ComoFoiCalculado";
 
 function Fato({ fato }: { fato: FatoDaBase }) {
@@ -17,8 +18,24 @@ function Fato({ fato }: { fato: FatoDaBase }) {
   );
 }
 
+function Grupo({ grupo }: { grupo: GrupoDeFatos }) {
+  const titulo = `cruzamentos-${grupo.chave}`;
+  return (
+    <div className="v2-fatos-grupo" aria-labelledby={titulo}>
+      <h3 id={titulo} className="v2-fatos-pergunta">
+        {grupo.pergunta}
+      </h3>
+      <div className="grade v2-fatos">
+        {grupo.fatos.map((fato) => (
+          <Fato key={fato.chave} fato={fato} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Cruzamentos() {
-  const { fatos, medido_em_curto } = fatosDaBase;
+  const { grupos, subtitulo } = fatosDaBase;
   return (
     <section
       className="faixa secao v2-cruzamentos"
@@ -27,14 +44,10 @@ export function Cruzamentos() {
     >
       <p className="olho">Cruzamentos</p>
       <h2 id="titulo-cruzamentos">O que só aparece juntando fontes</h2>
-      <p className="subtitulo">
-        {`Contagens da base inteira, medidas em ${medido_em_curto}, sem nome de empresa. Cada número diz de onde veio e como foi contado.`}
-      </p>
-      <div className="grade v2-fatos">
-        {fatos.map((fato) => (
-          <Fato key={fato.chave} fato={fato} />
-        ))}
-      </div>
+      <p className="subtitulo">{subtitulo}</p>
+      {grupos.map((grupo) => (
+        <Grupo key={grupo.chave} grupo={grupo} />
+      ))}
     </section>
   );
 }
