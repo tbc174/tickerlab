@@ -9,8 +9,8 @@ pessoa física e, onde a base não tem o dado, a frase honesta. Não confere o d
 
 A tabela abaixo é a fonte única do placar: o teste a lê daqui e falha se ela deixar de bater com o conector
 (ferramenta citada que não existe, ferramenta que existe e está marcada "sem ferramenta", ferramenta
-registrada que nenhuma pergunta usa). Quando a ferramenta `ativos` entrar no conector (linha 901), troque
-só a linha 7: "sem ferramenta" vira "respondida" (ou "fraca"). Situações: "respondida" (a pergunta fecha
+registrada que nenhuma pergunta usa). A ferramenta `ativos` (linha 901) entrou em 16/11 e a linha 7 virou
+"fraca": ela só cobre petróleo e gás da ANP. Situações: "respondida" (a pergunta fecha
 com as ferramentas da linha), "fraca" (responde em parte e diz o que falta) e "sem ferramenta" (ainda não
 há ferramenta, e o conector não finge que há).
 
@@ -22,7 +22,7 @@ há ferramenta, e o conector não finge que há).
 | 4 | respondida | vinculos | só pessoa jurídica; controle e coligação só da companhia aberta |
 | 5 | respondida | compradores_do_setor | é movimento passado, não intenção de compra |
 | 6 | fraca | compradores_do_setor, fundo | só os FIPs que são sócios de empresas do setor; sem busca por segmento |
-| 7 | sem ferramenta | ativos | a ferramenta de ativos e autorizações ainda não entrou no conector |
+| 7 | fraca | ativos | só contratos de petróleo e gás da ANP; mineração e o resto vêm em `not_covered` |
 | 8 | fraca | eventos, novidades | sem protesto, baixa ou atraso de crédito; sinal não é intenção de venda |
 | 9 | respondida | comparaveis, setores, setor | só companhia aberta; sem múltiplo de transação |
 | 10 | fraca | buscar_empresas, ficha_da_empresa, eventos, vinculos, comparaveis, o_que_posso_ver | o conector devolve texto: não exporta arquivo |
@@ -244,17 +244,37 @@ def _rotas_de_mentira() -> dict[str, httpx.Response]:
         ),
         f"/companies/{ALFA}/assets": _json(
             {
+                "cnpj": ALFA,
                 "known_at": HOJE.isoformat(),
-                "assets": [
-                    {
-                        "kind": "mining_dam",
-                        "identifier": _campo(
-                            "BARRAGEM-0001", "anm-sigbm-barragens", "2026-10-01"
-                        ),
-                        "status": _campo("ativa", "anm-sigbm-barragens", "2026-10-01"),
-                    }
-                ],
-                "sources": _fontes("anm-sigbm-barragens"),
+                "oil_gas_contracts": {
+                    "found": True,
+                    "truncated": False,
+                    "source": "anp-concessionarios",
+                    "latest_published_at": "2025-03-01",
+                    "coverage": "contratos de E&P vigentes",
+                    "items": [
+                        {
+                            "contract_number": _campo(
+                                "48000.001/2010", "anp-concessionarios", "2025-03-01"
+                            ),
+                            "phase": _campo(
+                                "Produção", "anp-concessionarios", "2025-03-01"
+                            ),
+                            "basin": _campo(
+                                "Santos", "anp-concessionarios", "2025-03-01"
+                            ),
+                            "contract_share_pct": _campo(
+                                60.0, "anp-concessionarios", "2025-03-01"
+                            ),
+                            "is_operator": _campo(
+                                True, "anp-concessionarios", "2025-03-01"
+                            ),
+                        }
+                    ],
+                },
+                "not_covered": ["mineração (barragens e royalties da ANM)"],
+                "limits": limites,
+                "sources": _fontes("anp-concessionarios"),
             }
         ),
         f"/companies/{ALFA}/events": _json(
@@ -607,12 +627,12 @@ def pergunta_6(analista: Analista) -> None:
 def pergunta_7(analista: Analista) -> None:
     """Quais ativos ou autorizações regulatórias estão vinculados a este CNPJ?"""
     ativos = analista.perguntar("ativos", cnpj=ALFA)
-    if tabela_do_topo()[7][0] == "sem ferramenta":
-        # o conector não finge: a ferramenta não existe, e chamá-la devolve a frase de ferramenta
-        # indisponível, nunca um dado
-        assert ativos.erro and ferramentas.MENSAGEM_NAO_LIBERADA in ativos.texto
-        return
-    assert ativos.corpo["assets"]
+    assert analista.pedido_a_api(f"/companies/{ALFA}/assets")
+    bloco = ativos.corpo["oil_gas_contracts"]
+    assert bloco["found"] is True and bloco["source"] == "anp-concessionarios"
+    assert bloco["items"][0]["is_operator"]["value"] is True
+    # a lacuna vem na resposta: o que a ferramenta não cobre (mineração) e a ressalva de achar ou não
+    assert ativos.corpo["not_covered"] and ativos.corpo["limits"]
 
 
 def pergunta_8(analista: Analista) -> None:
@@ -708,12 +728,14 @@ LACUNA_DITA_POR_PERGUNTA_FRACA = {
     # faturamento de fechada
     3: (
         ("instrucoes", "faturamento de empresa fechada"),
-        ("demonstracoes", "não traz faturamento de fechada"),
+        ("demonstracoes", "Não traz: faturamento de empresa fechada"),
     ),
     # os fundos são só os FIPs sócios de empresas do setor
-    6: (("compradores_do_setor", "fundos (FIP)"),),
+    6: (("instrucoes", "FIPs que entraram como sócios"),),
     # sem nada novo, a lista vem vazia e a ferramenta manda dizer que não há fonte provada
-    8: (("novidades", "não há fonte nova provada"),),
+    8: (("novidades", "Não traz: fonte sem prova gravada"),),
+    # os ativos são só contratos de petróleo e gás da ANP: o resto (mineração) o conector diz que não traz
+    7: (("ativos", "mineração, por exemplo"),),
     # o dossiê é composto pela IA, com a lacuna anotada em vez de preenchida
     10: (("instrucoes", servidor.ORIENTACAO_DO_DOSSIE),),
 }
@@ -744,7 +766,7 @@ def test_toda_pergunta_fraca_da_tabela_tem_a_lacuna_conferida(analista):
 def test_a_pergunta_5_avisa_que_compradores_sao_movimento_passado(analista):
     # 5 é "respondida", mas a ressalva "não intenção de compra" é o que a mantém honesta
     no_conector = _ferramentas_do_conector(analista.cliente)
-    assert "não intenção de compra" in _descricao(no_conector["compradores_do_setor"])
+    assert "nem intenção de compra" in _descricao(no_conector["compradores_do_setor"])
 
 
 def test_as_instrucoes_dizem_que_a_base_nao_tem_pessoa_fisica(analista):
