@@ -239,6 +239,37 @@ def test_contem_exige_todos_os_termos_e_ignora_caixa(tmp_path: Path):
     assert [posicao for posicao, _ in extracao.trechos()] == ["csv linha 3"]
 
 
+def test_filtro_por_coluna_nao_casa_termo_curto_em_outra_coluna(tmp_path: Path):
+    arquivo = _gravar(
+        tmp_path,
+        "a.csv",
+        b"usina;ceg;obs\nAlfa;EOL.CV.1;ok\nBeta;UFV.RS.2;sem EOL\nGama;EOL.RS.3;ok\n",
+    )
+    so_contem = leitores.extrair(arquivo, contem=("eol",))
+    por_coluna = leitores.extrair(arquivo, filtro_por_coluna={"2": ["EOL"]})
+    assert len(so_contem.tabelas[0].linhas) == 3  # o falso positivo da coluna 3
+    assert [linha[0] for linha in por_coluna.tabelas[0].linhas] == ["Alfa", "Gama"]
+    assert [p for p, _ in por_coluna.trechos()] == ["csv linha 2", "csv linha 4"]
+
+
+def test_filtro_por_coluna_soma_com_contem_e_vale_no_xlsx(tmp_path: Path):
+    linhas = [["Usina", "CEG", "Ano"], ["Alfa", "EOL.1", 2019], ["Beta", "EOL.2", 2021]]
+    arquivo = _gravar(tmp_path, "a.xlsx", xlsx_com_linhas(linhas))
+    extracao = leitores.extrair(
+        arquivo, contem=("2021",), filtro_por_coluna={"2": ["eol"]}
+    )
+    assert extracao.tabelas[0].linhas == [["Beta", "EOL.2", "2021"]]
+
+
+def test_filtro_por_coluna_ignora_coluna_invalida_e_linha_curta(tmp_path: Path):
+    arquivo = _gravar(tmp_path, "a.csv", b"usina;ceg\nAlfa;EOL\nBeta\n")
+    extracao = leitores.extrair(
+        arquivo, filtro_por_coluna={"ceg": ["EOL"], "2": ["EOL"]}
+    )
+    assert extracao.tabelas[0].linhas == [["Alfa", "EOL"]]
+    assert any("'ceg' foi ignorada" in aviso for aviso in extracao.avisos)
+
+
 def test_contem_filtra_paginas_de_pdf(tmp_path: Path):
     arquivo = _gravar(tmp_path, "a.pdf", pdf_com_texto(["um", "dois", "tres"]))
     extracao = leitores.extrair(arquivo, motor="auto", contem=("dois",))
