@@ -98,6 +98,7 @@ def api_de_mentira(
         "links",
         "buyers",
         "research",
+        "assets",
     ),
     pedidos: list[httpx.Request] | None = None,
 ) -> httpx.MockTransport:
