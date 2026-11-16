@@ -364,7 +364,10 @@ class LeitorDeCompradores:
                 return self._do_cache_ou_montar(chave, pedido, como_era_em, sinais)
             finally:
                 with _TRAVA:  # só depois de guardar: quem chega agora já acha o resultado no cache
-                    _EM_CURSO.pop(chave, None)
+                    if (
+                        _EM_CURSO.get(chave) is vez
+                    ):  # a trava de outro pedido igual não é desta chamada
+                        _EM_CURSO.pop(chave, None)
 
     def _do_cache_ou_montar(
         self,

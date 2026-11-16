@@ -25,7 +25,7 @@ import sqlalchemy as sa
 
 from base import porta as porta_da_base
 from base.porta import Porta
-from base.porta.duckdb import arquivos_da_tabela
+from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
 from src import acervo
 
 
@@ -46,6 +46,8 @@ class PortaEmprestada(Porta):
         self.tabelas = dona.tabelas
         self.arquivos = dona.arquivos
         self.con = dona.con.cursor()
+        # o fuso é da sessão: o cursor herda o do sistema, e a data de publicação (olhar o futuro) usa o UTC
+        self.con.execute("SET TimeZone = 'UTC'")
         # o que só depende dos arquivos (o mês do retrato de um dia, por exemplo) vale para a vida da porta dona
         self.memoria_da_base = memoria
 
@@ -69,14 +71,18 @@ def _pasta_da_base() -> Path | None:
     return None if raiz is None else raiz / "base"
 
 
-def impressao_da_base(porta: Porta) -> tuple:
-    """Os arquivos que as views da porta leem (caminho, data e tamanho): muda quando a base muda."""
+def _impressao(pasta: Path, arquivos: dict[str, str]) -> tuple:
     impressao = []
-    for padrao in porta.arquivos.values():
-        for arquivo in arquivos_da_tabela(porta.pasta, padrao):
+    for padrao in arquivos.values():
+        for arquivo in arquivos_da_tabela(pasta, padrao):
             estado = arquivo.stat()
             impressao.append((arquivo.as_posix(), estado.st_mtime_ns, estado.st_size))
     return tuple(impressao)
+
+
+def impressao_da_base(porta: Porta) -> tuple:
+    """Os arquivos que as views da porta leem (caminho, data e tamanho): muda quando a base muda."""
+    return _impressao(porta.pasta, porta.arquivos)
 
 
 MEMORIA_MAXIMA = 256  # entradas por porta dona: o dia da pergunta (`known_at`) varia de pedido para pedido
@@ -93,6 +99,7 @@ def lembrar[T](porta: Porta, chave: object, calcular: Callable[[], T]) -> T:
         if len(memoria) >= MEMORIA_MAXIMA:
             memoria.clear()
         memoria[chave] = valor
+        return valor  # não relê: outro pedido pode ter esvaziado a memória cheia entre as duas linhas
     return memoria[chave]
 
 
@@ -110,12 +117,16 @@ def porta_do_pedido(banco: sa.Connection | None = None) -> Porta:
     global _DONA
     with _TRAVA:
         dona = _DONA
+        pasta = _pasta_da_base()
         if (
             dona is None
-            or dona.pasta != _pasta_da_base()
+            or dona.pasta != pasta
             or dona.impressao != impressao_da_base(dona.porta)
         ):
+            # a impressão é tirada ANTES de abrir (a abertura leva segundos): se a base mudar durante ela, a
+            # impressão guardada já é velha e o pedido seguinte abre de novo, em vez de servir views velhas
+            antes = () if pasta is None else _impressao(pasta, dict(ARQUIVOS))
             nova = abrir_a_base()
-            dona = _Dona(nova, _pasta_da_base(), impressao_da_base(nova))
+            dona = _Dona(nova, pasta, antes)
             _DONA = dona
         return PortaEmprestada(dona.porta, banco, dona.memoria)

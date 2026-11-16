@@ -215,3 +215,35 @@ def test_pedido_em_curso_nao_mistura_a_memoria_da_porta_velha_com_a_nova(base):
     velho.fechar()
     assert _linhas(novo) == len(_empresas())
     novo.fechar()
+
+
+def test_base_que_muda_durante_a_abertura_abre_de_novo_no_pedido_seguinte(
+    base, monkeypatch
+):
+    """A abertura leva segundos: o arquivo gravado nesse meio-tempo não pode ficar fora da impressão guardada."""
+    arquivo = next((base.pasta / prospeccao.EMPRESAS).glob("*.parquet"))
+    abrir_de_verdade = base.abrir
+
+    def abre_e_a_base_muda() -> Porta:
+        porta = abrir_de_verdade()
+        os.utime(
+            arquivo, ns=(1, 1)
+        )  # o recebedor grava depois que as views foram criadas
+        return porta
+
+    monkeypatch.setattr(compartilhada, "abrir_a_base", abre_e_a_base_muda)
+    with compartilhada.porta_do_pedido():
+        pass
+    monkeypatch.setattr(compartilhada, "abrir_a_base", abrir_de_verdade)
+    with compartilhada.porta_do_pedido():
+        pass
+    assert len(base.aberturas) == 2  # a impressão velha forçou a segunda abertura
+    with compartilhada.porta_do_pedido():
+        pass
+    assert len(base.aberturas) == 2  # e agora ela confere
+
+
+def test_o_cursor_do_pedido_fala_em_utc(base):
+    with compartilhada.porta_do_pedido() as porta:
+        fuso = porta.con.execute("SELECT current_setting('TimeZone')").fetchone()
+        assert fuso == ("UTC",)
