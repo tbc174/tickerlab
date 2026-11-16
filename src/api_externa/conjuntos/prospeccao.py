@@ -433,6 +433,12 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
         condicoes.append(_em("e.uf", busca.ufs, "u", parametros))
     if busca.municipios:
         condicoes.append(_em("e.municipio", busca.municipios, "m", parametros))
+    if busca.portes:
+        condicoes.append(_em("p.porte", busca.portes, "p", parametros))
+    if busca.naturezas:
+        condicoes.append(
+            _prefixos("p.natureza_juridica", busca.naturezas, "n", parametros)
+        )
     if busca.aberta_antes:
         condicoes.append("e.data_inicio_atividade < CAST($antes AS DATE)")
         parametros["antes"] = busca.aberta_antes.isoformat()
@@ -442,22 +448,6 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
     if busca.matriz is not None:
         condicoes.append("e.matriz = $matriz")
         parametros["matriz"] = busca.matriz
-    condicoes += _onde_da_empresa(busca, parametros)
-    condicoes += _onde_da_anvisa(busca, parametros)
-    if busca.depois_de:
-        condicoes.append(_depois_do_cursor(busca, parametros))
-    return condicoes, parametros
-
-
-def _onde_da_empresa(busca: Busca, parametros: dict[str, object]) -> list[str]:
-    """As condições que olham só colunas da empresa (porte, natureza, capital, filiais)."""
-    condicoes = []
-    if busca.portes:
-        condicoes.append(_em("p.porte", busca.portes, "p", parametros))
-    if busca.naturezas:
-        condicoes.append(
-            _prefixos("p.natureza_juridica", busca.naturezas, "n", parametros)
-        )
     if busca.capital_min is not None:
         condicoes.append("p.capital_social >= $capital_min")
         parametros["capital_min"] = busca.capital_min
@@ -467,7 +457,10 @@ def _onde_da_empresa(busca: Busca, parametros: dict[str, object]) -> list[str]:
     if busca.filiais_min is not None:
         condicoes.append("p.n_estabelecimentos >= $filiais_min")
         parametros["filiais_min"] = busca.filiais_min
-    return condicoes
+    condicoes += _onde_da_anvisa(busca, parametros)
+    if busca.depois_de:
+        condicoes.append(_depois_do_cursor(busca, parametros))
+    return condicoes, parametros
 
 
 def _onde_da_anvisa(busca: Busca, parametros: dict[str, object]) -> list[str]:
@@ -653,19 +646,6 @@ class LeitorDeProspeccao:
         if busca.usa_anvisa():
             campos += ", a.registros_anvisa_total, a.registros_anvisa_ativos"
             juncao += _juncao_da_anvisa(busca)
-        da_empresa = _onde_da_empresa(
-            busca, {}
-        )  # o mesmo texto, os parâmetros já estão em `parametros`
-        if da_empresa:
-            # a mesma exigência vista pelo lado da empresa, antes da junção: o DuckDB filtra as empresas e só
-            # então junta aos estabelecimentos (repetir a condição não muda o resultado; medido na máquina do
-            # servidor, a busca por natureza sem UF foi de 16 para 10 s, linha 956)
-            condicoes = [
-                *condicoes,
-                f"e.cnpj_basico IN (SELECT p.cnpj_basico FROM {empresa} p WHERE p.{MES} = $mes AND "
-                + " AND ".join(da_empresa)
-                + ")",
-            ]
         onde = " AND ".join(condicoes)
         if not _depende_da_empresa(busca):
             achadas = self.porta.con.execute(
