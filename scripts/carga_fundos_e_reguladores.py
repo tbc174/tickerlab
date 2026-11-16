@@ -10,7 +10,9 @@ Lê os arquivos que o arquivista já guardou no acervo (não baixa nada) e grava
 `fii_administradores` (`base/cvm_fip_fii.py`), `aneel_inadimplencia` e `aneel_indicadores_comerciais`
 (`base/aneel_indicadores.py`), `ans_idss` (`base/ans_idss.py`) e, do lote 2, `aneel_agentes`,
 `aneel_autos_de_infracao` e `aneel_termos_de_notificacao` (`base/aneel_fiscalizacao.py`) e, do lote 3, as cinco
-`bcb_*` (`base/bcb_cadastros.py`) e as duas `antt_*` (`base/antt_cadastros.py`). Só CNPJ de dígito certo entra; contato,
+`bcb_*` (`base/bcb_cadastros.py`) e as duas `antt_*` (`base/antt_cadastros.py`) e, da conferência de 14/11,
+`receita_regime_tributario`, `mte_pat`, `anm_tah`, `anatel_pados`, `anatel_produtos_homologados` e `anp_tancagem`
+(`base/cadastros_conferidos.py`). Só CNPJ de dígito certo entra; contato,
 endereço e nome de pessoa não chegam ao Parquet, e `trata_como_pessoa` marca o MEI e o empresário
 individual (ADR 0075). Feita para o servidor de casa (ADR 0031), depois do arquivista; recusa rodar sem
 a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo guardado.
@@ -30,6 +32,7 @@ from base import (
     ans_idss,
     antt_cadastros,
     bcb_cadastros,
+    cadastros_conferidos,
     cvm_fip_fii,
 )
 from src import acervo
@@ -45,6 +48,7 @@ MODULOS = (
     aneel_fiscalizacao,
     bcb_cadastros,
     antt_cadastros,
+    cadastros_conferidos,
 )
 
 

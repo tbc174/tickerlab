@@ -1,0 +1,112 @@
+{
+  "tabela": "mte_pat",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da empresa (14 dígitos com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres)",
+      "unidade": "texto"
+    },
+    "matriz_ou_filial": {
+      "descricao": "Matriz ou filial, como o MTE escreve",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Município do estabelecimento, como o MTE escreve",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla da unidade da federação do estabelecimento",
+      "unidade": "texto"
+    },
+    "registro_no_pat": {
+      "descricao": "Número de registro da empresa no PAT",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação da inscrição no PAT, como o MTE escreve",
+      "unidade": "texto"
+    },
+    "data_do_cadastro": {
+      "descricao": "Dia em que a empresa se inscreveu no PAT",
+      "unidade": "data (dia)"
+    },
+    "trabalhadores_ate_5_salarios": {
+      "descricao": "Trabalhadores atendidos que ganham até 5 salários mínimos (vazio quando o MTE não informa)",
+      "unidade": "número inteiro"
+    },
+    "trabalhadores_acima_de_5_salarios": {
+      "descricao": "Trabalhadores atendidos que ganham acima de 5 salários mínimos (vazio quando o MTE não informa)",
+      "unidade": "número inteiro"
+    },
+    "trabalhadores_atendidos": {
+      "descricao": "Total de trabalhadores atendidos (vazio quando o MTE não informa)",
+      "unidade": "número inteiro"
+    },
+    "id_na_fonte": {
+      "descricao": "Identificador da linha no arquivo da fonte",
+      "unidade": "texto"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "data_do_cadastro",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "data_do_cadastro": "aconteceu_em",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-17",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+  "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+  "pessoa": false,
+  "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+  "atraso": "A fonte não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}
