@@ -1,11 +1,13 @@
-// A Administração no app novo (linha 955, PR 2): as organizações da API por chave, só para ver. Quem entra é
-// decidido no servidor, a cada pedido (src/api_v1/administracao.py): para quem não é administrador a API
-// responde o 404 de um endereço que não existe, e a tela mostra "página não encontrada". O `administrador`
-// de /v1/eu só poupa o pedido e esconde o atalho do menu: não autoriza nada.
-// A tela não liga nem muda nada: conceder direito, vincular conta e ligar "pessoa na tela" são do dono, pelo
-// script. De uma chave aparece só o prefixo (a API nem manda o valor).
+// A Administração no app novo (linha 955, PRs 2 e 3): as organizações da API por chave, com as ações de
+// criar, suspender e reativar a organização e de emitir, trocar e revogar chaves. Quem entra e o que cada
+// ação pode é decidido no servidor, a cada pedido (src/api_v1/administracao.py): para quem não é
+// administrador a API responde o 404 de um endereço que não existe, e a tela mostra "página não encontrada".
+// O `administrador` de /v1/eu só poupa o pedido e esconde o atalho do menu: não autoriza nada.
+// A tela não liga permissão nem direito: conceder direito, vincular conta e ligar "pessoa na tela" são do
+// dono, pelo script. De uma chave aparece só o prefixo; o valor, só na caixa de quem acabou de emitir.
 import { type ReactNode, useId, useState } from "react";
 import { ENDERECO_DA_ADMINISTRACAO, TITULO_DA_ADMINISTRACAO } from "../administracao";
+import { mudar } from "../api";
 import { linkDoClassico } from "../classico";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
@@ -18,18 +20,34 @@ import { type Coluna, Tabela } from "../pecas/Tabela";
 import { Vazio } from "../pecas/Vazio";
 import type {
   ChaveDaOrganizacaoV1,
+  ChaveNovaV1,
   ConjuntoDesligadoV1,
   DireitoEmVigorV1,
+  MudouV1,
   OrganizacaoDaListaV1,
   OrganizacoesV1,
   PainelDaOrganizacaoV1,
 } from "../tiposDaAdministracao";
-import { usarPedido } from "../usarPedido";
+import {
+  Aviso,
+  ChaveNova,
+  Confirmacao,
+  Falha,
+  NovaOrganizacao,
+  ROTA_DAS_ORGANIZACOES,
+  useAcao,
+  usarLeitura,
+} from "./AcoesDaAdministracao";
 import { NaoEncontrada } from "./Avisos";
 
 const SEM_PARAMETROS = {};
-const ROTA_DAS_ORGANIZACOES = "/v1/admin/organizacoes";
 const ROTA_DA_ORGANIZACAO = "/v1/admin/organizacao";
+const ROTA_DE_SUSPENDER = "/v1/admin/organizacao/suspender";
+const ROTA_DE_REATIVAR = "/v1/admin/organizacao/reativar";
+const ROTA_DE_EMITIR = "/v1/admin/chaves/emitir";
+const ROTA_DE_TROCAR = "/v1/admin/chaves/rotacionar";
+const ROTA_DE_REVOGAR = "/v1/admin/chaves/revogar";
+const NADA_MUDOU = "Nada mudou: já estava assim.";
 // o 404 do painel: a organização saiu, ou o servidor deixou de reconhecer a conta como administradora
 const ORGANIZACAO_NAO_ENCONTRADA =
   "Organização não encontrada. Ela pode ter sido apagada, ou a sua conta deixou de ser administradora.";
@@ -50,7 +68,38 @@ const MOTIVOS_DO_DESLIGADO: Record<string, string> = {
   suspenso_para_todos: "Suspenso para todos",
 };
 
+const MOTIVOS_DA_SUSPENSAO: Record<string, string> = {
+  contrato: "Contrato",
+  pagamento: "Pagamento",
+  abuso: "Abuso",
+  pedido_do_cliente: "Pedido do cliente",
+  fonte: "Fonte",
+};
+// só estas ocupam vaga e ainda entram: as outras não têm o que trocar nem revogar
+const ESTADOS_QUE_TROCAM = new Set(["ativa"]);
+const ESTADOS_QUE_REVOGAM = new Set(["ativa", "de_saida"]);
+
 const finalidade = (codigo: string) => FINALIDADES[codigo] ?? codigo;
+const motivoDaSuspensao = (codigo: string) => MOTIVOS_DA_SUSPENSAO[codigo] ?? codigo;
+
+/** O que o painel sabe fazer; cada uma vira um pedido que o servidor confere de novo. */
+interface AcoesDoPainel {
+  ocupada: boolean;
+  /** Há uma chave nova ainda na tela: emitir ou trocar outra apagaria, sem aviso, o valor não copiado. */
+  chaveNaTela: boolean;
+  emitir(): void;
+  trocar(chave: ChaveDaOrganizacaoV1): void;
+  revogar(chave: ChaveDaOrganizacaoV1): void;
+  suspender(motivo: string): void;
+  reativar(): void;
+}
+
+/** A ação que espera o "sim" de quem clicou. */
+type Pendente =
+  | { acao: "trocar" | "revogar"; chave: ChaveDaOrganizacaoV1 }
+  | { acao: "suspender"; motivo: string }
+  | { acao: "reativar" }
+  | null;
 
 function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
   const id = useId();
@@ -64,7 +113,7 @@ function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
 
 // --- as tabelas do painel ---------------------------------------------------------------------
 
-const COLUNAS_DAS_CHAVES: Coluna<ChaveDaOrganizacaoV1>[] = [
+const COLUNAS_DOS_DADOS_DA_CHAVE: Coluna<ChaveDaOrganizacaoV1>[] = [
   { chave: "prefixo", titulo: "Prefixo", celula: (chave) => <code>{chave.prefixo}</code> },
   {
     chave: "estado",
@@ -86,6 +135,45 @@ const COLUNAS_DAS_CHAVES: Coluna<ChaveDaOrganizacaoV1>[] = [
     celula: (chave) => (chave.ultimo_uso ? formatarData(chave.ultimo_uso) : "Nunca usada"),
   },
 ];
+
+/** As colunas das chaves com a de ações: os botões só abrem a pergunta; quem faz é o "sim" dela. */
+function colunasDasChaves(
+  ocupada: boolean,
+  semChaveNova: boolean,
+  pedir: (pendente: Pendente) => void,
+): Coluna<ChaveDaOrganizacaoV1>[] {
+  const acoes: Coluna<ChaveDaOrganizacaoV1> = {
+    chave: "acoes",
+    titulo: "Ações",
+    celula: (chave) => (
+      <span className="acoes-da-administracao">
+        {ESTADOS_QUE_TROCAM.has(chave.estado) ? (
+          <button
+            type="button"
+            className="botao pequeno"
+            disabled={semChaveNova}
+            aria-label={`Trocar a chave ${chave.prefixo}`}
+            onClick={() => pedir({ acao: "trocar", chave })}
+          >
+            Trocar
+          </button>
+        ) : null}
+        {ESTADOS_QUE_REVOGAM.has(chave.estado) ? (
+          <button
+            type="button"
+            className="botao pequeno"
+            disabled={ocupada}
+            aria-label={`Revogar a chave ${chave.prefixo}`}
+            onClick={() => pedir({ acao: "revogar", chave })}
+          >
+            Revogar
+          </button>
+        ) : null}
+      </span>
+    ),
+  };
+  return [...COLUNAS_DOS_DADOS_DA_CHAVE, acoes];
+}
 
 const COLUNAS_DOS_DIREITOS: Coluna<DireitoEmVigorV1>[] = [
   { chave: "conjunto", titulo: "Conjunto", celula: (direito) => <code>{direito.conjunto}</code> },
@@ -142,8 +230,146 @@ function Situacao({ painel }: { painel: PainelDaOrganizacaoV1 }) {
   if (painel.suspensa_em === null) return null;
   return (
     <p role="note">
-      Suspensa em {formatarData(painel.suspensa_em)}. Motivo: {painel.motivo_da_suspensao ?? "sem motivo registrado."}
+      {`Suspensa em ${formatarData(painel.suspensa_em)}. `}
+      {painel.motivo_da_suspensao
+        ? `Motivo: ${motivoDaSuspensao(painel.motivo_da_suspensao)}.`
+        : "Sem motivo registrado."}
     </p>
+  );
+}
+
+interface PropriedadesDasChaves {
+  painel: PainelDaOrganizacaoV1;
+  acoes: AcoesDoPainel;
+  pendente: Pendente;
+  pedir(pendente: Pendente): void;
+}
+
+function Chaves({ painel, acoes, pendente, pedir }: PropriedadesDasChaves) {
+  const daChave = pendente?.acao === "trocar" || pendente?.acao === "revogar" ? pendente : null;
+  function confirmar() {
+    if (daChave === null) return;
+    pedir(null);
+    if (daChave.acao === "trocar") acoes.trocar(daChave.chave);
+    else acoes.revogar(daChave.chave);
+  }
+  const semChaveNova = acoes.ocupada || acoes.chaveNaTela;
+  return (
+    <Secao titulo="Chaves">
+      <div className="acoes-da-administracao">
+        <button type="button" className="botao" disabled={semChaveNova} onClick={acoes.emitir}>
+          Emitir chave nova
+        </button>
+      </div>
+      {acoes.chaveNaTela ? (
+        <p className="apagado">Tire a chave nova da tela para emitir ou trocar outra: uma chave por vez.</p>
+      ) : null}
+      <Tabela
+        legenda="Chaves da organização"
+        legendaEscondida
+        colunas={colunasDasChaves(acoes.ocupada, semChaveNova, pedir)}
+        linhas={painel.chaves}
+        chaveDaLinha={(chave) => chave.id}
+        vazio="Nenhuma chave emitida."
+      />
+      {daChave?.acao === "trocar" ? (
+        <Confirmacao
+          pergunta={`Trocar a chave ${daChave.chave.prefixo}? Sai uma chave nova, e a antiga continua valendo por alguns dias, para o cliente fazer a troca.`}
+          sim="Trocar mesmo"
+          ocupada={semChaveNova}
+          aoConfirmar={confirmar}
+          aoCancelar={() => pedir(null)}
+        />
+      ) : null}
+      {daChave?.acao === "revogar" ? (
+        <Confirmacao
+          pergunta={`Revogar a chave ${daChave.chave.prefixo}? Ela para de entrar na hora, e não dá para desfazer.`}
+          sim="Revogar mesmo"
+          ocupada={acoes.ocupada}
+          aoConfirmar={confirmar}
+          aoCancelar={() => pedir(null)}
+        />
+      ) : null}
+      <p className="apagado">
+        O valor de uma chave aparece uma única vez, para quem a emite ou troca. Aqui fica só o prefixo.
+      </p>
+    </Secao>
+  );
+}
+
+interface PropriedadesDaSuspensao {
+  painel: PainelDaOrganizacaoV1;
+  motivos: string[];
+  acoes: AcoesDoPainel;
+  pendente: Pendente;
+  pedir(pendente: Pendente): void;
+}
+
+function Suspensao({ painel, motivos, acoes, pendente, pedir }: PropriedadesDaSuspensao) {
+  const [motivo, setMotivo] = useState(motivos[0] ?? "");
+  if (painel.suspensa_em !== null) {
+    return (
+      <Secao titulo="Suspensão">
+        <p>A organização está suspensa: nenhuma chave dela entra.</p>
+        <div className="acoes-da-administracao">
+          <button type="button" className="botao" disabled={acoes.ocupada} onClick={() => pedir({ acao: "reativar" })}>
+            Reativar organização
+          </button>
+        </div>
+        {pendente?.acao === "reativar" ? (
+          <Confirmacao
+            pergunta={`Reativar ${painel.nome}? As chaves dela voltam a entrar.`}
+            sim="Reativar mesmo"
+            ocupada={acoes.ocupada}
+            aoConfirmar={() => {
+              pedir(null);
+              acoes.reativar();
+            }}
+            aoCancelar={() => pedir(null)}
+          />
+        ) : null}
+      </Secao>
+    );
+  }
+  return (
+    <Secao titulo="Suspensão">
+      <p>Suspender bloqueia todas as chaves da organização até ela ser reativada. Nada é apagado.</p>
+      <div className="formulario-do-app">
+        <div className="campos-do-formulario">
+          <label>
+            <span>Motivo</span>
+            <select value={motivo} onChange={(ev) => setMotivo(ev.target.value)}>
+              {motivos.map((codigo) => (
+                <option key={codigo} value={codigo}>
+                  {motivoDaSuspensao(codigo)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="botao"
+            disabled={acoes.ocupada}
+            onClick={() => pedir({ acao: "suspender", motivo })}
+          >
+            Suspender organização
+          </button>
+        </div>
+      </div>
+      {pendente?.acao === "suspender" ? (
+        <Confirmacao
+          pergunta={`Suspender ${painel.nome}? Nenhuma chave dela entra até a organização ser reativada.`}
+          sim="Suspender mesmo"
+          ocupada={acoes.ocupada}
+          aoConfirmar={() => {
+            const escolhido = pendente.motivo;
+            pedir(null);
+            acoes.suspender(escolhido);
+          }}
+          aoCancelar={() => pedir(null)}
+        />
+      ) : null}
+    </Secao>
   );
 }
 
@@ -162,8 +388,15 @@ function EquipeNaTela({ painel }: { painel: PainelDaOrganizacaoV1 }) {
   );
 }
 
-function PainelPronto({ painel }: { painel: PainelDaOrganizacaoV1 }) {
+interface PropriedadesDoPainel {
+  painel: PainelDaOrganizacaoV1;
+  motivos: string[];
+  acoes: AcoesDoPainel;
+}
+
+function PainelPronto({ painel, motivos, acoes }: PropriedadesDoPainel) {
   const id = useId();
+  const [pendente, setPendente] = useState<Pendente>(null);
   const suspensa = painel.suspensa_em !== null;
   return (
     <section aria-labelledby={id}>
@@ -178,19 +411,7 @@ function PainelPronto({ painel }: { painel: PainelDaOrganizacaoV1 }) {
       </p>
       <Situacao painel={painel} />
       <Numeros painel={painel} />
-      <Secao titulo="Chaves">
-        <Tabela
-          legenda="Chaves da organização"
-          legendaEscondida
-          colunas={COLUNAS_DAS_CHAVES}
-          linhas={painel.chaves}
-          chaveDaLinha={(chave) => chave.id}
-          vazio="Nenhuma chave emitida."
-        />
-        <p className="apagado">
-          O valor de uma chave aparece uma única vez, para quem a emite. Aqui fica só o prefixo.
-        </p>
-      </Secao>
+      <Chaves painel={painel} acoes={acoes} pendente={pendente} pedir={setPendente} />
       <Secao titulo="Direitos em vigor">
         <Tabela
           legenda="Direitos em vigor"
@@ -217,36 +438,110 @@ function PainelPronto({ painel }: { painel: PainelDaOrganizacaoV1 }) {
         </p>
       </Secao>
       <EquipeNaTela painel={painel} />
+      <Suspensao painel={painel} motivos={motivos} acoes={acoes} pendente={pendente} pedir={setPendente} />
     </section>
   );
 }
 
-function Painel({ id }: { id: string }) {
-  const pedido = usarPedido<PainelDaOrganizacaoV1>(ROTA_DA_ORGANIZACAO, { id });
-  if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Carregando a organização…" />;
-  if (pedido.estado === "erro") {
-    return <Erro erro={pedido.erro.tipo === "nao-encontrado" ? ORGANIZACAO_NAO_ENCONTRADA : pedido.erro} />;
+interface PropriedadesDoPainelPedido {
+  id: string;
+  motivos: string[];
+  /** Algo mudou que a lista mostra (a suspensão), ou o servidor deixou de achar o que a tela mostrava. */
+  aoMudarALista(): void;
+}
+
+function Painel({ id, motivos, aoMudarALista }: PropriedadesDoPainelPedido) {
+  const { pedido, recarregar } = usarLeitura<PainelDaOrganizacaoV1>(ROTA_DA_ORGANIZACAO, { id });
+  // a chave nova e o aviso ficam aqui, fora do painel: se a releitura falhar, a chave emitida não some
+  const [chaveNova, setChaveNova] = useState<ChaveNovaV1 | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const { ocupada, falha, executar } = useAcao(() => {
+    recarregar();
+    aoMudarALista();
+  });
+  function agir<T>(rota: string, corpo: unknown, aoDarCerto: (resposta: T) => void) {
+    setAviso(null);
+    executar((token) => mudar<T>("POST", rota, token, corpo), aoDarCerto);
   }
-  return <PainelPronto painel={pedido.dados} />;
+  function mostrarAChave(nova: ChaveNovaV1) {
+    setChaveNova(nova);
+    recarregar();
+  }
+  function feito(texto: string) {
+    setAviso(texto);
+    recarregar();
+  }
+  function mudouASuspensao(resposta: MudouV1, texto: string) {
+    feito(resposta.mudou ? texto : NADA_MUDOU);
+    aoMudarALista();
+  }
+  // uma chave por vez na tela: a segunda apagaria, sem aviso, o valor da primeira, que não dá para ver de novo
+  function pedirChave(rota: string, corpo: unknown) {
+    if (chaveNova !== null) return;
+    agir<ChaveNovaV1>(rota, corpo, mostrarAChave);
+  }
+  const acoes: AcoesDoPainel = {
+    ocupada,
+    chaveNaTela: chaveNova !== null,
+    emitir: () => pedirChave(ROTA_DE_EMITIR, { organizacao_id: id }),
+    trocar: (chave) => pedirChave(ROTA_DE_TROCAR, { organizacao_id: id, chave_id: chave.id }),
+    revogar: (chave) =>
+      agir<MudouV1>(ROTA_DE_REVOGAR, { organizacao_id: id, chave_id: chave.id }, () =>
+        feito("Chave revogada: ela não entra mais."),
+      ),
+    suspender: (motivo) =>
+      agir<MudouV1>(ROTA_DE_SUSPENDER, { id, motivo }, (resposta) =>
+        mudouASuspensao(resposta, "Organização suspensa: nenhuma chave entra."),
+      ),
+    reativar: () =>
+      agir<MudouV1>(ROTA_DE_REATIVAR, { id }, (resposta) =>
+        mudouASuspensao(resposta, "Organização reativada: as chaves voltam."),
+      ),
+  };
+  return (
+    <>
+      {chaveNova ? <ChaveNova key={chaveNova.id} chave={chaveNova} aoTirar={() => setChaveNova(null)} /> : null}
+      <Aviso texto={aviso} />
+      <Falha texto={falha} />
+      {pedido.estado === "carregando" && <Carregando tipo="painel" rotulo="Carregando a organização…" />}
+      {pedido.estado === "erro" && (
+        <Erro
+          erro={pedido.erro.tipo === "nao-encontrado" ? ORGANIZACAO_NAO_ENCONTRADA : pedido.erro}
+          tentarDeNovo={recarregar}
+        />
+      )}
+      {pedido.estado === "pronto" && <PainelPronto painel={pedido.dados} motivos={motivos} acoes={acoes} />}
+    </>
+  );
 }
 
 // --- a tela -----------------------------------------------------------------------------------
 
-function Organizacoes({ organizacoes }: { organizacoes: OrganizacaoDaListaV1[] }) {
-  const [escolhida, setEscolhida] = useState(organizacoes[0]?.id ?? "");
-  if (organizacoes.length === 0) {
-    return (
-      <Vazio frase="Nenhuma organização cadastrada. Por enquanto, criar uma organização é na Administração antiga." />
-    );
+function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar(): void }) {
+  const { organizacoes } = lista;
+  const [pedida, setPedida] = useState<string | null>(null);
+  const [criando, setCriando] = useState(organizacoes.length === 0);
+  const [aviso, setAviso] = useState<string | null>(null);
+  // a pedida vale enquanto estiver na lista (a recém-criada entra quando a lista recarrega); senão, a primeira
+  const escolhida = organizacoes.find((organizacao) => organizacao.id === pedida)?.id ?? organizacoes[0]?.id ?? null;
+  function escolher(id: string) {
+    setPedida(id);
+    setAviso(null);
+  }
+  function criada(nova: OrganizacaoDaListaV1) {
+    setPedida(nova.id);
+    setCriando(false);
+    setAviso(`Organização criada: ${nova.nome}.`);
+    recarregar();
   }
   return (
     <>
-      {organizacoes.length > 1 ? (
+      {organizacoes.length > 1 && escolhida !== null ? (
         <div className="formulario-do-app">
           <div className="campos-do-formulario">
             <label>
               <span>Organização</span>
-              <select value={escolhida} onChange={(ev) => setEscolhida(ev.target.value)}>
+              <select value={escolhida} onChange={(ev) => escolher(ev.target.value)}>
                 {organizacoes.map((organizacao) => (
                   <option key={organizacao.id} value={organizacao.id}>
                     {organizacao.nome}
@@ -258,20 +553,31 @@ function Organizacoes({ organizacoes }: { organizacoes: OrganizacaoDaListaV1[] }
           </div>
         </div>
       ) : null}
-      <Painel key={escolhida} id={escolhida} />
+      <div className="acoes-da-administracao">
+        <button type="button" className="botao" aria-expanded={criando} onClick={() => setCriando(!criando)}>
+          Nova organização
+        </button>
+      </div>
+      {criando ? <NovaOrganizacao planos={lista.planos_da_api} aoCriar={criada} aoNaoAchar={recarregar} /> : null}
+      <Aviso texto={aviso} />
+      {escolhida === null ? (
+        <Vazio frase="Nenhuma organização cadastrada. Crie a primeira no formulário acima." />
+      ) : (
+        <Painel key={escolhida} id={escolhida} motivos={lista.motivos_da_suspensao} aoMudarALista={recarregar} />
+      )}
     </>
   );
 }
 
 function AdministracaoAberta() {
-  const lista = usarPedido<OrganizacoesV1>(ROTA_DAS_ORGANIZACOES, SEM_PARAMETROS);
+  const { pedido: lista, recarregar } = usarLeitura<OrganizacoesV1>(ROTA_DAS_ORGANIZACOES, SEM_PARAMETROS);
   // o servidor disse que este endereço não existe para esta conta: a tela diz o mesmo
   if (lista.estado === "erro" && lista.erro.tipo === "nao-encontrado") return <NaoEncontrada />;
   return (
     <section>
       <Cabecalho
         titulo={TITULO_DA_ADMINISTRACAO}
-        descricao="As organizações da API por chave: situação, consumo do mês, chaves e o que o contrato liga. Só para ver."
+        descricao="As organizações da API por chave: situação, consumo do mês, chaves e o que o contrato liga."
         acoes={
           <a className="botao pequeno" href={linkDoClassico(ENDERECO_DA_ADMINISTRACAO)}>
             Abrir a Administração antiga
@@ -279,12 +585,11 @@ function AdministracaoAberta() {
         }
       />
       <p className="apagado">
-        As contas do app, o registro de ações, os eventos de cobrança e o acervo continuam na Administração antiga,
-        assim como criar, suspender e reativar uma organização e emitir, trocar e revogar chaves.
+        As contas do app, o registro de ações, os eventos de cobrança e o acervo continuam na Administração antiga.
       </p>
       {lista.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando as organizações…" />}
-      {lista.estado === "erro" && <Erro erro={lista.erro} />}
-      {lista.estado === "pronto" && <Organizacoes organizacoes={lista.dados.organizacoes} />}
+      {lista.estado === "erro" && <Erro erro={lista.erro} tentarDeNovo={recarregar} />}
+      {lista.estado === "pronto" && <Organizacoes lista={lista.dados} recarregar={recarregar} />}
     </section>
   );
 }
