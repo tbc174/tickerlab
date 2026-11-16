@@ -7,6 +7,8 @@ da base é alterado. O arquivo gravado é a fotografia que o `scripts/exportar_c
 `web/conteudo/base.json`; a data da medição vai junto e a página a mostra ("medido em DD/MM").
 Os cruzamentos da página inicial (`fatos.json`, só contagens) vão para `web/conteudo/fatos_da_base.json`.
 Plano do site para quem analisa, PRs 4 e 6.
+
+Roda: manual no servidor (registro na pasta privada); citado em vitrine.py.
 """
 
 import argparse

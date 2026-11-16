@@ -196,18 +196,41 @@ def _mostrar_secao(secao: Secao) -> None:
             )
             continue
         with st.expander(_titulo_da_tabela(chave)):
-            st.dataframe(_tabela_escrita(linhas), hide_index=True, width="stretch")
+            tabela = _tabela_escrita(linhas)
+            st.dataframe(
+                tabela,
+                hide_index=True,
+                width="stretch",
+                column_config=_colunas_com_link(tabela),
+            )
+
+
+SEM_LINK = escrever_celula(
+    None
+)  # "—": a célula sem link não pode virar um link para "—"
 
 
 def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
-    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não)."""
+    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não); na coluna da fonte
+    original, a célula vazia fica vazia de verdade, para a coluna de link."""
     tabela = pd.DataFrame(linhas)
-    return pd.DataFrame(
+    escrita = pd.DataFrame(
         {
             rotulo_da_coluna(c): [escrever_celula(v, c) for v in tabela[c]]
             for c in tabela
         }
     )
+    if dossie.ROTULO_DO_LINK in escrita.columns:
+        links = escrita[dossie.ROTULO_DO_LINK]
+        escrita[dossie.ROTULO_DO_LINK] = [None if v == SEM_LINK else v for v in links]
+    return escrita
+
+
+def _colunas_com_link(tabela: pd.DataFrame) -> dict[str, object]:
+    """A coluna da fonte original vira link clicável (o único lugar que depende do Streamlit)."""
+    if dossie.ROTULO_DO_LINK not in tabela.columns:
+        return {}
+    return {dossie.ROTULO_DO_LINK: st.column_config.LinkColumn(display_text="Abrir")}
 
 
 def _texto_do_markdown(texto: str) -> str:

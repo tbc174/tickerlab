@@ -16,5 +16,9 @@ resultado não muda e qual teste prova isso. -->
 - [ ] Funções novas curtas, com nome claro, tipo e docstring.
 - [ ] Nenhum número mágico novo; nenhum segredo, e-mail ou IP no código.
 - [ ] Testes do que mudou passando; `ruff check` e `ruff format --check` limpos.
-- [ ] Mudou o banco? Migração nova e consultas filtradas pelo usuário.
+- [ ] Mudou o banco? Migração nova (com `downgrade`) e consultas filtradas pelo usuário.
 - [ ] O trecho tocado ficou mais claro do que estava.
+- [ ] Pronto para trocar de interface: nenhum cálculo, regra ou texto novo em `telas/`; estado que importa no banco.
+- [ ] Casa em ordem: script novo com a linha `Roda:`; nada novo na raiz nem nos `requirements*.txt` sem a lista ou a exceção do teste.
+
+Feito por: <!-- IA e modelo, ou "Tiago" (AGENTS.md, "Várias IAs no mesmo projeto", regra 4) -->

@@ -5,6 +5,8 @@
 Roda uma vez por dia na VPS, na imagem do app, com o banco de produção (`TICKERLAB_DATABASE_URL`).
 Lê só a tabela `coletas` (`src/frescor_das_fontes.py`); o servidor manda o JSON ao Kuma, um monitor
 por fonte. Sai com 0 quando consegue escrever o JSON: fonte velha é estado, não erro do script.
+
+Roda: cron do VPS pelo frescor-das-fontes.sh (todo dia às 10h00).
 """
 
 import argparse

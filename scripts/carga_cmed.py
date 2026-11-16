@@ -10,6 +10,8 @@ Saída padrão: `<TICKERLAB_ACERVO>/base/cmed_precos/<lista>.parquet`; depois, s
 `anvisa_registros` já estiverem montados, diz quantas apresentações acham o produto registrado. Feita
 para o servidor de casa (ADR 0031), depois do arquivista; recusa rodar sem a versão do código
 (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhuma lista da CMED guardada.
+
+Roda: cron de casa pelo carga-conferencias.sh (todo dia às 6h00); citado em cmed.py, dicionario.py.
 """
 
 import argparse

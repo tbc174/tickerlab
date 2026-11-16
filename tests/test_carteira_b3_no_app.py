@@ -213,3 +213,20 @@ def test_quantidade_dos_proventos_vazia_quando_a_b3_nao_informa():
         tabela.loc[tabela["Provento"] == "Leilão de frações", "Quantidade"].iloc[0]
         == ""
     )
+
+
+def test_rebalanceamento_com_pesos_invalidos_mostra_o_aviso_em_vez_de_quebrar(
+    monkeypatch,
+):
+    """Pesos que não fecham 100% viram um aviso na tela, não uma exceção."""
+
+    def _recusar(_carteira, _alvo):
+        raise ValueError("Os pesos somam 90%, e precisam somar 100%.")
+
+    monkeypatch.setattr("telas.carteira_b3.ac.rebalancear", _recusar)
+    app = _abrir_com_o_exemplo()
+    assert not app.exception
+    assert "Os pesos somam 90%, e precisam somar 100%." in " ".join(
+        i.value for i in app.info
+    )
+    assert not app.error

@@ -847,6 +847,7 @@ def _insolvencia_da_cpfl(pasta: Path) -> None:
                 "data_situacao_especial": [D("2026-08-20")] * 2,
                 "mes_do_retrato": [D("2026-09-01")] * 2,
                 "origem_coletada_em": [D("2026-10-01")] * 2,
+                "trata_como_pessoa": [False] * 2,
                 "disponivel_em": [D("2026-09-15")] * 2,
             }
         ),
@@ -880,3 +881,184 @@ def test_ficha_sem_as_tabelas_diz_que_nao_consultou(tmp_path: Path) -> None:
     assert (
         "insolvencia" not in secoes
     )  # nenhuma das duas fontes lida: sem seção, sem promessa
+    assert "divida_com_a_uniao" not in secoes
+    assert "entrega_das_demonstracoes" not in secoes
+
+
+def _divida_e_entregas_da_cpfl(pasta: Path) -> None:
+    """Na PGFN, o retrato de 30/09 (público em 10/10) em duas linhas, um retrato que só fica público
+    depois de hoje e uma linha de pessoa natural (a porta a esconde); na CVM, a DFP no prazo, um ITR
+    entregue depois de hoje e um ITR com prazo no futuro."""
+    _gravar(
+        pasta,
+        "pgfn_divida/2026-09/sida-1-0.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL_DIGITOS] * 4,
+                "cnpj_basico": ["02429144"] * 4,
+                "tipo_divida": ["nao_previdenciaria", "fgts", "previdenciaria", "fgts"],
+                "regiao": ["SP"] * 4,
+                "tipo_devedor": ["principal"] * 4,
+                "tipo_situacao": ["Em cobrança"] * 4,
+                "situacao_inscricao": ["ATIVA EM COBRANCA"] * 4,
+                "ajuizado": [True, False, False, False],
+                "inscricoes": [3, 1, 2, 1],
+                "valor_consolidado": [1_200_000.0, 300_000.0, 7_777_777.0, 999_999.0],
+                "data_do_retrato": [D("2026-09-30")] * 4,
+                "disponivel_em": [D("2026-10-10")] * 2
+                + [D("2026-10-25"), D("2026-10-10")],
+                "trata_como_pessoa": [False, False, False, True],
+                "origem_sha256": ["b" * 64] * 4,
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "rotulos_atraso/rotulos_atraso.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL] * 3,
+                "empresa": ["CPFL ENERGIA S.A."] * 3,
+                "documento": ["DFP", "ITR", "ITR"],
+                "referencia": [D("2025-12-31"), D("2026-06-30"), D("2026-09-30")],
+                "prazo": [D("2026-03-31"), D("2026-08-14"), D("2026-11-16")],
+                "primeira_entrega": [D("2026-03-27"), D("2026-10-20"), pd.NaT],
+                "dias_uteis_de_atraso": [0, 45, 0],
+                "atrasou": [False, True, True],
+                "atraso_grave": [False, True, True],
+                "zona_cinzenta": [False] * 3,
+                "montado_em": ["2026-10-21T00:00:00-03:00"] * 3,
+            }
+        ),
+    )
+
+
+def test_ficha_traz_a_divida_e_as_entregas_so_com_fatos_ja_publicos(
+    tmp_path: Path,
+) -> None:
+    """Virada de 5/11/2026 (fase 1, PR 2): as duas tabelas entram como fato datado, sem o retrato que
+    ainda não era público, sem a linha de pessoa natural e sem a entrega que ainda não tinha acontecido."""
+    _mini_base(tmp_path / "base")
+    _divida_e_entregas_da_cpfl(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+
+    divida = secoes["divida_com_a_uniao"]
+    inscricoes = divida["tabelas"]["inscricoes_na_divida_ativa"]
+    assert [(l["tipo_divida"], l["publico_em"], l["link"]) for l in inscricoes] == [
+        ("fgts", "2026-10-10", "https://dadosabertos.pgfn.gov.br/"),
+        ("nao_previdenciaria", "2026-10-10", "https://dadosabertos.pgfn.gov.br/"),
+    ]
+    texto = json.dumps(divida, ensure_ascii=False)
+    assert "7777777" not in texto  # o retrato que só fica público em 25/10 fica fora
+    assert "999999" not in texto  # a linha de pessoa natural não sai da porta
+    assert "R$ 1,5 mi" in divida["paragrafos"][0]
+
+    entregas = secoes["entrega_das_demonstracoes"]["tabelas"]["entregas_de_dfp_e_itr"]
+    assert [
+        (l["documento"], l["prazo"], l["rotulo"], l["publico_em"]) for l in entregas
+    ] == [
+        ("ITR", "2026-08-14", "não entregue até 17/10/2026", None),
+        ("DFP", "2026-03-31", "no prazo", "2026-03-27"),
+    ]
+    assert "2026-10-20" not in json.dumps(secoes["entrega_das_demonstracoes"])
+
+
+def test_a_pgfn_e_lida_so_para_as_companhias_da_ficha(tmp_path: Path) -> None:
+    """A `pgfn_divida` tem milhões de linhas (toda empresa com dívida ativa): a noite lê só as raízes
+    de CNPJ das companhias com ticker, pela porta, em vez de carregar a tabela inteira e separá-la em
+    um DataFrame por raiz (revisão cruzada do PR 2)."""
+    _mini_base(tmp_path / "base")
+    _divida_e_entregas_da_cpfl(tmp_path / "base")
+    _gravar(
+        tmp_path / "base",
+        "pgfn_divida/2026-09/sida-1-1.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["99999999000199"],
+                "cnpj_basico": ["99999999"],
+                "tipo_divida": ["fgts"],
+                "regiao": ["RJ"],
+                "tipo_devedor": ["principal"],
+                "tipo_situacao": ["Em cobrança"],
+                "situacao_inscricao": ["ATIVA EM COBRANCA"],
+                "ajuizado": [False],
+                "inscricoes": [1],
+                "valor_consolidado": [1.0],
+                "data_do_retrato": [D("2026-09-30")],
+                "disponivel_em": [D("2026-10-10")],
+                "trata_como_pessoa": [False],
+                "origem_sha256": ["c" * 64],
+            }
+        ),
+    )
+    with Porta(tmp_path / "base") as porta:
+        entradas = gerar_dossies.ler_entradas(
+            gerar_dossies.Leitor(porta), D("2026-10-17 07:00")
+        )
+    assert entradas.pgfn_divida is not None
+    assert set(entradas.pgfn_divida) == {CPFL_DIGITOS[:8]}  # a Sem Nada não tem linha
+
+
+def _trocas_com_uma_de_pessoa(pasta: Path, marca: list[object] | None) -> None:
+    """Duas trocas da CPFL: entre firmas das redes e uma com auditor sem CNPJ de firma (que pode ser
+    pessoa física). `marca` é a coluna `trata_como_pessoa`; None grava o arquivo antigo, sem ela."""
+    trocas = pd.DataFrame(
+        {
+            "cnpj": [CPFL, CPFL],
+            "efetiva_em": [D("2020-04-01"), D("2025-04-01")],
+            "anterior": ["KPMG", "Auditoria Sem Registro"],
+            "novo": ["Auditoria Sem Registro", "Deloitte"],
+            "anos_com_o_anterior": [5.0, 5.0],
+            "conhecido_em": [D("2020-05-10"), D("2025-05-10")],
+        }
+    )
+    if marca is not None:
+        trocas["trata_como_pessoa"] = marca
+    _gravar(pasta, "trocas_de_auditor/trocas.parquet", trocas)
+
+
+def _trocas_na_ficha(saida: Path) -> list[dict]:
+    texto = (saida / "2026-10-17" / f"{CPFL_DIGITOS}.json").read_text(encoding="utf-8")
+    assert "Auditoria Sem Registro" not in texto
+    ficha = json.loads(texto)
+    auditor = next(s for s in ficha["secoes"] if s["chave"] == "auditor_e_controladas")
+    return auditor["tabelas"].get("trocas_de_auditor", [])
+
+
+@pytest.mark.parametrize(
+    "marca",
+    [
+        [True, True],
+        [True, None],  # vazia: na dúvida é pessoa
+        None,  # arquivo de antes da marca: a porta não serve linha nenhuma
+    ],
+)
+def test_troca_marcada_como_pessoa_nao_chega_a_ficha(
+    tmp_path: Path, marca: list[object] | None
+) -> None:
+    """A ficha lê as trocas pela porta, que tira as linhas com `trata_como_pessoa` (fila 789, ADR
+    0075): o nome do auditor que pode ser pessoa física não chega à ficha, nem ao VPS com ela."""
+    _mini_base(tmp_path / "base")
+    _trocas_com_uma_de_pessoa(tmp_path / "base", marca)
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    assert _trocas_na_ficha(tmp_path / "dossies") == []
+
+
+def test_troca_sem_a_marca_chega_a_ficha(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    trocas = pd.DataFrame(
+        {
+            "cnpj": [CPFL],
+            "efetiva_em": [D("2025-04-01")],
+            "anterior": ["KPMG"],
+            "novo": ["Deloitte"],
+            "anos_com_o_anterior": [5.0],
+            "conhecido_em": [D("2025-05-10")],
+            "trata_como_pessoa": [False],
+        }
+    )
+    _gravar(tmp_path / "base", "trocas_de_auditor/trocas.parquet", trocas)
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    assert [t["novo"] for t in _trocas_na_ficha(tmp_path / "dossies")] == ["Deloitte"]

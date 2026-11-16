@@ -39,8 +39,12 @@ VIZINHOS: dict[str, dict] = {
     "vol_alvo_0.30": {"vol_alvo": 0.30},
     "janela_da_vol_72": {"janela_da_vol": 72},
     "janela_da_vol_108": {"janela_da_vol": 108},
-    "janelas_x0.8": {"janelas": tc.escalar_janelas(tc.JANELAS, 0.8)},
-    "janelas_x1.2": {"janelas": tc.escalar_janelas(tc.JANELAS, 1.2)},
+    "janelas_x0.8": {
+        "janelas": tc.escalar_janelas(tc.JANELAS, criterio_quant.FATOR_DO_PLATO_ABAIXO)
+    },
+    "janelas_x1.2": {
+        "janelas": tc.escalar_janelas(tc.JANELAS, criterio_quant.FATOR_DO_PLATO_ACIMA)
+    },
 }
 FRACAO_DO_CORTE = rodar_p0_3.FRACAO_DO_CORTE
 T_ALVO = 3.0  # a régua "anos ≈ (t/SR)²" do pré-registro usa o t do item A5

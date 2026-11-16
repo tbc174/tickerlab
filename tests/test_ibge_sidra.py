@@ -90,20 +90,30 @@ def test_nome_de_coleta_nao_se_repete():
     assert len(nomes) == len(set(nomes))
 
 
-def test_nenhuma_coleta_e_trimestral_nem_de_outra_frequencia():
-    """O leitor só entende AAAAMM e AAAA; o trimestral é o lote 2."""
-    assert {c.frequencia for c in ibge_sidra.COLETAS} <= {"mensal", "anual"}
+def test_toda_coleta_tem_uma_frequencia_que_o_leitor_entende():
+    """Mensal (AAAAMM), trimestral (AAAATT) ou anual (AAAA); outra coisa o leitor leria errado."""
+    assert {c.frequencia for c in ibge_sidra.COLETAS} <= {
+        "mensal",
+        "trimestral",
+        "anual",
+    }
 
 
 @pytest.mark.parametrize("coleta", ibge_sidra.COLETAS, ids=lambda c: c.nome)
 def test_nenhum_pedido_passa_do_limite_de_valores_do_sidra(coleta):
     """Primeira carga (desde 2010): cada pedido, do menor ao maior território, cabe nos 50.000."""
-    periodo = "201001-202610" if coleta.frequencia == "mensal" else "2010-2026"
+    periodo = {"mensal": "201001-202610", "trimestral": "201001-202604"}.get(
+        coleta.frequencia, "2010-2026"
+    )
     for territorio in coleta.territorios:
         celulas = coleta._celulas_por_periodo(territorio)
         for bloco in coleta._blocos(periodo, territorio):
             de, ate = bloco.split("-")
-            periodos = ibge_sidra._indice(ate) - ibge_sidra._indice(de) + 1
+            periodos = (
+                ibge_sidra._indice(ate, coleta.frequencia)
+                - ibge_sidra._indice(de, coleta.frequencia)
+                + 1
+            )
             assert periodos * celulas <= ibge_sidra.VALORES_POR_PEDIDO_NO_SIDRA
 
 
@@ -187,6 +197,65 @@ def test_data_de_referencia_mensal_e_anual():
     assert ibge_sidra.data_de_referencia("2024") == date(2024, 12, 31)
     with pytest.raises(ibge_sidra.RespostaInesperada):
         ibge_sidra.data_de_referencia("2024T1")
+
+
+def test_seis_digitos_continuam_sendo_mes_quando_a_frequencia_nao_e_trimestral():
+    """Regressão do lote 2: `202602` é fevereiro nas séries mensais (e na PNAD, que termina
+    no mês), mesmo agora que o leitor também entende AAAATT."""
+    assert ibge_sidra.data_de_referencia("202602") == date(2026, 2, 1)
+    assert ibge_sidra.data_de_referencia("202602", "mensal") == date(2026, 2, 1)
+
+
+@pytest.mark.parametrize(
+    ("periodo", "esperado"),
+    [
+        ("202601", date(2026, 3, 31)),
+        ("202602", date(2026, 6, 30)),
+        ("202603", date(2026, 9, 30)),
+        ("202604", date(2026, 12, 31)),
+        ("202004", date(2020, 12, 31)),
+    ],
+)
+def test_trimestre_vai_para_o_ultimo_dia_dele(periodo, esperado):
+    assert ibge_sidra.data_de_referencia(periodo, "trimestral") == esperado
+
+
+@pytest.mark.parametrize("periodo", ["202600", "202605", "202612", "2026", "2026T2"])
+def test_trimestre_que_nao_existe_para_a_leitura(periodo):
+    with pytest.raises(ibge_sidra.RespostaInesperada):
+        ibge_sidra.data_de_referencia(periodo, "trimestral")
+
+
+def test_a_resposta_trimestral_do_abate_vira_valores_no_fim_do_trimestre():
+    valores = ibge_sidra.ler_resposta(_resposta("abate_bovinos.json"), "trimestral")
+    assert {v.referencia for v in valores} == {date(2026, 3, 31), date(2026, 6, 30)}
+    cabecas = [v for v in valores if v.variavel == 284]
+    assert cabecas[0].valor == 10311847.0
+    assert cabecas[0].categorias == (115236, 992, 118225)
+
+
+def test_o_mesmo_periodo_lido_como_mensal_nao_vira_trimestre():
+    valores = ibge_sidra.ler_resposta(_resposta("abate_bovinos.json"))
+    assert {v.referencia for v in valores} == {date(2026, 1, 1), date(2026, 2, 1)}
+
+
+def test_a_pnad_termina_no_mes_do_periodo_e_a_serie_diz_isso():
+    valores = ibge_sidra.ler_resposta(_resposta("pnad_desocupacao.json"))
+    assert [v.referencia for v in valores] == [
+        date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1),
+    ]  # fmt: skip
+    coleta = ibge_sidra.COLETAS_POR_NOME["pnad-desocupacao"]
+    serie = ibge_sidra.serie_do_acervo(
+        coleta.tabela, valores[0], coleta.frequencia, coleta.rotulo_do_periodo
+    )
+    assert "trimestre móvel terminado em" in serie.nome
+    assert serie.frequencia == "mensal"
+
+
+def test_serie_sem_rotulo_de_periodo_mantem_o_nome_de_antes():
+    valores = ibge_sidra.ler_resposta(_resposta("pimpf_secoes.json"))
+    serie = ibge_sidra.serie_do_acervo(8888, valores[0], "mensal")
+    assert "trimestre" not in serie.nome
 
 
 def test_pmc_tem_brasil_e_uf():
@@ -362,3 +431,110 @@ def test_ipca15_e_inpc_reaproveitam_os_itens_do_ipca():
     assert (
         por_nome["inpc-itens"].classificacoes == por_nome["ipca-itens"].classificacoes
     )
+
+
+# --- lote 2: séries trimestrais (ids conferidos nos metadados do SIDRA em 05/11/2026) --------------
+LOTE_2 = {5932, 1621, 1846, 1092, 1093, 1094, 1086, 6381, 6390, 6392}
+POR_TABELA = {c.tabela: c for c in ibge_sidra.COLETAS}
+
+
+def test_lote_2_do_levantamento_esta_nas_coletas():
+    assert set(POR_TABELA) >= LOTE_2
+
+
+def test_pib_abate_e_leite_sao_trimestrais_e_a_pnad_e_mensal_de_trimestre_movel():
+    for tabela in (5932, 1621, 1846, 1092, 1093, 1094, 1086):
+        assert POR_TABELA[tabela].frequencia == "trimestral"
+    for tabela in (6381, 6390, 6392):
+        assert POR_TABELA[tabela].frequencia == "mensal"
+        assert "trimestre móvel terminado em" in POR_TABELA[tabela].rotulo_do_periodo
+
+
+def test_os_ids_do_pib_vem_dos_metadados_do_sidra():
+    assert POR_TABELA[5932].variaveis == (6561, 6564, 6562)
+    assert POR_TABELA[1621].variaveis == (584,)
+    assert POR_TABELA[1846].variaveis == (585,)
+    for tabela in (5932, 1621, 1846):
+        setores = POR_TABELA[tabela].classificacoes[11255]
+        assert {90707, 90687, 90691, 90696, 93404, 93406, 93407, 93408} <= set(setores)
+        assert POR_TABELA[tabela].territorios == ("n1/all",)
+
+
+def test_abate_e_leite_pedem_o_total_do_trimestre_e_a_inspecao_total():
+    for tabela in (1092, 1093, 1094):
+        assert POR_TABELA[tabela].variaveis == (284, 285)
+        assert POR_TABELA[tabela].classificacoes[12716] == (115236,)
+        assert POR_TABELA[tabela].classificacoes[12529] == (118225,)
+    assert POR_TABELA[1092].classificacoes[18] == (992,)
+    assert POR_TABELA[1086].variaveis == (282, 2522)
+    assert POR_TABELA[1086].territorios == ("n1/all", "n3/all")
+
+
+def test_pnad_pede_so_o_total_do_brasil():
+    assert POR_TABELA[6381].variaveis == (4099,)
+    assert POR_TABELA[6390].variaveis == (5933,)
+    assert POR_TABELA[6392].variaveis == (6293,)
+    for tabela in (6381, 6390, 6392):
+        assert POR_TABELA[tabela].classificacoes == {}
+        assert POR_TABELA[tabela].territorios == ("n1/all",)
+
+
+def test_url_do_abate_de_bovinos_pede_o_trimestre_no_formato_do_sidra():
+    coleta = ibge_sidra.COLETAS_POR_NOME["abate-bovinos"]
+    assert coleta.urls("202601-202602") == [
+        (
+            "https://apisidra.ibge.gov.br/values/t/1092/n1/all/v/284,285/p/202601-202602"
+            "/c12716/115236/c18/992/c12529/118225"
+        ),
+        (
+            "https://apisidra.ibge.gov.br/values/t/1092/n3/all/v/284,285/p/202601-202602"
+            "/c12716/115236/c18/992/c12529/118225"
+        ),
+    ]
+
+
+def test_blocos_trimestrais_cobrem_o_periodo_sem_buraco_nem_repeticao():
+    # variáveis demais para caber mais de 1 trimestre por pedido em UF
+    coleta = ibge_sidra.Coleta(
+        "teste", 1, tuple(range(1000)), {}, ("n3/all",), "trimestral"
+    )
+    assert coleta._blocos("202503-202602", "n3/all") == [
+        "202503-202503", "202504-202504", "202601-202601", "202602-202602",
+    ]  # fmt: skip
+
+
+def test_trimestre_conta_de_4_em_4_por_ano_e_nao_de_12_em_12():
+    (bloco,) = POR_TABELA[5932]._blocos("201001-202604", "n1/all")
+    assert bloco == "201001-202604"
+    assert (
+        ibge_sidra._indice("202604", "trimestral")
+        - ibge_sidra._indice("202601", "trimestral")
+        == 3
+    )
+    assert (
+        ibge_sidra._indice("202601", "trimestral")
+        - ibge_sidra._indice("202504", "trimestral")
+        == 1
+    )
+
+
+def test_nome_da_serie_cabe_na_coluna_do_catalogo_e_guarda_o_local_e_o_rotulo():
+    """`series.nome` tem 120 caracteres: o que passa disso (a variável da PNAD é longa) é cortado
+    na variável, nunca no rótulo do período nem no local."""
+    valor = ibge_sidra.ler_resposta(_resposta("pnad_desocupacao.json"))[0]
+    coleta = ibge_sidra.COLETAS_POR_NOME["pnad-desocupacao"]
+    serie = ibge_sidra.serie_do_acervo(
+        coleta.tabela, valor, coleta.frequencia, coleta.rotulo_do_periodo
+    )
+    assert len(serie.nome) <= ibge_sidra.NOME_MAXIMO_DA_SERIE
+    assert "…" in serie.nome
+    assert serie.nome.endswith("Brasil (trimestre móvel terminado em; IBGE/SIDRA)")
+
+
+@pytest.mark.parametrize(
+    "arquivo", sorted(p.name for p in EXEMPLOS.glob("*.json")), ids=str
+)
+def test_nome_de_toda_serie_dos_exemplos_cabe_no_catalogo(arquivo):
+    for valor in ibge_sidra.ler_resposta(_resposta(arquivo)):
+        nome = ibge_sidra.serie_do_acervo(1, valor, "mensal").nome
+        assert len(nome) <= ibge_sidra.NOME_MAXIMO_DA_SERIE

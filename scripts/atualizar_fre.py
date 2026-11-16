@@ -6,6 +6,8 @@
 As tabelas de dividendos, desdobramentos, grupamentos, bonificações e aumentos de capital só existem
 no FRE aberto até o de 2022 (Resolução CVM 59): é uma carga de uma vez, sem cron. Cada arquivo vai
 para o acervo e o registro de coletas (fonte `cvm-fre`). Um ano que não existe na CVM é pulado.
+
+Roda: manual (python -m scripts.atualizar_fre); citado em fre.py.
 """
 
 import argparse

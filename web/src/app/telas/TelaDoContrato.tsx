@@ -3,8 +3,8 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { CabecalhoDaTela } from "../CabecalhoDaTela";
-import { Carregando, type FormatoDoEsqueleto } from "../Carregando";
+import { CabecalhoDaTela } from "../pecas/Cabecalho";
+import { Carregando, type FormatoDoEsqueleto } from "../pecas/Carregando";
 import {
   Formulario,
   buscaDosValores,
@@ -13,7 +13,7 @@ import {
   valoresIniciais,
 } from "../Formulario";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 interface Propriedades<T> {
   pagina: PaginaDoApp;
@@ -52,7 +52,7 @@ export function TelaDoContrato<T>({ pagina, carregando, esqueleto = "painel", re
       {pedido.estado === "carregando" ? (
         <Carregando tipo={esqueleto} rotulo={carregando} />
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         resultado(pedido.dados)
       )}

@@ -557,6 +557,14 @@ def test_migracao_0010_vai_e_volta(tmp_path):
         ("Alienação de imobilizado e intangível", False),
         ("Baixa de imobilizado", False),
         ("Aplicação financeira de longo prazo", False),
+        # concessionárias: a obra vai para o ativo contratual ou o ativo financeiro da concessão
+        ("Concessão Serviço Público (Ativo Contratual)", True),
+        ("Aquisição de ativo contratual", True),
+        ("Adições ao ativo financeiro da concessão", True),
+        ("Ativo financeiro de concessão", True),
+        ("Recebimento de ativo financeiro da concessão", False),
+        ("Aplicação em ativo financeiro", False),
+        ("Venda de ativo contratual", False),
     ],
 )
 def test_capex_pela_descricao_real_das_empresas(descricao, capex):

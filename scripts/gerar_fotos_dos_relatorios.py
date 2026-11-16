@@ -8,6 +8,9 @@ cores e os gráficos ficam de fora, para a foto não quebrar a cada ajuste visua
 `tests/test_fotos_dos_relatorios.py` gera de novo e compara: se um número ou uma seção mudar sem
 querer, ele falha e mostra a seção e o número que mudaram. Rodar este script **só** depois de mudar
 um relatório de propósito, e explicar a mudança no PR (o diff do JSON mostra o que mudou).
+
+Roda: manual (python -m scripts.gerar_fotos_dos_relatorios); coberto por
+test_fotos_dos_relatorios.py.
 """
 
 import json

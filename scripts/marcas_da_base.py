@@ -6,6 +6,8 @@ Para cada tabela (a pasta, ou a pasta e o nome quando a pasta guarda várias), a
 dos arquivos dela, as fontes e os endereços sem fonte conhecida (`base/licenca.py`). As que ficam
 fora dos usos (`FONTES_FORA_DOS_USOS`, hoje vazia) vêm primeiro; a marca das outras é informação. Versões antigas
 (`.vN`) ficam de fora.
+
+Roda: manual (python -m scripts.marcas_da_base); sem uso registrado em 05/11/2026.
 """
 
 import argparse

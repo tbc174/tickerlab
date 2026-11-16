@@ -18,7 +18,7 @@ from src.banco.coletas import com_registro
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "securitizacao"
 AGORA = datetime(2026, 10, 26, 18, tzinfo=UTC)
 CNPJ_FORMATADO = re.compile(r"\d\d\.\d{3}\.\d{3}/\d{4}-\d\d")
-CPF_FICTICIO = "52998224725"  # dígitos verificadores certos, de ninguém
+CPF_FICTICIO = "88800000127"  # dígitos verificadores certos, de ninguém
 URLS = {
     "cvm-cri": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_CRI/DADOS/inf_mensal_cri_2026.zip",
     "cvm-cra": "https://dados.cvm.gov.br/dados/SECURIT/DOC/INF_MENSAL_CRA/DADOS/inf_mensal_cra_2026.zip",
@@ -179,3 +179,22 @@ def test_a_montagem_junta_cri_cra_e_ots_num_arquivo_por_ano(banco, tmp_path):
         tmp_path / "base" / "securitizacao_certificados" / "2026.parquet"
     )
     assert set(certificados["produto"]) == {"CRI", "CRA", "OTS"}
+
+
+def test_a_montagem_ignora_os_outros_arquivos_da_fonte_que_nao_sao_o_informe_mensal(
+    banco, tmp_path
+):
+    """O acervo guarda do CRI e do CRA também os `dfin_*.csv` e o `meta_*.txt`: não são zip."""
+    for fonte, nome in ARQUIVO_DA_FONTE.items():
+        _guardar(fonte, nome)
+    base = "https://dados.cvm.gov.br/dados/SECURIT/DOC/DFIN_CRI"
+    for url, texto in (
+        (f"{base}/DADOS/dfin_cri_2026.csv", b"CNPJ_Emissor;X\n1;2\n"),
+        (f"{base}/META/meta_dfin_cri.txt", b"------\nmeta\n"),
+    ):
+        com_registro("cvm-cri", lambda _, t=texto: t)(url)
+    with banco.connect() as conexao:
+        linhas = historico.montar(
+            "securitizacao_certificados", conexao, tmp_path / "base", AGORA
+        )
+    assert set(linhas) == {2026} and linhas[2026] > 0

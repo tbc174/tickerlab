@@ -29,17 +29,35 @@ COLUNAS = (
     "codigo_do_pais", "pais", "ano", "elemento", "tipo", "valor", "unidade", "sinalizador", "divulgado_em",
 )  # fmt: skip
 CHAVE = ["codigo_do_pais", "ano", "elemento"]
+PEDACO_DO_CSV = (
+    200_000  # linhas por pedaço: o CSV da FAO tem ~545 MB e não cabe inteiro na memória
+)
 PRIMEIRO_CODIGO_DE_AGREGADO = (
     5000  # na numeração da FAO, a partir daqui são grupos de países
 )
 
 
-def _csv_do_zip(conteudo: bytes) -> bytes:
-    with zipfile.ZipFile(io.BytesIO(conteudo)) as arquivo:
-        nomes = [n for n in arquivo.namelist() if n.lower().endswith(".csv")]
-        if len(nomes) != 1:
-            raise ValueError(f"FAOSTAT: esperava 1 CSV no zip, achei {len(nomes)}")
-        return arquivo.read(nomes[0])
+def _nome_do_csv_de_dados(arquivo: zipfile.ZipFile) -> str:
+    """O zip real traz também códigos de país, elementos, flags e itens: só o `All_Data` tem a produção."""
+    nomes = [n for n in arquivo.namelist() if n.lower().endswith(".csv")]
+    if len(nomes) > 1:
+        nomes = [n for n in nomes if "all_data" in n.lower()]
+    if len(nomes) != 1:
+        raise ValueError(f"FAOSTAT: esperava 1 CSV de dados no zip, achei {len(nomes)}")
+    return nomes[0]
+
+
+def _so_o_cafe(arquivo: zipfile.ZipFile) -> pd.DataFrame:
+    """Lê o CSV (centenas de MB, todas as culturas) em pedaços e guarda só o café verde."""
+    with arquivo.open(_nome_do_csv_de_dados(arquivo)) as csv:
+        pedacos = pd.read_csv(
+            csv,
+            dtype=str,
+            keep_default_na=False,
+            encoding="utf-8-sig",
+            chunksize=PEDACO_DO_CSV,
+        )
+        return pd.concat([p[p["Item"] == PRODUTO] for p in pedacos], ignore_index=True)
 
 
 def _fator(elemento: str, unidade_da_fonte: str) -> float:
@@ -53,12 +71,8 @@ def _fator(elemento: str, unidade_da_fonte: str) -> float:
 
 def ler(conteudo: bytes, disponivel_em: date) -> pd.DataFrame:
     """O café verde dos países de um zip baixado em `disponivel_em`."""
-    bruto = pd.read_csv(
-        io.BytesIO(_csv_do_zip(conteudo)),
-        dtype=str,
-        keep_default_na=False,
-        encoding="utf-8-sig",
-    )
+    with zipfile.ZipFile(io.BytesIO(conteudo)) as arquivo:
+        bruto = _so_o_cafe(arquivo)
     bruto = bruto[(bruto["Item"] == PRODUTO) & bruto["Element"].isin(ELEMENTOS)]
     bruto = bruto[pd.to_numeric(bruto["Area Code"]) < PRIMEIRO_CODIGO_DE_AGREGADO]
     fatores = [

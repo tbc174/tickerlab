@@ -1,14 +1,16 @@
 """P0-5: a rodada completa com dados sintéticos e um registro temporário, e o carregador do IPE."""
 
+import dataclasses
 import io
 import sys
 
 import pandas as pd
 import pytest
 
-from tests.ajudantes_pead import TICKERS, dados_sinteticos, deslistar
+from tests.ajudantes_pead import CNPJS, DATAS, TICKERS, dados_sinteticos, deslistar
 from trader import criterio_quant
 from trader.estrategias import dados_f_b3, dados_pead, pead
+from trader.estrategias import fatores_b3 as fb
 from trader.estrategias import rodar_pead as rodar
 
 # A rodada do fixture de módulo demora; num processo só ela roda uma vez (CI com --dist loadgroup).
@@ -135,6 +137,23 @@ def test_relatorio_e_escrito_com_limites_e_cuidados(rodada, tmp_path):
     assert "Por tercil da SUE" in texto
     assert "## Limites e cuidados" in texto
     assert texto.count("recomendação de investimento") >= 2
+
+
+def test_frase_da_recuperacao_judicial_diz_o_que_o_universo_faz(rodada, tmp_path):
+    """Regressão (#855): o texto dizia "não é filtrada", mas `elegiveis_em` já tira quem está em RJ."""
+    dia = pd.Timestamp("2015-06-30")
+    cnpj = CNPJS[TICKERS[0]]
+    dados = dados_sinteticos()
+    assert cnpj in set(fb.elegiveis_em(dia, dados)["cnpj"])
+    em_rj = pd.DataFrame({"cnpj": [cnpj], "inicio": [DATAS[0]], "fim": [pd.NaT]})
+    com_rj = dataclasses.replace(dados, recuperacao_judicial=em_rj)
+    assert cnpj not in set(fb.elegiveis_em(dia, com_rj)["cnpj"])
+
+    frase = rodar.FRASE_DA_RECUPERACAO_JUDICIAL
+    assert "não é filtrada" not in frase
+    assert "universo" in frase and "sai" in frase
+    texto = rodar.escrever_relatorio(rodada[2], tmp_path).read_text(encoding="utf-8")
+    assert f"- {frase}" in texto
 
 
 # --- a base ---------------------------------------------------------------------------------------

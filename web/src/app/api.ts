@@ -39,6 +39,8 @@ const ROTA_DA_V1 = /^\/v1(\/[a-z0-9_-]+)+$/;
 const CAMPOS_FORA_DOS_LIMITES = "Algum campo está fora dos limites. Confira os valores e tente de novo.";
 const SEM_CORPO = 204;
 const SEM_CONEXAO = "Sem conexão com o TickerLab. Confira a internet e tente de novo.";
+const FIM_DA_LINHA = /\r?\n/;
+const LINHA_ILEGIVEL ="A resposta chegou com defeito. Tente de novo em instantes.";
 
 function consulta(parametros: Parametros): string {
   const busca = new URLSearchParams();
@@ -170,4 +172,57 @@ export async function mudar<T>(
   if (!resposta.ok) throw await erroDaResposta(resposta);
   if (resposta.status === SEM_CORPO) return undefined as T;
   return (await resposta.json()) as T;
+}
+
+/** POST numa rota da v1 que responde em linhas de JSON (NDJSON, o chat): `aoEvento` recebe cada linha, na
+ * ordem em que chega. Erro antes da primeira linha vira `ErroDaApi`, como em `pedir`; cancelar pelo `sinal`
+ * para de ler. */
+export async function pedirEmLinhas(
+  rota: string,
+  token: string,
+  corpo: unknown,
+  aoEvento: (evento: unknown) => void,
+  sinal?: AbortSignal,
+): Promise<void> {
+  if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, {
+      method: "POST",
+      headers: { ...cabecalhosPara(token), "Content-Type": "application/json" },
+      body: JSON.stringify(corpo),
+      credentials: "same-origin",
+      signal: sinal,
+    });
+  } catch (falha) {
+    if (sinal?.aborted) throw falha;
+    throw new ErroDaApi("rede", SEM_CONEXAO);
+  }
+  if (!resposta.ok) throw await erroDaResposta(resposta);
+  const entregar = (linha: string) => {
+    if (!linha.trim()) return;
+    let evento: unknown;
+    try {
+      evento = JSON.parse(linha);
+    } catch {
+      throw new ErroDaApi("indisponivel", LINHA_ILEGIVEL);
+    }
+    aoEvento(evento);
+  };
+  if (!resposta.body) {
+    (await resposta.text()).split(FIM_DA_LINHA).forEach(entregar);
+    return;
+  }
+  const leitor = resposta.body.getReader();
+  const decodificador = new TextDecoder();
+  let resto = "";
+  for (;;) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    resto += decodificador.decode(value, { stream: true });
+    const linhas = resto.split(FIM_DA_LINHA);
+    resto = linhas.pop() ?? "";
+    linhas.forEach(entregar);
+  }
+  entregar(resto + decodificador.decode());
 }

@@ -36,6 +36,7 @@ import {
 import { Aprender, DADOS as DADOS_DO_APRENDER } from "./paginas/Aprender";
 import { ComoFunciona, DADOS as DADOS_DO_COMO_FUNCIONA } from "./paginas/ComoFunciona";
 import { DADOS as DADOS_DOS_DADOS, Dados } from "./paginas/Dados";
+import { GUIAS, GuiaDeBusca, dadosDoGuia } from "./paginas/Guias";
 import { DADOS as DADOS_DO_INICIO, Inicio } from "./paginas/Inicio";
 import { DADOS_DA_PRIVACIDADE, DADOS_DOS_TERMOS, Legal } from "./paginas/Legal";
 import { DADOS as DADOS_DA_METODOLOGIA, Metodologia } from "./paginas/Metodologia";
@@ -137,6 +138,11 @@ export const ROTAS: Rota[] = [
     dados: DADOS_DO_SEMANAL_ELETRICAS,
     conteudo: () => <RelatorioSemanalEletricas />,
   },
+  ...GUIAS.map((guia) => ({
+    arquivo: guia.arquivo,
+    dados: dadosDoGuia(guia),
+    conteudo: () => <GuiaDeBusca guia={guia} />,
+  })),
   { arquivo: "novidades.html", dados: DADOS_DAS_NOVIDADES, conteudo: () => <Novidades /> },
   {
     arquivo: "termos.html",

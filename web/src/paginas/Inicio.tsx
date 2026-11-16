@@ -1,42 +1,454 @@
-// Página inicial para quem analisa empresas (plano do site para quem analisa, 18/10/2026, PR 5): a
-// assinatura, o que a base tem (números do catálogo e da medição, nunca digitados), a chamada do
-// estudo do dia, a vitrine das análises abertas, o que a base liga pelo CNPJ, os cruzamentos da base (PR 6), as quatro regras
-// da base, as fontes com licença e os planos. A fita de ativos, a busca e o painel de PETR4 saíram: o público agora é quem analisa.
+// Página inicial do posicionamento v3 (ADR 0127, linha 774 da fila): a TickerLab é uma CLI e um conector
+// MCP de M&A e análise de investimento para o analista e o agente de IA dele. O conector tem o mesmo peso
+// da CLI (Tiago, 13/11/2026, linha 901). A ordem da página é a do que nos propomos a fazer: a assinatura
+// com a CLI à vista, o que dá para pedir, como o agente a usa, o conector no Claude e no ChatGPT, a base
+// por trás (números do catálogo e da medição, nunca digitados), o que ela liga pelo CNPJ, os
+// cruzamentos, as quatro regras e, por último, as outras janelas da mesma base (as análises abertas,
+// o app e a API). O estudo do dia, as novidades e a lista de fontes saíram da inicial: continuam em
+// Relatórios, Novidades e Dados.
+import type { ReactNode } from "react";
 import { BuscaDaBase } from "../site/BuscaDaBase";
-import { baseEmNumeros, catalogo } from "../conteudo";
+import { baseEmNumeros, catalogo, paginasDoApp } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { Cruzamentos } from "../site/Cruzamentos";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
-import { ancora } from "../site/Leitura";
 import { LigadoPeloCnpj } from "../site/LigadoPeloCnpj";
-import { ASSINATURA, REGRAS_DA_BASE, linkDoApp } from "../site/textos";
+import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../site/textos";
 import { Vitrine } from "../site/Vitrine";
-import {
-  DADOS as RAIO_X_DO_CHOQUE,
-  MOMENTO_DO_RAIO_X,
-  PDF_DO_RAIO_X,
-  RAIO_X,
-} from "./RaioXDoChoque";
 
 export const DADOS = {
   caminho: "/",
   ferramenta: true,
   titulo: "TickerLab",
   descricao:
-    "Coleta segura e auditável das fontes públicas brasileiras para quem analisa empresas: cada " +
-    "número com data, fonte e caminho até o original.",
+    "CLI e conector MCP de M&A e análise de investimento para o analista e a IA dele: cada número de " +
+    "fonte pública, com data, fonte e caminho até o original.",
 };
 
 // o pedaço da assinatura em destaque no título
-const DESTAQUE_DO_TITULO = "auditáveis";
+const DESTAQUE_DO_TITULO = "M&A e análise de investimento";
 const SUBTITULO =
+  "Você pede; o seu agente de IA roda a tickerlab no terminal, ou o Claude consulta o conector, e " +
+  "devolve a análise com a fonte e a data de cada número.";
+// o ativo continua o mesmo da ADR 0099: a coleta auditável
+const O_QUE_HA_POR_TRAS =
   "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
   "caminho até o original.";
-const SEM_RESPOSTA = "licença em consulta";
+// onde a documentação da API ensina a pedir a chave (site-api/documentacao, seção "comecar")
+const COMO_PEDIR_A_CHAVE = `${URL_DA_API}/documentacao/#comecar`;
 const milhares = (n: number) => n.toLocaleString("pt-BR");
 
-/** Os quatro números da abertura, cada um com a conta recolhida ao lado. */
+// O terminal do herói: só comandos que existem (docs/cli.md), sem saída inventada.
+const LINHAS_DO_TERMINAL: [string, string][] = [
+  ["empresas de um setor numa UF, direto para o Excel", "tickerlab prospectar --cnae 4711 --uf PE --planilha alvos.xlsx"],
+  ["a ficha de uma empresa pelo CNPJ", "tickerlab empresa <cnpj>"],
+  ["as demonstrações como estavam públicas naquele dia", "tickerlab demonstracoes <cnpj> --como-era 2024-12-31"],
+  ["o setor, no formato que o agente lê", "tickerlab setor eletricas --json"],
+];
+
+// O que dá para pedir: um cartão por comando, com o que ele devolve (docs/cli.md e as instruções do
+// agente em cli/tickerlab/instrucoes/AGENTS.md).
+const COMANDOS: [string, string, string][] = [
+  [
+    "Triagem de uma empresa",
+    "tickerlab empresa <cnpj>",
+    "O cadastro na Receita Federal e, da companhia aberta, cada demonstração devida à CVM, com o prazo, a data da entrega e os dias de atraso.",
+  ],
+  [
+    "Prospecção por setor",
+    "tickerlab prospectar --cnae … --uf …",
+    "Empresas pela atividade, UF, município, porte, situação e idade. Só a empresa: sem sócio, contato nem endereço.",
+  ],
+  [
+    "Demonstrações como eram",
+    "tickerlab demonstracoes <cnpj> --como-era AAAA-MM-DD",
+    "As demonstrações financeiras como estavam públicas na data pedida, sem enxergar o que só saiu depois.",
+  ],
+  [
+    "Ficha do setor",
+    "tickerlab setor <chave>",
+    "As séries da agência reguladora do setor, com a concentração e a fatia de cada companhia, e as notas de método.",
+  ],
+  [
+    "Fundo pelo CNPJ",
+    "tickerlab fundo <cnpj>",
+    "O cadastro e as taxas do fundo e a carteira que ele declarou à CVM.",
+  ],
+  [
+    "Direto para o Excel",
+    "--planilha alvos.xlsx",
+    "A resposta vira planilha: uma aba por tabela, com a fonte e a data de publicação em cada linha.",
+  ],
+];
+
+// As travas que as instruções do agente trazem (cli/tickerlab/instrucoes/AGENTS.md, "Travas").
+const TRAVAS_DO_AGENTE: [string, string][] = [
+  ["Fonte e data em cada número", "As instruções pedem ao agente que cite de onde veio e quando ficou público."],
+  ["Nenhum número inventado", "As instruções pedem que ele diga o que a CLI não devolveu, em vez de completar."],
+  ["Nada é recomendação de investimento", "As instruções pedem que ele descreva, compare e calcule; a decisão é sua."],
+  ["Sem dado de pessoa física", "A API não serve sócio pessoa física, CPF, MEI nem empresário individual."],
+  ["A chave é segredo", "Ela nunca passa pelo chat nem pelo histórico do terminal."],
+];
+
+// O conector MCP (conector_remoto/, docs/guia-do-analista-conector.md): as perguntas e as ferramentas que
+// as respondem. Só nomes de ferramenta que existem; o teste do conector confere contra o registro.
+const PERGUNTAS_DO_CONECTOR: [string, string, string][] = [
+  [
+    "Triagem antes da reunião",
+    "ficha_da_empresa · eventos · vinculos",
+    "O cadastro, o que aconteceu com a empresa e as participações que a base tiver, cada ponto com a fonte e a data.",
+  ],
+  [
+    "Alvos num setor e numa UF",
+    "buscar_empresas",
+    "Empresas pela atividade, UF, porte e idade, página por página. Só a empresa: sem sócio, contato nem endereço.",
+  ],
+  [
+    "Quem já se mexeu no setor",
+    "compradores_do_setor",
+    "Empresas, FIPs e companhias abertas que entraram no setor como sócias: movimento passado, não intenção de compra.",
+  ],
+  [
+    "Comparáveis e demonstrações",
+    "comparaveis · demonstracoes",
+    "Os pares da companhia aberta na CVM, com a mediana, e as demonstrações como estavam públicas na data pedida.",
+  ],
+  [
+    "Setor e fundo",
+    "setores · setor · fundo",
+    "As séries de mercado do setor, a concentração e a fatia de cada empresa, e o cadastro, as taxas e a carteira de um fundo.",
+  ],
+  [
+    "Fluxos prontos",
+    "prompts do conector",
+    "Triagem, alvos, compradores, comparáveis e dossiê: você escolhe o fluxo no Claude e preenche o CNPJ ou o setor.",
+  ],
+];
+
+const PASSOS_DO_CONECTOR: [string, ReactNode][] = [
+  [
+    "Peça a chave",
+    <>
+      Cada pessoa tem a sua, entregue por quem administra o TickerLab na organização. O acesso está em
+      beta fechado, sem cobrança:{" "}
+      <a href={COMO_PEDIR_A_CHAVE} rel="noopener">
+        como pedir
+      </a>
+      .
+    </>,
+  ],
+  [
+    "Adicione o conector",
+    <>
+      No Claude, em Configurações, um conector personalizado com o endereço que quem administra passa junto com a chave. No
+      ChatGPT, o mesmo conector, em Apps e conectores.
+    </>,
+  ],
+  [
+    "Ligue com a sua chave",
+    <>
+      Abre uma página do TickerLab; você cola a chave ali, não no chat. O assistente recebe um acesso
+      que vence sozinho e para quando a chave é revogada.
+    </>,
+  ],
+];
+
+const TRAVAS_DO_CONECTOR: [string, string][] = [
+  ["Só leitura", "Nenhuma ferramenta escreve, envia ou baixa nada de fora."],
+  ["As mesmas regras da CLI", "Os comandos de leitura da CLI têm ferramenta no conector, com o mesmo pedido à API; a exceção fica escrita, com o motivo, e um teste falha se um lado ficar para trás sem ela."],
+  ["Fonte e data em cada número", "As instruções do conector pedem à IA que cite a fonte e a data e liste à parte o que faltou."],
+  ["Sem dado de pessoa física", "A API já não entrega pessoa, e o conector confere cada resposta e recusa a que trouxer campo de sócio pessoa física, CPF ou contato."],
+  ["A chave não vai ao chat", "Ela só é colada na página do TickerLab, e a revogação dela corta o acesso na chamada seguinte."],
+];
+
+const PASSOS_PARA_COMECAR: [string, ReactNode][] = [
+  [
+    "Peça a chave",
+    <>
+      A chave é da organização. O acesso está em beta fechado, sem cobrança:{" "}
+      <a href={COMO_PEDIR_A_CHAVE} rel="noopener">
+        como pedir
+      </a>
+      .
+    </>,
+  ],
+  [
+    "Instale e entre",
+    <>
+      A CLI instala com o <code>pipx</code>, sem o Git, e <code>tickerlab login</code> guarda a
+      chave num arquivo que só você lê.
+    </>,
+  ],
+  [
+    "Entregue as instruções ao agente",
+    <>
+      <code>tickerlab instrucoes</code> imprime o texto que ensina os comandos e as travas ao
+      Claude Code, ao Codex e a outros agentes; guarde-o no arquivo de instruções do seu agente.
+    </>,
+  ],
+];
+
+/** O terminal do herói: os comandos, um por linha, cada um com o que pede. */
+function Terminal() {
+  return (
+    <div className="v2-painel-pilha">
+      <figure className="v2-painel v2-terminal" aria-labelledby="titulo-do-terminal">
+        <figcaption className="v2-painel-topo">
+          <span className="v2-etiqueta" id="titulo-do-terminal">
+            No terminal ou pelo agente
+          </span>
+          <span className="ticker">tickerlab</span>
+        </figcaption>
+        <pre className="v2-terminal-linhas">
+          {LINHAS_DO_TERMINAL.map(([comentario, comando]) => (
+            <code key={comando}>
+              <span className="v2-terminal-comentario">{`# ${comentario}\n`}</span>
+              <span className="v2-terminal-cifrao" aria-hidden="true">
+                ${" "}
+              </span>
+              {`${comando}\n`}
+            </code>
+          ))}
+        </pre>
+        <footer className="v2-painel-rodape">
+          <span>Cada resposta com fonte, data e licença</span>
+          <a className="seta" href="#comandos">
+            Os comandos
+          </a>
+        </footer>
+      </figure>
+    </div>
+  );
+}
+
+function Heroi() {
+  const [antes, depois] = ASSINATURA.split(DESTAQUE_DO_TITULO);
+  return (
+    <Fundo>
+      <section className="heroi faixa" aria-labelledby="titulo-heroi">
+        <div className="heroi-texto">
+          <h1 id="titulo-heroi">
+            {antes}
+            <span className="v2-degrade">{DESTAQUE_DO_TITULO}</span>
+            {depois}
+          </h1>
+          <p className="subtitulo">{SUBTITULO}</p>
+          <p className="v2-para-quem">{O_QUE_HA_POR_TRAS}</p>
+          <div className="acoes">
+            <a className="botao primario" href={COMO_PEDIR_A_CHAVE} rel="noopener">
+              Pedir uma chave
+            </a>
+            <a className="botao secundario" href="#comandos">
+              Ver os comandos
+            </a>
+            <a className="botao secundario" href="#conector">
+              Usar no Claude
+            </a>
+          </div>
+          <AvisoDeAcesso />
+        </div>
+        <Terminal />
+      </section>
+    </Fundo>
+  );
+}
+
+function Comandos() {
+  return (
+    <section className="faixa secao v2-comandos" id="comandos" aria-labelledby="titulo-comandos">
+      <p className="olho">O que dá para pedir</p>
+      <h2 id="titulo-comandos">Do CNPJ à planilha, um comando por pergunta</h2>
+      <p className="subtitulo">
+        A CLI só repassa o que a API de dados serve: a mesma resposta para você, no terminal, e
+        para o agente, em JSON.
+      </p>
+      <div className="grade tres">
+        {COMANDOS.map(([titulo, comando, texto]) => (
+          <article key={titulo} className="cartao v2-comando">
+            <h3>{titulo}</h3>
+            <p className="v2-comando-linha">
+              <code>{comando}</code>
+            </p>
+            <p>{texto}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ParaOAgente() {
+  return (
+    <section className="faixa secao v2-agente" aria-labelledby="titulo-agente">
+      <p className="olho">Para o seu agente de IA</p>
+      <h2 id="titulo-agente">O agente roda a CLI; as travas vão junto</h2>
+      <p className="subtitulo">
+        O pacote leva as instruções do agente. Elas ensinam os comandos e o que ele não pode fazer.
+      </p>
+      <div className="v2-agente-colunas">
+        <ol className="v2-passos-da-cli">
+          {PASSOS_PARA_COMECAR.map(([titulo, texto]) => (
+            <li key={titulo}>
+              <strong>{titulo}</strong>
+              <span>{texto}</span>
+            </li>
+          ))}
+        </ol>
+        <dl className="v2-travas">
+          {TRAVAS_DO_AGENTE.map(([titulo, texto]) => (
+            <div key={titulo}>
+              <dt>{titulo}</dt>
+              <dd>{texto}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+/** O conector MCP: as mesmas consultas da CLI dentro do Claude e do ChatGPT, com o mesmo peso dela. */
+function Conector() {
+  return (
+    <section className="faixa secao v2-comandos v2-conector" id="conector" aria-labelledby="titulo-conector">
+      <p className="olho">Conector MCP</p>
+      <h2 id="titulo-conector">No Claude e no ChatGPT, sem terminal</h2>
+      <p className="subtitulo">
+        O MCP é o padrão aberto que liga uma IA a uma fonte de dados. Com o conector, você pergunta em
+        português, na conversa, e a IA consulta a mesma base da CLI, sem instalar nada.
+      </p>
+      <div className="grade tres">
+        {PERGUNTAS_DO_CONECTOR.map(([titulo, ferramentas, texto]) => (
+          <article key={titulo} className="cartao v2-comando">
+            <h3>{titulo}</h3>
+            <p className="v2-comando-linha">
+              <code>{ferramentas}</code>
+            </p>
+            <p>{texto}</p>
+          </article>
+        ))}
+      </div>
+      <div className="v2-agente-colunas">
+        <ol className="v2-passos-da-cli">
+          {PASSOS_DO_CONECTOR.map(([titulo, texto]) => (
+            <li key={titulo}>
+              <strong>{titulo}</strong>
+              <span>{texto}</span>
+            </li>
+          ))}
+        </ol>
+        <dl className="v2-travas">
+          {TRAVAS_DO_CONECTOR.map(([titulo, texto]) => (
+            <div key={titulo}>
+              <dt>{titulo}</dt>
+              <dd>{texto}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+// A demonstração da conversa (linha 903, PR E): pergunta e resposta fixas, escritas aqui. Nenhum modelo de IA
+// roda no site público. As empresas são inventadas e ditas inventadas; a ferramenta e os filtros citados são
+// os que o conector registra (há teste). O botão "Entrar para perguntar" só aparece quando a tela existe.
+const EMPRESAS_DA_DEMONSTRACAO: [string, string, string, string][] = [
+  ["Exemplo Alfa Embalagens Ltda.", "Joinville", "1998", "Demais"],
+  ["Exemplo Beta Plásticos Ltda.", "Blumenau", "2004", "Demais"],
+  ["Exemplo Gama Embalagens S.A.", "Criciúma", "2009", "Pequeno porte"],
+];
+const PERGUNTAR = paginasDoApp.find((p) => p.chave === "perguntar");
+
+function DemonstracaoDaConversa() {
+  return (
+    <section className="faixa secao v2-demonstracao" id="demonstracao" aria-labelledby="titulo-demonstracao">
+      <p className="olho">Demonstração</p>
+      <h2 id="titulo-demonstracao">A pergunta em português, a resposta com a fonte</h2>
+      <p className="subtitulo">
+        Uma conversa gravada, para mostrar o formato da resposta. As empresas abaixo são inventadas, e
+        nenhuma IA roda nesta página.
+      </p>
+      <div className="v2-conversa" role="group" aria-label="Conversa de demonstração">
+        <p className="v2-fala v2-fala-pergunta">
+          Fabricantes de embalagens plásticas em Santa Catarina, abertas antes de 2011.
+        </p>
+        <div className="v2-fala v2-fala-resposta">
+          <p>Três empresas ativas neste exemplo. Em cada linha, o cadastro da Receita:</p>
+          <div className="v2-conversa-tabela">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Empresa (inventada)</th>
+                  <th scope="col">Município</th>
+                  <th scope="col">Abertura</th>
+                  <th scope="col">Porte na Receita</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EMPRESAS_DA_DEMONSTRACAO.map(([nome, municipio, abertura, porte]) => (
+                  <tr key={nome}>
+                    <th scope="row">{nome}</th>
+                    <td>{municipio}</td>
+                    <td>{abertura}</td>
+                    <td>{porte}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <dl className="v2-conversa-notas">
+            <div>
+              <dt>Fonte</dt>
+              <dd>Receita Federal, cadastro de CNPJ. A resposta de verdade traz a data do retrato usado.</dd>
+            </div>
+            <div>
+              <dt>Como cheguei aqui</dt>
+              <dd>
+                <code>buscar_empresas</code> com CNAE 2222-6, UF SC, situação ativa e abertura antes de
+                01/01/2011.
+              </dd>
+            </div>
+            <div>
+              <dt>O que a base não tem</dt>
+              <dd>Faturamento de empresa fechada. O porte é o declarado à Receita.</dd>
+            </div>
+          </dl>
+        </div>
+        <p className="v2-fala v2-fala-pergunta">Qual o faturamento da primeira?</p>
+        <div className="v2-fala v2-fala-resposta">
+          <p>
+            A base não tem faturamento de empresa fechada. Da primeira, dá para abrir a ficha: o cadastro e a
+            conferência nas bases oficiais, cada uma com a fonte e a data.
+          </p>
+        </div>
+      </div>
+      <p className="v2-conversa-rodape">
+        A conversa usa as mesmas ferramentas do conector e da CLI, só de leitura. Pessoa física não entra na
+        resposta. Confira a fonte antes de usar.
+      </p>
+      <p className="atalhos">
+        {PERGUNTAR ? (
+          <a className="botao primario" href={linkDoApp(PERGUNTAR.url)}>
+            Entrar para perguntar
+          </a>
+        ) : (
+          <>
+            <a className="botao primario" href="#conector">
+              Perguntar pelo conector
+            </a>
+            <a className="botao secundario" href={linkDoApp()}>
+              Entrar no app
+            </a>
+          </>
+        )}
+      </p>
+    </section>
+  );
+}
+
+/** Os quatro números da base, cada um com a conta recolhida ao lado. */
 function PainelDaBase() {
   const { totais, ligado_pelo_cnpj: ligado } = catalogo;
   const { numeros, medido_em_curto } = baseEmNumeros;
@@ -108,81 +520,26 @@ function PainelDaBase() {
   );
 }
 
-function Heroi() {
-  const [antes, depois] = ASSINATURA.split(DESTAQUE_DO_TITULO);
+/** A base que a CLI e o conector consultam: os números medidos e a busca aberta, numa faixa escura só. */
+function BasePorTras() {
   return (
-    <Fundo>
-      <section className="heroi faixa" aria-labelledby="titulo-heroi">
-        <div className="heroi-texto">
-          <a className="v2-pilula" href={RAIO_X_DO_CHOQUE.caminho}>
-            <span className="v2-ponto" aria-hidden="true" />
-            Novo · Raio-X do circuit breaker de 26/10
-            <span className="v2-pilula-seta" aria-hidden="true">
-              →
-            </span>
-          </a>
-          <h1 id="titulo-heroi">
-            {antes}
-            <span className="v2-degrade">{DESTAQUE_DO_TITULO}</span>
-            {depois}
-          </h1>
-          <p className="subtitulo">{SUBTITULO}</p>
-          <div className="acoes">
-            <a className="botao primario" href="/dados.html">
-              Ver os dados
-            </a>
-            <a className="botao secundario" href={linkDoApp()}>
-              Abrir o app
-            </a>
+    <div className="escura v2-base-fundo">
+      <section className="faixa secao v2-base-faixa" aria-labelledby="titulo-base-por-tras">
+        <div>
+          <p className="olho">A base por trás</p>
+          <h2 id="titulo-base-por-tras">Toda resposta sai de uma fonte pública, com a data</h2>
+          <p className="subtitulo">
+            A CLI e o conector consultam a base que coletamos dos órgãos públicos. Experimente sem
+            chave: busque
+            uma companhia aberta e veja a fonte ao lado de cada número.
+          </p>
+          <div data-busca-base>
+            <BuscaDaBase />
           </div>
-          <AvisoDeAcesso />
-          <div data-busca-base><BuscaDaBase /></div>
         </div>
         <PainelDaBase />
       </section>
-    </Fundo>
-  );
-}
-
-/** A chamada do estudo do dia, logo abaixo do herói: os números vêm do próprio estudo (dados.json). */
-function EstudoDoDia() {
-  return (
-    <section className="faixa v2-estudo" aria-labelledby="titulo-estudo-do-dia">
-      <div className="v2-estudo-texto">
-        <p className="olho">
-          Estudo do dia · {MOMENTO_DO_RAIO_X}
-        </p>
-        <h2 id="titulo-estudo-do-dia">
-          <a href={RAIO_X_DO_CHOQUE.caminho}>{RAIO_X.titulo}</a>
-        </h2>
-        <p>
-          Quem caiu mais no circuit breaker de 26/10, e por quê: beta, alta entre os turnos, dívida,
-          tamanho, fundos, elétricas, bancos e a comparação com o Joesley Day.
-        </p>
-        <div className="acoes">
-          <a className="botao primario" href={RAIO_X_DO_CHOQUE.caminho}>
-            Ler o Raio-X
-          </a>
-          <a className="botao secundario" href={PDF_DO_RAIO_X}>
-            Baixar o PDF
-          </a>
-        </div>
-      </div>
-      <dl className="v2-estudo-numeros">
-        <div>
-          <dt>Ibovespa no dia</dt>
-          <dd className="queda">{RAIO_X.ibovespa}</dd>
-        </div>
-        <div>
-          <dt>Mediana de {RAIO_X.empresas} empresas</dt>
-          <dd className="queda">{RAIO_X.mediana}</dd>
-        </div>
-        <div>
-          <dt>Caíram 30% ou mais</dt>
-          <dd>{RAIO_X.cairam_30}</dd>
-        </div>
-      </dl>
-    </section>
+    </div>
   );
 }
 
@@ -205,29 +562,22 @@ function RegrasDaBase() {
   );
 }
 
-function FontesDaBase() {
-  const { totais, fontes } = catalogo;
+/** As outras janelas da mesma base, para quem não usa terminal (ADR 0127, item 2). */
+function OutrasJanelas() {
   return (
-    <section className="faixa secao v2-fontes-da-base" aria-labelledby="titulo-fontes">
-      <p className="olho">De onde vêm os dados</p>
-      <h2 id="titulo-fontes">{`${totais.fontes} fontes públicas, cada uma com a sua licença`}</h2>
-      <p className="subtitulo">
-        {`${totais.fontes_em_consulta} delas ainda não responderam por escrito sobre uso comercial e levam o selo de consulta: até a resposta, tratamos o dado delas como não comercial.`}
+    <section className="faixa v2-janelas" aria-labelledby="titulo-janelas">
+      <h2 id="titulo-janelas" className="olho">
+        Sem terminal
+      </h2>
+      <p>
+        A mesma base abre pelo <a href="#conector">conector</a>, no Claude e no ChatGPT, pelo{" "}
+        <a href={linkDoApp()}>app</a>, com a sua conta, e pela{" "}
+        <a href={URL_DA_API} rel="noopener">
+          TickerLab Data
+        </a>
+        , a API de dados, para o seu sistema. Os <a href="/relatorios.html">relatórios</a> de
+        exemplo mostram o que sai dela.
       </p>
-      <ul className="v2-lista-de-fontes">
-        {fontes.map((f) => (
-          <li key={f.licenca}>
-            <strong>{f.orgao}</strong>
-            <span>{f.tabelas === 1 ? "1 tabela" : `${f.tabelas} tabelas`}</span>
-            {f.situacao === "em consulta" ? (
-              <span className="selo breve">{SEM_RESPOSTA}</span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      <a className="seta" href={`/dados.html#${ancora("De onde vêm os dados")}`}>
-        Cada licença, uma a uma
-      </a>
     </section>
   );
 }
@@ -236,22 +586,30 @@ export function Inicio() {
   return (
     <>
       <Heroi />
-      <EstudoDoDia />
-      <Vitrine />
+      <Comandos />
+      <ParaOAgente />
+      <Conector />
+      <DemonstracaoDaConversa />
+      <BasePorTras />
       <LigadoPeloCnpj />
       <Cruzamentos />
       <RegrasDaBase />
-      <FontesDaBase />
+      <Vitrine />
+      <OutrasJanelas />
       <ChamadaFinal
-        titulo="Comece pelo Gratuito"
-        subtitulo="O plano Gratuito não pede cartão. O que cada plano inclui está na página de planos."
+        titulo="Comece pela chave"
+        subtitulo={
+          "O acesso à CLI, ao conector e à API está em beta fechado, sem cobrança. A documentação é " +
+          "aberta e " +
+          "diz como pedir a chave da sua organização."
+        }
       >
         <div className="acoes">
-          <a className="botao primario" href={linkDoApp()}>
-            Abrir o app
+          <a className="botao primario" href={COMO_PEDIR_A_CHAVE} rel="noopener">
+            Pedir uma chave
           </a>
-          <a className="botao secundario" href="/precos.html">
-            Ver os planos
+          <a className="botao secundario" href={linkDoApp()}>
+            Abrir o app
           </a>
         </div>
         <p className="v2-aviso-final">

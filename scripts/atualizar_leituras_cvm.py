@@ -12,6 +12,8 @@ A CVM limita os downloads por endereço: a coleta baixa poucos documentos, com i
 minuto, e para no primeiro sinal de limite (uma página de aviso no lugar do PDF), continuando no
 dia seguinte. Um documento que não é PDF (um .doc antigo) fica guardado com o motivo e a fila
 segue. Não apaga nada.
+
+Roda: cron do VPS (todo dia às 9h30); citado em eventos.py, leituras.py.
 """
 
 import argparse
@@ -28,6 +30,7 @@ import anthropic
 import requests
 import sqlalchemy as sa
 
+from base.cpf_no_texto import mascarar_cpf
 from src import leitura, rede, topicos, topicos_modelo
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
@@ -102,7 +105,8 @@ def ler_lote(caminho: Path) -> list[Pendente]:
     with caminho.open(encoding="utf-8") as arquivo:
         return [
             (chave[0], linha["CNPJ_Companhia"],
-             date.fromisoformat(linha["Data_Entrega"]), seguro, linha["Assunto"])
+             date.fromisoformat(linha["Data_Entrega"]), seguro,
+             mascarar_cpf(linha["Assunto"]))
             for linha in csv.DictReader(arquivo, delimiter=";")
             if (seguro := link_da_fonte(linha["Link_Download"]))
             and (chave := identificador(linha["Protocolo_Entrega"], "", seguro))

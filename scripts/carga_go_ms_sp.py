@@ -11,7 +11,7 @@ por ano (SP capital), com pausa entre os pedidos (o `robots.txt` do GO pede 10 s
 (`baixados.jsonl`; a data do download vira o `disponivel_em`). O mês e o ano vêm do nome do recurso; recurso
 sem período legível é pulado e anotado no log. Os portais:
 - **GO**, licenças ambientais do Ipê (dadosabertos.go.gov.br, CC BY);
-- **MS**, despesas por credor (dados.ms.gov.br, licença a confirmar);
+- **MS**, despesas por credor (www.dados.ms.gov.br, licença a confirmar);
 - **SP capital**, extrato de contratos (dados.prefeitura.sp.gov.br, CC0).
 
 `--origem` grava, com manifesto e versões (`base/parquet.py::gravar_com_versoes`), um Parquet por ano em
@@ -22,6 +22,9 @@ vez de gravar uma tabela vazia. Os arquivos baixados são dados de fora: ficam n
 repositório, e esta carga os lê com o Python em modo isolado (`python -I`).
 
 Recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 arquivo faltando.
+
+Roda: manual (python -m scripts.carga_go_ms_sp); coberto por test_carga_go_ms_sp.py; citado em
+registro.py.
 """
 
 import argparse
@@ -60,7 +63,8 @@ PORTAIS = {
         "licencas ambientais ipe",
         "licencas-ambientais-ipe",  # o pacote do SGA (outro sistema) repete os meses de 2026
     ),
-    "ms": ("https://dados.ms.gov.br", "despesas credor", "despesa"),
+    # o MS só atende em `www.` (o endereço sem `www` não resolve; conferido em 05/11/2026)
+    "ms": ("https://www.dados.ms.gov.br", "despesas credor", "despesa"),
     "sp": (
         "https://dados.prefeitura.sp.gov.br",
         "contratos extrato",

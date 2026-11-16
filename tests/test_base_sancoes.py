@@ -82,7 +82,7 @@ EMPRESA = _cnpj("11222333")
 OUTRA = _cnpj("33000167")
 MEI = _cnpj("44555666")
 INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
-CPF = "12345678909"
+CPF = "88800000900"  # inventado, com o dígito verificador errado de propósito (não é de ninguém)
 NOME_DA_PESSOA = "MARIA DA SILVA DE MENTIRA"
 RAZAO_SOCIAL = "EMPRESA DE MENTIRA LTDA"
 
