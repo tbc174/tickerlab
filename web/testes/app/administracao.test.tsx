@@ -265,7 +265,8 @@ describe("/admin sem a API do app novo", () => {
     abrirApp("/admin", { configuracao: respostaJson(404, { detail: "Not Found" }), entraSozinho: false });
     const link = await screen.findByRole("link", { name: /Abrir na versão clássica/ });
     expect(link.getAttribute("href")).toBe("/classico/admin");
-    expect(trocar).toHaveBeenCalledWith("/classico/admin");
+    // a troca de endereço sai de um efeito, que roda depois do desenho do link
+    await waitFor(() => expect(trocar).toHaveBeenCalledWith("/classico/admin"));
     trocar.mockRestore();
   });
 });
