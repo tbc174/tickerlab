@@ -3587,6 +3587,274 @@ def _tabelas_dos_cadastros_da_antt() -> dict[str, Tabela]:
     }
 
 
+_ONDE_DOS_CADASTROS_CONFERIDOS = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/cadastros_conferidos.py`)"
+_SO_CNPJ_SEM_NOME = (
+    "Só CNPJ de dígito certo (o CPF, inteiro ou mascarado, sai e é contado); o nome do titular fica de fora "
+    "(a razão social sai pelo CNPJ, na Receita)"
+)
+
+
+def _tabelas_dos_cadastros_conferidos() -> dict[str, Tabela]:
+    """Regime tributário da ECF, PAT, TAH da ANM, PADOs e produtos homologados da Anatel e tancagem da ANP
+    (`base/cadastros_conferidos.py`: as fontes que a conferência de 14/11/2026 confirmou, linha 904). A licença
+    de cada conjunto está em `src/banco/coletas.py::LICENCAS`."""
+    comum = {
+        "frequencia": "Um arquivo, republicado inteiro (o arquivista olha todo mês)",
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    atraso = "A fonte não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos"
+    da_empresa = {
+        "cnpj": ("CNPJ da empresa (14 dígitos com máscara)", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+    }
+    carimbos = _carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO)
+    return {
+        "receita_regime_tributario": Tabela(
+            descricao=(
+                "O regime de tributação do lucro que cada empresa declarou na ECF, por ano: lucro presumido, real "
+                "ou arbitrado, imune ou isenta, e quantas escriturações entregou. Uma linha por CNPJ, ano, "
+                "sociedade em conta de participação e forma de tributação (há empresa que muda de forma no ano). "
+                "Sinal de porte e de complexidade contábil. A ECF do ano X sai no ano X+1"
+            ),
+            fonte="Receita Federal: obrigações acessórias, ECF por forma de tributação (`base/cadastros_conferidos.py`)",
+            familia_da_fonte="rfb-renuncias",
+            atraso=(
+                "A Receita não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos "
+                "(a ECF do ano X é entregue no meio do ano X+1)"
+            ),
+            onde=_ONDE_DOS_CADASTROS_CONFERIDOS.format(
+                pasta="receita_regime_tributario", arquivo="<forma>"
+            ),
+            colunas={
+                **da_empresa,
+                "ano": ("Ano-calendário da escrituração", NUMERO),
+                "cnpj_da_scp": (
+                    "CNPJ da sociedade em conta de participação, quando a escrituração é dela; vazio na da própria empresa",
+                    TEXTO,
+                ),
+                "forma_de_tributacao": (
+                    "Forma de tributação do lucro, como a Receita escreve (presumido, real, arbitrado, imune, isenta...)",
+                    TEXTO,
+                ),
+                "escrituracoes": (
+                    "Quantas escriturações a empresa entregou no ano nessa forma",
+                    NUMERO,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "mte_pat": Tabela(
+            descricao=(
+                "As empresas inscritas no Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho: "
+                "beneficiárias (dão alimentação aos empregados), facilitadoras (administram o benefício) e "
+                "fornecedoras (refeição ou alimento), com o número de registro, a situação e quantos "
+                "trabalhadores a beneficiária atende, até e acima de 5 salários mínimos: sinal de porte. "
+                "Só CNPJ de dígito certo; a razão social fica de fora e a relação de nutricionistas (pessoa física) "
+                "nunca é baixada"
+            ),
+            fonte="Ministério do Trabalho e Emprego: relações de empresas ativas no PAT (`base/cadastros_conferidos.py`)",
+            familia_da_fonte="mte-pat",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_CONFERIDOS.format(
+                pasta="mte_pat", arquivo="<relação>"
+            ),
+            colunas={
+                **da_empresa,
+                "matriz_ou_filial": ("Matriz ou filial, como o MTE escreve", TEXTO),
+                "municipio": (
+                    "Município do estabelecimento, como o MTE escreve",
+                    TEXTO,
+                ),
+                "uf": ("Sigla da unidade da federação do estabelecimento", TEXTO),
+                "registro_no_pat": ("Número de registro da empresa no PAT", TEXTO),
+                "situacao": ("Situação da inscrição no PAT, como o MTE escreve", TEXTO),
+                "data_do_cadastro": ("Dia em que a empresa se inscreveu no PAT", DATA),
+                "trabalhadores_ate_5_salarios": (
+                    "Trabalhadores atendidos que ganham até 5 salários mínimos (vazio quando o MTE não informa)",
+                    NUMERO,
+                ),
+                "trabalhadores_acima_de_5_salarios": (
+                    "Trabalhadores atendidos que ganham acima de 5 salários mínimos (vazio quando o MTE não informa)",
+                    NUMERO,
+                ),
+                "trabalhadores_atendidos": (
+                    "Total de trabalhadores atendidos (vazio quando o MTE não informa)",
+                    NUMERO,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "anm_tah": Tabela(
+            descricao=(
+                "A Taxa Anual por Hectare (TAH) que cada titular de processo minerário paga à ANM: processo, fase, "
+                "superintendência, área em hectares, valor pago e valor cobrado, por quitação. Mostra quem detém "
+                "área de pesquisa mineral e se paga a taxa. " + _SO_CNPJ_SEM_NOME
+            ),
+            fonte="ANM: dados abertos, Taxa Anual por Hectare (`base/cadastros_conferidos.py`)",
+            familia_da_fonte="anm-tah",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_CONFERIDOS.format(pasta="anm_tah", arquivo="tah"),
+            colunas={
+                **da_empresa,
+                "processo": ("Número do processo minerário", TEXTO),
+                "ano_do_processo": ("Ano do processo minerário", TEXTO),
+                "fase_do_processo": (
+                    "Fase do processo (autorização de pesquisa, concessão de lavra...), como a ANM escreve",
+                    TEXTO,
+                ),
+                "superintendencia": (
+                    "Superintendência regional da ANM onde corre o processo",
+                    TEXTO,
+                ),
+                "data_da_quitacao": (
+                    "Dia em que a taxa foi quitada; vazio quando não foi",
+                    DATA,
+                ),
+                "hectares": ("Área do processo em hectares", NUMERO_DECIMAL),
+                "valor_pago": ("Valor pago da taxa", REAIS_EXATOS),
+                "valor_total": ("Valor total cobrado da taxa", REAIS_EXATOS),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "anatel_pados": Tabela(
+            descricao=(
+                "Os processos sancionadores da Anatel (PADOs) contra empresas: tema, serviço, situação e fase do "
+                "processo, multa aplicada e situação do pagamento. Uma linha por processo, serviço e anexação; a "
+                "multa é a do processo inteiro e se repete em cada serviço (some por processo). "
+                "Só CNPJ de dígito certo (o CPF sai e é contado); o nome da empresa e o grupo econômico ficam de fora"
+            ),
+            fonte="Anatel: dados abertos, gestão de PADOs (`base/cadastros_conferidos.py`)",
+            familia_da_fonte="anatel-pados",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_CONFERIDOS.format(
+                pasta="anatel_pados", arquivo="pados"
+            ),
+            colunas={
+                **da_empresa,
+                "processo": ("Número do processo na Anatel", TEXTO),
+                "anexacao": (
+                    "Se o processo é o principal ou um anexado, como a Anatel escreve",
+                    TEXTO,
+                ),
+                "tema": ("Tema da infração, como a Anatel escreve", TEXTO),
+                "servico": (
+                    "Serviço de telecomunicações a que o processo se refere",
+                    TEXTO,
+                ),
+                "status_do_processo": (
+                    "Situação do processo, como a Anatel escreve",
+                    TEXTO,
+                ),
+                "fase": (
+                    "Fase do processo (instrução, decisão, trânsito em julgado...)",
+                    TEXTO,
+                ),
+                "situacao_do_pagamento": (
+                    "Situação do pagamento da multa; vazio quando não há multa",
+                    TEXTO,
+                ),
+                "multa_aplicada": (
+                    "Multa aplicada no processo inteiro; vazio quando não há multa",
+                    REAIS_EXATOS,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "anatel_produtos_homologados": Tabela(
+            descricao=(
+                "Os produtos de telecomunicações que cada empresa homologou na Anatel: número da homologação, "
+                "certificado de conformidade, modelo, nome comercial, categoria, tipo, país do fabricante e as "
+                "datas da homologação, do certificado e da validade. Mostra quem fabrica ou importa equipamento. "
+                "Só CNPJ de dígito certo do solicitante (o CPF sai); o nome do solicitante e o do fabricante ficam "
+                "de fora"
+            ),
+            fonte="Anatel: dados abertos, produtos homologados (`base/cadastros_conferidos.py`)",
+            familia_da_fonte="anatel-homologados",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_CONFERIDOS.format(
+                pasta="anatel_produtos_homologados", arquivo="homologados"
+            ),
+            colunas={
+                **da_empresa,
+                "numero_da_homologacao": ("Número da homologação na Anatel", TEXTO),
+                "certificado": ("Número do certificado de conformidade técnica", TEXTO),
+                "situacao_do_certificado": (
+                    "Situação do certificado, como a Anatel escreve",
+                    TEXTO,
+                ),
+                "situacao_do_requerimento": (
+                    "Situação do requerimento, como a Anatel escreve",
+                    TEXTO,
+                ),
+                "modelo": ("Modelo do produto", TEXTO),
+                "nome_comercial": (
+                    "Nome comercial do produto; vazio quando a Anatel não informa",
+                    TEXTO,
+                ),
+                "categoria": (
+                    "Categoria do produto (1, 2 ou 3), como a Anatel numera",
+                    TEXTO,
+                ),
+                "tipo_do_produto": ("Tipo do produto, como a Anatel escreve", TEXTO),
+                "pais_do_fabricante": ("País do fabricante", TEXTO),
+                "data_da_homologacao": ("Dia da homologação", DATA),
+                "data_do_certificado": (
+                    "Dia do certificado de conformidade técnica",
+                    DATA,
+                ),
+                "validade_do_certificado": (
+                    "Dia em que o certificado vence; vazio quando a Anatel não informa",
+                    DATA,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "anp_tancagem": Tabela(
+            descricao=(
+                "Os tanques das instalações autorizadas pela ANP no abastecimento de combustíveis (bases de "
+                "distribuição, terminais, produtores...): município, segmento, tipo de unidade, grupo de produtos e "
+                "a capacidade em m³, na posição de cada mês. Mostra quem tem infraestrutura de armazenagem e de "
+                "que tamanho. Só CNPJ de dígito certo; o nome da empresa fica de fora"
+            ),
+            fonte="ANP: dados abertos, tancagem do abastecimento nacional de combustíveis (`base/cadastros_conferidos.py`)",
+            familia_da_fonte="anp-tancagem",
+            atraso=atraso,
+            onde=_ONDE_DOS_CADASTROS_CONFERIDOS.format(
+                pasta="anp_tancagem", arquivo="tancagem"
+            ),
+            colunas={
+                **da_empresa,
+                "uf": ("Sigla da unidade da federação da instalação", TEXTO),
+                "municipio": ("Município da instalação, como a ANP escreve", TEXTO),
+                "codigo_da_instalacao": ("Código da instalação na ANP", TEXTO),
+                "segmento": ("Segmento da instalação, como a ANP escreve", TEXTO),
+                "detalhe_da_instalacao": (
+                    "Detalhe da instalação, como a ANP escreve",
+                    TEXTO,
+                ),
+                "tag": ("Identificação do tanque na instalação", TEXTO),
+                "tipo_da_unidade": ("Tipo da unidade, como a ANP escreve", TEXTO),
+                "grupo_de_produtos": ("Grupo de produtos que o tanque armazena", TEXTO),
+                "data_da_posicao": (
+                    "Dia da posição que o arquivo mensal da ANP retrata",
+                    DATA,
+                ),
+                "tancagem_m3": (
+                    "Capacidade do tanque em metros cúbicos",
+                    NUMERO_DECIMAL,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+    }
+
+
 def _tabelas_da_fiscalizacao_da_aneel() -> dict[str, Tabela]:
     """Agentes do setor elétrico, autos de infração e termos de notificação da ANEEL
     (`base/aneel_fiscalizacao.py`: lote 2 das 300 tabelas pelo CNPJ)."""
@@ -8748,6 +9016,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_da_fiscalizacao_da_aneel(),
     **_tabelas_dos_cadastros_do_bcb(),
     **_tabelas_dos_cadastros_da_antt(),
+    **_tabelas_dos_cadastros_conferidos(),
     **_tabelas_do_cnes(),
     **_tabelas_do_sus(),
     **_tabelas_dos_tces(),
@@ -10976,6 +11245,9 @@ _AGENTES_E_TERMOS_DA_ANEEL = "2026-11-13"
 # linha 904 (lote 3): a 1ª coleta do arquivista dessas fontes (as do Banco Central e da ANTT); a posição de cada dia
 # vale desde o dia do arquivo, nunca antes
 _CADASTROS_DO_BCB_E_DA_ANTT = "2026-11-16"
+# linha 904 (conferência de 14/11): a 1ª coleta do arquivista das fontes novas (ECF, PAT, TAH, PADOs, homologados,
+# tancagem); a posição de cada dia vale desde o dia do arquivo, nunca antes
+_CADASTROS_CONFERIDOS = "2026-11-17"
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
@@ -11238,6 +11510,13 @@ _CONTRATO = {
     "bcb_regimes_especiais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
     "antt_operadores_multimodais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
     "antt_seguros_de_transportadores": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_da_apolice", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem (licenças em src/banco/coletas.py)
+    "receita_regime_tributario": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    "mte_pat": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_do_cadastro", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    "anm_tah": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    "anatel_pados": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    "anatel_produtos_homologados": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_homologacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    "anp_tancagem": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_posicao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "ans_idss": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
     "gleif_ponte": _contrato(modulo=_ME, pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="dia"),
     "financiamentos_finep": _contrato(
@@ -11610,6 +11889,35 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "antt_seguros_de_transportadores",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_da_apolice"),
         "faixas": {c: _SEM_NEGATIVO for c in ("veiculos", "assentos", "endossos")},
+    },
+    "receita_regime_tributario": {
+        "pasta": "receita_regime_tributario",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "forma_de_tributacao"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("escrituracoes",)},
+    },
+    "mte_pat": {
+        "pasta": "mte_pat",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "registro_no_pat"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("trabalhadores_ate_5_salarios", "trabalhadores_acima_de_5_salarios", "trabalhadores_atendidos",)},
+    },
+    "anm_tah": {
+        "pasta": "anm_tah",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "processo"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("hectares", "valor_pago", "valor_total",)},
+    },
+    "anatel_pados": {
+        "pasta": "anatel_pados",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "processo"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("multa_aplicada",)},
+    },
+    "anatel_produtos_homologados": {
+        "pasta": "anatel_produtos_homologados",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_da_homologacao"),
+    },
+    "anp_tancagem": {
+        "pasta": "anp_tancagem",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "codigo_da_instalacao"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("tancagem_m3",)},
     },
     "ans_idss": {
         "pasta": "ans_idss",

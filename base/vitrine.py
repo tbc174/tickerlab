@@ -39,6 +39,12 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da CVM", "CVM"),
     (r"do Banco Central", "Banco Central"),
     (r"assessorias de M&A", "Assessorias de M&A"),
+    # conferência de 14/11/2026: uma licença por conjunto, antes da linha geral do órgão (a 1ª que casa vale)
+    (r"^Tancagem da ANP", "ANP (tancagem)"),
+    (r"^PADOs da Anatel", "Anatel (PADOs)"),
+    (r"^Homologados da Anatel", "Anatel (homologados)"),
+    (r"^TAH da ANM", "ANM (TAH)"),
+    (r"^PAT do MTE", "MTE (PAT)"),
     (r"da ANP\b", "ANP"),
     (r"da ANAC\b", "ANAC"),
     (r"da ANTT\b", "ANTT"),
@@ -110,6 +116,11 @@ MESMO_ORGAO: dict[str, str] = {
     "Receita Federal (transações)": "Receita Federal",
     "CMED (Anvisa)": "Anvisa",
     "INMET": "MAPA",
+    "ANP (tancagem)": "ANP",
+    "Anatel (PADOs)": "Anatel",
+    "Anatel (homologados)": "Anatel",
+    "ANM (TAH)": "ANM",
+    "MTE (PAT)": "MTE",
 }
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {
@@ -494,7 +505,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "cadastro",
         "Cadastro e situação na Receita",
         "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples "
-        "Nacional e o que mudou de um mês para o outro.",
+        "Nacional, a forma de tributação do lucro declarada na ECF e o que mudou de um mês para o outro.",
         (
             "cnpj_estabelecimentos",
             "cnpj_estabelecimentos_mudancas",
@@ -506,12 +517,13 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cnpj_empresas_historico",
             "cnpj_empresas_pj",
             "cnpj_estabelecimentos_pj",
+            "receita_regime_tributario",
         ),
     ),
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, liquidações e outros regimes especiais do Banco Central, o cadastro de "
+        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de "
         "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
@@ -523,6 +535,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "ans_penalidades",
             "aneel_autos_de_infracao",
             "aneel_termos_de_notificacao",
+            "anatel_pados",
             "bcb_regimes_especiais",
             "mte_lista_suja",
             "ibama_embargos",
@@ -533,8 +546,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "licencas",
         "Licenças e registros nas agências",
-        "Autorizações da Anvisa, concessões da ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
-        "os agentes do setor elétrico na ANEEL, outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
+        "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
+        "os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, "
         "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
         "patentes, desenhos e programas de computador no INPI.",
         (
@@ -543,6 +556,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "anvisa_registros",
             "anvisa_por_empresa",
             "anp_concessionarios",
+            "anp_tancagem",
             "antt_rntrc",
             "antt_operadores_multimodais",
             "antt_seguros_de_transportadores",
@@ -555,12 +569,15 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sigsif_estabelecimentos",
             "aneel_agentes",
             "anatel_outorgas",
+            "anatel_produtos_homologados",
             "anm_titulos",
+            "anm_tah",
             "anm_sigbm_barragens",
             "anm_cfem_arrecadacao",
             "cmed_precos",
             "ancine_agentes",
             "cnes_estabelecimentos",
+            "mte_pat",
             "inpi_marcas_titulares",
             "inpi_patentes_depositantes",
             "inpi_desenhos_depositantes",

@@ -329,7 +329,7 @@ def tem_cnpj_inteiro(documento: str | None) -> bool:
 
 @contextmanager
 def _texto_do_csv(
-    bruto: Path, codificacao: str, dentro_do_zip: bool
+    bruto: Path, codificacao: str, dentro_do_zip: bool, membro: str | None = None
 ) -> Generator[IO[str]]:
     if not dentro_do_zip:
         with bruto.open(encoding=codificacao, newline="") as texto:
@@ -337,6 +337,8 @@ def _texto_do_csv(
         return
     with zipfile.ZipFile(bruto) as arquivo:
         csvs = [n for n in arquivo.namelist() if n.lower().endswith(".csv")]
+        if membro is not None:
+            csvs = [n for n in csvs if n.rsplit("/", 1)[-1] == membro]
         if len(csvs) != 1:
             raise ValueError(
                 f"{bruto.name}: o ZIP devia ter um CSV só, tem {len(csvs)}"
@@ -355,6 +357,7 @@ def csv_so_com_colunas(
     separador: str = ";",
     so_com_cnpj_em: str | None = None,
     dentro_do_zip: bool = False,
+    membro: str | None = None,
 ) -> Obter:
     """Baixa o CSV e grava em `destino` só as `colunas` da lista, na ordem da fonte (sempre com ";").
 
@@ -362,14 +365,15 @@ def csv_so_com_colunas(
     titular vem em colunas como "Titular" ou "NO_RAZAO_SOCIAL", que nenhum filtro de nome pegaria.
     `so_com_cnpj_em`: a coluna do documento; a linha sem um CNPJ inteiro (CPF de pessoa física, CNPJ
     mascarado) não é gravada, então o CPF nem chega ao acervo. `dentro_do_zip`: o endereço é um ZIP
-    com um CSV só (Anatel). O "utf-8-sig" da leitura tira o BOM; a gravação sai sem ele.
+    com um CSV só (Anatel); `membro`: o nome do CSV que vale, quando o ZIP tem mais de um (os PADOs da
+    Anatel trazem também as infrações, sem CNPJ). O "utf-8-sig" da leitura tira o BOM; a gravação sai sem ele.
     """
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
         bruto = destino.with_name(destino.name + ".bruto")
         try:
             cabecalhos = cliente.baixar(url, bruto)
-            with _texto_do_csv(bruto, codificacao, dentro_do_zip) as entrada:
+            with _texto_do_csv(bruto, codificacao, dentro_do_zip, membro) as entrada:
                 leitor = csv.DictReader(entrada, delimiter=separador)
                 campos = [c for c in (leitor.fieldnames or []) if c in colunas]
                 if not campos:
