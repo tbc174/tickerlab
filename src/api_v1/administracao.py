@@ -13,6 +13,10 @@ torto, de organização nenhuma ou que nem é JSON. A chave e a organização v�
 organização não se troca nem se revoga pelo id de outra (a resposta é a de uma chave que não existe).
 Conceder direito, vincular conta e ligar `pessoa_na_tela` não têm rota: seguem só do dono.
 
+As contas do app (PR 4: números do serviço, busca, plano, papel, bloquear e desbloquear) ficam em
+`src/api_v1/administracao_contas.py`, importado aqui para registrar as rotas dele no mesmo `router`
+(o de `acesso_do_admin`): os mesmos endereços `/v1/admin/...`, com a mesma conferência.
+
 Quem entra: a conta logada, com os termos aceitos **e** administradora no banco, conferida a cada pedido
 por `conta_admin`, que é dependência do router inteiro (uma rota nova aqui já nasce fechada; há teste que
 cobra). Para qualquer outra conta a resposta é o mesmo 404 de um endereço que não existe, antes de ler o que
@@ -39,33 +43,32 @@ from datetime import UTC, date, datetime
 from typing import Annotated
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
 from src import administracao_das_chaves as adc
 from src.administracao import PermissaoNegadaError
+from src.api_v1 import administracao_contas
 from src.api_v1.acesso_do_admin import (
     Admin,
     Pedido,
     conta_admin,
     corpo,
-    dependencias_do_admin,
+    router,
 )
 from src.banco import chaves_da_api as cb
 from src.banco.conexao import obter_engine
 from src.planos import limites_da_api
 
-# os testes de estrutura e de troca de dependência acham a conferência do administrador por este módulo
-__all__ = ["conta_admin", "router"]
+# os testes de estrutura e de troca de dependência acham a conferência do administrador por este módulo;
+# `administracao_contas` está aqui porque importá-lo é o que registra as rotas das contas no `router`
+# que o app recebe deste módulo (há teste que cobra)
+__all__ = ["administracao_contas", "conta_admin", "router"]
 
 ORGANIZACAO_INEXISTENTE = "Organização inexistente."
 CHAVE_INEXISTENTE = "Chave inexistente ou já revogada."
 CNPJ_JA_CADASTRADO = "Já existe uma organização com este CNPJ."
-
-
-# `conta_admin` vem antes de tudo o que a rota lê: a recusa não depende do que foi pedido
-router = APIRouter(prefix="/v1/admin", dependencies=dependencias_do_admin())
 
 
 def hoje() -> date:

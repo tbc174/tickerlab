@@ -4,15 +4,16 @@ Fica à parte para os módulos de rotas da Administração (`administracao`, das
 `administracao_contas`, das contas do app) usarem a mesma conferência, e não uma cópia dela.
 
 Quem entra: a conta logada, com os termos aceitos **e** administradora no banco, conferida a cada pedido por
-`conta_admin`. Todo router da Administração nasce com `dependencias_do_admin()` (há teste que cobra, rota por
-rota): para qualquer outra conta a resposta é o mesmo 404 de um endereço que não existe, antes de ler o que
+`conta_admin`. A Administração tem um `router` só, o daqui, que já nasce com `dependencias_do_admin()`: os
+módulos de rotas registram as suas nele, então uma rota nova já nasce fechada (há teste que cobra, rota por
+rota). Para qualquer outra conta a resposta é o mesmo 404 de um endereço que não existe, antes de ler o que
 foi pedido.
 """
 
 from collections.abc import Callable, Coroutine
 from typing import Annotated, Any
 
-from fastapi import Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from src.administracao import PermissaoNegadaError, exigir_admin
@@ -44,9 +45,14 @@ Admin = Annotated[Usuario, Depends(conta_admin)]
 
 
 def dependencias_do_admin() -> list[Any]:
-    """As dependências de todo router da Administração, na ordem: `conta_admin` vem antes de tudo o que a
+    """As dependências do router da Administração, na ordem: `conta_admin` vem antes de tudo o que a
     rota lê, então a recusa não depende do que foi pedido."""
     return [Depends(exigir_api_ligada), Depends(conta_admin), Depends(sem_cache)]
+
+
+# o router único da Administração: os módulos de rotas (`administracao` e `administracao_contas`)
+# registram as suas aqui, e o app o recebe por `src/api_v1/administracao.py`
+router = APIRouter(prefix="/v1/admin", dependencies=dependencias_do_admin())
 
 
 class Pedido(BaseModel):

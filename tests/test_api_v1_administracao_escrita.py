@@ -156,7 +156,8 @@ def _estados(cliente, organizacao_id):
 
 
 def test_os_testes_de_acesso_cobrem_todas_as_rotas_de_escrita():
-    """Rota de escrita nova precisa entrar em `_escritas`: é a lista que os testes de acesso percorrem."""
+    """Rota de escrita nova precisa entrar em `_escritas`: é a lista que os testes de acesso percorrem
+    (as das contas do app, que moram noutro módulo, têm a lista delas no arquivo de testes das contas)."""
     cobertas = {
         endereco for endereco, _ in _escritas(ID_QUE_NAO_EXISTE, ID_QUE_NAO_EXISTE)
     }
@@ -164,6 +165,7 @@ def test_os_testes_de_acesso_cobrem_todas_as_rotas_de_escrita():
         rota.path  # type: ignore[attr-defined]
         for rota in rotas_da_administracao.router.routes
         if "GET" not in rota.methods  # type: ignore[attr-defined]
+        and rota.endpoint.__module__ == rotas_da_administracao.__name__  # type: ignore[attr-defined]
     }
     assert cobertas == existentes
 
