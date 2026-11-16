@@ -23,6 +23,7 @@ FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "demonstracoes": ("demonstracoes",),
     "eventos": ("eventos",),
     "vinculos": ("vinculos",),
+    "ativos": ("ativos",),
     "compradores": ("compradores_do_setor",),
     "fundo": ("fundo",),
     "novidades": ("novidades",),
@@ -35,7 +36,6 @@ SEM_FERRAMENTA: dict[str, str] = {
     "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
     "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
     "dossie": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
-    "ativos": "a ferramenta do conector vem com a rota na produção (linha 845); a CLI já chama a rota",
     "deck": "grava um arquivo .pptx no PC; o conector devolve texto, não arquivo (Diretoria 12/11, linha 782)",
     "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
 }
@@ -94,6 +94,12 @@ CASOS = [
         "vinculos",
         {"cnpj": CNPJ, "como_era_em": UM_DIA, "profundidade": 2, "tipos": ["coligada"]},
         id="vinculos",
+    ),
+    pytest.param(
+        ["ativos", CNPJ, "--como-era", UM_DIA],
+        "ativos",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA},
+        id="ativos",
     ),
     pytest.param(
         ["compradores", "--cnae", "35115", "--uf", "SP", "--anos", "5", "--limite", "10", "--como-era", UM_DIA],

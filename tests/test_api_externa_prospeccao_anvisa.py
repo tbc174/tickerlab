@@ -9,7 +9,7 @@ Base de mentira, sem internet; os CNPJs são de ninguém. A tabela `anvisa_por_e
 """
 
 import dataclasses
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
@@ -17,10 +17,11 @@ import pytest
 from base import anvisa_porte as porte
 from base import prontidao
 from base.porta import Porta
-from base.prontidao import Prontidao, Prova
+from base.prontidao import AVISO_DE_PILOTO, Prontidao, ProntidaoDePiloto, Prova
 from src import portao_externo as portao
 from src.api_externa import rotas
 from src.api_externa.conjuntos import prospeccao
+from src.banco import chaves_da_api as cb
 from src.banco.coletas import Coleta, ColetaEGuarda, Guarda
 from tests import ajudantes_da_api_externa as aj
 
@@ -436,6 +437,60 @@ def test_resposta_da_anvisa_nao_ganha_campo_de_pessoa(cliente, cenario):
         "share_capital", "active_establishments",
         "anvisa_registrations_total", "anvisa_registrations_active",
     }  # fmt: skip
+
+
+def test_organizacao_do_piloto_recebe_a_busca_da_anvisa_com_o_aviso_em_cada_bloco(
+    banco, cliente, cenario, monkeypatch
+):
+    """PR 6 (linha 860, D11): a Anvisa fora da prontidão cheia, só no registro de piloto, responde à organização
+    com a marca e leva o aviso de piloto em todo bloco; sem a marca a mesma busca nega."""
+    ator, org, _chave = cenario
+    prova = Prova(AGORA.date(), "conferida no teste", "teste")
+    versoes = prontidao.versoes_maiores()
+    cheia = {
+        t: Prontidao(versoes[t], prova, prova, prova)
+        for t in (prospeccao.ESTABELECIMENTOS, prospeccao.EMPRESAS)
+    }
+    regras = dataclasses.replace(
+        _regras(()),
+        prontidao=cheia,
+        prontidao_de_piloto={
+            prospeccao.ANVISA: ProntidaoDePiloto(
+                versoes[prospeccao.ANVISA], prova, prova
+            )
+        },
+        pessoa_decidida=prontidao.tabelas_com_pessoa_decidida(),
+    )
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: regras)
+    busca = {
+        "cnae": "2063",
+        "state": "SP",
+        "anvisa_type": "cosmetics",
+        "anvisa_active_min": 200,
+    }
+    assert _get(cliente, cenario, **busca).status_code == 404  # sem a marca de piloto
+
+    with banco.begin() as conexao:
+        cb.conceder_direito(
+            conexao,
+            organizacao_id=org.id,
+            conjunto=cb.CONJUNTO_DO_PILOTO,
+            finalidade="analise",
+            vigente_desde=date(2026, 11, 1),
+            ator_id=ator.id,
+            agora=AGORA,
+        )
+    resposta = _get(cliente, cenario, **busca)
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert corpo["pilot_notice"] == AVISO_DE_PILOTO
+    (empresa,) = corpo["companies"]
+    for campo in ("anvisa_registrations_active", "anvisa_registrations_total"):
+        bloco = empresa[campo]
+        assert bloco["source"] == "anvisa-produtos"
+        assert bloco["published_at"] == "2026-11-09"
+        assert bloco["pilot"] is True
+        assert bloco["pilot_notice"] == AVISO_DE_PILOTO
 
 
 # ---------------------------------------------------------------- só os tipos de licença lida

@@ -252,6 +252,11 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 12), "placar-qualidade-2026-11-12"),
         dicionario=Prova(date(2026, 11, 12), "dicionario-escrito-2026-11-12"),
     ),
+    "anvisa_por_empresa": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 13), "placar-qualidade-2026-11-13"),
+        dicionario=Prova(date(2026, 11, 13), "dicionario-escrito-2026-11-13"),
+    ),
     # a ficha da empresa (linha 841): 23699215 linhas, zero achado no placar, zero raiz fora da lista de PJ
     "cnpj_situacao_cadastral": ProntidaoDePiloto(
         versao_maior=2,

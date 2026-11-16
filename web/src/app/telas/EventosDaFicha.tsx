@@ -95,7 +95,17 @@ function Tabela({ eventos }: { eventos: EventoDaEmpresaV1[] }) {
   );
 }
 
-export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
+/** `avisoJaMostrado`: o aviso de piloto que a ficha já pôs acima das abas. Se o dos eventos é a mesma frase, a
+ * aba não a repete; se a frase é outra (só os eventos são de piloto), ela fica, porque o aviso nunca some. */
+export function EventosDaFicha({
+  rota,
+  cnpj,
+  avisoJaMostrado = null,
+}: {
+  rota: string;
+  cnpj: string;
+  avisoJaMostrado?: string | null;
+}) {
   const token = useConta()?.token ?? null;
   const rotaDosEventos = `${rota}${CAMINHO}`;
   const primeira = usarPedido<EventosDaEmpresaV1>(rotaDosEventos, {}, { cnpj });
@@ -136,7 +146,7 @@ export function EventosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
     <section className="secao-do-relatorio" aria-labelledby="eventos-da-ficha">
       <h2 id="eventos-da-ficha">Documentos à CVM e trocas de auditor</h2>
       {/* dado de piloto nunca aparece sem o aviso (D11.3): a frase vem do servidor */}
-      {dados.aviso_de_piloto ? (
+      {dados.aviso_de_piloto && dados.aviso_de_piloto !== avisoJaMostrado ? (
         <p className="erro-do-app" role="note">
           {dados.aviso_de_piloto}
         </p>
