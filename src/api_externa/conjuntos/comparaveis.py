@@ -93,6 +93,13 @@ LIMITES_GERAIS = (
         "Os pares são as companhias abertas do mesmo grupo de setores, pelo setor informado à CVM no FCA; "
         "só entra quem tinha DFP de um exercício recente no dia. Não cobre empresa fechada."
     ),
+    # o ensaio de 16/11 (linha 955): em Saúde, hospital e cosmético saíram como pares; o grupo é a nossa
+    # junção de setores do FCA (`src.setores.GRUPOS`), e a classificação mais fina é a da própria companhia
+    (
+        "Um grupo junta setores diferentes do FCA (em Saúde, por exemplo, serviços médicos e farmacêutico): "
+        "o setor que cada companhia informou à CVM vem em `sector`, e as medianas são do grupo inteiro. "
+        "Confira o setor de cada par antes de usá-lo como comparação."
+    ),
     (
         "Comparação não é opinião sobre a empresa, e nada aqui é recomendação de investimento. Pessoa natural "
         "(MEI, empresário individual) não é servida."
@@ -114,7 +121,9 @@ NAO_DISPONIVEIS = "numeros_nao_disponiveis"
 LIMITE_DO_NUMERO_NAO_DISPONIVEL = nao_disponivel.aviso(
     NAO_DISPONIVEIS, "números", "os pares e as medianas"
 )
-GERAIS_ANTES_DOS_NUMEROS = 2  # o do known_at e o de quem são os pares
+GERAIS_ANTES_DOS_NUMEROS = (
+    3  # o do known_at, o de quem são os pares e o da mistura do grupo
+)
 
 
 def limites(
