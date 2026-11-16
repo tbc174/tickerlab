@@ -602,6 +602,29 @@ describe("emitir, trocar e revogar chaves", () => {
     expect(screen.queryByText(CHAVE_NOVA.valor)).toBeNull();
   });
 
+  it("a chave que chega depois de a pessoa trocar de organização não se perde: o painel dela volta com o valor", async () => {
+    let soltarAChave: (resposta: Response) => void = () => undefined;
+    abrir({
+      mudar: () =>
+        new Promise<Response>((resolver) => {
+          soltarAChave = resolver;
+        }),
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Emitir chave nova" }));
+    // a pessoa troca de organização antes de a resposta chegar: a chave já existe no servidor
+    fireEvent.change(screen.getByRole("combobox", { name: "Organização" }), { target: { value: ID_BETA } });
+    await screen.findByRole("region", { name: "Organização Beta" });
+    soltarAChave(respostaJson(200, CHAVE_NOVA));
+    const caixa = await screen.findByRole("region", { name: "Chave nova" });
+    expect(within(caixa).getByText(CHAVE_NOVA.valor)).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "Organização Alfa" })).toBeTruthy();
+    expect((screen.getByRole("combobox", { name: "Organização" }) as HTMLSelectElement).value).toBe(ID_ALFA);
+    // tirada a chave, a tela volta para a organização que a pessoa tinha escolhido
+    fireEvent.click(within(caixa).getByRole("button", { name: "Já copiei: tirar da tela" }));
+    expect(await screen.findByRole("region", { name: "Organização Beta" })).toBeTruthy();
+    expect(screen.queryByText(CHAVE_NOVA.valor)).toBeNull();
+  });
+
   it("copiar manda o valor para a área de transferência", async () => {
     const escrever = vi.fn(async () => undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText: escrever }, configurable: true });
