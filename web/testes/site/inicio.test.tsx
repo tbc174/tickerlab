@@ -281,6 +281,13 @@ describe("página inicial da CLI e do conector de M&A e análise de investimento
       expect(texto, fato.chave).toContain(`Fonte: ${esc(fato.fonte)}`);
       expect(cartoes[i], fato.chave).toContain("<summary>Como foi calculado</summary>");
       expect(texto, fato.chave).toContain(esc(fato.como_foi_calculado));
+      // o recorte por estado e por setor (2º PR da linha 925), quando a medição o trouxe
+      expect(cartoes[i].includes("<summary>Por estado e por setor</summary>"), fato.chave).toBe(
+        fato.recorte !== undefined,
+      );
+      for (const barra of [...(fato.recorte?.por_uf.barras ?? []), ...(fato.recorte?.por_setor.barras ?? [])]) {
+        expect(texto, fato.chave).toContain(`${esc(barra.rotulo)}${barra.parte} de ${barra.todo} (${barra.porcento})`);
+      }
     });
     // a vaga "cruzamentos" da vitrine leva até aqui
     expect(vitrine.find((v) => v.chave === "cruzamentos")?.link).toBe("/#cruzamentos");

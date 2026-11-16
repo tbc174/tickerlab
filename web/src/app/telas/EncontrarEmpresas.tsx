@@ -5,7 +5,7 @@
 // negaria não aparece aqui. As opções do formulário vêm da API (um pedido sem filtro, que não lê a base);
 // "Limites e cuidados" fica sempre à vista depois da busca.
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, pedir } from "../api";
@@ -513,6 +513,25 @@ export function aberturaDoSetor(estado: unknown, opcoes: BuscaDeEmpresasV1): Abe
   return { filtros: temFiltro(filtros) ? filtros : null, nota };
 }
 
+/** O setor e o estado que chegam no endereço (o link dos cruzamentos do site, linha 925): só `setor` e `uf`,
+ * um de cada, e só valores que o formulário oferece; o resto se ignora, sem erro, e sem nenhum dos dois a
+ * tela abre com o filtro vazio. */
+export function filtrosDoEndereco(busca: URLSearchParams, opcoes: BuscaDeEmpresasV1): Filtros | null {
+  const setor = busca.get("setor");
+  const uf = busca.get("uf");
+  const filtros: Filtros = {
+    setores: setor !== null && opcoes.setores.some((s) => s.codigo === setor) ? [setor] : [],
+    ufs: uf !== null && opcoes.ufs.includes(uf) ? [uf] : [],
+  };
+  return temFiltro(filtros) ? filtros : null;
+}
+
+/** O filtro com que a busca começa: o que o Setor mandou vale primeiro (um clique de dentro do app, que vale uma vez
+ * só), mesmo sem filtro, porque a nota dele diz o que entrou; sem ele, o do endereço. */
+export function filtroInicial(abertura: AberturaDoSetor | null, doEndereco: Filtros | null): Filtros | null {
+  return abertura ? abertura.filtros : doEndereco;
+}
+
 const AVISO_DE_COMECO = (
   <p className="apagado">
     Escolha ao menos um filtro. Aparecem só empresas com cadastro ativo na Receita Federal, uma linha por empresa;
@@ -521,10 +540,21 @@ const AVISO_DE_COMECO = (
 );
 
 /** O formulário, as etiquetas e a lista, depois que as opções chegaram; a busca já começa com o filtro que o Setor
- * mandou, se houver. */
-function Busca({ rota, opcoes, abertura }: { rota: string; opcoes: BuscaDeEmpresasV1; abertura: AberturaDoSetor | null }) {
+ * mandou ou, sem ele, com o do endereço, se houver. */
+function Busca({
+  rota,
+  opcoes,
+  abertura,
+  doEndereco,
+}: {
+  rota: string;
+  opcoes: BuscaDeEmpresasV1;
+  abertura: AberturaDoSetor | null;
+  doEndereco: Filtros | null;
+}) {
+  const inicial = filtroInicial(abertura, doEndereco);
   const [buscado, setBuscado] = useState<{ filtros: Filtros; vez: number } | null>(
-    abertura?.filtros ? { filtros: abertura.filtros, vez: 1 } : null,
+    inicial ? { filtros: inicial, vez: 1 } : null,
   );
   const [vezDoFormulario, setVezDoFormulario] = useState(0);
   const [comNota, setComNota] = useState(true);
@@ -561,13 +591,19 @@ export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
   const rota = pagina.contrato?.rota ?? "";
   const opcoes = usarPedido<BuscaDeEmpresasV1>(rota, {}, SEM_FILTRO);
   const doSetor = useEstadoDaNavegacaoUmaVez(); // o CNAE e a UF do Setor valem uma vez só, como o CNPJ da ficha
+  const [endereco] = useSearchParams();
   return (
     <section>
       <CabecalhoDaTela pagina={pagina} />
       {opcoes.estado === "carregando" && <Carregando tipo="painel" rotulo="Abrindo o formulário…" />}
       {opcoes.estado === "erro" && <Erro erro={opcoes.erro} />}
       {opcoes.estado === "pronto" ? (
-        <Busca rota={rota} opcoes={opcoes.dados} abertura={aberturaDoSetor(doSetor, opcoes.dados)} />
+        <Busca
+          rota={rota}
+          opcoes={opcoes.dados}
+          abertura={aberturaDoSetor(doSetor, opcoes.dados)}
+          doEndereco={filtrosDoEndereco(endereco, opcoes.dados)}
+        />
       ) : (
         AVISO_DE_COMECO
       )}

@@ -66,6 +66,13 @@ ATIVAS_FECHADAS = len(
         if s == "02" and n != ABERTA and n not in NATUREZAS
     ]
 )
+
+
+# UF da matriz, para o recorte: ímpar em SP, par em MG, e a 15 sem UF no retrato
+def uf(numero: int) -> str:
+    return "" if numero == 15 else ("SP" if numero % 2 else "MG")
+
+
 # filiais: raiz, ordem, início de atividade
 FILIAIS = [
     (6, "0002", "2026-01-10"), (6, "0003", "2026-02-10"), (6, "0004", "2026-03-10"),  # 3 na janela
@@ -111,7 +118,8 @@ def _estabelecimentos() -> pd.DataFrame:
     )  # fmt: skip
     tabela["data_inicio_atividade"] = pd.to_datetime(tabela["data_inicio_atividade"])
     tabela["disponivel_em"] = tabela["disponivel_em"].map(_dia)
-    return tabela.assign(uf="SP", municipio="7107", **CARIMBOS)
+    tabela["uf"] = [uf(int(raiz[-2:])) for raiz in tabela["cnpj_basico"]]
+    return tabela.assign(municipio="7107", **CARIMBOS)
 
 
 def _empresas() -> pd.DataFrame:
@@ -527,7 +535,7 @@ def test_as_tabelas_dos_cartoes_tem_as_colunas_que_o_sql_le():
     precisa = {
         fechadas.EMPRESAS: {"cnpj_basico", "porte", "mes_do_retrato"},
         fechadas.ESTABELECIMENTOS: {"cnpj_basico", "matriz", "situacao_cadastral",
-                                    "data_inicio_atividade", "cnae_principal", "mes_do_retrato"},
+                                    "data_inicio_atividade", "cnae_principal", "mes_do_retrato", "uf"},
         fechadas.FCA: {"cnpj"},
         fechadas.SIMPLES: {"cnpj_basico", "optante_simples", "consta", "mes_do_retrato"},
         fechadas.SOCIAS: {"cnpj_basico", "raiz_socio_pj", "movimento", "data_entrada", "mes_do_retrato"},
@@ -600,3 +608,139 @@ def test_o_minimo_de_cartoes_de_pe():
 def test_doze_meses_antes():
     assert fechadas.doze_meses_antes(date(2026, 11, 10)) == date(2025, 11, 10)
     assert fechadas.doze_meses_antes(date(2024, 2, 29)) == date(2023, 2, 28)
+
+
+# --- o recorte por UF e por setor (2º PR da linha 925) -----------------------------------------------------
+
+
+@pytest.fixture
+def sem_minimo_nenhum(monkeypatch):
+    """Sem mínimo nenhum: a célula com parte zero também sai, para conferir a conta crua."""
+    monkeypatch.setattr(fechadas, "MINIMO_DA_CONTAGEM", 0)
+
+
+def _recortes(
+    porta,
+) -> tuple[fechadas.MedicaoDasFechadas, fechadas.RecortesDasFechadas]:
+    return fechadas.medir_fechadas_e_recortes(porta, catalogo(), DIA)
+
+
+def _celulas(*trios) -> tuple[fechadas.Celula, ...]:
+    return tuple(fechadas.Celula(chave, parte, todo) for chave, todo, parte in trios)
+
+
+@pytest.mark.usefixtures("sem_minimo_nenhum")
+def test_o_recorte_conta_cada_uf_e_cada_setor_da_matriz(porta):
+    medicao, recortes = _recortes(porta)
+    assert medicao == _medicao(porta)  # o recorte não muda a medição dos cartões
+    assert recortes.caidos == ()
+    por_cartao = {r.chave: r for r in recortes.cartoes}
+    assert set(por_cartao) == set(ESPERADO)
+    # 1, 2 e 3 eram optantes (1 e 3 em SP, 2 em MG); só a 1 saiu; todas de TI (seção J)
+    assert por_cartao["saiu_do_simples"].por_uf == _celulas(("MG", 1, 0), ("SP", 2, 1))
+    assert por_cartao["saiu_do_simples"].por_setor == _celulas(("J", 3, 1))
+    # 8 (MG, com marca) e 9 (SP), as duas da indústria de transformação (seção C)
+    assert por_cartao["industria_e_marca"].por_uf == _celulas(
+        ("MG", 1, 1), ("SP", 1, 0)
+    )
+    assert por_cartao["industria_e_marca"].por_setor == _celulas(("C", 2, 1))
+    # 13 (SP) devia havia 12 meses; 2 (MG) não
+    assert por_cartao["recuperacao_e_divida"].por_uf == _celulas(
+        ("MG", 1, 0), ("SP", 1, 1)
+    )
+    # a 15 não tem UF no retrato: fica na célula "nd"
+    assert "nd" in {c.chave for c in por_cartao["tres_filiais"].por_uf}
+
+
+@pytest.mark.usefixtures("sem_minimo_nenhum")
+def test_as_celulas_de_cada_recorte_somam_o_cartao(porta):
+    medicao, recortes = _recortes(porta)
+    cartoes = {c.chave: c for c in medicao.cartoes}
+    for recorte in recortes.cartoes:
+        cartao = cartoes[recorte.chave]
+        for celulas in (recorte.por_uf, recorte.por_setor):
+            assert sum(c.todo or 0 for c in celulas) == cartao.todo, recorte.chave
+            assert sum(c.parte or 0 for c in celulas) == cartao.parte, recorte.chave
+
+
+@pytest.mark.usefixtures("sem_minimo_nenhum")
+def test_sem_olhar_o_futuro_o_recorte_antigo_nao_muda_com_o_que_veio_depois(
+    tmp_path, banco
+):
+    inteira = _recortes(Porta(_montar(tmp_path / "inteira"), banco))
+    cortada = tmp_path / "cortada"
+    _montar(cortada)
+    for arquivo in cortada.rglob("*.parquet"):
+        tabela = pd.read_parquet(arquivo)
+        coluna = "conhecido_em" if "conhecido_em" in tabela else "disponivel_em"
+        publico = pd.to_datetime(tabela[coluna]).dt.date
+        _gravar(arquivo, tabela[publico < _dia(FUTURO)])
+    assert _recortes(Porta(cortada, banco)) == inteira
+
+
+@pytest.mark.usefixtures("sem_minimo_nenhum")
+def test_recorte_que_nao_fecha_com_o_total_cai_inteiro(porta, monkeypatch):
+    """Se as partes do recorte contam outra coisa que o cartão, o recorte daquele cartão cai e os outros
+    seguem; o cartão em si fica de pé."""
+    torto = fechadas.Partes(
+        "SELECT raiz FROM ativas LIMIT 1", "SELECT raiz FROM ativas LIMIT 0"
+    )
+    moldes = tuple(
+        replace(m, partes=lambda: torto) if m.chave == "tres_filiais" else m
+        for m in fechadas.MOLDES
+    )
+    monkeypatch.setattr(fechadas, "MOLDES", moldes)
+    medicao, recortes = _recortes(porta)
+    assert "tres_filiais" in {c.chave for c in medicao.cartoes}
+    assert {c.chave: c.motivo for c in recortes.caidos} == {
+        "tres_filiais": "o recorte não fecha com o total do cartão"
+    }
+    assert {r.chave for r in recortes.cartoes} == set(ESPERADO) - {"tres_filiais"}
+
+
+def test_com_o_minimo_de_verdade_nao_ha_recorte(porta):
+    medicao, recortes = _recortes(porta)
+    assert medicao.cartoes == () and recortes.cartoes == () and recortes.caidos == ()
+
+
+@pytest.mark.parametrize(
+    "contagens, escondidas",
+    [
+        ({"SP": (50, 20), "MG": (30, 15)}, set()),  # todas saem
+        # a AC é pequena; sozinha, sairia pela subtração: a menor das outras (MG) cai junto
+        ({"SP": (50, 20), "MG": (30, 15), "AC": (3, 1)}, {"AC", "MG"}),
+        # AC e RJ somadas ainda têm parte 6: cai também a MG
+        (
+            {"SP": (50, 20), "MG": (30, 15), "RJ": (12, 5), "AC": (3, 1)},
+            {"AC", "RJ", "MG"},
+        ),
+        # AC e RJ somadas (todo 30, parte 15) já podem sair: nada mais cai
+        (
+            {"SP": (50, 20), "MG": (30, 15), "RJ": (21, 10), "AC": (9, 5)},
+            {"AC"} | {"RJ"},
+        ),
+        ({"SP": (5, 1), "MG": (3, 1)}, {"SP", "MG"}),  # nenhuma sai
+        ({"SP": (100, 95)}, {"SP"}),  # o complemento (5) também é pequeno
+    ],
+)
+def test_celulas_que_saem(contagens, escondidas):
+    celulas = fechadas.celulas_que_saem(contagens)
+    assert [c.chave for c in celulas] == sorted(contagens)
+    assert {c.chave for c in celulas if c.todo is None} == escondidas
+    for celula in celulas:
+        assert (celula.todo is None) is (celula.parte is None)
+        if celula.todo is not None:
+            assert (celula.todo, celula.parte) == contagens[celula.chave]
+            assert fechadas.motivo_da_contagem(celula.todo, celula.parte) is None
+    tiradas = [contagens[c.chave] for c in celulas if c.todo is None]
+    if tiradas and len(tiradas) < len(contagens):
+        soma = (sum(t for t, _ in tiradas), sum(p for _, p in tiradas))
+        assert (
+            fechadas.motivo_da_contagem(*soma) is None
+        )  # o que some não se deduz pela subtração
+
+
+def test_as_divisoes_do_cnae_tem_secao():
+    secoes = dict(fechadas.SECAO_DA_DIVISAO)
+    assert secoes["62"] == "J" and secoes["10"] == "C" and secoes["47"] == "G"
+    assert set(secoes.values()) <= set(fechadas.cnae.SECOES)

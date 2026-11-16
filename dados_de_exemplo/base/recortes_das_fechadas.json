@@ -1,0 +1,1837 @@
+{
+  "caidos": [],
+  "cartoes": [
+    {
+      "chave": "tres_filiais",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": 218,
+          "todo": 85571
+        },
+        {
+          "chave": "B",
+          "parte": 13,
+          "todo": 17102
+        },
+        {
+          "chave": "C",
+          "parte": 329,
+          "todo": 537812
+        },
+        {
+          "chave": "D",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "E",
+          "parte": 11,
+          "todo": 19680
+        },
+        {
+          "chave": "F",
+          "parte": 550,
+          "todo": 547323
+        },
+        {
+          "chave": "G",
+          "parte": 1852,
+          "todo": 2352828
+        },
+        {
+          "chave": "H",
+          "parte": 416,
+          "todo": 310865
+        },
+        {
+          "chave": "I",
+          "parte": 414,
+          "todo": 382976
+        },
+        {
+          "chave": "J",
+          "parte": 139,
+          "todo": 398982
+        },
+        {
+          "chave": "K",
+          "parte": 198,
+          "todo": 460286
+        },
+        {
+          "chave": "L",
+          "parte": 51,
+          "todo": 322285
+        },
+        {
+          "chave": "M",
+          "parte": 132,
+          "todo": 1050879
+        },
+        {
+          "chave": "N",
+          "parte": 247,
+          "todo": 779295
+        },
+        {
+          "chave": "O",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "P",
+          "parte": 61,
+          "todo": 246946
+        },
+        {
+          "chave": "Q",
+          "parte": 167,
+          "todo": 769254
+        },
+        {
+          "chave": "R",
+          "parte": 35,
+          "todo": 122842
+        },
+        {
+          "chave": "S",
+          "parte": 51,
+          "todo": 170238
+        },
+        {
+          "chave": "T",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "U",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AL",
+          "parte": 24,
+          "todo": 53611
+        },
+        {
+          "chave": "AM",
+          "parte": 67,
+          "todo": 76554
+        },
+        {
+          "chave": "AP",
+          "parte": 12,
+          "todo": 15949
+        },
+        {
+          "chave": "BA",
+          "parte": 178,
+          "todo": 351289
+        },
+        {
+          "chave": "CE",
+          "parte": 171,
+          "todo": 214768
+        },
+        {
+          "chave": "DF",
+          "parte": 103,
+          "todo": 190006
+        },
+        {
+          "chave": "ES",
+          "parte": 108,
+          "todo": 171329
+        },
+        {
+          "chave": "EX",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "GO",
+          "parte": 276,
+          "todo": 344188
+        },
+        {
+          "chave": "MA",
+          "parte": 69,
+          "todo": 105231
+        },
+        {
+          "chave": "MG",
+          "parte": 418,
+          "todo": 872549
+        },
+        {
+          "chave": "MS",
+          "parte": 90,
+          "todo": 112209
+        },
+        {
+          "chave": "MT",
+          "parte": 139,
+          "todo": 184588
+        },
+        {
+          "chave": "PA",
+          "parte": 81,
+          "todo": 150197
+        },
+        {
+          "chave": "PB",
+          "parte": 86,
+          "todo": 78757
+        },
+        {
+          "chave": "PE",
+          "parte": 136,
+          "todo": 182878
+        },
+        {
+          "chave": "PI",
+          "parte": 39,
+          "todo": 60024
+        },
+        {
+          "chave": "PR",
+          "parte": 481,
+          "todo": 720706
+        },
+        {
+          "chave": "RJ",
+          "parte": 279,
+          "todo": 646728
+        },
+        {
+          "chave": "RN",
+          "parte": 53,
+          "todo": 75659
+        },
+        {
+          "chave": "RO",
+          "parte": 41,
+          "todo": 51849
+        },
+        {
+          "chave": "RR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RS",
+          "parte": 334,
+          "todo": 537184
+        },
+        {
+          "chave": "SC",
+          "parte": 311,
+          "todo": 553923
+        },
+        {
+          "chave": "SE",
+          "parte": 16,
+          "todo": 50337
+        },
+        {
+          "chave": "SP",
+          "parte": 1348,
+          "todo": 2648496
+        },
+        {
+          "chave": "TO",
+          "parte": 34,
+          "todo": 54068
+        }
+      ]
+    },
+    {
+      "chave": "bndes_e_finep",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "B",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "C",
+          "parte": 184,
+          "todo": 621
+        },
+        {
+          "chave": "D",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "E",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "F",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "G",
+          "parte": 24,
+          "todo": 162
+        },
+        {
+          "chave": "H",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "I",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "J",
+          "parte": 27,
+          "todo": 191
+        },
+        {
+          "chave": "K",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "L",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "M",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "N",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "O",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "P",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "Q",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "R",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AL",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AM",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AP",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "BA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "CE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "DF",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "ES",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "GO",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MG",
+          "parte": 26,
+          "todo": 209
+        },
+        {
+          "chave": "MS",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MT",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PB",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PI",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PR",
+          "parte": 42,
+          "todo": 162
+        },
+        {
+          "chave": "RJ",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RN",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RO",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RS",
+          "parte": 55,
+          "todo": 191
+        },
+        {
+          "chave": "SC",
+          "parte": 38,
+          "todo": 225
+        },
+        {
+          "chave": "SE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "SP",
+          "parte": 74,
+          "todo": 851
+        },
+        {
+          "chave": "TO",
+          "parte": null,
+          "todo": null
+        }
+      ]
+    },
+    {
+      "chave": "socia_entrou",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": 1518,
+          "todo": 85571
+        },
+        {
+          "chave": "B",
+          "parte": 392,
+          "todo": 17102
+        },
+        {
+          "chave": "C",
+          "parte": 2885,
+          "todo": 537812
+        },
+        {
+          "chave": "D",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "E",
+          "parte": 199,
+          "todo": 19680
+        },
+        {
+          "chave": "F",
+          "parte": 13424,
+          "todo": 547323
+        },
+        {
+          "chave": "G",
+          "parte": 9513,
+          "todo": 2352828
+        },
+        {
+          "chave": "H",
+          "parte": 1561,
+          "todo": 310865
+        },
+        {
+          "chave": "I",
+          "parte": 2003,
+          "todo": 382976
+        },
+        {
+          "chave": "J",
+          "parte": 3678,
+          "todo": 398982
+        },
+        {
+          "chave": "K",
+          "parte": 10446,
+          "todo": 460286
+        },
+        {
+          "chave": "L",
+          "parte": 6941,
+          "todo": 322285
+        },
+        {
+          "chave": "M",
+          "parte": 5534,
+          "todo": 1050879
+        },
+        {
+          "chave": "N",
+          "parte": 4620,
+          "todo": 779295
+        },
+        {
+          "chave": "O",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "P",
+          "parte": 1126,
+          "todo": 246946
+        },
+        {
+          "chave": "Q",
+          "parte": 6127,
+          "todo": 769254
+        },
+        {
+          "chave": "R",
+          "parte": 1101,
+          "todo": 122842
+        },
+        {
+          "chave": "S",
+          "parte": 272,
+          "todo": 170238
+        },
+        {
+          "chave": "T",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "U",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": 70,
+          "todo": 14977
+        },
+        {
+          "chave": "AL",
+          "parte": 457,
+          "todo": 53611
+        },
+        {
+          "chave": "AM",
+          "parte": 593,
+          "todo": 76554
+        },
+        {
+          "chave": "AP",
+          "parte": 81,
+          "todo": 15949
+        },
+        {
+          "chave": "BA",
+          "parte": 2382,
+          "todo": 351289
+        },
+        {
+          "chave": "CE",
+          "parte": 2560,
+          "todo": 214768
+        },
+        {
+          "chave": "DF",
+          "parte": 2248,
+          "todo": 190006
+        },
+        {
+          "chave": "ES",
+          "parte": 1995,
+          "todo": 171329
+        },
+        {
+          "chave": "EX",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "GO",
+          "parte": 3339,
+          "todo": 344188
+        },
+        {
+          "chave": "MA",
+          "parte": 472,
+          "todo": 105231
+        },
+        {
+          "chave": "MG",
+          "parte": 8258,
+          "todo": 872549
+        },
+        {
+          "chave": "MS",
+          "parte": 825,
+          "todo": 112209
+        },
+        {
+          "chave": "MT",
+          "parte": 1787,
+          "todo": 184588
+        },
+        {
+          "chave": "PA",
+          "parte": 836,
+          "todo": 150197
+        },
+        {
+          "chave": "PB",
+          "parte": 830,
+          "todo": 78757
+        },
+        {
+          "chave": "PE",
+          "parte": 1548,
+          "todo": 182878
+        },
+        {
+          "chave": "PI",
+          "parte": 306,
+          "todo": 60024
+        },
+        {
+          "chave": "PR",
+          "parte": 5569,
+          "todo": 720706
+        },
+        {
+          "chave": "RJ",
+          "parte": 4684,
+          "todo": 646728
+        },
+        {
+          "chave": "RN",
+          "parte": 769,
+          "todo": 75659
+        },
+        {
+          "chave": "RO",
+          "parte": 324,
+          "todo": 51849
+        },
+        {
+          "chave": "RR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RS",
+          "parte": 3306,
+          "todo": 537184
+        },
+        {
+          "chave": "SC",
+          "parte": 5926,
+          "todo": 553923
+        },
+        {
+          "chave": "SE",
+          "parte": 328,
+          "todo": 50337
+        },
+        {
+          "chave": "SP",
+          "parte": 22259,
+          "todo": 2648496
+        },
+        {
+          "chave": "TO",
+          "parte": 441,
+          "todo": 54068
+        }
+      ]
+    },
+    {
+      "chave": "tres_niveis",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": 476,
+          "todo": 7247
+        },
+        {
+          "chave": "B",
+          "parte": 201,
+          "todo": 2581
+        },
+        {
+          "chave": "C",
+          "parte": 854,
+          "todo": 16469
+        },
+        {
+          "chave": "D",
+          "parte": 1126,
+          "todo": 6296
+        },
+        {
+          "chave": "E",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "F",
+          "parte": 10735,
+          "todo": 85149
+        },
+        {
+          "chave": "G",
+          "parte": 1914,
+          "todo": 39992
+        },
+        {
+          "chave": "H",
+          "parte": 649,
+          "todo": 8527
+        },
+        {
+          "chave": "I",
+          "parte": 664,
+          "todo": 7245
+        },
+        {
+          "chave": "J",
+          "parte": 741,
+          "todo": 14568
+        },
+        {
+          "chave": "K",
+          "parte": 3867,
+          "todo": 40271
+        },
+        {
+          "chave": "L",
+          "parte": 3356,
+          "todo": 34757
+        },
+        {
+          "chave": "M",
+          "parte": 2117,
+          "todo": 24910
+        },
+        {
+          "chave": "N",
+          "parte": 1740,
+          "todo": 21826
+        },
+        {
+          "chave": "O",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "P",
+          "parte": 258,
+          "todo": 3995
+        },
+        {
+          "chave": "Q",
+          "parte": 1613,
+          "todo": 34164
+        },
+        {
+          "chave": "R",
+          "parte": 151,
+          "todo": 3063
+        },
+        {
+          "chave": "S",
+          "parte": 74,
+          "todo": 2291
+        },
+        {
+          "chave": "T",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "U",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": 32,
+          "todo": 435
+        },
+        {
+          "chave": "AL",
+          "parte": 108,
+          "todo": 1979
+        },
+        {
+          "chave": "AM",
+          "parte": 195,
+          "todo": 2554
+        },
+        {
+          "chave": "AP",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "BA",
+          "parte": 725,
+          "todo": 10522
+        },
+        {
+          "chave": "CE",
+          "parte": 590,
+          "todo": 9943
+        },
+        {
+          "chave": "DF",
+          "parte": 571,
+          "todo": 7979
+        },
+        {
+          "chave": "ES",
+          "parte": 1798,
+          "todo": 8274
+        },
+        {
+          "chave": "EX",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "GO",
+          "parte": 2346,
+          "todo": 14988
+        },
+        {
+          "chave": "MA",
+          "parte": 175,
+          "todo": 2180
+        },
+        {
+          "chave": "MG",
+          "parte": 2877,
+          "todo": 36865
+        },
+        {
+          "chave": "MS",
+          "parte": 245,
+          "todo": 3165
+        },
+        {
+          "chave": "MT",
+          "parte": 548,
+          "todo": 6945
+        },
+        {
+          "chave": "PA",
+          "parte": 356,
+          "todo": 3208
+        },
+        {
+          "chave": "PB",
+          "parte": 342,
+          "todo": 3159
+        },
+        {
+          "chave": "PE",
+          "parte": 645,
+          "todo": 10185
+        },
+        {
+          "chave": "PI",
+          "parte": 129,
+          "todo": 1508
+        },
+        {
+          "chave": "PR",
+          "parte": 1749,
+          "todo": 24324
+        },
+        {
+          "chave": "RJ",
+          "parte": 2287,
+          "todo": 33647
+        },
+        {
+          "chave": "RN",
+          "parte": 260,
+          "todo": 4418
+        },
+        {
+          "chave": "RO",
+          "parte": 82,
+          "todo": 1157
+        },
+        {
+          "chave": "RR",
+          "parte": 44,
+          "todo": 373
+        },
+        {
+          "chave": "RS",
+          "parte": 1040,
+          "todo": 16137
+        },
+        {
+          "chave": "SC",
+          "parte": 1495,
+          "todo": 23764
+        },
+        {
+          "chave": "SE",
+          "parte": 59,
+          "todo": 1158
+        },
+        {
+          "chave": "SP",
+          "parte": 11772,
+          "todo": 123433
+        },
+        {
+          "chave": "TO",
+          "parte": 197,
+          "todo": 1994
+        }
+      ]
+    },
+    {
+      "chave": "bndes_e_divida",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "B",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "C",
+          "parte": 38,
+          "todo": 315
+        },
+        {
+          "chave": "D",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "E",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "F",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "G",
+          "parte": 13,
+          "todo": 93
+        },
+        {
+          "chave": "H",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "I",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "J",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "K",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "L",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "M",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "N",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "P",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "Q",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "R",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AL",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AM",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AP",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "BA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "CE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "DF",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "ES",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "GO",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MG",
+          "parte": 10,
+          "todo": 107
+        },
+        {
+          "chave": "MS",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MT",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PB",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PI",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RJ",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RN",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RO",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RS",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "SC",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "SE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "SP",
+          "parte": 35,
+          "todo": 445
+        },
+        {
+          "chave": "TO",
+          "parte": null,
+          "todo": null
+        }
+      ]
+    },
+    {
+      "chave": "anvisa_e_divida",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "B",
+          "parte": 17,
+          "todo": 62
+        },
+        {
+          "chave": "C",
+          "parte": 1522,
+          "todo": 9167
+        },
+        {
+          "chave": "E",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "F",
+          "parte": 15,
+          "todo": 136
+        },
+        {
+          "chave": "G",
+          "parte": 5315,
+          "todo": 85786
+        },
+        {
+          "chave": "H",
+          "parte": 713,
+          "todo": 4059
+        },
+        {
+          "chave": "I",
+          "parte": 17,
+          "todo": 103
+        },
+        {
+          "chave": "J",
+          "parte": 18,
+          "todo": 176
+        },
+        {
+          "chave": "K",
+          "parte": 21,
+          "todo": 177
+        },
+        {
+          "chave": "L",
+          "parte": 30,
+          "todo": 189
+        },
+        {
+          "chave": "M",
+          "parte": 89,
+          "todo": 658
+        },
+        {
+          "chave": "N",
+          "parte": 312,
+          "todo": 1312
+        },
+        {
+          "chave": "O",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "P",
+          "parte": 13,
+          "todo": 80
+        },
+        {
+          "chave": "Q",
+          "parte": 33,
+          "todo": 449
+        },
+        {
+          "chave": "R",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "S",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "T",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": 13,
+          "todo": 301
+        },
+        {
+          "chave": "AL",
+          "parte": 72,
+          "todo": 1165
+        },
+        {
+          "chave": "AM",
+          "parte": 71,
+          "todo": 1272
+        },
+        {
+          "chave": "AP",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "BA",
+          "parte": 325,
+          "todo": 5489
+        },
+        {
+          "chave": "CE",
+          "parte": 231,
+          "todo": 3226
+        },
+        {
+          "chave": "DF",
+          "parte": 202,
+          "todo": 1854
+        },
+        {
+          "chave": "ES",
+          "parte": 225,
+          "todo": 3122
+        },
+        {
+          "chave": "GO",
+          "parte": 453,
+          "todo": 5709
+        },
+        {
+          "chave": "MA",
+          "parte": 132,
+          "todo": 2122
+        },
+        {
+          "chave": "MG",
+          "parte": 834,
+          "todo": 11068
+        },
+        {
+          "chave": "MS",
+          "parte": 106,
+          "todo": 1209
+        },
+        {
+          "chave": "MT",
+          "parte": 144,
+          "todo": 1627
+        },
+        {
+          "chave": "PA",
+          "parte": 164,
+          "todo": 3063
+        },
+        {
+          "chave": "PB",
+          "parte": 120,
+          "todo": 1713
+        },
+        {
+          "chave": "PE",
+          "parte": 265,
+          "todo": 3292
+        },
+        {
+          "chave": "PI",
+          "parte": 80,
+          "todo": 1293
+        },
+        {
+          "chave": "PR",
+          "parte": 533,
+          "todo": 6858
+        },
+        {
+          "chave": "RJ",
+          "parte": 880,
+          "todo": 9125
+        },
+        {
+          "chave": "RN",
+          "parte": 74,
+          "todo": 1513
+        },
+        {
+          "chave": "RO",
+          "parte": 62,
+          "todo": 876
+        },
+        {
+          "chave": "RR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RS",
+          "parte": 421,
+          "todo": 5147
+        },
+        {
+          "chave": "SC",
+          "parte": 324,
+          "todo": 5644
+        },
+        {
+          "chave": "SE",
+          "parte": 63,
+          "todo": 1075
+        },
+        {
+          "chave": "SP",
+          "parte": 2243,
+          "todo": 23362
+        },
+        {
+          "chave": "TO",
+          "parte": 75,
+          "todo": 915
+        }
+      ]
+    },
+    {
+      "chave": "industria_e_marca",
+      "por_setor": [
+        {
+          "chave": "C",
+          "parte": 29233,
+          "todo": 55515
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": 20,
+          "todo": 87
+        },
+        {
+          "chave": "AL",
+          "parte": 125,
+          "todo": 282
+        },
+        {
+          "chave": "AM",
+          "parte": 366,
+          "todo": 911
+        },
+        {
+          "chave": "AP",
+          "parte": 13,
+          "todo": 45
+        },
+        {
+          "chave": "BA",
+          "parte": 616,
+          "todo": 1336
+        },
+        {
+          "chave": "CE",
+          "parte": 493,
+          "todo": 1118
+        },
+        {
+          "chave": "DF",
+          "parte": 109,
+          "todo": 281
+        },
+        {
+          "chave": "ES",
+          "parte": 453,
+          "todo": 842
+        },
+        {
+          "chave": "EX",
+          "parte": 11,
+          "todo": 3403
+        },
+        {
+          "chave": "GO",
+          "parte": 650,
+          "todo": 1320
+        },
+        {
+          "chave": "MA",
+          "parte": 117,
+          "todo": 335
+        },
+        {
+          "chave": "MG",
+          "parte": 2811,
+          "todo": 4976
+        },
+        {
+          "chave": "MS",
+          "parte": 228,
+          "todo": 485
+        },
+        {
+          "chave": "MT",
+          "parte": 391,
+          "todo": 929
+        },
+        {
+          "chave": "PA",
+          "parte": 225,
+          "todo": 618
+        },
+        {
+          "chave": "PB",
+          "parte": 182,
+          "todo": 348
+        },
+        {
+          "chave": "PE",
+          "parte": 532,
+          "todo": 1137
+        },
+        {
+          "chave": "PI",
+          "parte": 81,
+          "todo": 229
+        },
+        {
+          "chave": "PR",
+          "parte": 2596,
+          "todo": 4570
+        },
+        {
+          "chave": "RJ",
+          "parte": 1123,
+          "todo": 2890
+        },
+        {
+          "chave": "RN",
+          "parte": 145,
+          "todo": 304
+        },
+        {
+          "chave": "RO",
+          "parte": 91,
+          "todo": 220
+        },
+        {
+          "chave": "RR",
+          "parte": 14,
+          "todo": 34
+        },
+        {
+          "chave": "RS",
+          "parte": 3083,
+          "todo": 4810
+        },
+        {
+          "chave": "SC",
+          "parte": 3206,
+          "todo": 5065
+        },
+        {
+          "chave": "SE",
+          "parte": 95,
+          "todo": 230
+        },
+        {
+          "chave": "SP",
+          "parte": 11369,
+          "todo": 18491
+        },
+        {
+          "chave": "TO",
+          "parte": 88,
+          "todo": 219
+        }
+      ]
+    },
+    {
+      "chave": "finep_e_patente",
+      "por_setor": [
+        {
+          "chave": "A",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "B",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "C",
+          "parte": 671,
+          "todo": 2106
+        },
+        {
+          "chave": "D",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "E",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "F",
+          "parte": 11,
+          "todo": 66
+        },
+        {
+          "chave": "G",
+          "parte": 62,
+          "todo": 350
+        },
+        {
+          "chave": "H",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "I",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "J",
+          "parte": 40,
+          "todo": 523
+        },
+        {
+          "chave": "K",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "L",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "M",
+          "parte": 28,
+          "todo": 172
+        },
+        {
+          "chave": "N",
+          "parte": 16,
+          "todo": 108
+        },
+        {
+          "chave": "P",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "Q",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "R",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "S",
+          "parte": null,
+          "todo": null
+        }
+      ],
+      "por_uf": [
+        {
+          "chave": "AC",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AL",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "AM",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "BA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "CE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "DF",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "ES",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "GO",
+          "parte": 10,
+          "todo": 48
+        },
+        {
+          "chave": "MA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MG",
+          "parte": 61,
+          "todo": 248
+        },
+        {
+          "chave": "MS",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "MT",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PA",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PB",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PI",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "PR",
+          "parte": 129,
+          "todo": 605
+        },
+        {
+          "chave": "RJ",
+          "parte": 21,
+          "todo": 100
+        },
+        {
+          "chave": "RN",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RO",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RR",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "RS",
+          "parte": 226,
+          "todo": 867
+        },
+        {
+          "chave": "SC",
+          "parte": 184,
+          "todo": 804
+        },
+        {
+          "chave": "SE",
+          "parte": null,
+          "todo": null
+        },
+        {
+          "chave": "SP",
+          "parte": 173,
+          "todo": 576
+        },
+        {
+          "chave": "TO",
+          "parte": null,
+          "todo": null
+        }
+      ]
+    }
+  ],
+  "medido_em": "2026-11-14"
+}
