@@ -56,7 +56,7 @@ from base.historico import ano_do_arquivo
 from base.parquet import gravar_tabela
 from src import acervo
 from src.banco.coletas import exigir_licenca, originais_mais_recentes
-from src.prazos import ATRASO_GRAVE, prazo
+from src.prazos import ATRASO_GRAVE, ZONA_CINZENTA, prazo
 from src.versao_do_codigo import versao_do_codigo
 
 COLUNAS = (
@@ -78,7 +78,6 @@ DOCUMENTO = ["cnpj", "documento", "referencia"]
 TABELA = "rotulos_atraso"
 FONTES_DO_INDICE = {"DFP": "cvm-hist-dfp", "ITR": "cvm-hist-itr"}
 VistosEm = Mapping[tuple[str, int], pd.Timestamp]
-ZONA_CINZENTA = 2  # dias úteis
 BRASILIA = "America/Sao_Paulo"
 ANTES_DO_REGISTRO = "prazo_antes_do_primeiro_registro"
 ENTRE_REGISTROS = "prazo_entre_dois_registros"

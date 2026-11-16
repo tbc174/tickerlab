@@ -10,6 +10,7 @@ import pytest
 
 from base import anm
 from base.parquet import GRAVADO, IGUAL, ler_tabela
+from base.raizes_de_empresa import RaizesDeEmpresa
 from scripts import carga_anm
 from src import rede
 from src.banco import coletas
@@ -24,6 +25,13 @@ ARQUIVOS = {
     "beneficiada": (PASTA / "amb_producao_beneficiada.csv").read_bytes(),
     "agua": (PASTA / "amb_agua_mineral.csv").read_bytes(),
 }
+
+
+_RAIZES = (
+    frozenset(anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)["cnpj"].str[:8])
+    | frozenset(anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)["cnpj"].str[:8])
+) - {""}
+RAIZES_DO_EXEMPLO = RaizesDeEmpresa.de_lista(_RAIZES)
 
 
 def _download(arquivos: dict[str, bytes]):
@@ -43,14 +51,20 @@ def _download(arquivos: dict[str, bytes]):
 
 
 def _carregar(
-    grupo: str, saida: Path, quando: date, arquivos: dict[str, bytes] | None = None
+    grupo: str,
+    saida: Path,
+    quando: date,
+    arquivos: dict[str, bytes] | None = None,
+    raizes: RaizesDeEmpresa | None = None,
 ):
     baixar = _download(arquivos or ARQUIVOS)
     resultados = {}
     for tabela in carga_anm.tabelas_pedidas(["2022_2026"], [grupo], quando):
         if tabela.grupo == "cfem" and not tabela.url.endswith("2022_2026.csv"):
             continue
-        resultados[tabela.nome] = carga_anm.carregar(tabela, saida, quando, baixar)
+        resultados[tabela.nome] = carga_anm.carregar(
+            tabela, saida, quando, baixar, raizes=raizes or RAIZES_DO_EXEMPLO
+        )
     return resultados
 
 
@@ -152,9 +166,9 @@ def test_o_download_e_pedido_pelo_agente_do_tickerlab(monkeypatch: pytest.Monkey
         anm.FONTE_AMB_AGUA,
     ],
 )
-def test_as_fontes_da_anm_sao_a_confirmar_e_so_uso_interno(fonte: str):
-    assert "a confirmar" in coletas.licenca_da_fonte(fonte)
-    assert coletas.revenda_da_fonte(fonte) == coletas.A_CONFIRMAR
+def test_as_fontes_da_anm_sao_vendaveis_por_risco_assumido(fonte: str):
+    assert "risco assumido (ADR 0122)" in coletas.licenca_da_fonte(fonte)
+    assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_RISCO_ASSUMIDO
 
 
 def test_o_cadastro_mineiro_continua_com_a_licenca_propria():
@@ -163,3 +177,63 @@ def test_o_cadastro_mineiro_continua_com_a_licenca_propria():
         coletas.revenda_da_fonte("anm-cadastro-mineiro")
         == coletas.VENDAVEL_COM_ATRIBUICAO
     )
+
+
+def test_cfem_so_grava_raiz_da_lista_e_sigbm_deixa_a_barragem_sem_cnpj(tmp_path: Path):
+    """Empresário individual e MEI (fora das listas) são pessoa: o CFEM tira a linha; a barragem fica sem CNPJ e sem nome."""
+    cfem_inteiro = anm.ler_cfem(ARQUIVOS["cfem"], PRIMEIRA)
+    sigbm_inteiro = anm.ler_sigbm(ARQUIVOS["sigbm"], PRIMEIRA)
+    fica = frozenset(sorted(_RAIZES)[:1])
+    assert len(_RAIZES) >= 2
+    _carregar("cfem", tmp_path, PRIMEIRA, raizes=RaizesDeEmpresa.de_lista(fica))
+    _carregar("sigbm", tmp_path, PRIMEIRA, raizes=RaizesDeEmpresa.de_lista(fica))
+    cfem = ler_tabela(tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet")
+    assert 0 < len(cfem) < len(cfem_inteiro)
+    assert set(cfem["cnpj"].str[:8]) == fica
+    barragens = ler_tabela(tmp_path / "anm_sigbm_barragens" / "barragens.parquet")
+    assert len(barragens) == len(sigbm_inteiro)
+    com_cnpj = barragens[barragens["cnpj"] != ""]
+    assert len(com_cnpj) > 0
+    assert set(com_cnpj["cnpj"].str[:8]) == fica
+    sem_cnpj = barragens[barragens["cnpj"] == ""]
+    assert len(sem_cnpj) > len(sigbm_inteiro[sigbm_inteiro["cnpj"] == ""])
+    assert (sem_cnpj["empreendedor"] == "").all()
+    assert (sem_cnpj["cnpj_raiz"] == "").all()
+
+
+def test_so_empresa_conta_o_que_saiu():
+    tabela = pd.DataFrame(
+        {
+            "cnpj": ["11111111000100", "22222222000100", ""],
+            "cnpj_raiz": ["11111111", "22222222", ""],
+            "empreendedor": ["A", "B", ""],
+        }
+    )
+    cfem = carga_anm.so_empresa(tabela, RaizesDeEmpresa.de_lista({"11111111"}))
+    assert list(cfem["cnpj"]) == ["11111111000100"]
+    assert cfem.attrs["fora_da_pj"] == 2
+    barragens = carga_anm.so_empresa(
+        tabela, RaizesDeEmpresa.de_lista({"11111111"}), descartar=False
+    )
+    assert list(barragens["empreendedor"]) == ["A", "", ""]
+    assert barragens.attrs["fora_da_pj"] == 1
+
+
+def test_mudou_a_lista_de_empresas_a_tabela_refaz(tmp_path: Path):
+    """A lista entra na origem: o mesmo CSV com outra lista não devolve `igual` e não guarda pessoa antiga."""
+    _carregar("cfem", tmp_path, PRIMEIRA, raizes=RAIZES_DO_EXEMPLO)
+    menos = frozenset(sorted(_RAIZES)[:1])
+    resultado = _carregar(
+        "cfem", tmp_path, PRIMEIRA, raizes=RaizesDeEmpresa.de_lista(menos)
+    )
+    assert set(resultado.values()) == {"gravado"}
+    cfem = ler_tabela(tmp_path / "anm_cfem_arrecadacao" / "2022_2026.parquet")
+    assert set(cfem["cnpj"].str[:8]) == menos
+
+
+def test_cfem_e_sigbm_recusam_gravar_sem_a_lista_de_empresas(tmp_path: Path):
+    baixar = _download(ARQUIVOS)
+    for tabela in carga_anm.tabelas_pedidas(["2022_2026"], ["sigbm"], PRIMEIRA):
+        with pytest.raises(ValueError, match="sem a lista de empresas"):
+            carga_anm.carregar(tabela, tmp_path, PRIMEIRA, baixar)
+    assert not (tmp_path / "anm_sigbm_barragens").exists()

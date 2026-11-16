@@ -10,6 +10,8 @@ anterior. Cada arquivo baixado do BC e do Tesouro fica no registro de coletas e 
 
 Roda fora do app (no servidor, uma vez por dia). Uma fonte fora do ar não impede as outras; a
 tarefa sai com erro para o alarme avisar, e o dia seguinte tenta de novo.
+
+Roda: cron do VPS (todo dia às 6h30); citado em bcb.py, coletas.py.
 """
 
 import logging

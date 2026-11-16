@@ -11,6 +11,9 @@ Qualquer alerta ou montagem que falhou: sai com 1 e imprime uma linha `FALHAS: .
 `rodar-tarefa.sh` do servidor leva ao Uptime Kuma. Uso:
 
     python -m scripts.montar_modelo_8 [--pasta <acervo>/base] [--sem-montar] [--dia AAAA-MM-DD]
+
+Roda: manual (python -m scripts.montar_modelo_8); ver dicionario-da-base.md; citado em
+dicionario.py, qualidade_da_montagem.py.
 """
 
 import argparse
@@ -290,7 +293,9 @@ def montar(pasta: Path, agora: datetime) -> list[str]:
                 log.info("%s: %d anos", nome, len(anos))
             except historico.ArquivoIlegivel as erro:
                 falhas.append(str(erro))
-        log.info("trocas_de_auditor: %d", auditores.montar_trocas(pasta, agora))
+        log.info(
+            "trocas_de_auditor: %d", auditores.montar_trocas(conexao, pasta, agora)
+        )
         if not rotulo.montar(conexao, pasta, agora):
             falhas.append(
                 "rotulos_atraso: nada montado (sem índice da DFP/ITR ou sem cadastro)"

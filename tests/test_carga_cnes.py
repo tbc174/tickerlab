@@ -151,10 +151,41 @@ def test_a_api_e_pedida_pelo_agente_do_tickerlab(monkeypatch: pytest.MonkeyPatch
     assert kwargs["timeout"] == carga_cnes.TEMPO_LIMITE
 
 
-def test_fonte_do_cnes_e_a_confirmar_e_so_uso_interno():
+def test_fonte_do_cnes_e_vendavel_pela_resposta_do_ministerio():
     endereco = cnes.URL_DA_API.removeprefix("https://")
     familia = next(f for p, f in FAMILIA_DO_ENDERECO.items() if endereco.startswith(p))
     assert familia == "ms"
     assert cnes.FONTE.startswith(familia)
-    assert "a confirmar" in coletas.licenca_da_fonte(cnes.FONTE)
-    assert coletas.revenda_da_fonte(cnes.FONTE) == coletas.A_CONFIRMAR
+    # Fala.BR 25072.067487/2026-35, resposta de 05/11/2026 (ADR 0122): citar e não sugerir endosso
+    assert "uso comercial liberado" in coletas.licenca_da_fonte(cnes.FONTE)
+    assert coletas.revenda_da_fonte(cnes.FONTE) == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert coletas.citacoes_das_fontes([cnes.FONTE]) == [coletas.FRASE_DO_DATASUS]
+    assert "não endossa" in coletas.FRASE_DO_DATASUS
+
+
+def test_carga_pelo_ftp_grava_com_origem_do_ftp(tmp_path: Path):
+    from tests.test_base_dbc import CAMPOS, HOSPITAL, _registro, montar_dbc
+
+    def baixar(uf: str, competencia: int) -> bytes:
+        return montar_dbc(
+            CAMPOS, [_registro(f"{cnes.UFS.index(uf) + 1:07d}", HOSPITAL)]
+        )
+
+    resultado = carga_cnes.carregar_competencia(
+        202608, tmp_path, PRIMEIRA, fonte=carga_cnes.FONTE_FTP, baixar=baixar
+    )
+    assert resultado == (GRAVADO, GRAVADO)
+    tabela = ler_tabela(tmp_path / "cnes_estabelecimentos" / "202608.parquet")
+    assert len(tabela) == len(cnes.UFS)
+    assert carga_cnes._origem(202608, carga_cnes.FONTE_FTP)["url"].startswith("ftp://")
+
+
+def test_carga_pelo_ftp_de_competencia_nao_publicada_registra_vazia(tmp_path: Path):
+    def baixar(uf: str, competencia: int) -> bytes:
+        raise FileNotFoundError(uf)
+
+    carga_cnes.carregar_competencia(
+        202609, tmp_path, PRIMEIRA, fonte=carga_cnes.FONTE_FTP, baixar=baixar
+    )
+    situacao = ler_tabela(tmp_path / "cnes_competencias" / "202609.parquet")
+    assert situacao.loc[0, "situacao"] == cnes.COMPETENCIA_VAZIA

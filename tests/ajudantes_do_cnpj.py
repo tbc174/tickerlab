@@ -14,6 +14,10 @@ from base import cnpj as cnpj_da_base
 
 LIMITADA = "12345678"
 MEI = "98765432"
+PRODUTOR_RURAL = "44455566"  # pessoa física com uma linha de sócio de qualificação 59
+EMPRESARIO_INDIVIDUAL = (
+    "55566677"  # sem Simples e sem quadro de sócios, como o EI da Receita
+)
 SOCIO_PJ = "33000167"
 NOME_DO_SOCIO = "FULANA DE TAL SOBRENOME"
 ID_DO_SOCIO = "f0a1b2c3d4e5f6a7"
@@ -86,6 +90,8 @@ def _estabelecimentos() -> pd.DataFrame:
                 telefone_1=TELEFONE_DO_MEI,
                 correio_eletronico=EMAIL_DO_MEI,
             ),
+            _estabelecimento(EMPRESARIO_INDIVIDUAL, "0001"),
+            _estabelecimento(PRODUTOR_RURAL, "0001"),
         ]
     )
 
@@ -134,6 +140,15 @@ def _qsa() -> pd.DataFrame:
                 "data_entrada": _data("2024-08-05"),
                 "pais": "",
                 "raiz_socio_pj": SOCIO_PJ,
+                "id_pessoa": "",
+            },
+            {
+                "cnpj_basico": PRODUTOR_RURAL,
+                "tipo_socio": "2",
+                "qualificacao": "59",
+                "data_entrada": _data("2019-03-15"),
+                "pais": "",
+                "raiz_socio_pj": "",
                 "id_pessoa": "",
             },
         ]

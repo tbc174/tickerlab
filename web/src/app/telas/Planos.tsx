@@ -9,7 +9,7 @@ import { ErroDaApi, pedir } from "../api";
 import { useConta } from "../conta";
 import { eDoStripe, navegador } from "../navegador";
 import type { MeuPlanoV1 } from "../tipos";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const ROTA_DA_ACAO = { assinar: "/v1/pagamento-da-assinatura", gerenciar: "/v1/portal-da-assinatura" };
 const NOME_DA_ACAO = { assinar: "Assinar o plano Pro", gerenciar: "Gerenciar a assinatura" };
@@ -159,7 +159,7 @@ export function Planos({ pagina }: { pagina: PaginaDoApp }) {
           Lendo o seu plano…
         </p>
       ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
+        <Erro erro={pedido.erro} />
       ) : (
         <Resultado dados={pedido.dados} />
       )}

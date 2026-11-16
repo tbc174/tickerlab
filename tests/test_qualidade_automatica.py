@@ -1,0 +1,207 @@
+"""Exigência 7 da prontidão: `Porta.perfil`, `base.qualidade_automatica` e o gerador do dia.
+Base de mentira, sem nome de pessoa."""
+
+import json
+
+import pandas as pd
+import pytest
+
+from base import qualidade_automatica as qa
+from base.dicionario import _contrato_de
+from base.porta import Porta
+from base.qualidade_automatica import REGRAS, Regra, avaliar, sem_explicacao
+from scripts import conferir_qualidade
+
+
+def _perfil(**mudancas):
+    base = {"linhas": 10, "vazios_na_chave": {"a": 0}, "repetidas": 0, "por_ano": {}}
+    return {**base, **mudancas}
+
+
+def _anos(**linhas_por_ano):
+    return {int(a[1:]): (n, 100.0) for a, n in linhas_por_ano.items()}
+
+
+@pytest.fixture
+def pasta(tmp_path):
+    tabela = pd.DataFrame(
+        {
+            "id": ["A", "A", "B", None, "C"],
+            "dia": pd.to_datetime(
+                ["2020-03-01", "2020-03-01", "2020-05-01", "2022-01-01", "2022-02-01"]
+            ),
+            "valor": [5.0, 5.0, 0.0, 7.0, 9.0],
+        }
+    )
+    arquivo = tmp_path / "rede" / "entidades.parquet"
+    arquivo.parent.mkdir(parents=True)
+    tabela.to_parquet(arquivo, index=False)
+    return tmp_path
+
+
+def test_perfil_mede_vazio_repetida_e_ano(pasta):
+    with Porta(pasta) as p:
+        perfil = p.perfil("entidades", ("id", "dia"), "dia", "valor")
+    assert perfil["linhas"] == 5
+    assert perfil["vazios_na_chave"] == {"id": 1, "dia": 0}
+    assert perfil["repetidas"] == 1
+    assert perfil["por_ano"] == {
+        2020: (3, 5.0),
+        2022: (2, 8.0),
+    }  # o zero não entra na mediana
+
+
+def test_perfil_recusa_coluna_que_nao_existe(pasta):
+    with Porta(pasta) as p, pytest.raises(ValueError, match="nada"):
+        p.perfil("entidades", ("nada",))
+
+
+def test_tabela_limpa_nao_tem_achado():
+    assert avaliar(Regra(chave=("a",)), _perfil()) == []
+
+
+def test_repetida_sem_explicacao_fica_vermelha_e_aceita_com_motivo():
+    achados = avaliar(Regra(chave=("a",)), _perfil(repetidas=3))
+    assert len(sem_explicacao(achados)) == 1
+    aceita = Regra(
+        chave=("a",), repetidas_aceitas=3, porque_repetidas="duplicada na fonte"
+    )
+    assert sem_explicacao(avaliar(aceita, _perfil(repetidas=3))) == []
+    assert (
+        len(sem_explicacao(avaliar(aceita, _perfil(repetidas=4)))) == 1
+    )  # passou do aceito
+
+
+def test_vazio_na_chave_so_com_explicacao_escrita():
+    perfil = _perfil(vazios_na_chave={"a": 2})
+    assert len(sem_explicacao(avaliar(Regra(chave=("a",)), perfil))) == 1
+    assert (
+        sem_explicacao(
+            avaliar(Regra(chave=("a",), opcionais={"a": "foto do dia"}), perfil)
+        )
+        == []
+    )
+
+
+def test_ano_faltando_e_salto_de_linhas():
+    regra = Regra(chave=("a",), periodo="d")
+    faltando = avaliar(
+        regra, _perfil(por_ano=_anos(a2019=10, a2021=10)), ano_em_curso=2030
+    )
+    assert [a.texto for a in faltando] == ["ano faltando: 2020"]
+    salto = avaliar(
+        regra, _perfil(por_ano=_anos(a2019=10, a2020=30)), ano_em_curso=2030
+    )
+    assert len(sem_explicacao(salto)) == 1
+    explicada = Regra(
+        chave=("a",), periodo="d", saltos_explicados={2020: "entrou a outra origem"}
+    )
+    assert (
+        sem_explicacao(
+            avaliar(
+                explicada, _perfil(por_ano=_anos(a2019=10, a2020=30)), ano_em_curso=2030
+            )
+        )
+        == []
+    )
+
+
+def test_mudanca_de_escala_do_valor():
+    por_ano = {
+        2019: (10, 100.0),
+        2020: (10, 100_000.0),
+    }  # reais virando milhares de reais
+    achados = avaliar(
+        Regra(chave=("a",), periodo="d"), _perfil(por_ano=por_ano), ano_em_curso=2030
+    )
+    assert len(sem_explicacao(achados)) == 1
+
+
+def test_ano_em_curso_nao_e_comparado():
+    regra = Regra(chave=("a",), periodo="d")
+    assert (
+        avaliar(regra, _perfil(por_ano=_anos(a2025=100, a2026=10)), ano_em_curso=2026)
+        == []
+    )
+    assert (
+        len(
+            avaliar(
+                regra, _perfil(por_ano=_anos(a2025=100, a2026=10)), ano_em_curso=2027
+            )
+        )
+        == 1
+    )
+
+
+def test_toda_regra_aponta_colunas_distintas_e_explica_o_que_aceita():
+    for tabela, regra in REGRAS.items():
+        assert len(set(regra.chave)) == len(regra.chave), tabela
+        assert set(regra.opcionais) <= set(regra.chave), tabela
+        assert all(regra.opcionais.values()), tabela
+        assert bool(regra.repetidas_aceitas) == bool(regra.porque_repetidas), tabela
+
+
+def test_medir_e_gravar_nao_levam_linha_nenhuma(pasta, monkeypatch, tmp_path):
+    regra = Regra(chave=("id",), periodo="dia", valor="valor")
+    monkeypatch.setitem(qa.REGRAS, "entidades", regra)
+    monkeypatch.setattr(conferir_qualidade, "REGRAS", qa.REGRAS)
+    with Porta(pasta) as p:
+        resultado = conferir_qualidade.medir(p, "entidades")
+    assert resultado["vermelho"] is True  # vazio e repetida sem explicação
+    acervo = tmp_path / "acervo"
+    monkeypatch.setattr(conferir_qualidade.acervo, "pasta_do_acervo", lambda: acervo)
+    destino = conferir_qualidade.gravar("2026-11-11", [resultado])
+    assert destino == acervo / "placar" / "2026-11-11" / "qualidade.json"
+    gravado = json.loads(destino.read_text(encoding="utf-8"))
+    assert gravado["vermelho"] is True
+    assert "A" not in json.dumps(gravado["tabelas"][0]["achados"])
+
+
+def test_gravar_sem_acervo_para(monkeypatch):
+    monkeypatch.setattr(conferir_qualidade.acervo, "pasta_do_acervo", lambda: None)
+    with pytest.raises(SystemExit):
+        conferir_qualidade.gravar("2026-11-11", [])
+
+
+def test_medir_uma_tabela_nao_apaga_as_outras_do_dia(monkeypatch, tmp_path):
+    """`--tabela` regravava o arquivo do dia só com ela e apagava a prova das outras (12/11/2026)."""
+    monkeypatch.setattr(conferir_qualidade.acervo, "pasta_do_acervo", lambda: tmp_path)
+    conferir_qualidade.gravar("2026-11-12", [_resultado("a"), _resultado("b")])
+    destino = conferir_qualidade.gravar("2026-11-12", [_resultado("b", vermelho=True)])
+    tabelas = json.loads(destino.read_text(encoding="utf-8"))["tabelas"]
+    assert {t["tabela"]: t["vermelho"] for t in tabelas} == {"a": False, "b": True}
+
+
+def _resultado(tabela: str, vermelho: bool = False) -> dict[str, object]:
+    return {"tabela": tabela, "linhas": 1, "vermelho": vermelho, "achados": []}
+
+
+def test_ans_beneficiarios_tem_a_chave_do_contrato_e_acusa_repetida_e_vazio():
+    """Linha 877: a regra usa a chave do dicionário; linha repetida ou chave vazia deixa a tabela vermelha."""
+    regra = REGRAS["ans_beneficiarios"]
+    assert regra.chave == _contrato_de("ans_beneficiarios")["chaves"]
+    assert regra.periodo == "competencia" and regra.valor == "beneficiarios"
+    assert avaliar(regra, _perfil(vazios_na_chave={"cd_operadora": 0}), 2026) == []
+    achados = avaliar(
+        regra,
+        _perfil(repetidas=1, vazios_na_chave={"cd_operadora": 2}),
+        2026,
+    )
+    assert len(sem_explicacao(achados)) == 2
+
+
+def test_ifdata_valores_e_estrita_com_a_chave_do_contrato_sem_visto_em():
+    """Linha 877: nenhuma linha repetida aceita (a 2025-09 da carga de 14/10 deixa a tabela vermelha);
+    a chave é a do contrato menos `visto_em`, que os arquivos de 14/10 ainda não têm."""
+    regra = REGRAS["ifdata_valores"]
+    assert regra.chave + ("visto_em",) == _contrato_de("ifdata_valores")["chaves"]
+    assert regra.periodo == "data_base" and regra.valor == "saldo"
+    assert regra.repetidas_aceitas == 0 and regra.porque_repetidas == ""
+    limpa = _perfil(vazios_na_chave={"cod_inst": 0, "grupo": 5})
+    assert sem_explicacao(avaliar(regra, limpa, 2026)) == []
+    uma_repetida = _perfil(repetidas=1, vazios_na_chave={"grupo": 5})
+    assert len(sem_explicacao(avaliar(regra, uma_repetida, 2026))) == 1
+    vazio_no_cod_inst = _perfil(vazios_na_chave={"cod_inst": 1})
+    assert len(sem_explicacao(avaliar(regra, vazio_no_cod_inst, 2026))) == 1
+    conglomerado_entra = _perfil(por_ano=_anos(a2013=100, a2014=300))
+    assert sem_explicacao(avaliar(regra, conglomerado_entra, 2026)) == []

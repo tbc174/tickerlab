@@ -19,6 +19,8 @@ pasta com o texto de cada documento (`<protocolo>.txt`). `enviar` manda um lote 
 Tiago para o valor, e o teto (`--teto-dolares`, obrigatório) trava o envio antes de gastar. Cada
 resposta fica guardada bruta, com tokens e custo; `medir` confere tudo de novo (`base.ma_extracao`)
 e compara com a amostra, por modelo, com o custo por documento e as divergências entre os dois.
+
+Roda: manual no servidor pelo extrair-ma.sh, medir-ma-conferencia.sh.
 """
 
 import argparse

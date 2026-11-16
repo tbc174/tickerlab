@@ -6,7 +6,8 @@ não ocupa mais espaço, e qualquer cópia pode ser conferida contra o registro 
 (JSON, XML, CSV, HTML) é guardado em gzip (`.json.gz`; o SHA-256 é sempre o do original); zip e PDF
 já vêm comprimidos. Gravação atômica: o arquivo só aparece completo.
 
-Fonte que traz nome de pessoa natural (`FONTES_COM_PESSOA`, ADR 0106) vai para `restrito/<fonte>/...`,
+Fonte que traz nome de pessoa natural (`FONTES_COM_PESSOA`, ADR 0106) ou que é só de uso interno
+(`coletas.FONTES_SO_INTERNAS`) vai para `restrito/<fonte>/...`,
 pasta que nenhum pacote, exportação ou cópia pública leva (`PASTAS_PUBLICAS` é a lista do que pode sair).
 
 `TICKERLAB_ACERVO` escolhe a pasta; `desligado` para de guardar (o registro de coletas continua).
@@ -54,6 +55,16 @@ SEM_EXTENSAO = ".bin"
 JA_COMPRIMIDOS = {".zip", ".pdf"}  # o resto é texto (ou desconhecido) e vai em gzip
 
 
+def _restrita(fonte: str) -> bool:
+    """Fonte com pessoa natural ou só de uso interno (`coletas.FONTES_SO_INTERNAS`, o DataJud): o
+    original fica em `restrito/`, que nenhum pacote nem exportação leva."""
+    from src.banco.coletas import (
+        so_interna,
+    )  # import tardio: `coletas` importa este módulo
+
+    return fonte in FONTES_COM_PESSOA or so_interna(fonte)
+
+
 def pasta_do_acervo() -> Path | None:
     """A pasta do acervo, ou None se a guarda do original está desligada."""
     valor = os.environ.get(VARIAVEL_DA_PASTA, "").strip()
@@ -85,7 +96,7 @@ def _relativo_pelo_sha(
     extensao = extensao or extensao_da_url(url)
     if extensao not in JA_COMPRIMIDOS:
         extensao += ".gz"
-    pasta = PASTA_RESTRITA if fonte in FONTES_COM_PESSOA else PASTA_PUBLICA
+    pasta = PASTA_RESTRITA if _restrita(fonte) else PASTA_PUBLICA
     return f"{pasta}/{fonte}/{quando.year}/{sha256}{extensao}"
 
 

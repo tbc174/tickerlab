@@ -1,0 +1,52 @@
+# O conector remoto dos analistas (servidor MCP, linha 570; docs/conector-remoto.md), num arquivo à parte
+# do compose.yaml: o "docker compose up" comum não o vê. O deploy automático (scripts/deploy-automatico.sh)
+# só soma este arquivo quando o .env.mcp, com a chave do conector, existe na pasta; daí em diante o
+# conector acompanha cada versão, como o app e a API. À mão, sempre com os dois arquivos:
+#   docker compose -f compose.yaml -f compose.conector.yaml up -d tickerlab-mcp
+services:
+  # Conector remoto dos analistas (servidor MCP, linha 570; docs/conector-remoto.md): o Claude e o
+  # ChatGPT chegam pelo túnel em mcp.tickerlab.com.br, que aponta para 127.0.0.1:8010. Mesma imagem,
+  # outro comando. Ele só conversa com a API externa, com a chave de cada analista: não monta acervo,
+  # banco, sala nem cache, e não lê o .env do app.
+  # O único segredo (a chave que sela os tokens) fica em .env.mcp, permissão 600, fora do Git, gravado
+  # pelo scripts/gravar_chave_do_conector.py ANTES do primeiro "up" (sem a chave, o conector não sobe).
+  tickerlab-mcp:
+    image: tickerlab:local
+    container_name: tickerlab-mcp
+    restart: unless-stopped
+    command: ["python", "-m", "conector_remoto"]
+    ports:
+      - "127.0.0.1:8010:8010"
+    env_file:
+      - .env.mcp   # TICKERLAB_MCP_CHAVE_DOS_TOKENS (só aqui)
+    environment:
+      TICKERLAB_MCP_EXIGIR_CHAVE: "1"
+      # dentro do contêiner escuta em todas as interfaces; quem limita a 127.0.0.1 é a porta acima
+      TICKERLAB_MCP_ESCUTA: 0.0.0.0
+      TICKERLAB_MCP_API_URL: http://tickerlab-api:8000
+      TICKERLAB_MCP_URL_PUBLICA: https://mcp.tickerlab.com.br
+      # o CF-Connecting-IP só vale vindo do gateway da rede do Docker, por onde chega o túnel (o mesmo
+      # endereço da API, acima); outro contêiner da rede não consegue dizer um IP falso
+      TICKERLAB_MCP_PROXIES_CONFIAVEIS: 172.18.0.1/32
+    networks:
+      - db   # para chegar à API pelo nome; o conector não tem a senha do banco
+    depends_on:
+      tickerlab-api:
+        condition: service_started
+    healthcheck:
+      # o conector recusa (421) Host que não é o público, então o teste manda o Host público
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8010/saude', headers={'Host': 'mcp.tickerlab.com.br'}), timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # sem disco para escrever e sem poderes extras: o conector só guarda coisas na memória
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.25

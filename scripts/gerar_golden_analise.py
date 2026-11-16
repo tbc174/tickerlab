@@ -6,6 +6,8 @@ São os números de hoje, calculados com os dados de exemplo do projeto. O teste
 `tests/test_analise.py` recalcula e compara: se um número mudar sem a versão da fórmula
 (`src.analise.VERSOES_DAS_FORMULAS`) mudar junto, o teste falha. Rodar este script **só** depois de
 mudar uma fórmula de propósito e subir a versão dela.
+
+Roda: outro script (gerar_golden_calculos.py).
 """
 
 import json

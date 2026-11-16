@@ -157,3 +157,60 @@ def test_comando_monta_o_retrato_do_cnpj(banco, tmp_path, monkeypatch):
         == 0
     )
     assert (tmp_path / "b" / "cnpj_situacao_especial" / "2026-10.parquet").exists()
+
+
+def _receita_zip(*linhas: list[str]) -> bytes:
+    """Um `Empresas*.zip` ou `Simples.zip` de mentira (campos entre aspas, separados por `;`)."""
+    texto = "\n".join(";".join(f'"{c}"' for c in linha) for linha in linhas) + "\n"
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as z:
+        z.writestr("K3241.K03200Y0.D61010.CSV", texto.encode("latin-1"))
+    return saida.getvalue()
+
+
+def test_montagem_marca_o_empresario_individual_e_o_mei_como_pessoa(banco, tmp_path):
+    """Linha 787: a falência do MEI e do empresário individual é dado de pessoa (ADR 0075). A linha sai
+    com `trata_como_pessoa` pela natureza e pelo MEI da Receita guardada (a Porta não a serve); a raiz
+    que a Receita não conhece também (na dúvida, é pessoa). Tudo fictício."""
+    estabelecimentos = _zip(
+        _estabelecimento("11111111", "0001", "11", "1", "FALIDO", "20210311"),
+        _estabelecimento("22222222", "0001", "22", "1", "FALIDO", "20210311"),
+        _estabelecimento("33333333", "0001", "33", "1", "FALIDO", "20210311"),
+        _estabelecimento("44444444", "0001", "44", "1", "FALIDO", "20210311"),
+        _estabelecimento("55555555", "0001", "55", "1", "FALIDO", "20210311"),
+    )
+    # básico; razão social; natureza; qualificação; capital; porte; ente
+    empresas = _receita_zip(
+        ["11111111", "EMPRESA FICTICIA LTDA", "2062", "49", "10,00", "03", ""],
+        ["22222222", "", "2135", "50", "0,00", "01", ""],  # empresário individual
+        ["33333333", "", "2062", "49", "0,00", "01", ""],  # MEI pelo Simples
+        ["44444444", "", "4120", "50", "0,00", "01", ""],  # grupo 4: pessoa física
+    )
+    simples = _receita_zip(["33333333", "S", "20200101", "", "S", "20200101", ""])
+    com_registro("rfb-cnpj", lambda _url: estabelecimentos)(URL)
+    com_registro("rfb-cnpj", lambda _url: empresas)(
+        URL.replace("Estabelecimentos0", "Empresas0")
+    )
+    com_registro("rfb-cnpj", lambda _url: simples)(
+        URL.replace("Estabelecimentos0", "Simples")
+    )
+    with banco.connect() as conexao:
+        rotulos.montar_situacao_especial(conexao, tmp_path / "base", AGORA)
+    tabela = pd.read_parquet(
+        tmp_path / "base" / "cnpj_situacao_especial" / "2026-10.parquet"
+    )
+    assert dict(
+        zip(tabela["cnpj_basico"], tabela["trata_como_pessoa"], strict=True)
+    ) == {
+        "11111111": False,
+        "22222222": True,
+        "33333333": True,
+        "44444444": True,
+        "55555555": True,  # fora da Receita guardada
+    }
+
+
+def test_sem_a_receita_guardada_toda_linha_e_pessoa(banco, tmp_path):
+    """Sem `Empresas*.zip` nem `Simples.zip` não dá para separar: na dúvida, tudo é pessoa."""
+    tabela = _montar_visto_em(banco, tmp_path, datetime(2026, 10, 13, 23, tzinfo=UTC))
+    assert list(tabela["trata_como_pessoa"]) == [True]

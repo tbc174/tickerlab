@@ -31,11 +31,15 @@ import numpy as np
 import pandas as pd
 
 from src import acaso
-from trader import avaliacao
+from trader import avaliacao, criterio
 from trader.criterio import Item, Veredito
 from trader.holdout import FIM_DO_DESENVOLVIMENTO, hash_do_texto
 from trader.registro import RAIZ, Registro, pasta_da_pesquisa_quant, pasta_das_copias
-from trader.validacao import bootstrap_diferenca_de_sharpe, bootstrap_do_sharpe
+from trader.validacao import (
+    bootstrap_diferenca_de_sharpe,
+    bootstrap_do_sharpe,
+    nome_do_limite,
+)
 
 __all__ = ["FIM_DO_DESENVOLVIMENTO"]
 
@@ -57,6 +61,10 @@ DSR_MINIMO = 0.95  # A1
 PBO_MAXIMO = 0.30  # A2
 VARIACAO_DO_PLATO = 0.20  # A3: ±20% em cada parâmetro...
 FRACAO_MINIMA_DO_PLATO = 0.70  # ...mantém ≥ 70% do Sharpe
+# Os dois fatores que as estratégias multiplicam pelo parâmetro para achar os vizinhos do platô
+# (0,8 e 1,2). Uma conta só aqui: se a variação mudar, os vizinhos e a conferência mudam juntos.
+FATOR_DO_PLATO_ABAIXO = 1 - VARIACAO_DO_PLATO
+FATOR_DO_PLATO_ACIMA = 1 + VARIACAO_DO_PLATO
 FRACAO_MAXIMA_DO_CUSTO = 1 / 3  # A4: custo + imposto ≤ ⅓ do Sharpe bruto
 T_MINIMO = 3.0  # A5
 P_VALOR_MAXIMO_DO_ACASO = 0.05  # A6: acima do percentil 95 de 1.000 sinais deslocados
@@ -195,15 +203,46 @@ def _dsr(
 
 
 def _contra_a_regua(excesso: pd.Series, regua: pd.Series, cdi: pd.Series) -> float:
+    """Limite inferior (confiança `CONFIANCA_CONTRA_A_REGUA`) da diferença de Sharpes contra a régua."""
+    limite = nome_do_limite(CONFIANCA_CONTRA_A_REGUA, "inferior")
     excesso_da_regua = _excesso(regua, cdi)
     if excesso_da_regua.std() == 0:
-        return bootstrap_do_sharpe(excesso, bloco=BLOCO_DO_BOOTSTRAP_EM_DIAS)[
-            "ic90_inferior"
-        ]
+        return bootstrap_do_sharpe(
+            excesso,
+            bloco=BLOCO_DO_BOOTSTRAP_EM_DIAS,
+            confianca=CONFIANCA_CONTRA_A_REGUA,
+        )[limite]
     diferenca = bootstrap_diferenca_de_sharpe(
-        excesso, excesso_da_regua, bloco=BLOCO_DO_BOOTSTRAP_EM_DIAS
+        excesso,
+        excesso_da_regua,
+        bloco=BLOCO_DO_BOOTSTRAP_EM_DIAS,
+        confianca=CONFIANCA_CONTRA_A_REGUA,
     )
-    return diferenca["ic90_inferior"]
+    return diferenca[limite]
+
+
+def avaliar_holdout(
+    holdout: pd.Series,
+    holdout_x2: pd.Series,
+    b1_no_holdout: pd.Series,
+    sharpe_do_desenvolvimento: float,
+    queda_mediana_do_desenvolvimento: float,
+) -> Veredito:
+    """Os itens B1 a B4 do holdout com os limiares do pré-registro quant (seção 5).
+
+    Usa o mesmo cálculo da M2 (`trader.criterio.avaliar_holdout`), mas com os números deste
+    arquivo: B1 (fração do Sharpe do desenvolvimento e piso) e B2 (queda relativa).
+    """
+    return criterio.avaliar_holdout(
+        holdout,
+        holdout_x2,
+        b1_no_holdout,
+        sharpe_do_desenvolvimento,
+        queda_mediana_do_desenvolvimento,
+        sharpe_minimo=SHARPE_MINIMO_NO_HOLDOUT,
+        fracao_minima_do_desenvolvimento=FRACAO_MINIMA_DO_SHARPE_NO_HOLDOUT,
+        queda_maxima_relativa=QUEDA_MAXIMA_RELATIVA_NO_HOLDOUT,
+    )
 
 
 def avaliar(e: Evidencia) -> Veredito:
@@ -289,7 +328,7 @@ def avaliar(e: Evidencia) -> Veredito:
     itens.append(
         Item(
             "A7",
-            f"contra as réguas: limite inferior de 90% da diferença ({detalhe})",
+            f"contra as réguas: limite inferior de {CONFIANCA_CONTRA_A_REGUA:.0%} da diferença ({detalhe})",
             min(limites.values()) if limites else float("nan"),
             "> 0 em todas",
             bool(limites) and all(v > 0 for v in limites.values()),

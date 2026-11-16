@@ -75,8 +75,9 @@ def test_a_fonte_pega_as_duas_listas_e_nao_repete_a_consulta_de_medicamentos():
 
 def test_a_fonte_fica_a_confirmar_e_tem_destino_nos_precos():
     # as listas não trazem licença própria: não herdam a CC BY do resto da Anvisa (ADR 0102, Emenda 2)
+    # sem licença própria: vendável por risco assumido (ADR 0122), com o texto da licença intacto
     assert "a confirmar" in licenca_da_fonte("anvisa-cmed")
-    assert marca_da_fonte("anvisa-cmed") == Marca.A_CONFIRMAR
+    assert marca_da_fonte("anvisa-cmed") == Marca.VENDAVEL
     assert marca_da_fonte("anvisa-produtos") == Marca.VENDAVEL
     assert destinos.DESTINOS["anvisa-cmed"].tabelas == ("cmed_precos",)
 

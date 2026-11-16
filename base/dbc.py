@@ -4,6 +4,10 @@ O DBC guarda o cabeçalho do DBF sem compressão e, depois dele e de 4 bytes de 
 formato PKWare DCL ("implode"). A descompressão é uma tradução em Python do `blast` de Mark Adler
 (licença zlib, permissiva): nenhuma biblioteca GPL ou AGPL entra no projeto.
 
+A saída sai em pedaços (`descomprimir_em_pedacos`): só a janela dos últimos 4.096 bytes (a maior
+distância que o formato permite) fica na memória, e `ler_dbc` entrega registro a registro. O SIA PA de SP
+passa de 2 GB descomprimido por arquivo; o comprimido continua inteiro na memória (algumas centenas de MB).
+
 Sem Streamlit, sem rede; só a biblioteca padrão.
 """
 
@@ -24,6 +28,10 @@ _BITS_EXTRAS = (0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8)
 _FIM_DO_FLUXO = 519
 _MAXIMO_DE_BITS = 13
 _CRC_DO_DBC = 4
+_JANELA = (
+    4096  # maior distância do PKWare DCL: dicionário de 6 bits, (63 << 6) + 63 + 1
+)
+TAMANHO_DO_PEDACO = 1 << 16  # bytes de saída entregues por vez
 
 
 class DbcInvalido(ValueError):
@@ -86,8 +94,16 @@ _CODIGO_COMPRIMENTO = _Codigo(_COMPRIMENTOS)
 _CODIGO_DISTANCIA = _Codigo(_DISTANCIAS)
 
 
-def descomprimir_pkware(dados: bytes) -> bytes:
-    """Descomprime um fluxo PKWare DCL inteiro (do byte do tipo de literal até o marcador de fim)."""
+def descomprimir_em_pedacos(
+    dados: bytes, tamanho_do_pedaco: int = TAMANHO_DO_PEDACO
+) -> Iterator[bytes]:
+    """Descomprime um fluxo PKWare DCL entregando a saída aos poucos, com memória limitada.
+
+    Guarda só a janela de `_JANELA` bytes que uma cópia pode alcançar; cada pedaço entregue tem até
+    `tamanho_do_pedaco + _JANELA` bytes. Juntos, os pedaços são exatamente a saída inteira.
+    """
+    if tamanho_do_pedaco < 1:
+        raise ValueError("DBC: o pedaço precisa ter ao menos 1 byte")
     bits = _Bits(dados)
     literais_codificados = bits.ler(8)
     if literais_codificados not in (0, 1):
@@ -96,7 +112,11 @@ def descomprimir_pkware(dados: bytes) -> bytes:
     if not 4 <= dicionario <= 6:
         raise DbcInvalido("DBC: tamanho de dicionário inválido no fluxo comprimido")
     saida = bytearray()
+    limite = tamanho_do_pedaco + _JANELA
     while True:
+        if len(saida) >= limite:
+            yield bytes(saida[:-_JANELA])
+            del saida[:-_JANELA]
         if not bits.ler(1):
             saida.append(
                 bits.decodificar(_CODIGO_LITERAL)
@@ -107,19 +127,36 @@ def descomprimir_pkware(dados: bytes) -> bytes:
         simbolo = bits.decodificar(_CODIGO_COMPRIMENTO)
         comprimento = _BASE_DO_COMPRIMENTO[simbolo] + bits.ler(_BITS_EXTRAS[simbolo])
         if comprimento == _FIM_DO_FLUXO:
-            return bytes(saida)
+            if saida:
+                yield bytes(saida)
+            return
         bits_baixos = 2 if comprimento == 2 else dicionario
         distancia = (
             (bits.decodificar(_CODIGO_DISTANCIA) << bits_baixos)
             + bits.ler(bits_baixos)
             + 1
         )
+        # depois do 1º pedaço a janela guarda sempre `_JANELA` bytes, o alcance máximo de uma cópia
         if distancia > len(saida):
             raise DbcInvalido("DBC: referência para antes do começo da saída")
-        for _ in range(
-            comprimento
-        ):  # cópia byte a byte: a origem pode se sobrepor ao destino
-            saida.append(saida[-distancia])
+        _copiar(saida, distancia, comprimento)
+
+
+def _copiar(saida: bytearray, distancia: int, comprimento: int) -> None:
+    """Copia `comprimento` bytes de `distancia` atrás; a origem pode se sobrepor ao destino."""
+    inicio = len(saida) - distancia
+    if distancia >= comprimento:
+        saida += saida[inicio : inicio + comprimento]
+        return
+    for _ in range(
+        comprimento
+    ):  # sobreposição: cada byte copiado pode ser a origem do próximo
+        saida.append(saida[-distancia])
+
+
+def descomprimir_pkware(dados: bytes) -> bytes:
+    """Descomprime um fluxo PKWare DCL inteiro (do byte do tipo de literal até o marcador de fim)."""
+    return b"".join(descomprimir_em_pedacos(dados))
 
 
 def campos_do_cabecalho(cabecalho: bytes) -> list[tuple[str, int]]:
@@ -143,40 +180,59 @@ def nomes_das_colunas(conteudo: bytes) -> list[str]:
     return [nome for nome, _ in campos_do_cabecalho(conteudo[:tamanho_do_cabecalho])]
 
 
-def ler_dbc(conteudo: bytes, colunas: tuple[str, ...]) -> Iterator[dict[str, str]]:
+def ler_dbc(
+    conteudo: bytes,
+    colunas: tuple[str, ...],
+    tamanho_do_pedaco: int = TAMANHO_DO_PEDACO,
+) -> Iterator[dict[str, str]]:
     """Os registros do DBC, só com as `colunas` pedidas (texto sem espaços nas pontas, em latin-1).
 
-    Coluna que não existe no arquivo é erro: o layout mudou e quem consome precisa saber. Registro
-    apagado (marca `*`) é ignorado.
+    Lê em fluxo: a memória não cresce com o tamanho do arquivo descomprimido. Coluna que não existe no
+    arquivo é erro: o layout mudou e quem consome precisa saber. Registro apagado (marca `*`) é ignorado;
+    a leitura para no número de registros do cabeçalho (o DBF termina com o byte 0x1A).
     """
     if len(conteudo) < 32:
         raise DbcInvalido("DBC: arquivo menor que o cabeçalho")
     registros, tamanho_do_cabecalho, tamanho_do_registro = struct.unpack_from(
         "<xxxxIHH", conteudo, 0
     )
-    cabecalho = conteudo[:tamanho_do_cabecalho]
-    campos = campos_do_cabecalho(cabecalho)
-    posicoes: dict[str, tuple[int, int]] = {}
+    posicoes = _posicoes_das_colunas(
+        conteudo[:tamanho_do_cabecalho], tamanho_do_registro, colunas
+    )
+    fluxo = descomprimir_em_pedacos(
+        conteudo[tamanho_do_cabecalho + _CRC_DO_DBC :], tamanho_do_pedaco
+    )
+    lidos = 0
+    sobra = bytearray()
+    for pedaco in fluxo:
+        sobra += pedaco
+        completos = min(len(sobra) // tamanho_do_registro, registros - lidos)
+        for numero in range(completos):
+            inicio = numero * tamanho_do_registro
+            registro = sobra[inicio : inicio + tamanho_do_registro]
+            if registro[:1] != b"*":
+                yield {
+                    coluna: registro[comeco:final].decode("latin-1").strip()
+                    for coluna, (comeco, final) in posicoes.items()
+                }
+        del sobra[: completos * tamanho_do_registro]
+        lidos += completos
+    if lidos < registros:
+        raise DbcInvalido("DBC: menos registros do que o cabeçalho promete")
+
+
+def _posicoes_das_colunas(
+    cabecalho: bytes, tamanho_do_registro: int, colunas: tuple[str, ...]
+) -> dict[str, tuple[int, int]]:
+    """`(começo, fim)` de cada coluna pedida dentro do registro, conferindo o layout do cabeçalho."""
+    todas: dict[str, tuple[int, int]] = {}
     deslocamento = 1  # o primeiro byte do registro é a marca de apagado
-    for nome, tamanho in campos:
-        posicoes[nome] = (deslocamento, tamanho)
+    for nome, tamanho in campos_do_cabecalho(cabecalho):
+        todas[nome] = (deslocamento, deslocamento + tamanho)
         deslocamento += tamanho
     if deslocamento != tamanho_do_registro:
         raise DbcInvalido("DBC: os campos não somam o tamanho do registro do cabeçalho")
-    faltando = [coluna for coluna in colunas if coluna not in posicoes]
+    faltando = [coluna for coluna in colunas if coluna not in todas]
     if faltando:
         raise DbcInvalido(f"DBC: colunas ausentes no arquivo: {', '.join(faltando)}")
-    corpo = descomprimir_pkware(conteudo[tamanho_do_cabecalho + _CRC_DO_DBC :])
-    if len(corpo) < registros * tamanho_do_registro:
-        raise DbcInvalido("DBC: menos registros do que o cabeçalho promete")
-    for numero in range(registros):
-        inicio = numero * tamanho_do_registro
-        registro = corpo[inicio : inicio + tamanho_do_registro]
-        if registro[:1] == b"*":
-            continue
-        yield {
-            coluna: registro[posicoes[coluna][0] : sum(posicoes[coluna])]
-            .decode("latin-1")
-            .strip()
-            for coluna in colunas
-        }
+    return {coluna: todas[coluna] for coluna in colunas}

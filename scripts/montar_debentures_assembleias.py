@@ -8,6 +8,9 @@ assembleia de debenturistas, aviso aos debenturistas e notificação do agente f
 lidos do assunto. Saída padrão: `<TICKERLAB_ACERVO>/base/debentures_assembleias/
 debentures_assembleias.parquet`, com manifesto (só regrava o que mudou). Feita para o servidor de casa
 (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+
+Roda: manual no servidor pelo debentures-chave-no-servidor.sh, debentures-tabela-no-servidor.sh,
+montar-debentures-assembleias.sh; citado em dicionario.py.
 """
 
 import argparse

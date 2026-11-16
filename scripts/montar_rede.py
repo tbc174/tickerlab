@@ -21,6 +21,9 @@ Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 
 Roda toda noite no servidor de casa, depois das cargas: saída 0 tudo certo; 1 alguma falha, com a
 última linha `FALHAS: ...` (vai para o aviso do Kuma), como `scripts/copiar_b3_negocios.py`.
+
+Roda: cron de casa pelo montar-rede.sh (todo dia às 6h00); manual no servidor pelo
+rede-ate-no-servidor.sh; outro script (gerar_dossies.py); citado em dicionario.py.
 """
 
 import argparse

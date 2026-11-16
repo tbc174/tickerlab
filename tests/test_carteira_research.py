@@ -269,3 +269,56 @@ def test_sem_conta_pede_o_login(banco):
     assert not app.exception
     assert not any(b.key == "minha_carteira_guardar" for b in app.button)
     assert any("entre com o Google" in i.value for i in app.info)
+
+
+# --- aba aberta antes do bloqueio (linha 306; 2ª revisão cruzada do Codex no #659) ----------------
+class _PlanilhaNaAba:
+    """O que o envio deixou na sessão da aba (o AppTest não envia arquivos)."""
+
+    name = EXEMPLO.name
+
+    def getvalue(self) -> bytes:
+        return EXEMPLO.read_bytes()
+
+
+def _atualizar_pela_aba(monkeypatch, usuario):
+    """Roda o callback de "Guardar a fotografia" como o Streamlit: antes do corpo do app, onde a
+    sessão relê a conta."""
+    import streamlit as st
+
+    from telas.research import minha_carteira
+
+    sessao = {"usuario": usuario, "minha_carteira_arquivo": _PlanilhaNaAba()}
+    monkeypatch.setattr(st, "session_state", sessao)
+    minha_carteira._guardar_da_tela(usuario)
+    return sessao
+
+
+def _ana_com_petr4(banco, monkeypatch):
+    ana = _ana_no_plano(banco, monkeypatch, "pro")
+    so_petr4 = carteira_research.Fotografia({"PETR4.SA": 1.0}, HOJE)
+    with banco.begin() as c:
+        repo.salvar_carteira(c, ana, so_petr4)
+        usuario = contas.buscar_por_id(c, ana)
+    return usuario, so_petr4
+
+
+def test_aba_aberta_da_conta_bloqueada_nao_troca_a_fotografia(banco, monkeypatch):
+    """Guardar de novo apaga a fotografia anterior antes de gravar a nova: na conta bloqueada,
+    a aba que já estava aberta não pode trocar a carteira (prova do incidente)."""
+    from tests.ajudantes_da_conta import bloquear_pelo_admin
+
+    usuario, so_petr4 = _ana_com_petr4(banco, monkeypatch)
+    bloquear_pelo_admin(banco, usuario.id)
+    sessao = _atualizar_pela_aba(monkeypatch, usuario)
+    with banco.connect() as c:
+        assert repo.carregar_carteira(c, usuario.id) == so_petr4
+    assert sessao["usuario_em"] == 0  # o corpo do app relê a conta já nesta execução
+
+
+def test_conta_valendo_atualiza_a_fotografia_pela_aba(banco, monkeypatch):
+    usuario, _ = _ana_com_petr4(banco, monkeypatch)
+    sessao = _atualizar_pela_aba(monkeypatch, usuario)
+    assert sessao["minha_carteira_mensagem"][0] is True
+    with banco.connect() as c:
+        assert "VALE3.SA" in repo.carregar_carteira(c, usuario.id).pesos

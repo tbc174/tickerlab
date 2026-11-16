@@ -37,6 +37,12 @@ from trader.estrategias.carteira_rp import p_valor_do_acaso
 from trader.registro import Registro
 
 PASTA_DA_PESQUISA = dados_pead.dados_f_b3.PASTA_DA_PESQUISA
+
+# O universo (`fatores_b3.elegiveis_em`) tira quem está em recuperação judicial; o teste prende esta frase a isso.
+FRASE_DA_RECUPERACAO_JUDICIAL = (
+    "A recuperação judicial é filtrada pelo universo (seção 8): a empresa sai da lista elegível enquanto "
+    "o episódio dura, que vai do 1º documento à CVM até 12 meses depois do último (a CVM não marca o fim)."
+)
 FICHA = "P0-5"
 CANDIDATO = "pead_b3"
 NOME_DO_CANDIDATO = "PEAD (surpresa de lucro) na B3"
@@ -414,7 +420,7 @@ def escrever_relatorio(
         "- Anúncio cujo ITR ou DFP só aparece na base no dia da entrada ou depois fica de fora (o número poderia ser de uma reapresentação).",
         "- Os CARs se sobrepõem no tempo e entre empresas (mesmo dia, mesmo setor): o t supõe eventos independentes e exagera a confiança.",
         "- O mercado do modelo é o BOVA11 (desde 2009); o β é estimado em 252 pregões e muda com o tempo.",
-        "- A recuperação judicial não é filtrada: o acervo não tem a tabela (limitação declarada da seção 8).",
+        f"- {FRASE_DA_RECUPERACAO_JUDICIAL}",
         "- A régua do Ibovespa é o BOVA11 comprado e mantido, sem o IR da venda final.",
         "- O DARF é pago no último pregão do mês seguinte; o IR é o do swing (15%, isenção de R$ 20 mil).",
         "- Nada aqui é recomendação de investimento; retorno passado não garante retorno futuro.",

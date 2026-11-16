@@ -16,6 +16,7 @@ from src.banco import leituras as repo
 from src.banco.modelo import eventos, leituras
 from src.eventos import FONTE_IPE
 from src.relatorios import FUSO
+from tests.ajudantes_de_cpf import cpf_que_confere, formatado
 from tests.test_fundamentos_sec import _abrir, _coletar_apple
 from tests.test_leitura import FATO, RISCOS_ANTES, _10k, _pdf
 from tests.test_research_no_app import _app_local, _coletar
@@ -531,3 +532,16 @@ def test_fundamentos_mostra_o_que_mudou_nos_riscos(banco):
     metricas = {m.label: m.value for m in app.metric}
     assert metricas["Frases novas"] == "1"
     assert "Lazy Prices" in " ".join(c.value for c in app.caption)
+
+
+def test_lote_troca_o_cpf_do_assunto_pela_marca(tmp_path):
+    """O assunto do lote vai ao modelo de leitura: CPF inventado (que confere) sai antes."""
+    caminho = _lote_sem_protocolo(tmp_path)
+    caminho.write_text(
+        caminho.read_text(encoding="utf-8").replace(
+            "Fato Relevante", "Fato do sócio " + formatado(cpf_que_confere("888777666"))
+        ),
+        encoding="utf-8",
+    )
+    [(*_, assunto)] = atualizar_leituras_cvm.ler_lote(caminho)
+    assert assunto == "Fato do sócio [CPF omitido]"

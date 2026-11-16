@@ -1,6 +1,7 @@
 # Evidências e porquês: como os modelos conversam no relatório
 
-**Situação:** proposta de 14/10/2026; decisões do Tiago na seção 10. Etapa 1 em construção (seção 9).
+**Situação:** proposta de 14/10/2026; decisões do Tiago na seção 10. Etapa 1 pronta (#212); etapa 2
+(evidências macro, `src/evidencias_macro.py`) em construção (seção 9).
 Vira uma ADR na pasta privada, e cada etapa da seção 9 vira um PR.
 
 **Nome:** a proposta chamava a peça de "achado"; no código ela é **evidência** (`src/evidencias.py`),
