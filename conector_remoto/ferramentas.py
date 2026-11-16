@@ -6,6 +6,7 @@ limpo, conferido sem pessoa física e dentro do teto (`saida.preparar_saida`). E
 em português que a IA pode repetir ao analista, sem nada da chave.
 """
 
+import dataclasses
 import json
 import logging
 import re
@@ -100,6 +101,21 @@ LIMITE_MAXIMO_DOS_COMPRADORES = 50
 LIMITE_MAXIMO_DOS_EVENTOS = 100
 LIMITE_PADRAO_DOS_EVENTOS = 50
 DIAS_MAXIMO_DAS_NOVIDADES = 30  # o da API (`src/api_externa/conjuntos/novidades.py`)
+# Um par pesa ~4 mil caracteres: os ~80 de um grupo grande (a CPFL deu ~322 mil) passavam do teto (ensaio de
+# 16/11, linha 955). O corte é no conector: a API manda todos e calcula as medianas sobre todos.
+LIMITE_MAXIMO_DOS_PARES = 50
+LIMITE_PADRAO_DOS_PARES = 10
+# O que dizer quando a resposta não cabe: só parâmetro que a ferramenta tem (um teste confere cada uma)
+DICAS_DE_RESPOSTA_GRANDE = {
+    "buscar_empresas": "Peça menos empresas por página (`limite`) ou filtre mais (`cnae`, `uf`, `municipio`).",
+    "comparaveis": "Peça menos pares (`limite`).",
+    "demonstracoes": "Peça um período só (`fim_do_periodo`).",
+    "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
+    "vinculos": "Peça menos níveis (`profundidade`) ou só alguns tipos de vínculo (`tipos`).",
+    "novidades": "Peça menos dias (`dias`).",
+    "compradores_do_setor": "Peça menos compradores (`limite`), menos anos (`anos`) ou uma UF (`uf`).",
+}
+DICA_SEM_PARAMETRO = "Esta ferramenta não tem como pedir menos: diga ao analista que este pedido não cabe na conversa."
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
@@ -190,6 +206,34 @@ def mensagem_do_erro(resposta: RespostaDaApi) -> str:
     return f"A API respondeu com um erro inesperado (status {resposta.status})."
 
 
+def mensagem_de_resposta_grande(ferramenta: str, tamanho: int) -> str:
+    """A frase da resposta que passou do teto, com o jeito de pedir menos que essa ferramenta tem."""
+    dica = DICAS_DE_RESPOSTA_GRANDE.get(ferramenta, DICA_SEM_PARAMETRO)
+    return f"A resposta tem {tamanho} caracteres, grande demais para a conversa. {dica}"
+
+
+def cortar_pares(corpo: object, limite: int) -> object:
+    """Os `limite` primeiros pares, na ordem da API (pela receita, da maior para a menor, quando a chave
+    pode ver a receita; senão pelo CNPJ), com `truncated` e o aviso
+    em `limits` quando cortou. As medianas ficam como vieram: a API as calcula sobre todos os pares."""
+    if not isinstance(corpo, dict):
+        return corpo
+    pares = corpo.get("peers")
+    if not isinstance(pares, list) or len(pares) <= limite:
+        return corpo
+    limites = corpo.get("limits")
+    aviso = (
+        f"O conector entregou os {limite} primeiros dos {len(pares)} pares que a API mandou, na ordem dela "
+        f"(pela receita, da maior para a menor, quando a chave pode vê-la; senão pelo CNPJ); peça mais com `limite` (até {LIMITE_MAXIMO_DOS_PARES}). As medianas em "
+        "`peer_medians` usam todos os pares."
+    )
+    return corpo | {
+        "peers": pares[:limite],
+        "truncated": True,
+        "limits": [*limites, aviso] if isinstance(limites, list) else [aviso],
+    }
+
+
 def _como_texto(corpo: object) -> str:
     return json.dumps(corpo, ensure_ascii=False, separators=(",", ":"))
 
@@ -238,8 +282,7 @@ class Pedidos:
             raise ToolError(MENSAGEM_DE_PESSOA) from None
         except RespostaGrandeDemais as grande:
             raise ToolError(
-                f"A resposta tem {grande.tamanho} caracteres, grande demais para a conversa. "
-                "Peça menos linhas (parâmetro `limite`) ou filtre mais."
+                mensagem_de_resposta_grande(ferramenta, grande.tamanho)
             ) from None
 
     async def pedir(
@@ -412,18 +455,35 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         annotations=SO_LEITURA,
         structured_output=False,
     )
-    async def comparaveis(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
+    async def comparaveis(
+        cnpj: Cnpj,
+        como_era_em: ComoEraEm = None,
+        limite: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DOS_PARES,
+                description="Quantos pares entregar (até 50), na ordem da API: pela receita, ou pelo CNPJ se a chave não a vê.",
+            ),
+        ] = LIMITE_PADRAO_DOS_PARES,
+    ) -> str:
         """As companhias abertas comparáveis à pedida (o mesmo grupo de setores pelo FCA), cada uma com
         receita, EBITDA, lucro, patrimônio, dívida líquida e as razões do último DFP entregue, e a mediana de cada
-        razão entre os pares. Serve para situar uma companhia aberta entre as parecidas.
+        razão entre todos os pares. Os pares vêm do de maior receita para o de menor (pelo CNPJ, se a chave
+        não pode ver a receita), até `limite`; quando há mais,
+        `truncated` vem true e `limits` diz quantos eram (as medianas continuam sobre todos).
+        Serve para situar uma companhia aberta entre as parecidas.
         Fonte: FCA e DFP entregues à CVM.
         Não traz: empresa fechada (nem como pedida, nem como par) nem estimativa do número que falta."""
         numeros = cnpj_do_pedido(cnpj)
-        return await pedidos.pedir(
-            "comparaveis",
-            f"/companies/{numeros}/comparables",
-            {"known_at": _dia(como_era_em)},
+        resposta = await pedidos.resposta(
+            f"/companies/{numeros}/comparables", {"known_at": _dia(como_era_em)}
         )
+        if resposta.ok:
+            resposta = dataclasses.replace(
+                resposta, corpo=cortar_pares(resposta.corpo, limite)
+            )
+        return pedidos.entregar(resposta, "comparaveis")
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["demonstracoes"],

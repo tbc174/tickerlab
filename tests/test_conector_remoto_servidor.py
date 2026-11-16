@@ -913,3 +913,100 @@ def test_ativos_sem_dado_ou_com_pessoa_vira_frase_sem_o_conteudo():
     assert erro_404 and "Não disponível" in texto_404
     assert erro_pessoa and ferramentas.MENSAGEM_DE_PESSOA in texto_pessoa
     assert "FULANO" not in texto_pessoa
+
+
+# ---------------------------------------------------------------- resposta grande e corte dos pares (linha 955)
+
+
+def _comparaveis_com(numero_de_pares: int) -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "subject_company": {"cnpj": "11111111000191"},
+        "peers": [{"cnpj": f"{n:014d}", "rank": n} for n in range(numero_de_pares)],
+        "truncated": False,
+        "peer_medians": {"ebitda_margin": 0.2},
+        "limits": ["Os pares são as companhias abertas do mesmo grupo de setores."],
+    }
+
+
+def test_comparaveis_entrega_os_dez_primeiros_pares_e_avisa_o_corte():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/comparables": httpx.Response(
+            200, json=_comparaveis_com(30)
+        )
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        padrao = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191"
+        )
+        tres = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191", limite=3
+        )  # fmt: skip
+    assert [p["rank"] for p in padrao["peers"]] == list(range(10))  # a ordem da API
+    assert [p["rank"] for p in tres["peers"]] == [0, 1, 2]
+    for corpo in (padrao, tres):
+        assert corpo["truncated"] is True
+        assert corpo["peer_medians"] == {"ebitda_margin": 0.2}  # sobre todos os pares
+        assert corpo["limits"][0].startswith("Os pares são")
+        assert "dos 30 pares" in corpo["limits"][-1]
+    # o corte é no conector: o pedido à API é o mesmo da CLI, sem parâmetro novo
+    assert {
+        tuple(p.url.params.keys())
+        for p in pedidos
+        if p.url.path.endswith("/comparables")
+    } == {()}
+
+
+def test_comparaveis_com_poucos_pares_vem_como_a_api_mandou():
+    corpo = _comparaveis_com(10)
+    rotas = {"/companies/11111111000191/comparables": httpx.Response(200, json=corpo)}
+    with _conector(rotas) as cliente:
+        recebido = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191"
+        )
+    assert recebido == corpo
+
+
+@pytest.mark.parametrize("limite", [0, ferramentas.LIMITE_MAXIMO_DOS_PARES + 1])
+def test_comparaveis_recusa_limite_fora_da_faixa(limite):
+    pedidos: list[httpx.Request] = []
+    with _conector(pedidos=pedidos) as cliente:
+        erro, _ = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191", limite=limite
+        )  # fmt: skip
+    assert erro
+    assert not [p for p in pedidos if p.url.path.endswith("/comparables")]
+
+
+def test_a_frase_da_resposta_grande_so_cita_parametro_que_a_ferramenta_tem():
+    lista = _ferramentas_listadas()
+    nomes = {f["name"] for f in lista}
+    assert set(ferramentas.DICAS_DE_RESPOSTA_GRANDE) <= nomes
+    for ferramenta in lista:
+        propriedades = set(ferramenta["inputSchema"].get("properties", {}))
+        frase = ferramentas.mensagem_de_resposta_grande(ferramenta["name"], 200_000)
+        citados = set(re.findall(r"`([^`]+)`", frase))
+        assert citados <= propriedades, (ferramenta["name"], citados - propriedades)
+        # quem tem `limite` precisa dizer que tem: era o parâmetro que a frase antiga citava para todas
+        if "limite" in propriedades:
+            assert "limite" in citados, ferramenta["name"]
+
+
+def test_comparaveis_grande_demais_mesmo_cortado_pede_limite_menor():
+    corpo = _comparaveis_com(50)
+    for par in corpo["peers"]:
+        par["note"] = "x" * (TETO_DE_CARACTERES // 40)
+    rotas = {"/companies/11111111000191/comparables": httpx.Response(200, json=corpo)}
+    with _conector(rotas) as cliente:
+        erro, texto = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191", limite=50
+        )  # fmt: skip
+    assert erro and "grande demais" in texto and "`limite`" in texto
+
+
+def test_ferramenta_sem_parametro_de_tamanho_nao_manda_pedir_limite():
+    grande = {"sectors": [{"name": "x" * 1000}] * (TETO_DE_CARACTERES // 1000)}
+    with _conector({"/sectors": httpx.Response(200, json=grande)}) as cliente:
+        erro, texto = aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, "setores")
+    assert erro and "grande demais" in texto and "`" not in texto

@@ -112,7 +112,7 @@ com as ferramentas que existem.
 |---|---|
 | `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
 | `empresa` | `ficha_da_empresa` |
-| `comparaveis` | `comparaveis` |
+| `comparaveis` | `comparaveis` (a data e `limite` de 1 a 50 pares, padrão 10; o corte é no conector, na ordem da API, e as medianas seguem sobre todos os pares) |
 | `demonstracoes` | `demonstracoes` |
 | `eventos` | `eventos` (tipos, `limite` e `cursor`) |
 | `fundo` | `fundo` |
@@ -122,6 +122,8 @@ com as ferramentas que existem.
 | `ativos` | `ativos` (a data; conjunto `assets`, hoje os contratos de E&P da ANP) |
 | `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
 | `novidades` | `novidades` (`dias` de 1 a 30) |
+
+Resposta acima do teto (`conector_remoto/saida.py`, `TETO_DE_CARACTERES`) vira erro com o jeito de pedir menos que aquela ferramenta tem (`DICAS_DE_RESPOSTA_GRANDE` em `conector_remoto/ferramentas.py`); a que não tem parâmetro para isso diz que o pedido não cabe. Um teste confere que a frase só cita parâmetro da própria ferramenta.
 
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
 quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista está vazia.
