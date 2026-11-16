@@ -191,6 +191,100 @@ def test_toda_ferramenta_tem_titulo_curto_em_portugues():
         assert "_" not in titulo, titulo
 
 
+# Regra do diretório de conectores do Claude: a descrição diz o que a ferramenta devolve, nunca instrui o modelo.
+# Formas no imperativo (ou dirigidas a quem lê) que não podem aparecer numa descrição de ferramenta ou de
+# argumento; a orientação ao modelo mora nas `INSTRUCOES` do servidor.
+PALAVRAS_QUE_INSTRUEM = re.compile(
+    r"\b(diga|digam|use|usem|chame|leia|cite|anote|peça|pergunte|responda|mostre|informe|confira|"
+    r"complete|acrescente|estime|ignore|siga|você|vocês|deve|devem|sempre|claude|chatgpt|"
+    r"you|must|should|always|never|important|importante)\b",
+    re.IGNORECASE,
+)
+# texto público lido pelo modelo do cliente: sem preço, promessa nem recomendação
+PALAVRAS_DE_PROMESSA = re.compile(r"R\$|preço|garant|recomend|promet", re.IGNORECASE)
+PARTES_DA_DESCRICAO = ("Serve para", "Fonte:", "Não traz:")
+
+
+def _ferramentas_listadas() -> list[dict]:
+    with _conector() as cliente:
+        return aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
+            "tools"
+        ]
+
+
+def _descricoes_dos_argumentos(ferramenta: dict) -> dict[str, str]:
+    propriedades = ferramenta["inputSchema"].get("properties", {})
+    return {nome: p.get("description", "") for nome, p in propriedades.items()}
+
+
+def test_toda_ferramenta_descreve_o_que_devolve_quando_serve_a_fonte_e_o_que_nao_traz():
+    lista = _ferramentas_listadas()
+    assert sorted(f["name"] for f in lista) == sorted(
+        ferramentas.CONJUNTOS_DA_FERRAMENTA
+    )
+    for ferramenta in lista:
+        descricao = ferramenta.get("description") or ""
+        assert ferramenta.get("title"), ferramenta["name"]
+        for parte in PARTES_DA_DESCRICAO:
+            assert descricao.count(parte) == 1, (ferramenta["name"], parte)
+        # a descrição começa pelo que devolve, não pelas partes fixas
+        assert descricao.index("Serve para") > 0, ferramenta["name"]
+
+
+def test_nenhuma_descricao_instrui_o_modelo_nem_promete():
+    for ferramenta in _ferramentas_listadas():
+        textos = {"(descrição)": ferramenta.get("description") or ""}
+        textos |= _descricoes_dos_argumentos(ferramenta)
+        for onde, texto in textos.items():
+            achado = PALAVRAS_QUE_INSTRUEM.search(texto)
+            assert achado is None, (ferramenta["name"], onde, achado and achado.group())
+            promessa = PALAVRAS_DE_PROMESSA.search(texto)
+            assert promessa is None, (
+                ferramenta["name"],
+                onde,
+                promessa and promessa.group(),
+            )
+
+
+def test_todo_argumento_tem_descricao():
+    for ferramenta in _ferramentas_listadas():
+        for nome, descricao in _descricoes_dos_argumentos(ferramenta).items():
+            assert descricao.strip(), (ferramenta["name"], nome)
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "Diga ao analista que falta.",
+        "Ao citar, nunca complete o texto.",
+        "use com a UF",
+        "You must call this first.",
+        "Leia os limits.",
+    ],
+)
+def test_a_regra_pega_o_imperativo(texto):
+    assert PALAVRAS_QUE_INSTRUEM.search(texto)
+
+
+def test_o_que_nao_ha_aparece_nas_descricoes():
+    descricoes = {f["name"]: f["description"] for f in _ferramentas_listadas()}
+    sem_faturamento = [
+        n for n, d in descricoes.items() if "faturamento de empresa fechada" in d
+    ]
+    sem_pessoa = [n for n, d in descricoes.items() if "pessoa física" in d]
+    assert {"ficha_da_empresa", "demonstracoes"} <= set(sem_faturamento)
+    assert {
+        "buscar_empresas",
+        "ficha_da_empresa",
+        "vinculos",
+        "compradores_do_setor",
+    } <= set(sem_pessoa)
+
+
+def test_orientacao_do_recorte_das_novidades_mora_nas_instrucoes():
+    assert "excerpt_cut" in servidor.INSTRUCOES and "recorte" in servidor.INSTRUCOES
+
+
 def test_ficha_explica_os_campos_do_cadastro_nao_consultados():
     with _conector() as cliente:
         lista = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "tools/list").json()["result"][
