@@ -448,8 +448,9 @@ interface PropriedadesDoPainelPedido {
   motivos: string[];
   /** Algo mudou que a lista mostra (a suspensão), ou o servidor deixou de achar o que a tela mostrava. */
   aoMudarALista(): void;
-  /** Diz à tela se há uma chave nova à vista: enquanto houver, ela não cria organização (trocaria de painel). */
-  aoTerChaveNaTela(tem: boolean): void;
+  /** Diz à tela de qual organização é a chave nova à vista (ou que não há): enquanto houver, a tela não
+   * troca de painel sozinha nem cria organização. */
+  aoTerChaveNaTela(organizacao: string | null): void;
 }
 
 function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDoPainelPedido) {
@@ -459,9 +460,9 @@ function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDo
   const temChaveNova = chaveNova !== null;
   // ao sair (troca de organização), a chave some junto com o painel: a tela volta a poder criar
   useEffect(() => {
-    aoTerChaveNaTela(temChaveNova);
-    return () => aoTerChaveNaTela(false);
-  }, [temChaveNova, aoTerChaveNaTela]);
+    aoTerChaveNaTela(temChaveNova ? id : null);
+    return () => aoTerChaveNaTela(null);
+  }, [temChaveNova, id, aoTerChaveNaTela]);
   const [aviso, setAviso] = useState<string | null>(null);
   const { ocupada, falha, executar } = useAcao(() => {
     recarregar();
@@ -525,25 +526,34 @@ function Painel({ id, motivos, aoMudarALista, aoTerChaveNaTela }: PropriedadesDo
 
 // --- a tela -----------------------------------------------------------------------------------
 
+const A_CRIADA_ESPERA = " Ela abre quando você tirar a chave nova da tela.";
+
 function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar(): void }) {
   const { organizacoes } = lista;
   const [pedida, setPedida] = useState<string | null>(null);
   const [criando, setCriando] = useState(organizacoes.length === 0);
-  const [aviso, setAviso] = useState<string | null>(null);
-  // criar uma organização abre o painel dela, e o valor de uma chave ainda na tela sumiria sem aviso
-  const [chaveNaTela, setChaveNaTela] = useState(false);
+  const [criada, setCriada] = useState<OrganizacaoDaListaV1 | null>(null);
+  // a organização da chave nova que está na tela: o valor não dá para ver de novo, então só a própria pessoa
+  // tira esse painel (escolhendo outra organização ou tirando a chave); a tela, sozinha, não troca
+  const [comChave, setComChave] = useState<string | null>(null);
+  const naLista = (id: string | null) => organizacoes.find((organizacao) => organizacao.id === id)?.id;
   // a pedida vale enquanto estiver na lista (a recém-criada entra quando a lista recarrega); senão, a primeira
-  const escolhida = organizacoes.find((organizacao) => organizacao.id === pedida)?.id ?? organizacoes[0]?.id ?? null;
+  const escolhida = naLista(comChave) ?? naLista(pedida) ?? organizacoes[0]?.id ?? null;
   function escolher(id: string) {
     setPedida(id);
-    setAviso(null);
+    setComChave(null);
+    setCriada(null);
   }
-  function criada(nova: OrganizacaoDaListaV1) {
+  // a resposta de um criar pode chegar depois de uma chave aparecer (o pedido saiu antes): aqui só se anota
+  // a criada; quem decide o painel é o `escolhida` acima, com o estado de agora
+  function aoCriar(nova: OrganizacaoDaListaV1) {
     setPedida(nova.id);
     setCriando(false);
-    setAviso(`Organização criada: ${nova.nome}.`);
+    setCriada(nova);
     recarregar();
   }
+  const esperaAChaveSair = criada !== null && comChave !== null && criada.id !== comChave;
+  const aviso = criada ? `Organização criada: ${criada.nome}.${esperaAChaveSair ? A_CRIADA_ESPERA : ""}` : null;
   return (
     <>
       {organizacoes.length > 1 && escolhida !== null ? (
@@ -571,8 +581,8 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
       {criando ? (
         <NovaOrganizacao
           planos={lista.planos_da_api}
-          chaveNaTela={chaveNaTela}
-          aoCriar={criada}
+          chaveNaTela={comChave !== null}
+          aoCriar={aoCriar}
           aoNaoAchar={recarregar}
         />
       ) : null}
@@ -585,7 +595,7 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
           id={escolhida}
           motivos={lista.motivos_da_suspensao}
           aoMudarALista={recarregar}
-          aoTerChaveNaTela={setChaveNaTela}
+          aoTerChaveNaTela={setComChave}
         />
       )}
     </>
@@ -593,7 +603,7 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
 }
 
 function AdministracaoAberta() {
-  const { pedido: lista, recarregar } = usarLeitura<OrganizacoesV1>(ROTA_DAS_ORGANIZACOES, SEM_PARAMETROS);
+  const { pedido: lista, ultimos, recarregar } = usarLeitura<OrganizacoesV1>(ROTA_DAS_ORGANIZACOES, SEM_PARAMETROS);
   // o servidor disse que este endereço não existe para esta conta: a tela diz o mesmo
   if (lista.estado === "erro" && lista.erro.tipo === "nao-encontrado") return <NaoEncontrada />;
   return (
@@ -612,7 +622,9 @@ function AdministracaoAberta() {
       </p>
       {lista.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando as organizações…" />}
       {lista.estado === "erro" && <Erro erro={lista.erro} tentarDeNovo={recarregar} />}
-      {lista.estado === "pronto" && <Organizacoes lista={lista.dados} recarregar={recarregar} />}
+      {/* a releitura que falha não tira a tela: fica a última lista, com a falha acima (uma chave nova à vista
+          não some por um tropeço do servidor) */}
+      {ultimos !== null && <Organizacoes lista={ultimos} recarregar={recarregar} />}
     </section>
   );
 }

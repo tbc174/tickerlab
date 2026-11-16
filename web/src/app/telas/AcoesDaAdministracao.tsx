@@ -25,10 +25,15 @@ function fraseDaFalha(erro: unknown): string {
 
 /** Como `usarPedido`, com `recarregar`: refaz o pedido deixando na tela o que já estava, até a resposta nova
  * chegar (o aviso de uma ação e a chave recém-emitida não piscam). Os parâmetros são os da primeira vez: quem
- * muda de organização monta a peça de novo. */
-export function usarLeitura<T>(rota: string, parametros: Parametros): { pedido: Pedido<T>; recarregar(): void } {
+ * muda de organização monta a peça de novo. `ultimos` é a última resposta que chegou: quem não pode sumir da
+ * tela quando uma releitura falha desenha a partir dela. */
+export function usarLeitura<T>(
+  rota: string,
+  parametros: Parametros,
+): { pedido: Pedido<T>; ultimos: T | null; recarregar(): void } {
   const token = useConta()?.token ?? null;
   const [pedido, setPedido] = useState<Pedido<T>>({ estado: "carregando" });
+  const [ultimos, setUltimos] = useState<T | null>(null);
   const [versao, setVersao] = useState(0);
   const chave = JSON.stringify(parametros);
   // `versao` entra na lista só para o pedido ser refeito quando alguém chama `recarregar`
@@ -37,7 +42,9 @@ export function usarLeitura<T>(rota: string, parametros: Parametros): { pedido: 
     let valendo = true;
     pedir<T>(rota, token, JSON.parse(chave) as Parametros)
       .then((dados) => {
-        if (valendo) setPedido({ estado: "pronto", dados });
+        if (!valendo) return;
+        setPedido({ estado: "pronto", dados });
+        setUltimos(dados);
       })
       .catch((falha: unknown) => {
         if (!valendo) return;
@@ -49,7 +56,7 @@ export function usarLeitura<T>(rota: string, parametros: Parametros): { pedido: 
     };
   }, [rota, token, chave, versao]);
   const recarregar = useCallback(() => setVersao((atual) => atual + 1), []);
-  return { pedido, recarregar };
+  return { pedido, ultimos, recarregar };
 }
 
 /** Roda uma ação da Administração, uma por vez: guarda a frase da recusa e, quando o servidor não acha mais

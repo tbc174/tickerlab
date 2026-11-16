@@ -96,7 +96,8 @@ interface Opcoes {
   lista?: () => Response;
   painel?: (id: string) => Response | undefined;
   // os pedidos que mudam alguma coisa (POST): endereço e corpo → resposta
-  mudar?: (endereco: string, corpo: unknown) => Response | undefined;
+  // (a promessa serve para o teste escolher a hora em que a resposta chega)
+  mudar?: (endereco: string, corpo: unknown) => Response | Promise<Response> | undefined;
 }
 
 const painelPadrao = (id: string) => (PAINEIS[id] ? respostaJson(200, PAINEIS[id]) : undefined);
@@ -106,7 +107,9 @@ function abrir({ eu = ADMIN, lista, painel = painelPadrao, mudar }: Opcoes = {})
     comSessao: true,
     eu: () => respostaJson(200, eu),
     rotas: (endereco, pedido) => {
-      if (pedido?.method === "POST") return mudar?.(endereco, JSON.parse(String(pedido.body)));
+      // o `fetch` de mentira é assíncrono: a promessa de uma resposta vale como a resposta
+      if (pedido?.method === "POST")
+        return mudar?.(endereco, JSON.parse(String(pedido.body))) as Response | undefined;
       if (endereco === ROTA_DA_LISTA) return lista ? lista() : respostaJson(200, LISTA);
       if (endereco.startsWith(INICIO_DO_PAINEL)) return painel(endereco.slice(INICIO_DO_PAINEL.length));
       return undefined;
@@ -531,6 +534,72 @@ describe("emitir, trocar e revogar chaves", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Emitir chave nova" }));
     expect(await screen.findByText("O TickerLab não respondeu agora.")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Chave nova" })).getByText(CHAVE_NOVA.valor)).toBeTruthy();
+  });
+
+  it("se recarregar a lista falhar, a tela fica, com a falha à vista, e a chave não some", async () => {
+    let listaFalha = false;
+    const { buscar } = abrir({
+      lista: () =>
+        listaFalha ? respostaJson(500, { detail: "O TickerLab não respondeu agora." }) : respostaJson(200, LISTA),
+      mudar: (endereco) => {
+        if (endereco === ROTA_DE_EMITIR) return respostaJson(200, CHAVE_NOVA);
+        listaFalha = true;
+        return respostaJson(200, { mudou: true });
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Emitir chave nova" }));
+    await screen.findByRole("region", { name: "Chave nova" });
+    // suspender recarrega a lista, e essa releitura falha
+    fireEvent.click(screen.getByRole("button", { name: "Suspender organização" }));
+    fireEvent.click(screen.getByRole("button", { name: "Suspender mesmo" }));
+    expect(await screen.findByText("O TickerLab não respondeu agora.")).toBeTruthy();
+    expect(quantasVezes(buscar, ROTA_DA_LISTA)).toBe(2);
+    expect(within(screen.getByRole("region", { name: "Chave nova" })).getByText(CHAVE_NOVA.valor)).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Organização Alfa" })).toBeTruthy();
+    // tentar de novo relê a lista; quando ela volta, a falha sai e a chave continua
+    listaFalha = false;
+    fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    await waitFor(() => expect(screen.queryByText("O TickerLab não respondeu agora.")).toBeNull());
+    expect(quantasVezes(buscar, ROTA_DA_LISTA)).toBe(3);
+    expect(screen.getByText(CHAVE_NOVA.valor)).toBeTruthy();
+  });
+
+  it("a criação que responde depois de a chave aparecer não troca de painel: a criada abre quando a chave sair", async () => {
+    let soltarACriacao: (resposta: Response) => void = () => undefined;
+    let criada = false;
+    const { buscar } = abrir({
+      // a criada entra antes das outras: nem como primeira da lista ela toma o lugar do painel com a chave
+      lista: () => respostaJson(200, criada ? { ...LISTA, organizacoes: [GAMA, ...LISTA.organizacoes] } : LISTA),
+      painel: (id) => (id === ID_GAMA ? respostaJson(200, { ...BETA, ...GAMA, suspensa_em: null }) : painelPadrao(id)),
+      mudar: (endereco) =>
+        endereco === ROTA_DE_EMITIR
+          ? respostaJson(200, CHAVE_NOVA)
+          : new Promise<Response>((resolver) => {
+              soltarACriacao = resolver;
+            }),
+    });
+    const formulario = await abrirFormularioDeCriar();
+    preencher(formulario, "Organização Gama");
+    fireEvent.click(within(formulario).getByRole("button", { name: "Criar organização" }));
+    // a criação ainda não respondeu quando a chave é emitida
+    fireEvent.click(screen.getByRole("button", { name: "Emitir chave nova" }));
+    await screen.findByRole("region", { name: "Chave nova" });
+    criada = true;
+    soltarACriacao(respostaJson(200, GAMA));
+    expect(
+      await screen.findByText(
+        "Organização criada: Organização Gama. Ela abre quando você tirar a chave nova da tela.",
+      ),
+    ).toBeTruthy();
+    expect(await screen.findByRole("option", { name: "Organização Gama" })).toBeTruthy();
+    expect(screen.getByText(CHAVE_NOVA.valor)).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Organização Alfa" })).toBeTruthy();
+    expect((screen.getByRole("combobox", { name: "Organização" }) as HTMLSelectElement).value).toBe(ID_ALFA);
+    expect(quantasVezes(buscar, rotaDoPainel(ID_GAMA))).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: "Já copiei: tirar da tela" }));
+    expect(await screen.findByRole("region", { name: "Organização Gama" })).toBeTruthy();
+    expect(screen.getByText("Organização criada: Organização Gama.")).toBeTruthy();
+    expect(screen.queryByText(CHAVE_NOVA.valor)).toBeNull();
   });
 
   it("copiar manda o valor para a área de transferência", async () => {
