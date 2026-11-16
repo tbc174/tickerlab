@@ -19,11 +19,12 @@ from datetime import date, datetime
 import sqlalchemy as sa
 
 from src.administracao import exigir_admin
+from src.api_externa.conjuntos import novidades
 from src.banco import chaves_da_api as cb
 from src.banco import membros_da_organizacao as membros
 from src.chaves_da_api import ChaveNova
 from src.planos import LimitesDaApi, limites_da_api
-from src.portao_externo import Canal, LinhaDeDireito
+from src.portao_externo import Canal, Finalidade, LinhaDeDireito, regras_vigentes
 
 # os erros que o admin pode causar e que a mensagem já explica (a tela mostra o texto, sem traceback)
 ERROS_ESPERADOS = (
@@ -44,6 +45,14 @@ CHAVE_REVOGADA = "revogada"
 MOTIVO_SEM_CONTRATO = "sem_contrato"
 MOTIVO_SUSPENSO_PARA_TODOS = "suspenso_para_todos"
 
+# o que a API por chave libera de cada vez: o par (conjunto, finalidade)
+type Oferta = tuple[str, str]
+# o que a API por chave serve conferindo o contrato direto, sem linha de direito no portão (há teste
+# que cobra: conjunto novo em `src/api_externa/conjuntos/` sem linha no portão tem de entrar aqui)
+OFERTAS_FORA_DO_PORTAO: frozenset[Oferta] = frozenset(
+    {(novidades.CONJUNTO, Finalidade.ANALISE.value)}
+)
+
 
 @dataclass(frozen=True)
 class VisaoDaOrganizacao:
@@ -57,9 +66,11 @@ class VisaoDaOrganizacao:
 
 @dataclass(frozen=True)
 class ConjuntoDesligado:
-    """Um conjunto que a API oferece e que hoje não sai para a organização, com o motivo."""
+    """Um conjunto que a API oferece, para uma finalidade, e que hoje não sai para a organização, com o
+    motivo."""
 
     conjunto: str
+    finalidade: str
     motivo: str
 
 
@@ -91,30 +102,41 @@ def chaves_que_ocupam_vaga(chaves: Iterable[cb.ChaveListada]) -> int:
     )
 
 
-def conjuntos_da_api_externa(linhas: Iterable[LinhaDeDireito]) -> frozenset[str]:
-    """Os conjuntos que a API por chave oferece, tirados das linhas de direito do portão."""
+def ofertas_da_api_externa(linhas: Iterable[LinhaDeDireito]) -> frozenset[Oferta]:
+    """O que a API por chave oferece, tirado das linhas de direito do portão: o par conjunto e
+    finalidade, o mesmo que o catálogo da chave e o `contrato_permite` conferem."""
     return frozenset(
-        linha.conjunto for linha in linhas if linha.canal == Canal.API_EXTERNA
+        (linha.conjunto, linha.finalidade.value)
+        for linha in linhas
+        if linha.canal == Canal.API_EXTERNA
     )
 
 
+def ofertas_da_api() -> frozenset[Oferta]:
+    """Todo par (conjunto, finalidade) que a API por chave serve hoje: as linhas vigentes do portão
+    mais o que ela serve fora delas."""
+    return ofertas_da_api_externa(regras_vigentes().linhas) | OFERTAS_FORA_DO_PORTAO
+
+
 def conjuntos_desligados(
-    oferecidos: Iterable[str],
-    contratados: Iterable[str],
+    oferecidos: Iterable[Oferta],
+    contratados: Iterable[Oferta],
     suspensos_para_todos: Iterable[str],
 ) -> list[ConjuntoDesligado]:
-    """O que a API oferece menos o que o contrato liga, em ordem de nome. O conjunto parado para todas
+    """O que a API oferece menos o que o contrato liga, par a par (conjunto e finalidade), em ordem de
+    nome: o conjunto contratado para outra finalidade continua desligado. O conjunto parado para todas
     as organizações aparece com esse motivo, mesmo que o contrato o tenha."""
     suspensos = set(suspensos_para_todos)
-    ligados = set(contratados) - suspensos
+    ligados = {oferta for oferta in contratados if oferta[0] not in suspensos}
     return [
         ConjuntoDesligado(
             conjunto,
+            finalidade,
             MOTIVO_SUSPENSO_PARA_TODOS
             if conjunto in suspensos
             else MOTIVO_SEM_CONTRATO,
         )
-        for conjunto in sorted(set(oferecidos) - ligados)
+        for conjunto, finalidade in sorted(set(oferecidos) - ligados)
     ]
 
 
@@ -147,19 +169,23 @@ def painel_da_organizacao(
     organizacao_id: uuid.UUID,
     hoje: date,
     *,
-    oferecidos: Iterable[str],
+    oferecidos: Iterable[Oferta],
 ) -> PainelDaOrganizacao:
-    """A visão da organização mais as quotas do plano, o que ainda está desligado dentre os conjuntos
-    `oferecidos` pela API, a permissão `pessoa_na_tela` (só o estado) e quantas contas estão vinculadas."""
+    """A visão da organização mais as quotas do plano, o que ainda está desligado dentre os pares
+    (conjunto, finalidade) `oferecidos` pela API, a permissão `pessoa_na_tela` (só o estado) e quantas
+    contas estão vinculadas.
+
+    "Desligado" olha só o contrato e a suspensão para todos. Não olha se a tabela do conjunto está pronta
+    nem as marcas da fonte: um conjunto contratado pode estar fora desta lista e ainda assim ser negado
+    pelo portão."""
     visao = ver_organizacao(conexao, ator_id, organizacao_id, hoje)  # confere o admin
     suspensos = {s.conjunto for s in cb.conjuntos_suspensos_agora(conexao)}
+    contratados = {(d.conjunto, d.finalidade) for d in visao.direitos}
     return PainelDaOrganizacao(
         visao=visao,
         limites=limites_da_api(visao.organizacao.plano_da_api),
         chaves_ativas=chaves_que_ocupam_vaga(visao.chaves),
-        desligados=conjuntos_desligados(
-            oferecidos, {d.conjunto for d in visao.direitos}, suspensos
-        ),
+        desligados=conjuntos_desligados(oferecidos, contratados, suspensos),
         pessoa_na_tela=cb.contrato_permite(
             conexao,
             organizacao_id,

@@ -8,8 +8,15 @@ pelo prefixo, direitos em vigor, o que a API oferece e o contrato ainda não lig
 Quem entra: a conta logada, com os termos aceitos **e** administradora no banco, conferida a cada pedido
 por `conta_admin`, que é dependência do router inteiro (uma rota nova aqui já nasce fechada; há teste que
 cobra). Para qualquer outra conta a resposta é o mesmo 404 de um endereço que não existe, antes de ler o que
-foi pedido: não diz que a Administração existe nem se um id é de uma organização. As funções de
-`src/administracao_das_chaves.py` conferem o administrador de novo, na mesma conexão da leitura.
+foi pedido: a resposta não depende do id, então não diz se ele é de uma organização (que estas rotas existem
+não é segredo: o código é público e o visitante recebe 401). As funções de
+`src/administracao_das_chaves.py` conferem o administrador de novo, na mesma conexão da leitura; se essa
+segunda conferência recusar, a resposta é o mesmo 404.
+
+"Ainda desligado" segue a regra da API por chave: o par conjunto e finalidade (o conjunto contratado para
+outra finalidade continua desligado), sobre as linhas do portão mais o que a API serve fora delas
+(`ofertas_da_api`, em `src/administracao_das_chaves.py`). Limite: olha o contrato e a suspensão para todos, não se a tabela do conjunto
+está pronta nem as marcas da fonte; um conjunto fora da lista ainda pode ser negado pelo portão.
 
 O que nunca sai daqui: o valor ou o hash de uma chave (a leitura traz só o prefixo), e o id, o nome ou o
 e-mail de uma conta vinculada (sai o número). Nada é guardado em cache (`Cache-Control: no-store`) e estas
@@ -30,7 +37,6 @@ from src.banco import chaves_da_api as cb
 from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario
 from src.planos import limites_da_api
-from src.portao_externo import regras_vigentes
 
 ORGANIZACAO_INEXISTENTE = "Organização inexistente."
 
@@ -122,6 +128,7 @@ class DireitoEmVigorV1(BaseModel):
 
 class ConjuntoDesligadoV1(BaseModel):
     conjunto: str
+    finalidade: str
     motivo: str  # "sem_contrato" ou "suspenso_para_todos"
 
 
@@ -196,7 +203,9 @@ def _painel(
             for direito in painel.visao.direitos
         ],
         ainda_desligado=[
-            ConjuntoDesligadoV1(conjunto=d.conjunto, motivo=d.motivo)
+            ConjuntoDesligadoV1(
+                conjunto=d.conjunto, finalidade=d.finalidade, motivo=d.motivo
+            )
             for d in painel.desligados
         ],
         pessoa_na_tela=painel.pessoa_na_tela,
@@ -234,11 +243,14 @@ def organizacao(
 ) -> PainelDaOrganizacaoV1:
     """O painel de uma organização: situação, quotas, consumo do mês, chaves (pelo prefixo), direitos em
     vigor e o que ainda está desligado. O id vai na consulta, não no caminho."""
-    oferecidos = adc.conjuntos_da_api_externa(regras_vigentes().linhas)
     with obter_engine().connect() as conexao:
         try:
             painel = adc.painel_da_organizacao(
-                conexao, conta.id, organizacao_id, hoje(), oferecidos=oferecidos
+                conexao,
+                conta.id,
+                organizacao_id,
+                hoje(),
+                oferecidos=adc.ofertas_da_api(),
             )
         except (
             PermissaoNegadaError

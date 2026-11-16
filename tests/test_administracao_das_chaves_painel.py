@@ -1,8 +1,9 @@
 """O painel da organização para a Administração do app novo (linha 955): a regra, sem a tela.
 
 O que estes testes travam: só administrador lê o painel; o painel de uma organização não traz nada da
-outra; o que "ainda está desligado" sai do que a API externa oferece menos o contrato; e a permissão
-`pessoa_na_tela` e os membros aparecem só como estado e número.
+outra; o que "ainda está desligado" sai do que a API externa oferece menos o contrato, par a par
+(conjunto e finalidade, como a API por chave confere); e a permissão `pessoa_na_tela` e os membros
+aparecem só como estado e número.
 """
 
 import uuid
@@ -19,7 +20,9 @@ from src.portao_externo import DIREITOS_DA_API_EXTERNA, Canal
 
 AGORA = datetime.now(UTC)
 HOJE = AGORA.date()
-OFERECIDOS = frozenset({"events", "links", "profiles"})
+OFERECIDOS = frozenset(
+    {("events", "analise"), ("links", "analise"), ("profiles", "analise")}
+)
 
 
 def _usuario(banco, sub, *, admin):
@@ -108,28 +111,45 @@ def test_so_a_chave_sem_prazo_e_sem_revogacao_ocupa_vaga():
 
 def test_desligado_e_o_que_a_api_oferece_menos_o_contrato():
     desligados = adc.conjuntos_desligados(
-        OFERECIDOS, contratados={"profiles"}, suspensos_para_todos={"events"}
+        OFERECIDOS,
+        contratados={("profiles", "analise")},
+        suspensos_para_todos={"events"},
     )
     assert desligados == [
-        adc.ConjuntoDesligado("events", adc.MOTIVO_SUSPENSO_PARA_TODOS),
-        adc.ConjuntoDesligado("links", adc.MOTIVO_SEM_CONTRATO),
+        adc.ConjuntoDesligado("events", "analise", adc.MOTIVO_SUSPENSO_PARA_TODOS),
+        adc.ConjuntoDesligado("links", "analise", adc.MOTIVO_SEM_CONTRATO),
     ]
     # com tudo contratado e nada suspenso, não sobra nada
     assert adc.conjuntos_desligados(OFERECIDOS, OFERECIDOS, set()) == []
 
 
-def test_os_conjuntos_oferecidos_saem_das_linhas_do_portao_da_api_externa():
-    oferecidos = adc.conjuntos_da_api_externa(DIREITOS_DA_API_EXTERNA)
-    esperados = {
-        linha.conjunto
+def test_o_contrato_com_outra_finalidade_nao_liga_o_conjunto():
+    """A API por chave confere o par: `credit` contratado para análise não serve o crédito."""
+    desligados = adc.conjuntos_desligados(
+        {("credit", "credito"), ("companies", "analise")},
+        contratados={("credit", "analise"), ("companies", "credito")},
+        suspensos_para_todos=set(),
+    )
+    assert desligados == [
+        adc.ConjuntoDesligado("companies", "analise", adc.MOTIVO_SEM_CONTRATO),
+        adc.ConjuntoDesligado("credit", "credito", adc.MOTIVO_SEM_CONTRATO),
+    ]
+
+
+def test_as_ofertas_saem_das_linhas_do_portao_da_api_externa():
+    ofertas = adc.ofertas_da_api_externa(DIREITOS_DA_API_EXTERNA)
+    esperadas = {
+        (linha.conjunto, linha.finalidade.value)
         for linha in DIREITOS_DA_API_EXTERNA
         if linha.canal == Canal.API_EXTERNA
     }
-    assert oferecidos == esperados
-    assert "links" in oferecidos and "profiles" in oferecidos
+    assert ofertas == esperadas
+    assert ("links", "analise") in ofertas and ("credit", "credito") in ofertas
+    assert ("credit", "analise") not in ofertas
     # a permissão da tela e a marca de piloto não são conjuntos de dado: nunca entram aqui
-    assert membros.CONJUNTO_DE_PESSOA_NA_TELA not in oferecidos
-    assert cb.CONJUNTO_DO_PILOTO not in oferecidos
+    conjuntos = {conjunto for conjunto, _ in ofertas}
+    assert membros.CONJUNTO_DE_PESSOA_NA_TELA not in conjuntos
+    assert cb.CONJUNTO_DO_PILOTO not in conjuntos
 
 
 # --- o painel -----------------------------------------------------------------------------
@@ -155,8 +175,8 @@ def test_o_painel_mostra_o_contrato_e_o_que_ainda_esta_desligado(banco, admin):
     painel = _painel(banco, admin.id, organizacao.id)
     assert [d.conjunto for d in painel.visao.direitos] == ["profiles"]
     assert painel.desligados == [
-        adc.ConjuntoDesligado("events", adc.MOTIVO_SEM_CONTRATO),
-        adc.ConjuntoDesligado("links", adc.MOTIVO_SEM_CONTRATO),
+        adc.ConjuntoDesligado("events", "analise", adc.MOTIVO_SEM_CONTRATO),
+        adc.ConjuntoDesligado("links", "analise", adc.MOTIVO_SEM_CONTRATO),
     ]
     assert [c.prefixo for c in painel.visao.chaves] == [nova.prefixo]
     assert painel.chaves_ativas == 1
@@ -175,9 +195,42 @@ def test_o_conjunto_suspenso_para_todos_aparece_com_o_motivo(banco, admin):
     painel = _painel(banco, admin.id, organizacao.id)
     assert painel.visao.direitos == []
     assert (
-        adc.ConjuntoDesligado("profiles", adc.MOTIVO_SUSPENSO_PARA_TODOS)
+        adc.ConjuntoDesligado("profiles", "analise", adc.MOTIVO_SUSPENSO_PARA_TODOS)
         in painel.desligados
     )
+
+
+def test_desligado_e_exatamente_o_que_o_contrato_nao_permite_na_api(banco, admin):
+    """Regressão da revisão cruzada do PR 1194: o painel dizia ligado o conjunto contratado com a
+    finalidade errada. Cada oferta real da API aparece como desligada se, e só se, a regra que a API
+    por chave usa (`contrato_permite`, par conjunto e finalidade) a nega."""
+    ofertas = adc.ofertas_da_api_externa(DIREITOS_DA_API_EXTERNA)
+    organizacao = _organizacao(banco, admin, "Alfa Gestora")
+    _conceder(banco, admin, organizacao, "profiles", "analise")
+    _conceder(banco, admin, organizacao, "companies", "credito")  # finalidade trocada
+    _conceder(banco, admin, organizacao, "credit", "analise")  # finalidade trocada
+    _conceder(banco, admin, organizacao, "events", "analise")
+    with banco.begin() as conexao:
+        cb.suspender_conjunto(
+            conexao, conjunto="events", motivo="fonte", ator_id=admin.id
+        )
+    with banco.connect() as conexao:
+        painel = adc.painel_da_organizacao(
+            conexao, admin.id, organizacao.id, HOJE, oferecidos=ofertas
+        )
+        desligados = {(d.conjunto, d.finalidade) for d in painel.desligados}
+        for conjunto, finalidade in ofertas:
+            permite = cb.contrato_permite(
+                conexao,
+                organizacao.id,
+                conjunto=conjunto,
+                finalidade=finalidade,
+                dia=HOJE,
+            )
+            assert ((conjunto, finalidade) in desligados) == (not permite), conjunto
+    assert ("profiles", "analise") not in desligados
+    assert {("companies", "analise"), ("credit", "credito")} <= desligados
+    assert ("events", "analise") in desligados
 
 
 def test_a_pessoa_na_tela_e_os_membros_saem_como_estado_e_numero(banco, admin, comum):
@@ -194,7 +247,7 @@ def test_a_pessoa_na_tela_e_os_membros_saem_como_estado_e_numero(banco, admin, c
     assert painel.pessoa_na_tela is True
     assert painel.membros == 1
     # a permissão da tela não é um conjunto da API: não some de "desligados" nem entra lá
-    assert {d.conjunto for d in painel.desligados} == set(OFERECIDOS)
+    assert {(d.conjunto, d.finalidade) for d in painel.desligados} == set(OFERECIDOS)
 
 
 def test_o_painel_de_uma_organizacao_nao_traz_nada_da_outra(banco, admin, comum):

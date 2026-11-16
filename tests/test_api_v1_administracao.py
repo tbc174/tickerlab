@@ -7,6 +7,8 @@ traz nada da outra; o valor de uma chave nunca sai numa leitura; e nenhuma desta
 contrato público.
 """
 
+import importlib
+import pkgutil
 from datetime import UTC, datetime
 
 import pytest
@@ -15,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from src import administracao_das_chaves as adc
 from src import api
+from src.api_externa import conjuntos as conjuntos_da_api
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso
 from src.api_v1 import administracao as rotas_da_administracao
 from src.api_v1.rotas import openapi_v1
@@ -75,13 +78,13 @@ def _organizacao(banco, chefe, nome):
         )
 
 
-def _conceder(banco, chefe, organizacao, conjunto):
+def _conceder(banco, chefe, organizacao, conjunto, finalidade="analise"):
     with banco.begin() as conexao:
         cb.conceder_direito(
             conexao,
             organizacao_id=organizacao.id,
             conjunto=conjunto,
-            finalidade="analise",
+            finalidade=finalidade,
             vigente_desde=HOJE,
             ator_id=chefe.id,
         )
@@ -179,6 +182,22 @@ def test_admin_bloqueado_nao_administra(banco, app, chefe):
         assert "Alfa" not in resposta.text
 
 
+def test_a_regra_recusa_de_novo_mesmo_se_a_dependencia_deixar_passar(
+    banco, app, chefe, carla
+):
+    """A segunda tranca: a regra em `src/` confere o administrador na conexão da leitura. Aqui a
+    dependência é trocada por uma que deixa a conta comum passar; a resposta continua o 404."""
+    organizacao = _organizacao(banco, chefe, "Alfa Gestora")
+    app.dependency_overrides[rotas_da_administracao.conta_admin] = lambda: carla
+    cliente = _cliente(banco, app, carla)
+    inexistente = cliente.get("/v1/admin/nao-existe")
+    for endereco, parametros in _leituras(organizacao.id):
+        resposta = cliente.get(endereco, params=parametros)
+        assert resposta.status_code == 404, endereco
+        assert resposta.json() == inexistente.json(), endereco
+        assert "Alfa" not in resposta.text
+
+
 def test_a_conta_que_nao_aceitou_os_termos_nao_administra(banco, app):
     with banco.begin() as conexao:
         usuario = entrar(conexao, "novato", "novato@exemplo.com", "Novato")[0]
@@ -268,11 +287,63 @@ def test_o_painel_mostra_a_organizacao_de_relance(banco, app, chefe, carla):
         ("events", "analise"),
         ("profiles", "analise"),
     ]
-    desligados = {d["conjunto"]: d["motivo"] for d in painel["ainda_desligado"]}
-    assert desligados["links"] == "sem_contrato"
-    assert "profiles" not in desligados and "events" not in desligados
+    desligados = {
+        (d["conjunto"], d["finalidade"]): d["motivo"] for d in painel["ainda_desligado"]
+    }
+    assert desligados[("links", "analise")] == "sem_contrato"
+    assert desligados[("credit", "credito")] == "sem_contrato"
+    # `research` confere o contrato fora das linhas do portão, e entra aqui do mesmo jeito
+    assert desligados[("research", "analise")] == "sem_contrato"
+    assert ("profiles", "analise") not in desligados
+    assert ("events", "analise") not in desligados
     assert painel["pessoa_na_tela"] is False
     assert painel["membros"] == 1
+
+
+def test_as_ofertas_do_painel_cobrem_todo_conjunto_que_a_api_por_chave_serve():
+    """Conjunto novo em `src/api_externa/conjuntos/` sem linha no portão (como o `research`) precisa
+    entrar em `OFERTAS_FORA_DO_PORTAO`, ou o painel nunca o mostraria como desligado."""
+    modulos = [
+        importlib.import_module(modulo.name)
+        for modulo in pkgutil.iter_modules(
+            conjuntos_da_api.__path__, f"{conjuntos_da_api.__name__}."
+        )
+    ]
+    servidos = {m.CONJUNTO for m in modulos if hasattr(m, "CONJUNTO")}
+    assert len(servidos) >= 13
+    ofertas = adc.ofertas_da_api()
+    assert {conjunto for conjunto, _ in ofertas} == servidos
+
+
+def test_o_contrato_com_a_finalidade_trocada_aparece_como_desligado(banco, app, chefe):
+    """Regressão da revisão cruzada do PR 1194: a API por chave confere o par conjunto e finalidade."""
+    organizacao = _organizacao(banco, chefe, "Alfa Gestora")
+    _conceder(banco, chefe, organizacao, "companies", "credito")
+    _conceder(banco, chefe, organizacao, "credit", "analise")
+    painel = (
+        _cliente(banco, app, chefe)
+        .get(PAINEL, params={"id": str(organizacao.id)})
+        .json()
+    )
+    desligados = {(d["conjunto"], d["finalidade"]) for d in painel["ainda_desligado"]}
+    assert {("companies", "analise"), ("credit", "credito")} <= desligados
+    # o contrato aparece como está, com a finalidade que tem
+    assert [(d["conjunto"], d["finalidade"]) for d in painel["direitos"]] == [
+        ("companies", "credito"),
+        ("credit", "analise"),
+    ]
+
+
+def test_o_research_sai_de_desligado_quando_o_contrato_o_liga(banco, app, chefe):
+    organizacao = _organizacao(banco, chefe, "Alfa Gestora")
+    _conceder(banco, chefe, organizacao, "research")
+    painel = (
+        _cliente(banco, app, chefe)
+        .get(PAINEL, params={"id": str(organizacao.id)})
+        .json()
+    )
+    desligados = {(d["conjunto"], d["finalidade"]) for d in painel["ainda_desligado"]}
+    assert ("research", "analise") not in desligados
 
 
 def test_o_painel_nunca_traz_o_valor_nem_o_hash_da_chave(banco, app, chefe, carla):
