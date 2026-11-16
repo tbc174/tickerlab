@@ -388,14 +388,15 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         structured_output=False,
     )
     async def ficha_da_empresa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
-        """A ficha de uma empresa pelo CNPJ: o cadastro na Receita (razão social, situação, abertura, CNAE,
-        porte, natureza jurídica, Simples) e, se for companhia aberta, as entregas de DFP e ITR à CVM com prazo e
-        atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do cadastro que a base não consultou
+        """A ficha de uma empresa pelo CNPJ: o cadastro na Receita (razão social, natureza jurídica, Simples,
+        situação, CNAE principal e município, cada código com o texto da tabela da Receita ao lado, UF e data de
+        abertura) e, se for companhia aberta, as entregas de DFP e ITR à CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do cadastro que a base não consultou
         vem em `unavailable_registration_fields`, e o DFP ou ITR não consultado em `unavailable_filings`, com o aviso
         em `limits`: estar ali é falta de consulta, não valor vazio.
         Serve para a triagem de um CNPJ antes da reunião.
         Fonte: cadastro CNPJ da Receita Federal; entregas de DFP e ITR à CVM.
-        Não traz: faturamento de empresa fechada, sócio pessoa física, contato nem endereço."""
+        Não traz: faturamento de empresa fechada, porte, o texto do motivo da situação (só o código), sócio pessoa
+        física, contato nem endereço."""
         numeros = cnpj_do_pedido(cnpj)
         dia: dict[str, ParametroDaApi] = {"known_at": _dia(como_era_em)}
         acesso = acesso_do_pedido()

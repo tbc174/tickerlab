@@ -4,7 +4,10 @@
 português (a rota traduz na saída), o que a base sabia da empresa no dia, campo a campo pelo portão:
 
 - `cadastro_na_receita`: a situação cadastral, a razão social, a natureza jurídica e o Simples como eram, pelo mesmo
-  leitor de `companies` (`LeitorDeEmpresas`): o perfil não lê nada da Receita por outro caminho;
+  leitor de `companies` (`LeitorDeEmpresas`), e do estabelecimento a abertura, o CNAE principal, a UF e o município,
+  da lista sem pessoa (`cnpj_estabelecimentos_pj`, a mesma da busca) no retrato mais novo já público (linha 955); ao
+  lado do código da situação, do CNAE e do município vai o texto da tabela da Receita (`base/receita_codigos`), e o
+  código que a tabela não tem fica sem texto (não se inventa);
 - `entregas`: cada DFP e ITR que a companhia aberta devia até o dia, com o prazo da CVM, a primeira
   entrega e a situação da entrega, pela mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`).
 
@@ -33,14 +36,17 @@ from datetime import date
 import pandas as pd
 
 from base import cnpj as cnpj_
+from base import receita_codigos
 from base.dias_uteis import dias_uteis
 from base.dossie import entregas_conhecidas_em
 from base.porta import Porta
+from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.porta.rede import views
 from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido, empresas
 from src.api_externa.conjuntos.empresas import LeitorDeEmpresas
 from src.api_externa.envelope import campo
+from src.api_externa.nomes import NOMES_DE_FORA
 
 CONJUNTO = "profiles"
 TABELA_DAS_ENTREGAS = "rotulos_atraso"
@@ -54,6 +60,35 @@ DERIVADOS = frozenset({"dias_uteis_de_atraso", "situacao_da_entrega"})
 # as colunas de `rotulos_atraso` de onde sai a situação da entrega (`_situacao_entregue`)
 COLUNAS_DA_SITUACAO = ("atrasou", "atraso_grave", "zona_cinzenta")
 CHAVES_DO_PEDIDO = ("cnpj", "como_era_em")
+# do estabelecimento (linha 955): a lista sem pessoa que a busca lê, no retrato mais novo já público
+TABELA_DO_ESTABELECIMENTO = empresas.LISTA_DE_ESTABELECIMENTOS
+CAMPOS_DO_ESTABELECIMENTO = (
+    "data_inicio_atividade",
+    "cnae_principal",
+    "uf",
+    "municipio",
+)
+# o texto de cada código pela tabela da Receita, ao lado do código (que continua saindo): campo -> (nome, tabela)
+TEXTOS_DOS_CODIGOS = {
+    "situacao_cadastral": (
+        "situacao_cadastral_texto",
+        receita_codigos.situacao_cadastral,
+    ),
+    "cnae_principal": ("cnae_principal_texto", receita_codigos.cnae),
+    "municipio": ("municipio_nome", receita_codigos.municipio),
+}
+# de onde sai cada campo novo do cadastro: do estabelecimento, ou do código que o texto traduz
+ORIGEM_DO_CAMPO_NOVO = {
+    **{nome: nome for nome in CAMPOS_DO_ESTABELECIMENTO},
+    **{texto: codigo for codigo, (texto, _) in TEXTOS_DOS_CODIGOS.items()},
+}
+# os textos: não são coluna de tabela, saem da tabela da Receita pelo código
+TEXTOS_DE_FORA_DA_TABELA = frozenset(texto for texto, _ in TEXTOS_DOS_CODIGOS.values())
+# a tabela de cada campo novo, a mesma da linha de direito que o portão julga
+TABELA_DO_CAMPO_NOVO = {
+    nome: empresas.TABELA_DO_CAMPO_DO_CADASTRO.get(origem, TABELA_DO_ESTABELECIMENTO)
+    for nome, origem in ORIGEM_DO_CAMPO_NOVO.items()
+}
 
 # a situação de cada entrega, em código de fora (D7): a regra de cada rótulo é a da tabela (`rotulos_atraso`)
 NO_PRAZO = "on_time"
@@ -137,6 +172,27 @@ def _dia(valor: object) -> str | None:
     return None if pd.isna(valor) else pd.Timestamp(valor).date().isoformat()  # type: ignore[arg-type]
 
 
+def _do_estabelecimento(nome: str, valor: object) -> object:
+    """O valor da lista num tipo que vira JSON: a abertura em ISO, o resto em texto, vazio em None."""
+    if valor is None or pd.isna(valor):  # type: ignore[arg-type]
+        return None
+    if nome == "data_inicio_atividade":
+        return _dia(valor)
+    return str(valor).strip() or None
+
+
+def texto_do_codigo(campo_do_codigo: str, codigo: object) -> str | None:
+    """O texto do código pela tabela da Receita; None sem código ou quando a tabela não o tem (o
+    `receita_codigos` devolveria "código X", que não é texto da Receita)."""
+    if not isinstance(codigo, str) or not codigo.strip():
+        return None
+    _, traduzir = TEXTOS_DOS_CODIGOS[campo_do_codigo]
+    texto = traduzir(codigo)
+    if texto is None or texto.startswith("código "):
+        return None
+    return texto
+
+
 def _situacao_entregue(linha: pd.Series) -> str:
     """O rótulo que a tabela deu à entrega, pelas colunas booleanas dela (a rota não recalcula)."""
     if not _sim(linha["atrasou"]):
@@ -214,6 +270,77 @@ class LeitorDeFicha:
         }  # fmt: skip
         return (servidos, fonte) if servidos else None
 
+    def _retrato_do_estabelecimento(self, como_era_em: date) -> str | None:
+        """O mês do retrato mais novo da lista de estabelecimentos já público no dia; None sem a lista."""
+        con = self.porta.con
+        if TABELA_DO_ESTABELECIMENTO not in views(con):
+            return None
+        condicao = condicao_como_era(
+            self.porta.colunas(TABELA_DO_ESTABELECIMENTO), TABELA_DO_ESTABELECIMENTO
+        )
+        achado = con.execute(
+            f'SELECT max({empresas.MES}) FROM "{nome_da_view(TABELA_DO_ESTABELECIMENTO)}" WHERE {condicao}',
+            {"dia": dia_de(como_era_em)},
+        ).fetchone()
+        mes = None if achado is None else achado[0]
+        return None if mes is None else str(mes)
+
+    def _estabelecimento(self, normal: str, como_era_em: date) -> dict[str, dict]:
+        """A abertura, o CNAE, a UF e o município do CNPJ no retrato mais novo já público da lista sem pessoa,
+        só o que o portão libera; nada sem a lista, sem retrato público ou se o CNPJ não está nele uma só vez
+        (o que saiu da lista não leva o dado de um retrato mais velho)."""
+        liberados = [
+            nome
+            for nome in CAMPOS_DO_ESTABELECIMENTO
+            if self.permitido(empresas.FONTE, nome, False)
+        ]
+        mes = self._retrato_do_estabelecimento(como_era_em) if liberados else None
+        if mes is None:
+            return {}
+        linhas = self.porta.ler(
+            TABELA_DO_ESTABELECIMENTO,
+            como_era_em=como_era_em,
+            filtros={"cnpj": normal, empresas.MES: mes},
+            colunas=[*liberados, empresas.MES, empresas.PUBLICADO_EM],
+        )
+        if len(linhas) != 1:
+            return {}
+        linha = linhas.iloc[0]
+        publico_em = pd.Timestamp(linha[empresas.PUBLICADO_EM]).date()
+        return {
+            nome: campo(_do_estabelecimento(nome, linha[nome]), fonte=empresas.FONTE, publico_em=publico_em, visto_em=None)
+            for nome in liberados
+        }  # fmt: skip
+
+    def _com_os_textos(self, cadastro: dict[str, object]) -> dict[str, object]:
+        """O cadastro com o texto de cada código logo depois dele, no envelope do código (a mesma fonte e o
+        mesmo dia), se o portão libera o texto e a tabela da Receita tem o código."""
+        saida: dict[str, object] = {}
+        for nome, valor in cadastro.items():
+            saida[nome] = valor
+            if nome not in TEXTOS_DOS_CODIGOS or not isinstance(valor, dict):
+                continue
+            nome_do_texto, _ = TEXTOS_DOS_CODIGOS[nome]
+            texto = texto_do_codigo(nome, valor.get("valor"))
+            if texto is None or not self.permitido(
+                valor["fonte"], nome_do_texto, False
+            ):
+                continue
+            saida[nome_do_texto] = {**valor, "valor": texto}
+        return saida
+
+    def campos_novos_de_fora(self) -> list[str]:
+        """Os campos novos do cadastro (linha 955) que o portão não libera ou cuja tabela a base não tem, com o
+        nome de fora; o texto de um código que ficou de fora fica de fora também."""
+        existem = views(self.porta.con)
+        return [
+            NOMES_DE_FORA[nome]
+            for nome, origem in ORIGEM_DO_CAMPO_NOVO.items()
+            if TABELA_DO_CAMPO_NOVO[nome] not in existem
+            or not self.permitido(empresas.FONTE, origem, False)
+            or not self.permitido(empresas.FONTE, nome, False)
+        ]
+
     def _documentos_servidos(self) -> dict[str, list[str]]:
         """Os campos que o portão libera de cada documento (DFP, ITR), na ordem de `CAMPOS_DAS_ENTREGAS`;
         sem a tabela na base, nenhum documento é consultado."""
@@ -252,12 +379,14 @@ class LeitorDeFicha:
         )
         if cadastro is None:
             return None
+        do_cadastro = {
+            nome: valor
+            for nome, valor in cadastro.corpo.items()
+            if nome not in (*CHAVES_DO_PEDIDO, *empresas.CHAVES_DO_AVISO)
+        }
+        do_cadastro |= self._estabelecimento(normal, como_era_em)
         blocos: dict[str, object] = {
-            "cadastro_na_receita": {
-                nome: valor
-                for nome, valor in cadastro.corpo.items()
-                if nome not in (*CHAVES_DO_PEDIDO, *empresas.CHAVES_DO_AVISO)
-            }
+            "cadastro_na_receita": self._com_os_textos(do_cadastro)
         }
         fontes = set(cadastro.fontes)
         linhas = cadastro.linhas
@@ -270,8 +399,11 @@ class LeitorDeFicha:
             blocos["entregas"] = entregas
             fontes |= fontes_das_entregas
             linhas += len(entregas)
-        # a lista do cadastro vem pronta do leitor de `companies`, já com o nome de fora
-        campos_de_fora = cadastro.corpo[CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS]
+        # a lista do cadastro vem pronta do leitor de `companies`, já com o nome de fora; os campos novos, depois
+        campos_de_fora = [
+            *cadastro.corpo[CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS],
+            *self.campos_novos_de_fora(),
+        ]
         corpo = {
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),

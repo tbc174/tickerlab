@@ -499,6 +499,29 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("optante_simples", "data_opcao_simples", "data_exclusao_simples"),
         _PROVA_RECEITA,
     ),
+    # do estabelecimento, da lista sem pessoa que a busca lê, e o texto de cada código pela tabela da Receita
+    # (`base/receita_codigos`): o perfil da linha 955 (`conjuntos/ficha.py`)
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_situacao_cadastral",),
+        ("situacao_cadastral_texto",),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_estabelecimentos_pj",),
+        (
+            "data_inicio_atividade",
+            "cnae_principal",
+            "cnae_principal_texto",
+            "uf",
+            "municipio",
+            "municipio_nome",
+        ),
+        _PROVA_RECEITA,
+    ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),
         "profiles",

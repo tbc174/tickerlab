@@ -33,6 +33,32 @@ ENTREGAS = [
 ]
 # fmt: on
 
+# a lista de estabelecimentos sem pessoa (linha 955): o retrato de jan/2025 é público em 31/01; o de jun/2025, só
+# em 31/07 (depois de DIA), e diz outro município e outro CNAE: se sair em DIA, a ficha olhou o futuro
+# fmt: off
+ESTABELECIMENTOS = [
+    (EMPRESA, "2025-01", "2025-01-31", "2010-05-01", "6201501", "SP", "7107"),
+    (EMPRESA, "2025-06", "2025-07-31", "2010-05-01", "0111301", "SP", "6291"),
+]
+# fmt: on
+
+
+def _estabelecimentos(linhas=ESTABELECIMENTOS) -> pd.DataFrame:
+    colunas = [
+        "cnpj", "mes_do_retrato", "disponivel_em", "data_inicio_atividade", "cnae_principal", "uf", "municipio",
+    ]  # fmt: skip
+    tabela = pd.DataFrame(linhas, columns=colunas)
+    for data in ("disponivel_em", "data_inicio_atividade"):
+        tabela[data] = pd.to_datetime(tabela[data]).dt.date
+    return tabela.assign(
+        cnpj_basico=tabela["cnpj"].str[:8],
+        matriz=True,
+        situacao_cadastral="02",
+        origem_sha256="0" * 64,
+        montado_em=pd.Timestamp(MONTADA_EM, tz="UTC"),
+        versao_do_codigo="teste",
+    )
+
 
 def _rotulos(linhas=ENTREGAS, cnpj: str = EMPRESA) -> pd.DataFrame:
     colunas = [
@@ -53,9 +79,15 @@ def _rotulos(linhas=ENTREGAS, cnpj: str = EMPRESA) -> pd.DataFrame:
     )
 
 
-def _base(tmp_path, rotulos: pd.DataFrame | None = None):
+def _base(tmp_path, rotulos: pd.DataFrame | None = None, estabelecimentos: bool = True):
     pasta = tmp_path / "base"
     empresas_de_mentira._gravar_base(pasta, empresas_de_mentira._retratos())
+    if estabelecimentos:
+        (pasta / ficha.TABELA_DO_ESTABELECIMENTO).mkdir()
+        _estabelecimentos().to_parquet(
+            pasta / ficha.TABELA_DO_ESTABELECIMENTO / f"{EMPRESA[:2]}.parquet",
+            index=False,
+        )
     if rotulos is not None:
         (pasta / ficha.TABELA_DAS_ENTREGAS).mkdir()
         rotulos.to_parquet(
@@ -338,8 +370,12 @@ def test_situacao_e_simples_barrados_vao_na_lista_e_no_aviso(pasta):
     corpo = _corpo(pasta, permitido=_sem(*SITUACAO, *SIMPLES))
     cadastro = corpo["cadastro_na_receita"]
     assert "razao_social" in cadastro
-    assert not set(cadastro) & {*SITUACAO, *SIMPLES}
-    assert corpo[CAMPOS_DE_FORA] == _de_fora(*SITUACAO, *SIMPLES)
+    assert not set(cadastro) & {*SITUACAO, *SIMPLES, "situacao_cadastral_texto"}
+    # o texto da situação barrada fica de fora com ela, depois dos campos do leitor de `companies`
+    assert corpo[CAMPOS_DE_FORA] == [
+        *_de_fora(*SITUACAO, *SIMPLES),
+        NOMES_DE_FORA["situacao_cadastral_texto"],
+    ]
     assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limites"]
     # as entregas continuam consultadas: a lista delas e as frases não mudam
     assert corpo["entregas_nao_disponiveis"] == []
@@ -397,3 +433,99 @@ def test_sem_nenhum_campo_do_cadastro_liberado_nada_sai(pasta):
         "mes_do_retrato_do_cadastro",
     ]
     assert _ler(pasta, permitido=_sem(*todos)) is None
+
+
+# ---------------------------------------------------------------- o texto dos códigos e o estabelecimento (linha 955)
+
+
+def test_a_situacao_sai_com_o_texto_da_receita_no_mesmo_envelope(pasta):
+    cadastro = _corpo(pasta)["cadastro_na_receita"]
+    assert cadastro["situacao_cadastral_texto"] == {
+        **cadastro["situacao_cadastral"],
+        "valor": "Ativa",
+    }
+    # o texto vem logo depois do código
+    nomes = list(cadastro)
+    assert nomes[nomes.index("situacao_cadastral") + 1] == "situacao_cadastral_texto"
+
+
+def test_o_estabelecimento_sai_com_abertura_cnae_uf_e_municipio_com_texto(pasta):
+    cadastro = _corpo(pasta)["cadastro_na_receita"]
+    assert _valores({nome: cadastro[nome] for nome in [*ficha.CAMPOS_DO_ESTABELECIMENTO, "cnae_principal_texto", "municipio_nome"]}) == {
+        "data_inicio_atividade": "2010-05-01",
+        "cnae_principal": "6201501",
+        "cnae_principal_texto": "Desenvolvimento de programas de computador sob encomenda",
+        "uf": "SP",
+        "municipio": "7107",
+        "municipio_nome": "SAO PAULO",
+    }  # fmt: skip
+    assert cadastro["municipio"]["fonte"] == RECEITA
+    assert cadastro["municipio"]["publico_em"] == "2025-01-31"
+
+
+def test_o_estabelecimento_nao_olha_o_futuro(pasta):
+    """O retrato de jun/2025 só ficou público em 31/07: em 30/06 vale o de jan, e cortar o futuro não muda o dia."""
+    antes = _corpo(pasta)["cadastro_na_receita"]
+    depois = _corpo(pasta, dia=date(2025, 8, 1))["cadastro_na_receita"]
+    assert antes["municipio"]["valor"] == "7107"
+    assert depois["municipio"]["valor"] == "6291"
+    assert depois["municipio_nome"]["valor"] == "CAMPINAS"
+    assert depois["cnae_principal_texto"]["valor"] == "Cultivo de arroz"
+
+
+def test_cnpj_que_saiu_do_retrato_mais_novo_nao_leva_o_dado_do_velho(tmp_path):
+    base = _base(tmp_path, _rotulos(), estabelecimentos=False)
+    (base / ficha.TABELA_DO_ESTABELECIMENTO).mkdir()
+    outro = "22222222000191"
+    linhas = [ESTABELECIMENTOS[0], (outro, *ESTABELECIMENTOS[1][1:])]
+    _estabelecimentos(linhas).to_parquet(
+        base / ficha.TABELA_DO_ESTABELECIMENTO / "00.parquet", index=False
+    )
+    cadastro = _corpo(base, dia=date(2025, 8, 1))["cadastro_na_receita"]
+    assert not set(cadastro) & {
+        *ficha.CAMPOS_DO_ESTABELECIMENTO,
+        "cnae_principal_texto",
+        "municipio_nome",
+    }
+
+
+@pytest.mark.parametrize("campo", ["situacao_cadastral", "cnae_principal", "municipio"])
+def test_codigo_que_a_tabela_da_receita_nao_tem_fica_sem_texto(campo):
+    # "ZZ" não é código de nenhuma tabela: o `receita_codigos` diria "código ...", que não é texto da Receita
+    assert ficha.texto_do_codigo(campo, "ZZ") is None
+    assert ficha.texto_do_codigo(campo, "") is None
+    assert ficha.texto_do_codigo(campo, None) is None
+
+
+def test_situacao_fora_da_tabela_nao_inventa_texto():
+    assert ficha.texto_do_codigo("situacao_cadastral", "99") is None
+    assert ficha.texto_do_codigo("situacao_cadastral", "08") == "Baixada"
+
+
+def test_texto_barrado_some_e_vai_na_lista_sozinho(pasta):
+    corpo = _corpo(pasta, permitido=_sem("municipio_nome"))
+    cadastro = corpo["cadastro_na_receita"]
+    assert "municipio" in cadastro and "municipio_nome" not in cadastro
+    assert corpo[CAMPOS_DE_FORA] == [NOMES_DE_FORA["municipio_nome"]]
+
+
+def test_base_sem_a_lista_de_estabelecimentos_conta_os_campos_como_nao_consultados(
+    tmp_path,
+):
+    corpo = _corpo(_base(tmp_path, _rotulos(), estabelecimentos=False))
+    novos = [
+        "data_inicio_atividade",
+        "cnae_principal",
+        "uf",
+        "municipio",
+        "cnae_principal_texto",
+        "municipio_nome",
+    ]
+    assert corpo[CAMPOS_DE_FORA] == [NOMES_DE_FORA[nome] for nome in novos]
+    assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limites"]
+    # a situação e o texto dela continuam: vêm de outra tabela
+    assert corpo["cadastro_na_receita"]["situacao_cadastral_texto"]["valor"] == "Ativa"
+
+
+def test_todo_campo_novo_tem_nome_de_fora():
+    assert set(ficha.ORIGEM_DO_CAMPO_NOVO) <= set(NOMES_DE_FORA)
