@@ -178,7 +178,7 @@ def _regra_item_a_item(porta: Porta, cnpj: str) -> bool:
         id_entidade = resolver(con, cnpj, None)
     except LookupError:
         return False
-    if id_entidade.startswith("P"):
+    if id_entidade is None or id_entidade.startswith("P"):  # id vazio: na dúvida, não
         return False
     achadas = con.execute(
         "SELECT tipo, mei, trata_como_pessoa FROM entidades WHERE id_entidade = $id",
@@ -299,7 +299,7 @@ _SISTEMAS = ["cnpj", "cnpj_raiz", "ticker", "lei", "isin", "emissor", "outro"]
 _SIM_NAO_VAZIO = st.sampled_from([True, False, None])
 _entidades_sorteadas = st.lists(
     st.tuples(
-        st.sampled_from(_IDS),
+        st.sampled_from([*_IDS, None]),
         st.sampled_from(["empresa", "empresa", "fundo", "pessoa"]),
         _SIM_NAO_VAZIO,
         _SIM_NAO_VAZIO,
@@ -308,7 +308,7 @@ _entidades_sorteadas = st.lists(
 )
 _identificadores_sorteados = st.lists(
     st.tuples(
-        st.sampled_from([*_IDS, ID_AUSENTE]),
+        st.sampled_from([*_IDS, ID_AUSENTE, None]),
         st.sampled_from(_SISTEMAS),
         st.sampled_from(_VALORES),
     ),
@@ -465,6 +465,60 @@ def test_em_quaisquer_listas_o_lote_e_o_e_empresa_dizem_o_mesmo(
         assert empresas.e_empresas(porta, PERGUNTAS_DAS_LISTAS) == _item_a_item(
             porta, PERGUNTAS_DAS_LISTAS
         )
+
+
+# Sem `None` nos identificadores: um CNPJ com um id válido e outro nulo faz o `resolver`
+# (`base/porta/rede.py`, ao juntar os ids achados) dar TypeError. Defeito fora desta ficha (só teste), à parte.
+_identificadores_sem_nulo = st.lists(
+    st.tuples(
+        st.sampled_from([*_IDS, ID_AUSENTE]),
+        st.sampled_from(_SISTEMAS),
+        st.sampled_from(_VALORES),
+    ),
+    max_size=10,
+)
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    entidades=_entidades_sorteadas,
+    identificadores=_identificadores_sem_nulo,
+    empresas_pj=st.lists(
+        st.tuples(
+            st.sampled_from([c[:8] for c in PERGUNTAS_DAS_LISTAS if c]),
+            st.sampled_from(["2062", "2054", "4120", "", None]),
+            st.sampled_from(["2026-09", "2026-10"]),
+        ),
+        max_size=6,
+    ),
+    estabelecimentos_pj=st.lists(
+        st.tuples(
+            st.sampled_from([c for c in PERGUNTAS_DAS_LISTAS if c]),
+            st.sampled_from(["2026-09", "2026-10"]),
+        ),
+        max_size=6,
+    ),
+    perguntas=_perguntas_sorteadas,
+)
+def test_com_rede_e_listas_sorteadas_juntas_o_lote_e_o_e_empresa_dizem_o_mesmo(
+    tmp_path_factory,
+    entidades,
+    identificadores,
+    empresas_pj,
+    estabelecimentos_pj,
+    perguntas,
+):
+    base = _base_com_listas(
+        tmp_path_factory.mktemp("rede_e_listas"), empresas_pj, estabelecimentos_pj
+    )
+    extras = {
+        "entidades": _entidades(entidades),
+        "identificadores": _identificadores(identificadores),
+    }
+    perguntas = [*perguntas, *PERGUNTAS_DAS_LISTAS]
+    with Porta(base, extras=extras) as porta:
+        lote = empresas.e_empresas(porta, perguntas)
+        assert lote == _item_a_item(porta, perguntas)
 
 
 # ---------------------------------------------------------------- identificador sem entidade
