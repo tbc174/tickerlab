@@ -114,7 +114,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     # profiles: o texto de cada código pela tabela da Receita (linha 955)
     "situacao_cadastral_texto": "registration_status_label",
     "cnae_principal_texto": "cnae_label",
-    "municipio_nome": "municipality_name",
+    "municipio_texto": "municipality_name",
     # prospecting: a busca de empresas (linha 794)
     "empresas": "companies",
     "proximo_cursor": "next_cursor",

@@ -7,7 +7,9 @@ português (a rota traduz na saída), o que a base sabia da empresa no dia, camp
   leitor de `companies` (`LeitorDeEmpresas`), e do estabelecimento a abertura, o CNAE principal, a UF e o município,
   da lista sem pessoa (`cnpj_estabelecimentos_pj`, a mesma da busca) no retrato mais novo já público (linha 955); ao
   lado do código da situação, do CNAE e do município vai o texto da tabela da Receita (`base/receita_codigos`), e o
-  código que a tabela não tem fica sem texto (não se inventa);
+  código que a tabela não tem fica sem texto (não se inventa); a tabela é a de hoje, não a do dia pedido (um
+  código renomeado sai com o nome novo), e o cadastro e o estabelecimento podem vir de retratos de meses
+  diferentes, cada um com o próprio `publico_em`;
 - `entregas`: cada DFP e ITR que a companhia aberta devia até o dia, com o prazo da CVM, a primeira
   entrega e a situação da entrega, pela mesma regra da ficha da noite (`base.dossie.entregas_conhecidas_em`).
 
@@ -75,7 +77,7 @@ TEXTOS_DOS_CODIGOS = {
         receita_codigos.situacao_cadastral,
     ),
     "cnae_principal": ("cnae_principal_texto", receita_codigos.cnae),
-    "municipio": ("municipio_nome", receita_codigos.municipio),
+    "municipio": ("municipio_texto", receita_codigos.municipio),
 }
 # de onde sai cada campo novo do cadastro: do estabelecimento, ou do código que o texto traduz
 ORIGEM_DO_CAMPO_NOVO = {

@@ -451,13 +451,13 @@ def test_a_situacao_sai_com_o_texto_da_receita_no_mesmo_envelope(pasta):
 
 def test_o_estabelecimento_sai_com_abertura_cnae_uf_e_municipio_com_texto(pasta):
     cadastro = _corpo(pasta)["cadastro_na_receita"]
-    assert _valores({nome: cadastro[nome] for nome in [*ficha.CAMPOS_DO_ESTABELECIMENTO, "cnae_principal_texto", "municipio_nome"]}) == {
+    assert _valores({nome: cadastro[nome] for nome in [*ficha.CAMPOS_DO_ESTABELECIMENTO, "cnae_principal_texto", "municipio_texto"]}) == {
         "data_inicio_atividade": "2010-05-01",
         "cnae_principal": "6201501",
         "cnae_principal_texto": "Desenvolvimento de programas de computador sob encomenda",
         "uf": "SP",
         "municipio": "7107",
-        "municipio_nome": "SAO PAULO",
+        "municipio_texto": "SAO PAULO",
     }  # fmt: skip
     assert cadastro["municipio"]["fonte"] == RECEITA
     assert cadastro["municipio"]["publico_em"] == "2025-01-31"
@@ -469,7 +469,7 @@ def test_o_estabelecimento_nao_olha_o_futuro(pasta):
     depois = _corpo(pasta, dia=date(2025, 8, 1))["cadastro_na_receita"]
     assert antes["municipio"]["valor"] == "7107"
     assert depois["municipio"]["valor"] == "6291"
-    assert depois["municipio_nome"]["valor"] == "CAMPINAS"
+    assert depois["municipio_texto"]["valor"] == "CAMPINAS"
     assert depois["cnae_principal_texto"]["valor"] == "Cultivo de arroz"
 
 
@@ -485,7 +485,7 @@ def test_cnpj_que_saiu_do_retrato_mais_novo_nao_leva_o_dado_do_velho(tmp_path):
     assert not set(cadastro) & {
         *ficha.CAMPOS_DO_ESTABELECIMENTO,
         "cnae_principal_texto",
-        "municipio_nome",
+        "municipio_texto",
     }
 
 
@@ -503,10 +503,10 @@ def test_situacao_fora_da_tabela_nao_inventa_texto():
 
 
 def test_texto_barrado_some_e_vai_na_lista_sozinho(pasta):
-    corpo = _corpo(pasta, permitido=_sem("municipio_nome"))
+    corpo = _corpo(pasta, permitido=_sem("municipio_texto"))
     cadastro = corpo["cadastro_na_receita"]
-    assert "municipio" in cadastro and "municipio_nome" not in cadastro
-    assert corpo[CAMPOS_DE_FORA] == [NOMES_DE_FORA["municipio_nome"]]
+    assert "municipio" in cadastro and "municipio_texto" not in cadastro
+    assert corpo[CAMPOS_DE_FORA] == [NOMES_DE_FORA["municipio_texto"]]
 
 
 def test_base_sem_a_lista_de_estabelecimentos_conta_os_campos_como_nao_consultados(
@@ -519,7 +519,7 @@ def test_base_sem_a_lista_de_estabelecimentos_conta_os_campos_como_nao_consultad
         "uf",
         "municipio",
         "cnae_principal_texto",
-        "municipio_nome",
+        "municipio_texto",
     ]
     assert corpo[CAMPOS_DE_FORA] == [NOMES_DE_FORA[nome] for nome in novos]
     assert ficha.LIMITE_DO_CAMPO_DO_CADASTRO_NAO_DISPONIVEL in corpo["limites"]

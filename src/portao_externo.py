@@ -518,7 +518,7 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "cnae_principal_texto",
             "uf",
             "municipio",
-            "municipio_nome",
+            "municipio_texto",
         ),
         _PROVA_RECEITA,
     ),
