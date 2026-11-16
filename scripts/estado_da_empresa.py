@@ -300,7 +300,8 @@ def escrever_quadro(estado: Estado, destino: Path) -> None:
     destino.write_text(texto_do_quadro(estado), encoding="utf-8", newline="\n")
 
 
-def _rodar(comando: list[str]) -> str:
+def rodar_comando(comando: list[str]) -> str:
+    """Roda um comando e devolve o que ele imprimiu; comando que falha levanta erro."""
     feito = subprocess.run(
         comando, check=True, capture_output=True, text=True, encoding="utf-8"
     )
@@ -309,7 +310,7 @@ def _rodar(comando: list[str]) -> str:
 
 def _listar_prs(estado: str, limite: int, campos: str) -> list[dict[str, Any]]:
     comando = ["gh", "pr", "list", "--state", estado, "--limit", str(limite)]
-    return json.loads(_rodar([*comando, "--json", campos]))
+    return json.loads(rodar_comando([*comando, "--json", campos]))
 
 
 def buscar_prs_abertos() -> list[dict[str, Any]]:
@@ -322,7 +323,7 @@ def buscar_ramos_mesclados() -> set[str]:
 
 
 def buscar_copias() -> list[Copia]:
-    return ler_copias(_rodar(["git", "worktree", "list", "--porcelain"]))
+    return ler_copias(rodar_comando(["git", "worktree", "list", "--porcelain"]))
 
 
 def main(argumentos: list[str] | None = None) -> int:
