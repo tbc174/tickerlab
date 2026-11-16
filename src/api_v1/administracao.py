@@ -33,57 +33,39 @@ rotas ficam fora do contrato público (`openapi_v1`).
 """
 
 import uuid
-from collections.abc import Callable, Coroutine, Iterator
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, ValidationError
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
 from src import administracao_das_chaves as adc
-from src.administracao import PermissaoNegadaError, exigir_admin
-from src.api_v1.acesso import conta_logada, exigir_api_ligada
+from src.administracao import PermissaoNegadaError
+from src.api_v1.acesso_do_admin import (
+    Admin,
+    Pedido,
+    conta_admin,
+    corpo,
+    dependencias_do_admin,
+)
 from src.banco import chaves_da_api as cb
 from src.banco.conexao import obter_engine
-from src.banco.usuarios import Usuario
 from src.planos import limites_da_api
+
+# os testes de estrutura e de troca de dependência acham a conferência do administrador por este módulo
+__all__ = ["conta_admin", "router"]
 
 ORGANIZACAO_INEXISTENTE = "Organização inexistente."
 CHAVE_INEXISTENTE = "Chave inexistente ou já revogada."
 CNPJ_JA_CADASTRADO = "Já existe uma organização com este CNPJ."
-PEDIDO_INVALIDO = "Pedido inválido: confira os campos."
 
 
-def conta_admin(conta: Annotated[Usuario, Depends(conta_logada)]) -> Usuario:
-    """A conta logada, se for administradora agora (papel e bloqueio relidos do banco); senão o 404 de um
-    endereço que não existe."""
-    with obter_engine().connect() as conexao:
-        try:
-            exigir_admin(conexao, conta.id)
-        except PermissaoNegadaError as erro:
-            # o mesmo corpo da rota inexistente
-            raise HTTPException(status_code=404) from erro
-    return conta
-
-
-def sem_cache(resposta: Response) -> None:
-    """Nada da Administração fica guardado no navegador nem num intermediário."""
-    resposta.headers["Cache-Control"] = "no-store"
-
-
-Admin = Annotated[Usuario, Depends(conta_admin)]
 # `conta_admin` vem antes de tudo o que a rota lê: a recusa não depende do que foi pedido
-router = APIRouter(
-    prefix="/v1/admin",
-    dependencies=[
-        Depends(exigir_api_ligada),
-        Depends(conta_admin),
-        Depends(sem_cache),
-    ],
-)
+router = APIRouter(prefix="/v1/admin", dependencies=dependencias_do_admin())
 
 
 def hoje() -> date:
@@ -297,30 +279,26 @@ def organizacao(
 # --- escrita ------------------------------------------------------------------------------
 
 
-class _Pedido(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class NovaOrganizacaoV1(_Pedido):
+class NovaOrganizacaoV1(Pedido):
     nome: str
     cnpj: str | None = None
     plano_da_api: str
 
 
-class OrganizacaoPedidaV1(_Pedido):
+class OrganizacaoPedidaV1(Pedido):
     id: uuid.UUID
 
 
-class SuspensaoV1(_Pedido):
+class SuspensaoV1(Pedido):
     id: uuid.UUID
     motivo: str  # um de `motivos_da_suspensao`, da lista
 
 
-class EmissaoV1(_Pedido):
+class EmissaoV1(Pedido):
     organizacao_id: uuid.UUID
 
 
-class ChavePedidaV1(_Pedido):
+class ChavePedidaV1(Pedido):
     """A chave vai sempre com a organização dela: o par é conferido no banco."""
 
     organizacao_id: uuid.UUID
@@ -338,23 +316,6 @@ class ChaveNovaV1(BaseModel):
     prefixo: str
     valor: str
     antiga_vale_por_dias: int | None  # só na rotação: o prazo da chave antiga
-
-
-def corpo[M: BaseModel](modelo: type[M]) -> Callable[[Request], Coroutine[Any, Any, M]]:
-    """A dependência que lê o corpo do pedido como `modelo`.
-
-    A rota não declara o corpo como parâmetro de propósito: o FastAPI leria o JSON antes das dependências,
-    e a resposta a quem não é administrador dependeria do que foi mandado. Assim o corpo só é lido depois
-    de `conta_admin` (as dependências do router vêm antes das da rota; há teste que cobra)."""
-
-    async def ler(pedido: Request) -> M:
-        try:
-            return modelo.model_validate_json(await pedido.body())
-        except ValidationError:
-            # sem encadear: o erro do pydantic repete o que veio no pedido
-            raise HTTPException(status_code=422, detail=PEDIDO_INVALIDO) from None
-
-    return ler
 
 
 @contextmanager
