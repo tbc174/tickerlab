@@ -129,6 +129,13 @@ cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico
 porque é o que as instruções, os prompts e o ensaio citam. Ferramenta nova precisa de título: o teste do
 servidor falha sem ele.
 
+A descrição de cada ferramenta (a docstring) segue a regra do diretório de conectores do Claude: diz o que a
+ferramenta devolve e nunca instrui o modelo. Tem sempre as mesmas partes: o que volta, "Serve para" (a
+pergunta que ela responde), "Fonte:" e "Não traz:" (faturamento de empresa fechada, pessoa física e o que mais
+faltar). O que orienta o modelo (como citar, o dossiê, o mapa pergunta → ferramenta) fica nas `INSTRUCOES` do
+servidor. O teste do servidor cobra as partes e recusa imperativo, "você", nome de IA, preço e promessa, na
+descrição e nos argumentos.
+
 O comparar de duas a cinco empresas ainda não tem rota na API externa. Entra pelo mesmo caminho: rota na
 API, comando na CLI e ferramenta aqui, com a paridade cobrando.
 
