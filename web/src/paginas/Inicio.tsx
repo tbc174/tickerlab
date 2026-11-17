@@ -1,11 +1,10 @@
-// Página inicial do posicionamento v3 (ADR 0127, linha 774 da fila): a TickerLab é uma CLI e um conector
-// MCP de M&A e análise de investimento para o analista e o agente de IA dele. O conector tem o mesmo peso
-// da CLI (Tiago, 13/11/2026, linha 901). A ordem da página é a do que nos propomos a fazer: a assinatura
-// com a CLI à vista, o que dá para pedir, como o agente a usa, o conector no Claude e no ChatGPT, a base
-// por trás (números do catálogo e da medição, nunca digitados), o que ela liga pelo CNPJ, os
-// cruzamentos, as quatro regras e, por último, as outras janelas da mesma base (as análises abertas,
-// o app e a API). O estudo do dia, as novidades e a lista de fontes saíram da inicial: continuam em
-// Relatórios, Novidades e Dados.
+// Página inicial de um site só (linha 966 da fila, 16/11/2026): tickerlab.com.br passa a ser o único site
+// de produto, com o visual do TickerLab Data (escolha do Tiago). Uma proposta, a base com fonte e data, e três
+// portas nesta ordem: o conector MCP (o principal desde 16/11), a CLI e a API. O topo tem uma frase, a janela
+// de código com a resposta da API (o mesmo pedido pelas três portas) e um único botão de chave. Depois: as
+// três portas, a demonstração da conversa, as travas (uma lista só para as três), "como era na data", o que a
+// base tem (números do catálogo e da medição, nunca digitados), o que ela liga pelo CNPJ, os cruzamentos e as
+// análises abertas. As quatro regras ficam em Dados e em Metodologia; a API documentada, na raiz da própria API.
 import type { ReactNode } from "react";
 import { BuscaDaBase } from "../site/BuscaDaBase";
 import { baseEmNumeros, catalogo, paginasDoApp } from "../conteudo";
@@ -14,7 +13,7 @@ import { Cruzamentos } from "../site/Cruzamentos";
 import { AvisoDeAcesso, ChamadaFinal } from "../site/comum";
 import { Fundo } from "../site/Fundo";
 import { LigadoPeloCnpj } from "../site/LigadoPeloCnpj";
-import { ASSINATURA, REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../site/textos";
+import { URL_DA_API, linkDoApp } from "../site/textos";
 import { Vitrine } from "../site/Vitrine";
 
 export const DADOS = {
@@ -22,74 +21,281 @@ export const DADOS = {
   ferramenta: true,
   titulo: "TickerLab",
   descricao:
-    "CLI e conector MCP de M&A e análise de investimento para o analista e a IA dele: cada número de " +
-    "fonte pública, com data, fonte e caminho até o original.",
+    "Dados das empresas brasileiras, da fonte, com data e licença: pelo conector MCP no Claude, pela CLI " +
+    "ou pela API, para M&A e análise de investimento.",
 };
 
-// o pedaço da assinatura em destaque no título
-const DESTAQUE_DO_TITULO = "M&A e análise de investimento";
-const SUBTITULO =
-  "Você pede; o seu agente de IA roda a tickerlab no terminal, ou o Claude consulta o conector, e " +
-  "devolve a análise com a fonte e a data de cada número.";
-// o ativo continua o mesmo da ADR 0099: a coleta auditável
-const O_QUE_HA_POR_TRAS =
-  "Coleta segura e auditável das fontes públicas brasileiras: cada número com data, fonte e " +
-  "caminho até o original.";
-// onde a documentação da API ensina a pedir a chave (site-api/documentacao, seção "comecar")
-const COMO_PEDIR_A_CHAVE = `${URL_DA_API}/documentacao/#comecar`;
+// a frase do topo, com o pedaço em destaque (o mesmo desenho do TickerLab Data)
+export const FRASE_DO_TOPO = "Dados das empresas brasileiras, da fonte, com data e licença.";
+const DESTAQUE_DA_FRASE = "da fonte";
+const PORTAS_DO_TOPO =
+  "Para M&A e análise de investimento. Pergunte no Claude pelo conector, rode a CLI no terminal ou chame " +
+  "a API: a mesma base, com o documento de onde saiu cada número e o dia em que ficou público.";
+// onde a documentação da API ensina a pedir a chave (site-api/documentacao, seção "comecar"): o único caminho
+export const COMO_PEDIR_A_CHAVE = `${URL_DA_API}/documentacao/#comecar`;
+const DOCUMENTACAO_DA_API = `${URL_DA_API}/documentacao/`;
+const ROTAS_DA_API = `${URL_DA_API}/#catalogo`;
 const milhares = (n: number) => n.toLocaleString("pt-BR");
 
-// O terminal do herói: só comandos que existem (docs/cli.md), sem saída inventada.
-const LINHAS_DO_TERMINAL: [string, string][] = [
-  ["empresas de um setor numa UF, direto para o Excel", "tickerlab prospectar --cnae 4711 --uf PE --planilha alvos.xlsx"],
-  ["a ficha de uma empresa pelo CNPJ", "tickerlab empresa <cnpj>"],
-  ["as demonstrações como estavam públicas naquele dia", "tickerlab demonstracoes <cnpj> --como-era 2024-12-31"],
-  ["o setor, no formato que o agente lê", "tickerlab setor eletricas --json"],
+// --- a janela do topo: o mesmo pedido pelas três portas e a resposta que a API devolve ---------------------
+// A empresa é a Petrobras (CNPJ de companhia aberta, público). O valor fica como marcador e as datas são as do
+// exemplo do TickerLab Data: a forma é a real, o número não é inventado.
+const CNPJ_DO_EXEMPLO = "33000167000101";
+const DIA_DO_EXEMPLO = "2024-09-30";
+
+type Trecho = [classe: "" | "k" | "s" | "n" | "c" | "eu", texto: string];
+const PEDIDOS: { porta: string; nome: string; linhas: Trecho[][] }[] = [
+  {
+    porta: "conector",
+    nome: "Conector",
+    linhas: [
+      [["c", "# no Claude, com o conector do TickerLab"]],
+      [["eu", "As contas da Petrobras como estavam públicas em 30/09/2024."]],
+      [["c", "# a IA chama a ferramenta do conector"]],
+      [
+        ["k", "demonstracoes"],
+        ["", "(cnpj="],
+        ["s", `"${CNPJ_DO_EXEMPLO}"`],
+        ["", ", como_era_em="],
+        ["s", `"${DIA_DO_EXEMPLO}"`],
+        ["", ")"],
+      ],
+    ],
+  },
+  {
+    porta: "cli",
+    nome: "CLI",
+    linhas: [
+      [["c", "# no terminal, ou pelo seu agente de IA"]],
+      [
+        ["k", "$ "],
+        ["", `tickerlab demonstracoes ${CNPJ_DO_EXEMPLO} \\`],
+      ],
+      [["", `    --como-era ${DIA_DO_EXEMPLO} --json`]],
+    ],
+  },
+  {
+    porta: "api",
+    nome: "API",
+    linhas: [
+      [["c", "# do seu sistema, com a chave no cabeçalho"]],
+      [["", `curl "${URL_DA_API}/data/v1/companies/${CNPJ_DO_EXEMPLO}/financials?known_at=${DIA_DO_EXEMPLO}" \\`]],
+      [
+        ["", "  -H "],
+        ["s", '"Authorization: Bearer $TICKERLAB_CHAVE"'],
+      ],
+    ],
+  },
 ];
 
-// O que dá para pedir: um cartão por comando, com o que ele devolve (docs/cli.md e as instruções do
-// agente em cli/tickerlab/instrucoes/AGENTS.md).
-const COMANDOS: [string, string, string][] = [
+function Linhas({ linhas }: { linhas: Trecho[][] }) {
+  return (
+    <>
+      {linhas.map((linha, i) => (
+        <span key={i} className="janela-linha">
+          {linha.map(([classe, texto], j) =>
+            classe ? (
+              <span key={j} className={classe}>
+                {texto}
+              </span>
+            ) : (
+              texto
+            ),
+          )}
+          {"\n"}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** A resposta da API para o pedido acima: a forma real, com a fonte e a licença em destaque. */
+function RespostaDoTopo() {
+  return (
+    <pre className="janela-resposta">
+      <code>
+        {"{\n  "}
+        <span className="k">"cnpj"</span>: <span className="s">"{CNPJ_DO_EXEMPLO}"</span>, <span className="k">"known_at"</span>:{" "}
+        <span className="s">"{DIA_DO_EXEMPLO}"</span>
+        {",\n  "}
+        <span className="k">"rows"</span>
+        {": [{\n    "}
+        <span className="k">"account"</span>: {"{ "}
+        <span className="k">"value"</span>: <span className="s">"3.01"</span>, <span className="k">"source"</span>:{" "}
+        <span className="s">"cvm-hist-dfp"</span>
+        {",\n                 "}
+        <span className="k">"published_at"</span>: <span className="s">"2024-03-07"</span>
+        {" },\n    "}
+        <span className="k">"description"</span>: {"{ "}
+        <span className="k">"value"</span>: <span className="s">"Receita de Venda de Bens e/ou Serviços"</span>
+        {", … },\n    "}
+        <span className="k">"document"</span>: {"{ "}
+        <span className="k">"value"</span>: <span className="s">"DFP"</span>
+        {", … },\n    "}
+        <span className="k">"reference_period"</span>: {"{ "}
+        <span className="k">"value"</span>: <span className="s">"2023-12-31"</span>
+        {", … },\n    "}
+        <span className="k">"value"</span>: {"{ "}
+        <span className="k">"value"</span>: <span className="n">&lt;valor da fonte&gt;</span>
+        {", … }\n  }, …],\n  "}
+        <span className="k">"truncated"</span>: <span className="n">false</span>
+        {",\n  "}
+        <span className="destaque-rastro">
+          <span className="k">"sources"</span>
+          {": [{\n    "}
+          <span className="k">"source"</span>: <span className="s">"cvm-hist-dfp"</span>
+          {",\n    "}
+          <span className="k">"license"</span>: <span className="s">"ODbL (dados abertos da CVM; citar a fonte)"</span>
+          {",\n    "}
+          <span className="k">"attribution"</span>: <span className="s">"Fonte: CVM, Portal de Dados Abertos (ODbL)"</span>
+          {"\n  }]"}
+        </span>
+        {"\n}"}
+      </code>
+    </pre>
+  );
+}
+
+/**
+ * A janela do topo. As abas são botões de rádio (sem JavaScript): cada uma mostra o pedido por uma porta, e a
+ * resposta embaixo é a mesma, porque as três portas consultam a mesma API.
+ */
+function JanelaDoTopo() {
+  return (
+    <div className="janela abas" role="group" aria-label="O mesmo pedido pelas três portas e a resposta da API">
+      {PEDIDOS.map(({ porta }, i) => (
+        <input
+          key={porta}
+          className="aba-escolha"
+          type="radio"
+          name="janela-porta"
+          id={`janela-${porta}`}
+          data-ordem={i}
+          defaultChecked={i === 0}
+        />
+      ))}
+      <div className="janela-topo">
+        {PEDIDOS.map(({ porta, nome }, i) => (
+          <label key={porta} className="aba-rotulo" htmlFor={`janela-${porta}`} data-ordem={i}>
+            {nome}
+          </label>
+        ))}
+        <span className="status">200 OK</span>
+      </div>
+      {PEDIDOS.map(({ porta, linhas }, i) => (
+        <pre key={porta} className="janela-pedido aba-painel" data-porta={porta} data-ordem={i}>
+          <code>
+            <Linhas linhas={linhas} />
+          </code>
+        </pre>
+      ))}
+      <RespostaDoTopo />
+      <p className="janela-nota">
+        <span>
+          <b>source, published_at, license</b>: de onde saiu, quando ficou público, sob qual licença.
+        </span>
+        <span>Exemplo de forma: o valor aparece como marcador e as datas são ilustrativas.</span>
+      </p>
+    </div>
+  );
+}
+
+const PROVAS_DO_TOPO = ["Fonte e data em cada número", "Como era na data em toda consulta", "Sem dado de pessoa física"];
+
+function Heroi() {
+  const [antes, depois] = FRASE_DO_TOPO.split(DESTAQUE_DA_FRASE);
+  return (
+    <Fundo>
+      <section className="heroi faixa heroi-janela" aria-labelledby="titulo-heroi">
+        <div className="heroi-texto">
+          <p className="pilula-do-beta">
+            <span className="ponto" aria-hidden="true" />
+            Beta fechado · sem cobrança
+          </p>
+          <h1 id="titulo-heroi">
+            {antes}
+            <span className="v2-degrade">{DESTAQUE_DA_FRASE}</span>
+            {depois}
+          </h1>
+          <p className="subtitulo">{PORTAS_DO_TOPO}</p>
+          <div className="acoes">
+            <a className="botao primario" href={COMO_PEDIR_A_CHAVE} rel="noopener">
+              Pedir uma chave
+            </a>
+            <a className="botao secundario" href="#portas">
+              Ver as três portas
+            </a>
+          </div>
+          <ul className="provas-do-topo">
+            {PROVAS_DO_TOPO.map((prova) => (
+              <li key={prova}>{prova}</li>
+            ))}
+          </ul>
+          <AvisoDeAcesso />
+        </div>
+        <JanelaDoTopo />
+      </section>
+    </Fundo>
+  );
+}
+
+// --- as três portas ------------------------------------------------------------------------------------------
+// (porta, nome, selo, para quem, a linha de exemplo, o link para a seção dela)
+const PORTAS: [string, string, string, string, string, string][] = [
   [
-    "Triagem de uma empresa",
+    "conector",
+    "Conector MCP",
+    "Principal",
+    "No Claude e no ChatGPT, sem instalar nada: você pergunta em português e a IA consulta a base.",
+    "ficha_da_empresa · buscar_empresas",
+    "Como ligar",
+  ],
+  [
+    "comandos",
+    "CLI",
+    "Terminal",
+    "No terminal ou pelo seu agente de IA: um comando por pergunta, em JSON ou direto para o Excel.",
     "tickerlab empresa <cnpj>",
-    "O cadastro na Receita Federal e, da companhia aberta, cada demonstração devida à CVM, com o prazo, a data da entrega e os dias de atraso.",
+    "Os comandos",
   ],
   [
-    "Prospecção por setor",
-    "tickerlab prospectar --cnae … --uf …",
-    "Empresas pela atividade, UF, município, porte, situação e idade. Só a empresa: sem sócio, contato nem endereço.",
-  ],
-  [
-    "Demonstrações como eram",
-    "tickerlab demonstracoes <cnpj> --como-era AAAA-MM-DD",
-    "As demonstrações financeiras como estavam públicas na data pedida, sem enxergar o que só saiu depois.",
-  ],
-  [
-    "Ficha do setor",
-    "tickerlab setor <chave>",
-    "As séries da agência reguladora do setor, com a concentração e a fatia de cada companhia, e as notas de método.",
-  ],
-  [
-    "Fundo pelo CNPJ",
-    "tickerlab fundo <cnpj>",
-    "O cadastro e as taxas do fundo e a carteira que ele declarou à CVM.",
-  ],
-  [
-    "Direto para o Excel",
-    "--planilha alvos.xlsx",
-    "A resposta vira planilha: uma aba por tabela, com a fonte e a data de publicação em cada linha.",
+    "api",
+    "API",
+    "TickerLab Data",
+    "No seu sistema: JSON, a chave no cabeçalho e lotes de CNPJs num pedido só.",
+    "GET /data/v1/companies/{cnpj}",
+    "As rotas",
   ],
 ];
 
-// As travas que as instruções do agente trazem (cli/tickerlab/instrucoes/AGENTS.md, "Travas").
-const TRAVAS_DO_AGENTE: [string, string][] = [
-  ["Fonte e data em cada número", "As instruções pedem ao agente que cite de onde veio e quando ficou público."],
-  ["Nenhum número inventado", "As instruções pedem que ele diga o que a CLI não devolveu, em vez de completar."],
-  ["Nada é recomendação de investimento", "As instruções pedem que ele descreva, compare e calcule; a decisão é sua."],
-  ["Sem dado de pessoa física", "A API não serve sócio pessoa física, CPF, MEI nem empresário individual."],
-  ["A chave é segredo", "Ela nunca passa pelo chat nem pelo histórico do terminal."],
-];
+function TresPortas() {
+  return (
+    <section className="faixa secao portas" id="portas" aria-labelledby="titulo-portas">
+      <p className="olho">Três portas, uma base</p>
+      <h2 id="titulo-portas">Escolha por onde perguntar; a resposta é a mesma</h2>
+      <p className="subtitulo">
+        O conector e a CLI só repassam o que a API serve: a mesma chave, as mesmas regras e a fonte e a data em
+        cada número.
+      </p>
+      <div className="portas-grade">
+        {PORTAS.map(([ancora, nome, selo, texto, exemplo, link], i) => (
+          <article key={ancora} className={`porta${i === 0 ? " principal" : ""}`}>
+            <p className="porta-topo">
+              <span className="porta-numero">{String(i + 1).padStart(2, "0")}</span>
+              <span className="porta-selo">{selo}</span>
+            </p>
+            <h3>{nome}</h3>
+            <p>{texto}</p>
+            <code className="porta-exemplo">{exemplo}</code>
+            <a className="seta" href={`#${ancora}`}>
+              {link}
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 // O conector MCP (conector_remoto/, docs/guia-do-analista-conector.md): as perguntas e as ferramentas que
 // as respondem. Só nomes de ferramenta que existem; o teste do conector confere contra o registro.
@@ -154,19 +360,111 @@ const PASSOS_DO_CONECTOR: [string, ReactNode][] = [
   ],
 ];
 
-const TRAVAS_DO_CONECTOR: [string, string][] = [
-  ["Só leitura", "Nenhuma ferramenta escreve, envia ou baixa nada de fora."],
-  ["As mesmas regras da CLI", "Os comandos de leitura da CLI têm ferramenta no conector, com o mesmo pedido à API; a exceção fica escrita, com o motivo, e um teste falha se um lado ficar para trás sem ela."],
-  ["Fonte e data em cada número", "As instruções do conector pedem à IA que cite a fonte e a data e liste à parte o que faltou."],
-  ["Sem dado de pessoa física", "A API já não entrega pessoa, e o conector confere cada resposta e recusa a que trouxer campo de sócio pessoa física, CPF ou contato."],
-  ["A chave não vai ao chat", "Ela só é colada na página do TickerLab, e a revogação dela corta o acesso na chamada seguinte."],
+/** Uma porta em detalhe: o que dá para pedir (cartões com o nome real) e os três passos para começar. */
+function DetalheDaPorta({
+  id,
+  classe,
+  olho,
+  titulo,
+  subtitulo,
+  cartoes,
+  passos,
+  children,
+}: {
+  id: string;
+  classe: string;
+  olho: string;
+  titulo: string;
+  subtitulo: ReactNode;
+  cartoes: [string, string, string][];
+  passos: [string, ReactNode][];
+  children?: ReactNode;
+}) {
+  return (
+    <section className={`faixa secao v2-comandos ${classe}`} id={id} aria-labelledby={`titulo-${id}`}>
+      <p className="olho">{olho}</p>
+      <h2 id={`titulo-${id}`}>{titulo}</h2>
+      <p className="subtitulo">{subtitulo}</p>
+      <div className="grade tres">
+        {cartoes.map(([nome, codigo, texto]) => (
+          <article key={nome} className="cartao v2-comando">
+            <h3>{nome}</h3>
+            <p className="v2-comando-linha">
+              <code>{codigo}</code>
+            </p>
+            <p>{texto}</p>
+          </article>
+        ))}
+      </div>
+      <ol className="v2-passos-da-cli passos-em-linha">
+        {passos.map(([nome, texto]) => (
+          <li key={nome}>
+            <strong>{nome}</strong>
+            <span>{texto}</span>
+          </li>
+        ))}
+      </ol>
+      {children}
+    </section>
+  );
+}
+
+function Conector() {
+  return (
+    <DetalheDaPorta
+      id="conector"
+      classe="v2-conector"
+      olho="Porta 1 · Conector MCP"
+      titulo="No Claude e no ChatGPT, sem terminal"
+      subtitulo={
+        "O MCP é o padrão aberto que liga uma IA a uma fonte de dados. Com o conector, você pergunta em " +
+        "português, na conversa, e a IA consulta a base, sem instalar nada."
+      }
+      cartoes={PERGUNTAS_DO_CONECTOR}
+      passos={PASSOS_DO_CONECTOR}
+    />
+  );
+}
+
+// A CLI (docs/cli.md e as instruções do agente em cli/tickerlab/instrucoes/AGENTS.md): um cartão por comando.
+const COMANDOS: [string, string, string][] = [
+  [
+    "Triagem de uma empresa",
+    "tickerlab empresa <cnpj>",
+    "O cadastro na Receita Federal e, da companhia aberta, cada demonstração devida à CVM, com o prazo, a data da entrega e os dias de atraso.",
+  ],
+  [
+    "Prospecção por setor",
+    "tickerlab prospectar --cnae … --uf …",
+    "Empresas pela atividade, UF, município, porte, situação e idade. Só a empresa: sem sócio, contato nem endereço.",
+  ],
+  [
+    "Demonstrações como eram",
+    "tickerlab demonstracoes <cnpj> --como-era AAAA-MM-DD",
+    "As demonstrações financeiras como estavam públicas na data pedida, sem enxergar o que só saiu depois.",
+  ],
+  [
+    "Ficha do setor",
+    "tickerlab setor <chave>",
+    "As séries da agência reguladora do setor, com a concentração e a fatia de cada companhia, e as notas de método.",
+  ],
+  [
+    "Fundo pelo CNPJ",
+    "tickerlab fundo <cnpj>",
+    "O cadastro e as taxas do fundo e a carteira que ele declarou à CVM.",
+  ],
+  [
+    "Direto para o Excel",
+    "--planilha alvos.xlsx",
+    "A resposta vira planilha: uma aba por tabela, com a fonte e a data de publicação em cada linha.",
+  ],
 ];
 
-const PASSOS_PARA_COMECAR: [string, ReactNode][] = [
+const PASSOS_DA_CLI: [string, ReactNode][] = [
   [
     "Peça a chave",
     <>
-      A chave é da organização. O acesso está em beta fechado, sem cobrança:{" "}
+      A chave é da organização, a mesma que o conector usa para chamar a API. O acesso está em beta fechado, sem cobrança:{" "}
       <a href={COMO_PEDIR_A_CHAVE} rel="noopener">
         como pedir
       </a>
@@ -189,164 +487,118 @@ const PASSOS_PARA_COMECAR: [string, ReactNode][] = [
   ],
 ];
 
-/** O terminal do herói: os comandos, um por linha, cada um com o que pede. */
-function Terminal() {
+function Cli() {
   return (
-    <div className="v2-painel-pilha">
-      <figure className="v2-painel v2-terminal" aria-labelledby="titulo-do-terminal">
-        <figcaption className="v2-painel-topo">
-          <span className="v2-etiqueta" id="titulo-do-terminal">
-            No terminal ou pelo agente
-          </span>
-          <span className="ticker">tickerlab</span>
-        </figcaption>
-        <pre className="v2-terminal-linhas">
-          {LINHAS_DO_TERMINAL.map(([comentario, comando]) => (
-            <code key={comando}>
-              <span className="v2-terminal-comentario">{`# ${comentario}\n`}</span>
-              <span className="v2-terminal-cifrao" aria-hidden="true">
-                ${" "}
+    <DetalheDaPorta
+      id="comandos"
+      classe="v2-cli"
+      olho="Porta 2 · CLI"
+      titulo="Do CNPJ à planilha, um comando por pergunta"
+      subtitulo={
+        "A mesma resposta para você, no terminal, e para o seu agente de IA, em JSON. O pacote leva as " +
+        "instruções do agente: os comandos e o que ele não pode fazer."
+      }
+      cartoes={COMANDOS}
+      passos={PASSOS_DA_CLI}
+    />
+  );
+}
+
+// A API (site-api/documentacao): quatro rotas de exemplo; a lista inteira fica na raiz da própria API. O teste
+// confere que cada rota citada está na documentação.
+const ROTAS: [string, string, string, string[]][] = [
+  [
+    "GET /data/v1/companies/{cnpj}/financials",
+    "Demonstrações como eram na data",
+    "DFP e ITR da CVM, conta a conta, com o documento, a versão e o dia em que ficaram públicas.",
+    ["ODbL · CVM", "known_at"],
+  ],
+  [
+    "GET /data/v1/companies/{cnpj}/profile",
+    "Perfil da empresa",
+    "O cadastro na Receita e, da companhia aberta, cada DFP e ITR devida à CVM, com o prazo e o dia da entrega.",
+    ["ODbL · CVM", "CC BY · Receita", "known_at"],
+  ],
+  [
+    "GET /data/v1/buyers",
+    "Compradores do setor",
+    "Quem entrou como sócio de empresas do setor: movimento passado, não intenção de compra. Só pessoa jurídica.",
+    ["ODbL · CVM", "CC BY · Receita", "known_at"],
+  ],
+  [
+    "POST /data/v1/companies/batch",
+    "Lotes de até 100 CNPJs",
+    "A situação cadastral de até 100 CNPJs num pedido só. Fundos e crédito também têm rota de lote.",
+    ["CC BY · Receita", "known_at"],
+  ],
+];
+
+function Api() {
+  return (
+    <section className="faixa secao v2-api" id="api" aria-labelledby="titulo-api">
+      <p className="olho">Porta 3 · API</p>
+      <h2 id="titulo-api">TickerLab Data, a API: para o seu sistema</h2>
+      <p className="subtitulo">
+        JSON, a chave no cabeçalho e a licença da fonte em cada resposta. Uma rota por pergunta; as de consulta aceitam{" "}
+        <code>known_at</code>, para pedir a base como era na data.
+      </p>
+      <div className="rotas">
+        {ROTAS.map(([rota, titulo, texto, selos]) => {
+          const [metodo, caminho] = rota.split(" ");
+          return (
+            <article key={rota} className="rota">
+              <span className="metodo">
+                <b>{metodo}</b> {caminho}
               </span>
-              {`${comando}\n`}
-            </code>
-          ))}
-        </pre>
-        <footer className="v2-painel-rodape">
-          <span>Cada resposta com fonte, data e licença</span>
-          <a className="seta" href="#comandos">
-            Os comandos
-          </a>
-        </footer>
-      </figure>
-    </div>
+              <h3>{titulo}</h3>
+              <p>{texto}</p>
+              <p className="fontes">
+                {selos.map((selo) => (
+                  <span key={selo} className={selo.startsWith("ODbL") ? "odbl" : undefined}>
+                    {selo}
+                  </span>
+                ))}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+      <p className="atalhos">
+        <a className="botao secundario" href={DOCUMENTACAO_DA_API} rel="noopener">
+          A documentação da API
+        </a>
+        <a className="botao secundario" href={ROTAS_DA_API} rel="noopener">
+          Todas as rotas
+        </a>
+      </p>
+    </section>
   );
 }
 
-function Heroi() {
-  const [antes, depois] = ASSINATURA.split(DESTAQUE_DO_TITULO);
+// As travas das três portas, numa lista só (antes cada porta repetia as suas): as instruções da CLI
+// (cli/tickerlab/instrucoes/AGENTS.md), as do conector e a API, que não serve pessoa física.
+const TRAVAS: [string, string][] = [
+  ["Fonte e data em cada número", "As instruções da CLI e do conector pedem à IA que cite de onde veio e quando ficou público, e liste à parte o que faltou."],
+  ["Nenhum número inventado", "As instruções pedem que a IA diga o que a base não devolveu, em vez de completar."],
+  ["Sem dado de pessoa física", "A API não serve sócio pessoa física, CPF, MEI nem empresário individual, e o conector confere cada resposta e recusa a que trouxer campo de pessoa."],
+  ["A chave não vai ao chat", "No conector ela é colada numa página do TickerLab; na CLI, fica num arquivo que só você lê. Revogada, o acesso para na chamada seguinte."],
+  ["Só leitura, as mesmas regras", "Nenhuma ferramenta escreve nem envia nada. Os comandos de leitura da CLI têm ferramenta no conector, com o mesmo pedido à API, e um teste falha se um lado ficar para trás."],
+  ["Nada é recomendação de investimento", "As instruções pedem que a IA descreva, compare e calcule; a decisão é sua."],
+];
+
+function Travas() {
   return (
-    <Fundo>
-      <section className="heroi faixa" aria-labelledby="titulo-heroi">
-        <div className="heroi-texto">
-          <h1 id="titulo-heroi">
-            {antes}
-            <span className="v2-degrade">{DESTAQUE_DO_TITULO}</span>
-            {depois}
-          </h1>
-          <p className="subtitulo">{SUBTITULO}</p>
-          <p className="v2-para-quem">{O_QUE_HA_POR_TRAS}</p>
-          <div className="acoes">
-            <a className="botao primario" href={COMO_PEDIR_A_CHAVE} rel="noopener">
-              Pedir uma chave
-            </a>
-            <a className="botao secundario" href="#comandos">
-              Ver os comandos
-            </a>
-            <a className="botao secundario" href="#conector">
-              Usar no Claude
-            </a>
+    <section className="faixa secao v2-travas-das-portas" id="travas" aria-labelledby="titulo-travas">
+      <p className="olho">Travas</p>
+      <h2 id="titulo-travas">As mesmas travas nas três portas</h2>
+      <dl className="v2-travas travas-em-grade">
+        {TRAVAS.map(([titulo, texto]) => (
+          <div key={titulo}>
+            <dt>{titulo}</dt>
+            <dd>{texto}</dd>
           </div>
-          <AvisoDeAcesso />
-        </div>
-        <Terminal />
-      </section>
-    </Fundo>
-  );
-}
-
-function Comandos() {
-  return (
-    <section className="faixa secao v2-comandos" id="comandos" aria-labelledby="titulo-comandos">
-      <p className="olho">O que dá para pedir</p>
-      <h2 id="titulo-comandos">Do CNPJ à planilha, um comando por pergunta</h2>
-      <p className="subtitulo">
-        A CLI só repassa o que a API de dados serve: a mesma resposta para você, no terminal, e
-        para o agente, em JSON.
-      </p>
-      <div className="grade tres">
-        {COMANDOS.map(([titulo, comando, texto]) => (
-          <article key={titulo} className="cartao v2-comando">
-            <h3>{titulo}</h3>
-            <p className="v2-comando-linha">
-              <code>{comando}</code>
-            </p>
-            <p>{texto}</p>
-          </article>
         ))}
-      </div>
-    </section>
-  );
-}
-
-function ParaOAgente() {
-  return (
-    <section className="faixa secao v2-agente" aria-labelledby="titulo-agente">
-      <p className="olho">Para o seu agente de IA</p>
-      <h2 id="titulo-agente">O agente roda a CLI; as travas vão junto</h2>
-      <p className="subtitulo">
-        O pacote leva as instruções do agente. Elas ensinam os comandos e o que ele não pode fazer.
-      </p>
-      <div className="v2-agente-colunas">
-        <ol className="v2-passos-da-cli">
-          {PASSOS_PARA_COMECAR.map(([titulo, texto]) => (
-            <li key={titulo}>
-              <strong>{titulo}</strong>
-              <span>{texto}</span>
-            </li>
-          ))}
-        </ol>
-        <dl className="v2-travas">
-          {TRAVAS_DO_AGENTE.map(([titulo, texto]) => (
-            <div key={titulo}>
-              <dt>{titulo}</dt>
-              <dd>{texto}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  );
-}
-
-/** O conector MCP: as mesmas consultas da CLI dentro do Claude e do ChatGPT, com o mesmo peso dela. */
-function Conector() {
-  return (
-    <section className="faixa secao v2-comandos v2-conector" id="conector" aria-labelledby="titulo-conector">
-      <p className="olho">Conector MCP</p>
-      <h2 id="titulo-conector">No Claude e no ChatGPT, sem terminal</h2>
-      <p className="subtitulo">
-        O MCP é o padrão aberto que liga uma IA a uma fonte de dados. Com o conector, você pergunta em
-        português, na conversa, e a IA consulta a mesma base da CLI, sem instalar nada.
-      </p>
-      <div className="grade tres">
-        {PERGUNTAS_DO_CONECTOR.map(([titulo, ferramentas, texto]) => (
-          <article key={titulo} className="cartao v2-comando">
-            <h3>{titulo}</h3>
-            <p className="v2-comando-linha">
-              <code>{ferramentas}</code>
-            </p>
-            <p>{texto}</p>
-          </article>
-        ))}
-      </div>
-      <div className="v2-agente-colunas">
-        <ol className="v2-passos-da-cli">
-          {PASSOS_DO_CONECTOR.map(([titulo, texto]) => (
-            <li key={titulo}>
-              <strong>{titulo}</strong>
-              <span>{texto}</span>
-            </li>
-          ))}
-        </ol>
-        <dl className="v2-travas">
-          {TRAVAS_DO_CONECTOR.map(([titulo, texto]) => (
-            <div key={titulo}>
-              <dt>{titulo}</dt>
-              <dd>{texto}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+      </dl>
     </section>
   );
 }
@@ -448,6 +700,123 @@ function DemonstracaoDaConversa() {
   );
 }
 
+// --- como era na data: três instantes, três respostas (as datas do exemplo do TickerLab Data) ---------------
+// (id, rótulo curto, nome, o que mudou, a resposta: documento, período, publicado em, vale até)
+const INSTANTES: [string, string, string, string, Vigencia][] = [
+  [
+    "2024-03-31",
+    "mar 2024",
+    "março de 2024",
+    "Antes da DFP 2024: o último anual público é o de 2023, e o de 2024 ainda não existe.",
+    ["DFP", "2023-12-31", "2024-03-07", "2025-02-27"],
+  ],
+  [
+    "2024-09-30",
+    "set 2024",
+    "setembro de 2024",
+    "Durante o ano: o mais novo é o ITR do 2º trimestre; o anual de 2023 segue valendo.",
+    ["ITR", "2024-06-30", "2024-08-08", "2024-11-07"],
+  ],
+  [
+    "2025-04-30",
+    "abr 2025",
+    "abril de 2025",
+    "Depois da DFP 2024: o valor anual do exercício de 2024 já está público.",
+    ["DFP", "2024-12-31", "2025-02-27", null],
+  ],
+];
+
+type Vigencia = [documento: string, periodo: string, publicado: string, valeAte: string | null];
+
+function RespostaDoInstante({ dia, resposta, ordem }: { dia: string; resposta: Vigencia; ordem: number }) {
+  const [documento, periodo, publicado, valeAte] = resposta;
+  return (
+    <pre className="janela-resposta aba-painel" data-instante={dia} data-ordem={ordem}>
+      <code>
+        <span className="c">{`# GET …/financials?known_at=${dia}`}</span>
+        {"\n{\n  "}
+        <span className="k">"document"</span>: <span className="s">"{documento}"</span>, <span className="k">"reference_period"</span>:{" "}
+        <span className="s">"{periodo}"</span>
+        {",\n  "}
+        <span className="k">"revision"</span>: <span className="n">1</span>
+        {",\n  "}
+        <span className="k">"published_at"</span>: <span className="s">"{publicado}"</span>, <span className="k">"valid_until"</span>:{" "}
+        {valeAte ? <span className="s">"{valeAte}"</span> : <span className="n">null</span>}
+        {",\n  "}
+        <span className="k">"value"</span>: <span className="n">&lt;valor da fonte&gt;</span>
+        {"\n}"}
+      </code>
+    </pre>
+  );
+}
+
+function ComoEraNaData() {
+  return (
+    <div className="escura como-era">
+      <section className="faixa secao" id="como-era" aria-labelledby="titulo-como-era">
+        <p className="olho">Como era na data</p>
+        <h2 id="titulo-como-era">Peça o número como ele era naquela data</h2>
+        <p className="subtitulo">
+          Empresas reapresentam balanços. Aqui, a mesma pergunta com uma data devolve o que estava público naquele
+          dia: documento, versão e valor vigentes. Na API é <code>known_at</code>, na CLI <code>--como-era</code>{" "}
+          e no conector <code>como_era_em</code>.
+        </p>
+        <div className="demo-data abas" role="group" aria-labelledby="titulo-dos-instantes">
+          {INSTANTES.map(([dia], i) => (
+            <input
+              key={dia}
+              className="aba-escolha"
+              data-ordem={i}
+              type="radio"
+              name="instante"
+              id={`instante-${dia}`}
+              defaultChecked={i === INSTANTES.length - 1}
+            />
+          ))}
+          <div className="demo-data-texto">
+            <p className="instantes-titulo" id="titulo-dos-instantes">
+              Escolha a data
+            </p>
+            <div className="instantes">
+              {INSTANTES.map(([dia, curto], i) => (
+                <label key={dia} className="aba-rotulo" htmlFor={`instante-${dia}`} data-ordem={i}>
+                  {curto}
+                </label>
+              ))}
+            </div>
+            {INSTANTES.map(([dia, , nome, explica], i) => (
+              <p key={dia} className="data-escolhida aba-painel" data-instante={dia} data-ordem={i}>
+                {nome}
+                <small>{explica}</small>
+              </p>
+            ))}
+            <ul className="fatos">
+              <li>
+                <b>published_at</b> é o dia da entrega à CVM. O valor vale a partir dele, inclusive.
+              </li>
+              <li>
+                <b>valid_until</b> é o dia em que outra versão tomou o lugar. Vazio: vale até hoje.
+              </li>
+              <li>Cortar o futuro não muda o passado: o princípio tem teste automático na base.</li>
+            </ul>
+          </div>
+          <div className="janela">
+            {INSTANTES.map(([dia, , , , resposta], i) => (
+              <RespostaDoInstante key={dia} dia={dia} resposta={resposta} ordem={i} />
+            ))}
+            <p className="janela-nota">
+              <span>
+                Mesma pergunta, três respostas: a base guarda cada versão com o dia em que ficou pública. Forma
+                real; as datas e as versões do exemplo são ilustrativas.
+              </span>
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /** Os quatro números da base, cada um com a conta recolhida ao lado. */
 function PainelDaBase() {
   const { totais, ligado_pelo_cnpj: ligado } = catalogo;
@@ -520,18 +889,17 @@ function PainelDaBase() {
   );
 }
 
-/** A base que a CLI e o conector consultam: os números medidos e a busca aberta, numa faixa escura só. */
+/** A base que as três portas consultam: os números medidos e a busca aberta, numa faixa só. */
 function BasePorTras() {
   return (
-    <div className="escura v2-base-fundo">
+    <div className="v2-base-fundo">
       <section className="faixa secao v2-base-faixa" aria-labelledby="titulo-base-por-tras">
         <div>
           <p className="olho">A base por trás</p>
           <h2 id="titulo-base-por-tras">Toda resposta sai de uma fonte pública, com a data</h2>
           <p className="subtitulo">
-            A CLI e o conector consultam a base que coletamos dos órgãos públicos. Experimente sem
-            chave: busque
-            uma companhia aberta e veja a fonte ao lado de cada número.
+            O conector, a CLI e a API consultam a base que coletamos dos órgãos públicos. Experimente sem
+            chave: busque uma companhia aberta e veja a fonte ao lado de cada número.
           </p>
           <div data-busca-base>
             <BuscaDaBase />
@@ -543,65 +911,26 @@ function BasePorTras() {
   );
 }
 
-function RegrasDaBase() {
-  return (
-    <section className="faixa secao v2-regras" aria-labelledby="titulo-regras">
-      <p className="olho">Método</p>
-      <h2 id="titulo-regras">Por que confiar num número daqui</h2>
-      <p className="subtitulo">
-        Quatro regras valem para toda tabela da base. Abra cada uma para ler como funciona.
-      </p>
-      <div className="grade v2-regras-lista">
-        {REGRAS_DA_BASE.map(([titulo, texto]) => (
-          <ComoFoiCalculado key={titulo} resumo={titulo}>
-            <p>{texto}</p>
-          </ComoFoiCalculado>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/** As outras janelas da mesma base, para quem não usa terminal (ADR 0127, item 2). */
-function OutrasJanelas() {
-  return (
-    <section className="faixa v2-janelas" aria-labelledby="titulo-janelas">
-      <h2 id="titulo-janelas" className="olho">
-        Sem terminal
-      </h2>
-      <p>
-        A mesma base abre pelo <a href="#conector">conector</a>, no Claude e no ChatGPT, pelo{" "}
-        <a href={linkDoApp()}>app</a>, com a sua conta, e pela{" "}
-        <a href={URL_DA_API} rel="noopener">
-          TickerLab Data
-        </a>
-        , a API de dados, para o seu sistema. Os <a href="/relatorios.html">relatórios</a> de
-        exemplo mostram o que sai dela.
-      </p>
-    </section>
-  );
-}
-
 export function Inicio() {
   return (
     <>
       <Heroi />
-      <Comandos />
-      <ParaOAgente />
+      <TresPortas />
       <Conector />
       <DemonstracaoDaConversa />
+      <Cli />
+      <Api />
+      <Travas />
+      <ComoEraNaData />
       <BasePorTras />
       <LigadoPeloCnpj />
       <Cruzamentos />
-      <RegrasDaBase />
       <Vitrine />
-      <OutrasJanelas />
       <ChamadaFinal
         titulo="Comece pela chave"
         subtitulo={
-          "O acesso à CLI, ao conector e à API está em beta fechado, sem cobrança. A documentação é " +
-          "aberta e " +
-          "diz como pedir a chave da sua organização."
+          "Uma chave abre as três portas. O acesso está em beta fechado, sem cobrança; a documentação é " +
+          "aberta e diz como pedir a chave da sua organização."
         }
       >
         <div className="acoes">
