@@ -406,6 +406,9 @@ def _catalogo() -> dict:
     return {
         "totais": {
             "tabelas": len(catalogo["tabelas"]),
+            "tabelas_conferidas_em_curto": vitrine.dia_e_mes(
+                vitrine.tabelas_conferidas_em()
+            ),
             "fontes": len(fontes),
             "fontes_em_consulta": sum(
                 f.situacao == vitrine.EM_CONSULTA for f in fontes
