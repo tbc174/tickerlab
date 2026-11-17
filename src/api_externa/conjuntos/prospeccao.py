@@ -52,6 +52,11 @@ ESTABELECIMENTOS = "cnpj_estabelecimentos_pj"
 EMPRESAS = "cnpj_empresas_pj"
 LIMITE_PADRAO = 50
 LIMITE_MAXIMO = 100
+# estabelecimentos candidatos acima disto: a lista não ajuda mais e volta a junção completa
+TETO_DE_RAIZES = 30_000
+_ONDE = "<<onde>>"  # onde a condição entra no texto da consulta
+# quantas candidatas cada janela de raízes cobre (a 1ª pequena: a página costuma sair dela); a última é o resto
+JANELAS_DE_RAIZES = (500, 5_000)
 # o porte como a Receita o grava na base -> como a API o diz (a Receita não diz "grande": 05 é "demais")
 PORTES_DE_FORA = {
     "micro": "micro",
@@ -418,8 +423,10 @@ def _prefixos(
     return f"({ou})"
 
 
-def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
-    """As condições e os parâmetros; o texto vem destes nomes, nunca do pedido (o pedido vai em parâmetro)."""
+def _onde_do_estabelecimento(
+    busca: Busca, mes: str
+) -> tuple[list[str], dict[str, object]]:
+    """As condições que só olham o estabelecimento (`e.`), com os parâmetros delas."""
     parametros: dict[str, object] = {"mes": mes}
     condicoes = [
         "e.mes_do_retrato = $mes",
@@ -433,12 +440,6 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
         condicoes.append(_em("e.uf", busca.ufs, "u", parametros))
     if busca.municipios:
         condicoes.append(_em("e.municipio", busca.municipios, "m", parametros))
-    if busca.portes:
-        condicoes.append(_em("p.porte", busca.portes, "p", parametros))
-    if busca.naturezas:
-        condicoes.append(
-            _prefixos("p.natureza_juridica", busca.naturezas, "n", parametros)
-        )
     if busca.aberta_antes:
         condicoes.append("e.data_inicio_atividade < CAST($antes AS DATE)")
         parametros["antes"] = busca.aberta_antes.isoformat()
@@ -448,6 +449,18 @@ def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
     if busca.matriz is not None:
         condicoes.append("e.matriz = $matriz")
         parametros["matriz"] = busca.matriz
+    return condicoes, parametros
+
+
+def _onde(busca: Busca, mes: str) -> tuple[list[str], dict[str, object]]:
+    """As condições e os parâmetros; o texto vem destes nomes, nunca do pedido (o pedido vai em parâmetro)."""
+    condicoes, parametros = _onde_do_estabelecimento(busca, mes)
+    if busca.portes:
+        condicoes.append(_em("p.porte", busca.portes, "p", parametros))
+    if busca.naturezas:
+        condicoes.append(
+            _prefixos("p.natureza_juridica", busca.naturezas, "n", parametros)
+        )
     if busca.capital_min is not None:
         condicoes.append("p.capital_social >= $capital_min")
         parametros["capital_min"] = busca.capital_min
@@ -601,7 +614,7 @@ class LeitorDeProspeccao:
         parametros["limite"] = limite + 1
         if retrato_anvisa is not None:
             parametros["retrato_anvisa"] = retrato_anvisa.isoformat()
-        achadas = self._executar(busca, condicoes, parametros, existentes)
+        achadas = self._executar(busca, condicoes, parametros, existentes, mes)
         cortada = len(achadas) > limite
         achadas = achadas.head(limite)
         empresas = [
@@ -627,6 +640,7 @@ class LeitorDeProspeccao:
         condicoes: list[str],
         parametros: dict[str, object],
         existentes: set[str],
+        mes: str,
     ) -> pd.DataFrame:
         """A página pedida. Sem filtro nem ordem que dependam da empresa, o corte de `limite + 1` acontece
         nos estabelecimentos e só essas linhas são juntadas à empresa (em tabelas inteiras, a junção
@@ -656,10 +670,74 @@ class LeitorDeProspeccao:
             ).df()
             if achadas.empty or len(achadas) == achadas["cortadas"].iloc[0]:
                 return achadas.drop(columns="cortadas")
-        return self.porta.con.execute(
-            f"SELECT {campos} FROM {estab} e{juncao} WHERE {onde} ORDER BY {_ordenacao(busca)} LIMIT $limite",
+        consulta = (
+            f"SELECT {campos} FROM {estab} e{juncao} WHERE {_ONDE}"
+            f" ORDER BY {_ordenacao(busca)} LIMIT $limite"
+        )
+        if _depende_da_empresa(busca) and busca.ordem is None:
+            raizes = self._raizes_candidatas(busca, mes)
+            if raizes is not None:
+                return self._por_janelas(consulta, onde, parametros, raizes)
+        return self.porta.con.execute(consulta.replace(_ONDE, onde), parametros).df()
+
+    def _por_janelas(
+        self,
+        consulta: str,
+        onde: str,
+        parametros: dict[str, object],
+        raizes: list[str],
+    ) -> pd.DataFrame:
+        """A página na ordem do CNPJ, lida por janelas de raízes candidatas, das menores às maiores: cada
+        janela só lê da tabela de empresas as faixas de raiz dela (o arquivo vem ordenado pela raiz), e a leitura
+        para na janela em que a página fecha. Cada janela devolve tudo o que casa na faixa dela e as faixas não
+        se cruzam, então a concatenação é a resposta da junção completa (linha 964)."""
+        raizes = raizes or [
+            "99999999"
+        ]  # sem candidata na faixa: uma janela que só confirma que não há nada
+        pagina = []
+        achadas = 0
+        inicio = 0
+        for tamanho in (*JANELAS_DE_RAIZES, len(raizes)):
+            janela = raizes[inicio : inicio + tamanho]
+            if not janela:
+                break
+            inicio += tamanho
+            faixa = {**parametros, "raiz_de": janela[0], "raiz_ate": janela[-1]}
+            achada = self.porta.con.execute(
+                consulta.replace(
+                    _ONDE,
+                    onde
+                    + " AND e.cnpj_basico BETWEEN $raiz_de AND $raiz_ate"
+                    + " AND p.cnpj_basico BETWEEN $raiz_de AND $raiz_ate",
+                ),
+                faixa,
+            ).df()
+            pagina.append(achada)
+            achadas += len(achada)
+            if achadas >= parametros["limite"]:  # type: ignore[operator]
+                break
+        return pd.concat(pagina, ignore_index=True).head(parametros["limite"])  # type: ignore[arg-type]
+
+    def _raizes_candidatas(self, busca: Busca, mes: str) -> list[str] | None:
+        """As raízes de CNPJ dos estabelecimentos que passam nos filtros do próprio estabelecimento, para a
+        junção conferir os filtros da empresa (natureza, porte, capital...) só nelas, em vez de varrer a
+        tabela de empresas inteira (linha 964). None quando o filtro do estabelecimento não é seletivo (sem
+        CNAE, UF, município nem CNPJ) ou junta raízes demais: aí vale a junção completa."""
+        if not (busca.cnpjs or busca.cnaes or busca.ufs or busca.municipios):
+            return None
+        condicoes, parametros = _onde_do_estabelecimento(busca, mes)
+        parametros["teto"] = TETO_DE_RAIZES + 1
+        estab = _aspas(nome_da_view(ESTABELECIMENTOS))
+        achadas = self.porta.con.execute(
+            f"SELECT e.cnpj_basico FROM {estab} e WHERE {' AND '.join(condicoes)} LIMIT $teto",
             parametros,
-        ).df()
+        ).fetchall()
+        if len(achadas) > TETO_DE_RAIZES:
+            return None  # sem DISTINCT de propósito: o LIMIT corta a leitura cedo quando o filtro não é seletivo
+        raizes = sorted({str(raiz) for (raiz,) in achadas})
+        if busca.depois_de:  # as páginas seguintes só olham da raiz do cursor em diante
+            raizes = [raiz for raiz in raizes if raiz >= busca.depois_de[:8]]
+        return raizes
 
     @staticmethod
     def _proximo_cursor(busca: Busca, achadas: pd.DataFrame) -> str:
