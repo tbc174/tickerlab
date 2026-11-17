@@ -13,16 +13,16 @@ const ABAS_POR_GRUPO = 6;
 function cssDasAbas(): string {
   const regras: string[] = [];
   for (let i = 0; i < ABAS_POR_GRUPO; i++) {
-    const marcado = `.abas > .aba-escolha[data-ordem="${i}"]:checked`;
+    const marcado = `.guias > .guia-escolha[data-ordem="${i}"]:checked`;
     regras.push(
-      `${marcado} ~ .aba-painel[data-ordem="${i}"], ${marcado} ~ * .aba-painel[data-ordem="${i}"] { display: block; }`,
-      `${marcado} ~ * .aba-rotulo[data-ordem="${i}"] { background: var(--azul); border-color: var(--azul); color: #fff; }`,
-      `.abas > .aba-escolha[data-ordem="${i}"]:focus-visible ~ * .aba-rotulo[data-ordem="${i}"] { outline: 2px solid var(--azul-texto); outline-offset: 2px; }`,
+      `${marcado} ~ .guia-painel[data-ordem="${i}"], ${marcado} ~ * .guia-painel[data-ordem="${i}"] { display: block; }`,
+      `${marcado} ~ * .guia-rotulo[data-ordem="${i}"] { background: var(--azul); border-color: var(--azul); color: #fff; }`,
+      `.guias > .guia-escolha[data-ordem="${i}"]:focus-visible ~ * .guia-rotulo[data-ordem="${i}"] { outline: 2px solid var(--azul-texto); outline-offset: 2px; }`,
     );
   }
-  return `.aba-escolha { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
-.abas .aba-painel { display: none; }
-.aba-rotulo { cursor: pointer; }
+  return `.guia-escolha { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.guias .guia-painel { display: none; }
+.guia-rotulo { cursor: pointer; }
 ${regras.join("\n")}`;
 }
 
@@ -44,9 +44,9 @@ export function cssData(): string {
   overflow: hidden; animation: tl-chegar 520ms cubic-bezier(.2, .7, .2, 1) 120ms backwards; }
 .janela-topo { display: flex; align-items: center; gap: .35rem; padding: .55rem .6rem;
   border-bottom: 1px solid rgba(232, 240, 255, .1); }
-.janela-topo .aba-rotulo { padding: .3rem .75rem; border: 1px solid transparent; border-radius: 8px;
+.janela-topo .guia-rotulo { padding: .3rem .75rem; border: 1px solid transparent; border-radius: 8px;
   font: 600 .8rem/1.4 ${MONO}; color: ${janela.chave}; }
-.janela-topo .aba-rotulo:hover { color: ${janela.texto}; }
+.janela-topo .guia-rotulo:hover { color: ${janela.texto}; }
 .janela-topo .status { margin-left: auto; font: 600 .75rem/1 ${MONO}; color: var(--alta); }
 .janela pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; font: 400 .78rem/1.65 ${MONO};
   font-variant-ligatures: none; font-variant-numeric: tabular-nums; color: ${janela.texto}; }
@@ -108,7 +108,7 @@ ${cssDasAbas()}
   align-items: start; margin-top: 1.6rem; }
 .instantes-titulo { margin: 0 0 .6rem; font-size: .8rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--apagado); }
 .instantes { display: flex; flex-wrap: wrap; gap: .5rem; }
-.instantes .aba-rotulo { padding: .45rem .9rem; border: 1px solid var(--linha-forte); border-radius: 999px;
+.instantes .guia-rotulo { padding: .45rem .9rem; border: 1px solid var(--linha-forte); border-radius: 999px;
   font: 600 .85rem/1.3 ${MONO}; color: var(--texto); }
 .data-escolhida { margin: 1.2rem 0 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
 .data-escolhida small { display: block; margin-top: .35rem; font-size: 1rem; font-weight: 400; letter-spacing: 0; color: var(--apagado); }

@@ -87,13 +87,13 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
   });
 
   it("a janela do topo: o mesmo pedido pelas três portas, na ordem, e o conector aberto de início", () => {
-    const janela = trecho('<div class="janela abas"', '<p class="janela-nota">');
-    const rotulos = [...janela.matchAll(/<label class="aba-rotulo"[^>]*>([^<]+)<\/label>/g)].map((m) => m[1]);
+    const janela = trecho('<div class="janela guias"', '<p class="janela-nota">');
+    const rotulos = [...janela.matchAll(/<label class="guia-rotulo"[^>]*>([^<]+)<\/label>/g)].map((m) => m[1]);
     expect(rotulos).toEqual(["Conector", "CLI", "API"]);
     const marcados = [...janela.matchAll(/<input[^>]*name="janela-porta"[^>]*>/g)].map((m) => m[0]);
     expect(marcados).toHaveLength(3);
     expect(marcados.map((m) => m.includes("checked"))).toEqual([true, false, false]);
-    const pedidos = [...janela.matchAll(/<pre class="janela-pedido aba-painel" data-porta="([a-z]+)"[^>]*>([\s\S]*?)<\/pre>/g)];
+    const pedidos = [...janela.matchAll(/<pre class="janela-pedido guia-painel" data-porta="([a-z]+)"[^>]*>([\s\S]*?)<\/pre>/g)];
     expect(pedidos.map((m) => m[1])).toEqual(["conector", "cli", "api"]);
     const [conector, cli, api] = pedidos.map((m) => desesc(semTags(m[2])));
     // o conector chama uma ferramenta que existe, com o parâmetro de data que ela aceita
@@ -113,7 +113,7 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
       expect(resposta, campo).toContain(campo);
     expect(resposta).toContain('"value": <valor da fonte>');
     expect(resposta).not.toMatch(/R\$|"value": -?\d/);
-    expect(semTags(trecho('<div class="janela abas"', "</div></section>"))).toContain(
+    expect(semTags(trecho('<div class="janela guias"', "</div></section>"))).toContain(
       "o valor aparece como marcador e as datas são ilustrativas",
     );
   });
@@ -201,7 +201,7 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     for (const nome of ["known_at", "--como-era", "como_era_em"]) expect(secao, nome).toContain(`<code>${nome}</code>`);
     const escolhas = [...secao.matchAll(/<input[^>]*name="instante"[^>]*>/g)].map((m) => m[0]);
     expect(escolhas.map((m) => m.includes("checked"))).toEqual([false, false, true]);
-    const respostas = [...secao.matchAll(/<pre class="janela-resposta aba-painel" data-instante="([\d-]+)"[^>]*>([\s\S]*?)<\/pre>/g)];
+    const respostas = [...secao.matchAll(/<pre class="janela-resposta guia-painel" data-instante="([\d-]+)"[^>]*>([\s\S]*?)<\/pre>/g)];
     expect(respostas).toHaveLength(3);
     for (const [, dia, corpo] of respostas) {
       const texto = desesc(semTags(corpo));
@@ -306,9 +306,9 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
 
   it("as abas da janela e de 'como era na data' funcionam sem JavaScript, pelo CSS", () => {
     const estilo = css();
-    expect(estilo).toContain(".abas .aba-painel { display: none; }");
+    expect(estilo).toContain(".guias .guia-painel { display: none; }");
     for (let i = 0; i < 3; i++)
-      expect(estilo).toContain(`.abas > .aba-escolha[data-ordem="${i}"]:checked ~ .aba-painel[data-ordem="${i}"]`);
+      expect(estilo).toContain(`.guias > .guia-escolha[data-ordem="${i}"]:checked ~ .guia-painel[data-ordem="${i}"]`);
   });
 
   it("o estudo do dia, as novidades e a lista de fontes saíram da inicial (ficam nas páginas delas)", () => {

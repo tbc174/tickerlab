@@ -162,11 +162,11 @@ function RespostaDoTopo() {
  */
 function JanelaDoTopo() {
   return (
-    <div className="janela abas" role="group" aria-label="O mesmo pedido pelas três portas e a resposta da API">
+    <div className="janela guias" role="group" aria-label="O mesmo pedido pelas três portas e a resposta da API">
       {PEDIDOS.map(({ porta }, i) => (
         <input
           key={porta}
-          className="aba-escolha"
+          className="guia-escolha"
           type="radio"
           name="janela-porta"
           id={`janela-${porta}`}
@@ -176,14 +176,14 @@ function JanelaDoTopo() {
       ))}
       <div className="janela-topo">
         {PEDIDOS.map(({ porta, nome }, i) => (
-          <label key={porta} className="aba-rotulo" htmlFor={`janela-${porta}`} data-ordem={i}>
+          <label key={porta} className="guia-rotulo" htmlFor={`janela-${porta}`} data-ordem={i}>
             {nome}
           </label>
         ))}
         <span className="status">200 OK</span>
       </div>
       {PEDIDOS.map(({ porta, linhas }, i) => (
-        <pre key={porta} className="janela-pedido aba-painel" data-porta={porta} data-ordem={i}>
+        <pre key={porta} className="janela-pedido guia-painel" data-porta={porta} data-ordem={i}>
           <code>
             <Linhas linhas={linhas} />
           </code>
@@ -731,7 +731,7 @@ type Vigencia = [documento: string, periodo: string, publicado: string, valeAte:
 function RespostaDoInstante({ dia, resposta, ordem }: { dia: string; resposta: Vigencia; ordem: number }) {
   const [documento, periodo, publicado, valeAte] = resposta;
   return (
-    <pre className="janela-resposta aba-painel" data-instante={dia} data-ordem={ordem}>
+    <pre className="janela-resposta guia-painel" data-instante={dia} data-ordem={ordem}>
       <code>
         <span className="c">{`# GET …/financials?known_at=${dia}`}</span>
         {"\n{\n  "}
@@ -761,11 +761,11 @@ function ComoEraNaData() {
           dia: documento, versão e valor vigentes. Na API é <code>known_at</code>, na CLI <code>--como-era</code>{" "}
           e no conector <code>como_era_em</code>.
         </p>
-        <div className="demo-data abas" role="group" aria-labelledby="titulo-dos-instantes">
+        <div className="demo-data guias" role="group" aria-labelledby="titulo-dos-instantes">
           {INSTANTES.map(([dia], i) => (
             <input
               key={dia}
-              className="aba-escolha"
+              className="guia-escolha"
               data-ordem={i}
               type="radio"
               name="instante"
@@ -779,13 +779,13 @@ function ComoEraNaData() {
             </p>
             <div className="instantes">
               {INSTANTES.map(([dia, curto], i) => (
-                <label key={dia} className="aba-rotulo" htmlFor={`instante-${dia}`} data-ordem={i}>
+                <label key={dia} className="guia-rotulo" htmlFor={`instante-${dia}`} data-ordem={i}>
                   {curto}
                 </label>
               ))}
             </div>
             {INSTANTES.map(([dia, , nome, explica], i) => (
-              <p key={dia} className="data-escolhida aba-painel" data-instante={dia} data-ordem={i}>
+              <p key={dia} className="data-escolhida guia-painel" data-instante={dia} data-ordem={i}>
                 {nome}
                 <small>{explica}</small>
               </p>
