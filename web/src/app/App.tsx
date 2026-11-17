@@ -4,6 +4,7 @@
 // fica atrás do login com o Google (src/app/conta.tsx), menos o link compartilhado (/c), que é público.
 import { Fragment, type ReactNode, useRef } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
+import { ENDERECO_DA_ADMINISTRACAO, eDaAdministracao } from "./administracao";
 import { useConfiguracao } from "./configuracao";
 import { ExigeLogin, ProvedorDaConta } from "./conta";
 import { Casca } from "./pecas/Casca";
@@ -15,6 +16,7 @@ import {
   LoginNaoConfigurado,
   NaoEncontrada,
 } from "./telas/Avisos";
+import { Administracao } from "./telas/Administracao";
 import { Compartilhado } from "./telas/Compartilhado";
 import { Inicio } from "./telas/Inicio";
 
@@ -46,6 +48,14 @@ export function App() {
     );
   }
   if (eAInicialDoClassico(pathname)) return <Navigate to="/" replace />;
+  // sem a API, a Administração nova não tem o que mostrar: o endereço leva à antiga, que não depende dela
+  if (eDaAdministracao(pathname) && (api.estado === "desligada" || api.estado === "fora do ar")) {
+    return (
+      <Casca comMenu={false}>
+        <ParaOClassico endereco={ENDERECO_DA_ADMINISTRACAO} />
+      </Casca>
+    );
+  }
   if (api.estado !== "ligada") {
     const aviso = {
       carregando: <Carregando />,
@@ -79,6 +89,8 @@ export function App() {
               {TELAS_DO_APP.map((pagina) => (
                 <Route key={pagina.chave} path={pagina.url} element={telaDa(pagina)} />
               ))}
+              {/* fora do mapa de páginas (o catálogo dela não vai no bundle); o servidor confere o administrador */}
+              <Route path={ENDERECO_DA_ADMINISTRACAO} element={<Administracao />} />
               <Route path="*" element={<NaoEncontrada />} />
             </Routes>
           </RecomecaComEstadoNovo>
