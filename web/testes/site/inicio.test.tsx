@@ -115,7 +115,7 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     expect(resposta).not.toMatch(/R\$|"value": -?\d/);
     // uma resposta de verdade (a amostra da CVM dos testes; `tests/test_site.py` confere as datas no arquivo)
     const nota = semTags(trecho('<div class="janela guias"', "</div></section>"));
-    expect(nota).toContain("Resposta real da DFP 2024 da Petrobras, entregue à CVM em 26/02/2025");
+    expect(nota).toContain("Uma linha da resposta real: a DFP 2024 da Petrobras, entregue à CVM em 26/02/2025");
     expect(nota).not.toMatch(/ilustrativ/i);
     expect(resposta).toContain(`"published_at": "${RESPOSTA_DO_EXEMPLO.publicado}"`);
     expect(resposta).toContain(`"value": "${RESPOSTA_DO_EXEMPLO.periodo}"`);

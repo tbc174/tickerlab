@@ -202,7 +202,7 @@ function JanelaDoTopo() {
           <b>source, published_at, license</b>: de onde saiu, quando ficou público, sob qual licença.
         </span>
         <span>
-          Resposta real da DFP 2024 da Petrobras, entregue à CVM em 26/02/2025. O valor aparece como marcador.
+          Uma linha da resposta real: a DFP 2024 da Petrobras, entregue à CVM em 26/02/2025. O valor aparece como marcador.
         </span>
       </p>
     </div>

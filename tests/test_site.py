@@ -4,6 +4,7 @@ promessas que o produto não cumpre.
 As páginas, o CSS e o JS vêm do React (`web/`, ADR 0048; o teste de que estão em dia é do Vitest);
 fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py` (testados aqui)."""
 
+import csv
 import html
 import json
 import re
@@ -563,23 +564,28 @@ def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
         )
 
 
+def _linhas_da_cvm(arquivo: zipfile.ZipFile, nome: str) -> list[dict[str, str]]:
+    """As linhas de um CSV dos dados abertos da CVM (latin-1, separado por ponto e vírgula), pelo nome da coluna."""
+    texto = arquivo.read(nome).decode("latin-1").splitlines()
+    return list(csv.DictReader(texto, delimiter=";"))
+
+
 def test_a_janela_da_inicial_mostra_uma_resposta_real_da_amostra_da_cvm():
     """A resposta da janela do topo é a da DFP 2024 da Petrobras na amostra da CVM que os testes usam:
     nada de data digitada de cabeça (linha 966). O valor fica como marcador."""
     amostra = Path(__file__).parent / "arquivos/cvm/fundamentos/dfp_cia_aberta_2024.zip"
+    petrobras = "33.000.167/0001-01"
     with zipfile.ZipFile(amostra) as dfp:
-        cabecalho = dfp.read("dfp_cia_aberta_2024.csv").decode("latin-1").splitlines()
-        dre = dfp.read("dfp_cia_aberta_DRE_con_2024.csv").decode("latin-1").splitlines()
-    entrega = next(
-        linha.split(";")
-        for linha in cabecalho
-        if linha.startswith("33.000.167/0001-01;")
-    )
-    referencia, recebida = entrega[1], entrega[7]
+        entregas = _linhas_da_cvm(dfp, "dfp_cia_aberta_2024.csv")
+        dre = _linhas_da_cvm(dfp, "dfp_cia_aberta_DRE_con_2024.csv")
+    entrega = next(e for e in entregas if e["CNPJ_CIA"] == petrobras)
+    referencia, recebida = entrega["DT_REFER"], entrega["DT_RECEB"]
     receita = next(
-        linha.split(";")
-        for linha in dre
-        if linha.startswith("33.000.167/0001-01;") and f";{referencia};3.01;" in linha
+        c
+        for c in dre
+        if c["CNPJ_CIA"] == petrobras
+        and c["CD_CONTA"] == "3.01"
+        and c["DT_FIM_EXERC"] == referencia
     )
     janela = re.search(
         r'<pre class="janela-resposta">(.*?)</pre>',
@@ -591,6 +597,6 @@ def test_a_janela_da_inicial_mostra_uma_resposta_real_da_amostra_da_cvm():
     assert '"cnpj": "33000167000101"' in resposta
     assert f'"published_at": "{recebida}"' in resposta
     assert f'"value": "{referencia}"' in resposta
-    assert f'"value": "{receita[12]}"' in resposta
+    assert f'"value": "{receita["DS_CONTA"]}"' in resposta
     pedida = re.search(r'"known_at": "([\d-]+)"', resposta)
     assert pedida and pedida.group(1) >= recebida
