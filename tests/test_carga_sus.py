@@ -220,7 +220,9 @@ def test_situacao_das_coletas_e_so_interna():
     from base.porta.duckdb import ARQUIVOS, FORA_DA_PORTA
 
     completo = catalogo()
-    publico = vitrine.catalogo_publico(completo)
+    publico = vitrine.catalogo_publico(
+        completo, montadas=frozenset(completo["tabelas"])
+    )
     assert carga_sus.PASTA_DA_SITUACAO in completo["tabelas"]
     assert carga_sus.PASTA_DA_SITUACAO not in publico["tabelas"]
     assert carga_sus.PASTA_DA_SITUACAO in FORA_DA_PORTA
