@@ -459,18 +459,20 @@ function PainelDaBase() {
           <span className="v2-etiqueta" id="titulo-da-base">
             O que a base tem
           </span>
-          <span className="ticker">Medido em {medido_em_curto}</span>
+          <span className="ticker">
+            {`Tabelas e fontes em ${totais.tabelas_conferidas_em_curto} · companhias em ${medido_em_curto}`}
+          </span>
         </header>
         <dl className="v2-base-numeros">
           <div>
-            <dt>tabelas, cada uma com contrato</dt>
+            <dt>{`tabelas, cada uma com contrato (conferidas em ${totais.tabelas_conferidas_em_curto})`}</dt>
             <dd className="v2-numero">{milhares(totais.tabelas)}</dd>
             <dd>
               <ComoFoiCalculado>
                 <p>
-                  Contamos as tabelas do catálogo de contratos da base. Cada contrato diz a fonte,
-                  a licença, as datas e a frequência de atualização; tabela nova entra na conta
-                  sozinha.
+                  Contamos as tabelas do catálogo de contratos da base que já têm arquivo conferido
+                  no acervo. Cada contrato diz a fonte, a licença, as datas e a frequência de
+                  atualização; tabela nova só entra na conta depois de montada e conferida.
                 </p>
               </ComoFoiCalculado>
             </dd>
