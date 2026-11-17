@@ -1,16 +1,18 @@
-// A Administração no app novo (linha 955, PRs 2 e 3): as organizações da API por chave, com as ações de
-// criar, suspender e reativar a organização e de emitir, trocar e revogar chaves. Quem entra e o que cada
+// A Administração no app novo (linha 962, PRs 2 a 4): numa aba, as organizações da API por chave, com as
+// ações de criar, suspender e reativar a organização e de emitir, trocar e revogar chaves; na outra, as
+// contas do app (ContasDaAdministracao.tsx). Quem entra e o que cada
 // ação pode é decidido no servidor, a cada pedido (src/api_v1/administracao.py): para quem não é
 // administrador a API responde o 404 de um endereço que não existe, e a tela mostra "página não encontrada".
 // O `administrador` de /v1/eu só poupa o pedido e esconde o atalho do menu: não autoriza nada.
 // A tela não liga permissão nem direito: conceder direito, vincular conta e ligar "pessoa na tela" são do
 // dono, pelo script. De uma chave aparece só o prefixo; o valor, só na caixa de quem acabou de emitir.
-import { type ReactNode, useId, useState } from "react";
+import { useId, useState } from "react";
 import { ENDERECO_DA_ADMINISTRACAO, TITULO_DA_ADMINISTRACAO } from "../administracao";
 import { mudar } from "../api";
 import { linkDoClassico } from "../classico";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
+import { Abas } from "../pecas/Abas";
 import { Cabecalho } from "../pecas/Cabecalho";
 import { Carregando } from "../pecas/Carregando";
 import { CartaoDeNumero } from "../pecas/CartaoDeNumero";
@@ -35,10 +37,14 @@ import {
   Falha,
   NovaOrganizacao,
   ROTA_DAS_ORGANIZACOES,
+  Secao,
+  inteiro,
+  plural,
   useAcao,
   usarLeitura,
 } from "./AcoesDaAdministracao";
 import { NaoEncontrada } from "./Avisos";
+import { ContasDoApp } from "./ContasDaAdministracao";
 
 const SEM_PARAMETROS = {};
 const ROTA_DA_ORGANIZACAO = "/v1/admin/organizacao";
@@ -51,9 +57,6 @@ const NADA_MUDOU = "Nada mudou: já estava assim.";
 // o 404 do painel: a organização saiu, ou o servidor deixou de reconhecer a conta como administradora
 const ORGANIZACAO_NAO_ENCONTRADA =
   "Organização não encontrada. Ela pode ter sido apagada, ou a sua conta deixou de ser administradora.";
-
-const inteiro = (n: number) => n.toLocaleString("pt-BR");
-const plural = (n: number, um: string, varios: string) => `${inteiro(n)} ${n === 1 ? um : varios}`;
 
 // os rótulos do que a API manda em código; código que a tela ainda não conhece aparece como veio
 const ESTADOS_DA_CHAVE: Record<string, { rotulo: string; tom: TomDoSelo }> = {
@@ -100,16 +103,6 @@ type Pendente =
   | { acao: "suspender"; motivo: string }
   | { acao: "reativar" }
   | null;
-
-function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
-  const id = useId();
-  return (
-    <section className="secao-do-relatorio" aria-labelledby={id}>
-      <h3 id={id}>{titulo}</h3>
-      {children}
-    </section>
-  );
-}
 
 // --- as tabelas do painel ---------------------------------------------------------------------
 
@@ -531,7 +524,14 @@ interface ChaveDaOrganizacao {
   nova: ChaveNovaV1;
 }
 
-function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar(): void }) {
+interface PropriedadesDasOrganizacoes {
+  lista: OrganizacoesV1;
+  recarregar(): void;
+  /** Chegou uma chave nova: quem tem as abas traz esta de volta, para o valor não ficar numa aba fechada. */
+  aoChegarChave(): void;
+}
+
+function Organizacoes({ lista, recarregar, aoChegarChave }: PropriedadesDasOrganizacoes) {
   const { organizacoes } = lista;
   const [pedida, setPedida] = useState<string | null>(null);
   const [criando, setCriando] = useState(organizacoes.length === 0);
@@ -558,6 +558,7 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
   // e nenhuma fica ativa no servidor sem ninguém ter visto o valor)
   function aoChegarAChave(organizacao: string, nova: ChaveNovaV1) {
     setChaves((atuais) => [...atuais, { organizacao, nova }]);
+    aoChegarChave();
   }
   // a resposta de um criar pode chegar depois de uma chave aparecer (o pedido saiu antes): aqui só se anota
   // a criada; quem decide o painel é o `escolhida` acima, com o estado de agora
@@ -620,15 +621,26 @@ function Organizacoes({ lista, recarregar }: { lista: OrganizacoesV1; recarregar
   );
 }
 
+const ABA_DAS_ORGANIZACOES = "organizacoes";
+const ABA_DAS_CONTAS = "contas";
+
 function AdministracaoAberta() {
   const { pedido: lista, ultimos, recarregar } = usarLeitura<OrganizacoesV1>(ROTA_DAS_ORGANIZACOES, SEM_PARAMETROS);
+  const [aba, setAba] = useState(ABA_DAS_ORGANIZACOES);
+  // as contas só são pedidas quando a aba delas abre pela primeira vez; daí em diante ficam montadas, para a
+  // busca, o painel aberto e o aviso de uma mudança não sumirem numa troca de aba
+  const [contasAbertas, setContasAbertas] = useState(false);
+  function abrir(chave: string) {
+    if (chave === ABA_DAS_CONTAS) setContasAbertas(true);
+    setAba(chave);
+  }
   // o servidor disse que este endereço não existe para esta conta: a tela diz o mesmo
   if (lista.estado === "erro" && lista.erro.tipo === "nao-encontrado") return <NaoEncontrada />;
   return (
     <section>
       <Cabecalho
         titulo={TITULO_DA_ADMINISTRACAO}
-        descricao="As organizações da API por chave: situação, consumo do mês, chaves e o que o contrato liga."
+        descricao="As organizações da API por chave (situação, consumo do mês, chaves e o que o contrato liga) e as contas do app (plano, papel e bloqueio)."
         acoes={
           <a className="botao pequeno" href={linkDoClassico(ENDERECO_DA_ADMINISTRACAO)}>
             Abrir a Administração antiga
@@ -636,13 +648,42 @@ function AdministracaoAberta() {
         }
       />
       <p className="apagado">
-        As contas do app, o registro de ações, os eventos de cobrança e o acervo continuam na Administração antiga.
+        O registro de ações, os eventos de cobrança e o acervo continuam na Administração antiga.
       </p>
-      {lista.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando as organizações…" />}
-      {lista.estado === "erro" && <Erro erro={lista.erro} tentarDeNovo={recarregar} />}
-      {/* a releitura que falha não tira a tela: fica a última lista, com a falha acima (uma chave nova à vista
-          não some por um tropeço do servidor) */}
-      {ultimos !== null && <Organizacoes lista={ultimos} recarregar={recarregar} />}
+      <Abas
+        rotulo="Partes da Administração"
+        aberta={aba}
+        aoAbrir={abrir}
+        abas={[
+          {
+            chave: ABA_DAS_ORGANIZACOES,
+            rotulo: "Organizações",
+            // montada sempre: uma chave nova à vista não some porque a pessoa foi olhar as contas
+            sempreMontada: true,
+            conteudo: (
+              <>
+                {lista.estado === "carregando" && <Carregando tipo="lista" rotulo="Carregando as organizações…" />}
+                {lista.estado === "erro" && <Erro erro={lista.erro} tentarDeNovo={recarregar} />}
+                {/* a releitura que falha não tira a tela: fica a última lista, com a falha acima (uma chave
+                    nova à vista não some por um tropeço do servidor) */}
+                {ultimos !== null && (
+                  <Organizacoes
+                    lista={ultimos}
+                    recarregar={recarregar}
+                    aoChegarChave={() => setAba(ABA_DAS_ORGANIZACOES)}
+                  />
+                )}
+              </>
+            ),
+          },
+          {
+            chave: ABA_DAS_CONTAS,
+            rotulo: "Contas do app",
+            sempreMontada: true,
+            conteudo: contasAbertas ? <ContasDoApp aoNaoAchar={recarregar} /> : null,
+          },
+        ]}
+      />
     </section>
   );
 }

@@ -1,9 +1,9 @@
-// As peças das ações da Administração (linha 955, PR 3): o pedido que recarrega sem apagar a tela, a ação
+// As peças das ações da Administração (linha 962, PRs 3 e 4): o pedido que recarrega sem apagar a tela, a ação
 // com a frase do servidor, a confirmação na própria página, o formulário de criar organização e a caixa da
 // chave nova. O valor de uma chave vive só no estado da tela de quem a emitiu: não vai para o armazenamento
 // do navegador, para o endereço nem para o console, e some ao ser tirado, ao trocar de organização ou ao
 // sair da tela. Quem autoriza cada ação é o servidor, a cada pedido (src/api_v1/administracao.py).
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { ErroDaApi, type Parametros, mudar, pedir } from "../api";
 import { useConta } from "../conta";
 import type { ChaveNovaV1, OrganizacaoDaListaV1, PlanoDaApiV1 } from "../tiposDaAdministracao";
@@ -15,7 +15,21 @@ const NAO_DEU_AGORA = "Não deu agora. Tente de novo em instantes.";
 // o 404 sem frase é o de um endereço que não existe: o que o servidor responde a quem não é administrador
 const RECUSA_SEM_FRASE = "Not Found";
 const PEDIDO_NAO_RECONHECIDO =
-  "O servidor não reconheceu o pedido: a organização pode ter saído, ou a sua conta deixou de ser administradora.";
+  "O servidor não reconheceu o pedido: o que a tela mostrava pode ter saído, ou a sua conta deixou de ser administradora.";
+
+export const inteiro = (n: number) => n.toLocaleString("pt-BR");
+export const plural = (n: number, um: string, varios: string) => `${inteiro(n)} ${n === 1 ? um : varios}`;
+
+/** Uma parte da tela com título: o leitor de tela a anuncia como região, pelo nome. */
+export function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    <section className="secao-do-relatorio" aria-labelledby={id}>
+      <h3 id={id}>{titulo}</h3>
+      {children}
+    </section>
+  );
+}
 
 function fraseDaFalha(erro: unknown): string {
   if (!(erro instanceof ErroDaApi)) return NAO_DEU_AGORA;

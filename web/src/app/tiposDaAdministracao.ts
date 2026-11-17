@@ -1,7 +1,9 @@
-// O formato das respostas da Administração (src/api_v1/administracao.py). Fora de tipos.ts de propósito:
-// aquele arquivo é conferido contra o contrato público (docs/api/openapi-v1.json), e estas rotas só abrem
-// para administradores, então não estão nele. Nenhum campo aqui traz dado de conta, e o valor de uma chave
-// só existe em `ChaveNovaV1`: a resposta, uma única vez, de quem a emitiu ou trocou.
+// O formato das respostas da Administração (src/api_v1/administracao.py e administracao_contas.py). Fora de
+// tipos.ts de propósito: aquele arquivo é conferido contra o contrato público (docs/api/openapi-v1.json), e
+// estas rotas só abrem para administradores, então não estão nele. As organizações não trazem dado de conta
+// (só quantas estão vinculadas); o e-mail e o nome de uma conta vêm só em `ContaV1`, a lista de contas do
+// app, que fica no estado da tela e em mais lugar nenhum. O valor de uma chave só existe em `ChaveNovaV1`:
+// a resposta, uma única vez, de quem a emitiu ou trocou.
 
 export interface OrganizacaoDaListaV1 {
   id: string;
@@ -98,4 +100,53 @@ export interface PainelDaOrganizacaoV1 {
   pessoa_na_tela: boolean;
   /** Quantas contas estão vinculadas (só o número). */
   membros: number;
+}
+
+/** Os números do serviço: só contagens. */
+export interface ResumoV1 {
+  usuarios: number;
+  gratuito: number;
+  plus: number;
+  pro: number;
+  administradores: number;
+  novos_na_semana: number;
+  ativos_na_semana: number;
+  simulacoes: number;
+  assinaturas_ativas: number;
+  eventos_do_stripe: number;
+}
+
+/** Uma conta do app, como o administrador a vê. */
+export interface ContaV1 {
+  id: string;
+  email: string;
+  nome: string | null;
+  /** "usuario" ou "admin". */
+  papel: string;
+  /** "gratuito", "plus" ou "pro". */
+  plano: string;
+  criado_em: string;
+  ultimo_acesso: string | null;
+  /** O estado da assinatura no Stripe, em código (`active`, `canceled`...); nulo sem assinatura. */
+  status_da_assinatura: string | null;
+  simulacoes: number;
+  bloqueada_em: string | null;
+  motivo_do_bloqueio: string | null;
+  /** É a conta de quem está olhando: a tela não oferece tirar o próprio acesso (quem recusa é o servidor). */
+  e_voce: boolean;
+}
+
+export interface ContasV1 {
+  contas: ContaV1[];
+  /** Há mais contas do que as que vieram: a busca precisa ser afinada. */
+  cortada: boolean;
+  /** O que o servidor aceita em cada mudança, em código. */
+  planos: string[];
+  papeis: string[];
+  motivos_do_bloqueio: string[];
+}
+
+/** A resposta de bloquear: quantas sessões da conta o servidor encerrou. */
+export interface BloqueadaV1 {
+  sessoes_encerradas: number;
 }
