@@ -837,9 +837,9 @@ function PainelDaBase() {
             <dd>
               <ComoFoiCalculado>
                 <p>
-                  Contamos as tabelas do catálogo de contratos da base. Cada contrato diz a fonte,
-                  a licença, as datas e a frequência de atualização; tabela nova entra na conta
-                  sozinha.
+                  Contamos as tabelas do catálogo de contratos da base que já têm arquivo conferido
+                  no acervo. Cada contrato diz a fonte, a licença, as datas e a frequência de
+                  atualização; tabela nova só entra na conta depois de montada e conferida.
                 </p>
               </ComoFoiCalculado>
             </dd>
