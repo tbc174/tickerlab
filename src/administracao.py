@@ -404,6 +404,23 @@ def eventos_recentes_do_stripe(
     return [(l.id, l.tipo, l.processado_em) for l in linhas]
 
 
+def emails_das_contas(
+    conexao: sa.Connection, ator_id: uuid.UUID, ids: set[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """O e-mail de cada conta de `ids` que ainda existe, para a tela do administrador dizer quem é quem
+    no registro de ações. O registro guarda só ids, e continua assim: o e-mail é lido na hora, só para
+    o administrador, e a conta apagada (ou marcada como excluída) não tem e-mail para mostrar."""
+    exigir_admin(conexao, ator_id)
+    if not ids:
+        return {}
+    linhas = conexao.execute(
+        sa.select(usuarios.c.id, usuarios.c.email).where(
+            usuarios.c.id.in_(ids), usuarios.c.excluido_em.is_(None)
+        )
+    )
+    return {linha.id: linha.email for linha in linhas}
+
+
 def auditoria_recente(
     conexao: sa.Connection, ator_id: uuid.UUID, limite: int = 50
 ) -> list[registro_de_auditoria.Registro]:

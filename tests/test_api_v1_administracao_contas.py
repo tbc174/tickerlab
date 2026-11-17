@@ -1,5 +1,5 @@
 """As rotas das contas do app na Administração do app novo (src/api_v1/administracao_contas.py, linha
-955, PR 4): os números do serviço, a busca de contas e mudar plano, mudar papel, bloquear e desbloquear.
+962, PR 4): os números do serviço, a busca de contas e mudar plano, mudar papel, bloquear e desbloquear.
 
 Banco SQLite com as migrações. O que estes testes travam: quem é administrador se confere no servidor, em
 toda rota e antes de ler o corpo (conta comum recebe o 404 de um endereço que não existe e nada muda;
@@ -20,6 +20,7 @@ from src import api
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso
 from src.api_v1 import administracao as rotas_da_administracao
 from src.api_v1 import administracao_contas as rotas_das_contas
+from src.api_v1 import administracao_registro as rotas_do_registro
 from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.banco.modelo import (
     MOTIVOS_DO_BLOQUEIO,
@@ -201,7 +202,11 @@ def test_os_testes_de_acesso_cobrem_todas_as_rotas_das_contas():
 
 def test_toda_rota_da_administracao_e_de_um_modulo_com_testes_de_acesso():
     """Um terceiro módulo de rotas não entra no router da Administração sem os testes de acesso dele."""
-    conhecidos = {rotas_da_administracao.__name__, rotas_das_contas.__name__}
+    conhecidos = {
+        rotas_da_administracao.__name__,
+        rotas_das_contas.__name__,
+        rotas_do_registro.__name__,
+    }
     for rota in rotas_da_administracao.router.routes:
         assert rota.endpoint.__module__ in conhecidos, rota.path  # type: ignore[attr-defined]
 
@@ -608,6 +613,43 @@ def test_ninguem_tira_o_proprio_acesso_de_administrador(banco, app, chefe, carla
     assert "próprio acesso" in resposta.json()["detail"]
     assert _retrato(banco) == antes
     assert cliente.get(RESUMO).status_code == 200
+
+
+def test_dois_admins_um_rebaixa_o_outro_e_o_servico_nao_fica_sem_administrador(
+    banco, app, chefe, bia
+):
+    """Um pedido de cada vez, a API nunca deixa o serviço sem administrador: depois de o chefe rebaixar a
+    Bia, o pedido dela para rebaixar o chefe é o 404 de quem não é administrador, e o chefe, o último, não
+    tira o próprio acesso nem se bloqueia. (Os dois pedidos no mesmo instante são a corrida anotada na
+    fila; aqui é a ordem em que um termina antes de o outro começar.)"""
+    with banco.begin() as conexao:
+        mudar_papel(conexao, bia.id, "admin")
+    do_chefe = _cliente(banco, app, chefe)
+    da_bia = _cliente(banco, app, bia)  # a sessão dela fica aberta depois de rebaixada
+    assert da_bia.get(RESUMO).status_code == 200
+    rebaixou = do_chefe.post(PAPEL, json={"id": str(bia.id), "papel": "usuario"})
+    assert rebaixou.status_code == 204
+    antes = _retrato(banco)
+    revide = da_bia.post(PAPEL, json={"id": str(chefe.id), "papel": "usuario"})
+    assert revide.status_code == 404
+    assert (
+        da_bia.post(
+            BLOQUEAR, json={"id": str(chefe.id), "motivo": "incidente"}
+        ).status_code
+        == 404
+    )
+    sozinho = do_chefe.post(PAPEL, json={"id": str(chefe.id), "papel": "usuario"})
+    assert sozinho.status_code == 409
+    assert (
+        do_chefe.post(
+            BLOQUEAR, json={"id": str(chefe.id), "motivo": "incidente"}
+        ).status_code
+        == 409
+    )
+    assert _retrato(banco) == antes
+    assert _da_conta(banco, chefe).papel == "admin"
+    assert _da_conta(banco, chefe).bloqueada_em is None
+    assert do_chefe.get(RESUMO).json()["administradores"] == 1
 
 
 def test_quem_esta_na_lista_do_servidor_nao_e_rebaixado_por_aqui(

@@ -1,7 +1,8 @@
 """Quem entra nas rotas da Administração (`/v1/admin`), e como o corpo de um pedido é lido lá.
 
-Fica à parte para os módulos de rotas da Administração (`administracao`, das organizações e chaves, e
-`administracao_contas`, das contas do app) usarem a mesma conferência, e não uma cópia dela.
+Fica à parte para os módulos de rotas da Administração (`administracao`, das organizações e chaves,
+`administracao_contas`, das contas do app, e `administracao_registro`, do registro de ações) usarem a
+mesma conferência, e não uma cópia dela.
 
 Quem entra: a conta logada, com os termos aceitos **e** administradora no banco, conferida a cada pedido por
 `conta_admin`. A Administração tem um `router` só, o daqui, que já nasce com `dependencias_do_admin()`: os
@@ -10,9 +11,11 @@ rota). Para qualquer outra conta a resposta é o mesmo 404 de um endereço que n
 foi pedido.
 """
 
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Iterator
+from contextlib import contextmanager
 from typing import Annotated, Any
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -50,9 +53,21 @@ def dependencias_do_admin() -> list[Any]:
     return [Depends(exigir_api_ligada), Depends(conta_admin), Depends(sem_cache)]
 
 
-# o router único da Administração: os módulos de rotas (`administracao` e `administracao_contas`)
-# registram as suas aqui, e o app o recebe por `src/api_v1/administracao.py`
+# o router único da Administração: os módulos de rotas (`administracao`, `administracao_contas` e
+# `administracao_registro`) registram as suas aqui, e o app o recebe por `src/api_v1/administracao.py`
 router = APIRouter(prefix="/v1/admin", dependencies=dependencias_do_admin())
+
+
+@contextmanager
+def leitura() -> Iterator[sa.Connection]:
+    """Uma conexão só de leitura. As funções da regra conferem o administrador de novo nela; se
+    recusarem (a conta deixou de ser administradora entre a dependência e a leitura), a resposta é o
+    mesmo 404 de um endereço que não existe."""
+    try:
+        with obter_engine().connect() as conexao:
+            yield conexao
+    except PermissaoNegadaError as erro:
+        raise HTTPException(status_code=404) from erro
 
 
 class Pedido(BaseModel):
