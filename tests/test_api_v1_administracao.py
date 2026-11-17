@@ -126,12 +126,14 @@ def test_toda_rota_da_administracao_exige_conta_admin():
 
 def test_os_testes_de_acesso_cobrem_todas_as_rotas():
     """Rota de leitura nova precisa entrar em `_leituras`: é a lista que os testes de acesso percorrem
-    (as de escrita têm a lista delas no arquivo de testes da escrita)."""
+    (as de escrita têm a lista delas no arquivo de testes da escrita, e as das contas do app, que
+    moram noutro módulo, no arquivo de testes das contas)."""
     cobertas = {endereco for endereco, _ in _leituras(ID_QUE_NAO_EXISTE)}
     existentes = {
         rota.path  # type: ignore[attr-defined]
         for rota in rotas_da_administracao.router.routes
         if "GET" in rota.methods  # type: ignore[attr-defined]
+        and rota.endpoint.__module__ == rotas_da_administracao.__name__  # type: ignore[attr-defined]
     }
     assert cobertas == existentes
 
