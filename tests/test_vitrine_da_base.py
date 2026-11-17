@@ -1366,3 +1366,19 @@ def test_as_que_existem_fora_da_porta_estao_na_lista_de_fora_da_porta():
 
     assert set(FORA_DA_PORTA) >= gravador.EXISTEM_FORA_DA_PORTA
     assert vitrine.tabelas_montadas() >= gravador.EXISTEM_FORA_DA_PORTA
+
+
+def test_a_data_da_contagem_de_tabelas_e_a_da_lista_de_montadas(tmp_path) -> None:
+    """A data ao lado do número de tabelas vem do arquivo da lista, não da fotografia dos outros números."""
+    lista = tmp_path / "montadas.json"
+    lista.write_text('{"conferido_em": "2026-11-16", "tabelas": []}', encoding="utf-8")
+    assert vitrine.tabelas_conferidas_em(lista) == "2026-11-16"
+    assert vitrine.dia_e_mes(vitrine.tabelas_conferidas_em(lista)) == "16/11"
+
+
+def test_o_catalogo_exportado_traz_a_data_da_lista_de_montadas() -> None:
+    from scripts import exportar_conteudo
+
+    totais = exportar_conteudo._catalogo()["totais"]
+    esperado = vitrine.dia_e_mes(vitrine.tabelas_conferidas_em())
+    assert totais["tabelas_conferidas_em_curto"] == esperado
