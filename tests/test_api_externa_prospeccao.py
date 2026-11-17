@@ -609,3 +609,126 @@ def test_estabelecimento_sem_empresa_nao_estraga_o_corte_da_pagina(tmp_path):
     )
     assert [e["cnpj"] for e in servida.corpo["empresas"]] == ["22222222000191"]
     assert servida.corpo["cortada"] is True  # ainda há a 66666666 depois
+
+
+# --- natureza, porte e capital sem varrer as empresas inteiras (linha 964): candidatas do estabelecimento primeiro ---
+
+BUSCAS_COM_FILTRO_DA_EMPRESA = [
+    prospeccao.Busca(cnaes=("62",), ufs=("SP",), naturezas=("2054",), matriz=True),
+    prospeccao.Busca(cnaes=("62",), ufs=("SP",), naturezas=("2054",)),
+    prospeccao.Busca(ufs=("SP", "RJ"), naturezas=("20",)),
+    prospeccao.Busca(ufs=("SP",), portes=("micro", "pequeno")),
+    prospeccao.Busca(municipios=("7107",), capital_min=60_000.0),
+    prospeccao.Busca(ufs=("SP", "RJ"), ordem="capital_social", decrescente=True),
+    prospeccao.Busca(
+        ufs=("SP",), naturezas=("2046",)
+    ),  # nenhuma empresa casa: página vazia
+    prospeccao.Busca(
+        naturezas=("2054",)
+    ),  # sem filtro do estabelecimento: junção completa
+]
+
+
+def _sem_candidatas(monkeypatch) -> None:
+    monkeypatch.setattr(
+        prospeccao.LeitorDeProspeccao, "_raizes_candidatas", lambda *_: None
+    )
+
+
+@pytest.mark.parametrize("busca", BUSCAS_COM_FILTRO_DA_EMPRESA)
+def test_candidatas_primeiro_respondem_igual_a_juncao_completa(
+    pasta, monkeypatch, busca
+):
+    busca = dataclasses.replace(busca, limite=1)
+    hoje = date(2026, 11, 10)
+    leitor = _leitor(pasta)
+    com_candidatas = _paginas(leitor, busca, hoje)
+    _sem_candidatas(monkeypatch)
+    assert _paginas(leitor, busca, hoje) == com_candidatas
+
+
+def test_busca_exata_do_defeito_acha_so_a_empresa_da_natureza_pedida(pasta):
+    """CNAE + UF + natureza jurídica + só matriz (a busca que passava de 30 s no conector)."""
+    busca = prospeccao.Busca(
+        cnaes=("62",), ufs=("SP",), naturezas=("2054",), matriz=True, limite=2
+    )
+    servida = _leitor(pasta).buscar(busca, date(2026, 10, 15))  # retrato de setembro
+    assert [e["cnpj"] for e in servida.corpo["empresas"]] == ["11111111000191"]
+    assert servida.corpo["cortada"] is False
+
+
+def test_so_o_filtro_seletivo_do_estabelecimento_usa_as_candidatas(pasta):
+    leitor = _leitor(pasta)
+    mes = "2026-09"
+    assert leitor._raizes_candidatas(
+        prospeccao.Busca(ufs=("SP",), cnaes=("62",)), mes
+    ) == ["11111111"]
+    assert leitor._raizes_candidatas(prospeccao.Busca(municipios=("7107",)), mes) == [
+        "11111111",
+        "22222222",
+    ]  # a 33333333 está baixada: fora da busca padrão
+    # matriz e abertura sozinhas não restringem o bastante
+    assert leitor._raizes_candidatas(prospeccao.Busca(matriz=True), mes) is None
+    assert leitor._raizes_candidatas(prospeccao.Busca(naturezas=("2054",)), mes) is None
+
+
+def test_candidatas_demais_voltam_para_a_juncao_completa(pasta, monkeypatch):
+    busca = prospeccao.Busca(ufs=("SP", "RJ"), naturezas=("2054",), limite=5)
+    hoje = date(2026, 11, 10)
+    leitor = _leitor(pasta)
+    esperado = leitor.buscar(busca, hoje).corpo
+    monkeypatch.setattr(prospeccao, "TETO_DE_RAIZES", 1)
+    assert leitor._raizes_candidatas(busca, "2026-09") is None
+    assert leitor.buscar(busca, hoje).corpo == esperado
+
+
+def test_o_filtro_da_empresa_nunca_deixa_passar_o_que_so_as_candidatas_conhecem(pasta):
+    """Raiz candidata cuja natureza não é a pedida não entra na página (a conferência é na junção)."""
+    busca = prospeccao.Busca(ufs=("SP",), naturezas=("2062",), limite=10)
+    servida = _leitor(pasta).buscar(busca, date(2026, 11, 10))
+    assert [e["cnpj"] for e in servida.corpo["empresas"]] == ["22222222000191"]
+
+
+@pytest.mark.parametrize("busca", BUSCAS_COM_FILTRO_DA_EMPRESA)
+@pytest.mark.parametrize("janelas", [(1,), (1, 1), (2,), ()])
+def test_janelas_de_raizes_pequenas_respondem_igual(pasta, monkeypatch, busca, janelas):
+    """Janelas de uma raiz (e a página que atravessa várias) dão a mesma lista que a junção completa."""
+    hoje = date(2026, 11, 10)
+    leitor = _leitor(pasta)
+    for limite in (1, 2, 10):
+        busca_ = dataclasses.replace(busca, limite=limite)
+        monkeypatch.setattr(prospeccao, "JANELAS_DE_RAIZES", janelas)
+        em_janelas = _paginas(leitor, busca_, hoje)
+        with monkeypatch.context() as m:
+            _sem_candidatas(m)
+            assert _paginas(leitor, busca_, hoje) == em_janelas
+
+
+def test_cursor_depois_da_ultima_candidata_devolve_pagina_vazia(pasta):
+    busca = prospeccao.Busca(
+        ufs=("SP",), naturezas=("2054",), limite=2, depois_de="99999999000191"
+    )
+    servida = _leitor(pasta).buscar(busca, date(2026, 10, 15))
+    assert servida.corpo["empresas"] == []
+    assert servida.corpo["cortada"] is False
+
+
+def test_pagina_que_fecha_na_primeira_janela_nao_le_as_outras(pasta, monkeypatch):
+    monkeypatch.setattr(prospeccao, "JANELAS_DE_RAIZES", (1,))
+    consultas = []
+    leitor = _leitor(pasta)
+    executar = leitor.porta.con.execute
+
+    class Espia:
+        def execute(self, sql, parametros=None):
+            consultas.append(sql)
+            return executar(sql, parametros)
+
+        def __getattr__(self, nome):
+            return getattr(leitor.porta.con, nome)
+
+    leitor.porta.con = Espia()
+    busca = prospeccao.Busca(ufs=("SP", "RJ"), naturezas=("20",), limite=1)
+    leitor.buscar(busca, date(2026, 10, 15))
+    # 1 leitura do mês do retrato + 1 das candidatas + a janela que fecha a página (a 2ª raiz já é "mais uma")
+    assert sum("BETWEEN" in sql for sql in consultas) <= 2
