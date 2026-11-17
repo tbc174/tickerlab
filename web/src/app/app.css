@@ -406,6 +406,12 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .lista-de-operacoes { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--e2); margin: var(--e4) 0; }
 .operacao-da-sala { margin-top: var(--e5); }
 .acoes-da-sala { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; margin: var(--e3) 0; }
+/* Administração: ações com a pergunta na própria página e a chave que aparece uma vez só */
+.acoes-da-administracao { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e2) var(--e3); margin: var(--e3) 0; }
+td .acoes-da-administracao { margin: 0; }
+.confirmacao-da-administracao, .chave-nova { margin: var(--e4) 0; padding: var(--e3) var(--e4); border-radius: 10px; border: 1px solid var(--atencao); }
+.confirmacao-da-administracao p, .chave-nova p { margin: 0 0 var(--e2); }
+.chave-nova pre { margin: var(--e2) 0 var(--e3); padding: var(--e3); border-radius: 8px; border: 1px solid var(--linha); overflow-wrap: anywhere; white-space: pre-wrap; user-select: all; }
 .contradicao-da-sala { list-style: none; padding: var(--e3) 0; border-top: 1px solid var(--borda, rgba(128,128,128,.3)); }
 .nota-da-sala { display: flex; flex-direction: column; gap: var(--e1); }
 .nota-da-sala input { width: 100%; padding: var(--e2) var(--e3); border-radius: 8px; }

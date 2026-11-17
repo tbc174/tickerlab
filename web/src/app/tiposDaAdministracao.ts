@@ -1,6 +1,7 @@
 // O formato das respostas da Administração (src/api_v1/administracao.py). Fora de tipos.ts de propósito:
 // aquele arquivo é conferido contra o contrato público (docs/api/openapi-v1.json), e estas rotas só abrem
-// para administradores, então não estão nele. Nenhum campo aqui traz o valor de uma chave nem dado de conta.
+// para administradores, então não estão nele. Nenhum campo aqui traz dado de conta, e o valor de uma chave
+// só existe em `ChaveNovaV1`: a resposta, uma única vez, de quem a emitiu ou trocou.
 
 export interface OrganizacaoDaListaV1 {
   id: string;
@@ -10,8 +11,32 @@ export interface OrganizacaoDaListaV1 {
   suspensa: boolean;
 }
 
+export interface PlanoDaApiV1 {
+  plano_da_api: string;
+  nome_do_plano: string;
+}
+
 export interface OrganizacoesV1 {
   organizacoes: OrganizacaoDaListaV1[];
+  /** Os planos que uma organização nova pode ter (o formulário de criar). */
+  planos_da_api: PlanoDaApiV1[];
+  /** Os motivos que o servidor aceita ao suspender, em código. */
+  motivos_da_suspensao: string[];
+}
+
+/** A resposta de suspender, reativar e revogar: `mudou` falso quer dizer que já estava assim. */
+export interface MudouV1 {
+  mudou: boolean;
+}
+
+/** A chave recém-emitida ou trocada. É a única resposta com o `valor`, e ele não volta em nenhuma leitura:
+ * fica só no estado da tela, até ser tirado. */
+export interface ChaveNovaV1 {
+  id: string;
+  prefixo: string;
+  valor: string;
+  /** Numa troca, por quantos dias a chave antiga ainda vale; nulo ao emitir. */
+  antiga_vale_por_dias: number | null;
 }
 
 export interface LimitesDoPlanoV1 {
