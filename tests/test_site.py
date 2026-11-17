@@ -14,6 +14,7 @@ import pytest
 
 from base.dicionario import TABELAS
 from base.dossie import pode_consultar_aberto
+from base.vitrine import tabelas_montadas
 from scripts import gerar_site as gs
 from scripts.markdown_simples import markdown_para_html
 from src import marca, planos
@@ -119,8 +120,11 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
 def test_links_para_a_api_sao_o_csv_das_tabelas_consultaveis():
     """A página Dados aponta o CSV de cada tabela consultável para a API, que mora no endereço do app
     (virada de 5/11/2026, fase 1, PR 3): só a rota de exportação, só tabela que a porta serve, e
-    toda tabela consultável tem o seu link."""
-    consultaveis = {nome for nome in TABELAS if pode_consultar_aberto(nome)}
+    toda tabela consultável e montada tem o seu link (a vitrine só mostra o que está no acervo, linha 916)."""
+    montadas = tabelas_montadas()
+    consultaveis = {
+        nome for nome in TABELAS if pode_consultar_aberto(nome) and nome in montadas
+    }
     exportacao = re.compile(r"v1/base/tabelas/([a-z0-9_]+)\.csv")
     apontadas: set[str] = set()
     for arquivo in PAGINAS_HTML:

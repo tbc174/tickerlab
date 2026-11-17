@@ -111,7 +111,9 @@ def test_o_catalogo_publico_tira_as_tabelas_so_internas():
     from base.contrato import catalogo
 
     completo = catalogo()
-    publico = vitrine.catalogo_publico(completo)
+    publico = vitrine.catalogo_publico(
+        completo, montadas=frozenset(completo["tabelas"])
+    )
     assert set(TABELAS_DO_DATAJUD) <= set(completo["tabelas"])
     assert not set(TABELAS_DO_DATAJUD) & set(publico["tabelas"])
     assert "processos_comunicacoes" in publico["tabelas"]  # o DJEN continua
