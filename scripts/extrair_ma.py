@@ -493,7 +493,7 @@ def cliente_de_ma() -> anthropic.Anthropic:
     if not chave:
         raise SystemExit(
             f"Falta {VARIAVEL_DA_CHAVE} no ambiente (a chave da base de M&A): rode "
-            "projeto-acoes/configurar-chave-anthropic-ma-casa.ps1."
+            "projeto-acoes/infra/configurar-chave-anthropic-ma-casa.ps1."
         )
     return anthropic.Anthropic(api_key=chave)
 
