@@ -166,6 +166,19 @@ SITE_FAIXA_MARINHA = {
     "superficie": DESTAQUE,
     "destaque": "#163160",
 }
+# A janela de código do site (o pedido ao conector, à CLI e à API, e a resposta): veio da página do
+# TickerLab Data (16/11/2026, "um site só") e é escura nos dois temas, como um terminal. O texto em
+# azul claro, a chave apagada, o texto literal num azul legível no marinho, o número em âmbar e o
+# rastro (fonte e licença) marcado no azul elétrico.
+JANELA_DE_CODIGO = {
+    "fundo": "#061430",  # um degrau abaixo do FUNDO: a janela se destaca dentro da faixa marinha
+    "texto": AZUL_CLARO,
+    "chave": TEXTO_APAGADO,
+    "literal": "#8fb0ff",
+    "numero": ATENCAO,
+    "comentario": TEXTO_SUTIL,
+    "rastro": "rgba(41, 98, 255, 0.18)",  # o AZUL a 18%, atrás das linhas de fonte e licença
+}
 
 
 def paleta_do_tema(tipo_do_streamlit: str | None) -> Paleta:

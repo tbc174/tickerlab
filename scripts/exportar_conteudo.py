@@ -155,6 +155,7 @@ def _marca() -> dict:
         ],  # lista: a ordem vira a do CSS
         "site_escuro": [list(p) for p in marca.SITE_ESCURO.items()],
         "site_faixa_marinha": [list(p) for p in marca.SITE_FAIXA_MARINHA.items()],
+        "janela_de_codigo": dict(marca.JANELA_DE_CODIGO),
     }
 
 
