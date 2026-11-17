@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { baseEmNumeros, catalogo, fatosDaBase, paginasDoApp, vitrine } from "../../src/conteudo";
 import { renderizar } from "../../src/entry-server";
 import { css } from "../../src/estilo";
-import { COMO_PEDIR_A_CHAVE, DADOS, FRASE_DO_TOPO } from "../../src/paginas/Inicio";
+import { COMO_PEDIR_A_CHAVE, DADOS, FRASE_DO_TOPO, RESPOSTA_DO_EXEMPLO } from "../../src/paginas/Inicio";
 import { REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../../src/site/textos";
 
 const html = renderizar("index.html");
@@ -113,9 +113,23 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
       expect(resposta, campo).toContain(campo);
     expect(resposta).toContain('"value": <valor da fonte>');
     expect(resposta).not.toMatch(/R\$|"value": -?\d/);
-    expect(semTags(trecho('<div class="janela guias"', "</div></section>"))).toContain(
-      "o valor aparece como marcador e as datas são ilustrativas",
-    );
+    // uma resposta de verdade (a amostra da CVM dos testes; `tests/test_site.py` confere as datas no arquivo)
+    const nota = semTags(trecho('<div class="janela guias"', "</div></section>"));
+    expect(nota).toContain("Resposta real da DFP 2024 da Petrobras, entregue à CVM em 26/02/2025");
+    expect(nota).not.toMatch(/ilustrativ/i);
+    expect(resposta).toContain(`"published_at": "${RESPOSTA_DO_EXEMPLO.publicado}"`);
+    expect(resposta).toContain(`"value": "${RESPOSTA_DO_EXEMPLO.periodo}"`);
+    // a data pedida vem depois da entrega: senão a resposta não traria a linha
+    const pedida = resposta.match(/"known_at": "([\d-]+)"/)?.[1] ?? "";
+    expect(pedida >= RESPOSTA_DO_EXEMPLO.publicado).toBe(true);
+  });
+
+  it("um único pedido de chave na página inteira, e o destino existe na documentação", () => {
+    const botoes = [...principal().matchAll(/<a class="botao[^"]*" href="([^"]+)"[^>]*>([^<]+)<\/a>/g)];
+    expect(botoes.filter(([, href]) => href === COMO_PEDIR_A_CHAVE)).toHaveLength(1);
+    expect(vezes(semTags(html), "Pedir uma chave")).toBe(1);
+    // os passos de cada porta só explicam ("como pedir"), sem outro botão
+    expect(DOCUMENTACAO).toContain('id="comecar"');
   });
 
   it("as três portas: o conector é a principal, depois a CLI e a API, cada uma levando à sua seção", () => {
@@ -399,9 +413,10 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     expect(vitrine.find((v) => v.chave === "cruzamentos")?.link).toBe("/#cruzamentos");
   });
 
-  it("a chamada final leva a pedir a chave e diz que o beta é fechado e sem cobrança", () => {
+  it("a chamada final leva à documentação (sem um segundo botão de chave) e diz que o beta é fechado", () => {
     const final = trecho('<section class="faixa secao final"', "</section>");
-    expect(final).toContain(`href="${COMO_PEDIR_A_CHAVE}"`);
+    expect(final).toContain(`href="${URL_DA_API}/documentacao/" rel="noopener">Ler a documentação</a>`);
+    expect(final).not.toContain(`href="${COMO_PEDIR_A_CHAVE}"`);
     expect(final).toContain(">Abrir o app</a>");
     expect(semTags(final)).toContain("beta fechado, sem cobrança");
   });

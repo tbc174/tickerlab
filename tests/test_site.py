@@ -561,3 +561,36 @@ def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
         assert selo.findall(html) == dados.findall(html), (
             f"{pagina.name} sai sem o selo da data da base"
         )
+
+
+def test_a_janela_da_inicial_mostra_uma_resposta_real_da_amostra_da_cvm():
+    """A resposta da janela do topo é a da DFP 2024 da Petrobras na amostra da CVM que os testes usam:
+    nada de data digitada de cabeça (linha 966). O valor fica como marcador."""
+    amostra = Path(__file__).parent / "arquivos/cvm/fundamentos/dfp_cia_aberta_2024.zip"
+    with zipfile.ZipFile(amostra) as dfp:
+        cabecalho = dfp.read("dfp_cia_aberta_2024.csv").decode("latin-1").splitlines()
+        dre = dfp.read("dfp_cia_aberta_DRE_con_2024.csv").decode("latin-1").splitlines()
+    entrega = next(
+        linha.split(";")
+        for linha in cabecalho
+        if linha.startswith("33.000.167/0001-01;")
+    )
+    referencia, recebida = entrega[1], entrega[7]
+    receita = next(
+        linha.split(";")
+        for linha in dre
+        if linha.startswith("33.000.167/0001-01;") and f";{referencia};3.01;" in linha
+    )
+    janela = re.search(
+        r'<pre class="janela-resposta">(.*?)</pre>',
+        (SITE / "index.html").read_text("utf-8"),
+        re.DOTALL,
+    )
+    assert janela
+    resposta = html.unescape(re.sub(r"<[^>]+>", "", janela.group(1)))
+    assert '"cnpj": "33000167000101"' in resposta
+    assert f'"published_at": "{recebida}"' in resposta
+    assert f'"value": "{referencia}"' in resposta
+    assert f'"value": "{receita[12]}"' in resposta
+    pedida = re.search(r'"known_at": "([\d-]+)"', resposta)
+    assert pedida and pedida.group(1) >= recebida

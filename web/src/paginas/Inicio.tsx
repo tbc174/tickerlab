@@ -41,7 +41,14 @@ const milhares = (n: number) => n.toLocaleString("pt-BR");
 // A empresa é a Petrobras (CNPJ de companhia aberta, público). O valor fica como marcador e as datas são as do
 // exemplo do TickerLab Data: a forma é a real, o número não é inventado.
 const CNPJ_DO_EXEMPLO = "33000167000101";
-const DIA_DO_EXEMPLO = "2024-09-30";
+// uma resposta de verdade: a DFP 2024 da Petrobras, entregue à CVM em 26/02/2025 (a amostra dos testes,
+// `tests/arquivos/cvm/fundamentos/dfp_cia_aberta_2024.zip`; `tests/test_site.py` confere as datas no arquivo)
+const DIA_DO_EXEMPLO = "2025-06-30";
+export const RESPOSTA_DO_EXEMPLO = {
+  descricao: "Receita de Venda de Bens e/ou Serviços",
+  periodo: "2024-12-31",
+  publicado: "2025-02-26",
+};
 
 type Trecho = [classe: "" | "k" | "s" | "n" | "c" | "eu", texto: string];
 const PEDIDOS: { porta: string; nome: string; linhas: Trecho[][] }[] = [
@@ -124,16 +131,16 @@ function RespostaDoTopo() {
         <span className="k">"value"</span>: <span className="s">"3.01"</span>, <span className="k">"source"</span>:{" "}
         <span className="s">"cvm-hist-dfp"</span>
         {",\n                 "}
-        <span className="k">"published_at"</span>: <span className="s">"2024-03-07"</span>
+        <span className="k">"published_at"</span>: <span className="s">"{RESPOSTA_DO_EXEMPLO.publicado}"</span>
         {" },\n    "}
         <span className="k">"description"</span>: {"{ "}
-        <span className="k">"value"</span>: <span className="s">"Receita de Venda de Bens e/ou Serviços"</span>
+        <span className="k">"value"</span>: <span className="s">"{RESPOSTA_DO_EXEMPLO.descricao}"</span>
         {", … },\n    "}
         <span className="k">"document"</span>: {"{ "}
         <span className="k">"value"</span>: <span className="s">"DFP"</span>
         {", … },\n    "}
         <span className="k">"reference_period"</span>: {"{ "}
-        <span className="k">"value"</span>: <span className="s">"2023-12-31"</span>
+        <span className="k">"value"</span>: <span className="s">"{RESPOSTA_DO_EXEMPLO.periodo}"</span>
         {", … },\n    "}
         <span className="k">"value"</span>: {"{ "}
         <span className="k">"value"</span>: <span className="n">&lt;valor da fonte&gt;</span>
@@ -194,7 +201,9 @@ function JanelaDoTopo() {
         <span>
           <b>source, published_at, license</b>: de onde saiu, quando ficou público, sob qual licença.
         </span>
-        <span>Exemplo de forma: o valor aparece como marcador e as datas são ilustrativas.</span>
+        <span>
+          Resposta real da DFP 2024 da Petrobras, entregue à CVM em 26/02/2025. O valor aparece como marcador.
+        </span>
       </p>
     </div>
   );
@@ -936,8 +945,8 @@ export function Inicio() {
         }
       >
         <div className="acoes">
-          <a className="botao primario" href={COMO_PEDIR_A_CHAVE} rel="noopener">
-            Pedir uma chave
+          <a className="botao primario" href={DOCUMENTACAO_DA_API} rel="noopener">
+            Ler a documentação
           </a>
           <a className="botao secundario" href={linkDoApp()}>
             Abrir o app
