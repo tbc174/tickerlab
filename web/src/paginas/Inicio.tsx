@@ -459,11 +459,13 @@ function PainelDaBase() {
           <span className="v2-etiqueta" id="titulo-da-base">
             O que a base tem
           </span>
-          <span className="ticker">Medido em {medido_em_curto}</span>
+          <span className="ticker">
+            {`Tabelas e fontes em ${totais.tabelas_conferidas_em_curto} · companhias em ${medido_em_curto}`}
+          </span>
         </header>
         <dl className="v2-base-numeros">
           <div>
-            <dt>tabelas, cada uma com contrato</dt>
+            <dt>{`tabelas, cada uma com contrato (conferidas em ${totais.tabelas_conferidas_em_curto})`}</dt>
             <dd className="v2-numero">{milhares(totais.tabelas)}</dd>
             <dd>
               <ComoFoiCalculado>

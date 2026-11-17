@@ -183,7 +183,10 @@ describe("página inicial da CLI e do conector de M&A e análise de investimento
       expect(painel).toContain(`<dd class="v2-numero">${milhares(numero)}</dd>`);
     for (const rotulo of ["tabelas", "ligadas pelo CNPJ", "fontes públicas", "companhias abertas"])
       expect(texto).toContain(rotulo);
-    expect(texto).toContain(`Medido em ${baseEmNumeros.medido_em_curto}`);
+    // duas datas: a da lista de tabelas montadas (tabelas e fontes) e a da fotografia das companhias
+    expect(texto).toContain(
+      `Tabelas e fontes em ${catalogo.totais.tabelas_conferidas_em_curto} · companhias em ${baseEmNumeros.medido_em_curto}`,
+    );
     // cada número com a conta recolhida, que abre sem JavaScript
     expect(painel.match(/<details class="como-foi-calculado">/g)).toHaveLength(4);
     expect(painel).not.toMatch(/<details[^>]*\sopen/);
