@@ -464,7 +464,7 @@ const PASSOS_DA_CLI: [string, ReactNode][] = [
   [
     "Peça a chave",
     <>
-      A chave é da organização, a mesma que o conector usa para chamar a API. O acesso está em beta fechado, sem cobrança:{" "}
+      É a mesma chave do conector: uma por pessoa, criada pela organização. O acesso está em beta fechado, sem cobrança:{" "}
       <a href={COMO_PEDIR_A_CHAVE} rel="noopener">
         como pedir
       </a>
