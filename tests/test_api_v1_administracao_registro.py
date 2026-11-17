@@ -12,6 +12,7 @@ inventadas, todas em `exemplo.com`; eventos do Stripe inventados.
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -19,13 +20,15 @@ from fastapi.testclient import TestClient
 
 from src import administracao as adm
 from src import api
+from src import auditoria as registro_de_auditoria
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso
 from src.api_v1 import administracao as rotas_da_administracao
 from src.api_v1 import administracao_registro as rotas_do_registro
 from src.autenticacao import VARIAVEL_DOS_ADMINS
 from src.banco.modelo import auditoria, eventos_stripe, usuarios
 from src.banco.usuarios import entrar, mudar_papel
-from src.conformidade import registrar_aceite
+from src.conformidade import apagar_conta, registrar_aceite
+from src.exportacao_do_acervo import ACAO_ACERVO_EXPORTADO
 from tests.ajudantes_da_api import AGORA, da_sessao
 
 REGISTRO = "/v1/admin/registro"
@@ -303,10 +306,10 @@ def test_a_acao_de_outra_conta_nao_vem_marcada_como_sua(banco, app, chefe, carla
     assert linha["ator_email"] == "carla@exemplo.com"
 
 
-def test_acao_sem_ator_e_de_conta_apagada_saem_sem_email(banco, app, chefe):
-    """A conta apagada deixa a linha com o ator nulo (ou, no alvo, com um id que não é mais de ninguém):
+def test_acao_sem_ator_e_com_alvo_que_nao_e_conta_sai_sem_email(banco, app, chefe):
+    """A linha com o ator nulo e com um alvo que não é de conta nenhuma (organização, chave, operação):
     a resposta não inventa e-mail."""
-    sem_ator = _gravar(banco, "conta_excluida", alvo=ALVO_QUE_NAO_E_CONTA)
+    sem_ator = _gravar(banco, "conta_apagada", alvo=ALVO_QUE_NAO_E_CONTA)
     acoes = _cliente(banco, app, chefe).get(REGISTRO).json()["acoes"]
     linha = next(acao for acao in acoes if acao["id"] == sem_ator)
     assert linha["ator_id"] is None and linha["ator_email"] is None
@@ -314,6 +317,42 @@ def test_acao_sem_ator_e_de_conta_apagada_saem_sem_email(banco, app, chefe):
     assert linha["alvo_email"] is None
     assert linha["foi_voce"] is False
     assert linha["detalhes"] == {}
+
+
+def test_conta_marcada_como_excluida_sai_sem_email(banco, app, chefe, carla):
+    """A marca de exclusão basta para o e-mail deixar de sair: fica só o id, como na conta apagada."""
+    id_ = _gravar(banco, "plano_alterado", ator=chefe.id, alvo=carla.id)
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.update(usuarios)
+            .where(usuarios.c.id == carla.id)
+            .values(excluido_em=datetime.now(UTC))
+        )
+    acoes = _cliente(banco, app, chefe).get(REGISTRO).json()["acoes"]
+    acao = next(linha for linha in acoes if linha["id"] == id_)
+    assert acao["alvo_id"] == str(carla.id)
+    assert acao["alvo_email"] is None
+    assert acao["ator_email"] == chefe.email
+
+
+def test_a_conta_apagada_de_verdade_sai_do_registro_sem_email(banco, app, chefe, carla):
+    """O caminho real da exclusão (`apagar_conta`): o que a conta fez continua no registro, sem o
+    e-mail dela, e a própria exclusão entra como ação sem ator."""
+    email = carla.email
+    dela = _gravar(banco, "termos_aceitos", ator=carla.id, alvo=carla.id)
+    with banco.begin() as conexao:
+        assert apagar_conta(conexao, carla.id) is True
+    resposta = _cliente(banco, app, chefe).get(REGISTRO)
+    assert email not in resposta.text
+    acoes = resposta.json()["acoes"]
+    linha = next(acao for acao in acoes if acao["id"] == dela)
+    assert linha["ator_email"] is None and linha["alvo_email"] is None
+    assert linha["alvo_id"] == str(carla.id)
+    assert linha["foi_voce"] is False
+    apagada = next(acao for acao in acoes if acao["acao"] == "conta_apagada")
+    assert apagada["ator_id"] is None and apagada["ator_email"] is None
+    assert apagada["alvo_id"] == str(carla.id)
+    assert apagada["alvo_email"] is None
 
 
 def test_o_registro_cortado_avisa_que_ha_acoes_mais_antigas(
@@ -397,3 +436,27 @@ def test_a_lista_de_eventos_cortada_avisa(monkeypatch, banco, app, chefe):
     dados = _cliente(banco, app, chefe).get(EVENTOS).json()
     assert [e["id"] for e in dados["eventos"]] == ["evt_inventado_3", "evt_inventado_2"]
     assert dados["cortado"] is True
+
+
+TELA_DO_REGISTRO = (
+    Path(__file__).resolve().parent.parent
+    / "web"
+    / "src"
+    / "app"
+    / "telas"
+    / "RegistroDaAdministracao.tsx"
+)
+
+
+def test_a_tela_tem_um_rotulo_para_cada_acao_que_a_auditoria_grava():
+    """A tela escreve cada código por extenso; ação nova na auditoria sem rótulo apareceria como código
+    cru para o administrador. Este teste falha até o rótulo entrar em `ACOES`, na tela."""
+    codigos = {
+        valor
+        for nome, valor in vars(registro_de_auditoria).items()
+        if nome.startswith("ACAO_")
+    } | {ACAO_ACERVO_EXPORTADO}
+    assert len(codigos) > 40  # a lista foi achada mesmo
+    tela = TELA_DO_REGISTRO.read_text(encoding="utf-8")
+    sem_rotulo = sorted(codigo for codigo in codigos if f'\n  {codigo}: "' not in tela)
+    assert sem_rotulo == []

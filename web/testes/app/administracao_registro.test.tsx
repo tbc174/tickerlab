@@ -321,7 +321,7 @@ describe("o registro quando o servidor deixa de reconhecer o administrador", () 
     expect(leituras(buscar, ROTA_DA_LISTA)).toBe(2);
   });
 
-  it("a releitura recusada (404) tira da tela as ações que já tinham vindo", async () => {
+  it("a releitura recusada (404) vira página não encontrada, sem as ações que já tinham vindo", async () => {
     let admin = true;
     await abrirRegistro({
       lista: () => (admin ? respostaJson(200, LISTA) : respostaJson(404, RECUSA_DO_SERVIDOR)),
@@ -332,6 +332,27 @@ describe("o registro quando o servidor deixa de reconhecer o administrador", () 
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
     expect(await screen.findByRole("heading", { name: "Página não encontrada" })).toBeTruthy();
     expect(screen.queryByText(EMAIL_DA_COMUM)).toBeNull();
+  });
+
+  it("só o registro recusado (404): a aba fica, mas o que já tinha vindo sai da tela", async () => {
+    // as organizações continuam respondendo: quem tira as ações da tela é a própria aba, e não a
+    // Administração inteira saindo
+    let recusar = false;
+    const { buscar } = await abrirRegistro({
+      registro: () => (recusar ? respostaJson(404, RECUSA_DO_SERVIDOR) : respostaJson(200, REGISTRO)),
+    });
+    await screen.findByRole("table", { name: "Ações registradas" });
+    await screen.findByRole("table", { name: "Eventos do Stripe processados" });
+    recusar = true;
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    expect(await screen.findByText(/a sua conta pode ter deixado de ser administradora/)).toBeTruthy();
+    expect(screen.queryByRole("table", { name: "Ações registradas" })).toBeNull();
+    expect(screen.queryByRole("table", { name: "Eventos do Stripe processados" })).toBeNull();
+    expect(screen.queryByText(EMAIL_DA_COMUM)).toBeNull();
+    expect(screen.queryByText("evt_inventado_1")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Registro" })).toBeTruthy();
+    // a tela perguntou de novo ao servidor quem é esta conta
+    await waitFor(() => expect(leituras(buscar, ROTA_DA_LISTA)).toBe(2));
   });
 
   it("conta comum não vê a aba nem faz pedido nenhum à Administração", async () => {

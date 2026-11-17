@@ -22,7 +22,9 @@ const TAMANHO_DO_ID_CURTO = 8;
 const LEITURA_NAO_RECONHECIDA =
   "O servidor não reconheceu o pedido: a sua conta pode ter deixado de ser administradora.";
 
-// os rótulos do que a auditoria grava em código; código que a tela ainda não conhece aparece como veio
+// os rótulos do que a auditoria grava em código (os `ACAO_...` de src/auditoria.py e o de
+// src/exportacao_do_acervo.py; há teste em tests/ que cobra um rótulo para cada um); código que a tela
+// ainda não conhece aparece como veio
 const ACOES: Record<string, string> = {
   plano_alterado: "Plano alterado",
   papel_alterado: "Papel alterado",
@@ -50,6 +52,27 @@ const ACOES: Record<string, string> = {
   newsletter_cancelada: "Newsletter: cancelamento",
   novidades_inscrita: "Novidades: inscrição",
   novidades_cancelada: "Novidades: cancelamento",
+  carteira_consentida: "Carteira: consentimento",
+  carteira_revogada: "Carteira: consentimento revogado",
+  operacao_criada: "Sala: operação criada",
+  operacao_encerrada: "Sala: operação encerrada",
+  operacao_prorrogada: "Sala: prazo prorrogado",
+  operacao_apagada: "Sala: operação apagada",
+  operacao_expirada: "Sala: operação expirada",
+  documento_enviado: "Sala: documento enviado",
+  documento_recusado: "Sala: documento recusado",
+  documento_baixado: "Sala: documento baixado",
+  documento_apagado: "Sala: documento apagado",
+  sala_baixada: "Sala: todos os documentos baixados",
+  negocio_aberto: "Negócio aberto",
+  negocio_fase_mudada: "Negócio: fase mudada",
+  negocio_atualizado: "Negócio atualizado",
+  contato_registrado: "Negócio: contato registrado",
+  contato_apagado: "Negócio: contato apagado",
+  exposicao_registrada: "Exposição registrada",
+  exposicao_apagada: "Exposição apagada",
+  garantia_registrada: "Garantia registrada",
+  garantia_apagada: "Garantia apagada",
 };
 
 const aAcao = (codigo: string) => ACOES[codigo] ?? codigo;
