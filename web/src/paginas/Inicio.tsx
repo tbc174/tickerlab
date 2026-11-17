@@ -38,8 +38,8 @@ const ROTAS_DA_API = `${URL_DA_API}/#catalogo`;
 const milhares = (n: number) => n.toLocaleString("pt-BR");
 
 // --- a janela do topo: o mesmo pedido pelas três portas e a resposta que a API devolve ---------------------
-// A empresa é a Petrobras (CNPJ de companhia aberta, público). O valor fica como marcador e as datas são as do
-// exemplo do TickerLab Data: a forma é a real, o número não é inventado.
+// A empresa é a Petrobras (CNPJ de companhia aberta, público). O valor fica como marcador; as datas são as da
+// amostra da CVM abaixo, e a data da pergunta sai da mesma constante do pedido (nunca digitada duas vezes).
 const CNPJ_DO_EXEMPLO = "33000167000101";
 // uma resposta de verdade: a DFP 2024 da Petrobras, entregue à CVM em 26/02/2025 (a amostra dos testes,
 // `tests/arquivos/cvm/fundamentos/dfp_cia_aberta_2024.zip`; `tests/test_site.py` confere as datas no arquivo)
@@ -49,6 +49,8 @@ export const RESPOSTA_DO_EXEMPLO = {
   periodo: "2024-12-31",
   publicado: "2025-02-26",
 };
+/** "2025-06-30" → "30/06/2025". */
+const dataBr = (iso: string) => iso.split("-").reverse().join("/");
 
 type Trecho = [classe: "" | "k" | "s" | "n" | "c" | "eu", texto: string];
 const PEDIDOS: { porta: string; nome: string; linhas: Trecho[][] }[] = [
@@ -57,7 +59,7 @@ const PEDIDOS: { porta: string; nome: string; linhas: Trecho[][] }[] = [
     nome: "Conector",
     linhas: [
       [["c", "# no Claude, com o conector do TickerLab"]],
-      [["eu", "As contas da Petrobras como estavam públicas em 30/09/2024."]],
+      [["eu", `As contas da Petrobras como estavam públicas em ${dataBr(DIA_DO_EXEMPLO)}.`]],
       [["c", "# a IA chama a ferramenta do conector"]],
       [
         ["k", "demonstracoes"],
@@ -717,7 +719,7 @@ const INSTANTES: [string, string, string, string, Vigencia][] = [
     "mar 2024",
     "março de 2024",
     "Antes da DFP 2024: o último anual público é o de 2023, e o de 2024 ainda não existe.",
-    ["DFP", "2023-12-31", "2024-03-07", "2025-02-27"],
+    ["DFP", "2023-12-31", "2024-03-07", RESPOSTA_DO_EXEMPLO.publicado],
   ],
   [
     "2024-09-30",
@@ -731,7 +733,7 @@ const INSTANTES: [string, string, string, string, Vigencia][] = [
     "abr 2025",
     "abril de 2025",
     "Depois da DFP 2024: o valor anual do exercício de 2024 já está público.",
-    ["DFP", "2024-12-31", "2025-02-27", null],
+    ["DFP", RESPOSTA_DO_EXEMPLO.periodo, RESPOSTA_DO_EXEMPLO.publicado, null],
   ],
 ];
 

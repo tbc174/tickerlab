@@ -96,6 +96,13 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     const pedidos = [...janela.matchAll(/<pre class="janela-pedido guia-painel" data-porta="([a-z]+)"[^>]*>([\s\S]*?)<\/pre>/g)];
     expect(pedidos.map((m) => m[1])).toEqual(["conector", "cli", "api"]);
     const [conector, cli, api] = pedidos.map((m) => desesc(semTags(m[2])));
+    // a pergunta de quem escreve e a chamada da ferramenta falam do mesmo dia (senão a resposta olharia o futuro)
+    const diaDaChamada = conector.match(/como_era_em="(\d{4})-(\d{2})-(\d{2})"/);
+    const diaDaFrase = conector.match(/públicas em (\d{2})\/(\d{2})\/(\d{4})\./);
+    expect(diaDaChamada && diaDaFrase).toBeTruthy();
+    expect([diaDaFrase?.[3], diaDaFrase?.[2], diaDaFrase?.[1]]).toEqual(diaDaChamada?.slice(1));
+    // as três portas pedem o mesmo dia
+    for (const pedido of [cli, api]) expect(pedido).toContain(diaDaChamada?.slice(1).join("-"));
     // o conector chama uma ferramenta que existe, com o parâmetro de data que ela aceita
     const ferramenta = conector.match(/^([a-z_]+)\(cnpj=/m)?.[1] ?? "";
     expect(FERRAMENTAS).toMatch(new RegExp(`async def ${ferramenta}\\(\\s*cnpj: Cnpj,\\s*como_era_em`));
@@ -227,6 +234,11 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
       expect(texto, dia).toContain(`known_at=${dia}`);
       expect(texto, dia).toContain('"value": <valor da fonte>');
     }
+    // a DFP 2024 é a mesma da janela do topo: a mesma data real de entrega (a da amostra da CVM)
+    const dfp2024 = respostas.map(([, , corpo]) => desesc(semTags(corpo))).filter((t) => t.includes('"2024-12-31"'));
+    expect(dfp2024).toHaveLength(1);
+    expect(dfp2024[0]).toContain(`"published_at": "${RESPOSTA_DO_EXEMPLO.publicado}"`);
+    expect(desesc(semTags(respostas[0][2]))).toContain(`"valid_until": "${RESPOSTA_DO_EXEMPLO.publicado}"`);
   });
 
   it("a demonstração da conversa vem depois do conector, dita gravada, com fonte e sem pessoa nem promessa", () => {
