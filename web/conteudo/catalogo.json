@@ -1713,7 +1713,7 @@
       "orgao": "SEFAZ-PE (Secretaria da Fazenda de Pernambuco)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-05",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -1728,7 +1728,7 @@
       "orgao": "Sefa-PR (Secretaria da Fazenda do Paraná)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-06",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -1743,7 +1743,7 @@
       "orgao": "SEF-MG (Secretaria de Estado de Fazenda de Minas Gerais)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-06",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -1758,7 +1758,7 @@
       "orgao": "Governo do Espírito Santo (dados abertos)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-06",
-      "uso": "em_uso"
+      "uso": "guardada"
     },
     {
       "coletas": [
@@ -2417,32 +2417,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 70
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Receita Federal",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 13
-    },
-    {
-      "historico_desde": "2010-01-01",
-      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
-      "modulos": [
-        "credito_e_fidc",
-        "governo_e_sancoes",
-        "macro",
-        "mercado_e_empresas"
-      ],
-      "orgao": "Banco Central",
-      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
-      "situacao": "licenciada",
-      "tabelas": 11
+      "tabelas": 65
     },
     {
       "historico_desde": "2026-10-14",
@@ -2468,6 +2443,31 @@
       "tabelas": 6
     },
     {
+      "historico_desde": "2010-01-01",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "modulos": [
+        "credito_e_fidc",
+        "governo_e_sancoes",
+        "macro",
+        "mercado_e_empresas"
+      ],
+      "orgao": "Banco Central",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 6
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Receita Federal",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 5
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "modulos": [
@@ -2475,18 +2475,6 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 4
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANTT",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 4
@@ -2525,45 +2513,12 @@
       "tabelas": 4
     },
     {
-      "historico_desde": "2026-11-04",
-      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Ministério da Saúde (DATASUS)",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 4
-    },
-    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "modulos": [
         "mercado_e_empresas"
       ],
       "orgao": "ANP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 3
-    },
-    {
-      "historico_desde": "2025-01-01",
-      "licenca": "DJEN do CNJ, público; citar CNJ e tribunal; sem a Justiça do Trabalho",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "CNJ",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 3
-    },
-    {
-      "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "MAPA",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
@@ -2580,27 +2535,16 @@
       "tabelas": 3
     },
     {
-      "historico_desde": "2026-09-08",
-      "licenca": "Receita (DIRBI, ECF, PERSE, II/IPI): sem licença; risco assumido",
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
       "modulos": [
         "governo_e_sancoes",
         "mercado_e_empresas"
       ],
-      "orgao": "Receita Federal (renúncias)",
+      "orgao": "ANTT",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 3
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "TCE-PE: licença não localizada; risco assumido",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "TCE-PE",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 3
+      "tabelas": 2
     },
     {
       "historico_desde": "2026-10-14",
@@ -2626,34 +2570,12 @@
       "tabelas": 2
     },
     {
-      "historico_desde": "2026-07-28",
-      "licenca": "Transações da Receita: sem licença escrita; risco assumido",
+      "historico_desde": "2026-11-04",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
       "modulos": [
         "governo_e_sancoes"
       ],
-      "orgao": "Receita Federal (transações)",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-11-06",
-      "licenca": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "SEF-MG",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-11-05",
-      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "SEFAZ-PE",
+      "orgao": "Ministério da Saúde (DATASUS)",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2679,50 +2601,6 @@
       "orgao": "ANAC",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-17",
-      "licenca": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANM (TAH)",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-17",
-      "licenca": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANP (tancagem)",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-17",
-      "licenca": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "Anatel (PADOs)",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-17",
-      "licenca": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "Anatel (homologados)",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -2836,17 +2714,6 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-11-06",
-      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Governo do ES",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "2026-10-14",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "modulos": [
@@ -2892,6 +2759,17 @@
     },
     {
       "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MAPA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-29",
       "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
       "modulos": [
         "governo_e_sancoes"
@@ -2908,17 +2786,6 @@
         "governo_e_sancoes"
       ],
       "orgao": "MTE",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-17",
-      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "MTE (PAT)",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
@@ -2946,50 +2813,6 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-11-06",
-      "licenca": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Sefa-PR",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "TCE-CE: licença não localizada; risco assumido",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "TCE-CE",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "TCE-RS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "TCE-SP: licença não localizada; risco assumido",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "TCE-SP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "modulos": [
@@ -3013,8 +2836,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 31,
-    "tabelas": 158,
+    "orgaos": 22,
+    "tabelas": 112,
     "temas": [
       {
         "chave": "cvm",
@@ -3031,38 +2854,32 @@
           "Receita Federal",
           "CVM"
         ],
-        "tabelas": 9,
-        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação.",
+        "tabelas": 7,
+        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 7 de 9 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Quem é dono e quem controla"
       },
       {
         "chave": "cadastro",
         "orgaos": [
-          "Receita Federal",
-          "Receita Federal (renúncias)"
+          "Receita Federal"
         ],
-        "tabelas": 11,
-        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional, a forma de tributação do lucro declarada na ECF e o que mudou de um mês para o outro.",
+        "tabelas": 4,
+        "texto": "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples Nacional, a forma de tributação do lucro declarada na ECF e o que mudou de um mês para o outro. Hoje estão montadas 4 de 11 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Cadastro e situação na Receita"
       },
       {
         "chave": "riscos",
         "orgaos": [
           "PGFN",
-          "Sefa-PR",
-          "SEF-MG",
           "CGU",
           "ANS",
           "ANEEL",
-          "Anatel (PADOs)",
-          "Banco Central",
           "MTE",
           "IBAMA",
-          "CNJ",
           "CVM"
         ],
-        "tabelas": 14,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
+        "tabelas": 8,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 8 de 14 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -3072,33 +2889,19 @@
           "SUSEP",
           "Anvisa",
           "ANP",
-          "ANP (tancagem)",
           "ANTT",
-          "Banco Central",
           "MAPA",
           "ANEEL",
           "Anatel",
-          "Anatel (homologados)",
           "ANM",
-          "ANM (TAH)",
           "CMED (Anvisa)",
           "Ancine",
           "Ministério da Saúde (DATASUS)",
-          "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 31,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI.",
+        "tabelas": 19,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 19 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
-      },
-      {
-        "chave": "saude",
-        "orgaos": [
-          "Ministério da Saúde (DATASUS)"
-        ],
-        "tabelas": 2,
-        "texto": "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês a mês, nos dados abertos do DATASUS, sem nada do paciente.",
-        "titulo": "Atendimento pelo SUS"
       },
       {
         "chave": "dinheiro_publico",
@@ -3107,18 +2910,10 @@
           "Finep",
           "MME",
           "ANEEL",
-          "TCE-PE",
-          "TCE-SP",
-          "TCE-CE",
-          "TCE-RS",
-          "Banco Central",
-          "SEFAZ-PE",
-          "Governo do ES",
-          "Receita Federal (renúncias)",
-          "Receita Federal (transações)"
+          "Banco Central"
         ],
-        "tabelas": 18,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central.",
+        "tabelas": 5,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 5 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       }
     ]
@@ -3127,17 +2922,17 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 86
+      "tabelas": 69
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 68
+      "tabelas": 37
     },
     {
       "chave": "credito_e_fidc",
       "nome": "Crédito e FIDC",
-      "tabelas": 21
+      "tabelas": 20
     },
     {
       "chave": "macro",
@@ -7930,17 +7725,6 @@
       "tabela": "susep_seguros"
     },
     {
-      "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
-      "consultavel": false,
-      "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base.",
-      "frequencia": "Mensal",
-      "historico_desde": "2010-01-01",
-      "modulo": "mercado_e_empresas",
-      "orgao": "CVM",
-      "situacao": "licenciada",
-      "tabela": "amostra_painel"
-    },
-    {
       "atraso": "Nenhum",
       "consultavel": false,
       "frase": "Os códigos das fontes setoriais.",
@@ -8095,83 +7879,6 @@
       "tabela": "cnpj_situacao_especial"
     },
     {
-      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
-      "frase": "Estabelecimentos (matriz e filiais) do CNPJ aberto da Receita, o retrato mais recente: situação cadastral, datas, atividade (CNAE), endereço e situação especial.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_estabelecimentos"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
-      "frase": "O que mudou de um mês para o outro em cnpj_estabelecimentos: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_estabelecimentos_mudancas"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
-      "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa do CNPJ aberto da Receita, o retrato mais recente, com as datas de opção e de exclusão.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_simples"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
-      "frase": "O que mudou de um mês para o outro em cnpj_simples: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_simples_mudancas"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
-      "frase": "Quadro de sócios e administradores das empresas do CNPJ aberto da Receita, o retrato mais recente.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_qsa"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar durante o mês",
-      "consultavel": false,
-      "frase": "O que mudou de um mês para o outro em cnpj_qsa: uma linha por entrada, saída ou mudança, com o valor de antes e o de depois; aplicadas em ordem sobre o retrato inicial.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_qsa_mudancas"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
-      "consultavel": false,
-      "frase": "Opção pelo Simples Nacional e pelo MEI de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública: a versão que vale na data D é a última com disponivel_em até D.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_simples_historico"
-    },
-    {
       "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
       "consultavel": false,
       "frase": "Situação cadastral de cada estabelecimento (01 nula, 02 ativa, 03 suspensa, 04 inapta, 08 baixada), com a data e o motivo, versão por versão desde 05/2023 e com desde quando cada uma era pública.",
@@ -8181,17 +7888,6 @@
       "orgao": "Receita Federal",
       "situacao": "licenciada",
       "tabela": "cnpj_situacao_cadastral"
-    },
-    {
-      "atraso": "A Receita põe a pasta do mês no ar por volta do dia 14",
-      "consultavel": false,
-      "frase": "Natureza jurídica e razão social de cada empresa, versão por versão desde 05/2023, com desde quando cada uma era pública.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-14",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal",
-      "situacao": "licenciada",
-      "tabela": "cnpj_empresas_historico"
     },
     {
       "atraso": "A Receita põe a pasta do mês no ar durante o mês",
@@ -8238,72 +7934,6 @@
       "tabela": "anvisa_por_empresa"
     },
     {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Benefício fiscal que cada empresa declarou à Receita na DIRBI (Declaração de Incentivos, Renúncias, Benefícios e Imunidades de Natureza Tributária), por mês, código do regime e tributo.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-09-08",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal (renúncias)",
-      "situacao": "licenciada",
-      "tabela": "receita_dirbi"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Incentivos de IRPJ e CSLL que a empresa declarou na ECF (Escrituração Contábil Fiscal), uma linha por CNPJ, SCP e período da escrituração, com a forma de tributação e cada benefício em reais.",
-      "frequencia": "Anual",
-      "historico_desde": "2026-09-19",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal (renúncias)",
-      "situacao": "licenciada",
-      "tabela": "receita_ecf_renuncia"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "A quem o Ministério da Agricultura habilitou exportar, para que país, em que área e produto (Serviço de Inspeção Federal, SIGSIF): uma linha por país, área, SIF e produto.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-02",
-      "modulo": "governo_e_sancoes",
-      "orgao": "MAPA",
-      "situacao": "licenciada",
-      "tabela": "sigsif_habilitados"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Quem tem registro no Serviço de Inspeção Federal (SIF) do Ministério da Agricultura, em que município e categoria: uma linha por CNPJ, número do SIF, área, categoria e município.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-02",
-      "modulo": "governo_e_sancoes",
-      "orgao": "MAPA",
-      "situacao": "licenciada",
-      "tabela": "sigsif_estabelecimentos"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Acordos de transação tributária individual deferidos pela Receita (Procuradoria-Geral da Fazenda Nacional e Receita): uma linha por CNPJ e processo, com a dívida transacionada.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-07-28",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal (transações)",
-      "situacao": "licenciada",
-      "tabela": "receita_transacoes_individual"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Adesões às modalidades de transação tributária (por exemplo a de pequeno valor e as dos editais), um pedido por linha, com a dívida, a redução, os créditos usados e o número de parcelas.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-11",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Receita Federal (transações)",
-      "situacao": "licenciada",
-      "tabela": "receita_transacoes_adesao"
-    },
-    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -8335,39 +7965,6 @@
       "orgao": "ANS",
       "situacao": "licenciada",
       "tabela": "ans_penalidades"
-    },
-    {
-      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
-      "consultavel": true,
-      "frase": "Processos judiciais por companhia aberta: as comunicações.",
-      "frequencia": "Semanal",
-      "historico_desde": "2025-01-01",
-      "modulo": "governo_e_sancoes",
-      "orgao": "CNJ",
-      "situacao": "licenciada",
-      "tabela": "processos_comunicacoes"
-    },
-    {
-      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
-      "consultavel": false,
-      "frase": "Processos judiciais por companhia aberta: as companhias (com o CNPJ) e os órgãos públicos de cada comunicação, com o polo.",
-      "frequencia": "Semanal",
-      "historico_desde": "2025-01-01",
-      "modulo": "governo_e_sancoes",
-      "orgao": "CNJ",
-      "situacao": "licenciada",
-      "tabela": "processos_partes"
-    },
-    {
-      "atraso": "A comunicação vale desde o dia em que foi disponibilizada no DJEN",
-      "consultavel": true,
-      "frase": "Processos judiciais por companhia aberta: uma linha por processo, com o que a primeira comunicação diz e a classe pela TPU do CNJ.",
-      "frequencia": "Semanal",
-      "historico_desde": "2025-01-01",
-      "modulo": "governo_e_sancoes",
-      "orgao": "CNJ",
-      "situacao": "licenciada",
-      "tabela": "processos"
     },
     {
       "atraso": null,
@@ -8467,72 +8064,6 @@
       "orgao": "Banco Central",
       "situacao": "licenciada",
       "tabela": "bcb_rde_ied"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-05",
-      "modulo": "governo_e_sancoes",
-      "orgao": "SEFAZ-PE",
-      "situacao": "licenciada",
-      "tabela": "sefaz_pe_beneficios"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) por CNPJ, com o valor, a data da inscrição, a suspensão, a garantia e o parcelamento.",
-      "frequencia": "Semanal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Sefa-PR",
-      "situacao": "licenciada",
-      "tabela": "sefa_pr_divida_ativa"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Certidões de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG, Resolução Conjunta SEF/AGE 5.625/2022) por CNPJ, com a espécie, a data da inscrição e o saldo.",
-      "frequencia": "Semanal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "SEF-MG",
-      "situacao": "licenciada",
-      "tabela": "sef_mg_divida_ativa"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Parcelamentos de dívida ativa de pessoas jurídicas de Minas Gerais (SEF-MG) por CNPJ, com a espécie, a data, a quantidade de parcelas e o débito.",
-      "frequencia": "Semanal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "SEF-MG",
-      "situacao": "licenciada",
-      "tabela": "sef_mg_parcelamentos"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Pagamentos do governo de Pernambuco a fornecedores, por CNPJ, com a unidade gestora, o empenho, o dia da liquidação, o dia do pagamento e o valor pago.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "SEFAZ-PE",
-      "situacao": "licenciada",
-      "tabela": "sefaz_pe_ordem_cronologica"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
-      "frase": "Pagamentos do governo do Espírito Santo a fornecedores, por CNPJ, com a unidade gestora, o empenho, a nota de liquidação, o dia da liquidação, o dia da ordem bancária e o valor pago.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Governo do ES",
-      "situacao": "licenciada",
-      "tabela": "es_ordem_cronologica"
     },
     {
       "atraso": null,
@@ -8788,149 +8319,6 @@
       "tabela": "aneel_termos_de_notificacao"
     },
     {
-      "atraso": "O Banco Central não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "As entidades que o Banco Central supervisiona (bancos, cooperativas, administradoras de consórcio, instituições de pagamento...), por CNPJ: a situação, o tipo.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Banco Central",
-      "situacao": "licenciada",
-      "tabela": "bcb_supervisionadas"
-    },
-    {
-      "atraso": "O Banco Central não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "As cooperativas de crédito autorizadas pelo Banco Central, por CNPJ: classe (singular, central, confederação), tipo (atividade profissional, livre admissão...) e categoria.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Banco Central",
-      "situacao": "licenciada",
-      "tabela": "bcb_cooperativas"
-    },
-    {
-      "atraso": "O Banco Central não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "Os correspondentes no País que instituições financeiras contratam, pela raiz do CNPJ do correspondente e do contratante: tipo, município.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Banco Central",
-      "situacao": "licenciada",
-      "tabela": "bcb_correspondentes"
-    },
-    {
-      "atraso": "O Banco Central não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "As filiais das administradoras de consórcio, pela raiz do CNPJ da administradora: município, unidade da federação e o dia de início da filial.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Banco Central",
-      "situacao": "licenciada",
-      "tabela": "bcb_filiais_de_consorcio"
-    },
-    {
-      "atraso": "O Banco Central não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "Os regimes especiais que o Banco Central decretou em instituições (liquidação extrajudicial, intervenção, RAET), por CNPJ: o tipo, a unidade da federação e o dia de início.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Banco Central",
-      "situacao": "licenciada",
-      "tabela": "bcb_regimes_especiais"
-    },
-    {
-      "atraso": "A ANTT não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "Os operadores de transporte multimodal habilitados na ANTT, por CNPJ e certificado: unidade da federação, país de origem, número do certificado (COTM).",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "ANTT",
-      "situacao": "licenciada",
-      "tabela": "antt_operadores_multimodais"
-    },
-    {
-      "atraso": "A ANTT não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "As apólices de responsabilidade civil que os transportadores registram na ANTT, por CNPJ do segurado: a seguradora (raiz), o número da apólice, a vigência, quantos veículos.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-16",
-      "modulo": "mercado_e_empresas",
-      "orgao": "ANTT",
-      "situacao": "licenciada",
-      "tabela": "antt_seguros_de_transportadores"
-    },
-    {
-      "atraso": "A Receita não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "O regime de tributação do lucro que cada empresa declarou na ECF, por ano: lucro presumido, real ou arbitrado, imune ou isenta, e quantas escriturações entregou.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-17",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Receita Federal (renúncias)",
-      "situacao": "licenciada",
-      "tabela": "receita_regime_tributario"
-    },
-    {
-      "atraso": "A fonte não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "As empresas inscritas no Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho: beneficiárias (dão alimentação aos empregados).",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-17",
-      "modulo": "mercado_e_empresas",
-      "orgao": "MTE (PAT)",
-      "situacao": "em consulta",
-      "tabela": "mte_pat"
-    },
-    {
-      "atraso": "A fonte não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "A Taxa Anual por Hectare (TAH) que cada titular de processo minerário paga à ANM: processo, fase, superintendência, área em hectares, valor pago e valor cobrado, por quitação.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-17",
-      "modulo": "mercado_e_empresas",
-      "orgao": "ANM (TAH)",
-      "situacao": "em consulta",
-      "tabela": "anm_tah"
-    },
-    {
-      "atraso": "A fonte não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "Os processos sancionadores da Anatel (PADOs) contra empresas: tema, serviço, situação e fase do processo, multa aplicada e situação do pagamento.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-17",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Anatel (PADOs)",
-      "situacao": "em consulta",
-      "tabela": "anatel_pados"
-    },
-    {
-      "atraso": "A fonte não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "Os produtos de telecomunicações que cada empresa homologou na Anatel: número da homologação, certificado de conformidade, modelo, nome comercial, categoria, tipo.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-17",
-      "modulo": "mercado_e_empresas",
-      "orgao": "Anatel (homologados)",
-      "situacao": "em consulta",
-      "tabela": "anatel_produtos_homologados"
-    },
-    {
-      "atraso": "A fonte não escreve a data de publicação",
-      "consultavel": false,
-      "frase": "Os tanques das instalações autorizadas pela ANP no abastecimento de combustíveis (bases de distribuição, terminais, produtores...): município, segmento, tipo de unidade.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-17",
-      "modulo": "mercado_e_empresas",
-      "orgao": "ANP (tancagem)",
-      "situacao": "em consulta",
-      "tabela": "anp_tancagem"
-    },
-    {
       "atraso": null,
       "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
@@ -8951,94 +8339,6 @@
       "orgao": "Ministério da Saúde (DATASUS)",
       "situacao": "licenciada",
       "tabela": "cnes_competencias"
-    },
-    {
-      "atraso": null,
-      "consultavel": true,
-      "frase": "Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do estabelecimento e o da mantenedora.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Ministério da Saúde (DATASUS)",
-      "situacao": "licenciada",
-      "tabela": "sus_internacoes"
-    },
-    {
-      "atraso": null,
-      "consultavel": true,
-      "frase": "Produção ambulatorial do SUS por estabelecimento e mês (SIA, arquivos PA), com o CNPJ do estabelecimento e o da mantenedora.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-06",
-      "modulo": "governo_e_sancoes",
-      "orgao": "Ministério da Saúde (DATASUS)",
-      "situacao": "licenciada",
-      "tabela": "sus_ambulatorial"
-    },
-    {
-      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
-      "consultavel": false,
-      "frase": "Contratos do TCE-PE (estaduais e municipais) por contratado.",
-      "frequencia": "Anual",
-      "historico_desde": "2026-11-04",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCE-PE",
-      "situacao": "licenciada",
-      "tabela": "tce_pe_contratos"
-    },
-    {
-      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
-      "consultavel": false,
-      "frase": "Termos aditivos dos contratos do TCE-PE por contratado.",
-      "frequencia": "Anual",
-      "historico_desde": "2026-11-04",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCE-PE",
-      "situacao": "licenciada",
-      "tabela": "tce_pe_aditivos"
-    },
-    {
-      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
-      "consultavel": false,
-      "frase": "Licitações do TCE-PE por licitante vencedor (LicitacoesDetalhes; só a linha do vencedor pessoa jurídica).",
-      "frequencia": "Anual",
-      "historico_desde": "2026-11-04",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCE-PE",
-      "situacao": "licenciada",
-      "tabela": "tce_pe_licitacoes"
-    },
-    {
-      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
-      "consultavel": false,
-      "frase": "Despesas dos municípios paulistas por fornecedor pessoa jurídica, um evento por linha.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-04",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCE-SP",
-      "situacao": "licenciada",
-      "tabela": "tce_sp_despesas"
-    },
-    {
-      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
-      "consultavel": false,
-      "frase": "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
-      "frequencia": "Sem calendário fixo",
-      "historico_desde": "2026-11-04",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCE-CE",
-      "situacao": "licenciada",
-      "tabela": "tce_ce_contratos"
-    },
-    {
-      "atraso": "Sem data de publicação na fonte: a linha vale desde o download",
-      "consultavel": false,
-      "frase": "Contratos do LicitaCon do TCE-RS por contratado (só contrato.csv; pessoas.csv nunca é aberto).",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-11-04",
-      "modulo": "governo_e_sancoes",
-      "orgao": "TCE-RS",
-      "situacao": "licenciada",
-      "tabela": "tce_rs_contratos"
     },
     {
       "atraso": "A linha vale desde a data em que a ANM a criou",
@@ -9162,17 +8462,6 @@
       "tabela": "securitizacao_certificados"
     },
     {
-      "atraso": "A entrega do informe à CVM",
-      "consultavel": true,
-      "frase": "Cedente e devedor de cada certificado (CRI, CRA e OTS) por mês, do quadro cedente_devedor do informe mensal da CVM.",
-      "frequencia": "Semanal",
-      "historico_desde": "2019-01-01",
-      "modulo": "credito_e_fidc",
-      "orgao": "CVM",
-      "situacao": "licenciada",
-      "tabela": "securitizacao_cedente_devedor"
-    },
-    {
       "atraso": "A entrega à CVM",
       "consultavel": false,
       "frase": "Texto das notas explicativas (e do resto do PDF) de cada versão de DFP, uma linha por página com texto, lido do PDF do pacote do ENET da CVM (linha 135 da fila).",
@@ -9237,39 +8526,6 @@
       "orgao": "Banco Central",
       "situacao": "licenciada",
       "tabela": "bcb_selic_focus"
-    },
-    {
-      "atraso": null,
-      "consultavel": true,
-      "frase": "O que a empresa disse no press-release de resultado contra o que entregou à CVM no ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e resultado operacional.",
-      "frequencia": "Semanal",
-      "historico_desde": "2010-01-01",
-      "modulo": "mercado_e_empresas",
-      "orgao": "CVM",
-      "situacao": "licenciada",
-      "tabela": "release_x_oficial"
-    },
-    {
-      "atraso": null,
-      "consultavel": true,
-      "frase": "Um fato por linha para as notas de dado: resultado trimestral (ITR e DFP), fato relevante (IPE) e reunião do Copom.",
-      "frequencia": "Diária",
-      "historico_desde": "2010-01-01",
-      "modulo": "mercado_e_empresas",
-      "orgao": "CVM",
-      "situacao": "licenciada",
-      "tabela": "noticias_fatos"
-    },
-    {
-      "atraso": null,
-      "consultavel": true,
-      "frase": "Um número por linha de cada fato de noticias_fatos, com a conta, o período, a versão e a data pública de onde saiu, e o cálculo quando o valor não é o publicado (trimestre isolado).",
-      "frequencia": "Diária",
-      "historico_desde": "2010-01-01",
-      "modulo": "mercado_e_empresas",
-      "orgao": "CVM",
-      "situacao": "licenciada",
-      "tabela": "noticias_numeros"
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
@@ -9494,10 +8750,10 @@
   ],
   "totais": {
     "familias": 133,
-    "familias_em_uso": 47,
-    "fontes": 54,
-    "fontes_em_consulta": 12,
+    "familias_em_uso": 43,
+    "fontes": 38,
+    "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 192
+    "tabelas": 143
   }
 }

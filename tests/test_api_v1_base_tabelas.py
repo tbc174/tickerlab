@@ -18,7 +18,7 @@ import duckdb
 import pandas as pd
 import pytest
 
-from base import prontidao
+from base import prontidao, vitrine
 from base.dicionario import TABELAS
 from base.dossie import (
     COLUNAS_DE_PESSOA,
@@ -147,6 +147,12 @@ def _prontidao_de_todas_do_cnpj() -> dict[str, prontidao.Prontidao]:
         for nome, versao in prontidao.versoes_maiores().items()
         if exige_prontidao_na_consulta_aberta(nome)
     }
+
+
+@pytest.fixture(autouse=True)
+def todas_montadas(monkeypatch):
+    """A lista só tem tabela montada (linha 916); aqui a lista do repositório não importa: todas contam."""
+    monkeypatch.setattr(vitrine, "tabelas_montadas", lambda *_: frozenset(TABELAS))
 
 
 @pytest.fixture
@@ -935,3 +941,27 @@ def test_ficam_em_casa_que_a_consulta_libera_estao_fechadas():
         if n in TABELAS and pode_consultar_aberto(n) and not e_do_cnpj(n)
     }
     assert not abertas, sorted(abertas)
+
+
+def test_a_lista_nao_anuncia_tabela_que_nao_esta_montada(cliente, monkeypatch):
+    monkeypatch.setattr(
+        vitrine, "tabelas_montadas", lambda *_: frozenset({"pgfn_divida"})
+    )
+    base_tabelas.limpar_cache()
+
+    nomes = {t["tabela"] for t in cliente.get(ROTA, headers=SITE).json()["tabelas"]}
+
+    assert nomes == {"pgfn_divida"}
+
+
+def test_tabela_servida_que_nao_esta_na_lista_de_montadas_continua_respondendo(
+    cliente, monkeypatch
+):
+    """A lista de montadas só tira a tabela do anúncio: quem consulta uma tabela que a porta serve (como a
+    Anvisa antes de entrar na lista) segue recebendo a resposta (linha 916, ponto 3 da Diretoria)."""
+    monkeypatch.setattr(vitrine, "tabelas_montadas", lambda *_: frozenset())
+    base_tabelas.limpar_cache()
+
+    assert cliente.get(ROTA, headers=SITE).json()["tabelas"] == []
+    assert cliente.get(f"{ROTA}/pgfn_divida", headers=SITE).status_code == 200
+    assert cliente.get(f"{ROTA}/pgfn_divida.csv", headers=SITE).status_code == 200
