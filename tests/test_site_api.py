@@ -101,3 +101,39 @@ def test_o_resto_da_api_segue_igual(cliente, monkeypatch):
     assert cliente.get("/qualquer-coisa").json() == {"detail": "Not Found"}
     assert cliente.get("/estatico/../src/api.py").status_code in (400, 404)
     assert cliente.get("/openapi.json").status_code == 404
+
+
+def test_raiz_e_so_referencia_e_aponta_para_o_site_unico():
+    """Um site só (linha 966, 16/11/2026): a raiz da API não vende, não tem preço nem chat nem um segundo
+    pedido de chave; mostra o catálogo de rotas, as regras e leva à documentação e a tickerlab.com.br."""
+    html = (PASTA / "index.html").read_text(encoding="utf-8")
+    assert 'id="catalogo"' in html and 'id="regras"' in html
+    assert 'href="/documentacao/"' in html
+    assert 'href="https://tickerlab.com.br/"' in html
+    for proibido in (
+        r"R\$",
+        r"\bpreços?\b",
+        "Planos por uso",
+        "grátis",
+        "chat",
+        "Perguntar à IA",
+        "Como pedir uma chave",
+    ):
+        assert not re.search(proibido, html, flags=re.IGNORECASE), proibido
+
+
+def test_paginas_so_carregam_scripts_que_existem():
+    for pagina in PAGINAS:
+        for script in re.findall(
+            r'<script src="/estatico/([^"]+)"', pagina.read_text(encoding="utf-8")
+        ):
+            assert (PASTA / "estatico" / script).is_file(), (
+                f"{pagina.name} carrega {script}, que não existe"
+            )
+
+
+def test_ancoras_da_documentacao_para_a_raiz_existem():
+    raiz = (PASTA / "index.html").read_text(encoding="utf-8")
+    docs = (PASTA / "documentacao" / "index.html").read_text(encoding="utf-8")
+    for ancora in set(re.findall(r'href="/#([\w-]+)"', docs)):
+        assert f'id="{ancora}"' in raiz, f"/#{ancora} não existe na raiz"
