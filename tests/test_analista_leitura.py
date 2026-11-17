@@ -27,7 +27,11 @@ from tests import test_api_externa_por_cnpj_ficha as ficha_de_mentira
 AGORA = empresas_de_mentira.AGORA
 HOJE = AGORA.date()
 EMPRESA = empresas_de_mentira.EMPRESA
-TABELAS_DA_FICHA = (*empresas.TABELAS, ficha.TABELA_DAS_ENTREGAS)
+TABELAS_DA_FICHA = (
+    *empresas.TABELAS,
+    ficha.TABELA_DO_ESTABELECIMENTO,
+    ficha.TABELA_DAS_ENTREGAS,
+)
 
 
 def _regras(tabelas=TABELAS_DA_FICHA) -> portao.Regras:

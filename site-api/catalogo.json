@@ -176,7 +176,10 @@
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
+      "cnae_principal",
+      "cnae_principal_texto",
       "data_exclusao_simples",
+      "data_inicio_atividade",
       "data_opcao_simples",
       "data_situacao_cadastral",
       "dias_uteis_de_atraso",
@@ -185,6 +188,8 @@
       "mes_do_retrato",
       "mes_do_retrato_do_cadastro",
       "motivo_situacao",
+      "municipio",
+      "municipio_texto",
       "natureza_juridica",
       "optante_simples",
       "prazo",
@@ -192,7 +197,9 @@
       "razao_social",
       "referencia",
       "situacao_cadastral",
-      "situacao_da_entrega"
+      "situacao_cadastral_texto",
+      "situacao_da_entrega",
+      "uf"
     ]
   },
   "prospecting": {

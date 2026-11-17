@@ -50,7 +50,10 @@ def _regras(tabelas=(*TABELAS_DA_FICHA, *TABELAS_DA_BUSCA)) -> portao.Regras:
 
 def base_de_teste(tmp_path):
     """A base da ficha com as tabelas da busca na mesma pasta (os testes da rota usam a mesma)."""
-    pasta = ficha_de_mentira._base(tmp_path, ficha_de_mentira._rotulos())
+    # a lista de estabelecimentos é a da busca (a ficha lê a mesma tabela, linha 955)
+    pasta = ficha_de_mentira._base(
+        tmp_path, ficha_de_mentira._rotulos(), estabelecimentos=False
+    )
     busca_de_mentira._gravar(
         pasta, prospeccao.ESTABELECIMENTOS, busca_de_mentira._estabelecimentos()
     )
