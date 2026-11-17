@@ -242,6 +242,12 @@ def tabelas_montadas(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> frozenset[str]
     return frozenset(json.loads(arquivo.read_text(encoding="utf-8"))["tabelas"])
 
 
+def tabelas_conferidas_em(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> str:
+    """O dia (AAAA-MM-DD) em que a lista de tabelas montadas foi conferida no acervo. É a data que fica ao
+    lado da contagem de tabelas: vem do arquivo, nunca digitada nem da fotografia dos outros números."""
+    return json.loads(arquivo.read_text(encoding="utf-8"))["conferido_em"]
+
+
 def catalogo_publico(catalogo: dict, montadas: frozenset[str] | None = None) -> dict:
     """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
     DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
