@@ -155,6 +155,7 @@ def _marca() -> dict:
         ],  # lista: a ordem vira a do CSS
         "site_escuro": [list(p) for p in marca.SITE_ESCURO.items()],
         "site_faixa_marinha": [list(p) for p in marca.SITE_FAIXA_MARINHA.items()],
+        "janela_de_codigo": dict(marca.JANELA_DE_CODIGO),
     }
 
 
@@ -405,6 +406,9 @@ def _catalogo() -> dict:
     return {
         "totais": {
             "tabelas": len(catalogo["tabelas"]),
+            "tabelas_conferidas_em_curto": vitrine.dia_e_mes(
+                vitrine.tabelas_conferidas_em()
+            ),
             "fontes": len(fontes),
             "fontes_em_consulta": sum(
                 f.situacao == vitrine.EM_CONSULTA for f in fontes
