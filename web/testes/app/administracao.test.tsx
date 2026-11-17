@@ -243,8 +243,8 @@ describe("a Administração para o administrador", () => {
     abrir();
     const link = await screen.findByRole("link", { name: "Abrir a Administração antiga" });
     expect(link.getAttribute("href")).toBe("/classico/admin");
-    // o que ainda não veio para cá: contas, registro, eventos de cobrança e acervo
-    expect(screen.getByText(/os eventos de cobrança e o acervo continuam na Administração antiga\./)).toBeTruthy();
+    // o que ainda não veio para cá: a exportação do acervo
+    expect(screen.getByText("A exportação do acervo continua na Administração antiga.")).toBeTruthy();
     expect(screen.queryByText(/assim como criar, suspender e reativar/)).toBeNull();
   });
 

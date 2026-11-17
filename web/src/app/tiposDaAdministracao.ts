@@ -1,8 +1,10 @@
-// O formato das respostas da Administração (src/api_v1/administracao.py e administracao_contas.py). Fora de
+// O formato das respostas da Administração (src/api_v1/administracao.py, administracao_contas.py e
+// administracao_registro.py). Fora de
 // tipos.ts de propósito: aquele arquivo é conferido contra o contrato público (docs/api/openapi-v1.json), e
 // estas rotas só abrem para administradores, então não estão nele. As organizações não trazem dado de conta
 // (só quantas estão vinculadas); o e-mail e o nome de uma conta vêm só em `ContaV1`, a lista de contas do
-// app, que fica no estado da tela e em mais lugar nenhum. O valor de uma chave só existe em `ChaveNovaV1`:
+// app, e em `AcaoV1`, o registro de ações (de quem fez e de quem sofreu a ação): ficam no estado da tela e
+// em mais lugar nenhum. O valor de uma chave só existe em `ChaveNovaV1`:
 // a resposta, uma única vez, de quem a emitiu ou trocou.
 
 export interface OrganizacaoDaListaV1 {
@@ -149,4 +151,43 @@ export interface ContasV1 {
 /** A resposta de bloquear: quantas sessões da conta o servidor encerrou. */
 export interface BloqueadaV1 {
   sessoes_encerradas: number;
+}
+
+/** Uma linha do registro de ações (a auditoria), como o administrador a vê. */
+export interface AcaoV1 {
+  id: string;
+  /** Quando foi, em UTC. */
+  quando: string;
+  /** O código gravado na auditoria (`plano_alterado`, `chave_emitida`...). */
+  acao: string;
+  /** Nulo: a conta que fez foi apagada, ou foi o próprio serviço. */
+  ator_id: string | null;
+  /** Só de conta que ainda existe. */
+  ator_email: string | null;
+  alvo_id: string | null;
+  /** Só quando o alvo é uma conta que ainda existe. */
+  alvo_email: string | null;
+  /** Foi a conta de quem está olhando. */
+  foi_voce: boolean;
+  /** Ids e dados técnicos, como a auditoria gravou. */
+  detalhes: Record<string, unknown>;
+}
+
+export interface RegistroV1 {
+  /** Das mais novas para as mais antigas. */
+  acoes: AcaoV1[];
+  /** Há ações mais antigas do que as que vieram. */
+  cortado: boolean;
+}
+
+/** Um evento do Stripe que o webhook processou. */
+export interface EventoDoStripeV1 {
+  id: string;
+  tipo: string;
+  processado_em: string;
+}
+
+export interface EventosDoStripeV1 {
+  eventos: EventoDoStripeV1[];
+  cortado: boolean;
 }

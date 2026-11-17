@@ -15,7 +15,9 @@ Conceder direito, vincular conta e ligar `pessoa_na_tela` não têm rota: seguem
 
 As contas do app (PR 4: números do serviço, busca, plano, papel, bloquear e desbloquear) ficam em
 `src/api_v1/administracao_contas.py`, importado aqui para registrar as rotas dele no mesmo `router`
-(o de `acesso_do_admin`): os mesmos endereços `/v1/admin/...`, com a mesma conferência.
+(o de `acesso_do_admin`): os mesmos endereços `/v1/admin/...`, com a mesma conferência. O registro de
+ações e os eventos do Stripe (PR 5, só leitura) ficam em `src/api_v1/administracao_registro.py`, que
+chega do mesmo jeito.
 
 Quem entra: a conta logada, com os termos aceitos **e** administradora no banco, conferida a cada pedido
 por `conta_admin`, que é dependência do router inteiro (uma rota nova aqui já nasce fechada; há teste que
@@ -49,7 +51,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src import administracao_das_chaves as adc
 from src.administracao import PermissaoNegadaError
-from src.api_v1 import administracao_contas
+from src.api_v1 import administracao_contas, administracao_registro
 from src.api_v1.acesso_do_admin import (
     Admin,
     Pedido,
@@ -62,9 +64,9 @@ from src.banco.conexao import obter_engine
 from src.planos import limites_da_api
 
 # os testes de estrutura e de troca de dependência acham a conferência do administrador por este módulo;
-# `administracao_contas` está aqui porque importá-lo é o que registra as rotas das contas no `router`
-# que o app recebe deste módulo (há teste que cobra)
-__all__ = ["administracao_contas", "conta_admin", "router"]
+# `administracao_contas` e `administracao_registro` estão aqui porque importá-los é o que registra as
+# rotas deles no `router` que o app recebe deste módulo (há teste que cobra)
+__all__ = ["administracao_contas", "administracao_registro", "conta_admin", "router"]
 
 ORGANIZACAO_INEXISTENTE = "Organização inexistente."
 CHAVE_INEXISTENTE = "Chave inexistente ou já revogada."

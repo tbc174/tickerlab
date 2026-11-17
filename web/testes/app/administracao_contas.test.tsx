@@ -224,9 +224,9 @@ describe("as abas da Administração", () => {
     await screen.findByRole("table", { name: "Contas encontradas" });
     expect(leituras(buscar, ROTA_DO_RESUMO)).toBe(1);
     expect(buscas(buscar)).toEqual([{ endereco: ROTA_DE_BUSCAR, corpo: { busca: "" } }]);
-    // as organizações saem da vista, e o que sobra na Administração antiga continua dito
+    // as organizações saem da vista, e as contas dizem onde se lê o que foi feito
     expect(screen.queryByRole("region", { name: "Organização Alfa" })).toBeNull();
-    expect(screen.getByText(/registro de ações, os eventos de cobrança e o acervo continuam/)).toBeTruthy();
+    expect(screen.getByText(/Toda mudança fica no registro de ações, na aba Registro\./)).toBeTruthy();
   });
 
   it("a chave nova na tela não se perde ao ir para as contas e voltar", async () => {
@@ -337,6 +337,31 @@ describe("a lista de contas", () => {
     for (const [endereco] of buscar.mock.calls) expect(endereco).not.toContain("comum");
     expect(window.location.href).not.toContain("comum");
     expect(guardado()).toBe(antes);
+  });
+
+  it("a resposta atrasada de uma busca antiga não toma o lugar da busca nova", async () => {
+    // a primeira busca (vazia) só responde depois da segunda: o que vale é a do último termo pedido
+    let soltarAAntiga: (resposta: Response) => void = () => undefined;
+    const antiga = new Promise<Response>((resolver) => {
+      soltarAAntiga = resolver;
+    });
+    const { buscar } = await abrirContas({
+      contas: (corpo) => ((corpo as { busca: string }).busca ? respostaJson(200, contas([DA_COMUM])) : antiga),
+    });
+    const formulario = screen.getByRole("search", { name: "Buscar contas" });
+    fireEvent.change(within(formulario).getByLabelText("Buscar por e-mail ou nome"), {
+      target: { value: EMAIL_DA_COMUM },
+    });
+    fireEvent.click(within(formulario).getByRole("button", { name: "Buscar" }));
+    expect(await screen.findByText(EMAIL_DA_COMUM)).toBeTruthy();
+    soltarAAntiga(respostaJson(200, CONTAS));
+    await antiga;
+    // dá tempo de a resposta velha ser lida e descartada
+    await new Promise((resolver) => setTimeout(resolver, 0));
+    expect(buscas(buscar)).toHaveLength(2);
+    expect(screen.queryByText(EMAIL_DA_ADMIN)).toBeNull();
+    expect(screen.queryByText(EMAIL_DA_BLOQUEADA)).toBeNull();
+    expect(screen.getByText(EMAIL_DA_COMUM)).toBeTruthy();
   });
 
   it("buscar de novo o mesmo termo refaz o pedido", async () => {

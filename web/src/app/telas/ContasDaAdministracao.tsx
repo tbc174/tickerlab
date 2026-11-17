@@ -519,8 +519,7 @@ export function ContasDoApp({ aoNaoAchar }: PropriedadesDasContas) {
         )}
         <p className="apagado">
           Mudar o plano aqui não cria nem cancela assinatura no Stripe. Bloquear encerra as sessões da conta na hora e
-          para o login; não apaga nada. Toda mudança fica no registro de ações, que por enquanto se lê na Administração
-          antiga.
+          para o login; não apaga nada. Toda mudança fica no registro de ações, na aba Registro.
         </p>
       </Secao>
     </>

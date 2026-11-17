@@ -1,4 +1,4 @@
-"""As contas do app na Administração do app novo (linha 955, PR 4): os números do serviço, a busca de
+"""As contas do app na Administração do app novo (linha 962, PR 4): os números do serviço, a busca de
 contas e as quatro mudanças da página antiga (plano, papel, bloquear e desbloquear).
 
 São as mesmas funções de `src/administracao.py` que a Administração antiga usa, numa transação por pedido;
@@ -30,7 +30,7 @@ from fastapi import Depends, HTTPException
 from pydantic import AfterValidator, BaseModel, Field
 
 from src import administracao as adm
-from src.api_v1.acesso_do_admin import Admin, Pedido, corpo, router
+from src.api_v1.acesso_do_admin import Admin, Pedido, corpo, leitura, router
 from src.banco.conexao import obter_engine
 from src.banco.modelo import MOTIVOS_DO_BLOQUEIO, PAPEIS, PLANOS
 
@@ -120,17 +120,6 @@ class BloqueadaV1(BaseModel):
 
 
 @contextmanager
-def _leitura() -> Iterator[sa.Connection]:
-    try:
-        with obter_engine().connect() as conexao:
-            yield conexao
-    except (
-        adm.PermissaoNegadaError
-    ) as erro:  # deixou de ser admin entre as duas leituras
-        raise HTTPException(status_code=404) from erro
-
-
-@contextmanager
 def _mudanca() -> Iterator[sa.Connection]:
     """Uma transação de escrita: a recusa da regra desfaz tudo e vira a resposta, com a frase da regra
     (as frases da regra não trazem e-mail nem o que veio no pedido)."""
@@ -168,7 +157,7 @@ def _conta(linha: adm.LinhaDeUsuario, de_quem_pede: uuid.UUID) -> ContaV1:
 def resumo(conta: Admin) -> ResumoV1:
     """Os números do serviço: contas por plano, administradores, novas e ativas na semana, simulações,
     assinaturas ativas e eventos do Stripe recebidos."""
-    with _leitura() as conexao:
+    with leitura() as conexao:
         numeros = adm.resumo_geral(conexao, conta.id)
     return ResumoV1(
         usuarios=numeros["usuarios"],
@@ -190,7 +179,7 @@ def buscar_contas(
 ) -> ContasV1:
     """As contas do app, mais novas primeiro; `busca` filtra por parte do e-mail ou do nome. É `POST`
     para o termo ir no corpo, e não no endereço."""
-    with _leitura() as conexao:
+    with leitura() as conexao:
         # uma a mais do que a tela mostra, só para saber se a lista foi cortada
         linhas = adm.listar_usuarios(
             conexao, conta.id, pedido.busca, LIMITE_DE_CONTAS + 1

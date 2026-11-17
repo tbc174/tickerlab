@@ -45,6 +45,7 @@ import {
 } from "./AcoesDaAdministracao";
 import { NaoEncontrada } from "./Avisos";
 import { ContasDoApp } from "./ContasDaAdministracao";
+import { RegistroDaAdministracao } from "./RegistroDaAdministracao";
 
 const SEM_PARAMETROS = {};
 const ROTA_DA_ORGANIZACAO = "/v1/admin/organizacao";
@@ -623,6 +624,7 @@ function Organizacoes({ lista, recarregar, aoChegarChave }: PropriedadesDasOrgan
 
 const ABA_DAS_ORGANIZACOES = "organizacoes";
 const ABA_DAS_CONTAS = "contas";
+const ABA_DO_REGISTRO = "registro";
 
 function AdministracaoAberta() {
   const { pedido: lista, ultimos, recarregar } = usarLeitura<OrganizacoesV1>(ROTA_DAS_ORGANIZACOES, SEM_PARAMETROS);
@@ -640,16 +642,14 @@ function AdministracaoAberta() {
     <section>
       <Cabecalho
         titulo={TITULO_DA_ADMINISTRACAO}
-        descricao="As organizações da API por chave (situação, consumo do mês, chaves e o que o contrato liga) e as contas do app (plano, papel e bloqueio)."
+        descricao="As organizações da API por chave (situação, consumo do mês, chaves e o que o contrato liga), as contas do app (plano, papel e bloqueio) e o registro do que foi feito."
         acoes={
           <a className="botao pequeno" href={linkDoClassico(ENDERECO_DA_ADMINISTRACAO)}>
             Abrir a Administração antiga
           </a>
         }
       />
-      <p className="apagado">
-        O registro de ações, os eventos de cobrança e o acervo continuam na Administração antiga.
-      </p>
+      <p className="apagado">A exportação do acervo continua na Administração antiga.</p>
       <Abas
         rotulo="Partes da Administração"
         aberta={aba}
@@ -681,6 +681,13 @@ function AdministracaoAberta() {
             rotulo: "Contas do app",
             sempreMontada: true,
             conteudo: contasAbertas ? <ContasDoApp aoNaoAchar={recarregar} /> : null,
+          },
+          {
+            chave: ABA_DO_REGISTRO,
+            rotulo: "Registro",
+            // montada só enquanto aberta: cada vez que a aba abre, o registro é lido de novo, e a mudança
+            // que acabou de ser feita nas outras abas já aparece
+            conteudo: <RegistroDaAdministracao aoNaoAchar={recarregar} />,
           },
         ]}
       />
