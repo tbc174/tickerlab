@@ -268,7 +268,7 @@ export function Dados() {
     >
       <h2 id={ancora(SECOES[0])}>{SECOES[0]}</h2>
       <p className="dados-resumo">
-        {`${totais.tabelas} tabelas, de ${totais.fontes} fontes públicas, em ${totais.modulos} módulos.`}
+        {`${totais.tabelas} tabelas (conferidas no acervo em ${totais.tabelas_conferidas_em_curto}), de ${totais.fontes} fontes públicas, em ${totais.modulos} módulos.`}
       </p>
       <NumerosDaBase />
       <p>

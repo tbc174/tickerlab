@@ -463,7 +463,7 @@ function PainelDaBase() {
         </header>
         <dl className="v2-base-numeros">
           <div>
-            <dt>tabelas, cada uma com contrato</dt>
+            <dt>{`tabelas, cada uma com contrato (conferidas em ${totais.tabelas_conferidas_em_curto})`}</dt>
             <dd className="v2-numero">{milhares(totais.tabelas)}</dd>
             <dd>
               <ComoFoiCalculado>
