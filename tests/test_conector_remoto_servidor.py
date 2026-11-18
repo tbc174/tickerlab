@@ -16,6 +16,7 @@ from tickerlab import comandos
 from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.saida import TETO_DE_CARACTERES
+from src.api_externa import pessoas
 from src.api_externa.conjuntos import (
     ativos,
     comparaveis,
@@ -301,6 +302,7 @@ def test_conjuntos_das_ferramentas_sao_os_da_api():
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
         demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
         eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO, ativos.CONJUNTO,
+        pessoas.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api
