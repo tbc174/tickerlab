@@ -47,6 +47,7 @@ SEM_PESSOA_PELA_RAIZ: dict[str, str] = {
     "emissores": "cnpj",
     "debentures_assembleias": "cnpj",
     "processos_nas_notas": "cnpj",
+    "cvm_fiagro": "cnpj",
 }
 
 # tabela → coluna que já é a raiz (8 posições): não há o CNPJ inteiro para conferir a forma
@@ -56,7 +57,10 @@ SO_A_RAIZ: dict[str, str] = {"empresa_serie": "raiz"}
 OUTRA_COLUNA: dict[str, str] = {"empresa_serie": "cnpj_companhia"}
 
 # tabela → coluna com a raiz já separada: a raiz do texto do CNPJ tem de ser igual a ela
-RAIZ_SEPARADA: dict[str, str] = {"cnpj_situacao_cadastral": "cnpj_basico"}
+RAIZ_SEPARADA: dict[str, str] = {
+    "cnpj_situacao_cadastral": "cnpj_basico",
+    "cvm_fiagro": "cnpj_basico",
+}
 
 
 class Cruzamento(NamedTuple):
