@@ -344,11 +344,6 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
         dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
     ),
-    "emissores": ProntidaoDePiloto(
-        versao_maior=1,
-        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
-        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
-    ),
     "debentures_assembleias": ProntidaoDePiloto(
         versao_maior=2,
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),

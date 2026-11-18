@@ -1,8 +1,8 @@
 """Lote 2A de tabelas ligadas pelo CNPJ no registro de piloto (linha 978; ADR 0108, Emenda 2, D11).
 
-Dez tabelas da CVM que já chegam ao servidor e não abriam por falta do registro de piloto: o FRE (comitês,
+Nove tabelas da CVM que já chegam ao servidor e não abriam por falta do registro de piloto: o FRE (comitês,
 distribuição de capital, diversidade, empregados, extremos da remuneração), os pareceres dos auditores (DFP e
-ITR), os emissores, as assembleias de debenturistas e os processos das notas explicativas. Cada uma tem as três
+ITR), as assembleias de debenturistas e os processos das notas explicativas. Cada uma tem as três
 coisas que o piloto cobra: a prova 7 (placar de qualidade de 18/11/2026, verde na VM), o dicionário escrito e a
 marca de pessoa decidida pela raiz (todo CNPJ dentro da `cnpj_empresas_pj`, medido por `conferir_sem_pessoa`).
 O que este arquivo cobra é o **registro de verdade**; a regra do portão fica em `test_prontidao.py`.
@@ -25,10 +25,14 @@ DO_LOTE_2A = (
     "fre_remuneracao_extremos",
     "pareceres_dfp",
     "pareceres_itr",
-    "emissores",
     "debentures_assembleias",
     "processos_nas_notas",
 )
+# Fica fora por data: a linha (emissor, cnpj) vale desde o primeiro FCA, mas `ultimo_ano`, `conflito` e `empresa`
+# são calculados sobre todo o histórico até a última carga (revisão cruzada de 18/11/2026). Quem consultasse
+# "como era em 2012" veria a sobrevivência até 2024 e um conflito de CNPJ que só nasceu em 2019. Só abre depois
+# de datar essas colunas (uma linha por FCA, como a `tickers_no_tempo`).
+FORA_POR_DATA = ("emissores",)
 # medidas em 18/11/2026 que ficaram de fora do lote: placar vermelho sem explicação escrita
 VERMELHAS_NA_MEDIDA = (
     "fre_capital_social",
@@ -100,3 +104,11 @@ def test_o_que_ficou_vermelho_na_medida_nao_entra_no_registro(tabela: str) -> No
     """Placar vermelho sem explicação escrita não tem a prova 7: a tabela fica fechada até a regra ser calibrada."""
     assert tabela not in prontidao.PRONTIDAO_DE_PILOTO
     assert tabela not in REGRAS
+
+
+@pytest.mark.parametrize("tabela", FORA_POR_DATA)
+def test_a_tabela_com_coluna_calculada_sobre_o_futuro_nao_entra_no_registro(
+    tabela: str,
+) -> None:
+    """O placar é verde e a raiz confere, mas o `publico_em` da linha não cobre as colunas do histórico inteiro."""
+    assert tabela not in prontidao.PRONTIDAO_DE_PILOTO
