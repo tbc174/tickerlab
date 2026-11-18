@@ -704,7 +704,7 @@ def cliente_da_vitrine() -> anthropic.Anthropic:
     if not chave:
         raise SystemExit(
             f"Falta {VARIAVEL_DA_CHAVE} no ambiente (a chave da vitrine, separada da dos rótulos): "
-            "rode projeto-acoes/configurar-chave-anthropic-vitrine-casa.ps1."
+            "rode projeto-acoes/infra/configurar-chave-anthropic-vitrine-casa.ps1."
         )
     return anthropic.Anthropic(api_key=chave)
 
