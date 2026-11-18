@@ -122,7 +122,7 @@ Pedido do Tiago (05/11/2026): crescer organizado, sem deixar coisa sem uso. Quat
   (não é merge de PR): gasto, inclusive o PR que liga um gasto novo; contrato; e-mail ou pedido a
   terceiro; segredo num servidor; e o que leva o nome ou o CNPJ dele. O resto do nível 1 que não é merge
   passa pela Diretoria (abaixo).
-- **Nada espera parecer jurídico** (Tiago, 06/11/2026: "Eu não quero esperar parecer jurídico pra mais nada"). Trava, tarefa ou texto que dizia "espera parecer" passa a ser decidido pela **nossa leitura do texto da norma**, com artigo e data, escrita no PR. Diante de dúvida, a leitura mais estreita. Não muda: as duas revisões antes do merge, as travas de licença (resposta do dono do dado), o que é só do Tiago e a LGPD (pessoa física continua fora). Score de crédito só de quem não emite valor mobiliário (leitura da CVM 9). Detalhe em `docs/virada-empresas-fechadas.md`.
+- **Nada espera parecer jurídico** (Tiago, 06/11/2026: "Eu não quero esperar parecer jurídico pra mais nada"). Trava, tarefa ou texto que dizia "espera parecer" passa a ser decidido pela **nossa leitura do texto da norma**, com artigo e data, escrita no PR. Diante de dúvida, a leitura mais estreita. Não muda: as duas revisões antes do merge, as travas de licença (resposta do dono do dado), o que é só do Tiago e a LGPD (pessoa física só pela "Exceção" de "Análises de empresa e de grupo"). Score de crédito só de quem não emite valor mobiliário (leitura da CVM 9). Detalhe em `docs/virada-empresas-fechadas.md`.
 - **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
   (mensagem entre sessões ou, para a IA que não recebe mensagens, escrita na passagem da tarefa), citando as
   palavras do Tiago (autorização dele em 20/10/2026). Essa ordem vale como a do Tiago para push, PR, merge
@@ -225,7 +225,7 @@ aberta, empresa fechada ou grupo. Em resumo: uma frase no topo, o mapa societár
 de sócios da Receita, linha do tempo, atividades com o ano de cada fonte, conferência nas bases oficiais
 (IBAMA, Lista Suja, sanções, dívida, terra) com a data de cada uma, fato separado de dedução, homônimos
 descartados à vista, o que não foi achado, comparação e fontes. Sem CPF, menor de idade, contato ou endereço
-residencial. O relatório de companhia aberta continua seguindo a análise completa da ADR 0100.
+residencial, salvo o que a "Exceção" abaixo libera. O relatório de companhia aberta continua seguindo a análise completa da ADR 0100.
 
 **Exceção** (Tiago, 10/11/2026, ADR 0128 Emenda 1: "eu quero que isso fique para a equipe"; alcance "Nome e
 contato"; ampliada em 18/11/2026, ADR 0128 Emenda 4: "foque em entregarmos uma análise com a maior riqueza de
@@ -236,10 +236,14 @@ no conector remoto é `pessoa_no_conector`, outra linha do contrato da organiza�
 tela não abra o conector sem querer. O que pode sair:
 
 - do cadastro público da Receita: nome do sócio ou administrador pessoa física, qualificação e data de entrada;
-  o titular do MEI e do empresário individual, **só o nome** (sem endereço e sem contato: o endereço do
-  estabelecimento costuma ser a casa da pessoa); telefone, e-mail e endereço do estabelecimento das demais empresas;
-- o que as bases oficiais dizem da própria pessoa, **só quando a ligação é pelo documento**, feita dentro do
-  servidor; ligação só pelo nome não entra (homônimo); processos só pelo DJEN, sem a Justiça do Trabalho.
+  o titular do MEI e do empresário individual, **só o nome**, sem os dígitos do CPF que a razão social traz, e sem
+  endereço e sem contato (o endereço do estabelecimento costuma ser a casa da pessoa); a mesma regra vale para a
+  sociedade de um sócio pessoa física só (unipessoal); telefone, e-mail e endereço do estabelecimento das demais
+  empresas;
+- o que as bases oficiais dizem da própria pessoa (sanções CEIS, CNEP e CEPIM, dívida ativa, autuação ambiental do
+  IBAMA, Lista Suja e processos), **só quando a ligação é pelo documento**, feita dentro do servidor; ligação só pelo
+  nome não entra (homônimo); processos só pelo DJEN, sem a Justiça do Trabalho e sem segredo de justiça. Base nova
+  de pessoa fora desta lista pede emenda.
 
 Nunca sai: CPF (inteiro, mascarado ou o documento usado na ligação), menor de idade, endereço residencial, dado
 sensível (LGPD, art. 11). A oposição do titular vale (quem pediu sai). API por chave de organização sem a permissão,
