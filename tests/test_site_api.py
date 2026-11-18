@@ -39,15 +39,21 @@ def test_numeros_da_cobertura_batem_com_o_codigo():
     html = (PASTA / "index.html").read_text(encoding="utf-8")
     catalogo = catalogo_do_site()
     fontes = {f for dono in catalogo.values() for f in dono["fontes"]}  # type: ignore[attr-defined]
+    # só as rotas do contrato público: a de pessoa (`/people`, ADR 0128, Emenda 4) não se anuncia
+    publicas = [r for r in router.routes if r.include_in_schema]  # type: ignore[attr-defined]
     rotas_de_dado = {
         r.path
-        for r in router.routes
+        for r in publicas
         if r.path not in ("/data/v1/catalog", "/data/v1/usage")  # type: ignore[attr-defined]
     }
     assert f'data-conta="conjuntos">{len(catalogo)}<' in html
     assert f'data-conta="fontes">{len(fontes)}<' in html
-    assert f'data-conta="rotas">{len(router.routes)}<' in html
-    assert len(rotas_de_dado) == len(router.routes) - 2
+    assert f'data-conta="rotas">{len(publicas)}<' in html
+    assert len(rotas_de_dado) == len(publicas) - 2
+
+
+def test_a_rota_de_pessoa_nao_aparece_no_site():
+    assert "/people" not in _texto_publico()
 
 
 def test_toda_rota_citada_no_site_existe_na_api():
