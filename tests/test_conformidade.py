@@ -277,7 +277,7 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         "consulta a base inteira num computador próprio, fora do app, inclusive pelo CPF",
         "Nada disso aparece para contas, organizações ou terceiros.",
         "Hoje essa cópia fica fechada: o site e a API que rodam nesse servidor não leem dados de pessoas.",
-        "**Para todas as contas, a API, a linha de comando, o site e o conector de IA**",
+        "**Para todas as contas, a linha de comando, o site, o chat de IA do app e a API e o conector de IA de quem não tem a permissão de ver pessoas**",
         "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
         "nunca para lhe oferecer algo como consumidor",
         "que um membro entrou nela, só com o número interno da conta apagada, e as consultas",
@@ -298,7 +298,7 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         "**com a empresa, sobre um negócio com a própria empresa**",
         "É proibido usar esses dados para marketing em massa",
         "também para a organização com a permissão de ver pessoas",
-        "a lista das organizações que têm essa permissão (LGPD, art. 18, VII)",
+        "a lista das organizações que têm uma dessas permissões, com qual das duas cada uma tem (LGPD, art. 18, VII)",
         "o nome da organização e desde quando você é membro",
         "**Nunca** o CNPJ consultado nem o nome de ninguém",
         "o vínculo com a organização",
@@ -309,6 +309,45 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         "telefone nem e-mail de ninguém",
         "entra no ar depois desta política",
         "a montagem da base de empresas ficam num servidor próprio",
+    ):
+        assert promessa_antiga not in privacidade, promessa_antiga
+
+
+def test_versao_19_diz_que_a_organizacao_com_a_segunda_permissao_recebe_pessoas_pela_api_e_pelo_conector():
+    """Texto 19 (18/11/2026; ADR 0128, Emenda 4): `pessoa_no_conector`, aprovado pelo Tiago ("Aprovo como está").
+
+    A política diz o que `src/api_externa/pessoas.py` e `conector_remoto/socios_e_donos.py` fazem: outra permissão,
+    desligada por padrão, só o nome, a qualificação e a data de entrada (e o nome do titular de MEI e de empresário
+    individual), nunca CPF, menor, endereço nem contato; o assistente de IA da organização responde como controlador
+    dela. Sem novo aceite: o aceite segue o da versão 18 (`VERSAO_DOS_TERMOS`), por decisão do Tiago.
+    """
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-14.15"
+    privacidade = conformidade.carregar_texto("privacidade")
+    topo = privacidade.splitlines()[2]
+    assert topo.startswith("Última atualização: 18/11/2026 (versão 19: ")
+    assert topo.index("versão 19") < topo.index("versão 18, de 14/11/2026")
+    versao_19 = topo[: topo.index("versão 18, de 14/11/2026")]
+    assert "esta versão não pede novo aceite" in versao_19
+    assert "pede novo aceite [" not in privacidade
+    for trecho in (
+        "outra permissão, desligada por padrão, recebe por uma chave da organização o nome dos sócios pessoa física",
+        "sem CPF, sem menor de idade, sem endereço e sem contato",
+        "**Para todas as contas, a linha de comando, o site, o chat de IA do app e a API e o conector de IA de quem não tem a permissão de ver pessoas**",
+        "- **Pela API e pelo conector de IA.** A organização cliente pode receber também uma segunda permissão",
+        "**Nunca**: CPF (nem mascarado), menor de idade e quem tem representante legal, data de nascimento ou faixa etária, endereço, telefone e e-mail.",
+        "é recusada inteira se trouxer algo disso",
+        "a chave, o tipo de dado e quantas pessoas vieram, sem o CNPJ nem os nomes",
+        "- **O assistente de IA da organização com a permissão de ver pessoas pelo conector**",
+        "O TickerLab não envia nada a esse provedor por conta própria.",
+        "essa transferência é da organização, como controladora",
+        "o seu nome sai da tela, da API e do conector de IA em até 15 dias",
+        "a lista das organizações que têm uma dessas permissões, com qual das duas cada uma tem (LGPD, art. 18, VII)",
+    ):
+        assert trecho in privacidade, trecho
+    for promessa_antiga in (
+        "**Para todas as contas, a API, a linha de comando, o site e o conector de IA**",
+        "enquanto o PR do contato",
+        "sai da tela e da API em até 15 dias",
     ):
         assert promessa_antiga not in privacidade, promessa_antiga
 
@@ -397,7 +436,7 @@ def test_versao_12_dos_termos_pede_novo_aceite_e_diz_as_copias_mensais_e_anuais(
         "oferta de produto ou serviço à pessoa, montagem de perfil de pessoa ou revenda de listas",
         "não tem busca por nome de pessoa nem por CPF",
         "Fonte: Receita Federal, dados abertos do CNPJ",
-        "sai da tela e da API em até 15 dias",
+        "sai da tela, da API e do conector de IA em até 15 dias",
         "privacidade@tickerlab.com.br",
         "Encarregado",
         "__Host-tl_sessao",
