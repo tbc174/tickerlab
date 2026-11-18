@@ -409,4 +409,38 @@ REGRAS: dict[str, Regra] = {
         periodo="competencia",
         valor="patrimonio_liquido",
     ),
+    # Lote 2A da linha 978 (piloto D11), medido em 18/11/2026 no acervo de casa: chave natural de cada registro (a do
+    # dicionário). As outras 13 tabelas do lote 2 mediram vermelho sem explicação escrita e não têm regra aqui até
+    # alguém medir a causa: fre_capital_social, fre_conselho, fre_remuneracao, ratings, valores_mobiliarios,
+    # tickers_no_tempo, codigos_invalidos, dmpl_como_era, insolvencia, negociacoes, anm_cfem_arrecadacao,
+    # painel_dos_fundos e securitizacao_certificados.
+    "fre_comites": Regra(
+        chave=("cnpj", "referencia", "versao", "tipo_de_comite"), periodo="referencia"
+    ),
+    "fre_distribuicao_capital": Regra(
+        chave=("cnpj", "referencia", "versao", "id_documento"), periodo="referencia"
+    ),
+    "fre_diversidade": Regra(
+        chave=("cnpj", "referencia", "versao", "orgao"), periodo="referencia"
+    ),
+    "fre_empregados": Regra(
+        chave=("cnpj", "referencia", "versao", "recorte", "grupo"), periodo="referencia"
+    ),
+    "fre_remuneracao_extremos": Regra(
+        chave=("cnpj", "referencia", "versao", "fim_do_exercicio", "orgao"),
+        periodo="referencia",
+        valor="media",
+    ),
+    "pareceres_dfp": Regra(
+        chave=("cnpj", "referencia", "versao"), periodo="referencia"
+    ),
+    "pareceres_itr": Regra(
+        chave=("cnpj", "referencia", "versao"), periodo="referencia"
+    ),
+    "emissores": Regra(chave=("emissor", "cnpj")),
+    "debentures_assembleias": Regra(chave=("link",), periodo="referencia"),
+    "processos_nas_notas": Regra(
+        chave=("cnpj", "referencia", "versao", "pagina", "numero_processo"),
+        periodo="referencia",
+    ),
 }
