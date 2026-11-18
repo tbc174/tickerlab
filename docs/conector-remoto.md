@@ -125,7 +125,7 @@ com as ferramentas que existem.
 |---|---|
 | `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
 | `empresa` | `ficha_da_empresa` |
-| `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota) |
+| `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, inclusive os das tabelas ligadas pelo CNPJ do registro `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII), com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota) |
 | `comparaveis` | `comparaveis` (a data e `limite` de 1 a 50 pares, padrão 10; o corte é no conector, na ordem da API, e as medianas seguem sobre todos os pares) |
 | `demonstracoes` | `demonstracoes` |
 | `eventos` | `eventos` (tipos, `limite` e `cursor`) |
