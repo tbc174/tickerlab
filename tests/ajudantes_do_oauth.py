@@ -4,15 +4,21 @@ Registro (DCR) → `/authorize` → página `/autorizar` (GET e POST com a chave
 `/token`. Cada passo é uma função pequena, para os testes poderem estragar um passo de cada vez.
 """
 
+import asyncio
 import base64
 import hashlib
 import re
 import secrets
+import time
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
+from mcp.shared.auth import OAuthClientInformationFull
+from pydantic import AnyUrl
 from starlette.testclient import TestClient
 
+from conector_remoto.oauth import CodigoComChave, ProvedorOAuth
+from conector_remoto.selo import Selador, ler_chave, nova_chave
 from tests.ajudantes_do_conector import CABECALHOS, URL_PUBLICA
 
 VOLTA_DO_CLAUDE = "https://claude.ai/api/mcp/auth_callback"
@@ -227,3 +233,65 @@ def tokens_para(cliente: TestClient, chave: str, **opcoes) -> tuple[dict, dict]:
     )
     assert resposta.status_code == 200, resposta.text
     return registrado, resposta.json()
+
+
+# ------------------------------------------------------------------ o provedor sem o HTTP (corrida)
+
+
+class ConferenciaLenta:
+    """Dublê do verificador: a conferência da chave espera `liberar`, para duas renovações se cruzarem."""
+
+    def __init__(self) -> None:
+        self.chegou = asyncio.Event()
+        self.liberar = asyncio.Event()
+        self.conferencias = 0
+
+    async def conferir_na_api(self, token: str) -> object:
+        self.conferencias += 1
+        self.chegou.set()
+        await self.liberar.wait()
+        return object()
+
+
+def provedor_de_teste(verificador: object) -> ProvedorOAuth:
+    return ProvedorOAuth(
+        Selador(ler_chave(nova_chave())),
+        verificador,  # type: ignore[arg-type]
+        url_publica=URL_PUBLICA,
+        recurso=RECURSO,
+    )
+
+
+def cliente_de_teste() -> OAuthClientInformationFull:
+    return OAuthClientInformationFull(
+        client_id="cliente-de-teste",
+        redirect_uris=[AnyUrl(VOLTA_DO_CLAUDE)],
+        token_endpoint_auth_method="none",
+        grant_types=["authorization_code", "refresh_token"],
+    )
+
+
+def codigo_de_teste(cliente: OAuthClientInformationFull, chave: str) -> CodigoComChave:
+    return CodigoComChave(
+        code="codigo-de-teste",
+        scopes=[],
+        expires_at=time.time() + 60,
+        client_id=cliente.client_id or "",
+        code_challenge="desafio",
+        redirect_uri=AnyUrl(VOLTA_DO_CLAUDE),
+        redirect_uri_provided_explicitly=True,
+        chave_da_api=chave,
+    )
+
+
+class ConferenciaQueQuebra:
+    """Dublê do verificador que quebra na 1ª conferência (um defeito, não a API fora) e depois aceita."""
+
+    def __init__(self) -> None:
+        self.conferencias = 0
+
+    async def conferir_na_api(self, token: str) -> object:
+        self.conferencias += 1
+        if self.conferencias == 1:
+            raise RuntimeError("defeito no meio da renovação")
+        return object()

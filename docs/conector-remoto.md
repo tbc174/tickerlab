@@ -38,7 +38,9 @@ Há duas entradas, que levam ao mesmo lugar:
    do servidor (AES-256-GCM, `selo.py`), presos ao cliente e ao recurso `/mcp`. A cada chamada o conector
    abre o token e consulta a API com a chave de dentro.
 6. **Renovação.** Confere a chave na API de novo (chave revogada: `invalid_grant`, e o token de acesso cai
-   na hora) e troca os dois tokens. O token de renovação usado não serve outra vez.
+   na hora) e troca os dois tokens. O token de renovação usado devolve os **mesmos** tokens por 120 s
+   (`JANELA_DE_REUSO_S`) e depois não serve mais; se a API não responde, a renovação sai sem a conferência
+   (ver "Renovação que não derruba", abaixo).
 
 ### Decisões (aceite da Diretoria, 10/11/2026)
 
@@ -58,8 +60,19 @@ Há duas entradas, que levam ao mesmo lugar:
 - **API sem resposta não é chave revogada.** Só 401 e 403 do `/catalog` dizem que a chave não vale.
   Limite de pedidos da organização (429), erro da API (5xx) ou a API desligada (404) são falha passageira:
   o `/mcp` responde 503 com `Retry-After: 30` (um 401 faria a IA pedir a chave de novo), a renovação
-  responde `invalid_request` sem gastar o token e a página diz que o TickerLab não respondeu, sem contar
-  no limite por IP.
+  sai sem a conferência (abaixo) e a página diz que o TickerLab não respondeu, sem contar no limite por IP.
+- **Renovação que não derruba (18/11/2026, queda de 17/11).** A renovação respondia 400 em dois casos que não
+  eram culpa do analista, e a IA derrubava a conexão (o cliente oficial do SDK do MCP apaga os tokens em
+  qualquer resposta da renovação que não seja 200; o SDK do servidor só sabe responder 400 a um
+  `TokenError`, então um 503 não está ao alcance e não ajudaria): (1) **API sem resposta** ao conferir a
+  chave: agora os tokens novos saem sem a conferência, com um aviso no log com o id público da chave.
+  Chave revogada não ganha nada com isso: cada chamada do `/mcp` confere a chave na API, e a renovação
+  seguinte, com a API de volta, responde `invalid_grant`. (2) **Mesmo token de renovação duas vezes**
+  (resposta perdida no caminho, ou duas conversas renovando juntas): nos 120 s seguintes à troca, o mesmo
+  token devolve os mesmos tokens já emitidos (quem chega durante a troca espera por ela; a API é conferida
+  uma vez só). Depois da janela, `invalid_grant`. A janela guarda na memória a resposta já emitida (a
+  chave vai cifrada dentro dos tokens, como sempre), presa ao cliente que trocou. Falha inesperada no meio
+  da troca não gasta o token.
 - **Sem o `iss` na volta (RFC 9207).** O ChatGPT usa então o endereço `connector/oauth/<id>`, que está na
   lista fechada.
 
