@@ -16,7 +16,7 @@ há ferramenta, e o conector não finge que há).
 
 | # | situação | ferramentas | o que falta |
 |---|---|---|---|
-| 1 | respondida | ficha_da_empresa | nada: cadastro, situação e matriz ou filial |
+| 1 | respondida | ficha_da_empresa, analise_completa | nada: cadastro, situação e matriz ou filial |
 | 2 | respondida | buscar_empresas | a primeira página não é o universo: o `next_cursor` avisa |
 | 3 | fraca | demonstracoes | faturamento de empresa fechada não existe na base: diz "não temos" |
 | 4 | respondida | vinculos | só pessoa jurídica; controle e coligação só da companhia aberta |
@@ -130,6 +130,38 @@ def _par(cnpj: str, nome: str, receita: float) -> dict:
     }
 
 
+def _analise_de_mentira() -> dict:
+    """A análise completa na forma da API: blocos, frase, linha do tempo, leituras e o que ela não traz."""
+    return {
+        "cnpj": ALFA,
+        "known_at": HOJE.isoformat(),
+        "summary": {"text": "ALFA TECNOLOGIA S.A.; situação ativa na Receita.", "kind": "fact"},
+        "blocks": {
+            "profile": _cadastro(ALFA, "ALFA TECNOLOGIA S.A.", True),
+            "corporate_ownership": {
+                "equity_holders": [
+                    {"cnpj_root": "55555555", "legal_name": _campo("OMEGA HOLDING S.A."),
+                     "entry_date": _campo("2010-05-01")}
+                ],
+                "equity_stakes": [],
+                "truncated": False,
+            },
+        },
+        "timeline": [
+            {"day": "2010-05-01", "what": "Início da atividade (Receita)", "block": "profile",
+             "source": "rfb-cnpj", "published_at": "2026-09-30"}
+        ],
+        "inferences": [
+            {"text": "Cerca de 16 anos de atividade.", "kind": "inference", "based_on": ["profile"]}
+        ],
+        "not_found": [],
+        "timed_out": [],
+        "not_included": ["Dívida ativa da União (PGFN)", "Processos judiciais"],
+        "requests_used": 2,
+        "sources": _fontes("rfb-cnpj"),
+    }  # fmt: skip
+
+
 def _rotas_de_mentira() -> dict[str, httpx.Response]:
     """O que a API de mentira responde a cada rota que as dez perguntas usam."""
     limites = [{"code": "sem_pessoa", "text": "Só pessoa jurídica."}]
@@ -138,6 +170,7 @@ def _rotas_de_mentira() -> dict[str, httpx.Response]:
             _cadastro(ALFA, "ALFA TECNOLOGIA S.A.", True)
             | {"sources": _fontes("rfb-cnpj"), "limits": limites}
         ),
+        f"/companies/{ALFA}/analysis": _json(_analise_de_mentira()),
         f"/companies/{ALFA_FILIAL}/profile": _json(
             _cadastro(ALFA_FILIAL, "ALFA TECNOLOGIA S.A.", False)
             | {"sources": _fontes("rfb-cnpj")}
@@ -547,6 +580,14 @@ def pergunta_1(analista: Analista) -> None:
     assert analista.pedido_a_api(
         f"/companies/{ALFA_FILIAL}/profile"
     )  # a pontuação saiu
+    # a análise completa responde a mesma pergunta num pedido só, com o resto dos blocos que a chave vê
+    analise = analista.perguntar("analise_completa", cnpj=ALFA)
+    assert (
+        analise.corpo["blocks"]["profile"]["legal_name"]["value"]
+        == "ALFA TECNOLOGIA S.A."
+    )
+    assert analise.corpo["not_included"]
+    assert analista.pedido_a_api(f"/companies/{ALFA}/analysis")
 
 
 def pergunta_2(analista: Analista) -> None:
