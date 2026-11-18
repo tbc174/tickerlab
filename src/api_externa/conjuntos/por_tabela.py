@@ -146,6 +146,7 @@ class LeitorPorTabela:
             *(_coluna_da_ordem(o) for o in entrada.ordem),
             *entrada.uma_por,
             *([CNPJ] if entrada.onde_sai == FUNDO else []),
+            *([entrada.coluna_da_fonte] if entrada.coluna_da_fonte else []),
         }
         if not precisa <= existentes:
             return (
