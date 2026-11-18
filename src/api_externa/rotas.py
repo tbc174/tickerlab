@@ -34,10 +34,15 @@ from src.api_externa import (
     piloto,
     porta_compartilhada,
 )
-from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
+from src.api_externa.catalogo import (
+    catalogo_da_organizacao,
+    consumo_da_organizacao,
+    linhas_liberadas,
+)
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
+    analise,
     ativos,
     comparaveis,
     compradores,
@@ -780,6 +785,61 @@ def vinculos_da_empresa(
             acesso.linhas_por_resposta(contexto),
         ).vinculos(numeros, dia, profundidade, tipos),
     )
+
+
+@router.get("/companies/{cnpj}/analysis")
+def analise_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """A análise da empresa como era em `known_at`, numa chamada: cada bloco por CNPJ que a organização pode
+    ver (`profile`, `corporate_ownership`, `links`, `events`, `credit`, `assets`, `comparables`), lido como na
+    rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
+    as deduções marcadas (`inferences`), o bloco aberto que não achou nada (`not_found`), o que passou do
+    prazo (`timed_out`) e o que a análise não consulta (`not_included`). Bloco que não aparece não foi
+    consultado. Cada bloco aberto conta um pedido no conjunto dele (`requests_used`). Sem `profiles` nem
+    `companies`, MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    with piloto.anotar() as liberados:
+        servida = _analise_contada(contexto, numeros, dia)
+    corpo = piloto.marcar(servida.corpo, liberados)
+    return traduzir_chaves(corpo | {"fontes": fontes_da_resposta(servida.fontes)})
+
+
+def _analise_contada(
+    contexto: ContextoDaChave, cnpj: str, dia: date
+) -> analise.Analise:
+    """A análise lida e contada: a cota de todos os blocos abertos é conferida antes de ler e cada bloco
+    conta no conjunto dele (o que não saiu conta como negado); 404 se nada sai."""
+    with obter_engine().begin() as conexao:
+        liberadas = linhas_liberadas(
+            conexao, contexto, acesso.agora().date(), regras_da_api()
+        )
+        cadastro, outros = analise.blocos_abertos(liberadas)
+        acesso.exigir_quota(
+            conexao, contexto, 1 + len(outros) if cadastro else 1, acesso.agora()
+        )
+        servida = None
+        if cadastro is not None:
+            with _porta(conexao) as porta:
+                servida = analise.montar_analise(
+                    cnpj, dia, porta=porta, liberadas=liberadas,
+                    portao=lambda conjunto, finalidade: _portao(
+                        conexao, contexto, conjunto, finalidade
+                    ),
+                    linhas=acesso.linhas_por_resposta(contexto),
+                )  # fmt: skip
+        consumo = (
+            servida.consumo if servida else {(empresas.CONJUNTO, FINALIDADE): (0, True)}
+        )
+        for (conjunto, finalidade), (linhas, negado) in consumo.items():
+            registrar_consumo(
+                conexao, contexto, conjunto=conjunto, finalidade=finalidade,
+                linhas=linhas, negado=negado, agora=acesso.agora(),
+            )  # fmt: skip
+    if servida is None or not servida.corpo:
+        raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
+    return servida
 
 
 @router.get("/companies/{cnpj}/comparables")

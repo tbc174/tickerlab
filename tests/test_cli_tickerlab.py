@@ -1083,6 +1083,7 @@ def test_instrucoes_do_agente(rodar):
     assert "Não invente número que a CLI não devolveu" in agentes.stdout
     for comando in (
         "empresa",
+        "analise",
         "demonstracoes",
         "fundo",
         "setor",
