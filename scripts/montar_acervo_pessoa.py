@@ -338,7 +338,7 @@ def carregar(
 
 def conferir(acervo_pessoa: Path) -> int:
     """Imprime a prova (só números) e, na última linha, o resultado; 0 aprovado, 1 com falhas."""
-    prova, falhas = prova_do_acervo_pessoa.conferir(acervo_pessoa)
+    prova, falhas = prova_do_acervo_pessoa.conferir(acervo_pessoa, pd.read_parquet)
     print(json.dumps(prova, ensure_ascii=False))
     if falhas:
         print(f"FALHAS: {', '.join(falhas)}"[:TAMANHO_MAXIMO_DO_RESUMO])

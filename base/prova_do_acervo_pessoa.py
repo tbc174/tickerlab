@@ -20,6 +20,7 @@ seja um `*.zip` com o SHA-256 dele, a falta da marca do corte do contato e um co
 
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
@@ -61,6 +62,9 @@ ACHADOS = (
     "cnpj_basico_fora_do_formato",
     "id_pessoa_fora_do_formato",
 )
+# quem lê um arquivo da tabela: o montador passa o leitor de Parquet (o acervo de pessoa fica fora da porta da
+# base, e só os montadores o leem; `tests/test_porta_unica.py`)
+Leitor = Callable[[Path], pd.DataFrame]
 ACHADOS_DO_MANIFESTO = (
     "textos_com_cara_de_pessoa",
     "origens_fora_do_formato",
@@ -113,11 +117,11 @@ def contar_arquivo(linhas: pd.DataFrame, tabela: str) -> dict[str, int]:
     return contagem
 
 
-def contar_tabela(pasta: Path) -> dict[str, int]:
+def contar_tabela(pasta: Path, ler: Leitor) -> dict[str, int]:
     """Soma os achados de todos os arquivos da tabela, lendo um por vez; `arquivos` 0 é pasta ausente."""
     total = {"arquivos": 0, "linhas": 0, **dict.fromkeys(ACHADOS, 0)}
     for arquivo in sorted(pasta.glob("*.parquet")) if pasta.is_dir() else ():
-        linhas = pd.read_parquet(arquivo)
+        linhas = ler(arquivo)
         total["arquivos"] += 1
         total["linhas"] += len(linhas)
         for achado, quantos in contar_arquivo(linhas, pasta.name).items():
@@ -171,10 +175,10 @@ def _cortes_vazios(cortes: object) -> int:
     )
 
 
-def conferir(acervo_pessoa: Path) -> tuple[dict, list[str]]:
+def conferir(acervo_pessoa: Path, ler: Leitor) -> tuple[dict, list[str]]:
     """A prova inteira (só números) e a lista de falhas, cada uma `tabela.achado`; lista vazia é aprovado."""
     prova: dict = {
-        tabela: contar_tabela(acervo_pessoa / tabela)
+        tabela: contar_tabela(acervo_pessoa / tabela, ler)
         for tabela in (SOCIOS, INDIVIDUAIS)
     }
     falhas = [
