@@ -10,6 +10,7 @@ contrato da organização e pelo portão (`acesso.autorizar`). Toda recusa sai c
 mesmo de um CNPJ que não existe, para não dizer qual foi o motivo.
 """
 
+import logging
 import math
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -23,7 +24,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
 from base.porta import Porta
-from src.api_externa import acesso, deck, lote, piloto, porta_compartilhada
+from src import auditoria
+from src.analista import pessoa
+from src.api_externa import (
+    acesso,
+    deck,
+    lote,
+    pessoas,
+    piloto,
+    porta_compartilhada,
+)
 from src.api_externa.catalogo import (
     catalogo_da_organizacao,
     consumo_da_organizacao,
@@ -55,6 +65,7 @@ from src.banco.conexao import obter_engine
 from src.chaves_da_api import ContextoDaChave
 from src.portao_externo import Finalidade, Regras
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/data/v1")
 
 ChaveSemQuota = Annotated[
@@ -677,6 +688,71 @@ def ativos_da_empresa(
             acesso.linhas_por_resposta(contexto),
         ).ativos(numeros, dia),
     )
+
+
+def _pessoas_permitidas(conexao: sa.Connection, contexto: ContextoDaChave) -> bool:
+    """O contrato da organização dona da chave tem a permissão `pessoa_no_conector` vigente hoje?"""
+    return acesso.contrato_permite(
+        conexao,
+        contexto.organizacao_id,
+        conjunto=pessoas.CONJUNTO,
+        finalidade=FINALIDADE,
+        dia=acesso.agora().date(),
+    )
+
+
+def _corpo_das_pessoas(numeros: str) -> dict[str, object]:
+    """O corpo varrido das pessoas do CNPJ; 503 sem dizer onde nem por quê (nem o CNPJ, nem um nome)."""
+    try:
+        return pessoas.pessoas_da_empresa(pessoa.pasta_do_acervo(), numeros)
+    except pessoa.CnpjInvalidoError as erro:
+        raise _recusa("invalid_cnpj") from erro
+    except pessoa.AcervoIndisponivelError as erro:
+        log.warning("pessoas da empresa: acervo fora do ar")
+        raise _fora_do_ar() from erro
+    except pessoas.RespostaComPessoaProibida as erro:
+        log.error(
+            "pessoas da empresa: varredura falhou em %d lugar(es)", len(erro.caminhos)
+        )
+        raise _fora_do_ar() from erro
+
+
+# fora do contrato público da `/data/v1`: a rota de pessoa não se anuncia (ADR 0128, Emenda 4)
+@router.get("/companies/{cnpj}/people", include_in_schema=False)
+def pessoas_da_empresa(cnpj: str, contexto: Chave, resposta: Response) -> object:
+    """Os sócios pessoa física adultos do CNPJ (nome, qualificação e data de entrada) e o nome do titular do
+    MEI e do empresário individual, do cadastro da Receita. Sem CPF, menor de idade, endereço nem contato.
+
+    Só para a organização com a permissão `pessoa_no_conector`: para as outras chaves a resposta é o mesmo 404
+    de um endereço que não existe, **antes** de validar o CNPJ ou abrir o acervo, e nada conta no consumo; assim
+    a resposta não diz se a empresa tem sócio pessoa física. Cada consulta atendida vai para a auditoria com a
+    organização, a chave, o tipo e quantas pessoas saíram, nunca o CNPJ nem um nome, e a auditoria vem antes
+    da resposta: se ela não grava, nada sai."""
+    with obter_engine().connect() as conexao:
+        if not _pessoas_permitidas(conexao, contexto):
+            raise HTTPException(status_code=404)  # o mesmo corpo da rota inexistente
+    corpo = _corpo_das_pessoas(_cnpj_pedido(cnpj))
+    linhas = pessoas.linhas_servidas(corpo)
+    with obter_engine().begin() as conexao:
+        auditoria.registrar(
+            conexao,
+            None,
+            auditoria.ACAO_PESSOA_VISTA,
+            alvo_id=contexto.organizacao_id,
+            detalhes={
+                "tipo": pessoas.TIPO_DA_AUDITORIA,
+                "linhas": linhas,
+                "canal": pessoas.CANAL_DA_AUDITORIA,
+                "chave_id": str(contexto.chave_id),
+            },
+        )
+        registrar_consumo(
+            conexao, contexto, conjunto=pessoas.CONJUNTO, finalidade=FINALIDADE,
+            linhas=linhas, negado=False, agora=acesso.agora(),
+        )  # fmt: skip
+    log.info("pessoas da empresa: %s", corpo["status"])  # só o estado
+    resposta.headers["Cache-Control"] = "no-store"
+    return corpo
 
 
 @router.get("/companies/{cnpj}/links")

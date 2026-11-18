@@ -24,7 +24,8 @@ from conector_remoto.ferramentas import ANOS_MAXIMO_DOS_COMPRADORES, cnpj_do_ped
 
 FECHO = (
     "Cite a fonte e a data de cada número, separe o que a base diz do que você deduz e liste à parte o "
-    "que faltou e por quê, sem preencher lacuna com estimativa. Não traga dado de pessoa física. Ferramenta "
+    "que faltou e por quê, sem preencher lacuna com estimativa. De pessoa física, só o que `socios_e_donos` "
+    "trouxer, sem CPF nem contato. Ferramenta "
     "que a chave não pode usar também é lacuna. Nada aqui é recomendação de investimento."
 )
 # só ASCII: o `\d` do Python aceita dígitos de outras escritas, e o `upper` faz "ß" virar "SS"
