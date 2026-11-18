@@ -295,3 +295,13 @@ class ConferenciaQueQuebra:
         if self.conferencias == 1:
             raise RuntimeError("defeito no meio da renovação")
         return object()
+
+
+class ConferenciaLentaQueQuebra(ConferenciaLenta):
+    """A 1ª conferência espera `liberar` e quebra (o pedido que trocava caiu); as outras aceitam."""
+
+    async def conferir_na_api(self, token: str) -> object:
+        resultado = await super().conferir_na_api(token)
+        if self.conferencias == 1:
+            raise RuntimeError("o pedido que trocava caiu")
+        return resultado

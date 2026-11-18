@@ -140,6 +140,10 @@ class PedidoDeAutorizacao:
         return urlsplit(self.endereco_de_volta).hostname or ""
 
 
+class _TrocaInterrompida(Exception):
+    """A troca em curso parou sem resposta (defeito ou pedido cancelado): quem esperava troca de novo."""
+
+
 @dataclass
 class _TrocaRecente:
     """Uma troca de token de renovação: o resultado (ou a espera por ele) e até quando ele se repete."""
@@ -493,7 +497,11 @@ class ProvedorOAuth:
         uso = refresh_token.uso_unico
         recente = self._troca_recente(uso, client)
         if recente is not None:
-            return await self._repetir(recente)
+            try:
+                return await self._repetir(recente)
+            except _TrocaInterrompida:
+                # o token voltou a valer quando a troca parou: este pedido faz a troca de novo
+                return await self.exchange_refresh_token(client, refresh_token, scopes)
         if not self._marcar_usada(refresh_token):
             raise TokenError("invalid_grant", "Este token de renovação já foi usado.")
         troca = _TrocaRecente(
@@ -508,12 +516,10 @@ class ProvedorOAuth:
             troca.vence_em = time.time() + JANELA_DE_REUSO_S
             raise
         except BaseException:
-            # falha inesperada ou pedido cancelado: o token não foi gasto e quem esperava ouve "tente de novo"
+            # falha inesperada ou pedido cancelado: o token não foi gasto e quem esperava refaz a troca
             self._trocas_recentes.pop(uso, None)
             self._renovacoes_usadas.pop(uso, None)
-            troca.resultado.set_exception(
-                TokenError("invalid_request", MENSAGEM_API_FORA)
-            )
+            troca.resultado.set_exception(_TrocaInterrompida())
             troca.resultado.exception()
             raise
         agora = time.time()

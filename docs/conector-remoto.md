@@ -72,7 +72,7 @@ Há duas entradas, que levam ao mesmo lugar:
   token devolve os mesmos tokens já emitidos (quem chega durante a troca espera por ela; a API é conferida
   uma vez só). Depois da janela, `invalid_grant`. A janela guarda na memória a resposta já emitida (a
   chave vai cifrada dentro dos tokens, como sempre), presa ao cliente que trocou. Falha inesperada no meio
-  da troca não gasta o token.
+  da troca não gasta o token, e quem esperava por ela refaz a troca em vez de receber erro.
 - **Sem o `iss` na volta (RFC 9207).** O ChatGPT usa então o endereço `connector/oauth/<id>`, que está na
   lista fechada.
 

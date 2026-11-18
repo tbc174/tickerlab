@@ -563,6 +563,37 @@ def test_falha_inesperada_na_renovacao_nao_gasta_o_token():
     assert asyncio.run(cenario()).access_token
 
 
+def test_quem_esperava_a_troca_que_caiu_troca_de_novo_e_nao_recebe_erro():
+    # achado P2 da revisão cruzada: um 400 aqui derrubaria a conexão de quem esperava
+    async def cenario() -> tuple[
+        BaseException | OAuthToken, BaseException | OAuthToken
+    ]:
+        api_lenta = ao.ConferenciaLentaQueQuebra()
+        provedor = ao.provedor_de_teste(api_lenta)
+        cliente = ao.cliente_de_teste()
+        tokens = await provedor.exchange_authorization_code(
+            cliente, ao.codigo_de_teste(cliente, ao.CHAVE_A)
+        )
+        renovacao = tokens.refresh_token or ""
+
+        async def renovar() -> OAuthToken:
+            aberto = await provedor.load_refresh_token(cliente, renovacao)
+            assert aberto is not None
+            return await provedor.exchange_refresh_token(cliente, aberto, [])
+
+        primeira = asyncio.create_task(renovar())
+        await api_lenta.chegou.wait()
+        segunda = asyncio.create_task(renovar())
+        await asyncio.sleep(0)
+        api_lenta.liberar.set()
+        a, b = await asyncio.gather(primeira, segunda, return_exceptions=True)
+        return a, b
+
+    a, b = asyncio.run(cenario())
+    assert isinstance(a, RuntimeError)
+    assert isinstance(b, OAuthToken) and b.access_token
+
+
 def test_chave_revogada_depois_da_renovacao_nao_consulta_nem_na_janela(api):
     with aj.conector(api.transporte) as cliente:
         registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
