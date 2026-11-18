@@ -361,3 +361,51 @@ def test_limites_juntam_os_da_analise_e_os_dos_blocos_sem_repetir(porta, blocos)
 def test_ainda_nao_traz_e_o_mesmo_para_toda_chave(porta, blocos):
     blocos()
     assert _montar(porta).corpo["ainda_nao_traz"] == list(analise.AINDA_NAO_TRAZ)  # type: ignore[union-attr]
+
+
+def test_linha_do_tempo_dos_eventos_tem_a_troca_de_auditor_e_o_fato_relevante_so(
+    porta, blocos
+):
+    def documento(categoria: str, dia: str) -> dict:
+        return {"categoria": _envelope(categoria), "referencia": _envelope(dia)}
+
+    servido = {
+        "eventos": [
+            {
+                "tipo_de_evento": analise.eventos.TROCA_DE_AUDITOR,
+                "novo": _envelope("AUDITORA B"),
+                "efetiva_em": _envelope("2021-01-01"),
+            },
+            documento(analise.FATO_RELEVANTE, "2022-03-10"),
+            documento(
+                "Comunicado ao Mercado", "2022-04-10"
+            ),  # comunicado não vira marco
+            documento(analise.FATO_RELEVANTE, "2025-07-15"),  # depois do dia: fora
+        ]
+    }
+    blocos(_bloco("eventos", lambda *_: _Servido(servido)))
+    corpo = _montar(porta, conjuntos=("profiles", "eventos")).corpo  # type: ignore[union-attr]
+    dos_eventos = [m for m in corpo["linha_do_tempo"] if m["bloco"] == "events"]
+    assert [(m["dia"], m["o_que"]) for m in dos_eventos] == [
+        ("2021-01-01", "Troca de auditor para AUDITORA B"),
+        ("2022-03-10", "Fato relevante (CVM)"),
+    ]
+
+
+def test_perfil_com_muitas_entregas_leva_as_mais_novas_e_diz_que_cortou(monkeypatch):
+    entregas = [{"n": n} for n in range(analise.LINHAS_POR_BLOCO + 3)]
+    inteiro = _Servido({"entregas": entregas}, linhas=len(entregas) + 1)
+
+    class _Ficha:
+        def __init__(self, *_):
+            pass
+
+        def ficha(self, *_):
+            return inteiro
+
+    monkeypatch.setattr(analise.ficha, "LeitorDeFicha", _Ficha)
+    servido = analise._perfil(None, None, 0, CNPJ, DIA)  # type: ignore[arg-type]
+    assert servido is not None
+    assert servido.corpo["entregas"] == entregas[: analise.LINHAS_POR_BLOCO]
+    assert servido.corpo["cortada"] is True
+    assert servido.linhas == analise.LINHAS_POR_BLOCO + 1
