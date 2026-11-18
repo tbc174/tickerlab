@@ -13,8 +13,9 @@ O que se conta, por tabela:
   gravada, então o "zero menor" se prova pela qualificação aqui e pelos descartes do manifesto;
 - raiz que não tem 8 dígitos e `id_pessoa` que não é o pseudônimo de 32 letras hexadecimais.
 
-No manifesto: texto com cara de pessoa (CPF, e-mail ou telefone) em qualquer chave ou valor, e origem que não
-seja um `*.zip` com o SHA-256 dele.
+No manifesto: texto com cara de pessoa (CPF, e-mail ou telefone) em qualquer chave ou valor, origem que não
+seja um `*.zip` com o SHA-256 dele, a falta da marca do corte do contato e um corte obrigatório que veio vazio
+(um corte zerado num mês real é sinal de que o layout da Receita mudou sem a montagem perceber).
 """
 
 import json
@@ -25,13 +26,17 @@ import pandas as pd
 
 from base import receita_individuais, receita_pessoa
 from base.pessoas.chave import TAMANHO_DO_ID
-from base.receita_contato import ONZE_DIGITOS_SEPARADOS
+from base.receita_contato import CONTATO_DE_PESSOA, ONZE_DIGITOS_SEPARADOS
 from src.pessoa_no_texto import telefone_no_texto, texto_de_pessoa
 
 MES = "mes_do_retrato"
 SOCIOS = "socios_pf"
 INDIVIDUAIS = "individuais"
 MANIFESTO = "manifesto.json"
+CORTES = "cortes_do_contato"
+# num mês real há milhões de MEI e de sociedades de um sócio só: zero aqui é defeito, não dado. A EIRELI fica de
+# fora: foi extinta pela Lei 14.195/2021 (art. 41), e zero pode ser verdade.
+CORTES_OBRIGATORIOS = ("mei_do_simples", "quadro_de_um_socio")
 COLUNAS = {
     SOCIOS: frozenset({*receita_pessoa.COLUNAS_COM_ID, MES}),
     INDIVIDUAIS: frozenset({*receita_individuais.COLUNAS, MES}),
@@ -56,7 +61,12 @@ ACHADOS = (
     "cnpj_basico_fora_do_formato",
     "id_pessoa_fora_do_formato",
 )
-ACHADOS_DO_MANIFESTO = ("textos_com_cara_de_pessoa", "origens_fora_do_formato")
+ACHADOS_DO_MANIFESTO = (
+    "textos_com_cara_de_pessoa",
+    "origens_fora_do_formato",
+    "sem_a_marca_do_corte",
+    "corte_do_contato_vazio",
+)
 
 
 def _texto(coluna: pd.Series) -> pd.Series:
@@ -144,7 +154,21 @@ def contar_manifesto(caminho: Path) -> dict[str, int] | None:
             not (ORIGEM.fullmatch(str(nome)) and SHA256.fullmatch(str(sha)))
             for nome, sha in origens.items()
         ),
+        "sem_a_marca_do_corte": int(
+            CONTATO_DE_PESSOA not in manifesto.get("descartes", {})
+        ),
+        "corte_do_contato_vazio": _cortes_vazios(manifesto.get(CORTES)),
     }
+
+
+def _cortes_vazios(cortes: object) -> int:
+    """Quantos cortes obrigatórios faltam ou vieram com zero raiz (todos, se o manifesto não tem a chave)."""
+    if not isinstance(cortes, dict):
+        return len(CORTES_OBRIGATORIOS)
+    return sum(
+        not (isinstance(cortes.get(nome), int) and cortes[nome] > 0)
+        for nome in CORTES_OBRIGATORIOS
+    )
 
 
 def conferir(acervo_pessoa: Path) -> tuple[dict, list[str]]:

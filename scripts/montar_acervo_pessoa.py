@@ -78,7 +78,7 @@ SIMPLES = (
     "simples"  # não é tabela do acervo: só diz quem é MEI, para o corte do contato
 )
 ARQUIVOS_DO_SIMPLES = "Simples"
-CORTES = "cortes_do_contato"
+CORTES = prova_do_acervo_pessoa.CORTES
 ACHADOS = prova_do_acervo_pessoa.ACHADOS
 ACHADOS_DO_MANIFESTO = prova_do_acervo_pessoa.ACHADOS_DO_MANIFESTO
 TRABALHO = "_trabalho"

@@ -782,8 +782,52 @@ def test_conferir_acusa_pessoa_no_manifesto(tmp_path, capsys):
     assert _prova(saida)[montar.MANIFESTO] == {
         "textos_com_cara_de_pessoa": 1,
         "origens_fora_do_formato": 1,
+        "sem_a_marca_do_corte": 0,
+        "corte_do_contato_vazio": 0,
     }
     assert "fulana" not in saida and "88800000127" not in saida
+
+
+@pytest.mark.parametrize(
+    ("estragar", "achado", "quantos"),
+    [
+        (lambda m: m["descartes"].pop(rc.CONTATO_DE_PESSOA), "sem_a_marca_do_corte", 1),
+        (lambda m: m.pop(montar.CORTES), "corte_do_contato_vazio", 2),
+        (
+            lambda m: m[montar.CORTES].update(mei_do_simples=0),
+            "corte_do_contato_vazio",
+            1,
+        ),
+        (
+            lambda m: m[montar.CORTES].pop("quadro_de_um_socio"),
+            "corte_do_contato_vazio",
+            1,
+        ),
+    ],
+)
+def test_conferir_acusa_manifesto_sem_o_corte_do_contato(
+    tmp_path, capsys, estragar, achado, quantos
+):
+    """Um corte que zerou sem erro (layout da Receita mudado) não pode passar como conferido."""
+    destino, _ = _montar_o_corte(tmp_path)
+    caminho = destino / montar.MANIFESTO
+    manifesto = json.loads(caminho.read_text(encoding="utf-8"))
+    estragar(manifesto)
+    caminho.write_text(json.dumps(manifesto), encoding="utf-8")
+    assert montar.main(["--conferir", str(destino)]) == 1
+    saida = capsys.readouterr().out
+    assert _prova(saida)[montar.MANIFESTO][achado] == quantos
+    assert f"manifesto.json.{achado}" in saida
+
+
+def test_conferir_aceita_eireli_zerada(tmp_path, capsys):
+    """A EIRELI foi extinta: zero raiz nela é verdade possível, não defeito."""
+    destino, _ = _montar_o_corte(tmp_path)
+    caminho = destino / montar.MANIFESTO
+    manifesto = json.loads(caminho.read_text(encoding="utf-8"))
+    manifesto[montar.CORTES]["eireli"] = 0
+    caminho.write_text(json.dumps(manifesto), encoding="utf-8")
+    assert montar.main(["--conferir", str(destino)]) == 0
 
 
 def test_conferir_pasta_sem_as_tabelas_falha(tmp_path, capsys):
