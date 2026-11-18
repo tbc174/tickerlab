@@ -39,6 +39,11 @@ from base.prontidao import (
     negacao_da_prontidao,
     negacao_do_piloto,
 )
+from src.api_externa.tabelas_por_cnpj import (
+    LICENCA_DA_CVM,
+    LICENCA_DAS_AGENCIAS,
+    REGISTRO,
+)
 from src.banco.coletas import (
     COLETA_E_GUARDA,
     MOSTRAR,
@@ -672,6 +677,21 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "operador",
         ),
         _PROVA_DA_ANP,
+    ),
+    # as tabelas ligadas pelo CNPJ do registro (`src/api_externa/tabelas_por_cnpj.py`, linha 978): uma linha por
+    # fonte e campo de cada entrada, no conjunto dela e declarando a tabela; sem conjunto novo
+    *(
+        linha
+        for entrada in REGISTRO
+        for linha in _campos(
+            entrada.fontes,
+            entrada.conjunto,
+            (entrada.tabela,),
+            entrada.campos,
+            {LICENCA_DA_CVM: _PROVA_CVM, LICENCA_DAS_AGENCIAS: _PROVA_DAS_AGENCIAS}[
+                entrada.licenca
+            ],
+        )
     ),
 )
 

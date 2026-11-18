@@ -1,15 +1,19 @@
 """A análise completa de um CNPJ numa chamada: cada bloco que a chave pode ver, com fonte e data (frente 3, 18/11/2026).
 
 `montar_analise` junta, para um CNPJ e um dia (`known_at`), os blocos das rotas por CNPJ que já existem (cadastro,
-sócios PJ, vínculos, eventos, crédito, ativos e comparáveis) na ordem de `docs/padrao-de-analise.md`: uma frase no
-topo (só com o que o cadastro serviu), os blocos, a linha do tempo (só com datas que vieram nos blocos), as leituras
-(dedução, marcada e separada dos fatos), o que não foi achado, o que a análise não traz e os limites.
+sócios PJ, vínculos, eventos, crédito, ativos e comparáveis) e os das tabelas ligadas pelo CNPJ do registro
+`src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII), na ordem de
+`docs/padrao-de-analise.md`: uma frase no topo (só com o que o cadastro serviu), os blocos, a linha do tempo (só
+com datas que vieram nos blocos), as leituras (dedução, marcada e separada dos fatos), o que não foi achado, o que a
+análise não traz e os limites.
 
 **Cada bloco passa pelo portão do próprio conjunto**, com a finalidade do contrato dele: é a mesma decisão de
 chamar a rota do bloco, e a análise não libera nada novo. Se o bloco está aberto decide-se **antes de ler a
 empresa**, pelas linhas que o portão libera hoje para a organização (contrato, linha de direito, prontidão, coleta
 e guarda): bloco fechado não é lido, não aparece em lugar nenhum da resposta e não muda o tempo nem o tamanho dela
-conforme a empresa. Tabela que ganha prontidão num conjunto lido aqui entra sozinha, sem mudar este arquivo.
+conforme a empresa. Tabela que ganha prontidão num conjunto lido aqui entra sozinha, sem mudar este arquivo; o
+bloco de uma entrada do registro abre quando o portão libera um campo dela (não o conjunto inteiro: o `profiles`
+tem também o cadastro).
 
 **Prazo:** depois do cadastro, os outros blocos correm ao mesmo tempo, cada um no próprio cursor da porta; o que
 passa do prazo tem a consulta interrompida e sai em `nao_respondeu_a_tempo`. A conexão do banco (o portão) é usada
@@ -33,6 +37,7 @@ from datetime import date
 import duckdb
 
 from base.porta import Porta
+from src.api_externa import tabelas_por_cnpj
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
@@ -42,6 +47,7 @@ from src.api_externa.conjuntos import (
     empresas,
     eventos,
     ficha,
+    por_tabela,
     socios_pj,
     vinculos,
 )
@@ -75,8 +81,9 @@ LerBloco = Callable[[Porta, Permitido, int, str, date], Servido | None]
 @dataclass(frozen=True)
 class Bloco:
     """Um bloco da análise: a chave dele na resposta, o conjunto e a finalidade do contrato, a leitura e o que
-    o portão tem de liberar para ele abrir (`exige`, pares fonte e campo; vazio: qualquer linha do conjunto).
-    `listas`: as listas do corpo que, todas vazias, querem dizer que o bloco não achou nada."""
+    o portão tem de liberar para ele abrir (`exige`: todos estes pares fonte e campo; `algum`: ao menos um
+    destes; os dois vazios: qualquer linha do conjunto fora das tabelas do registro). `listas`: as listas do corpo que, todas vazias, querem
+    dizer que o bloco não achou nada; `vazio`, a mesma pergunta para o corpo que não é de listas."""
 
     nome: str
     conjunto: str
@@ -84,6 +91,8 @@ class Bloco:
     ler: LerBloco
     exige: tuple[tuple[str, str], ...] = ()
     listas: tuple[str, ...] = ()
+    algum: tuple[tuple[str, str], ...] = ()
+    vazio: Callable[[dict], bool] | None = None
 
 
 def _perfil(
@@ -144,6 +153,31 @@ def _comparaveis(
     )
 
 
+def _do_registro(nome: str) -> Bloco:
+    """Um bloco do registro de tabelas ligadas pelo CNPJ (`tabelas_por_cnpj`): abre quando o portão libera um
+    campo de uma das tabelas dele (o conjunto, como `profiles`, também tem as linhas de outros blocos)."""
+    entradas = tabelas_por_cnpj.do_bloco(nome)
+    (conjunto,) = {
+        e.conjunto for e in entradas
+    }  # um bloco, um conjunto: o consumo é por conjunto
+
+    def ler(
+        porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
+    ) -> Servido | None:
+        return por_tabela.LeitorPorTabela(porta, permitido, linhas).bloco(
+            nome, cnpj, dia
+        )
+
+    return Bloco(
+        nome,
+        conjunto,
+        ANALISE,
+        ler,
+        algum=tuple(par for e in entradas for par in por_tabela.pares(e)),
+        vazio=por_tabela.vazio,
+    )
+
+
 CADASTRO = "cadastro"
 # o cadastro abre a análise: o perfil (com as entregas à CVM) se a chave o tem, senão a situação na Receita
 CADASTROS = (
@@ -166,16 +200,21 @@ BLOCOS = (
     Bloco(
         "comparaveis", comparaveis.CONJUNTO, ANALISE, _comparaveis, listas=("pares",)
     ),
+    # as tabelas do registro entram sozinhas: entrada nova em `tabelas_por_cnpj` com ONDE_SAI = ANALISE
+    *(_do_registro(nome) for nome in tabelas_por_cnpj.blocos(tabelas_por_cnpj.ANALISE)),
     # frente 4: o bloco de pessoas entra aqui, só com a permissão `pessoa_na_tela` da organização conferida no
     # servidor; até lá a análise nunca lê pessoa física
 )
 
-# o que a análise não consulta para nenhuma chave hoje (sem linha de direito na API): a mesma frase para todas
+# o que a análise não consulta para nenhuma chave hoje (sem linha de direito na API): a mesma frase para todas.
+# Sanções, ambiente e lista suja são só de uso interno até o Tiago decidir (grupo C da ADR 0122): a frase diz que
+# não estão disponíveis nesta chave, sem o motivo (ordem da Diretoria de 18/11/2026)
+NAO_DISPONIVEL_NESTA_CHAVE = "não disponível nesta chave"
 AINDA_NAO_TRAZ = (
     "Dívida ativa da União (PGFN)",
-    "Sanções e impedimentos de contratar com o governo (CGU)",
-    "Autuações e embargos ambientais (IBAMA)",
-    "Cadastro de empregadores do trabalho análogo ao de escravo (MTE)",
+    f"Sanções e impedimentos de contratar com o governo (CGU): {NAO_DISPONIVEL_NESTA_CHAVE}",
+    f"Autuações e embargos ambientais (IBAMA): {NAO_DISPONIVEL_NESTA_CHAVE}",
+    f"Cadastro de empregadores do trabalho análogo ao de escravo (MTE): {NAO_DISPONIVEL_NESTA_CHAVE}",
     "Contratos públicos",
     "Processos judiciais",
     "Pessoas físicas (sócio pessoa física, administradores)",
@@ -223,6 +262,13 @@ class Analise:
     consumo: dict[tuple[str, str], tuple[int, bool]] = field(default_factory=dict)
 
 
+# as linhas das tabelas do registro: abrem só o bloco delas, nunca o bloco que abre com qualquer linha do conjunto
+# (o perfil, em `profiles`, abriria pela ANEEL sem um campo da ficha, e a análise perderia o cadastro da Receita)
+_LINHAS_DO_REGISTRO = frozenset(
+    par for entrada in tabelas_por_cnpj.REGISTRO for par in por_tabela.pares(entrada)
+)
+
+
 def _aberto(bloco: Bloco, liberadas: set[Liberada]) -> bool:
     do_conjunto = {
         (f, c)
@@ -231,7 +277,9 @@ def _aberto(bloco: Bloco, liberadas: set[Liberada]) -> bool:
     }
     if bloco.exige:
         return set(bloco.exige) <= do_conjunto
-    return bool(do_conjunto)
+    if bloco.algum:
+        return bool(set(bloco.algum) & do_conjunto)
+    return bool(do_conjunto - _LINHAS_DO_REGISTRO)
 
 
 def blocos_abertos(
@@ -390,9 +438,14 @@ def montar_analise(
     )
     for bloco in outros:
         servido = lidos.get(bloco.nome)
+        # dois blocos do mesmo conjunto (o cadastro e os regulados, em `profiles`) somam as linhas, e o conjunto
+        # só conta como negado se nenhum dos dois saiu
+        linhas_antes, negado_antes = consumo.get(
+            (bloco.conjunto, bloco.finalidade), (0, True)
+        )
         consumo[(bloco.conjunto, bloco.finalidade)] = (
-            0 if servido is None else servido.linhas,
-            servido is None,
+            linhas_antes + (0 if servido is None else servido.linhas),
+            negado_antes and servido is None,
         )
     return _Montagem(cadastro, lido, outros, lidos, atrasados, dia).analise(consumo)
 
@@ -546,6 +599,8 @@ MARCOS = {
 
 
 def _vazio(bloco: Bloco, corpo: dict) -> bool:
+    if bloco.vazio is not None:
+        return bloco.vazio(corpo)
     return bool(bloco.listas) and all(not corpo.get(lista) for lista in bloco.listas)
 
 
