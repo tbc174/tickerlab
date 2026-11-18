@@ -59,7 +59,8 @@ def _executar(caixa, nome, entrada):
 
 
 # `ativos` entrou no conector (linha 901) e ainda não no chat: o dono do chat (linha 903) decide depois de 20/11
-SO_NO_CONECTOR = frozenset({"ativos"})
+# `socios_e_donos` é pessoa física: o chat do app segue sem pessoa (AGENTS.md, Exceção: tela e conector, não o chat)
+SO_NO_CONECTOR = frozenset({"ativos", "socios_e_donos"})
 
 
 def test_lista_do_chat_e_a_do_conector():

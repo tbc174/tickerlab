@@ -41,7 +41,9 @@ SEM_FERRAMENTA: dict[str, str] = {
 }
 
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
-SO_NO_CONECTOR: dict[str, str] = {}
+SO_NO_CONECTOR: dict[str, str] = {
+    "socios_e_donos": "pessoa física fica fora da CLI (AGENTS.md, Exceção; ADR 0128, Emenda 4)",
+}
 
 ENDERECO = "https://api.exemplo.test"
 CNPJ = "11111111000191"  # de mentira, com os dígitos verificadores certos

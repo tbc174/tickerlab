@@ -769,9 +769,10 @@ def test_a_pergunta_5_avisa_que_compradores_sao_movimento_passado(analista):
     assert "nem intenção de compra" in _descricao(no_conector["compradores_do_setor"])
 
 
-def test_as_instrucoes_dizem_que_a_base_nao_tem_pessoa_fisica(analista):
+def test_as_instrucoes_dizem_o_limite_da_pessoa_fisica(analista):
     instrucoes = _instrucoes(analista.cliente)
-    assert "dado de pessoa física (sócio pessoa física, CPF, contato)" in instrucoes
+    assert "de pessoa física, nada além do que `socios_e_donos` traz" in instrucoes
+    assert "nunca CPF, data de nascimento, endereço ou contato da pessoa" in instrucoes
 
 
 # o que a API não deveria mandar, mas, se mandar, o conector tem de barrar (sem repetir o valor)
@@ -802,6 +803,12 @@ def test_o_conector_barra_pessoa_fisica_que_a_api_mandar(sinal):
 # ---------------------------------------------------------------- o tamanho das respostas
 
 
+# ferramenta que as dez perguntas não chamam e que mede o próprio teto noutro arquivo (com o motivo)
+MEDIDAS_A_PARTE = {
+    "socios_e_donos": "pessoa física só da organização com a permissão; teto em test_conector_remoto_socios_e_donos",
+}
+
+
 def test_a_maior_resposta_de_dado_de_cada_ferramenta_cabe_no_teto(analista):
     """Mede só resposta de dado (frase de erro não conta). Com dado de mentira (poucas centenas de
     caracteres) isto só prova que toda ferramenta foi medida; o pior caso de verdade, a busca com 100
@@ -819,9 +826,9 @@ def test_a_maior_resposta_de_dado_de_cada_ferramenta_cabe_no_teto(analista):
     medidas = {
         f: t for f, t in maiores.items() if f in ferramentas.CONJUNTOS_DA_FERRAMENTA
     }
-    assert set(medidas) == set(ferramentas.CONJUNTOS_DA_FERRAMENTA), (
-        "ferramenta sem resposta medida: "
-        f"{sorted(set(ferramentas.CONJUNTOS_DA_FERRAMENTA) - set(medidas))}"
+    esperadas = set(ferramentas.CONJUNTOS_DA_FERRAMENTA) - set(MEDIDAS_A_PARTE)
+    assert set(medidas) == esperadas, (
+        f"ferramenta sem resposta medida: {sorted(esperadas - set(medidas))}"
     )
     acima = {f: t for f, t in medidas.items() if t >= TETO_DE_CARACTERES}
     assert not acima, f"resposta acima do teto de {TETO_DE_CARACTERES}: {acima}"
