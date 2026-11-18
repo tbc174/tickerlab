@@ -279,6 +279,44 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 16), "placar-qualidade-2026-11-16"),
         dicionario=Prova(date(2026, 11, 16), "dicionario-escrito-2026-11-16"),
     ),
+    # lote 1 da linha 978: placar de 18/11/2026 sem vermelho (aneel_indicadores_comerciais 280019 linhas, ans_idss 75034,
+    # fii_administradores 115, fii_informe_mensal 64213, fip_informe 32919, pgfn_divida 8519520, ifdata_valores 54571412);
+    # aneel_inadimplencia e fii_ativos mediram vermelho sem explicação e ficaram de fora
+    "aneel_indicadores_comerciais": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "ans_idss": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fii_administradores": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fii_informe_mensal": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fip_informe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "ifdata_valores": ProntidaoDePiloto(
+        versao_maior=2,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "pgfn_divida": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
