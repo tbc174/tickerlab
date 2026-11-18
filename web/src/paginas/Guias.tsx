@@ -1,6 +1,6 @@
 // Guias de busca: uma página para cada pergunta que quem analisa empresas digita ("quem audita uma
 // companhia aberta", "troca de auditor", "sócios e grupo econômico de um CNPJ"...). Linha 336 da fila,
-// a partir de projeto-acoes/busca-organica.md. Cada guia diz o que a base responde, de que tabela vem
+// a partir de projeto-acoes/marketing/busca-organica.md. Cada guia diz o que a base responde, de que tabela vem
 // (a frase, o órgão e o desde vêm do catálogo, nunca digitados aqui), como chegar no app e o que a
 // base NÃO responde. Sem número de mercado, sem preço, sem opinião: só o caminho até a fonte.
 import { catalogo } from "../conteudo";

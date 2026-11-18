@@ -320,6 +320,12 @@ class Pedidos:
         return self.entregar(await self.resposta(caminho, parametros), ferramenta)
 
 
+def _pode_ver_pessoas() -> bool:
+    """A chave deste pedido lista a permissão de pessoa física no catálogo (a API confere de novo no `/people`)."""
+    acesso = acesso_do_pedido()
+    return acesso is not None and CONJUNTO_DAS_PESSOAS in acesso.conjuntos
+
+
 async def pedir_pessoas(pedidos: Pedidos, numeros: str) -> str:
     """Os sócios e donos do CNPJ (já sem pontuação), com a tranca própria da pessoa física. É o encaixe da
     análise completa do CNPJ: a mesma chamada, a mesma tranca. `ToolError` quando a API não serve (a chave sem
@@ -624,7 +630,9 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
         annotations=SO_LEITURA,
         structured_output=False,
     )
-    async def analise_completa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
+    async def analise_completa(
+        cnpj: Cnpj, como_era_em: ComoEraEm = None
+    ) -> str | list[str]:
         """A análise de uma empresa pelo CNPJ numa resposta só, com cada bloco que a chave pode ver: o cadastro
         (a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o
         auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das
@@ -638,14 +646,26 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
         Serve para a triagem completa de um CNPJ antes da reunião, num pedido só.
         Fonte: as mesmas de cada bloco (cadastro CNPJ da Receita Federal, documentos entregues à CVM e as demais
         bases do catálogo), citadas em `sources`.
-        Não traz: sócio pessoa física, administradores, contato, endereço, faturamento de empresa fechada, nem as
-        bases listadas em `not_included` (dívida ativa, sanções, ambiente, contratos públicos, processos)."""
+        Sócio pessoa física e titular de MEI ou empresário individual vêm só para a organização com a permissão,
+        num segundo bloco igual à resposta de `socios_e_donos` (nome, qualificação e data de entrada; nunca CPF,
+        idade, endereço ou contato), e só na análise de hoje (sem `como_era_em`), porque o quadro é o do retrato
+        vigente. Sem a permissão, ou se esse bloco não estiver disponível, a análise sai sem ele.
+        Não traz: contato, endereço, faturamento de empresa fechada, nem as bases listadas em `not_included`
+        (dívida ativa, sanções, ambiente, contratos públicos, processos)."""
         numeros = cnpj_do_pedido(cnpj)
-        return await pedidos.pedir(
+        analise = await pedidos.pedir(
             "analise_completa",
             f"/companies/{numeros}/analysis",
             {"known_at": _dia(como_era_em)},
         )
+        if como_era_em is not None or not _pode_ver_pessoas():
+            return analise
+        try:
+            return [analise, await pedir_pessoas(pedidos, numeros)]
+        except ToolError:
+            # sem a permissão no servidor (404), acervo fora do ar (503) ou resposta recusada pela tranca:
+            # a análise vale sozinha, e a tranca já registrou o motivo, sem o valor
+            return analise
 
 
 def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
