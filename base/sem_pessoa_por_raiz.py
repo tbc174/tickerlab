@@ -37,6 +37,16 @@ SEM_PESSOA_PELA_RAIZ: dict[str, str] = {
     "anp_concessionarios": "cnpj",
     "fips_registrados": "CNPJ_Fundo",
     "cnpj_situacao_cadastral": "cnpj",
+    "fre_comites": "cnpj",
+    "fre_distribuicao_capital": "cnpj",
+    "fre_diversidade": "cnpj",
+    "fre_empregados": "cnpj",
+    "fre_remuneracao_extremos": "cnpj",
+    "pareceres_dfp": "cnpj",
+    "pareceres_itr": "cnpj",
+    "emissores": "cnpj",
+    "debentures_assembleias": "cnpj",
+    "processos_nas_notas": "cnpj",
 }
 
 # tabela → coluna que já é a raiz (8 posições): não há o CNPJ inteiro para conferir a forma
