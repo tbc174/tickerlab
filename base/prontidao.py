@@ -307,6 +307,53 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
         dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
     ),
+    # lote 2A da linha 978: placar de 18/11/2026 sem vermelho e raiz do CNPJ toda dentro da cnpj_empresas_pj (medido por
+    # scripts.conferir_sem_pessoa); as outras 13 tabelas medidas do lote 2 deram vermelho sem explicação e ficaram de fora
+    "fre_comites": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fre_distribuicao_capital": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fre_diversidade": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fre_empregados": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fre_remuneracao_extremos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "pareceres_dfp": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "pareceres_itr": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "debentures_assembleias": ProntidaoDePiloto(
+        versao_maior=2,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "processos_nas_notas": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
     "ifdata_valores": ProntidaoDePiloto(
         versao_maior=2,
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
@@ -335,12 +382,22 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
         "cnpj_situacao_cadastral",
+        "debentures_assembleias",
         "demonstracoes_como_era",
+        "emissores",
         "entradas_de_socio_pj",
         "eventos",
         "fca_geral",
         "fips_registrados",
+        "fre_comites",
+        "fre_distribuicao_capital",
+        "fre_diversidade",
+        "fre_empregados",
+        "fre_remuneracao_extremos",
         "ifdata_valores",
+        "pareceres_dfp",
+        "pareceres_itr",
+        "processos_nas_notas",
         "rotulos_atraso",
         "susep_seguros",
     }
