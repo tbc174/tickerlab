@@ -125,7 +125,7 @@ com as ferramentas que existem.
 |---|---|
 | `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
 | `empresa` | `ficha_da_empresa` |
-| `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota) |
+| `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota; com `pessoa_no_conector` e sem a data, um segundo bloco com a resposta de `socios_e_donos`, que é mais um pedido na quota e some se a API negar ou a tranca recusar) |
 | `comparaveis` | `comparaveis` (a data e `limite` de 1 a 50 pares, padrão 10; o corte é no conector, na ordem da API, e as medianas seguem sobre todos os pares) |
 | `demonstracoes` | `demonstracoes` |
 | `eventos` | `eventos` (tipos, `limite` e `cursor`) |
