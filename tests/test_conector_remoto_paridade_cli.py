@@ -19,6 +19,7 @@ from tests import ajudantes_do_conector as aj
 FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "prospectar": ("buscar_empresas",),
     "empresa": ("ficha_da_empresa",),
+    "analise": ("analise_completa",),
     "comparaveis": ("comparaveis",),
     "demonstracoes": ("demonstracoes",),
     "eventos": ("eventos",),
@@ -70,6 +71,12 @@ CASOS = [
         "ficha_da_empresa",
         {"cnpj": CNPJ, "como_era_em": UM_DIA},
         id="empresa",
+    ),
+    pytest.param(
+        ["analise", CNPJ, "--como-era", UM_DIA],
+        "analise_completa",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA},
+        id="analise",
     ),
     pytest.param(
         ["comparaveis", CNPJ, "--como-era", UM_DIA],

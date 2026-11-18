@@ -36,6 +36,8 @@ SO_LEITURA = ToolAnnotations(
 CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "buscar_empresas": frozenset({"prospecting"}),
     "ficha_da_empresa": frozenset({"profiles", "companies"}),
+    # a análise precisa de um cadastro; os outros blocos entram pelo que a chave vê, decidido na API
+    "analise_completa": frozenset({"profiles", "companies"}),
     "comparaveis": frozenset({"comparables"}),
     "demonstracoes": frozenset({"financials"}),
     "eventos": frozenset({"events"}),
@@ -52,6 +54,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
 TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "buscar_empresas": "Buscar empresas por setor, UF, porte e idade",
     "ficha_da_empresa": "Ficha da empresa",
+    "analise_completa": "Análise completa de uma empresa",
     "comparaveis": "Comparáveis de uma companhia aberta",
     "demonstracoes": "Demonstrações de uma companhia aberta",
     "eventos": "Eventos de uma empresa",
@@ -517,6 +520,7 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
 
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
+    _registrar_analise(servidor, pedidos)
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["setores"],
@@ -576,6 +580,36 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             STATUS_OK, {"catalog": catalogo.corpo, "usage": consumo.corpo}
         )
         return pedidos.entregar(juntos, "o_que_posso_ver")
+
+
+def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A análise completa do CNPJ (frente 3): um pedido à API, que junta os blocos que a chave vê."""
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["analise_completa"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def analise_completa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
+        """A análise de uma empresa pelo CNPJ numa resposta só, com cada bloco que a chave pode ver: o cadastro
+        (a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o
+        auditor, os eventos, a ficha de crédito, os ativos e os comparáveis de companhia aberta. Traz também uma
+        frase no topo (fato), a linha do tempo com os marcos datados dos blocos, as leituras (dedução do TickerLab,
+        separada do fato e com os blocos de onde veio), o que não foi achado em cada bloco, o bloco que não
+        respondeu a tempo e as bases que a análise ainda não consulta. Cada valor traz a fonte e o dia em que
+        ficou público; bloco que a chave não vê não aparece. Cada lista vem cortada nas primeiras linhas, com
+        `truncated`.
+        Serve para a triagem completa de um CNPJ antes da reunião, num pedido só.
+        Fonte: as mesmas de cada bloco (cadastro CNPJ da Receita Federal, documentos entregues à CVM e as demais
+        bases do catálogo), citadas em `sources`.
+        Não traz: sócio pessoa física, administradores, contato, endereço, faturamento de empresa fechada, nem as
+        bases listadas em `not_included` (dívida ativa, sanções, ambiente, contratos públicos, processos)."""
+        numeros = cnpj_do_pedido(cnpj)
+        return await pedidos.pedir(
+            "analise_completa",
+            f"/companies/{numeros}/analysis",
+            {"known_at": _dia(como_era_em)},
+        )
 
 
 def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:

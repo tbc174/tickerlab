@@ -267,6 +267,26 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "recolhido_12_meses": "cfem_paid_last_12_months_brl",
     "ultima_competencia": "last_paid_month",
     "Tipo_Fundo": "fund_type",  # o campo do portão do sinal do FIP (não sai como chave)
+    # a análise completa do CNPJ (frente 3): os blocos, a frase, a linha do tempo e as leituras
+    "frase": "summary",
+    "texto": "text",
+    "a_partir_de": "based_on",
+    "blocos": "blocks",
+    "bloco": "block",
+    "socios_pj": "corporate_ownership",
+    "socias_pj": "equity_holders",
+    "participacoes_pj": "equity_stakes",
+    "ativos": "assets",
+    "comparaveis": "comparables",
+    "linha_do_tempo": "timeline",
+    "dia": "day",
+    "o_que": "what",
+    "leituras": "inferences",
+    "nao_encontrado": "not_found",
+    "por_que": "reason",
+    "nao_respondeu_a_tempo": "timed_out",
+    "ainda_nao_traz": "not_included",
+    "pedidos_usados": "requests_used",
 }
 
 

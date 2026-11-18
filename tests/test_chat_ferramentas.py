@@ -58,8 +58,10 @@ def _executar(caixa, nome, entrada):
 # ---------------------------------------------------------------- a lista
 
 
-# `ativos` entrou no conector (linha 901) e ainda não no chat: o dono do chat (linha 903) decide depois de 20/11
-SO_NO_CONECTOR = frozenset({"ativos"})
+# `ativos` entrou no conector (linha 901) e ainda não no chat: o dono do chat (linha 903) decide depois de 20/11.
+# `analise_completa` (frente 3, 18/11) também: o chat já compõe pelas ferramentas de cada bloco, e uma resposta
+# com todos os blocos encheria o contexto do modelo do chat; o dono do chat decide se ela entra.
+SO_NO_CONECTOR = frozenset({"ativos", "analise_completa"})
 
 
 def test_lista_do_chat_e_a_do_conector():

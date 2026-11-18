@@ -83,7 +83,10 @@ ORIENTACAO_DO_DOSSIE = (
 # conector. Há teste que cobra toda ferramenta registrada aqui.
 MAPA_DAS_PERGUNTAS = (
     "Qual ferramenta para cada pergunta: quem é uma empresa pelo CNPJ (cadastro na Receita, situação, "
-    "abertura, CNAE, porte e, se for companhia aberta, os prazos de DFP e ITR): `ficha_da_empresa`. Empresas "
+    "abertura, CNAE, porte e, se for companhia aberta, os prazos de DFP e ITR): `ficha_da_empresa`. A análise "
+    "completa de um CNPJ num pedido só (cadastro, sócios pessoa jurídica, vínculos, eventos, crédito, ativos e "
+    "comparáveis que a chave vê, com a linha do tempo, as leituras e o que não foi achado): `analise_completa`; "
+    "as ferramentas de cada bloco trazem o resto das listas cortadas. Empresas "
     "de um setor (CNAE) numa UF ou município, por porte, idade ou só matrizes: `buscar_empresas`. "
     "Demonstrações (DFP e ITR) de companhia aberta: `demonstracoes`. Comparáveis de companhia aberta, "
     "com a mediana dos pares: `comparaveis`. Controladas, coligadas, participadas e auditor: `vinculos`. "

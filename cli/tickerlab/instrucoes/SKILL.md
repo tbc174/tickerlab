@@ -16,6 +16,10 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab empresa <cnpj> --json`: o perfil: cadastro na Receita (situação, razão social, natureza
      jurídica, Simples) e, de companhia aberta, cada DFP e ITR com prazo da CVM, atraso e situação da entrega;
      leia `limits`. `--so-cadastro` traz só o cadastro.
+   - `tickerlab analise <cnpj> [--como-era AAAA-MM-DD] --json`: a análise completa numa resposta, com cada bloco
+     que a chave vê em `blocks` (cadastro, sócios PJ, vínculos, eventos, crédito, ativos, comparáveis), a frase
+     do topo, a linha do tempo, as leituras (`inferences`, dedução), `not_found`, `timed_out` e `not_included`
+     (bases que a análise não consulta); cada bloco é um pedido na quota.
    - `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD] --json`: as companhias abertas do mesmo grupo de
      setores, cada uma com o último DFP (receita, EBITDA, lucro, dívida líquida e razões), e a mediana de cada
      razão em `peer_medians`; leia `limits` antes de comparar múltiplos.
