@@ -200,18 +200,22 @@ def test_titular_que_se_opos_nao_aparece_para_a_organizacao_com_a_permissao(
     assert dados["estado"] == analista_pessoas.SEM_TITULAR and dados["titulares"] == []
 
 
-# ------------------------------------------- só a tela com login (API por chave, CLI e conector)
+# ------------------------------- só a tela com login e a rota de pessoa por chave (CLI, site e resto da API, não)
 
 
 def test_so_a_rota_da_tela_com_login_le_o_acervo_de_pessoa():
-    """A API por chave, a CLI, o site e o conector não leem o acervo de pessoa: fora `src/api_v1/analista_pessoas.py`
-    (que confere a permissão) e o registro das rotas, nenhum arquivo de `src/`, `scripts/` ou `cli/` o importa."""
+    """A CLI, o site e o resto da API não leem o acervo de pessoa: fora `src/api_v1/analista_pessoas.py` (que
+    confere `pessoa_na_tela`), `src/api_externa/pessoas.py` e a rota `/people` de `src/api_externa/rotas.py`
+    (que conferem `pessoa_no_conector`, ADR 0128, Emenda 4) e o registro das rotas, nenhum arquivo de `src/`,
+    `scripts/` ou `cli/` o importa."""
     raiz = Path(__file__).resolve().parent.parent
     permitidos = {
         raiz / "src" / "analista" / "pessoa.py",
         raiz / "src" / "api_v1" / "analista_pessoas.py",
         raiz / "src" / "api_v1" / "acesso.py",
         raiz / "src" / "api.py",
+        raiz / "src" / "api_externa" / "pessoas.py",
+        raiz / "src" / "api_externa" / "rotas.py",
     }
     donos = set()
     for pasta in ("src", "scripts", "cli"):
