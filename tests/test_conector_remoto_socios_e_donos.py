@@ -292,3 +292,87 @@ def test_toda_resposta_de_ponta_a_ponta_passa_na_varredura(cliente, cenario):
             assert proibida not in texto
         if texto.startswith("{"):
             assert socios_e_donos.falhas_da_resposta(json.loads(texto)) == []
+
+
+# ------------------------------------------- a análise completa com os sócios (só para quem tem a permissão)
+
+ANALISE = "analise_completa"
+CORPO_DA_ANALISE = {
+    "blocks": {"profile": {"legal_name": {"value": "EMPRESA DE MENTIRA"}}}
+}
+
+
+def _api_da_analise(
+    pessoas_responde: httpx.Response | None,
+    conjuntos=("profiles", "pessoa_no_conector"),
+    pedidos: list[httpx.Request] | None = None,
+):
+    rotas = {
+        f"/companies/{SOCIEDADE}/analysis": httpx.Response(200, json=CORPO_DA_ANALISE)
+    }
+    if pessoas_responde is not None:
+        rotas[f"/companies/{SOCIEDADE}/people"] = pessoas_responde
+    return aj.api_de_mentira(rotas, conjuntos=conjuntos, pedidos=pedidos)
+
+
+def _blocos(cliente, **argumentos) -> list[str]:
+    """Todos os blocos de texto da resposta da análise (falha o teste se deu erro)."""
+    resposta = aj.rpc(
+        cliente,
+        aj.CHAVE_DE_MENTIRA,
+        "tools/call",
+        {"name": ANALISE, "arguments": {"cnpj": SOCIEDADE, **argumentos}},
+    )
+    resultado = resposta.json()["result"]
+    assert not resultado["isError"], resultado
+    return [bloco["text"] for bloco in resultado["content"]]
+
+
+def _pediu_pessoas(pedidos: list[httpx.Request]) -> bool:
+    return any(p.url.path.endswith("/people") for p in pedidos)
+
+
+def test_com_a_permissao_a_analise_traz_os_socios_num_segundo_bloco():
+    with aj.conector(_api_da_analise(httpx.Response(200, json=_corpo()))) as cliente:
+        analise, socios = _blocos(cliente)
+    assert json.loads(analise) == CORPO_DA_ANALISE
+    assert json.loads(socios) == _corpo()
+
+
+def test_sem_a_permissao_a_analise_sai_sozinha_sem_pedir_os_socios():
+    pedidos: list[httpx.Request] = []
+    transporte = _api_da_analise(
+        httpx.Response(200, json=_corpo()), conjuntos=("profiles",), pedidos=pedidos
+    )
+    with aj.conector(transporte) as cliente:
+        blocos = _blocos(cliente)
+    assert len(blocos) == 1 and "FULANA" not in blocos[0]
+    assert not _pediu_pessoas(pedidos)
+
+
+def test_analise_de_uma_data_passada_nao_mistura_o_quadro_de_hoje():
+    pedidos: list[httpx.Request] = []
+    transporte = _api_da_analise(httpx.Response(200, json=_corpo()), pedidos=pedidos)
+    with aj.conector(transporte) as cliente:
+        blocos = _blocos(cliente, como_era_em="2024-01-31")
+    assert len(blocos) == 1 and "FULANA" not in blocos[0]
+    assert not _pediu_pessoas(pedidos)
+
+
+@pytest.mark.parametrize("status", [404, 503])
+def test_socios_fora_do_ar_ou_negados_pela_api_a_analise_sai_sozinha(status):
+    """A API confere a permissão de novo: o 404 de quem perdeu a permissão e o 503 do acervo não derrubam a análise."""
+    resposta = httpx.Response(status, json={"detail": "not_available"})
+    with aj.conector(_api_da_analise(resposta)) as cliente:
+        blocos = _blocos(cliente)
+    assert len(blocos) == 1 and json.loads(blocos[0]) == CORPO_DA_ANALISE
+
+
+@pytest.mark.parametrize("caso", ["CPF formatado no nome", "endereço", "e-mail"])
+def test_socios_sujos_ficam_de_fora_e_a_analise_sai_sem_o_valor(caso, caplog):
+    with aj.conector(_api_da_analise(httpx.Response(200, json=SUJOS[caso]))) as cliente:
+        blocos = _blocos(cliente)
+    assert len(blocos) == 1 and json.loads(blocos[0]) == CORPO_DA_ANALISE
+    texto = blocos[0] + caplog.text
+    assert "FULANA" not in texto and meio(CPF_DE_MENTIRA) not in texto
+    assert "resposta_com_pessoa_recusada" in caplog.text
