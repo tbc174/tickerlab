@@ -87,6 +87,8 @@ MAPA_DAS_PERGUNTAS = (
     "de um setor (CNAE) numa UF ou município, por porte, idade ou só matrizes: `buscar_empresas`. "
     "Demonstrações (DFP e ITR) de companhia aberta: `demonstracoes`. Comparáveis de companhia aberta, "
     "com a mediana dos pares: `comparaveis`. Controladas, coligadas, participadas e auditor: `vinculos`. "
+    "Os sócios pessoa física e o titular do MEI (nome, qualificação e data de entrada), só para a "
+    "organização com essa permissão: `socios_e_donos`. "
     "Ativos físicos da empresa nas bases das agências (hoje, os contratos de exploração e produção de "
     "petróleo e gás da ANP): `ativos`. "
     "Documentos entregues à CVM e trocas de auditor: `eventos`. Quem já se mexeu num setor (empresas e "
@@ -99,7 +101,8 @@ MAPA_DAS_PERGUNTAS = (
 )
 LACUNAS = (
     "O que a base não tem: faturamento de empresa fechada (só companhia aberta tem demonstrações; diga a "
-    "lacuna, nunca estime) e dado de pessoa física (sócio pessoa física, CPF, contato). "
+    "lacuna, nunca estime) e, de pessoa física, nada além do que `socios_e_donos` traz (nunca CPF, data de "
+    "nascimento, endereço ou contato da pessoa). "
 )
 INSTRUCOES = (
     "TickerLab: dados públicos de empresas brasileiras (pessoa jurídica) para a análise de M&A. "

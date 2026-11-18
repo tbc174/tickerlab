@@ -10,6 +10,7 @@ import dataclasses
 import json
 import logging
 import re
+from collections.abc import Callable
 from datetime import date
 from typing import Annotated, Literal
 
@@ -23,6 +24,13 @@ from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
 from conector_remoto.pessoa import RespostaComPessoa
 from conector_remoto.saida import RespostaGrandeDemais, preparar_saida
+from conector_remoto.socios_e_donos import (
+    CAMINHO as CAMINHO_DAS_PESSOAS,
+)
+from conector_remoto.socios_e_donos import (
+    CONJUNTO as CONJUNTO_DAS_PESSOAS,
+)
+from conector_remoto.socios_e_donos import preparar_pessoas
 
 registro = logging.getLogger("conector_remoto")
 
@@ -41,6 +49,8 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "eventos": frozenset({"events"}),
     "fundo": frozenset({"funds"}),
     "vinculos": frozenset({"links"}),
+    # pessoa física: só a organização com a permissão (ADR 0128, Emenda 4); a API confere de novo a cada pedido
+    "socios_e_donos": frozenset({CONJUNTO_DAS_PESSOAS}),
     "ativos": frozenset({"assets"}),
     "compradores_do_setor": frozenset({"buyers"}),
     "novidades": frozenset({"research"}),
@@ -57,6 +67,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "eventos": "Eventos de uma empresa",
     "fundo": "Fundo de investimento",
     "vinculos": "Participações e auditor de uma empresa",
+    "socios_e_donos": "Sócios e donos de uma empresa",
     "ativos": "Ativos físicos de uma empresa",
     "compradores_do_setor": "Quem já se mexeu no setor",
     "novidades": "Fontes novas provadas pela pesquisa",
@@ -119,6 +130,10 @@ DICA_SEM_PARAMETRO = "Esta ferramenta não tem como pedir menos: diga ao analist
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
+    "O TickerLab foi avisado; os outros pedidos seguem normais."
+)
+MENSAGEM_DE_PESSOA_PROIBIDA = (
+    "Resposta recusada: ela trazia um dado que o conector nunca entrega (CPF, contato ou endereço). "
     "O TickerLab foi avisado; os outros pedidos seguem normais."
 )
 MENSAGEM_SEM_CHAVE = "Pedido sem chave do TickerLab: refaça a ligação do conector."
@@ -263,12 +278,19 @@ class Pedidos:
                 "A API do TickerLab não respondeu; tente de novo em instantes."
             ) from None
 
-    def entregar(self, resposta: RespostaDaApi, ferramenta: str) -> str:
-        """O texto que vai para a IA, ou `ToolError` com a frase do problema."""
+    def entregar(
+        self,
+        resposta: RespostaDaApi,
+        ferramenta: str,
+        preparar: Callable[[object], object] = preparar_saida,
+        recusa_de_pessoa: str = MENSAGEM_DE_PESSOA,
+    ) -> str:
+        """O texto que vai para a IA, ou `ToolError` com a frase do problema. `preparar` é a tranca da
+        saída: a de toda ferramenta recusa qualquer pessoa; a dos sócios e donos, só o que nunca sai."""
         if not resposta.ok:
             raise ToolError(mensagem_do_erro(resposta))
         try:
-            return _como_texto(preparar_saida(resposta.corpo))
+            return _como_texto(preparar(resposta.corpo))
         except RespostaComPessoa as recusa:
             acesso = acesso_do_pedido()
             registro.error(
@@ -279,7 +301,7 @@ class Pedidos:
                     "chave": acesso.subject if acesso else None,
                 },
             )
-            raise ToolError(MENSAGEM_DE_PESSOA) from None
+            raise ToolError(recusa_de_pessoa) from None
         except RespostaGrandeDemais as grande:
             raise ToolError(
                 mensagem_de_resposta_grande(ferramenta, grande.tamanho)
@@ -293,6 +315,16 @@ class Pedidos:
     ) -> str:
         """Pede e entrega: o caminho comum de quase toda ferramenta."""
         return self.entregar(await self.resposta(caminho, parametros), ferramenta)
+
+
+async def pedir_pessoas(pedidos: Pedidos, numeros: str) -> str:
+    """Os sócios e donos do CNPJ (já sem pontuação), com a tranca própria da pessoa física. É o encaixe da
+    análise completa do CNPJ: a mesma chamada, a mesma tranca. `ToolError` quando a API não serve (a chave sem
+    a permissão recebe o mesmo "não disponível" de um dado que não existe)."""
+    resposta = await pedidos.resposta(CAMINHO_DAS_PESSOAS.format(numeros=numeros))
+    return pedidos.entregar(
+        resposta, "socios_e_donos", preparar_pessoas, MENSAGEM_DE_PESSOA_PROIBIDA
+    )
 
 
 def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
@@ -700,13 +732,28 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         montar o mapa de um grupo a partir de uma companhia aberta. Controle e coligação só vêm de companhia aberta,
         uma vez por ano, como explicam os `limits`.
         Fonte: FRE e FCA da CVM; a razão social, do cadastro CNPJ da Receita Federal.
-        Não traz: sócio pessoa física nem o quadro de sócios da Receita."""
+        Não traz: o quadro de sócios da Receita (o sócio pessoa física vem em `socios_e_donos`, para a
+        organização com a permissão)."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir("vinculos", f"/companies/{numeros}/links", {
             "known_at": _dia(como_era_em),
             "depth": str(profundidade),  # como a CLI
             "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
         })  # fmt: skip
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["socios_e_donos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def socios_e_donos(cnpj: Cnpj) -> str:
+        """Quem são os sócios pessoa física da empresa e, no MEI e no empresário individual, o titular: o nome,
+        a qualificação (sócio, administrador) e a data de entrada, do quadro de sócios da Receita. Só os
+        adultos; quem pediu oposição não aparece. Serve para dizer quem é o dono numa triagem de M&A.
+        Fonte: Cadastro Nacional da Pessoa Jurídica (Receita Federal), com o mês do retrato em `snapshot_month`.
+        Não traz: CPF, data de nascimento, menor de idade, endereço nem contato da pessoa; nem o sócio que é
+        empresa (esse vem em `vinculos` e na ficha)."""
+        return await pedir_pessoas(pedidos, cnpj_do_pedido(cnpj))
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["ativos"],

@@ -77,7 +77,10 @@ def test_cada_fluxo_cita_so_ferramentas_que_existem_e_fecha_com_as_travas(nome):
     parametros = {"como_era_em", "aberta_antes_de", "next_cursor", "limits", "anos"}
     assert citadas <= set(ferramentas.CONJUNTOS_DA_FERRAMENTA) | parametros
     assert texto.endswith(prompts.FECHO)
-    assert "Não traga dado de pessoa física" in texto
+    assert (
+        "De pessoa física, só o que `socios_e_donos`" in texto
+        and "sem CPF nem contato" in texto
+    )
 
 
 def test_argumentos_saem_conferidos_e_limpos():

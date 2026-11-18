@@ -350,9 +350,9 @@ REGRAS: dict[str, Regra] = {
         valor="beneficiarios",
     ),
     # estrita (Diretoria, 12/11/2026, linha 877): nenhuma linha repetida aceita. A resposta do BC de 2025-09
-    # veio com cada linha ~3 vezes e a carga de 14/10 gravou assim: a tabela fica vermelha até essa data-base
-    # ser refeita. Sem `visto_em` na chave: os arquivos de 14/10 não têm a coluna que o contrato 2.0.0 pede;
-    # quando todos a tiverem, ela entra na chave (a revisão do BC é linha nova da mesma chave).
+    # veio com cada linha ~3 vezes e a carga de 14/10 gravou assim; medida em 18/11/2026 (linha 978): verde,
+    # 54.571.412 linhas e sem repetida. Sem `visto_em` na chave: os arquivos de 14/10 não têm a coluna que o
+    # contrato 2.0.0 pede; quando todos a tiverem, ela entra na chave (a revisão do BC é linha nova da mesma chave).
     "ifdata_valores": Regra(
         chave=(
             "data_base",
@@ -376,4 +376,71 @@ REGRAS: dict[str, Regra] = {
     # da Anvisa). Sem coluna de ano nem de valor na regra: a tabela tem um retrato só até a Anvisa publicar outro,
     # e a escala da contagem não se compara entre retratos de dias seguidos.
     "anvisa_por_empresa": Regra(chave=("cnpj_basico", "disponivel_em")),
+    # Lote 1 da linha 978 (piloto D11), medido em 18/11/2026 no acervo de casa: chave natural de cada registro da fonte.
+    # `aneel_inadimplencia` (24.638 linhas sem a sigla do agente e saltos de linhas em 2013 e 2014) e `fii_ativos`
+    # (206.765 linhas repetidas e vazios no código e no nome do ativo) ficaram vermelhas sem explicação escrita:
+    # não têm regra aqui até alguém medir a causa e escrever a explicação (ficam fora do registro de piloto).
+    "aneel_indicadores_comerciais": Regra(
+        chave=(
+            "cnpj",
+            "sigla_do_agente",
+            "tipo_de_outorga",
+            "referencia",
+            "municipio_ibge",
+            "visto_em",
+        ),
+        opcionais={
+            "municipio_ibge": "a fonte manda `0` em vez do código IBGE em algumas linhas (15 de 280.019 em 18/11/2026); o construtor deixa vazio e a base não preenche"
+        },
+        periodo="referencia",
+        valor="unidades_ativas",
+    ),
+    "ans_idss": Regra(
+        chave=("registro_operadora", "indice", "ano_avaliacao", "ano_base", "visto_em")
+    ),
+    "fii_administradores": Regra(chave=("cnpj", "visto_em")),
+    "fii_informe_mensal": Regra(
+        chave=("cnpj", "referencia", "versao", "visto_em"),
+        periodo="referencia",
+        valor="patrimonio_liquido",
+    ),
+    "fip_informe": Regra(
+        chave=("cnpj", "competencia", "periodicidade", "visto_em"),
+        periodo="competencia",
+        valor="patrimonio_liquido",
+    ),
+    # Lote 2A da linha 978 (piloto D11), medido em 18/11/2026 no acervo de casa: chave natural de cada registro (a do
+    # dicionário). As outras 13 tabelas do lote 2 mediram vermelho sem explicação escrita e não têm regra aqui até
+    # alguém medir a causa: fre_capital_social, fre_conselho, fre_remuneracao, ratings, valores_mobiliarios,
+    # tickers_no_tempo, codigos_invalidos, dmpl_como_era, insolvencia, negociacoes, anm_cfem_arrecadacao,
+    # painel_dos_fundos e securitizacao_certificados.
+    "fre_comites": Regra(
+        chave=("cnpj", "referencia", "versao", "tipo_de_comite"), periodo="referencia"
+    ),
+    "fre_distribuicao_capital": Regra(
+        chave=("cnpj", "referencia", "versao", "id_documento"), periodo="referencia"
+    ),
+    "fre_diversidade": Regra(
+        chave=("cnpj", "referencia", "versao", "orgao"), periodo="referencia"
+    ),
+    "fre_empregados": Regra(
+        chave=("cnpj", "referencia", "versao", "recorte", "grupo"), periodo="referencia"
+    ),
+    "fre_remuneracao_extremos": Regra(
+        chave=("cnpj", "referencia", "versao", "fim_do_exercicio", "orgao"),
+        periodo="referencia",
+        valor="media",
+    ),
+    "pareceres_dfp": Regra(
+        chave=("cnpj", "referencia", "versao"), periodo="referencia"
+    ),
+    "pareceres_itr": Regra(
+        chave=("cnpj", "referencia", "versao"), periodo="referencia"
+    ),
+    "emissores": Regra(chave=("emissor", "cnpj")),
+    "debentures_assembleias": Regra(chave=("link",), periodo="referencia"),
+    "processos_nas_notas": Regra(
+        chave=("cnpj", "referencia", "versao", "pagina", "numero_processo"),
+        periodo="referencia",
+    ),
 }
