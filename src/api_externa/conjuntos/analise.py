@@ -252,6 +252,8 @@ class _PortaoDividido:
         self.fabrica = fabrica
         self.trava = threading.Lock()
         self.encerrado = False
+        # o bloco que perguntou depois do fim leu com o portão fechado: sai como atrasado, não como "sem dado"
+        self.barrados: set[str] = set()
 
     def de(self, bloco: Bloco) -> Permitido:
         with self.trava:
@@ -259,7 +261,10 @@ class _PortaoDividido:
 
         def dentro(fonte: str, nome: str, derivado: bool) -> bool:
             with self.trava:
-                return not self.encerrado and permitido(fonte, nome, derivado)
+                if self.encerrado:
+                    self.barrados.add(bloco.nome)
+                    return False
+                return permitido(fonte, nome, derivado)
 
         return dentro
 
@@ -320,10 +325,17 @@ def _ler_ao_mesmo_tempo(
     finally:
         portoes.encerrar()
         executor.shutdown(wait=False, cancel_futures=True)
+    terminadas = [
+        t for t in tarefas if _terminou(t)
+    ]  # todas antes do erro: as atrasadas são interrompidas
+    for tarefa in terminadas:
+        erro = tarefa.futuro.exception()  # type: ignore[union-attr]
+        if erro is not None:
+            raise erro  # o erro de um bloco que respondeu sobe: a rota responde 503, como na rota dele
     lidos: dict[str, Servido | None] = {}
     atrasados: list[str] = []
     for tarefa in tarefas:
-        if _terminou(tarefa):
+        if tarefa in terminadas and tarefa.bloco.nome not in portoes.barrados:
             lidos[tarefa.bloco.nome] = tarefa.futuro.result()  # type: ignore[union-attr]
         else:
             atrasados.append(tarefa.bloco.nome)
@@ -331,13 +343,9 @@ def _ler_ao_mesmo_tempo(
 
 
 def _terminou(tarefa: _Tarefa) -> bool:
-    """Se o bloco respondeu no prazo; o que não respondeu tem a consulta interrompida (o erro de um bloco que
-    respondeu sobe: a rota responde 503, como na rota dele)."""
+    """Se o bloco respondeu no prazo; o que não respondeu tem a consulta interrompida."""
     futuro = tarefa.futuro
     if futuro is not None and futuro.done() and not futuro.cancelled():
-        erro = futuro.exception()
-        if erro is not None:
-            raise erro
         return True
     if futuro is None or futuro.cancelled():
         tarefa.porta.fechar()  # não chegou a correr: o cursor é fechado aqui

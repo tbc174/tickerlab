@@ -9,6 +9,7 @@ frase só com o que o cadastro serviu e as leituras marcadas como dedução.
 import contextvars
 import threading
 import time
+from concurrent.futures import wait
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -252,6 +253,52 @@ def test_erro_de_um_bloco_que_respondeu_sobe(porta, blocos):
     blocos(_bloco("vinculos", quebra))
     with pytest.raises(RuntimeError, match="bloco quebrou"):
         _montar(porta, conjuntos=("profiles", "vinculos"))
+
+
+def test_bloco_que_acaba_depois_do_fim_do_prazo_sai_como_atrasado_e_nao_como_sem_dado(
+    porta, blocos, monkeypatch
+):
+    """Revisão cruzada: o bloco que pergunta ao portão já fechado e devolve nada não é "não encontrado"."""
+
+    def espera_o_fim(_porta, permitido, *_):
+        limite = time.monotonic() + 5
+        while permitido("rfb-cnpj", "campo", False) and time.monotonic() < limite:
+            time.sleep(0.01)
+        # o portão fechou: o leitor de verdade não traria dado (devolve None)
+
+    original = analise._terminou
+
+    def termina_antes_de_olhar(tarefa):
+        wait(
+            [tarefa.futuro], timeout=5
+        )  # o bloco acaba entre o fim do prazo e a conferência
+        return original(tarefa)
+
+    monkeypatch.setattr(analise, "_terminou", termina_antes_de_olhar)
+    blocos(_bloco("eventos", espera_o_fim))
+    corpo = _montar(porta, conjuntos=("profiles", "eventos"), prazo=0.2).corpo  # type: ignore[union-attr]
+    assert [n["bloco"] for n in corpo["nao_respondeu_a_tempo"]] == ["events"]
+    assert "events" not in {n["bloco"] for n in corpo["nao_encontrado"]}
+
+
+def test_erro_de_um_bloco_nao_deixa_o_atrasado_sem_interromper(porta, blocos):
+    acabou = threading.Event()
+
+    def quebra(*_):
+        raise RuntimeError("bloco quebrou")
+
+    def lento(porta_do_bloco, *_):
+        try:
+            porta_do_bloco.con.execute(
+                "SELECT count(*) FROM range(100000000000) a"
+            ).fetchall()
+        finally:
+            acabou.set()
+
+    blocos(_bloco("vinculos", quebra), _bloco("eventos", lento))
+    with pytest.raises(RuntimeError, match="bloco quebrou"):
+        _montar(porta, conjuntos=("profiles", "vinculos", "eventos"), prazo=0.5)
+    assert acabou.wait(10), "a consulta do bloco atrasado não foi interrompida"
 
 
 def test_cada_bloco_le_no_proprio_cursor_e_o_fecha(porta, blocos):
