@@ -56,6 +56,11 @@ def cnae(codigo: str | None) -> str | None:
     return _traduzir("cnaes", codigo)
 
 
+def atividades() -> dict[str, str]:
+    """Todas as subclasses do CNAE da publicação (código de 7 dígitos → nome), na ordem do arquivo."""
+    return dict(_tabela("cnaes"))
+
+
 def municipio(codigo: str | None) -> str | None:
     """O município pelo código da Receita (não é o do IBGE: `0003` → "PORTO VELHO")."""
     return _traduzir("municipios", codigo)
