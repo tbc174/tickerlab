@@ -44,7 +44,8 @@ export function LigadoPeloCnpj() {
         ))}
       </div>
       <p className="v2-ligado-nota">
-        O app mostra o que a licença de cada fonte deixa, e nome de pessoa física não aparece.
+        O app mostra o que a licença de cada fonte deixa. Nome de pessoa física só aparece para a organização
+        com a permissão de ver pessoas na tela, desligada por padrão, e nunca o CPF.
       </p>
       <a className="seta" href={`/dados.html#${ancora(DE_ONDE_VEM)}`}>
         Cada tabela, com a fonte e a licença
