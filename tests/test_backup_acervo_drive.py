@@ -482,3 +482,14 @@ def test_montar_config_exige_senha_e_sal_e_nao_sobrescreve(tmp_path: Path) -> No
     segunda = montar(tmp_path, "c\nd\n")
     assert segunda.returncode == 1
     assert "password = ofuscada:a" in (tmp_path / "config" / "rclone.conf").read_text()
+
+
+def test_chamadas_de_copy_do_backup_tem_prazo_de_rede() -> None:
+    """Rede parada (DNS, token) derruba o envio em vez de deixar o rclone pendurado por horas."""
+    texto = BACKUP.read_text()
+    chamadas = [t for t in texto.split('"$RCLONE" ')[1:] if t.startswith("copy")]
+    assert chamadas
+    for chamada in chamadas:
+        comando = chamada.split("\n    local", 1)[0]
+        assert "--timeout 2m" in comando
+        assert "--contimeout 30s" in comando
