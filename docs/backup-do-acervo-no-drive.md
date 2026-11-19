@@ -130,7 +130,9 @@ Sem a senha e o sal o conteúdo do Drive **não pode ser recuperado por ninguém
 - O Drive aceita duas pastas com o mesmo nome: por isso o empacotador cria as pastas-mãe antes de subir em
   paralelo (se duas subidas criassem `pacotes/` ao mesmo tempo, o rclone enxergaria só uma). Se aparecer
   duplicata, `rclone dedupe --dedupe-mode skip drive-acervo:TickerLab-Backup-Acervo` só une as pastas.
-- O `rclone` usa hoje o `client_id` compartilhado dele, que o Google avisa que será aposentado em 2026. Quando
-  parar, criar um `client_id` próprio (passo a passo em rclone.org/drive) e autorizar de novo: os arquivos
-  continuam lá. Está na fila como linha própria.
+- O `rclone` usa o `client_id` próprio do projeto `tickerlab-backup` (escopo `drive.file`, que só enxerga o que o
+  próprio backup criou), com uma pasta nova no Drive. O `client_id` compartilhado do rclone, que o Google avisou que
+  seria aposentado, não é mais usado. A pasta antiga continua no Drive: apagá-la é decisão do dono.
+- A conferência mensal acusa o arquivo `.ots` atualizado como "mudou depois do envio". Isso é esperado (o carimbo
+  é reescrito quando o Bitcoin o confirma) e não indica falha do backup.
 - O Drive e o Gemini são da mesma conta Google: por isso o banco continua também no Backblaze B2 (ADR 0123).
