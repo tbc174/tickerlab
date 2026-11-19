@@ -246,9 +246,10 @@ def lista_longa_de_compradores(cnae: str, uf: str = "", anos: str = "") -> str:
         f"Monte a lista longa de quem já se mexeu no setor do CNAE {setor}{onde}{quando}. Use "
         f"`compradores_do_setor` com `limite` {LIMITE_MAXIMO_DOS_COMPRADORES} e mostre todos os que vierem, "
         "na ordem da base, numa tabela com o comprador, o tipo (empresa sócia, fundo ou companhia aberta), "
-        "o número de sinais e o sinal mais recente com a fonte e a data. Diga quantos vieram e, pelos "
-        "`limits`, que a lista é movimento passado, não intenção de compra. Não corte nem reordene a "
-        f"lista. {FECHO}"
+        "o número de sinais e o sinal mais recente com a fonte e a data. Diga quantos vieram; se "
+        "`truncated` vier verdadeiro, diga também quantos a base tem (`total_buyers`) e que a lista traz só "
+        "os primeiros. Diga, pelos `limits`, que a lista é movimento passado, não intenção de compra. Não "
+        f"corte nem reordene a lista. {FECHO}"
     )
 
 
@@ -345,7 +346,7 @@ def registrar_prompts(servidor: MCPServer, orientacao_do_dossie: str) -> None:
             _lista_longa,
             "lista_longa_de_compradores",
             "Lista longa de compradores",
-            "Todos os que a base traz de um setor, sem corte: movimento passado, não intenção de compra.",
+            "Até 50 dos que a base traz de um setor, sem corte nem reordenação: movimento passado, não intenção de compra.",
         ),
     )
     for funcao, nome, titulo, descricao in fluxos:

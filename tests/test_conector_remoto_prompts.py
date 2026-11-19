@@ -88,6 +88,8 @@ def test_cada_fluxo_cita_so_ferramentas_que_existem_e_fecha_com_as_travas(nome):
         "limits",
         "anos",
         "limite",
+        "truncated",
+        "total_buyers",
     }
     assert citadas <= set(ferramentas.CONJUNTOS_DA_FERRAMENTA) | parametros
     if nome == "perfil_sem_nome":
@@ -208,16 +210,10 @@ def test_perfil_sem_nome_so_consulta_a_ficha_e_proibe_o_que_identifica():
     citadas = set(re.findall(r"`([a-z_]+)`", texto))
     # eventos e vínculos trazem nomes de terceiros e fatos que identificam a empresa
     assert citadas & set(ferramentas.CONJUNTOS_DA_FERRAMENTA) == {"ficha_da_empresa"}
-    for identificador in (
-        "razão social",
-        "nome fantasia",
-        "CNPJ",
-        "município",
-        "UF",
-        "endereço",
-        "nome de sócio",
-    ):
-        assert identificador in texto, identificador
+    assert (
+        "Não escreva razão social, nome fantasia, CNPJ, município, UF, endereço, nome de sócio"
+        in texto
+    )
     assert "região" in texto and "faixa" in texto
     assert "releia" in texto
 
@@ -239,3 +235,5 @@ def test_lista_longa_pede_o_maximo_e_nao_corta_nem_prioriza():
     assert f"`limite` {ferramentas.LIMITE_MAXIMO_DOS_COMPRADORES}" in texto
     assert "CNAE 62015 na UF MG nos últimos 5 anos" in texto
     assert "movimento passado" in texto and "intenção de compra" in texto
+    # a ferramenta corta em 50: o prompt manda dizer quantos a base tem quando vier cortado
+    assert "`truncated`" in texto and "`total_buyers`" in texto
