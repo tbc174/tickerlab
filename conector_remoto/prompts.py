@@ -20,13 +20,23 @@ from mcp.shared.exceptions import MCPError
 from mcp.types import INVALID_PARAMS
 from pydantic import Field
 
-from conector_remoto.ferramentas import ANOS_MAXIMO_DOS_COMPRADORES, cnpj_do_pedido
+from conector_remoto.ferramentas import (
+    ANOS_MAXIMO_DOS_COMPRADORES,
+    LIMITE_MAXIMO_DOS_COMPRADORES,
+    cnpj_do_pedido,
+)
 
 FECHO = (
     "Cite a fonte e a data de cada número, separe o que a base diz do que você deduz e liste à parte o "
     "que faltou e por quê, sem preencher lacuna com estimativa. De pessoa física, só o que `socios_e_donos` "
     "trouxer, sem CPF nem contato. Ferramenta "
     "que a chave não pode usar também é lacuna. Nada aqui é recomendação de investimento."
+)
+# o perfil anônimo não pode abrir a exceção de `socios_e_donos` do fecho comum: nome de pessoa também identifica
+FECHO_ANONIMO = (
+    "Separe o que a base diz do que você deduz e liste à parte o que faltou e por quê, sem preencher "
+    "lacuna com estimativa. Não consulte nem escreva nome de pessoa física. Ferramenta que a chave não "
+    "pode usar também é lacuna. Nada aqui é recomendação de investimento."
 )
 # só ASCII: o `\d` do Python aceita dígitos de outras escritas, e o `upper` faz "ß" virar "SS"
 _CNAE = re.compile(r"[0-9]{2,7}")
@@ -189,6 +199,59 @@ def dossie(cnpj: str, orientacao: str, como_era_em: str = "") -> str:
     )
 
 
+def preparar_reuniao(cnpj: str, como_era_em: str = "") -> str:
+    """O pedido da página de preparo de uma reunião com uma empresa (linha 980, onda 1)."""
+    return (
+        f"Prepare, em uma página, a reunião com a empresa de CNPJ {cnpj_do_pedido(cnpj)}. Reúna, nesta ordem: "
+        "quem ela é (cadastro, situação, idade, porte e CNAE) com `ficha_da_empresa`; o que aconteceu com ela "
+        "com `eventos`; com quem ela se liga (participações e auditor) com `vinculos`, profundidade 1; e, só "
+        "se for companhia aberta, como ela se compara aos pares com `comparaveis` (se não for, anote a "
+        f"lacuna sem chamar).{_no_dia(_data(como_era_em))} Depois escreva cinco perguntas para fazer na "
+        "reunião, cada uma ligada ao fato da base que a motivou (com a fonte e a data), e uma lista do que "
+        "levar para conferir ao vivo. Não calcule nem projete números que a base não trouxe. "
+        f"{FECHO}"
+    )
+
+
+def perfil_sem_nome(cnpj: str, como_era_em: str = "") -> str:
+    """O pedido do perfil anônimo de uma empresa, para circular sem revelar quem ela é (linha 980, onda 1)."""
+    return (
+        f"Escreva o perfil anônimo da empresa de CNPJ {cnpj_do_pedido(cnpj)}, para circular sem revelar quem "
+        "ela é. Consulte só `ficha_da_empresa`: as outras ferramentas trazem nomes de terceiros e fatos que "
+        f"identificam a empresa.{_no_dia(_data(como_era_em))} No texto use apenas o setor em palavras (pela "
+        "divisão do CNAE, sem o código), a região do país (Sul, Sudeste, Centro-Oeste, Nordeste ou Norte), "
+        "a idade em faixa de cinco anos (por exemplo, mais de 20 anos) e o porte que a base traz. Não "
+        "escreva razão social, nome fantasia, CNPJ, município, UF, endereço, nome de sócio, de cliente ou "
+        "de fornecedor, datas exatas nem número que, sozinho, identifique a empresa. Antes de entregar, "
+        "releia o texto e confira que nenhum desses itens aparece; depois, numa nota à parte, fora do texto "
+        "que circula, liste os campos que você omitiu (só os nomes dos campos, nunca os valores) e a fonte e "
+        f"a data da consulta. {FECHO_ANONIMO}"
+    )
+
+
+def lista_longa_de_compradores(cnae: str, uf: str = "", anos: str = "") -> str:
+    """O pedido da lista longa de quem já se mexeu num setor, sem corte (linha 980, onda 1)."""
+    limpa_uf = _uf(uf) if uf.strip() else ""
+    janela = _anos(
+        anos,
+        ANOS_MAXIMO_DOS_COMPRADORES,
+        f"Anos é um número de 1 a {ANOS_MAXIMO_DOS_COMPRADORES}.",
+    )
+    setor = _cnae(
+        cnae, _CNAE_DE_CLASSE, "CNAE é a classe (5 dígitos) ou a subclasse (7 dígitos)."
+    )
+    onde = f" na UF {limpa_uf}" if limpa_uf else ""
+    quando = f" nos últimos {janela} anos (`anos`)" if janela else ""
+    return (
+        f"Monte a lista longa de quem já se mexeu no setor do CNAE {setor}{onde}{quando}. Use "
+        f"`compradores_do_setor` com `limite` {LIMITE_MAXIMO_DOS_COMPRADORES} e mostre todos os que vierem, "
+        "na ordem da base, numa tabela com o comprador, o tipo (empresa sócia, fundo ou companhia aberta), "
+        "o número de sinais e o sinal mais recente com a fonte e a data. Diga quantos vieram e, pelos "
+        "`limits`, que a lista é movimento passado, não intenção de compra. Não corte nem reordene a "
+        f"lista. {FECHO}"
+    )
+
+
 def registrar_prompts(servidor: MCPServer, orientacao_do_dossie: str) -> None:
     """Põe os prompts no servidor. A orientação do dossiê vem das instruções (um lugar só para ela)."""
 
@@ -218,6 +281,21 @@ def registrar_prompts(servidor: MCPServer, orientacao_do_dossie: str) -> None:
 
     def _dossie(cnpj: ArgumentoCnpj, como_era_em: ArgumentoData = "") -> str:
         return montar(lambda: dossie(cnpj, orientacao_do_dossie, como_era_em))
+
+    def _preparar_reuniao(cnpj: ArgumentoCnpj, como_era_em: ArgumentoData = "") -> str:
+        return montar(lambda: preparar_reuniao(cnpj, como_era_em))
+
+    def _perfil_sem_nome(cnpj: ArgumentoCnpj, como_era_em: ArgumentoData = "") -> str:
+        return montar(lambda: perfil_sem_nome(cnpj, como_era_em))
+
+    def _lista_longa(
+        cnae: ArgumentoCnaeDeClasse,
+        uf: Annotated[str, Field(description="Opcional: UF, duas letras.")] = "",
+        anos: Annotated[
+            str, Field(description="Opcional: olhar só os últimos N anos (1 a 10).")
+        ] = "",
+    ) -> str:
+        return montar(lambda: lista_longa_de_compradores(cnae, uf, anos))
 
     # (função, nome, título, descrição): o título e a descrição são o que o analista vê no cliente
     fluxos = (
@@ -250,6 +328,24 @@ def registrar_prompts(servidor: MCPServer, orientacao_do_dossie: str) -> None:
             "dossie_da_empresa",
             "Dossiê de uma empresa",
             "Ficha, eventos, vínculos e comparáveis numa ficha só, com as lacunas à parte.",
+        ),
+        (
+            _preparar_reuniao,
+            "preparar_reuniao",
+            "Preparar uma reunião",
+            "Uma página com quem é a empresa, o que aconteceu e cinco perguntas ligadas a fatos da base.",
+        ),
+        (
+            _perfil_sem_nome,
+            "perfil_sem_nome",
+            "Perfil anônimo de uma empresa",
+            "O perfil para circular sem razão social, CNPJ, município nem nada que a identifique.",
+        ),
+        (
+            _lista_longa,
+            "lista_longa_de_compradores",
+            "Lista longa de compradores",
+            "Todos os que a base traz de um setor, sem corte: movimento passado, não intenção de compra.",
         ),
     )
     for funcao, nome, titulo, descricao in fluxos:

@@ -20,6 +20,10 @@ PROMPTS = {
     "compradores_no_setor": {"cnae": "6201-5", "uf": "MG", "anos": "3"},
     "comparaveis_da_empresa": {"cnpj": CNPJ, "como_era_em": "2025-06-30"},
     "dossie_da_empresa": {"cnpj": CNPJ},
+    # linha 980, onda 1: os três fluxos novos do analista
+    "preparar_reuniao": {"cnpj": "11.111.111/0001-91", "como_era_em": "2025-06-30"},
+    "perfil_sem_nome": {"cnpj": CNPJ},
+    "lista_longa_de_compradores": {"cnae": "6201-5", "uf": "mg", "anos": "5"},
 }
 
 
@@ -44,7 +48,7 @@ def _texto(cliente, nome: str, argumentos: dict[str, str]) -> str:
     return mensagem["content"]["text"]
 
 
-def test_lista_os_cinco_fluxos_com_titulo_e_argumentos():
+def test_lista_os_oito_fluxos_com_titulo_e_argumentos():
     with _conector() as cliente:
         resposta = aj.rpc(cliente, aj.CHAVE_DE_MENTIRA, "prompts/list")
     assert resposta.status_code == 200, resposta.text
@@ -64,6 +68,9 @@ def test_lista_os_cinco_fluxos_com_titulo_e_argumentos():
         "compradores_no_setor": ["cnae"],
         "comparaveis_da_empresa": ["cnpj"],
         "dossie_da_empresa": ["cnpj"],
+        "preparar_reuniao": ["cnpj"],
+        "perfil_sem_nome": ["cnpj"],
+        "lista_longa_de_compradores": ["cnae"],
     }
 
 
@@ -74,8 +81,20 @@ def test_cada_fluxo_cita_so_ferramentas_que_existem_e_fecha_com_as_travas(nome):
     citadas = set(re.findall(r"`([a-z_]+)`", texto))
     usadas = citadas & set(ferramentas.CONJUNTOS_DA_FERRAMENTA)
     assert usadas, texto
-    parametros = {"como_era_em", "aberta_antes_de", "next_cursor", "limits", "anos"}
+    parametros = {
+        "como_era_em",
+        "aberta_antes_de",
+        "next_cursor",
+        "limits",
+        "anos",
+        "limite",
+    }
     assert citadas <= set(ferramentas.CONJUNTOS_DA_FERRAMENTA) | parametros
+    if nome == "perfil_sem_nome":
+        # o perfil anônimo não pode liberar nem o nome de sócio: o fecho dele é outro
+        assert texto.endswith(prompts.FECHO_ANONIMO)
+        assert "Não consulte nem escreva nome de pessoa física" in texto
+        return
     assert texto.endswith(prompts.FECHO)
     assert (
         "De pessoa física, só o que `socios_e_donos`" in texto
@@ -125,6 +144,14 @@ def test_dossie_usa_a_mesma_orientacao_das_instrucoes():
         ("alvos_no_setor", {"cnae": "35", "uf": "SP", "anos_de_abertura": "²"}),
         ("alvos_no_setor", {"cnae": "٦٢", "uf": "SP"}),
         ("alvos_no_setor", {"cnae": "35", "uf": "ß"}),
+        # os três novos conferem os argumentos como os outros
+        ("preparar_reuniao", {"cnpj": formatado(CPF_DE_TESTE)}),
+        ("preparar_reuniao", {"cnpj": CNPJ, "como_era_em": "ontem"}),
+        ("perfil_sem_nome", {"cnpj": "../companies"}),
+        ("perfil_sem_nome", {"cnpj": CNPJ, "como_era_em": "31/12/2025"}),
+        ("lista_longa_de_compradores", {"cnae": "62"}),
+        ("lista_longa_de_compradores", {"cnae": "62015", "uf": "São Paulo"}),
+        ("lista_longa_de_compradores", {"cnae": "62015", "anos": "50"}),
     ],
 )
 def test_argumento_fora_da_forma_e_recusado_sem_montar_o_pedido(nome, argumentos):
@@ -143,3 +170,72 @@ def test_sem_chave_nao_ha_prompt():
     with _conector() as cliente:
         resposta = aj.rpc(cliente, None, "prompts/list")
     assert resposta.status_code == 401
+
+
+NOVOS = ("preparar_reuniao", "perfil_sem_nome", "lista_longa_de_compradores")
+
+
+@pytest.mark.parametrize("nome", NOVOS)
+def test_os_novos_nao_pedem_estimativa_nem_recomendacao(nome):
+    with _conector() as cliente:
+        texto = _texto(cliente, nome, PROMPTS[nome]).lower()
+    # palavra inteira: "estime" não pode pegar "investimento"
+    for pedido_vedado in (
+        "estime",
+        "estimar",
+        "faturamento",
+        "recomende",
+        "indique",
+        "invista",
+        "compre",
+        "venda",
+    ):
+        assert not re.search(rf"\b{pedido_vedado}\b", texto), (nome, pedido_vedado)
+
+
+def test_preparar_reuniao_monta_a_pagina_com_perguntas_ligadas_a_fatos():
+    with _conector() as cliente:
+        texto = _texto(cliente, "preparar_reuniao", PROMPTS["preparar_reuniao"])
+    assert CNPJ in texto and "`como_era_em` = 2025-06-30" in texto
+    for ferramenta in ("ficha_da_empresa", "eventos", "vinculos", "comparaveis"):
+        assert f"`{ferramenta}`" in texto
+    assert "perguntas" in texto and "fato" in texto
+
+
+def test_perfil_sem_nome_so_consulta_a_ficha_e_proibe_o_que_identifica():
+    with _conector() as cliente:
+        texto = _texto(cliente, "perfil_sem_nome", PROMPTS["perfil_sem_nome"])
+    citadas = set(re.findall(r"`([a-z_]+)`", texto))
+    # eventos e vínculos trazem nomes de terceiros e fatos que identificam a empresa
+    assert citadas & set(ferramentas.CONJUNTOS_DA_FERRAMENTA) == {"ficha_da_empresa"}
+    for identificador in (
+        "razão social",
+        "nome fantasia",
+        "CNPJ",
+        "município",
+        "UF",
+        "endereço",
+        "nome de sócio",
+    ):
+        assert identificador in texto, identificador
+    assert "região" in texto and "faixa" in texto
+    assert "releia" in texto
+
+
+def test_perfil_sem_nome_nao_repete_o_cnpj_alem_do_pedido_da_ficha():
+    with _conector() as cliente:
+        texto = _texto(cliente, "perfil_sem_nome", PROMPTS["perfil_sem_nome"])
+    assert texto.count(CNPJ) == 1
+
+
+def test_lista_longa_pede_o_maximo_e_nao_corta_nem_prioriza():
+    with _conector() as cliente:
+        texto = _texto(
+            cliente,
+            "lista_longa_de_compradores",
+            PROMPTS["lista_longa_de_compradores"],
+        )
+    assert "`compradores_do_setor`" in texto
+    assert f"`limite` {ferramentas.LIMITE_MAXIMO_DOS_COMPRADORES}" in texto
+    assert "CNAE 62015 na UF MG nos últimos 5 anos" in texto
+    assert "movimento passado" in texto and "intenção de compra" in texto

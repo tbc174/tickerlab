@@ -159,9 +159,13 @@ API, comando na CLI e ferramenta aqui, com a paridade cobrando.
 
 ## Prompts
 
-Além das ferramentas, o conector oferece cinco prompts (`conector_remoto/prompts.py`, linha 901), um para
-cada fluxo da casa de M&A: `triagem_de_cnpj`, `alvos_no_setor`, `compradores_no_setor`,
-`comparaveis_da_empresa` e `dossie_da_empresa`. O analista escolhe o prompt no cliente e preenche os
+Além das ferramentas, o conector oferece oito prompts (`conector_remoto/prompts.py`, linhas 901 e 980), um
+para cada fluxo da casa de M&A: `triagem_de_cnpj`, `alvos_no_setor`, `compradores_no_setor`,
+`comparaveis_da_empresa` e `dossie_da_empresa`, mais os três da linha 980: `preparar_reuniao` (uma página
+com quem é a empresa, o que aconteceu e cinco perguntas, cada uma ligada a um fato da base),
+`perfil_sem_nome` (o perfil para circular sem razão social, CNPJ, município, UF nem nada que identifique; só
+consulta a `ficha_da_empresa`) e `lista_longa_de_compradores` (todos os que a base traz do setor, até 50,
+sem corte). Nenhum pede faturamento estimado nem recomendação. O analista escolhe o prompt no cliente e preenche os
 argumentos. O prompt só monta o pedido, que leva às ferramentas, e não lê a base nem a API: o dado continua
 saindo só pelas ferramentas, com o portão por conjunto e o filtro de pessoa delas.
 
@@ -170,6 +174,8 @@ saindo só pelas ferramentas, com o portão por conjunto e o filtro de pessoa de
 - **Dossiê:** usa a mesma orientação das instruções (`ORIENTACAO_DO_DOSSIE`), um lugar só para ela.
 - **Fecho comum:** todo prompt termina com o mesmo pedido de fonte e data, de lacunas à parte e de nenhum
   dado de pessoa física.
+  A exceção é `perfil_sem_nome`, cujo fecho (`FECHO_ANONIMO`) também proíbe o nome de sócio, porque nome de
+  pessoa identifica a empresa.
 - **Testes:** o teste confere que cada prompt cita só ferramentas que existem.
 - **Clientes:** o Claude aceita prompts (documentação de conectores, lida em 13/11/2026). Se o ChatGPT os
   mostra não está confirmado, e nada do roteiro depende deles.
