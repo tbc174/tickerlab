@@ -61,6 +61,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "o_que_posso_ver": frozenset(),
     "credito_da_empresa": frozenset({"credit"}),
     "o_que_mudou": frozenset({"profiles", "companies", "links", "events"}),
+    "comparar_empresas": frozenset({"profiles", "companies"}),
 }
 # o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
 TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
@@ -81,6 +82,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "o_que_posso_ver": "O que a sua chave pode ver",
     "credito_da_empresa": "Fatos de crédito de uma empresa",
     "o_que_mudou": "O que mudou numa empresa desde um dia",
+    "comparar_empresas": "Fichas de 2 a 5 empresas lado a lado",
 }
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
@@ -131,6 +133,7 @@ DICAS_DE_RESPOSTA_GRANDE = {
     "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
     "vinculos": "Peça menos níveis (`profundidade`) ou só alguns tipos de vínculo (`tipos`).",
     "novidades": "Peça menos dias (`dias`).",
+    "comparar_empresas": "Compare menos empresas por vez (`cnpjs`).",
     "compradores_do_setor": "Peça menos compradores (`limite`), menos anos (`anos`) ou uma UF (`uf`).",
 }
 DICA_SEM_PARAMETRO = "Esta ferramenta não tem como pedir menos: diga ao analista que este pedido não cabe na conversa."
