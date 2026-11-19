@@ -82,8 +82,10 @@ As mensagens de erro saem na saída de erro (stderr), em português.
    conta e os campos de origem, separado do que a API serviu.
 5. **A chave é segredo.** Nunca a escreva num comando, num arquivo do projeto, num log ou no chat. Ela fica
    em `TICKERLAB_API_KEY` ou no arquivo do `tickerlab login`.
-6. **Sem dado de pessoa física.** A API não serve sócio pessoa física, CPF, MEI nem empresário individual;
-   não tente chegar a uma pessoa por outros caminhos.
+6. **Sem dado de pessoa física.** A linha de comando não traz sócio pessoa física, CPF, MEI nem empresário
+   individual. A API só serve o nome de sócio pessoa física à organização com a permissão de ver pessoas
+   pela API e pelo conector, desligada por padrão, e nunca o CPF; nenhum comando daqui o pede. Não tente chegar a uma pessoa por outros
+   caminhos.
 
 ## Configuração
 
