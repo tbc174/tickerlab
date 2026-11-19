@@ -579,4 +579,59 @@ REGRAS: dict[str, Regra] = {
     "anm_tah": Regra(chave=("id_na_fonte", "visto_em")),
     "anp_tancagem": Regra(chave=("id_na_fonte", "visto_em")),
     "mte_pat": Regra(chave=("id_na_fonte", "visto_em")),
+    # setores (linha 978): a ligação das entidades dos reguladores às companhias e os acessos da Anatel.
+    # Medido na base de 19/11/2026 (só contagens): na `empresa_serie`, via e desde só existem na linha ligada a
+    # uma companhia (as 19 ligações do comexstat não trazem `desde`); a chave com `via` e `desde` não repete linha.
+    "empresa_serie": Regra(
+        chave=("fonte", "chave", "cnpj_companhia", "via", "desde"),
+        opcionais={
+            "cnpj_companhia": "toda entidade aparece, ligada ou não: a que nenhuma companhia aberta controla fica sem companhia",
+            "via": "só a linha ligada a uma companhia diz por qual via (própria, controlada, coligada); entidade sem companhia fica sem via",
+            "desde": "só a ligação com companhia tem a data em que apareceu; as 19 ligações do comexstat (produto) não a trazem na fonte",
+        },
+    ),
+    # Na `anatel_acessos` cada planilha (arquivo, serviço e recorte) ou traz uma coluna em todas as linhas ou em
+    # nenhuma (medido: zero planilhas mistas nas 11 colunas): o vazio é do layout da planilha, não de dado perdido.
+    "anatel_acessos": Regra(
+        chave=(
+            "competencia",
+            "servico",
+            "recorte",
+            "cnpj",
+            "uf",
+            "regiao_pgo",
+            "codigo_nacional",
+            "modalidade_de_cobranca",
+            "tecnologia",
+            "geracao",
+            "tipo_de_pessoa",
+            "tipo_de_produto",
+            "faixa_de_velocidade",
+            "meio_de_acesso",
+            "tipo_de_acesso_tv",
+            "visto_em",
+        ),
+        periodo="competencia",
+        valor="acessos",
+        opcionais={
+            coluna: "a Anatel publica uma planilha por serviço e recorte, cada uma com as suas colunas: onde a planilha não tem o campo ele fica vazio em todas as linhas dela"
+            for coluna in (
+                "uf",
+                "regiao_pgo",
+                "codigo_nacional",
+                "modalidade_de_cobranca",
+                "tecnologia",
+                "geracao",
+                "tipo_de_pessoa",
+                "tipo_de_produto",
+                "faixa_de_velocidade",
+                "meio_de_acesso",
+                "tipo_de_acesso_tv",
+            )
+        },
+        saltos_explicados={
+            2007: "a série de banda larga fixa começa em 2007 (319 prestadoras, mediana de 35 acessos contra 92 mil da telefonia móvel): entrou um serviço de escala bem menor",
+            2011: "a banda larga fixa passa de 4 para 12 competências por ano (o recorte mensal), o que quadruplica as linhas sem mudar de fonte; a mediana do conjunto muda porque a banda larga fixa (mediana perto de 45 acessos) passa a pesar mais que a telefonia móvel (perto de 56 mil)",
+        },
+    ),
 }
