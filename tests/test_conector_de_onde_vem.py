@@ -225,6 +225,14 @@ def test_o_erro_de_pergunta_sem_achado_nao_lista_conjuntos_nem_campos():
     assert "credit" not in texto and "legal_name" not in texto
 
 
+def test_o_erro_nao_repete_o_texto_digitado():
+    sobre = (
+        "12345678901"  # tem a forma de um número de documento: não pode voltar no texto
+    )
+    erro, texto = _perguntar(_api(), CHAVE_A, sobre)
+    assert erro and sobre not in texto
+
+
 @pytest.mark.parametrize("sobre", ["", "   ", "a b", "credit;", "x" * 81, "../credit"])
 def test_pergunta_que_nao_e_nome_de_conjunto_ou_campo_e_recusada(sobre):
     erro, texto = _perguntar(_api(), CHAVE_A, sobre)

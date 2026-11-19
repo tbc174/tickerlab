@@ -819,7 +819,7 @@ def _explicacao(corpo: object, pergunta: str) -> dict[str, object]:
     tipo, achados = _achados(corpo, pergunta)
     if not achados:
         raise ToolError(
-            f"A sua chave não vê um conjunto nem um campo chamado `{pergunta}`. "
+            "A sua chave não vê um conjunto nem um campo com esse nome. "
             "A lista do que ela vê está em `o_que_posso_ver`."
         )
     cortado = len(achados) > MAXIMO_DE_ACHADOS
