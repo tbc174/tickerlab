@@ -5,10 +5,14 @@
 que tem algum campo liberado pelo portão. O corpo de cada entrada diz se achou a empresa (`achou`), as fontes, o que
 a base cobre e os itens, cada campo no envelope com a fonte e o dia em que ficou público.
 
-- **Sem olhar o futuro:** a porta só traz o que era público no dia (`disponivel_em`) e, de cada chave do contrato,
-  a revisão mais nova já vista; a "data mais nova" de uma lista é a mais nova entre essas linhas.
+- **Sem olhar o futuro:** a porta só traz o que era público no dia (o `publico_em` dela, que é o `disponivel_em`
+  ou, na tabela publicada por mês, o último dia do mês dele) e, de cada chave do contrato, a revisão mais nova já
+  vista; a "data mais nova" de uma lista é a mais nova entre essas linhas. O envelope diz esse mesmo dia.
 - **Sem pessoa:** as views da porta já tiram as linhas marcadas como pessoa; os campos que a trava do D2.4 nega
-  pelo nome nem estão no registro. A linha que saiu do arquivo da fonte (`consta` falso) não sai.
+  pelo nome nem estão no registro. A linha que saiu do arquivo da fonte (`consta` falso) não sai. Na entrada com
+  `marca_de_pessoa` (CGU, IBAMA e MTE), só sai a linha com a marca falsa (MEI, empresário individual e a linha sem
+  a marca ficam de fora, também da contagem), e todo texto servido passa pela varredura de CPF e e-mail: se achar,
+  a leitura levanta `RespostaComPessoaProibida` (a rota responde 503), nunca um "não achou".
 - **Bloco fechado não vaza:** entrada sem campo liberado não aparece, nem a chave dela; bloco sem entrada liberada
   volta None.
 - Tabela que não está na base (ou sem uma coluna que a entrada usa) responde "não achou", com a cobertura.
@@ -24,9 +28,12 @@ from base.porta import Porta
 from base.porta.rede import views
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
+from src.api_externa.pessoas import RespostaComPessoaProibida
 from src.api_externa.tabelas_por_cnpj import CNPJ, FUNDO, RAIZ, TabelaPorCnpj, do_bloco
+from src.pessoa_no_texto import texto_de_pessoa
 
 PUBLICO_EM = "disponivel_em"
+PUBLICO_EM_NA_PORTA = "publico_em"  # o dia com que a porta corta o futuro (o fim do mês, na tabela mensal)
 VISTO_EM = "visto_em"
 CONSTA = "consta"
 DESCENDENTE = "-"
@@ -72,6 +79,25 @@ def _dia(valor: object) -> date | None:
     if valor is None or pd.isna(valor):  # type: ignore[arg-type]
         return None
     return pd.Timestamp(valor).date()  # type: ignore[arg-type]
+
+
+def _de_empresa(marca: object) -> bool:
+    """A marca de pessoa diz, sem dúvida, que a linha é de empresa: só o falso; vazio ou outro valor fica de fora."""
+    return _simples(marca) is False
+
+
+def _varrer(entrada: TabelaPorCnpj, item: dict[str, dict]) -> None:
+    """Na entrada com marca de pessoa, nenhum texto servido traz CPF ou e-mail; achou, a resposta cai (o caminho
+    diz onde, nunca o valor)."""
+    if not entrada.marca_de_pessoa:
+        return
+    falhas = [
+        f"{entrada.chave}.{nome}"
+        for nome, envelope in item.items()
+        if isinstance(valor := envelope.get("valor"), str) and texto_de_pessoa(valor)
+    ]
+    if falhas:
+        raise RespostaComPessoaProibida(falhas)
 
 
 def _so_caracteres(valor: object) -> str:
@@ -124,7 +150,9 @@ class LeitorPorTabela:
             *(_coluna_da_ordem(o) for o in entrada.ordem),
             *entrada.uma_por,
             *([entrada.coluna_da_fonte] if entrada.coluna_da_fonte else []),
+            *([entrada.marca_de_pessoa] if entrada.marca_de_pessoa else []),
             PUBLICO_EM,
+            PUBLICO_EM_NA_PORTA,
             VISTO_EM,
             CONSTA,
             CNPJ,
@@ -147,6 +175,7 @@ class LeitorPorTabela:
             *entrada.uma_por,
             *([CNPJ] if entrada.onde_sai == FUNDO else []),
             *([entrada.coluna_da_fonte] if entrada.coluna_da_fonte else []),
+            *([entrada.marca_de_pessoa] if entrada.marca_de_pessoa else []),
         }
         if not precisa <= existentes:
             return (
@@ -160,6 +189,10 @@ class LeitorPorTabela:
         )
         if CONSTA in tabela.columns:
             tabela = tabela[tabela[CONSTA].fillna(True).astype(bool)]
+        if entrada.marca_de_pessoa:
+            tabela = tabela[
+                tabela[entrada.marca_de_pessoa].map(_de_empresa).astype(bool)
+            ]
         if entrada.onde_sai == FUNDO:
             tabela = tabela[tabela[CNPJ].map(_so_caracteres) == cnpj]
         return tabela
@@ -189,7 +222,7 @@ class LeitorPorTabela:
         fonte = self._fonte_da_linha(entrada, linha)
         if fonte is None or fonte not in servidos:
             return None  # linha de uma fonte que o portão não libera (ou que o registro não conhece)
-        publico_em = _dia(linha[PUBLICO_EM])
+        publico_em = _dia(linha.get(PUBLICO_EM_NA_PORTA, linha[PUBLICO_EM]))
         if publico_em is None:
             return None
         visto_em = _dia(linha.get(VISTO_EM))
@@ -198,6 +231,7 @@ class LeitorPorTabela:
             for nome in servidos[fonte]
             if (valor := _simples(linha.get(nome))) is not None
         }
+        _varrer(entrada, item)
         return (fonte, item) if item else None
 
     def _entrada(

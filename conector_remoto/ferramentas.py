@@ -637,7 +637,10 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
         (a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o
         auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das
         agências reguladoras (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de
-        fundo imobiliário na CVM. Traz também uma
+        fundo imobiliário na CVM. Para a organização com o conjunto de integridade no contrato, traz também as
+        sanções da CGU (CEIS, CNEP, CEPIM e acordos de leniência), os termos de embargo do IBAMA e o Cadastro de
+        Empregadores do MTE, só da pessoa jurídica, cada um com a fonte, a data e "nada encontrado" quando não
+        acha. Traz também uma
         frase no topo (fato), a linha do tempo com os marcos datados dos blocos, as leituras (dedução do TickerLab,
         separada do fato e com os blocos de onde veio), o que não foi achado em cada bloco, o bloco que não
         respondeu a tempo e as bases que a análise ainda não consulta. Cada valor traz a fonte e o dia em que
@@ -651,7 +654,8 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
         idade, endereço ou contato), e só na análise de hoje (sem `como_era_em`), porque o quadro é o do retrato
         vigente. Sem a permissão, ou se esse bloco não estiver disponível, a análise sai sem ele.
         Não traz: contato, endereço, faturamento de empresa fechada, nem as bases listadas em `not_included`
-        (dívida ativa, sanções, ambiente, contratos públicos, processos)."""
+        (dívida ativa, contratos públicos, processos e, sem o conjunto de integridade, sanções, ambiente e o
+        cadastro do MTE)."""
         numeros = cnpj_do_pedido(cnpj)
         analise = await pedidos.pedir(
             "analise_completa",

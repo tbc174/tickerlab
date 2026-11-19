@@ -119,8 +119,15 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
         licenca_da_fonte("rfb-cripto") == coletas.LICENCAS["rfb"]
     )  # a planilha de cripto não muda
     assert licenca_da_fonte("gleif-br").startswith("CC0")
+    # CGU, IBAMA e MTE: uso interno em tudo, menos o conjunto de integridade da API por chave (ADR 0122, Emenda 1)
     for fonte in ("cgu-ceis", "ibama-autos", "mte-lista-suja"):
-        assert coletas.revenda_da_fonte(fonte) == coletas.SO_USO_INTERNO, fonte
+        assert coletas.revenda_da_fonte(fonte) == coletas.INTEGRIDADE_SOB_CONTRATO, (
+            fonte
+        )
+        assert coletas.marca_da_fonte(fonte) is coletas.Marca.USO_INTERNO, fonte
+    assert (
+        coletas.revenda_da_fonte("mte-pat") == coletas.SO_USO_INTERNO
+    )  # o PAT (CC BY-ND) fica de fora
     # só o rodapé CC BY-ND do site, sem resposta: vendável por risco assumido (ADR 0122)
     assert coletas.revenda_da_fonte("pgfn-divida") == coletas.VENDAVEL_RISCO_ASSUMIDO
     assert coletas.revenda_da_fonte("rfb-cnpj") == coletas.VENDAVEL_COM_ATRIBUICAO
@@ -275,3 +282,17 @@ def test_marca_do_tce_pr_e_vendavel_com_atribuicao():
 def test_licitacon_e_vendavel_por_risco_assumido():
     # o LicitaCon do TCE-RS segue sem resposta da Ouvidoria (ADR 0085); o Tiago assumiu o risco (ADR 0122)
     assert coletas.revenda_da_fonte("tce-rs") == coletas.VENDAVEL_RISCO_ASSUMIDO
+
+
+def test_so_o_conjunto_de_integridade_libera_a_marca_de_cgu_ibama_e_mte():
+    integridade = coletas.CONJUNTO_DE_INTEGRIDADE
+    for fonte in ("cgu-ceis", "cgu-leniencia", "ibama-embargos", "mte-lista-suja"):
+        assert coletas.sai_no_conjunto_de_integridade(fonte, integridade), fonte
+        for outro in ("companies", "profiles", "credit", "prospecting"):
+            assert not coletas.sai_no_conjunto_de_integridade(fonte, outro), (
+                fonte,
+                outro,
+            )
+    # outra fonte de uso interno não entra pelo conjunto, nem o PAT do MTE (CC BY-ND)
+    for fonte in ("mte-pat", "datajud-processos", "fmi-pcps", "termos-b3", "rfb-cnpj"):
+        assert not coletas.sai_no_conjunto_de_integridade(fonte, integridade), fonte

@@ -792,8 +792,9 @@ def analise_da_empresa(
     cnpj: str, contexto: Chave, known_at: date | None = None
 ) -> object:
     """A análise da empresa como era em `known_at`, numa chamada: cada bloco por CNPJ que a organização pode
-    ver (`profile`, `corporate_ownership`, `links`, `events`, `credit`, `assets`, `comparables`), lido como na
-    rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
+    ver (`profile`, `corporate_ownership`, `links`, `events`, `credit`, `assets`, `comparables` e, com o conjunto
+    `integrity` no contrato, `sanctions`, `environmental_embargoes` e `forced_labor_registry`, só da pessoa
+    jurídica), lido como na rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
     as deduções marcadas (`inferences`), o bloco aberto que não achou nada (`not_found`), o que passou do
     prazo (`timed_out`) e o que a análise não consulta (`not_included`). Bloco que não aparece não foi
     consultado. Cada bloco aberto conta um pedido no conjunto dele (`requests_used`). Sem `profiles` nem
@@ -804,6 +805,20 @@ def analise_da_empresa(
         servida = _analise_contada(contexto, numeros, dia)
     corpo = piloto.marcar(servida.corpo, liberados)
     return traduzir_chaves(corpo | {"fontes": fontes_da_resposta(servida.fontes)})
+
+
+def _analise_varrida(
+    montar: Callable[[], analise.Analise | None],
+) -> analise.Analise | None:
+    """A análise montada; 503 sem dizer onde nem por quê se a varredura de pessoa de um bloco (CGU, IBAMA e MTE)
+    achou CPF ou e-mail num texto da fonte: a resposta inteira cai, nunca sai um "não achou" falso."""
+    try:
+        return montar()
+    except pessoas.RespostaComPessoaProibida as erro:
+        log.error(
+            "análise: varredura de pessoa falhou em %d lugar(es)", len(erro.caminhos)
+        )
+        raise _fora_do_ar() from erro
 
 
 def _analise_contada(
@@ -822,12 +837,14 @@ def _analise_contada(
         servida = None
         if cadastro is not None:
             with _porta(conexao) as porta:
-                servida = analise.montar_analise(
-                    cnpj, dia, porta=porta, liberadas=liberadas,
-                    portao=lambda conjunto, finalidade: _portao(
-                        conexao, contexto, conjunto, finalidade
-                    ),
-                    linhas=acesso.linhas_por_resposta(contexto),
+                servida = _analise_varrida(
+                    lambda: analise.montar_analise(
+                        cnpj, dia, porta=porta, liberadas=liberadas,
+                        portao=lambda conjunto, finalidade: _portao(
+                            conexao, contexto, conjunto, finalidade
+                        ),
+                        linhas=acesso.linhas_por_resposta(contexto),
+                    )
                 )  # fmt: skip
         consumo = (
             servida.consumo if servida else {(empresas.CONJUNTO, FINALIDADE): (0, True)}

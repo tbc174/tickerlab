@@ -301,6 +301,15 @@ VENDAVEL_RISCO_ASSUMIDO = (
     "resposta escrita sobre uso comercial"
 )
 SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o dado)"
+# CGU, IBAMA e MTE (ADR 0122, Emenda 1, 18/11/2026; risco assumido pelo Tiago): continuam só de uso interno em tudo
+# (base, app, site, marca), menos na API por chave, e lá só a linha de pessoa jurídica, só no conjunto de
+# integridade (`CONJUNTO_DE_INTEGRIDADE`) e só para a organização que tem esse conjunto no contrato. A licença em
+# `LICENCAS` continua dizendo o que a fonte escreveu, e cada bloco servido cita a fonte
+INTEGRIDADE_SOB_CONTRATO = (
+    "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de "
+    "integridade no contrato (ADR 0122, Emenda 1, 18/11/2026: risco assumido pelo Tiago; citar a fonte)"
+)
+CONJUNTO_DE_INTEGRIDADE = "integrity"
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
     "comercial até a resposta)"
@@ -356,13 +365,14 @@ REVENDA = {
     "sefmg": VENDAVEL_RISCO_ASSUMIDO,  # idem para Minas: lista pública (Res. Conj. SEF/AGE 5.625/2022, CTN art. 198 §3º II), sem licença escrita
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": VENDAVEL_RISCO_ASSUMIDO,
-    # dado pessoal (autuados, empregadores pessoa física): só interno
-    "cgu": SO_USO_INTERNO,
+    # dado pessoal (autuados, empregadores pessoa física): só interno, menos a pessoa jurídica no conjunto de
+    # integridade da API por chave (ADR 0122, Emenda 1)
+    "cgu": INTEGRIDADE_SOB_CONTRATO,
     "transparencia": VENDAVEL_COM_ATRIBUICAO,
     "bndes": VENDAVEL_ODBL,
     "inss": VENDAVEL_COM_ATRIBUICAO,
-    "ibama": SO_USO_INTERNO,
-    "mte": SO_USO_INTERNO,
+    "ibama": INTEGRIDADE_SOB_CONTRATO,
+    "mte": INTEGRIDADE_SOB_CONTRATO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
     "catalogo": VENDAVEL_RISCO_ASSUMIDO,
@@ -542,6 +552,7 @@ MARCA_DA_REVENDA = {
     VENDAVEL_COM_ATRIBUICAO: Marca.VENDAVEL,
     VENDAVEL_RISCO_ASSUMIDO: Marca.VENDAVEL,
     SO_USO_INTERNO: Marca.USO_INTERNO,
+    INTEGRIDADE_SOB_CONTRATO: Marca.USO_INTERNO,  # fora do conjunto de integridade, como hoje
     A_CONFIRMAR: Marca.A_CONFIRMAR,
     NAO_COMERCIAL: Marca.NAO_COMERCIAL,
 }
@@ -1109,6 +1120,15 @@ def revenda_da_fonte(fonte: str) -> str:
 def marca_da_fonte(fonte: str) -> Marca:
     """A marca da fonte ("yahoo-bvsp" → não comercial; "cvm-ipe" → vendável)."""
     return MARCA_DA_REVENDA[revenda_da_fonte(fonte)]
+
+
+def sai_no_conjunto_de_integridade(fonte: str, conjunto: str) -> bool:
+    """A fonte é de CGU, IBAMA ou MTE (`INTEGRIDADE_SOB_CONTRATO`) e o pedido é do conjunto de integridade: a
+    marca de uso interno não barra (ADR 0122, Emenda 1). Fora desse conjunto, ou outra fonte, nada muda."""
+    return (
+        conjunto == CONJUNTO_DE_INTEGRIDADE
+        and revenda_da_fonte(fonte) == INTEGRIDADE_SOB_CONTRATO
+    )
 
 
 def marca_mais_restrita(marcas: Iterable[Marca]) -> Marca:
