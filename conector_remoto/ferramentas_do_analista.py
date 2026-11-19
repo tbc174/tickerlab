@@ -9,6 +9,7 @@ conjunto (`CONJUNTOS_DA_FERRAMENTA`, em `ferramentas.py`, onde ficam também os 
 import asyncio
 import dataclasses
 import json
+import re
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
 from typing import Annotated
@@ -22,6 +23,7 @@ from conector_remoto.cliente_api import ParametroDaApi, RespostaDaApi
 from conector_remoto.ferramentas import (
     SO_LEITURA,
     STATUS_NAO_DISPONIVEL,
+    STATUS_OK,
     TITULOS_DAS_FERRAMENTAS,
     Cnpj,
     ComoEraEm,
@@ -46,6 +48,7 @@ def registrar(servidor: MCPServer, pedidos: Pedidos) -> None:
     _registrar_credito(servidor, pedidos)
     _registrar_o_que_mudou(servidor, pedidos)
     _registrar_comparar_empresas(servidor, pedidos)
+    _registrar_de_onde_vem(servidor, pedidos)
 
 
 def _registrar_credito(servidor: MCPServer, pedidos: Pedidos) -> None:
@@ -706,4 +709,167 @@ def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
                 pedidos.entregar(resposta, "comparar_empresas")
         return pedidos.entregar(
             RespostaDaApi(200, _montar_a_comparacao(respostas)), "comparar_empresas"
+        )
+
+
+# ---------------------------------------------------------------- de_onde_vem
+#
+# Explica um conjunto ou um campo pelo catálogo que a chave já lê (`/catalog`, o mesmo de `o_que_posso_ver`):
+# a fonte, a licença, a atribuição e a marca de piloto de cada campo. Não pede dado de empresa.
+
+PERGUNTA_VALIDA = re.compile(r"[a-z0-9_]{1,80}")
+MAXIMO_DE_ACHADOS = 50
+LIMITE_DO_CATALOGO = (
+    "O catálogo da chave traz o conjunto, o campo, a fonte, a licença e a marca de piloto; não traz o "
+    "significado de cada campo nem o dia do retrato (o dia de cada valor vem em `published_at`, na resposta "
+    "do dado)."
+)
+
+
+def _pergunta(texto: str) -> str:
+    """O nome pedido, em minúsculas e sem espaço nas pontas; `ToolError` se não é nome de conjunto ou campo."""
+    pergunta = texto.strip().lower()
+    if not PERGUNTA_VALIDA.fullmatch(pergunta):
+        raise ToolError(
+            "Diga o nome de um conjunto ou de um campo, só com letras, números e `_`, como `credit` ou "
+            "`legal_name`. A lista do que a sua chave vê está em `o_que_posso_ver`."
+        )
+    return pergunta
+
+
+def _campos_do_conjunto(conjunto: dict) -> list[dict]:
+    campos = conjunto.get("fields")
+    return (
+        [c for c in campos if isinstance(c, dict)] if isinstance(campos, list) else []
+    )
+
+
+def _campo_enxuto(campo: dict) -> dict[str, object]:
+    enxuto: dict[str, object] = {
+        "field": campo.get("field"),
+        "source": campo.get("source"),
+    }
+    if campo.get("pilot") is True:
+        enxuto["pilot"] = True
+    return enxuto
+
+
+def _achados(corpo: object, pergunta: str) -> tuple[str, list[dict[str, object]]]:
+    """Os conjuntos de nome `pergunta` ou, se não há, os campos de nome `pergunta`, cada um com o conjunto."""
+    lista = corpo.get("datasets") if isinstance(corpo, dict) else None
+    conjuntos = (
+        [c for c in lista if isinstance(c, dict)] if isinstance(lista, list) else []
+    )
+    de_conjunto = [
+        {
+            "dataset": c.get("dataset"),
+            "purpose": c.get("purpose"),
+            "fields": [_campo_enxuto(f) for f in _campos_do_conjunto(c)],
+        }
+        for c in conjuntos
+        if str(c.get("dataset", "")).lower() == pergunta
+    ]
+    if de_conjunto:
+        return "dataset", de_conjunto
+    de_campo = [
+        {"dataset": c.get("dataset"), "purpose": c.get("purpose")} | _campo_enxuto(f)
+        for c in conjuntos
+        for f in _campos_do_conjunto(c)
+        if str(f.get("field", "")).lower() == pergunta
+    ]
+    return "field", de_campo
+
+
+def _campos_do_achado(achado: dict[str, object]) -> list[dict]:
+    """Os campos de um achado: os do conjunto, ou o próprio achado quando é um campo."""
+    campos = achado.get("fields")
+    return campos if isinstance(campos, list) else [achado]
+
+
+def _fontes_do_achado(corpo: object, achados: list[dict[str, object]]) -> list[dict]:
+    """A licença e a atribuição das fontes que aparecem nos achados, uma vez cada, em ordem alfabética."""
+    usadas = {
+        campo.get("source")
+        for achado in achados
+        for campo in _campos_do_achado(achado)
+        if isinstance(campo.get("source"), str)
+    }
+    lista = corpo.get("sources") if isinstance(corpo, dict) else None
+    por_nome = {
+        f["source"]: f
+        for f in (lista if isinstance(lista, list) else [])
+        if isinstance(f, dict) and isinstance(f.get("source"), str)
+    }
+    return [por_nome.get(nome, {"source": nome}) for nome in sorted(usadas, key=str)]
+
+
+def _campos_de_piloto(achados: list[dict[str, object]]) -> list[str]:
+    return sorted(
+        {
+            f"{achado.get('dataset')}.{campo.get('field')}"
+            for achado in achados
+            for campo in _campos_do_achado(achado)
+            if campo.get("pilot") is True
+        }
+    )
+
+
+def _explicacao(corpo: object, pergunta: str) -> dict[str, object]:
+    """A explicação de `pergunta`, com o aviso de piloto uma vez só; `ToolError` se a chave não vê nada assim."""
+    tipo, achados = _achados(corpo, pergunta)
+    if not achados:
+        raise ToolError(
+            f"A sua chave não vê um conjunto nem um campo chamado `{pergunta}`. "
+            "A lista do que ela vê está em `o_que_posso_ver`."
+        )
+    cortado = len(achados) > MAXIMO_DE_ACHADOS
+    achados = achados[:MAXIMO_DE_ACHADOS]
+    saida: dict[str, object] = {
+        "asked": pergunta,
+        "kind": tipo,
+        "matches": achados,
+        "sources": _fontes_do_achado(corpo, achados),
+        "limits": [LIMITE_DO_CATALOGO],
+    }
+    if cortado:
+        saida["truncated"] = True
+    de_piloto = _campos_de_piloto(achados)
+    aviso = corpo.get("pilot_notice") if isinstance(corpo, dict) else None
+    if de_piloto and isinstance(aviso, str):
+        saida["pilot_fields"] = de_piloto
+        saida["pilot_notice"] = aviso
+    return saida
+
+
+def _registrar_de_onde_vem(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A explicação de um conjunto ou de um campo, tirada do catálogo da chave."""
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["de_onde_vem"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def de_onde_vem(
+        sobre: Annotated[
+            str,
+            Field(
+                max_length=80,
+                description="O nome de um conjunto ou de um campo da lista de `o_que_posso_ver`, como `credit` ou `legal_name`.",
+            ),
+        ],
+    ) -> str:
+        """De onde vem um conjunto ou um campo que a sua chave vê: a fonte de cada campo, a licença e a frase
+        de atribuição dessa fonte, a finalidade do conjunto e a marca de piloto, com o aviso uma vez só e a
+        lista dos campos de piloto. Serve para saber de onde veio um número antes de citá-lo e o que pode ser
+        dito dele.
+        Fonte: o catálogo da API do TickerLab para a sua chave.
+        Não traz: dado de empresa, o significado de cada campo, o dia do retrato nem conjunto ou campo que a
+        sua chave não vê."""
+        pergunta = _pergunta(sobre)
+        catalogo = await pedidos.resposta("/catalog")
+        if not catalogo.ok:
+            raise ToolError(mensagem_do_erro(catalogo))
+        return pedidos.entregar(
+            RespostaDaApi(STATUS_OK, _explicacao(catalogo.corpo, pergunta)),
+            "de_onde_vem",
         )

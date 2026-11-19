@@ -47,6 +47,7 @@ SO_NO_CONECTOR: dict[str, str] = {
     "credito_da_empresa": "linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)",
     "o_que_mudou": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
     "comparar_empresas": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
+    "de_onde_vem": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
 }
 
 ENDERECO = "https://api.exemplo.test"

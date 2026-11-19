@@ -65,6 +65,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas, para pôr lado a lado as que você já escolheu. O que a base não tem vem como «não disponível», nunca como zero. Não traz nota nem ordenação das empresas |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |
+| De onde vem um conjunto ou um campo | a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto. Serve para saber de onde veio um número antes de citá-lo. Não traz dado de empresa nem o significado do campo |
 
 Para várias consultas, dá para pedir a informação **como ela era numa data** ("como era em 31/12/2025").
 

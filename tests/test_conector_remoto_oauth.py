@@ -404,12 +404,13 @@ def test_cada_analista_ve_so_o_que_a_chave_dele_libera(api):
     assert de_a == [
         "analise_completa",
         "comparar_empresas",
+        "de_onde_vem",
         "demonstracoes",
         "ficha_da_empresa",
         "o_que_mudou",
         "o_que_posso_ver",
     ]
-    assert de_b == ["o_que_posso_ver", "setor", "setores"]
+    assert de_b == ["de_onde_vem", "o_que_posso_ver", "setor", "setores"]
 
 
 def test_codigo_reusado_e_recusado(api):
