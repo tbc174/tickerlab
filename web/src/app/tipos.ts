@@ -1065,6 +1065,59 @@ export interface VinculosDaEmpresaV1 {
   aviso_de_piloto?: string | null;
 }
 
+// A análise completa da empresa na ficha (POST /v1/analista/ficha/analise, 19/11/2026): a mesma montagem da rota
+// /analysis da API e da ferramenta do conector, pelo portão da tela. Sem pessoa física. Cada bloco traz o corpo do
+// leitor da API: campo no envelope {valor, fonte, publico_em}, grupo de campos ou lista de linhas.
+export interface FraseDaAnaliseCompletaV1 {
+  texto: string;
+  tipo: string; // "fact": a frase é só fato do cadastro
+  a_partir_de: string[];
+}
+
+export interface BlocoDaAnaliseCompletaV1 {
+  nome: string;
+  titulo: string;
+  o_que_traz: string;
+  corpo: Record<string, unknown>;
+}
+
+export interface MarcoDaAnaliseCompletaV1 {
+  dia: string; // AAAA-MM-DD
+  o_que: string;
+  bloco: string;
+  titulo_do_bloco: string;
+  fonte?: string | null;
+  publico_em?: string | null;
+}
+
+export interface LeituraDaAnaliseCompletaV1 {
+  texto: string;
+  tipo: string; // "inference": dedução do TickerLab, nunca fato de uma fonte
+  a_partir_de: string[];
+}
+
+export interface BlocoSemDadoV1 {
+  bloco: string;
+  titulo: string;
+  por_que: string;
+}
+
+export interface AnaliseCompletaV1 {
+  estado: "pronta" | "nao_liberada" | "nao_disponivel";
+  cnpj?: string | null;
+  como_era_em?: string | null; // AAAA-MM-DD
+  frase?: FraseDaAnaliseCompletaV1 | null;
+  blocos: BlocoDaAnaliseCompletaV1[];
+  linha_do_tempo: MarcoDaAnaliseCompletaV1[];
+  leituras: LeituraDaAnaliseCompletaV1[];
+  nao_encontrado: BlocoSemDadoV1[];
+  nao_respondeu_a_tempo: BlocoSemDadoV1[];
+  ainda_nao_traz: string[]; // não consultado nesta tela: a ausência não diz que a empresa não tem registro
+  fontes: FonteDaFichaV1[];
+  limites: string[];
+  aviso_de_piloto?: string | null;
+}
+
 // Comparar empresas (tela do analista, linha 798): uma empresa por linha, cada campo com a fonte e o dia.
 // Quem a base não serve (pessoa, MEI, CNPJ desconhecido) vem só com o cnpj e estado "nao_disponivel".
 export interface EmpresaComparadaV1 {
