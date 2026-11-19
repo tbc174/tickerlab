@@ -137,3 +137,27 @@ def test_toda_raiz_de_individual_vai_para_o_contato_cortar_o_endereco_ate_a_sem_
     list(ri.ler_individuais(_zip(_linha(), sem_nome), SEM_OPOSTOS, set(), raizes))
     achadas = raizes.contem(pd.Series(["11222333", "44555666", "99999999"]))
     assert achadas.tolist() == [True, True, False]
+
+
+@pytest.mark.parametrize(
+    "razao",
+    [
+        "FULANA EXEMPLO 11222333",  # a raiz do próprio CNPJ, que a prova lê como CEP
+        "11.222.333 FULANA EXEMPLO",
+        "FULANA EXEMPLO 01001-000",
+        "FULANA EXEMPLO 88800000-12",  # CPF com um dígito a menos não fecha, mas sai
+        "FULANA EXEMPLO fulana@exemplo.com",
+    ],
+)
+def test_numero_longo_e_email_saem_do_titular_e_a_linha_fica(razao):
+    tabela, descartes = _ler(_linha(razao=razao))
+    assert tabela.loc[0, "titular"] == "FULANA EXEMPLO"
+    assert descartes == {ri.TITULAR_COM_NUMERO_OU_EMAIL_LIMPO: 1}
+
+
+def test_titular_que_e_so_email_nao_sai():
+    tabela, descartes = _ler(
+        _linha(razao="fulana9@exemplo.com"), _linha(raiz="22333444")
+    )
+    assert list(tabela["cnpj_basico"]) == ["22333444"]
+    assert descartes == {ri.TITULAR_SEM_NOME: 1}

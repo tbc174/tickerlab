@@ -118,7 +118,7 @@ TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai 
         "Socios",
         lambda zip_, c: receita_pessoa.ler_socios_pf(zip_, c.opostos),
         ["cnpj_basico", "nome_socio", "qualificacao", "data_entrada"],
-        receita_pessoa.MOTIVOS,
+        receita_pessoa.CONTAGENS,
     ),
     Tabela(
         INDIVIDUAIS,
@@ -127,7 +127,7 @@ TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai 
             zip_, c.opostos, c.tiradas, c.individuais
         ),
         ["cnpj_basico"],
-        receita_individuais.MOTIVOS,
+        receita_individuais.CONTAGENS,
     ),
     Tabela(
         CONTATO,
