@@ -211,7 +211,7 @@ function JanelaDoTopo() {
   );
 }
 
-const PROVAS_DO_TOPO = ["Fonte e data em cada número", "Como era na data em toda consulta", "Sem dado de pessoa física"];
+const PROVAS_DO_TOPO = ["Fonte e data em cada número", "Como era na data em toda consulta", "Sem CPF nem contato de pessoa"];
 
 function Heroi() {
   const [antes, depois] = FRASE_DO_TOPO.split(DESTAQUE_DA_FRASE);
@@ -587,11 +587,12 @@ function Api() {
 }
 
 // As travas das três portas, numa lista só (antes cada porta repetia as suas): as instruções da CLI
-// (cli/tickerlab/instrucoes/AGENTS.md), as do conector e a API, que não serve pessoa física.
+// (cli/tickerlab/instrucoes/AGENTS.md), as do conector e a API, que só serve pessoa física à organização com a
+// permissão `pessoa_no_conector` (política de privacidade, versão 19).
 const TRAVAS: [string, string][] = [
   ["Fonte e data em cada número", "As instruções da CLI e do conector pedem à IA que cite de onde veio e quando ficou público, e liste à parte o que faltou."],
   ["Nenhum número inventado", "As instruções pedem que a IA diga o que a base não devolveu, em vez de completar."],
-  ["Sem dado de pessoa física", "A API não serve sócio pessoa física, CPF, MEI nem empresário individual, e o conector confere cada resposta e recusa a que trouxer campo de pessoa."],
+  ["Pessoa física só com permissão", "Sem a permissão de ver pessoas, desligada por padrão, a API não serve sócio pessoa física, MEI nem empresário individual; com ela, só o nome do sócio ou do titular, a qualificação e a data de entrada, nunca CPF, menor de idade, endereço ou contato. O conector confere cada resposta e recusa a que trouxer campo fora disso."],
   ["A chave não vai ao chat", "No conector ela é colada numa página do TickerLab; na CLI, fica num arquivo que só você lê. Revogada, o acesso para na chamada seguinte."],
   ["Só leitura, as mesmas regras", "Nenhuma ferramenta escreve nem envia nada. Os comandos de leitura da CLI têm ferramenta no conector, com o mesmo pedido à API, e um teste falha se um lado ficar para trás."],
   ["Nada é recomendação de investimento", "As instruções pedem que a IA descreva, compare e calcule; a decisão é sua."],
