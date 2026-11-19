@@ -281,12 +281,17 @@ def test_linhas_de_pessoa_entram_no_contrato_so_quando_existem():
 
 
 def test_linhas_de_pessoa_apontam_coluna_da_propria_tabela_sem_pessoa():
-    """A marca só faz sentido numa tabela de empresas (`pessoa` falso) e numa coluna que ela tem."""
+    """A marca só faz sentido numa tabela de empresas (`pessoa` falso) e numa coluna que ela tem.
+
+    A exceção é a cópia reduzida só-PJ do D11.4 (ADR 0108, Emenda 3): a tabela é de pessoa por inteiro e a marca por
+    linha é o que deixa a porta servir só a linha de empresa."""
+    from base.prontidao import COPIA_REDUZIDA_SO_PJ
+
     marcadas = {n: t for n, t in TABELAS.items() if t.linhas_de_pessoa}
     assert "pgfn_divida" in marcadas
     for nome, tabela in marcadas.items():
         assert tabela.linhas_de_pessoa in tabela.colunas, nome
-        assert not tabela.pessoa, nome
+        assert not tabela.pessoa or nome in COPIA_REDUZIDA_SO_PJ, nome
 
 
 # --- as linhas de pessoa ficam fora da porta (ADR 0075 depois da virada de 5/11/2026) -------------

@@ -388,7 +388,11 @@ def test_tabela_de_pessoa_nunca_tem_a_marca_decidida() -> None:
     )
     com_pessoa = {nome for nome, tabela in TABELAS.items() if tabela.pessoa}
     assert com_pessoa
-    assert not com_pessoa & prontidao.tabelas_com_pessoa_decidida()
+    # só a cópia reduzida só-PJ do D11.4 (Emenda 3) abre, e `test_prontidao_integridade_da_linha_981.py` a cobra
+    assert (
+        not (com_pessoa - prontidao.COPIA_REDUZIDA_SO_PJ)
+        & prontidao.tabelas_com_pessoa_decidida()
+    )
 
 
 def test_tabela_com_cnpj_precisa_da_marca_por_linha() -> None:

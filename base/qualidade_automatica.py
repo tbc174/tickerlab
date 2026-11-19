@@ -467,4 +467,116 @@ REGRAS: dict[str, Regra] = {
         periodo="referencia",
         valor="patrimonio_liquido",
     ),
+    # Lote 3 da linha 978 (piloto D11): séries sem CNPJ (órgãos públicos e mercado) e três tabelas ligadas pelo CNPJ.
+    # A chave é a `chaves` do contrato; o período, a coluna de `aconteceu_em` quando é uma data.
+    "anac_estatistico": Regra(
+        chave=(
+            "competencia",
+            "empresa_sigla",
+            "aeroporto_de_origem_sigla",
+            "aeroporto_de_destino_sigla",
+            "natureza",
+            "grupo_de_voo",
+        ),
+        periodo="competencia",
+        valor="passageiros_pagos",
+    ),
+    "anm_amb_agua_mineral": Regra(chave=("ano", "uf", "substancia")),
+    "anm_amb_producao_beneficiada": Regra(
+        chave=("ano", "uf", "substancia", "contido_indicacao")
+    ),
+    "anm_amb_producao_bruta": Regra(
+        chave=("ano", "uf", "substancia", "contido_indicacao")
+    ),
+    "anp_vendas": Regra(
+        chave=(
+            "competencia",
+            "grupo",
+            "agente",
+            "codigo_do_produto",
+            "uf_origem",
+            "uf_destino",
+            "mercado_destino",
+        ),
+        periodo="competencia",
+        valor="quantidade",
+    ),
+    "antt_siade": Regra(
+        chave=(
+            "competencia",
+            "ferrovia",
+            "mercadoria",
+            "estacao_de_origem",
+            "estacao_de_destino",
+            "visto_em",
+        ),
+        periodo="competencia",
+        valor="toneladas_uteis",
+    ),
+    "area_cafe_municipio": Regra(
+        chave=("codigo", "ano"), periodo="referencia", valor="area_total_ha"
+    ),
+    "bcb_selic_focus": Regra(
+        chave=("serie", "referencia", "divulgado_em"),
+        periodo="referencia",
+        valor="valor",
+    ),
+    "ccee_pld": Regra(
+        chave=("granularidade", "submercado", "referencia", "ordem"),
+        periodo="referencia",
+        valor="pld",
+    ),
+    "cftc_cot_agro": Regra(
+        chave=("relatorio", "contrato"), periodo="relatorio", valor="open_interest"
+    ),
+    "clima_regiao_cafe": Regra(
+        chave=("regiao", "competencia", "fonte"),
+        periodo="competencia",
+        valor="chuva_mm",
+    ),
+    "cnes_competencias": Regra(chave=("competencia",), periodo="competencia"),
+    "comex_cafe": Regra(
+        chave=("competencia", "ncm", "uf_origem", "codigo_do_pais", "divulgado_em"),
+        periodo="competencia",
+        valor="vl_fob_usd",
+    ),
+    "comex_urf": Regra(chave=("urf", "visto_em")),
+    "comex_via": Regra(chave=("via", "visto_em")),
+    "conab_cafe": Regra(
+        chave=("safra", "levantamento", "tipo", "uf", "divulgado_em"),
+        valor="producao_mil_sacas",
+    ),
+    "curva_juros": Regra(
+        chave=("data_base", "curva", "prazo_anos"), periodo="data_base", valor="taxa"
+    ),
+    "faostat_cafe": Regra(
+        chave=("codigo_do_pais", "ano", "elemento", "divulgado_em"), valor="valor"
+    ),
+    "ma_datas": Regra(chave=("assessoria", "url"), periodo="fechamento_em"),
+    "ons_capacidade": Regra(
+        chave=("cod_equipamento", "visto_em"), valor="potencia_efetiva_mw"
+    ),
+    "ons_restricao": Regra(
+        chave=("instante", "tipo", "id_ons", "visto_em"),
+        periodo="instante",
+        valor="geracao_mwmed",
+    ),
+    "usda_psd_cafe": Regra(
+        chave=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"),
+        valor="valor",
+    ),
+    "contraparte_cafe": Regra(chave=("id", "fato", "data"), periodo="data"),
+    "ma_candidatos": Regra(chave=("link",), periodo="referencia"),
+    "ma_regua": Regra(chave=("assessoria", "url"), periodo="fechamento_em"),
+    # integridade (linha 981): sanções da CGU, embargos do IBAMA e Lista Suja do MTE; a chave é a do contrato (uma linha por
+    # valor diferente da fonte, a mudança vira linha nova com outro `visto_em`)
+    "sancoes_cgu": Regra(chave=("cadastro", "id_na_fonte", "visto_em")),
+    "ibama_embargos": Regra(chave=("id_na_fonte", "visto_em")),
+    "mte_lista_suja": Regra(chave=("id_na_fonte", "visto_em")),
+    # conjunto `extended_sources` da frente 3 (ADR 0122, Emenda 2): a chave é a do contrato de cada tabela
+    "anatel_pados": Regra(chave=("id_na_fonte", "visto_em")),
+    "anatel_produtos_homologados": Regra(chave=("id_na_fonte", "visto_em")),
+    "anm_tah": Regra(chave=("id_na_fonte", "visto_em")),
+    "anp_tancagem": Regra(chave=("id_na_fonte", "visto_em")),
+    "mte_pat": Regra(chave=("id_na_fonte", "visto_em")),
 }
