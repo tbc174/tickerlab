@@ -316,6 +316,15 @@ INTEGRIDADE_SOB_CONTRATO = (
     "integridade no contrato (ADR 0122, Emenda 1; citar a fonte)"
 )
 CONJUNTO_DE_INTEGRIDADE = "integrity"
+# o conjunto das fontes sem trava de licença (ADR 0122, Emenda 2, 19/11/2026; Tiago: "Não to nem aí pra
+# licenciamento dos dados, quero tudo no MCP HOJE"): só na API por chave, só para a organização com o conjunto no
+# contrato (a do piloto), só a linha de pessoa jurídica. Fora dele a fonte segue com a marca, a coleta e guarda e a
+# leitura dos termos de `REVENDA`, `COLETA_E_GUARDA` e `TERMOS_LIDOS_EM`, como hoje (site, app, vitrine, outras
+# organizações). Lote 2: as tabelas ligadas pelo CNPJ que estavam "a confirmar" e o PAT do MTE
+CONJUNTO_SEM_TRAVA_DE_LICENCA = "extended_sources"
+FONTES_SEM_TRAVA_DE_LICENCA = frozenset(
+    {"anatel-pados", "anatel-homologados", "anm-tah", "anp-tancagem", "mte-pat"}
+)
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
     "comercial até a resposta)"
@@ -1148,6 +1157,16 @@ def sai_no_conjunto_de_integridade(fonte: str, conjunto: str) -> bool:
     return (
         conjunto == CONJUNTO_DE_INTEGRIDADE
         and revenda_da_fonte(fonte) == INTEGRIDADE_SOB_CONTRATO
+    )
+
+
+def sai_sem_trava_de_licenca(fonte: str, conjunto: str) -> bool:
+    """O pedido é do conjunto sem trava de licença e a fonte (ou um prefixo dela: "mte-pat-beneficiarias" →
+    "mte-pat") está no lote dele (ADR 0122, Emenda 2): lá a licença da fonte não barra. Fora disso, nada muda."""
+    partes = fonte.split("-")
+    prefixos = {"-".join(partes[:corte]) for corte in range(1, len(partes) + 1)}
+    return conjunto == CONJUNTO_SEM_TRAVA_DE_LICENCA and bool(
+        prefixos & FONTES_SEM_TRAVA_DE_LICENCA
     )
 
 

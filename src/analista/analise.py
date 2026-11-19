@@ -44,7 +44,9 @@ from src.portao_externo import (
 LINHAS_POR_BLOCO = analise_.LINHAS_POR_BLOCO
 NAO_DISPONIVEL_NA_TELA = "não disponível nesta tela"
 # conjuntos que dependem do contrato da organização, que a tela não tem: nunca abrem aqui
-CONJUNTOS_FORA_DA_TELA = frozenset({tabelas_por_cnpj.INTEGRIDADE})
+CONJUNTOS_FORA_DA_TELA = frozenset(
+    {tabelas_por_cnpj.INTEGRIDADE, tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA}
+)
 CREDITO_NAO_DISPONIVEL = (
     "Fatos de crédito (dívida e pagamentos ao poder público): não disponível nesta tela"
 )
@@ -100,6 +102,11 @@ TITULOS: dict[str, tuple[str, str]] = {
     tabelas_por_cnpj.LISTA_SUJA: (
         "Lista suja do trabalho escravo",
         "MTE: cadastro de empregadores do trabalho análogo ao de escravo.",
+    ),
+    # as fontes ampliadas (ADR 0122, Emenda 2) também são por contrato e não abrem na tela
+    tabelas_por_cnpj.REGISTROS_ADICIONAIS: (
+        "Registros adicionais",
+        "Anatel, ANM, ANP e MTE: processos, homologações, taxa por hectare, tancagem e PAT, como publicados.",
     ),
 }
 

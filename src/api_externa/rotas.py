@@ -793,8 +793,8 @@ def analise_da_empresa(
 ) -> object:
     """A análise da empresa como era em `known_at`, numa chamada: cada bloco por CNPJ que a organização pode
     ver (`profile`, `corporate_ownership`, `links`, `events`, `credit`, `assets`, `comparables` e, com o conjunto
-    `integrity` no contrato, `sanctions`, `environmental_embargoes` e `forced_labor_registry`, só da pessoa
-    jurídica), lido como na rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
+    `integrity` no contrato, `sanctions`, `environmental_embargoes` e `forced_labor_registry`, e, com o
+    conjunto `extended_sources`, `additional_records` (Anatel, ANM, ANP e PAT), só da pessoa jurídica), lido como na rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
     as deduções marcadas (`inferences`), o bloco aberto que não achou nada (`not_found`), o que passou do
     prazo (`timed_out`) e o que a análise não consulta (`not_included`). Bloco que não aparece não foi
     consultado. Cada bloco aberto conta um pedido no conjunto dele (`requests_used`). Sem `profiles` nem
