@@ -269,19 +269,10 @@ _REGULADORES_PLANEJADAS = {
     "anatel-pados": _tabela("anatel_pados"),
     "anatel-homologados": _tabela("anatel_produtos_homologados"),
     "anp-tancagem": _tabela("anp_tancagem"),
-    # conferência de 19/11: o coletor entra primeiro; a tabela (leitor, dicionário e contrato) é o PR 2
-    "comprasgov-sicaf-ativos": _planejada(
-        "conferidas-19-11/PR2",
-        "cadastro de fornecedores do governo federal (SICAF) pelo CNPJ",
-    ),
-    "comprasgov-sicaf-inativos": _planejada(
-        "conferidas-19-11/PR2",
-        "fornecedores inativos do SICAF, para o histórico de quem já vendeu ao governo",
-    ),
-    "bps": _planejada(
-        "conferidas-19-11/PR2",
-        "compras públicas de saúde pelo CNPJ do fornecedor e do fabricante (Banco de Preços em Saúde)",
-    ),
+    # conferência de 19/11 (base/cadastros_conferidos_19_11.py)
+    "comprasgov-sicaf-ativos": _tabela("comprasgov_sicaf"),
+    "comprasgov-sicaf-inativos": _tabela("comprasgov_sicaf"),
+    "bps": _tabela("bps_compras"),
     "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
     # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
     "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),

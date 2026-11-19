@@ -5680,6 +5680,110 @@ Os tanques das instalações autorizadas pela ANP no abastecimento de combustív
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `comprasgov_sicaf`
+
+O cadastro de fornecedores do governo federal (SICAF): se a empresa está ativa no cadastro e habilitada a licitar, o CNAE, a natureza jurídica, o porte e o município. Mostra quem já se preparou para vender ao governo. Uma linha por CNPJ, das listas de ativos e de inativos. Só CNPJ de dígito certo (o CPF, inteiro ou mascarado, sai e é contado); o nome do titular fica de fora (a razão social sai pelo CNPJ, na Receita)
+
+- **Fonte:** Compras.gov.br: dados abertos, SICAF (`base/cadastros_conferidos_19_11.py`)
+- **Licença:** Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** A API inteira, página por página (o arquivista olha todo mês)
+- **Atraso de divulgação:** O SICAF não diz quando o cadastro mudou; a linha vale desde o dia da coleta em que a vimos
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/comprasgov_sicaf/<ativos ou inativos>.parquet` (servidor de casa, `base/cadastros_conferidos_19_11.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do fornecedor (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ativo` | Verdadeiro se o cadastro do fornecedor está ativo no SICAF | verdadeiro ou falso |
+| `habilitado_a_licitar` | Verdadeiro se o fornecedor está habilitado a licitar; vazio quando a API não informa | verdadeiro ou falso |
+| `cnae` | CNAE do fornecedor no SICAF (7 dígitos, sem máscara) | texto |
+| `descricao_do_cnae` | Descrição do CNAE, como o SICAF escreve | texto |
+| `natureza_juridica` | Código da natureza jurídica no SICAF | texto |
+| `descricao_da_natureza_juridica` | Natureza jurídica, como o SICAF escreve | texto |
+| `porte` | Código do porte no SICAF | texto |
+| `descricao_do_porte` | Porte, como o SICAF escreve (microempresa, empresa de pequeno porte, demais) | texto |
+| `municipio` | Município do fornecedor, como o SICAF escreve | texto |
+| `uf` | Sigla da unidade da federação do fornecedor | texto |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `bps_compras`
+
+As compras públicas de medicamentos e produtos de saúde registradas no Banco de Preços em Saúde do Ministério da Saúde: quem vendeu (o fornecedor), o fabricante, a instituição compradora, o item (CATMAT), a quantidade, o preço unitário e o total, por compra. Mostra quem vende saúde ao setor público, a que preço e para quem. Só fornecedor com CNPJ de dígito certo (o CPF sai e é contado); os nomes do fornecedor e do fabricante e a observação, texto livre, ficam de fora
+
+- **Fonte:** Ministério da Saúde: Banco de Preços em Saúde, um arquivo por ano (`base/cadastros_conferidos_19_11.py`)
+- **Licença:** Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Um arquivo por ano, republicado inteiro (o arquivista olha todo mês)
+- **Atraso de divulgação:** O Ministério não escreve a data de publicação (a data de inserção é a do sistema dele); a linha vale desde o dia do arquivo em que a vimos
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `data_da_compra`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/bps_compras/compras.parquet` (servidor de casa, `base/cadastros_conferidos_19_11.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do fornecedor (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ do fornecedor (8 caracteres) | texto |
+| `cnpj_do_fabricante` | CNPJ do fabricante (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo | texto |
+| `cnpj_basico_do_fabricante` | Raiz do CNPJ do fabricante (8 caracteres) | texto |
+| `cnpj_da_instituicao` | CNPJ da instituição compradora (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo | texto |
+| `ano_da_compra` | Ano da compra | número inteiro |
+| `data_da_compra` | Dia da compra | data (dia) |
+| `data_de_insercao` | Dia em que a compra entrou no sistema do Ministério | data (dia) |
+| `instituicao` | Instituição compradora, como o Ministério escreve | texto |
+| `uf` | Sigla da unidade da federação da instituição | texto |
+| `municipio` | Município da instituição, como o Ministério escreve | texto |
+| `esfera` | Esfera da instituição (municipal, estadual...) | texto |
+| `validade_da_compra` | Validade da compra, como o Ministério escreve (sem unidade) | texto |
+| `catmat` | Código do item no catálogo de materiais (CATMAT) | texto |
+| `item` | Descrição do item, como o catálogo escreve | texto |
+| `pdm` | Código do padrão descritivo de material (PDM) | texto |
+| `descricao_do_pdm` | Descrição do PDM | texto |
+| `classe` | Código da classe do material | texto |
+| `descricao_da_classe` | Descrição da classe do material | texto |
+| `generico` | S se o medicamento é genérico, N se não; vazio quando o Ministério não informa | texto |
+| `registro_na_anvisa` | Número do registro do produto na Anvisa | texto |
+| `tipo_de_compra` | Tipo de compra (administrativa ou judicial) | texto |
+| `modalidade` | Modalidade da compra, como o Ministério escreve | texto |
+| `processo_de_compra` | Número do processo de compra | texto |
+| `ata` | Número da ata de registro de preços | texto |
+| `unidade_de_medida` | Sigla da unidade de medida | texto |
+| `unidade_de_fornecimento` | Unidade de fornecimento | texto |
+| `unidade_da_capacidade` | Unidade da capacidade | texto |
+| `capacidade` | Capacidade da unidade de fornecimento | número com decimais, na unidade da fonte |
+| `quantidade` | Quantidade comprada | número com decimais, na unidade da fonte |
+| `preco_unitario` | Preço unitário pago | reais (R$) |
+| `preco_total` | Preço total da compra | reais (R$) |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `cnes_estabelecimentos`
 
 Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas. Estabelecimento sem nenhum CNPJ (pessoa física) fica sem nome; endereço, CEP, telefone e e-mail da fonte nunca entram. Razão social de empresário individual pode ser nome de pessoa: a tabela é marcada como de pessoa. Competência vazia não grava linha: veja `cnes_competencias`.

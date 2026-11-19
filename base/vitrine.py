@@ -55,6 +55,9 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da ANS\b", "ANS"),
     (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
     (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
+    # conferência de 19/11/2026: SICAF (família do compras.gov.br) e Banco de Preços em Saúde
+    (r"^Banco de Preços em Saúde \(MS\)", "Ministério da Saúde (BPS)"),
+    (r"do compras\.gov\.br", "Compras.gov.br"),
     (r"TCE-PE:", "TCE-PE"),
     (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
     (r"Sefa-PR, dívida", "Sefa-PR"),
@@ -121,6 +124,7 @@ MESMO_ORGAO: dict[str, str] = {
     "Anatel (homologados)": "Anatel",
     "ANM (TAH)": "ANM",
     "MTE (PAT)": "MTE",
+    "Ministério da Saúde (BPS)": "Ministério da Saúde (DATASUS)",
 }
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {
