@@ -512,6 +512,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "fre_remuneracao",
             "ofertas_resolucao_160",
             "ofertas_antigas",
+            "amostra_painel",
         ),
     ),
     TemaDoCnpj(

@@ -1745,7 +1745,7 @@
       "orgao": "Sefa-PR (Secretaria da Fazenda do Paraná)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-06",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2434,7 +2434,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 66
+      "tabelas": 67
     },
     {
       "historico_desde": "2010-01-01",
@@ -2587,6 +2587,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MAPA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-11-04",
       "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
       "modulos": [
@@ -2618,6 +2629,39 @@
       "orgao": "ANAC",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANP (tancagem)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel (PADOs)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel (homologados)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 1
     },
     {
@@ -2776,17 +2820,6 @@
     },
     {
       "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "MAPA",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-29",
       "licenca": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
       "modulos": [
         "governo_e_sancoes"
@@ -2803,6 +2836,17 @@
         "governo_e_sancoes"
       ],
       "orgao": "MTE",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-11-17",
+      "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MTE (PAT)",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
@@ -2830,6 +2874,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-06",
+      "licenca": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Sefa-PR",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2010-01-01",
       "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
       "modulos": [
@@ -2853,15 +2908,15 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 22,
-    "tabelas": 120,
+    "orgaos": 23,
+    "tabelas": 127,
     "temas": [
       {
         "chave": "cvm",
         "orgaos": [
           "CVM"
         ],
-        "tabelas": 11,
+        "tabelas": 12,
         "texto": "Balanços em todas as versões, a demonstração das mutações do patrimônio líquido, as notas explicativas, fatos relevantes, auditor, troca de auditor e parecer da demonstração anual e da trimestral, remuneração da diretoria e ofertas de ações e de dívida.",
         "titulo": "O que a companhia entrega à CVM"
       },
@@ -2916,16 +2971,18 @@
         "chave": "riscos",
         "orgaos": [
           "PGFN",
+          "Sefa-PR",
           "CGU",
           "ANS",
           "ANEEL",
+          "Anatel (PADOs)",
           "Banco Central",
           "MTE",
           "IBAMA",
           "CVM"
         ],
-        "tabelas": 10,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 10 de 15 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 12,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 12 de 15 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2935,19 +2992,22 @@
           "SUSEP",
           "Anvisa",
           "ANP",
+          "ANP (tancagem)",
           "ANTT",
           "Banco Central",
           "MAPA",
           "ANEEL",
           "Anatel",
+          "Anatel (homologados)",
           "ANM",
           "CMED (Anvisa)",
           "Ancine",
           "Ministério da Saúde (DATASUS)",
+          "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 25,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 25 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 29,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 29 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3029,12 +3089,12 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 76
+      "tabelas": 81
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 37
+      "tabelas": 39
     },
     {
       "chave": "credito_e_fidc",
@@ -7853,6 +7913,17 @@
       "tabela": "susep_seguros"
     },
     {
+      "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
+      "consultavel": false,
+      "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia (cadastro, tickers e demonstrações da CVM).",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "amostra_painel"
+    },
+    {
       "atraso": "Nenhum",
       "consultavel": false,
       "frase": "Os códigos das fontes setoriais.",
@@ -8062,6 +8133,17 @@
       "tabela": "anvisa_por_empresa"
     },
     {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "A quem o Ministério da Agricultura habilitou exportar, para que país, em que área e produto (Serviço de Inspeção Federal, SIGSIF): uma linha por país, área, SIF e produto.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-02",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MAPA",
+      "situacao": "licenciada",
+      "tabela": "sigsif_habilitados"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -8192,6 +8274,17 @@
       "orgao": "Banco Central",
       "situacao": "licenciada",
       "tabela": "bcb_rde_ied"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) por CNPJ, com o valor, a data da inscrição, a suspensão, a garantia e o parcelamento.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Sefa-PR",
+      "situacao": "licenciada",
+      "tabela": "sefa_pr_divida_ativa"
     },
     {
       "atraso": null,
@@ -8522,6 +8615,50 @@
       "orgao": "ANTT",
       "situacao": "licenciada",
       "tabela": "antt_seguros_de_transportadores"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As empresas inscritas no Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho: beneficiárias (dão alimentação aos empregados).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MTE (PAT)",
+      "situacao": "em consulta",
+      "tabela": "mte_pat"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os processos sancionadores da Anatel (PADOs) contra empresas: tema, serviço, situação e fase do processo, multa aplicada e situação do pagamento.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Anatel (PADOs)",
+      "situacao": "em consulta",
+      "tabela": "anatel_pados"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os produtos de telecomunicações que cada empresa homologou na Anatel: número da homologação, certificado de conformidade, modelo, nome comercial, categoria, tipo.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Anatel (homologados)",
+      "situacao": "em consulta",
+      "tabela": "anatel_produtos_homologados"
+    },
+    {
+      "atraso": "A fonte não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "Os tanques das instalações autorizadas pela ANP no abastecimento de combustíveis (bases de distribuição, terminais, produtores...): município, segmento, tipo de unidade.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-17",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANP (tancagem)",
+      "situacao": "em consulta",
+      "tabela": "anp_tancagem"
     },
     {
       "atraso": null,
@@ -8966,11 +9103,11 @@
   ],
   "totais": {
     "familias": 134,
-    "familias_em_uso": 43,
-    "fontes": 38,
-    "fontes_em_consulta": 7,
+    "familias_em_uso": 44,
+    "fontes": 43,
+    "fontes_em_consulta": 11,
     "modulos": 6,
-    "tabelas": 151,
+    "tabelas": 158,
     "tabelas_conferidas_em_curto": "19/11"
   }
 }
