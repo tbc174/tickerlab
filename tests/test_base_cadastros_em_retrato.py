@@ -237,7 +237,10 @@ def test_mte_le_o_cadastro_inteiro_mesmo_com_a_lista_do_tac_baixada_na_mesma_hor
     tabela = pd.read_parquet(tmp_path / "base/mte_lista_suja/empregadores.parquet")
     assert sorted(tabela["cnpj"]) == sorted(map(cnpjs.formatar, (EMPRESA, OUTRA)))
     assert resumo["pessoa_fisica"] == 1  # o CPF é contado e não entra
-    assert "888" not in tabela.astype(str).to_csv()
+    # O `id_na_fonte` é um hash e pode conter "888" por acaso: confere o documento inteiro, com e sem máscara.
+    csv = tabela.astype(str).to_csv()
+    cpf_so_digitos = "".join(c for c in CPF if c.isdigit())
+    assert CPF not in csv and cpf_so_digitos not in csv and "888.000" not in csv
 
 
 def test_mte_aponta_para_o_cadastro_inteiro_pelo_nome_e_nao_para_a_lista_do_tac():

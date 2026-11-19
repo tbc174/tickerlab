@@ -689,8 +689,9 @@ function DemonstracaoDaConversa() {
         </div>
       </div>
       <p className="v2-conversa-rodape">
-        A conversa usa as mesmas ferramentas do conector e da CLI, só de leitura. Pessoa física não entra na
-        resposta. Confira a fonte antes de usar.
+        A conversa usa as mesmas ferramentas do conector e da CLI, só de leitura. Pessoa física não entra nesta
+        conversa: o nome de sócio só sai para a organização com a permissão de ver pessoas, nunca o CPF. Confira
+        a fonte antes de usar.
       </p>
       <p className="atalhos">
         {PERGUNTAR ? (

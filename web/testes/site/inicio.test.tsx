@@ -260,6 +260,9 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     for (const nome of empresas) expect(nome).toMatch(/^Exemplo /);
     expect(secao).not.toMatch(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2}/); // nem CNPJ nem CPF
     expect(texto).not.toMatch(/R\$|recomend|oportunidade|mais dados que|rentabilidade|retorno/i);
+    // política de privacidade, versão 19: o rodapé não diz que pessoa física nunca sai
+    expect(semTags(html)).toContain("Pessoa física não entra nesta conversa: o nome de sócio só sai para a organização");
+    expect(semTags(html)).not.toContain("Pessoa física não entra na resposta.");
     expect(secao).not.toMatch(/<script|<form|<input|fetch\(/);
   });
 
@@ -389,7 +392,10 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
       for (const orgao of tema.orgaos) expect(cartoes[i], tema.chave).toContain(`<li>${esc(orgao)}</li>`);
       expect(texto, tema.chave).toContain(`${tema.tabelas} tabelas`);
     });
-    expect(semTags(secao)).toContain("nome de pessoa física não aparece");
+    // política de privacidade, versão 19: na tela, pessoa física só para a organização com a permissão
+    expect(semTags(secao)).toContain("Nome de pessoa física só aparece para a organização");
+    expect(semTags(secao)).toContain("com a permissão de ver pessoas na tela, desligada por padrão, e nunca o CPF");
+    expect(semTags(html)).not.toContain("nome de pessoa física não aparece");
     expect(secao).toContain('href="/dados.html#');
   });
 

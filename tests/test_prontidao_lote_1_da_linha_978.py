@@ -24,8 +24,6 @@ DO_LOTE_1 = (
     "ifdata_valores",
     "pgfn_divida",
 )
-# medidas em 18/11/2026 que ficaram de fora do lote até a Diretoria explicar o achado (sem a regra estar verde)
-FORA_DO_LOTE_1 = ("aneel_inadimplencia", "fii_ativos")
 
 
 @pytest.mark.parametrize("tabela", DO_LOTE_1)
@@ -59,9 +57,3 @@ def test_a_tabela_tem_regra_de_qualidade_e_nao_vira_prontidao_cheia(
     assert tabela in REGRAS
     assert tabela not in prontidao.PRONTIDAO
     assert not TABELAS[tabela].pessoa
-
-
-@pytest.mark.parametrize("tabela", FORA_DO_LOTE_1)
-def test_o_que_ficou_vermelho_na_medida_nao_entra_no_registro(tabela: str) -> None:
-    """Placar vermelho sem explicação escrita não tem a prova 7: a tabela fica fechada até a regra ser calibrada."""
-    assert tabela not in prontidao.PRONTIDAO_DE_PILOTO

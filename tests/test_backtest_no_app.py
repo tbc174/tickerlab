@@ -1,7 +1,12 @@
 """A página Backtest dentro do app (modo local, dados de exemplo): a validação fora da amostra."""
 
+from types import SimpleNamespace
+
+import pandas as pd
 from streamlit.testing.v1 import AppTest
 
+from telas.estrategias import backtest
+from telas.estrategias.comum import ESTRATEGIA_DE_REFERENCIA
 from tests.ajudantes_da_conta import ir_para
 
 ESTRATEGIA = "Cruzamento de médias"
@@ -167,3 +172,44 @@ def test_com_login_as_tentativas_ficam_na_conta(banco, monkeypatch):
     assert list(por_ativo.values()) == [2]
     volta = abrir_app("backtest")  # sessão nova, só a 1ª configuração de novo
     assert "Você testou 2 variações" in _textos(volta.markdown)  # veio da conta
+
+
+def _resultado_com_primeira_entrada(entrada: str | None):
+    """Resultado mínimo: só a tabela de operações que o aviso de entrada tardia lê."""
+    operacoes = pd.DataFrame(
+        {"entrada": pd.to_datetime([entrada] if entrada else [], format="%Y-%m-%d")}
+    )
+    return SimpleNamespace(operacoes=operacoes)
+
+
+def _avisos_de_entrada_tardia(monkeypatch, nome: str, entrada: str | None) -> list[str]:
+    avisos: list[str] = []
+    monkeypatch.setattr(backtest.st, "caption", avisos.append)
+    fechamento = pd.Series(1.0, index=pd.bdate_range("2024-01-01", periods=260))
+    backtest._avisar_entrada_tardia(
+        fechamento, nome, _resultado_com_primeira_entrada(entrada)
+    )
+    return avisos
+
+
+def test_entrada_tardia_avisa_com_a_data_da_primeira_entrada(monkeypatch):
+    avisos = _avisos_de_entrada_tardia(monkeypatch, ESTRATEGIA, "2024-09-02")
+
+    assert len(avisos) == 1
+    assert "02/09/2024" in avisos[0]
+
+
+def test_entrada_cedo_nao_avisa(monkeypatch):
+    assert _avisos_de_entrada_tardia(monkeypatch, ESTRATEGIA, "2024-01-15") == []
+
+
+def test_comprar_e_segurar_nunca_avisa_de_entrada_tardia(monkeypatch):
+    avisos = _avisos_de_entrada_tardia(
+        monkeypatch, ESTRATEGIA_DE_REFERENCIA, "2024-09-02"
+    )
+
+    assert avisos == []
+
+
+def test_sem_operacoes_nao_avisa_de_entrada_tardia(monkeypatch):
+    assert _avisos_de_entrada_tardia(monkeypatch, ESTRATEGIA, None) == []

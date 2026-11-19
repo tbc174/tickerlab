@@ -281,7 +281,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     ),
     # lote 1 da linha 978: placar de 18/11/2026 sem vermelho (aneel_indicadores_comerciais 280019 linhas, ans_idss 75034,
     # fii_administradores 115, fii_informe_mensal 64213, fip_informe 32919, pgfn_divida 8519520, ifdata_valores 54571412);
-    # aneel_inadimplencia e fii_ativos mediram vermelho sem explicação e ficaram de fora
+    # aneel_inadimplencia e fii_ativos mediram vermelho com a chave do rascunho e entraram no lote 2B
     "aneel_indicadores_comerciais": ProntidaoDePiloto(
         versao_maior=1,
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
@@ -354,6 +354,23 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
         dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
     ),
+    # lote 2B da linha 978: aneel_inadimplencia e fii_ativos (vermelhas no lote 1 só pela chave do rascunho; medidas de
+    # contagem na VM em 18/11/2026 acharam a chave certa) e cvm_fiagro (verde no lote 2, 2.934 linhas)
+    "aneel_inadimplencia": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "fii_ativos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
+    "cvm_fiagro": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
+        dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
+    ),
     "ifdata_valores": ProntidaoDePiloto(
         versao_maior=2,
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
@@ -372,7 +389,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
 # ans_beneficiarios, ifdata_valores e susep_seguros (linha 904, lote 4): o CNPJ só vem da ponte da fonte, e a linha da ponte marcada como pessoa ou fora da fonte deixa o CNPJ vazio (tests/test_cnpj_pela_ponte.py)
-# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, cnpj_situacao_cadastral, demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
+# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, cnpj_situacao_cadastral, cvm_fiagro (pela raiz separada cnpj_basico), demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "aneel_samp",
@@ -382,6 +399,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
         "cnpj_situacao_cadastral",
+        "cvm_fiagro",
         "debentures_assembleias",
         "demonstracoes_como_era",
         "emissores",

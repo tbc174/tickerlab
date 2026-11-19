@@ -36,6 +36,8 @@ def test_api_setores(cliente, com_a_noite) -> None:
         "seguros",
         "saude_suplementar",
         "telecom",
+        "combustiveis",
+        "ferrovias",
     ]
     por_chave = {s["chave"]: s for s in setores}
     assert por_chave["eletricas"]["como_era_em"] == "2026-10-17"

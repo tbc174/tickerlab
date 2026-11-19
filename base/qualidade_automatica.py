@@ -443,4 +443,28 @@ REGRAS: dict[str, Regra] = {
         chave=("cnpj", "referencia", "versao", "pagina", "numero_processo"),
         periodo="referencia",
     ),
+    # Lote 2B da linha 978 (piloto D11), medido em 18/11/2026 na VM (só contagens). `aneel_inadimplencia` e `fii_ativos`
+    # ficaram vermelhas no lote 1 só pela chave do rascunho; medidas de novo, a chave certa não repete:
+    # - aneel_inadimplencia (1.144.238 linhas): `sigla_do_agente` vem vazia em 24.638 linhas e não é da chave; com
+    #   (cnpj, indicador, referencia, visto_em) há 0 repetidas e 0 vazias.
+    # - fii_ativos (245.030 linhas): 243.192 linhas não têm `codigo` e 231.768 não têm `nome_do_ativo`, então não há
+    #   chave natural nelas; vale o `id_na_fonte` com o `visto_em` (0 repetidas, 0 linhas iguais). O mesmo
+    #   `id_na_fonte` aparece em dois `visto_em` em 32.615 casos: é o histórico (um retrato por data), não duplicata.
+    "aneel_inadimplencia": Regra(
+        chave=("cnpj", "indicador", "referencia", "visto_em"),
+        periodo="referencia",
+        valor="valor",
+        saltos_explicados={
+            2013: "o arquivo da ANEEL tem pouca linha em 2012 (5.120) e em 2013 (11.200); a tabela guarda o que a fonte manda e não completa o que falta (medido em 18/11/2026; o motivo na ANEEL não foi confirmado)",
+            2014: "a série cheia da fonte, de cerca de 90 mil linhas por ano, começa em 2014 (11.200 linhas em 2013 e 94.792 em 2014, medido em 18/11/2026; o motivo na ANEEL não foi confirmado)",
+        },
+    ),
+    "fii_ativos": Regra(
+        chave=("id_na_fonte", "visto_em"), periodo="referencia", valor="valor"
+    ),
+    "cvm_fiagro": Regra(
+        chave=("cnpj", "referencia", "versao"),
+        periodo="referencia",
+        valor="patrimonio_liquido",
+    ),
 }
