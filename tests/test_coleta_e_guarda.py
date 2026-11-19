@@ -249,3 +249,23 @@ def test_a_licenca_da_anvisa_nao_abre_a_tabela_de_pessoa() -> None:
         )
         decisao = portao_externo.decidir(pedido, DIA_DA_LEITURA_DA_ANVISA, regras)
         assert not decisao.libera, campo
+
+
+def test_as_fontes_do_pat_seguem_de_uso_interno_mesmo_com_o_mte_na_integridade():
+    """Regressão da revisão do #1229: "mte-pat-beneficiarias" caía na família "mte" (integridade sob
+    contrato) e passaria nas marcas se ganhasse uma linha no conjunto de integridade."""
+    from src.banco.coletas import (
+        CONJUNTO_DE_INTEGRIDADE,
+        SO_USO_INTERNO,
+        revenda_da_fonte,
+        sai_no_conjunto_de_integridade,
+    )
+
+    for fonte in (
+        "mte-pat-beneficiarias",
+        "mte-pat-facilitadoras",
+        "mte-pat-fornecedoras",
+    ):
+        assert revenda_da_fonte(fonte) == SO_USO_INTERNO
+        assert not sai_no_conjunto_de_integridade(fonte, CONJUNTO_DE_INTEGRIDADE)
+    assert sai_no_conjunto_de_integridade("mte-lista-suja", CONJUNTO_DE_INTEGRIDADE)

@@ -1112,12 +1112,21 @@ def licenca_do_site(licenca: str) -> str:
     return sem_decisao.replace("perguntar a licença", "reuso em consulta")
 
 
+# famílias em que o 2º pedaço do nome da fonte tem resposta própria em `REVENDA`
+FAMILIAS_COM_SUBFAMILIA = frozenset({"anm", "mte"})
+
+
 def revenda_da_fonte(fonte: str) -> str:
     """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
     (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
     partes = fonte.split("-")
-    # a ANM tem subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem"), linha 657
-    subfamilia = REVENDA.get("-".join(partes[:2])) if partes[0] == "anm" else None
+    # a ANM e o MTE têm subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem", linha 657;
+    # "mte-pat-beneficiarias" → "mte-pat", de uso interno, e não o "mte" da integridade: revisão do #1229)
+    subfamilia = (
+        REVENDA.get("-".join(partes[:2]))
+        if partes[0] in FAMILIAS_COM_SUBFAMILIA
+        else None
+    )
     return REVENDA.get(fonte) or subfamilia or REVENDA.get(partes[0], A_CONFIRMAR)
 
 
