@@ -3,11 +3,16 @@
 import re
 
 import pandas as pd
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 from base.cnpj import cpf_confere
-from base.pessoas.sem_cpf import tirar_cpf, tirar_cpf_da_coluna
+from base.pessoas.sem_cpf import (
+    tirar_cpf,
+    tirar_cpf_da_coluna,
+    tirar_numero_longo_e_email,
+)
 from tests.ajudantes_de_cpf import formatado
 
 ONZE_DIGITOS = re.compile(r"(?<!\d)\d{11}(?!\d)")
@@ -119,3 +124,32 @@ def test_tira_o_cpf_com_outros_separadores_e_colado_a_palavra_cpf():
 def test_cnpj_e_numero_que_nao_fecha_como_cpf_ficam():
     assert tirar_cpf("EMPRESA 11.222.333/0001-81 ME") == "EMPRESA 11.222.333/0001-81 ME"
     assert tirar_cpf("EMPRESA 888 000 001 00 ME") == "EMPRESA 888 000 001 00 ME"
+
+
+@pytest.mark.parametrize(
+    ("nome", "esperado"),
+    [
+        ("FULANA EXEMPLO 11222333", "FULANA EXEMPLO"),  # a raiz do CNPJ no fim
+        ("11222333 FULANA EXEMPLO", "FULANA EXEMPLO"),
+        ("FULANA EXEMPLO 01001-000", "FULANA EXEMPLO"),  # cara de CEP
+        ("FULANA EXEMPLO 88800000-12", "FULANA EXEMPLO"),  # CPF com um dígito a menos
+        (
+            "FULANA 88800000 EXEMPLO 12",
+            "FULANA EXEMPLO 12",
+        ),  # dois dígitos soltos ficam
+        ("FULANA EXEMPLO ME88800000", "FULANA EXEMPLO ME"),
+        ("FULANA EXEMPLO fulana@exemplo.com.br", "FULANA EXEMPLO"),
+        ("fulana9@exemplo.com", ""),
+        ("LOJA 24 HORAS DE EXEMPLO 2023", "LOJA 24 HORAS DE EXEMPLO 2023"),
+        ("", ""),
+    ],
+)
+def test_numero_longo_e_email_saem_do_nome(nome, esperado):
+    assert tirar_numero_longo_e_email(pd.Series([nome])).iloc[0] == esperado
+
+
+@given(st.from_regex(r"[A-Z ]{0,12}[0-9 .\-/@]{0,20}[A-Z ]{0,12}", fullmatch=True))
+def test_nome_limpo_nunca_tem_arroba_nem_cinco_digitos_seguidos(nome):
+    limpo = tirar_numero_longo_e_email(pd.Series([nome])).iloc[0]
+    assert "@" not in limpo
+    assert not re.search(r"\d(?:[\s.,/\-()+]*\d){4}", limpo)
