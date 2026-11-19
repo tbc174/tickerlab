@@ -24,7 +24,12 @@ from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
 from conector_remoto.pessoa import RespostaComPessoa
 from conector_remoto.proximo_passo import com_proximo_passo
-from conector_remoto.saida import RespostaGrandeDemais, preparar_saida
+from conector_remoto.saida import (
+    TETO_DE_CARACTERES,
+    RespostaGrandeDemais,
+    preparar_saida,
+    tamanho_em_caracteres,
+)
 from conector_remoto.socios_e_donos import (
     CAMINHO as CAMINHO_DAS_PESSOAS,
 )
@@ -308,6 +313,8 @@ class Pedidos:
             saida = preparar(resposta.corpo)
             if self._com_proximo_passo:
                 saida = com_proximo_passo(ferramenta, saida)
+                if tamanho_em_caracteres(saida) > TETO_DE_CARACTERES:
+                    raise RespostaGrandeDemais(tamanho_em_caracteres(saida))
             return _como_texto(saida)
         except RespostaComPessoa as recusa:
             acesso = acesso_do_pedido()

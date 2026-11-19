@@ -91,6 +91,23 @@ QUANDO_VAZIA: dict[str, str] = {
 }
 
 
+# a API manda a lista vazia junto com o que a chave não pôde consultar (`unavailable_event_types`,
+# `unavailable_link_types`, `unavailable_signals`...): para isso, vazio não quer dizer "a base não tem"
+SEM_CONSULTA = (
+    "A lista veio vazia, mas a chave não consultou parte do que foi pedido (veja os campos da resposta que "
+    "começam com unavailable): para esses, vazio não quer dizer que a base não tem. Para ver o que a chave "
+    "enxerga, chame `o_que_posso_ver`; não estime."
+)
+PREFIXO_DO_QUE_NAO_FOI_CONSULTADO = "unavailable"
+
+
+def _ha_o_que_nao_foi_consultado(corpo: dict) -> bool:
+    return any(
+        chave.startswith(PREFIXO_DO_QUE_NAO_FOI_CONSULTADO) and valor
+        for chave, valor in corpo.items()
+    )
+
+
 def com_proximo_passo(ferramenta: str, corpo: object) -> object:
     """O mesmo corpo com `next_step`, se a ferramenta é de lista e o corpo é um objeto que ainda não o tem.
 
@@ -104,5 +121,10 @@ def com_proximo_passo(ferramenta: str, corpo: object) -> object:
     lista = corpo.get(chave_da_lista)
     if not isinstance(lista, list):
         return corpo  # corpo de outra forma que a esperada: melhor sem rodapé do que um rodapé errado
-    texto = PROXIMO_PASSO[ferramenta] if lista else QUANDO_VAZIA[ferramenta]
+    if lista:
+        texto = PROXIMO_PASSO[ferramenta]
+    elif _ha_o_que_nao_foi_consultado(corpo):
+        texto = SEM_CONSULTA
+    else:
+        texto = QUANDO_VAZIA[ferramenta]
     return corpo | {CHAVE_DO_PROXIMO_PASSO: texto}

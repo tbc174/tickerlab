@@ -20,6 +20,7 @@ from conector_remoto.proximo_passo import (
     LISTA_DA_FERRAMENTA,
     PROXIMO_PASSO,
     QUANDO_VAZIA,
+    SEM_CONSULTA,
     com_proximo_passo,
 )
 from tests import ajudantes_do_conector as aj
@@ -49,9 +50,11 @@ PALAVRAS_PROIBIDAS = (
 
 
 def _textos() -> list[tuple[str, str]]:
-    return [(f"proximo:{n}", t) for n, t in PROXIMO_PASSO.items()] + [
-        (f"vazia:{n}", t) for n, t in QUANDO_VAZIA.items()
-    ]
+    return (
+        [(f"proximo:{n}", t) for n, t in PROXIMO_PASSO.items()]
+        + [(f"vazia:{n}", t) for n, t in QUANDO_VAZIA.items()]
+        + [("vazia:eventos", SEM_CONSULTA)]
+    )
 
 
 def _chamar(ferramenta: str, corpo: dict) -> dict:
@@ -190,3 +193,50 @@ def test_o_chat_do_app_nao_ganha_o_rodape_porque_nao_tem_todas_as_ferramentas_ci
         inspect.signature(ferramentas.Pedidos).parameters["com_proximo_passo"].default
         is False
     )
+
+
+@pytest.mark.parametrize(
+    ("ferramenta", "campo"),
+    [
+        ("eventos", "unavailable_event_types"),
+        ("vinculos", "unavailable_link_types"),
+        ("compradores_do_setor", "unavailable_signals"),
+    ],
+)
+def test_lista_vazia_com_tipo_nao_consultado_nao_diz_que_a_base_nao_tem(
+    ferramenta, campo
+):
+    saida = _chamar(
+        ferramenta, {LISTA_DA_FERRAMENTA[ferramenta]: [], campo: ["auditor_change"]}
+    )
+    assert saida[CHAVE_DO_PROXIMO_PASSO] == SEM_CONSULTA
+    assert "a base não tem" in SEM_CONSULTA and "não quer dizer" in SEM_CONSULTA
+    assert "Nenhum" not in saida[CHAVE_DO_PROXIMO_PASSO]
+
+
+def test_lista_com_itens_mantem_o_proximo_passo_mesmo_com_tipo_nao_consultado():
+    saida = _chamar(
+        "eventos", {"events": [ITEM], "unavailable_event_types": ["auditor_change"]}
+    )
+    assert saida[CHAVE_DO_PROXIMO_PASSO] == PROXIMO_PASSO["eventos"]
+
+
+def test_aviso_de_nao_consultado_vazio_nao_conta():
+    saida = _chamar("eventos", {"events": [], "unavailable_event_types": []})
+    assert saida[CHAVE_DO_PROXIMO_PASSO] == QUANDO_VAZIA["eventos"]
+
+
+def test_o_rodape_nao_faz_a_resposta_passar_do_teto(monkeypatch):
+    corpo = {"companies": [{"texto": "x" * 200}]}
+    monkeypatch.setattr(
+        "conector_remoto.ferramentas.TETO_DE_CARACTERES",
+        saida_tamanho(corpo) + 10,  # cabe sem o rodapé, não cabe com ele
+    )
+    transporte = aj.api_de_mentira({"/companies": httpx.Response(200, json=corpo)})
+    with aj.conector(transporte) as cliente:
+        erro, texto = aj.chamar(cliente, CHAVE, "buscar_empresas")
+    assert erro and "grande demais" in texto
+
+
+def saida_tamanho(corpo: dict) -> int:
+    return len(json.dumps(corpo, ensure_ascii=False, separators=(",", ":")))
