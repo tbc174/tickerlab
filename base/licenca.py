@@ -59,6 +59,10 @@ FAMILIA_DO_ENDERECO = {
     "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
     "ftp.datasus.gov.br/": "ms",  # SIH RD e SIA PA por competência (`scripts/carga_sus.py`, linha 698)
+    # conferência de 19/11/2026: o Banco de Preços em Saúde fica no S3 do CKAN do Ministério; a resposta do
+    # Fala.BR que liberou o "ms" não o cobre, então a família é própria
+    "s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/BPS/": "bps",
+    "dadosabertos.compras.gov.br/modulo-fornecedor/": "comprasgov",  # SICAF pela API de dados abertos
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",

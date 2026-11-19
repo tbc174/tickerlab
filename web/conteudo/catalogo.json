@@ -1452,6 +1452,38 @@
     },
     {
       "coletas": [
+        "comprasgov-sicaf-ativos",
+        "comprasgov-sicaf-inativos",
+        "comprasgov-resultado-itens"
+      ],
+      "familia": "comprasgov",
+      "licencas": [
+        "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)"
+      ],
+      "link": "https://dadosabertos.compras.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Compras.gov.br (Ministério da Gestão)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-10-22",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
+        "bps"
+      ],
+      "familia": "bps",
+      "licencas": [
+        "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)"
+      ],
+      "link": "https://opendatasus.saude.gov.br/",
+      "marca": "a_confirmar",
+      "orgao": "Ministério da Saúde (Banco de Preços em Saúde)",
+      "ritmo": null,
+      "termos_lidos_em": null,
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "epe-consumo-mensal"
       ],
       "familia": "epe",
@@ -1540,21 +1572,6 @@
       "link": "https://www.gov.br/compras/",
       "marca": "vendavel",
       "orgao": "SEGES (compras públicas, Ministério da Gestão)",
-      "ritmo": null,
-      "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
-    },
-    {
-      "coletas": [
-        "comprasgov-resultado-itens"
-      ],
-      "familia": "comprasgov",
-      "licencas": [
-        "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)"
-      ],
-      "link": "https://dadosabertos.compras.gov.br/",
-      "marca": "vendavel",
-      "orgao": "Compras.gov.br (Ministério da Gestão)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
       "uso": "guardada"
@@ -5877,6 +5894,27 @@
       "termos_lidos_em": "2026-10-14"
     },
     {
+      "id": "comprasgov-sicaf-ativos",
+      "licenca": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "comprasgov-sicaf-inativos",
+      "licenca": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-22"
+    },
+    {
+      "id": "bps",
+      "licenca": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": null
+    },
+    {
       "id": "bcb-sgs-selic-meta",
       "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
       "marca": "vendavel",
@@ -8927,7 +8965,7 @@
     }
   ],
   "totais": {
-    "familias": 133,
+    "familias": 134,
     "familias_em_uso": 43,
     "fontes": 38,
     "fontes_em_consulta": 7,

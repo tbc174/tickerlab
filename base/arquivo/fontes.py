@@ -37,6 +37,7 @@ from base.arquivo import (
     lote_commodities,
     lote_commodities_oficiais,
     lote_conferidas_14_11,
+    lote_conferidas_19_11,
     lote_cvm,
     lote_divida_estadual,
     lote_documentais,
@@ -1620,6 +1621,8 @@ FONTES: list[Fonte] = [
     *lote_cadastros_bcb_antt.fontes(),
     # conferência de 14/11 (linha 904): ECF por forma de tributação, PAT, TAH, PADOs, homologados e tancagem
     *lote_conferidas_14_11.fontes(),
+    # conferência de 19/11: SICAF (compras.gov.br) e Banco de Preços em Saúde, só pessoa jurídica
+    *lote_conferidas_19_11.fontes(),
     *lote_selic.fontes(),
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)
