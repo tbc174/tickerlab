@@ -573,4 +573,10 @@ REGRAS: dict[str, Regra] = {
     "sancoes_cgu": Regra(chave=("cadastro", "id_na_fonte", "visto_em")),
     "ibama_embargos": Regra(chave=("id_na_fonte", "visto_em")),
     "mte_lista_suja": Regra(chave=("id_na_fonte", "visto_em")),
+    # conjunto `extended_sources` da frente 3 (ADR 0122, Emenda 2): a chave é a do contrato de cada tabela
+    "anatel_pados": Regra(chave=("id_na_fonte", "visto_em")),
+    "anatel_produtos_homologados": Regra(chave=("id_na_fonte", "visto_em")),
+    "anm_tah": Regra(chave=("id_na_fonte", "visto_em")),
+    "anp_tancagem": Regra(chave=("id_na_fonte", "visto_em")),
+    "mte_pat": Regra(chave=("id_na_fonte", "visto_em")),
 }
