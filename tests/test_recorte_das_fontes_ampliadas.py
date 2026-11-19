@@ -332,6 +332,18 @@ def test_a_trava_derruba_a_linha_que_o_filtro_nao_podia_deixar(
     assert _cnpj(RAIZ_PJ) not in mensagem
 
 
+@pytest.mark.parametrize("nome", [recorte.PADOS, recorte.HOMOLOGADOS])
+def test_a_trava_derruba_a_chave_de_texto_que_nao_virou_impressao_digital(
+    tmp_path, nome
+):
+    """A chave junta tema, serviço, modelo e nome do produto: se sair em texto, o envio cai."""
+    selecao = _saida_da_copia(
+        tmp_path, nome, [_linha(nome, "chave em texto", _cnpj(RAIZ_PJ), "false")]
+    )
+    with pytest.raises(recorte.CadastroComPessoa, match="impressão digital"):
+        _conferir(tmp_path, nome, selecao)
+
+
 def test_a_trava_derruba_a_coluna_que_a_copia_nao_leva(tmp_path):
     nome = recorte.HOMOLOGADOS
     origem = tmp_path / "o.parquet"
