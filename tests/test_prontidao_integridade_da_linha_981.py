@@ -20,16 +20,6 @@ HOJE = date(2026, 11, 19)
 DA_INTEGRIDADE = ("sancoes_cgu", "ibama_embargos", "mte_lista_suja")
 
 
-def _nega(tabela: str, *, pessoa_decidida: frozenset[str]) -> prontidao.Falta | None:
-    return prontidao.negacao_do_piloto(
-        (tabela,),
-        prontidao.PRONTIDAO_DE_PILOTO,
-        prontidao.versoes_maiores(),
-        pessoa_decidida,
-        HOJE,
-    )
-
-
 def test_a_lista_da_copia_reduzida_e_so_de_cadastro_que_o_recorte_confere() -> None:
     assert frozenset(DA_INTEGRIDADE) == prontidao.COPIA_REDUZIDA_SO_PJ
     assert set(recorte_dos_cadastros.CADASTROS) >= prontidao.COPIA_REDUZIDA_SO_PJ
