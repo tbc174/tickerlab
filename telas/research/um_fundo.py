@@ -22,8 +22,17 @@ RETORNO_MAXIMO_EM_PCT = 50.0
 POSICOES_MOSTRADAS = 50
 
 
+def _como_numero(valor: object) -> float | None:
+    """O valor como número, ou None se vier vazio ou fora do formato (a aba não cai por um dado sujo)."""
+    try:
+        return None if valor is None else float(valor)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
 def _pct(valor: object) -> str:
-    return "sem informação" if valor is None else f"{_numero_br(float(valor), 2)}%"  # type: ignore[arg-type]
+    numero = _como_numero(valor)
+    return "sem informação" if numero is None else f"{_numero_br(numero, 2)}%"
 
 
 def _cadastro(fundo: FundoNaTela) -> None:
@@ -38,10 +47,10 @@ def _cadastro(fundo: FundoNaTela) -> None:
         "Taxa de administração", _pct(cadastro.get("taxa_administracao_pct_ao_ano"))
     )
     colunas[2].metric("Taxa de performance", _pct(cadastro.get("taxa_performance_pct")))
-    patrimonio = cadastro.get("patrimonio_liquido")
+    patrimonio = _como_numero(cadastro.get("patrimonio_liquido"))
     colunas[3].metric(
         "Patrimônio líquido",
-        "sem informação" if patrimonio is None else _dinheiro(float(patrimonio)),  # type: ignore[arg-type]
+        "sem informação" if patrimonio is None else _dinheiro(patrimonio),
     )
     st.caption(
         f"Situação: {cadastro.get('situacao') or 'sem informação'}. Cadastro da CVM visto em "
