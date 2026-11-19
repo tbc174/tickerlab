@@ -61,6 +61,19 @@ const raiz = (palavra: string) =>
 
 const palavrasDe = (texto: string) => semAcento(texto).split(/[^a-z0-9]+/).filter((p) => p !== "");
 
+/** As raízes das palavras que ajudam a achar ("transporte de carga" → "transp", "carga"). */
+const raizesDe = (texto: string) =>
+  palavrasDe(texto)
+    .filter((p) => !PALAVRAS_VAZIAS.has(p))
+    .map(raiz);
+
+/** O nome tem todas as palavras buscadas, pelo começo e sem ligar para acento ("saude" acha "Saúde humana"). */
+export function nomeCombina(nome: string, texto: string): boolean {
+  const raizes = raizesDe(texto);
+  const palavras = palavrasDe(nome);
+  return raizes.length > 0 && raizes.every((r) => palavras.some((p) => p.startsWith(r)));
+}
+
 function relevancia(atividade: AtividadeDoCnae, raizes: string[], digitos: string | null): number | null {
   if (digitos !== null) return atividade.codigo.startsWith(digitos) ? COMECO_DO_CODIGO : null;
   const palavras = palavrasDe(atividade.nome);
@@ -81,9 +94,7 @@ export function sugestoesDeCnae(
 ): AtividadeDoCnae[] {
   const digitos = digitosDoCnae(texto);
   if (digitos !== null && digitos.length < MINIMO_DE_DIGITOS) return [];
-  const raizes = palavrasDe(texto)
-    .filter((p) => !PALAVRAS_VAZIAS.has(p))
-    .map(raiz);
+  const raizes = raizesDe(texto);
   if (digitos === null && raizes.length === 0) return [];
   return atividades
     .map((atividade, posicao) => ({ atividade, posicao, nota: relevancia(atividade, raizes, digitos) }))
