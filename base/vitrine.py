@@ -493,16 +493,53 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "cvm",
         "O que a companhia entrega à CVM",
-        "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da "
-        "diretoria e ofertas de ações e de dívida.",
+        "Balanços em todas as versões, a demonstração das mutações do patrimônio líquido, as notas "
+        "explicativas, fatos relevantes, auditor, troca de auditor e parecer da demonstração anual e "
+        "da trimestral, remuneração da diretoria e ofertas de ações e de dívida.",
         (
             "demonstracoes_como_era",
+            "dmpl_como_era",
+            "notas_dfp",
             "eventos",
             "auditores",
+            "trocas_de_auditor",
             "pareceres_dfp",
+            "pareceres_itr",
             "fre_remuneracao",
             "ofertas_resolucao_160",
             "ofertas_antigas",
+        ),
+    ),
+    TemaDoCnpj(
+        "governanca",
+        "Conselho, diretoria e capital",
+        "Quantos conselheiros, diretores e membros de comitês a companhia tem e quantos são "
+        "independentes, a maior, a menor e a média da remuneração por órgão, a diversidade e os "
+        "empregados, o capital social e as transações com partes relacionadas, como a CVM publica no "
+        "formulário de referência, e as compras e vendas de ações declaradas à CVM por cargo, pela "
+        "administração, pelos controladores e pela própria companhia.",
+        (
+            "fre_conselho",
+            "fre_comites",
+            "fre_remuneracao_extremos",
+            "fre_diversidade",
+            "fre_empregados",
+            "fre_capital_social",
+            "fre_partes_relacionadas",
+            "negociacoes",
+        ),
+    ),
+    TemaDoCnpj(
+        "proventos_e_capital",
+        "Dividendos e mudanças no capital",
+        "Dividendos e juros sobre capital próprio de cada exercício, desdobramentos, grupamentos, "
+        "bonificações e aumentos de capital, como a companhia informou à CVM no formulário de "
+        "referência, em todos os anos guardados.",
+        (
+            "fre_proventos",
+            "proventos",
+            "fre_eventos_de_capital",
+            "eventos_de_capital",
         ),
     ),
     TemaDoCnpj(
@@ -542,10 +579,33 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         ),
     ),
     TemaDoCnpj(
+        "bolsa",
+        "Registro na CVM e códigos na bolsa",
+        "Cada registro de companhia aberta na CVM, inclusive as que saíram, o cadastro como era em "
+        "cada formulário, os códigos de negociação e os valores mobiliários com as datas em que "
+        "valeram, a ligação de cada emissor ao CNPJ, com os emissores que saíram da bolsa, mudaram "
+        "de código ou ficaram sem ligação conferidos à mão, e o código global (LEI) do GLEIF que liga "
+        "a entidade ao CNPJ.",
+        (
+            "cadastro_das_companhias",
+            "fca_geral",
+            "tickers_no_tempo",
+            "valores_mobiliarios",
+            "emissores",
+            "emissores_antigos",
+            "emissores_sem_ligacao",
+            "codigos_fora_do_fca",
+            "codigos_invalidos",
+            "empresa_serie",
+            "gleif_ponte",
+        ),
+    ),
+    TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
         "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de "
-        "empregadores do MTE, os embargos do IBAMA, processos "
+        "empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação "
+        "lidas dos documentos que a companhia entrega à CVM, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
             "pgfn_divida",
@@ -560,6 +620,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "bcb_regimes_especiais",
             "mte_lista_suja",
             "ibama_embargos",
+            "insolvencia",
             "processos_partes",
             "processos_nas_notas",
         ),
@@ -639,6 +700,99 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "receita_transacoes_adesao",
         ),
     ),
+    TemaDoCnpj(
+        "setores",
+        "Números dos setores regulados",
+        "O mercado das distribuidoras de energia, a inadimplência e os indicadores comerciais na "
+        "ANEEL, os acessos de banda larga, telefonia móvel e TV por assinatura na Anatel, os "
+        "beneficiários e o índice de desempenho das operadoras na ANS, prêmios e sinistros das "
+        "seguradoras na SUSEP e o balanço, o resultado e o cadastro de bancos e conglomerados no "
+        "IF.data do Banco Central, com a ligação ao CNPJ da empresa da bolsa quando o banco tem uma.",
+        (
+            "aneel_samp",
+            "aneel_inadimplencia",
+            "aneel_indicadores_comerciais",
+            "anatel_acessos",
+            "ans_beneficiarios",
+            "ans_idss",
+            "susep_seguros",
+            "ifdata_valores",
+            "ifdata_cadastro",
+            "ligacao_dos_bancos",
+        ),
+    ),
+    TemaDoCnpj(
+        "divida_emitida",
+        "Debêntures, ratings e recebíveis",
+        "Assembleias e avisos de debenturistas, os ratings de crédito que os documentos da companhia "
+        "citam e os certificados de recebíveis de cada securitizadora, mês a mês, nos documentos que "
+        "as companhias entregam à CVM.",
+        (
+            "debentures_assembleias",
+            "ratings",
+            "securitizacao_certificados",
+        ),
+    ),
+    TemaDoCnpj(
+        "fundos_na_empresa",
+        "Quais fundos têm a empresa",
+        "As posições em ações dos fundos registrados na CVM, mês a mês, compradas, emprestadas e "
+        "vendidas, as cotas de fundos que cada fundo tem, as ações do bloco de ativos não "
+        "codificados, a soma por empresa e os papéis do emissor nos fundos imobiliários, com o fundo "
+        "que saiu continuando na base.",
+        (
+            "carteiras_dos_fundos",
+            "carteiras_bloco_8",
+            "cda_cotas",
+            "painel_dos_fundos",
+            "fii_ativos",
+        ),
+    ),
+    TemaDoCnpj(
+        "fundos",
+        "Os fundos, quem os administra e o informe",
+        "O cadastro e o registro de fundos na CVM, o gestor e o administrador de cada fundo ao longo do "
+        "tempo, o informe mensal dos fundos de direitos creditórios, dos imobiliários e das cadeias "
+        "agroindustriais, o informe dos fundos de participações e quem a CVM registrou para "
+        "administrar fundo imobiliário.",
+        (
+            "cadastro_de_fundos",
+            "registro_de_fundos",
+            "cadastro_gestor_hist",
+            "cadastro_admin_hist",
+            "fidc_informe",
+            "fii_informe_mensal",
+            "cvm_fiagro",
+            "fip_informe",
+            "fii_administradores",
+        ),
+    ),
+    TemaDoCnpj(
+        "operacoes",
+        "Operações de compra, venda e fusão",
+        "Os documentos que as companhias abertas entregam à CVM e que podem anunciar uma operação, as "
+        "empresas de cada negócio divulgado pelas assessorias, a receita da empresa-alvo no último "
+        "exercício antes do negócio, quando é conhecida, e fatos públicos e datados de cooperativas e tradings de café, "
+        "cada um com a fonte e a data.",
+        (
+            "ma_candidatos",
+            "ma_partes",
+            "ma_regua",
+            "contraparte_cafe",
+        ),
+    ),
+    TemaDoCnpj(
+        "conferencias",
+        "Conferências e atraso na entrega",
+        "Os números que as regras fixas de conferência da base apontaram, com o esperado e o porquê, "
+        "e o atraso de cada companhia na entrega do balanço em relação ao prazo da CVM, com as "
+        "colunas conhecidas antes de cada data de previsão.",
+        (
+            "achados_de_qualidade",
+            "rotulos_atraso",
+            "colunas_atraso",
+        ),
+    ),
 )
 
 
@@ -659,14 +813,17 @@ def tabelas_ligadas_pelo_cnpj(catalogo: dict) -> list[str]:
 
 
 def tabelas_sem_tema(
-    catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
+    catalogo: dict,
+    temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ,
+    modulos: Sequence[str] | None = MODULOS_COM_TEMA_OBRIGATORIO,
 ) -> list[str]:
-    """As tabelas de órgão público ligadas pelo CNPJ que nenhum cartão da página inicial conta."""
+    """As tabelas ligadas pelo CNPJ que nenhum cartão da página inicial conta. Por padrão só as dos
+    módulos dos órgãos públicos; `modulos=None` cobra todas (a conferência do catálogo que o site mostra)."""
     nos_temas = {nome for tema in temas for nome in tema.tabelas}
     return [
         nome
         for nome in tabelas_ligadas_pelo_cnpj(catalogo)
-        if catalogo["tabelas"][nome]["modulo"] in MODULOS_COM_TEMA_OBRIGATORIO
+        if (modulos is None or catalogo["tabelas"][nome]["modulo"] in modulos)
         and nome not in nos_temas
     ]
 

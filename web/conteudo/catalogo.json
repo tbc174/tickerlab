@@ -2844,9 +2844,27 @@
         "orgaos": [
           "CVM"
         ],
-        "tabelas": 7,
-        "texto": "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da diretoria e ofertas de ações e de dívida.",
+        "tabelas": 11,
+        "texto": "Balanços em todas as versões, a demonstração das mutações do patrimônio líquido, as notas explicativas, fatos relevantes, auditor, troca de auditor e parecer da demonstração anual e da trimestral, remuneração da diretoria e ofertas de ações e de dívida.",
         "titulo": "O que a companhia entrega à CVM"
+      },
+      {
+        "chave": "governanca",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 8,
+        "texto": "Quantos conselheiros, diretores e membros de comitês a companhia tem e quantos são independentes, a maior, a menor e a média da remuneração por órgão, a diversidade e os empregados, o capital social e as transações com partes relacionadas, como a CVM publica no formulário de referência, e as compras e vendas de ações declaradas à CVM por cargo, pela administração, pelos controladores e pela própria companhia.",
+        "titulo": "Conselho, diretoria e capital"
+      },
+      {
+        "chave": "proventos_e_capital",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 4,
+        "texto": "Dividendos e juros sobre capital próprio de cada exercício, desdobramentos, grupamentos, bonificações e aumentos de capital, como a companhia informou à CVM no formulário de referência, em todos os anos guardados.",
+        "titulo": "Dividendos e mudanças no capital"
       },
       {
         "chave": "donos",
@@ -2868,6 +2886,16 @@
         "titulo": "Cadastro e situação na Receita"
       },
       {
+        "chave": "bolsa",
+        "orgaos": [
+          "CVM",
+          "GLEIF"
+        ],
+        "tabelas": 11,
+        "texto": "Cada registro de companhia aberta na CVM, inclusive as que saíram, o cadastro como era em cada formulário, os códigos de negociação e os valores mobiliários com as datas em que valeram, a ligação de cada emissor ao CNPJ, com os emissores que saíram da bolsa, mudaram de código ou ficaram sem ligação conferidos à mão, e o código global (LEI) do GLEIF que liga a entidade ao CNPJ.",
+        "titulo": "Registro na CVM e códigos na bolsa"
+      },
+      {
         "chave": "riscos",
         "orgaos": [
           "PGFN",
@@ -2878,8 +2906,8 @@
           "IBAMA",
           "CVM"
         ],
-        "tabelas": 8,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 8 de 14 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 9,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 9 de 15 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -2915,6 +2943,66 @@
         "tabelas": 5,
         "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 5 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
+      },
+      {
+        "chave": "setores",
+        "orgaos": [
+          "ANEEL",
+          "Anatel",
+          "ANS",
+          "SUSEP",
+          "Banco Central"
+        ],
+        "tabelas": 10,
+        "texto": "O mercado das distribuidoras de energia, a inadimplência e os indicadores comerciais na ANEEL, os acessos de banda larga, telefonia móvel e TV por assinatura na Anatel, os beneficiários e o índice de desempenho das operadoras na ANS, prêmios e sinistros das seguradoras na SUSEP e o balanço, o resultado e o cadastro de bancos e conglomerados no IF.data do Banco Central, com a ligação ao CNPJ da empresa da bolsa quando o banco tem uma.",
+        "titulo": "Números dos setores regulados"
+      },
+      {
+        "chave": "divida_emitida",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 3,
+        "texto": "Assembleias e avisos de debenturistas, os ratings de crédito que os documentos da companhia citam e os certificados de recebíveis de cada securitizadora, mês a mês, nos documentos que as companhias entregam à CVM.",
+        "titulo": "Debêntures, ratings e recebíveis"
+      },
+      {
+        "chave": "fundos_na_empresa",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 5,
+        "texto": "As posições em ações dos fundos registrados na CVM, mês a mês, compradas, emprestadas e vendidas, as cotas de fundos que cada fundo tem, as ações do bloco de ativos não codificados, a soma por empresa e os papéis do emissor nos fundos imobiliários, com o fundo que saiu continuando na base.",
+        "titulo": "Quais fundos têm a empresa"
+      },
+      {
+        "chave": "fundos",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 9,
+        "texto": "O cadastro e o registro de fundos na CVM, o gestor e o administrador de cada fundo ao longo do tempo, o informe mensal dos fundos de direitos creditórios, dos imobiliários e das cadeias agroindustriais, o informe dos fundos de participações e quem a CVM registrou para administrar fundo imobiliário.",
+        "titulo": "Os fundos, quem os administra e o informe"
+      },
+      {
+        "chave": "operacoes",
+        "orgaos": [
+          "CVM",
+          "Assessorias de M&A",
+          "Imprensa e páginas públicas"
+        ],
+        "tabelas": 4,
+        "texto": "Os documentos que as companhias abertas entregam à CVM e que podem anunciar uma operação, as empresas de cada negócio divulgado pelas assessorias, a receita da empresa-alvo no último exercício antes do negócio, quando é conhecida, e fatos públicos e datados de cooperativas e tradings de café, cada um com a fonte e a data.",
+        "titulo": "Operações de compra, venda e fusão"
+      },
+      {
+        "chave": "conferencias",
+        "orgaos": [
+          "CVM"
+        ],
+        "tabelas": 3,
+        "texto": "Os números que as regras fixas de conferência da base apontaram, com o esperado e o porquê, e o atraso de cada companhia na entrega do balanço em relação ao prazo da CVM, com as colunas conhecidas antes de cada data de previsão.",
+        "titulo": "Conferências e atraso na entrega"
       }
     ]
   },
