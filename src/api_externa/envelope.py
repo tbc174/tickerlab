@@ -28,6 +28,9 @@ ATRIBUICOES_DA_API = {
     "anp-concessionarios": "Fonte: ANP, dados abertos, concessionários de E&P (CC BY)",
     "anm-sigbm-barragens": "Fonte: ANM, SIGBM, dados abertos",
     "anm-cfem-arrecadacao": "Fonte: ANM, arrecadação da CFEM, dados abertos",
+    # as tabelas ligadas pelo CNPJ do registro (linha 978, `src/api_externa/tabelas_por_cnpj.py`)
+    "aneel-fiscalizacao": "Fonte: ANEEL, Dados Abertos, indicadores comerciais das distribuidoras (ODbL)",
+    "ans-qualidade": "Fonte: ANS, dados abertos, IDSS (CC BY)",
 }
 
 

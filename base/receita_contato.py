@@ -3,15 +3,15 @@
 Leitor **separado** do retrato da base (`base/receita_retrato.py`, que nunca guarda telefone nem e-mail e
 corta o endereço do MEI e do empresário individual): a saída daqui só vai para a pasta `acervo_pessoa/`,
 fora da base e do recorte da API por chave, lida só pela tela com login de organização com a permissão
-`pessoa_na_tela`. No MEI e no empresário individual o endereço e o telefone do estabelecimento costumam ser
-os da pessoa: por isso este conjunto é tratado, inteiro, como dado de pessoa.
+`pessoa_na_tela`. O conjunto é tratado, inteiro, como dado de pessoa.
 
 **O que sai**, só dos estabelecimentos **ativos** (situação cadastral 02): o CNPJ, se é a matriz, o endereço
 (logradouro, número, complemento, bairro, CEP, município e UF), até dois telefones e o e-mail.
 
-**O que nunca sai:** nome fantasia (o do MEI costuma ser o nome da pessoa), fax, estabelecimento que não está
-ativo (o contato de uma empresa fechada não serve à prospecção e é só dado de pessoa parado) e qualquer coisa
-com cara de CPF: CPF escrito no endereço é tirado (`base.pessoas.sem_cpf`), telefone fora do formato (DDD de
+**O que nunca sai:** estabelecimento de MEI, de empresário individual e de unipessoal, nem o município e a UF
+(o contato deles é o da pessoa: `AGENTS.md`, "Exceção"; quem é cada um, em `RaizesDeIndividual`), nome
+fantasia (o do MEI costuma ser o nome da pessoa), fax, estabelecimento que não está ativo (o contato de uma
+empresa fechada não serve à prospecção e é só dado de pessoa parado) e qualquer coisa com cara de CPF: CPF escrito no endereço é tirado (`base.pessoas.sem_cpf`), telefone fora do formato (DDD de
 2 dígitos e número de 8 ou 9) fica vazio, e e-mail com onze dígitos seguidos no nome fica vazio.
 
 Layout do `Estabelecimentos*.zip` conferido em 15 e 17/10/2026: 30 campos, sem cabeçalho, `;`, aspas, latin-1.
@@ -57,10 +57,12 @@ TELEFONE_FORA_DO_FORMATO = "telefone_fora_do_formato"
 EMAIL_FORA_DO_FORMATO = "email_fora_do_formato"
 EMAIL_COM_CARA_DE_CPF = "email_com_cara_de_cpf"
 DE_OPOSTO = "contato_de_titular_que_se_opos"  # linha 829
-ENDERECO_CORTADO = "endereco_de_individual_cortado"  # linha 859
+# MEI, empresário individual e unipessoal: o estabelecimento inteiro sai (ADR 0128, Emenda 4). É também a marca
+# que `src/analista/pessoa.py` exige no manifesto: o acervo montado antes deste corte não serve contato.
+CONTATO_DE_PESSOA = "contato_de_individual_ou_unipessoal_cortado"
 MOTIVOS = (
     NAO_ATIVO, TELEFONE_FORA_DO_FORMATO, EMAIL_FORA_DO_FORMATO, EMAIL_COM_CARA_DE_CPF,
-    DE_OPOSTO, ENDERECO_CORTADO,
+    DE_OPOSTO, CONTATO_DE_PESSOA,
 )  # fmt: skip
 
 
@@ -127,15 +129,20 @@ def _contato(parte: pd.DataFrame) -> ParteDoContato:
 
 
 class RaizesDeIndividual:
-    """As raízes de empresário individual e MEI do mês (milhões): números de 64 bits ordenados, não textos,
-    para a montagem do contato caber na memória e não refazer um conjunto de texto a cada parte."""
+    """As raízes cujo contato é o da própria pessoa (milhões): empresário individual e MEI (natureza 213-5, de
+    `base/receita_individuais.py`), MEI pelo Simples, EIRELI e quadro de um sócio só (de
+    `base/receita_contato_de_pessoa.py`). Números de 64 bits ordenados, não textos, para a montagem do contato
+    caber na memória e não refazer um conjunto de texto a cada parte."""
 
     def __init__(self) -> None:
         self._partes: list[np.ndarray] = []
         self._ordenadas: np.ndarray | None = None
 
     def juntar(self, raizes: pd.Series) -> None:
-        self._partes.append(cnpj.raizes_em_numeros(raizes))
+        self.juntar_numeros(cnpj.raizes_em_numeros(raizes))
+
+    def juntar_numeros(self, numeros: np.ndarray) -> None:
+        self._partes.append(numeros)
         self._ordenadas = None
 
     def contem(self, raizes: pd.Series) -> pd.Series:
@@ -145,43 +152,45 @@ class RaizesDeIndividual:
                 if self._partes
                 else np.array([], dtype=np.int64)
             )
+            self._partes = [
+                self._ordenadas
+            ]  # junta uma vez só: não guarda as partes e a cópia ordenada
         return pd.Series(
             cnpj.contem(self._ordenadas, cnpj.raizes_em_numeros(raizes)),
             index=raizes.index,
         )
 
 
-def _so_municipio(
+def _sem_contato_de_pessoa(
     contato: ParteDoContato, raizes: RaizesDeIndividual
 ) -> ParteDoContato:
-    """Empresário individual e MEI: o endereço é o da pessoa, então só o município e a UF ficam (linha 859;
-    política de privacidade, versão 16). Telefone e e-mail seguem, como a política diz."""
+    """MEI, empresário individual e unipessoal: o endereço, o telefone e o e-mail são os da pessoa, então o
+    estabelecimento sai inteiro, até o município e a UF (`AGENTS.md`, "Exceção": "só o nome", "sem endereço
+    e sem contato")."""
     cortar = raizes.contem(contato.estabelecimentos["cnpj_basico"])
+    contato.descartes[CONTATO_DE_PESSOA] += int(cortar.sum())
     if not cortar.any():
         return contato
-    estabelecimentos = contato.estabelecimentos.copy()
-    for coluna in (*ENDERECO, "cep"):
-        estabelecimentos.loc[cortar, coluna] = None
-    contato.descartes[ENDERECO_CORTADO] += int(cortar.sum())
-    return ParteDoContato(estabelecimentos, contato.descartes)
+    return ParteDoContato(
+        contato.estabelecimentos.loc[~cortar].reset_index(drop=True), contato.descartes
+    )
 
 
 def ler_contato(
     arquivo_zip: Path | IO[bytes],
     tiradas: set[str],
-    individuais: RaizesDeIndividual | None = None,
+    de_pessoa: RaizesDeIndividual,
 ) -> Iterator[ParteDoContato]:
     """O contato dos estabelecimentos ativos de um `Estabelecimentos*.zip`, em partes, com os descartes.
 
     `estabelecimentos` tem as colunas de `COLUNAS`; o que não foi informado, ou não passou no formato, vem
-    ausente. `descartes` conta os estabelecimentos que não estão ativos e os campos esvaziados, por motivo.
-    As raízes em `tiradas` (empresário individual ou MEI que pediu a oposição, linha 829) ficam de fora; as
-    em `individuais` (todo empresário individual e MEI) saem só com município, UF, telefones e e-mail.
+    ausente. `descartes` conta os estabelecimentos que não estão ativos, os de pessoa e os campos esvaziados,
+    por motivo. As raízes em `de_pessoa` (MEI, empresário individual e unipessoal) não saem; as em `tiradas`
+    (quem pediu a oposição, linha 829) também não. `de_pessoa` é obrigatório: sem ele o contato da pessoa
+    sairia.
     """
     for parte in _partes(arquivo_zip, CAMPOS_DO_ESTABELECIMENTO, ESTABELECIMENTO):
-        contato = _contato(parte)
-        if individuais is not None:
-            contato = _so_municipio(contato, individuais)
+        contato = _sem_contato_de_pessoa(_contato(parte), de_pessoa)
         oposto = contato.estabelecimentos["cnpj_basico"].isin(tiradas)
         if oposto.any():
             contato.descartes[DE_OPOSTO] += int(oposto.sum())

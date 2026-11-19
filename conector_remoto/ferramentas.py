@@ -559,6 +559,8 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
     _registrar_analise(servidor, pedidos)
+    # encaixe da linha 980: as ferramentas que só compõem o que a API devolve entram com uma linha aqui,
+    # `ferramentas_do_analista.registrar(servidor, pedidos)`, e os conjuntos delas em `CONJUNTOS_DA_FERRAMENTA`
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["setores"],
@@ -633,7 +635,9 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
     ) -> str | list[str]:
         """A análise de uma empresa pelo CNPJ numa resposta só, com cada bloco que a chave pode ver: o cadastro
         (a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o
-        auditor, os eventos, a ficha de crédito, os ativos e os comparáveis de companhia aberta. Traz também uma
+        auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das
+        agências reguladoras (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de
+        fundo imobiliário na CVM. Traz também uma
         frase no topo (fato), a linha do tempo com os marcos datados dos blocos, as leituras (dedução do TickerLab,
         separada do fato e com os blocos de onde veio), o que não foi achado em cada bloco, o bloco que não
         respondeu a tempo e as bases que a análise ainda não consulta. Cada valor traz a fonte e o dia em que
@@ -904,11 +908,12 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         ] = None,
     ) -> str:
         """O raio-x de um fundo de investimento pelo CNPJ dele: cadastro (classe, situação, patrimônio e
-        taxas), a carteira da competência mais nova já pública e, com `retorno_suposto`, o custo da taxa em 5 e 20
-        anos (conta sobre a hipótese de quem pergunta, não previsão). Cada valor traz a fonte e o dia em que ficou
-        público. Serve para conhecer um fundo que é sócio ou comprador.
-        Fonte: cadastro de fundos e carteiras (CDA) da CVM.
-        Não traz: busca de fundos por segmento (é um fundo por CNPJ), cotistas nem rentabilidade futura."""
+        taxas), a carteira da competência mais nova já pública, os informes do fundo imobiliário (FII, um por mês) e
+        do fundo de participações (FIP) e, com `retorno_suposto`, o custo da taxa em 5 e 20 anos (conta sobre a
+        hipótese de quem pergunta, não previsão). Cada valor traz a fonte e o dia em que ficou público. Serve para
+        conhecer um fundo que é sócio ou comprador.
+        Fonte: cadastro de fundos, carteiras (CDA) e informes de FII e de FIP da CVM.
+        Não traz: busca de fundos por segmento (é um fundo por CNPJ), a lista de cotistas nem rentabilidade futura."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir(
             "fundo",

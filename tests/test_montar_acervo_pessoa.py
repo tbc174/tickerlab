@@ -54,27 +54,30 @@ EMPRESAS_0 = (
     '"11222333";"EMPRESA DE MENTIRA LTDA";"2062";"49";"0";"01";""\n'
     '"22333444";"BELTRANO EXEMPLO 88800000127";"2135";"50";"0";"01";""\n'
 )
+SIMPLES_0 = '"99888777";"S";"20200101";"00000000";"N";"00000000";"00000000"\n'
 MEMBROS = {
     "Socios": "K.SOCIOCSV",
     "Estabelecimentos": "K.ESTABELE",
     "Empresas": "K.EMPRECSV",
+    "Simples": "F.K.SIMPLES",
 }
 ZIPS = (
     ("Socios0.zip", SOCIOS_0),
     ("Socios1.zip", SOCIOS_1),
     ("Estabelecimentos0.zip", ESTABELECIMENTOS_0),
     ("Empresas0.zip", EMPRESAS_0),
+    ("Simples.zip", SIMPLES_0),
 )
 
 
-def _acervo(tmp_path: Path) -> tuple[Path, Path]:
+def _acervo(tmp_path: Path, zips=ZIPS) -> tuple[Path, Path]:
     """Um acervo de mentira: `base/cnpj/manifesto.json` e os ZIPs no bruto pelo SHA-256."""
     acervo = tmp_path / "acervo"
     cnpj, bruto = acervo / "base" / "cnpj", acervo / "bruto" / "rfb-cnpj"
     cnpj.mkdir(parents=True)
     (bruto / "2026").mkdir(parents=True)
     arquivos = {}
-    for nome, texto in ZIPS:
+    for nome, texto in zips:
         provisorio = tmp_path / nome
         with zipfile.ZipFile(provisorio, "w") as arquivo:
             membro = next(m for comeco, m in MEMBROS.items() if nome.startswith(comeco))
@@ -127,13 +130,13 @@ def test_monta_o_contato_so_dos_estabelecimentos_ativos(tmp_path):
     manifesto = montar.carregar(cnpj, bruto, destino, AGORA, SEM_OPOSTOS)
 
     tabela = _tabela(destino, montar.CONTATO)
-    assert list(tabela["cnpj"]) == ["11222333000181", "22333444000181"]
+    # 22333444 é empresário individual: o estabelecimento dele não sai (ADR 0128, Emenda 4)
+    assert list(tabela["cnpj"]) == ["11222333000181"]
     assert set(tabela.columns) == {*rc.COLUNAS, "mes_do_retrato"}
     assert set(tabela["mes_do_retrato"]) == {"2026-10"}
-    assert list(tabela["email"].isna()) == [False, True]
-    assert manifesto["tabelas"][montar.CONTATO] == {"linhas": 2, "empresas": 2}
+    assert manifesto["tabelas"][montar.CONTATO] == {"linhas": 1, "empresas": 1}
     assert manifesto["descartes"][rc.NAO_ATIVO] == 1
-    assert manifesto["descartes"][rc.EMAIL_COM_CARA_DE_CPF] == 1
+    assert manifesto["descartes"][rc.CONTATO_DE_PESSOA] == 1
     assert set(manifesto["descartes"]) == {*rp.MOTIVOS, *rc.MOTIVOS, *ri.MOTIVOS}
 
 
@@ -361,7 +364,8 @@ def test_titular_individual_que_se_opos_sai_e_o_contato_da_raiz_dele_tambem(tmp_
     assert manifesto["descartes"][ri.OPOSTO] == 1
     contato = _tabela(destino, montar.CONTATO)
     assert set(contato["cnpj_basico"]) == {"11222333"}  # a raiz 22333444 saiu
-    assert manifesto["descartes"][rc.DE_OPOSTO] >= 1
+    # o contato do empresário individual já sai pelo corte, antes de chegar à oposição
+    assert manifesto["descartes"][rc.CONTATO_DE_PESSOA] == 1
 
 
 def test_oposicao_do_titular_nao_tira_o_socio_de_outra_empresa_com_o_mesmo_nome(
@@ -472,7 +476,8 @@ def test_aplicar_no_acervo_tira_o_socio_e_e_idempotente(tmp_path):
 def test_aplicar_no_acervo_tira_o_titular_e_o_contato_da_raiz(tmp_path):
     destino = _montado_sem_oposicao(tmp_path)
     ids = set(_opostos(("88800000127", "BELTRANO EXEMPLO")).ids)
-    assert oposicao_na_tela.aplicar_no_acervo(destino, ids) >= 2
+    # só o titular: o contato do empresário individual já não entra no acervo (ADR 0128, Emenda 4)
+    assert oposicao_na_tela.aplicar_no_acervo(destino, ids) == 1
     assert _tabela(destino, montar.INDIVIDUAIS).empty
     assert set(_tabela(destino, montar.CONTATO)["cnpj_basico"]) == {"11222333"}
     assert "BELTRANO EXEMPLO" in set(
@@ -628,14 +633,203 @@ def test_conferir_acusa_linha_de_quem_se_opos_que_seguiu_no_acervo(tmp_path, cap
     assert cli.main(argumentos) == 0
 
 
-def test_montagem_zera_o_endereco_do_individual_e_mantem_o_da_empresa(tmp_path):
-    destino, _ = _montar_com(tmp_path, SEM_OPOSTOS)
+# --------------------- sem contato de MEI, empresário individual e unipessoal (ADR 0128, Emenda 4)
+
+# 33444555: MEI pelo Simples, com natureza de sociedade; 44555666: antiga EIRELI; 55666777: um sócio pessoa
+# física só; 66777888: um sócio do exterior só; 77888999: dois sócios (fica).
+SOCIOS_DO_CORTE = (
+    _linha("55666777", "2", "CICRANA EXEMPLO")
+    + _linha("66777888", "3", "FOREIGN EXAMPLE", faixa="0")
+    + _linha("77888999", "2", "FULANO EXEMPLO")
+    + _linha("77888999", "2", "OUTRA EXEMPLO").replace("***123456**", "***654321**")
+)
+EMPRESAS_DO_CORTE = (
+    '"33444555";"LOJA DE MENTIRA LTDA";"2062";"49";"0";"01";""\n'
+    '"44555666";"EIRELI DE MENTIRA";"2305";"65";"0";"01";""\n'
+)
+SIMPLES_DO_CORTE = (
+    SIMPLES_0 + '"33444555";"S";"20200101";"00000000";"S";"20200101";"00000000"\n'
+)
+RAIZES_DO_CORTE = ("33444555", "44555666", "55666777", "66777888", "77888999")
+ESTABELECIMENTOS_DO_CORTE = ESTABELECIMENTOS_0 + "".join(
+    _estabelecimento(raiz, "0001", "81") for raiz in RAIZES_DO_CORTE
+)
+ZIPS_DO_CORTE = (
+    ("Socios0.zip", SOCIOS_0),
+    ("Socios1.zip", SOCIOS_1 + SOCIOS_DO_CORTE),
+    ("Estabelecimentos0.zip", ESTABELECIMENTOS_DO_CORTE),
+    ("Empresas0.zip", EMPRESAS_0 + EMPRESAS_DO_CORTE),
+    ("Simples.zip", SIMPLES_DO_CORTE),
+)
+
+
+def _montar_o_corte(tmp_path) -> tuple[Path, dict]:
+    cnpj, bruto = _acervo(tmp_path, ZIPS_DO_CORTE)
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    return destino, montar.carregar(cnpj, bruto, destino, AGORA, SEM_OPOSTOS)
+
+
+def test_montagem_corta_o_contato_inteiro_de_mei_eireli_individual_e_unipessoal(
+    tmp_path,
+):
+    destino, manifesto = _montar_o_corte(tmp_path)
     contato = _tabela(destino, montar.CONTATO)
-    do_mei = contato[contato["cnpj_basico"] == "22333444"].iloc[0]
-    for coluna in (*rc.ENDERECO, "cep"):
-        assert pd.isna(do_mei[coluna]), coluna
-    assert do_mei["uf"] and do_mei["municipio"] and do_mei["email"] is not None
-    manifesto = json.loads((destino / montar.MANIFESTO).read_text(encoding="utf-8"))
-    assert manifesto["descartes"][rc.ENDERECO_CORTADO] == 1  # a marca que a rota exige
+    assert sorted(contato["cnpj_basico"]) == ["11222333", "77888999"]
     da_empresa = contato[contato["cnpj_basico"] == "11222333"].iloc[0]
     assert da_empresa["logradouro"] == "DOS EXEMPLOS" and da_empresa["cep"]
+    # 22333444 (individual), 33444555 (MEI), 44555666 (EIRELI), 55666777 e 66777888 (um sócio só)
+    assert manifesto["descartes"][rc.CONTATO_DE_PESSOA] == 5
+    assert manifesto[montar.CORTES] == {
+        "mei_do_simples": 1,
+        "eireli": 1,
+        "quadro_de_um_socio": 2,
+    }
+
+
+def test_o_corte_do_contato_nao_mexe_em_socios_nem_titulares(tmp_path):
+    destino, _ = _montar_o_corte(tmp_path)
+    nomes = set(_tabela(destino)["nome_socio"])
+    assert {"CICRANA EXEMPLO", "FULANO EXEMPLO", "OUTRA EXEMPLO"} <= nomes
+    assert list(_tabela(destino, montar.INDIVIDUAIS)["cnpj_basico"]) == ["22333444"]
+
+
+def test_manifesto_traz_a_marca_do_corte_que_a_tela_exige(tmp_path):
+    destino, _ = _montar_com(tmp_path, SEM_OPOSTOS)
+    manifesto = json.loads((destino / montar.MANIFESTO).read_text(encoding="utf-8"))
+    assert rc.CONTATO_DE_PESSOA in manifesto["descartes"]
+    assert "endereco_de_individual_cortado" not in manifesto["descartes"]
+    assert set(manifesto[montar.CORTES]) == {
+        "mei_do_simples",
+        "eireli",
+        "quadro_de_um_socio",
+    }
+
+
+def test_sem_o_simples_do_mes_nada_e_montado(tmp_path):
+    """Sem o `Simples.zip` o MEI com natureza de sociedade passaria com o contato: a montagem para."""
+    cnpj, bruto = _acervo(tmp_path)
+    manifesto = json.loads((cnpj / "manifesto.json").read_text())
+    del manifesto["meses"]["2026-10"]["arquivos"]["Simples.zip"]
+    (cnpj / "manifesto.json").write_text(json.dumps(manifesto))
+    destino = tmp_path / "fora" / "acervo_pessoa"
+    with pytest.raises(montar.ZipAusenteError):
+        montar.carregar(cnpj, bruto, destino, AGORA, SEM_OPOSTOS)
+    assert not destino.exists()
+
+
+# ------------------------------------- prova por máquina antes de levar a pasta (só contagens)
+
+
+def _prova(saida: str) -> dict:
+    return json.loads(saida.strip().splitlines()[-2])
+
+
+def test_conferir_o_acervo_limpo_da_zero_em_tudo(tmp_path, capsys):
+    destino, _ = _montar_o_corte(tmp_path)
+    assert montar.main(["--conferir", str(destino)]) == 0
+    saida = capsys.readouterr().out
+    prova = _prova(saida)
+    assert (
+        prova[montar.SOCIOS]["linhas"] > 0 and prova[montar.INDIVIDUAIS]["linhas"] == 1
+    )
+    for tabela in (montar.SOCIOS, montar.INDIVIDUAIS):
+        achados = {
+            k: v for k, v in prova[tabela].items() if k not in ("linhas", "arquivos")
+        }
+        assert achados == dict.fromkeys(montar.ACHADOS, 0)
+    assert prova[montar.MANIFESTO] == dict.fromkeys(montar.ACHADOS_DO_MANIFESTO, 0)
+    assert "FALHAS" not in saida and "EXEMPLO" not in saida.upper()
+
+
+@pytest.mark.parametrize(
+    ("coluna", "valor", "achado"),
+    [
+        ("nome_socio", "FULANA 888.000.001-27", "onze_digitos"),
+        ("nome_socio", "FULANA ***123456**", "cpf_ou_email"),
+        ("nome_socio", "FULANA fulana@exemplo.com", "cpf_ou_email"),
+        ("nome_socio", "FULANA (11) 3000-1000", "telefone"),
+        ("nome_socio", "FULANA 01001-000", "cep"),
+        ("qualificacao", "30", "menor_ou_representante"),
+        ("qualificacao", "35", "menor_ou_representante"),
+        ("cnpj_basico", "1122233", "cnpj_basico_fora_do_formato"),
+        ("id_pessoa", "88800000127", "id_pessoa_fora_do_formato"),
+        ("logradouro", "RUA DOS EXEMPLOS", "colunas_fora_do_esperado"),
+    ],
+)
+def test_conferir_acusa_o_que_escapou_e_so_conta(
+    tmp_path, capsys, coluna, valor, achado
+):
+    destino, _ = _montar_o_corte(tmp_path)
+    arquivo = min((destino / montar.SOCIOS).glob("*.parquet"))
+    tabela = pd.read_parquet(arquivo)
+    tabela.loc[0, coluna] = valor
+    tabela.to_parquet(arquivo, index=False)
+    assert montar.main(["--conferir", str(destino)]) == 1
+    saida = capsys.readouterr().out
+    assert _prova(saida)[montar.SOCIOS][achado] >= 1
+    assert "FALHAS" in saida and "EXEMPLO" not in saida.upper() and valor not in saida
+
+
+def test_conferir_acusa_pessoa_no_manifesto(tmp_path, capsys):
+    destino, _ = _montar_o_corte(tmp_path)
+    caminho = destino / montar.MANIFESTO
+    manifesto = json.loads(caminho.read_text(encoding="utf-8"))
+    manifesto["anotacao"] = "fulana@exemplo.com"
+    manifesto["origens"]["Socios0.zip"] = "88800000127"
+    caminho.write_text(json.dumps(manifesto), encoding="utf-8")
+    assert montar.main(["--conferir", str(destino)]) == 1
+    saida = capsys.readouterr().out
+    assert _prova(saida)[montar.MANIFESTO] == {
+        "textos_com_cara_de_pessoa": 1,
+        "origens_fora_do_formato": 1,
+        "sem_a_marca_do_corte": 0,
+        "corte_do_contato_vazio": 0,
+    }
+    assert "fulana" not in saida and "88800000127" not in saida
+
+
+@pytest.mark.parametrize(
+    ("estragar", "achado", "quantos"),
+    [
+        (lambda m: m["descartes"].pop(rc.CONTATO_DE_PESSOA), "sem_a_marca_do_corte", 1),
+        (lambda m: m.pop(montar.CORTES), "corte_do_contato_vazio", 2),
+        (
+            lambda m: m[montar.CORTES].update(mei_do_simples=0),
+            "corte_do_contato_vazio",
+            1,
+        ),
+        (
+            lambda m: m[montar.CORTES].pop("quadro_de_um_socio"),
+            "corte_do_contato_vazio",
+            1,
+        ),
+    ],
+)
+def test_conferir_acusa_manifesto_sem_o_corte_do_contato(
+    tmp_path, capsys, estragar, achado, quantos
+):
+    """Um corte que zerou sem erro (layout da Receita mudado) não pode passar como conferido."""
+    destino, _ = _montar_o_corte(tmp_path)
+    caminho = destino / montar.MANIFESTO
+    manifesto = json.loads(caminho.read_text(encoding="utf-8"))
+    estragar(manifesto)
+    caminho.write_text(json.dumps(manifesto), encoding="utf-8")
+    assert montar.main(["--conferir", str(destino)]) == 1
+    saida = capsys.readouterr().out
+    assert _prova(saida)[montar.MANIFESTO][achado] == quantos
+    assert f"manifesto.json.{achado}" in saida
+
+
+def test_conferir_aceita_eireli_zerada(tmp_path, capsys):
+    """A EIRELI foi extinta: zero raiz nela é verdade possível, não defeito."""
+    destino, _ = _montar_o_corte(tmp_path)
+    caminho = destino / montar.MANIFESTO
+    manifesto = json.loads(caminho.read_text(encoding="utf-8"))
+    manifesto[montar.CORTES]["eireli"] = 0
+    caminho.write_text(json.dumps(manifesto), encoding="utf-8")
+    assert montar.main(["--conferir", str(destino)]) == 0
+
+
+def test_conferir_pasta_sem_as_tabelas_falha(tmp_path, capsys):
+    assert montar.main(["--conferir", str(tmp_path / "acervo_pessoa")]) == 1
+    assert "FALHAS" in capsys.readouterr().out

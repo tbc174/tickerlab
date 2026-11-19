@@ -29,6 +29,7 @@ from src.banco import chaves_da_api as cb
 from src.banco.coletas import registrar
 from src.ferramentas.custos import custo_da_taxa
 from tests import ajudantes_da_api_externa as aj
+from tests import test_api_externa_tabelas_por_cnpj as informes
 
 AGORA = datetime(2026, 11, 10, 12, tzinfo=UTC)  # o beta começa em 03/11
 BAIXADO_EM = datetime(2026, 11, 5, 3, tzinfo=UTC)  # o dia do retrato do cadastro
@@ -38,6 +39,8 @@ SEM_CADASTRO = "33333333000191"
 URL_DO_CADASTRO = "https://dados.cvm.gov.br/dados/FI/CAD/DADOS/cad_fi.csv"
 ORIGINAL = b"CNPJ_FUNDO;DENOM_SOCIAL\n"  # o conteudo baixado: so o hash importa aqui
 TABELAS_DOS_FUNDOS = ("cadastro_de_fundos", "carteiras_dos_fundos")
+# os informes de FII e de FIP (linha 978, lote 1): com tudo liberado, também prontos
+TABELAS_DOS_INFORMES = ("fii_informe_mensal", "fip_informe")
 ROTA = f"/data/v1/funds/{FUNDO}"
 LOTE = "/data/v1/funds/batch"
 
@@ -119,13 +122,14 @@ def pasta(tmp_path, banco, monkeypatch):
 
 
 def _regras_dos_fundos() -> portao.Regras:
-    """As regras de verdade, com as duas tabelas dos fundos prontas (provas do D10) no dia do teste."""
+    """As regras de verdade, com as tabelas dos fundos e dos informes prontas (provas do D10) no dia do teste."""
     prova = Prova(AGORA.date(), "conferida no teste", "teste")
     versoes = prontidao.versoes_maiores()
     return dataclasses.replace(
         portao.regras_vigentes(),
         prontidao={
-            t: Prontidao(versoes[t], prova, prova, prova) for t in TABELAS_DOS_FUNDOS
+            t: Prontidao(versoes[t], prova, prova, prova)
+            for t in (*TABELAS_DOS_FUNDOS, *TABELAS_DOS_INFORMES)
         },
     )
 
@@ -282,13 +286,14 @@ def test_custo_da_taxa_nao_sai_se_a_fonte_so_sai_como_publicada(
 # ---------------------------------------------------------------- bloco não disponível (linha 882)
 
 
-def _regras_so_com(*tabelas: str):
-    """As regras dos fundos com só estas tabelas prontas."""
+def _regras_so_com(*tabelas: str, informes: bool = True):
+    """As regras dos fundos com só estas tabelas do fundo prontas (e os informes, se `informes`)."""
+    prontas = (*tabelas, *(TABELAS_DOS_INFORMES if informes else ()))
 
     def regras() -> portao.Regras:
         base = _regras_dos_fundos()
         return dataclasses.replace(
-            base, prontidao={t: base.prontidao[t] for t in tabelas}
+            base, prontidao={t: base.prontidao[t] for t in prontas}
         )
 
     return regras
@@ -358,6 +363,44 @@ def test_duas_organizacoes_so_a_do_contrato_ve_a_lista(banco, monkeypatch, pasta
 
 
 # ---------------------------------------------------------------- o que não sai
+
+
+def test_informes_do_fii_e_do_fip_saem_na_rota_do_fundo_como_eram_no_dia(
+    cliente, cenario, pasta
+):
+    informes.gravar(pasta, informes.FII, informes._fii())
+    informes.gravar(pasta, informes.FIP, informes._fip())
+    corpo = _get(cliente, cenario, known_at="2025-06-30").json()
+    reportes = corpo["fund_reports"]
+    mensal = reportes["reit_monthly_report"]["items"]
+    assert [i["reference_period"]["value"] for i in mensal] == [
+        "2025-05-01",
+        "2025-04-01",
+    ]
+    assert [i["net_assets"]["value"] for i in mensal] == [120.0, 110.0]
+    assert mensal[0]["net_assets"]["published_at"] == "2025-06-15"
+    assert reportes["private_equity_fund_report"]["found"] is True
+    assert "12345678000199" not in str(
+        corpo
+    )  # o CNPJ da administradora: a trava do nome
+    assert corpo["unavailable_sections"] == []
+    hoje = _get(cliente, cenario).json()["fund_reports"]["reit_monthly_report"]["items"]
+    assert hoje[0]["net_assets"]["value"] == 999.0  # a reapresentação, já pública hoje
+
+
+def test_informes_sem_prontidao_nao_aparecem_nem_na_lista_dos_nao_disponiveis(
+    cliente, cenario, pasta, monkeypatch
+):
+    """Bloco fechado não vaza pelo nome: os informes fechados não entram em `unavailable_sections`."""
+    informes.gravar(pasta, informes.FII, informes._fii())
+    monkeypatch.setattr(
+        rotas, "regras_da_api", _regras_so_com(*TABELAS_DOS_FUNDOS, informes=False)
+    )
+    corpo = _get(cliente, cenario).json()
+    assert "fund_reports" not in corpo
+    assert corpo["unavailable_sections"] == []
+    assert "fund_reports" not in str(corpo)
+    assert "reit_monthly_report" not in str(corpo)
 
 
 def test_fundo_inexistente_e_fundo_negado_dao_o_mesmo_404(cliente, cenario, banco):
