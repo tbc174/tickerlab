@@ -29,7 +29,7 @@ from tests.test_recorte_dos_cadastros import (
 )
 
 COM_AMPLIADAS = ("cnpj_empresas_pj", "cnpj_estabelecimentos_pj", *recorte.AMPLIADAS)
-COLUNAS_DE_DATA = (
+NOMES_DAS_COLUNAS_DE_DATA = (
     "data_da_homologacao", "data_do_certificado", "validade_do_certificado", "data_da_posicao", "data_do_cadastro",
 )  # fmt: skip
 COLUNAS_DE_NUMERO = (
@@ -68,7 +68,7 @@ def _linha(
             partes.append(f"{marca} AS trata_como_pessoa")
         elif coluna in texto:
             partes.append(f"'{texto[coluna]}' AS {coluna}")
-        elif coluna in COLUNAS_DE_DATA:
+        elif coluna in NOMES_DAS_COLUNAS_DE_DATA:
             partes.append(f"DATE '2025-01-01' AS {coluna}")
         elif coluna in COLUNAS_DE_NUMERO:
             partes.append(f"1.5 AS {coluna}")
