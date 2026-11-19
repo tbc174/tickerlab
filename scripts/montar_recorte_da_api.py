@@ -5,7 +5,7 @@ O contêiner `tickerlab-api` de produção não tinha `<acervo>/base`: sem ela a
 serve**, em degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
 aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843; `--degrau 4`: mais as cópias reduzidas
 da lista de compradores, linha 844; `--degrau 5`: mais as cópias reduzidas dos cinco cadastros, linha 915;
-`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
+`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904; `--degrau 7`: mais as cópias reduzidas dos setores, linha 978), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
 
 Lista de permissão (Diretoria, 10/11/2026, ADR 0101 Emenda 4): só vai a tabela escrita em `DEGRAU_1` ou
 `DEGRAU_2_ACRESCENTA`, e só a coluna que o dicionário (`base/dicionario.py`) conhece, menos as
@@ -35,12 +35,19 @@ pessoa por linha e vão pela cópia por arquivo, como as do degrau 2, sem o nome
 (`COLUNAS_FORA_DO_RECORTE`) e com os textos que trazem nome conferidos sem CPF (`TEXTOS_LIVRES`). Só no degrau 6: o cron segue no degrau 2, e o envio pede o pode da Diretoria com a prova de zero
 pessoa. Tabela do degrau 6 sem arquivo na base derruba a montagem.
 
+A ligação das entidades às companhias (`empresa_serie`) e os acessos da Anatel (`anatel_acessos`), que sustentam as linhas
+de setor do conjunto `sectors` (linha 978), vão no degrau 7 em cópia reduzida, com o mesmo nome de tabela que a API lê,
+pelo filtro e pela trava de `base/recorte_dos_setores.py` (só entidade de pessoa jurídica da `cnpj_empresas_pj` da mesma
+saída, sem linha sem documento e sem nome). A tabela inteira segue em casa. O degrau 7 é o 6 mais as duas: o recebedor do
+VPS troca a `base/` inteira, então o cron noturno (degrau 6) não as leva; o envio do degrau 7 pede o pode da Diretoria.
+
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
     python -m scripts.montar_recorte_da_api --degrau 3 --base <acervo>/base --saida /tmp/base-api-rede
     python -m scripts.montar_recorte_da_api --degrau 4 --base <acervo>/base --saida /tmp/base-api-compradores
     python -m scripts.montar_recorte_da_api --degrau 5 --base <acervo>/base --saida /tmp/base-api-cadastros
     python -m scripts.montar_recorte_da_api --degrau 6 --base <acervo>/base --saida /tmp/base-api-lotes
+    python -m scripts.montar_recorte_da_api --degrau 7 --base <acervo>/base --saida /tmp/base-api-setores
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -60,7 +67,7 @@ from pathlib import Path
 
 import duckdb
 
-from base import recorte_dos_cadastros, recorte_dos_compradores
+from base import recorte_dos_cadastros, recorte_dos_compradores, recorte_dos_setores
 from base.cpf_no_texto import tem_cpf_valido
 from base.dicionario import TABELAS
 from base.dossie import (
@@ -101,6 +108,7 @@ FICAM_EM_CASA = (
     "cnpj_situacao_especial",
     # Têm linha de pessoa (EI/MEI, auditor sem CNPJ de firma) ou dúvida, achadas pela 789 em 10/11/2026 depois de
     # subirem no degrau 2; apagadas do VPS com o pode da Diretoria. Só voltam com a marca de pessoa por linha.
+    # (`anatel_acessos` inteira segue aqui; ao VPS vai só a cópia reduzida do degrau 7, `SETORES`, linha 978.)
     "anatel_acessos",
     "ifdata_cadastro",
     "carteiras_bloco_8",
@@ -207,8 +215,11 @@ REDUZIDAS = recorte_dos_compradores.REDUZIDAS
 # As cópias reduzidas dos cinco cadastros em retrato (linha 915): só no degrau 5, pelo filtro e pela trava de
 # `base/recorte_dos_cadastros.py`, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
 CADASTROS = recorte_dos_cadastros.CADASTROS
+# As cópias reduzidas dos setores (linha 978: a ligação das entidades às companhias e os acessos da Anatel): só no degrau 7,
+# pelo filtro e pela trava de `base/recorte_dos_setores.py`, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
+SETORES = recorte_dos_setores.SETORES
 # o que tem filtro e trava próprios (não passa pela cópia por arquivo)
-COM_FILTRO_PROPRIO = (*REDE_SO_PJ, *REDUZIDAS, *CADASTROS)
+COM_FILTRO_PROPRIO = (*REDE_SO_PJ, *REDUZIDAS, *CADASTROS, *SETORES)
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
 SUFIXO_DO_MANIFESTO = ".json"
@@ -234,7 +245,7 @@ class Resultado:
 def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
     """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta; 3 = o 2 + a rede só PJ; 4 = o 3 + as cópias
     reduzidas da lista de compradores; 5 = o 4 + as cópias reduzidas dos cinco cadastros; 6 = o 5 + os lotes das
-    300 pelo CNPJ (lote 1)), na ordem da lista."""
+    300 pelo CNPJ (lote 1); 7 = o 6 + as cópias reduzidas dos setores), na ordem da lista."""
     if degrau == 1:
         return DEGRAU_1
     if degrau == 2:
@@ -247,7 +258,9 @@ def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
         return (*DEGRAU_1, *DEGRAU_2_ACRESCENTA, *REDE_SO_PJ, *REDUZIDAS, *CADASTROS)
     if degrau == 6:
         return (*tabelas_do_degrau(5), *LOTE_1_DAS_300)
-    raise RecorteErro(f"degrau {degrau} não existe (1 a 6)")
+    if degrau == 7:
+        return (*tabelas_do_degrau(6), *SETORES)
+    raise RecorteErro(f"degrau {degrau} não existe (1 a 7)")
 
 
 def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
@@ -264,6 +277,10 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
         if nome in CADASTROS:
             raise RecorteErro(
                 f"{nome}: o cadastro só vai pelo degrau 5, com o filtro e a trava"
+            )
+        if nome in SETORES:
+            raise RecorteErro(
+                f"{nome}: a cópia reduzida dos setores só vai pelo degrau 7, com o filtro e a trava"
             )
         if nome not in ARQUIVOS or nome not in TABELAS:
             raise RecorteErro(f"{nome}: a porta não serve esta tabela")
@@ -719,6 +736,54 @@ def montar_cadastros(
     ]
 
 
+def montar_setores(
+    con: duckdb.DuckDBPyConnection, base: Path, saida: Path, tabelas: tuple[str, ...]
+) -> list[Resultado]:
+    """As cópias reduzidas dos setores (degrau 7): o filtro e a trava de zero pessoa na saída.
+
+    Roda depois de `tirar_raizes_de_mei`: a lista sem pessoa é a `cnpj_empresas_pj` da saída. Cada arquivo sai no
+    mesmo caminho relativo (a API lê a tabela pelo nome); tabela sem arquivo na base derruba o envio."""
+    if "cnpj_empresas_pj" not in tabelas:
+        raise RecorteErro("os setores só vão junto com cnpj_empresas_pj")
+    nomes = tuple(t for t in SETORES if t in tabelas)
+    empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
+    origem = {nome: _origem_do_cadastro(base, nome) for nome in nomes}
+    destinos: dict[str, list[Path]] = {}
+    tiradas: dict[str, int] = {}
+    try:
+        for nome in nomes:
+            destinos[nome] = [
+                saida / arquivo.relative_to(base) for arquivo in origem[nome]
+            ]
+            tiradas[nome] = sum(
+                recorte_dos_setores.montar_setor(con, nome, arquivo, empresas, destino)[
+                    1
+                ]
+                for arquivo, destino in zip(origem[nome], destinos[nome], strict=True)
+            )
+        linhas = recorte_dos_setores.conferir_setores(con, destinos, empresas)
+    except recorte_dos_setores.SetorComPessoa as erro:
+        raise RecorteErro(str(erro)) from erro
+    for nome, total in linhas.items():
+        log.info(
+            "%s na saída (zero pessoa conferido): %d linha(s), %d tirada(s)",
+            nome,
+            total,
+            tiradas[nome],
+        )
+    return [
+        Resultado(
+            nome,
+            len(origem[nome]),
+            0,
+            len(origem[nome]),
+            tiradas[nome],
+            sum(d.stat().st_size for d in destinos[nome]),
+        )
+        for nome in nomes
+    ]
+
+
 def _origem_do_cadastro(base: Path, nome: str) -> list[Path]:
     """Os Parquets do cadastro na base (nunca de pasta proibida); sem nenhum, nada sai."""
     arquivos = arquivos_da_tabela(base, ARQUIVOS[nome])
@@ -739,6 +804,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
     rede = tuple(t for t in tabelas if t in REDE_SO_PJ)
     reduzidas = tuple(t for t in tabelas if t in REDUZIDAS)
     cadastros = tuple(t for t in tabelas if t in CADASTROS)
+    setores = tuple(t for t in tabelas if t in SETORES)
     tabelas_por_arquivo = tuple(t for t in tabelas if t not in COM_FILTRO_PROPRIO)
     conferir_a_lista(tabelas_por_arquivo)
     base = base.resolve()
@@ -774,6 +840,8 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
             resultados += montar_reduzidas(con, base, saida, tabelas)
         if cadastros:
             resultados += montar_cadastros(con, base, saida, tabelas)
+        if setores:
+            resultados += montar_setores(con, base, saida, tabelas)
     finally:
         con.close()
     return resultados
@@ -818,7 +886,7 @@ def comando_ssh_padrao() -> list[str]:
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Recorte da base para o VPS (linha 739)")
-    p.add_argument("--degrau", type=int, choices=(1, 2, 3, 4, 5, 6), required=True)
+    p.add_argument("--degrau", type=int, choices=(1, 2, 3, 4, 5, 6, 7), required=True)
     p.add_argument(
         "--base", type=Path, help="<acervo>/base (padrão: o acervo do ambiente)"
     )
@@ -835,7 +903,7 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
 
 def obrigatorias_sem_arquivo(resultados: list[Resultado]) -> list[str]:
     """As tabelas que não podem sair sem arquivo: o núcleo e o lote 1 das 300 (sem elas a montagem falha)."""
-    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300)
+    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300, *SETORES)
     return [
         r.tabela for r in resultados if r.arquivos == 0 and r.tabela in obrigatorias
     ]

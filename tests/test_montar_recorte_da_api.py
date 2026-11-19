@@ -234,7 +234,6 @@ def test_link_simbolico_na_saida_nao_vai_no_tar(tmp_path):
 @pytest.mark.parametrize(
     "tabela",
     [
-        "anatel_acessos",
         "ifdata_cadastro",
         "carteiras_bloco_8",
         "controladas",
