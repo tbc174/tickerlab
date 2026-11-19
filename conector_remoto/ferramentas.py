@@ -22,6 +22,12 @@ from pydantic import Field
 
 from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
+from conector_remoto.enxugar import (
+    LIMITE_MAXIMO_DAS_ENTREGAS,
+    LIMITE_PADRAO_DAS_ENTREGAS,
+    cortar_entregas,
+    enxugar_demonstracoes,
+)
 from conector_remoto.pessoa import RespostaComPessoa
 from conector_remoto.proximo_passo import com_proximo_passo
 from conector_remoto.saida import (
@@ -137,7 +143,7 @@ LIMITE_PADRAO_DOS_PARES = 10
 DICAS_DE_RESPOSTA_GRANDE = {
     "buscar_empresas": "Peça menos empresas por página (`limite`) ou filtre mais (`cnae`, `uf`, `municipio`).",
     "comparaveis": "Peça menos pares (`limite`).",
-    "demonstracoes": "Peça um período só (`fim_do_periodo`).",
+    "demonstracoes": "Peça um demonstrativo só (`demonstrativo`, ex.: DRE) ou uma conta (`conta`, ex.: 3.01).",
     "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
     "vinculos": "Peça menos níveis (`profundidade`) ou só alguns tipos de vínculo (`tipos`).",
     "novidades": "Peça menos dias (`dias`).",
@@ -266,6 +272,33 @@ def cortar_pares(corpo: object, limite: int) -> object:
         "truncated": True,
         "limits": [*limites, aviso] if isinstance(limites, list) else [aviso],
     }
+
+
+def _com_entregas_cortadas(resposta: RespostaDaApi, limite: int) -> RespostaDaApi:
+    """A resposta da ficha só com as entregas de DFP e ITR mais novas (o resto fica como veio)."""
+    if not resposta.ok:
+        return resposta
+    return dataclasses.replace(resposta, corpo=cortar_entregas(resposta.corpo, limite))
+
+
+def _com_demonstracoes_enxutas(
+    resposta: RespostaDaApi,
+    demonstrativo: str | None,
+    visao: str,
+    conta: str | None,
+    periodo_pedido: bool,
+) -> RespostaDaApi:
+    """A resposta das demonstrações no que cabe na conversa (`enxugar.py`); o resto fica como veio."""
+    if not resposta.ok:
+        return resposta
+    corpo = enxugar_demonstracoes(
+        resposta.corpo,
+        demonstrativo=demonstrativo,
+        visao=visao,
+        conta=conta,
+        periodo_pedido=periodo_pedido,
+    )
+    return dataclasses.replace(resposta, corpo=corpo)
 
 
 def _como_texto(corpo: object) -> str:
@@ -498,7 +531,18 @@ def registrar_ferramentas(
         annotations=SO_LEITURA,
         structured_output=False,
     )
-    async def ficha_da_empresa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
+    async def ficha_da_empresa(
+        cnpj: Cnpj,
+        como_era_em: ComoEraEm = None,
+        limite_de_entregas: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DAS_ENTREGAS,
+                description="Quantas entregas de DFP e ITR trazer, das mais novas para as mais velhas (companhia aberta).",
+            ),
+        ] = LIMITE_PADRAO_DAS_ENTREGAS,
+    ) -> str:
         """A ficha de uma empresa pelo CNPJ: o cadastro na Receita (razão social, natureza jurídica, Simples,
         situação, CNAE principal e município, cada código com o texto da tabela atual da Receita ao lado, UF e data de
         abertura) e, se for companhia aberta, as entregas de DFP e ITR à CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do cadastro que a base não consultou
@@ -515,8 +559,14 @@ def registrar_ferramentas(
         if "profiles" in conjuntos:
             resposta = await pedidos.resposta(f"/companies/{numeros}/profile", dia)
             if resposta.status != STATUS_NAO_DISPONIVEL or "companies" not in conjuntos:
-                return pedidos.entregar(resposta, "ficha_da_empresa")
-        return await pedidos.pedir("ficha_da_empresa", f"/companies/{numeros}", dia)
+                return pedidos.entregar(
+                    _com_entregas_cortadas(resposta, limite_de_entregas),
+                    "ficha_da_empresa",
+                )
+        resposta = await pedidos.resposta(f"/companies/{numeros}", dia)
+        return pedidos.entregar(
+            _com_entregas_cortadas(resposta, limite_de_entregas), "ficha_da_empresa"
+        )
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["comparaveis"],
@@ -564,13 +614,35 @@ def registrar_ferramentas(
         fim_do_periodo: Annotated[
             date | None,
             Field(
-                description="Só o período que termina neste dia (AAAA-MM-DD), ex.: 2025-12-31."
+                description="Só o período que termina neste dia (AAAA-MM-DD), ex.: 2025-12-31. Sem ele vem o mais novo."
+            ),
+        ] = None,
+        demonstrativo: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[A-Za-z_]{2,8}$",
+                description="Só um demonstrativo: DRE, BPA, BPP, DFC, DVA, DRA ou DMPL. Sem ele vêm todos, na ordem, até caber.",
+            ),
+        ] = None,
+        visao: Annotated[
+            Literal["consolidado", "individual", "ambos"],
+            Field(
+                description="`consolidado` (o padrão: o consolidado de cada conta e, onde ela não tem, o individual), `individual` ou `ambos`."
+            ),
+        ] = "consolidado",
+        conta: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[0-9]{1,2}(\.[0-9]{1,2}){0,5}$",
+                description="Só esta conta e as de dentro dela, pelo código do plano de contas da CVM, ex.: 3.01.",
             ),
         ] = None,
     ) -> str:
         """As demonstrações financeiras (DFP e ITR) de uma companhia aberta: um valor por conta e período, com
         o documento, a versão e a data em que ficou público. Serve para ler receita, lucro, dívida e as outras contas
         de uma companhia aberta num período.
+        Traz um período (o mais novo, ou o de `fim_do_periodo`), a versão mais nova de cada conta e o consolidado
+        quando existe; o que couber na conversa. O que ficou de fora vem em `limits`, com `truncated`.
         Fonte: DFP e ITR entregues à CVM.
         Não traz: faturamento de empresa fechada; para ela a resposta é "Não disponível", com o motivo, e o
         TickerLab não estima."""
@@ -581,7 +653,10 @@ def registrar_ferramentas(
         )
         if resposta.status == STATUS_NAO_DISPONIVEL:
             raise ToolError(MENSAGEM_SEM_DEMONSTRACAO)
-        return pedidos.entregar(resposta, "demonstracoes")
+        enxuta = _com_demonstracoes_enxutas(
+            resposta, demonstrativo, visao, conta, fim_do_periodo is not None
+        )
+        return pedidos.entregar(enxuta, "demonstracoes")
 
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)

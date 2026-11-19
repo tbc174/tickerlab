@@ -124,10 +124,10 @@ com as ferramentas que existem.
 | CLI | Conector |
 |---|---|
 | `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
-| `empresa` | `ficha_da_empresa` |
+| `empresa` | `ficha_da_empresa` (as 8 entregas de DFP e ITR mais novas; `limite_de_entregas`, de 1 a 100, pede mais; o corte vai em `truncated` e em `limits`) |
 | `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, inclusive os das tabelas ligadas pelo CNPJ do registro `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, com o conjunto `integrity` no contrato, sanções da CGU, embargos do IBAMA e cadastro de empregadores do MTE, só pessoa jurídica), com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota; com `pessoa_no_conector` e sem a data, um segundo bloco com a resposta de `socios_e_donos`, que é mais um pedido na quota e some se a API negar ou a tranca recusar) |
 | `comparaveis` | `comparaveis` (a data e `limite` de 1 a 50 pares, padrão 10; o corte é no conector, na ordem da API, e as medianas seguem sobre todos os pares) |
-| `demonstracoes` | `demonstracoes` |
+| `demonstracoes` | `demonstracoes` (um período, a versão mais nova de cada conta e o consolidado onde houver; `demonstrativo`, `visao` e `conta` escolhem o recorte; o que não coube vai em `truncated` e em `limits`) |
 | `eventos` | `eventos` (tipos, `limite` e `cursor`) |
 | `fundo` | `fundo` |
 | `setor` | `setores` e `setor` |
