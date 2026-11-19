@@ -109,3 +109,19 @@ def test_aresta_anonima_da_lapide_nao_sai():
     publicadas, atributos = vistas.vista_publicada(anonima, _entidades())
     assert publicadas["de"].notna().all()
     assert "socios_em_comum_com" not in set(atributos["atributo"])
+
+
+def test_marca_de_pessoa_vazia_conta_como_pessoa():
+    """Regressão: com a marca vazia numa coluna de objetos, `astype(bool)` dava falso e a entidade saía como
+    empresa. Na dúvida, é pessoa: nenhum sinal negativo nem atributo dela sai."""
+    vazia = _entidades().assign(
+        trata_como_pessoa=lambda t: (
+            t["trata_como_pessoa"]
+            .astype(object)
+            .mask(t["id_entidade"] == EMPRESA_B, None)
+        )
+    )
+    publicadas, atributos = vistas.vista_publicada(_ligacoes(), vazia)
+    assert "sancionada_por" not in set(publicadas["tipo"])
+    assert EMPRESA_B not in set(atributos["id_entidade"])
+    assert EMPRESA_A in set(atributos["id_entidade"])  # a marcada como empresa continua
