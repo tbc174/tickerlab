@@ -405,6 +405,7 @@ def test_cada_analista_ve_so_o_que_a_chave_dele_libera(api):
         "analise_completa",
         "demonstracoes",
         "ficha_da_empresa",
+        "o_que_mudou",
         "o_que_posso_ver",
     ]
     assert de_b == ["o_que_posso_ver", "setor", "setores"]

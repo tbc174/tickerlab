@@ -488,8 +488,15 @@ def test_a_tabela_do_topo_bate_com_as_ferramentas_do_conector(analista):
             )
 
 
+# ferramenta que nenhuma das dez perguntas chama, com o motivo (a medida dela fica em outro arquivo)
+SEM_PERGUNTA_DAS_DEZ = {
+    "o_que_mudou": "linha 980, onda 1: serve à volta a uma empresa já analisada, que as dez não têm; testada em test_conector_ferramentas_do_analista",
+}
+
+
 def test_toda_ferramenta_do_conector_serve_a_alguma_pergunta(analista):
     citadas = {f for _s, lista in tabela_do_topo().values() for f in lista}
+    citadas |= set(SEM_PERGUNTA_DAS_DEZ)
     sobram = set(_ferramentas_do_conector(analista.cliente)) - citadas
     assert not sobram, (
         f"Ferramenta nova no conector sem pergunta na tabela do topo: {sorted(sobram)}. "
@@ -848,6 +855,7 @@ def test_o_conector_barra_pessoa_fisica_que_a_api_mandar(sinal):
 MEDIDAS_A_PARTE = {
     "socios_e_donos": "pessoa física só da organização com a permissão; teto em test_conector_remoto_socios_e_donos",
     "credito_da_empresa": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
+    "o_que_mudou": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
 }
 
 
