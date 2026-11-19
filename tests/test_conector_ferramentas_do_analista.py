@@ -1365,3 +1365,105 @@ def test_a_descricao_do_comparar_empresas_diz_o_que_nao_traz():
     for ausente in ("pessoa física", "faturamento", "opinião"):
         assert ausente in nao_traz
     assert "2 a 5" in descricao
+
+
+# ---------------------------------------------------------------- revisão cruzada de comparar_empresas
+
+
+def test_entregas_nao_consultadas_nao_viram_lista_vazia():
+    """Sem `periodic_filings` a API diz que a lista não foi consultada: vazia seria 'nenhuma entrega'."""
+    sem_entregas = _ficha_de(EMPRESA, "ALFA S.A.")
+    del sem_entregas["periodic_filings"]
+    sem_entregas["unavailable_filings"] = ["ITR"]
+    fichas = _fichas(
+        {EMPRESA: sem_entregas, OUTRA_EMPRESA: _ficha_de(OUTRA_EMPRESA, "BETA LTDA")}
+    )
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+    assert corpo["periodic_filings"][EMPRESA] == "não disponível"
+    assert corpo["periodic_filings"][OUTRA_EMPRESA] == []
+    assert corpo["unavailable_filings"] == {EMPRESA: ["ITR"]}
+
+
+def test_documento_nao_consultado_de_uma_empresa_vai_para_a_saida_e_nao_para_as_outras():
+    parcial = _ficha_de(EMPRESA, "ALFA S.A.")
+    parcial["unavailable_filings"] = ["ITR"]
+    parcial["unavailable_registration_fields"] = ["simples"]
+    fichas = _fichas(
+        {EMPRESA: parcial, OUTRA_EMPRESA: _ficha_de(OUTRA_EMPRESA, "BETA LTDA")}
+    )
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+    assert corpo["unavailable_filings"] == {EMPRESA: ["ITR"]}
+    assert corpo["unavailable_registration_fields"] == {EMPRESA: ["simples"]}
+
+
+def test_sem_documento_nao_consultado_as_chaves_nao_aparecem():
+    fichas = _fichas(
+        {
+            EMPRESA: _ficha_de(EMPRESA, "ALFA S.A."),
+            OUTRA_EMPRESA: _ficha_de(OUTRA_EMPRESA, "BETA LTDA"),
+        }
+    )
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+    assert "unavailable_filings" not in corpo
+    assert "unavailable_registration_fields" not in corpo
+
+
+def _entregas_de(n: int) -> list[dict]:
+    """`n` entregas de ITR, uma por trimestre, da mais antiga à mais nova, com texto pesado."""
+    entregas = []
+    for i in range(n):
+        entrega = _entrega("filed", 0, "2025-11-14")
+        entrega["reference_period"] = _fato(
+            f"{2000 + i // 4}-{(i % 4) * 3 + 3:02d}-28", "cvm-hist-itr", "2025-11-14"
+        )
+        entregas.append(entrega)
+    return entregas
+
+
+def test_cinco_companhias_com_historico_longo_cabem_no_teto_com_as_entregas_mais_novas():
+    fichas = {}
+    for numero, cnpj in enumerate(
+        [EMPRESA, OUTRA_EMPRESA, TERCEIRA_EMPRESA, "22333444000155", "33444555000166"]
+    ):
+        ficha = _ficha_de(cnpj, f"EMPRESA {numero}")
+        ficha["periodic_filings"] = _entregas_de(64)
+        fichas[f"/companies/{cnpj}/profile"] = ficha
+    cnpjs = [c.split("/")[2] for c in fichas]
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, *cnpjs)
+    for cnpj in cnpjs:
+        entregas = corpo["periodic_filings"][cnpj]
+        assert len(entregas) == ferramentas_do_analista.MAXIMO_DE_ENTREGAS
+        periodos = [e["reference_period"]["value"] for e in entregas]
+        assert periodos == sorted(periodos, reverse=True)
+        assert periodos[0] == "2015-12-28"  # a mais nova das 64 (16 anos)
+        assert corpo["filings_cut"][cnpj] == 64
+    assert len(json.dumps(corpo)) < saida.TETO_DE_CARACTERES
+
+
+def test_a_frase_de_resposta_grande_manda_comparar_menos_empresas():
+    frase = ferramentas.mensagem_de_resposta_grande("comparar_empresas", 200_000)
+    assert "cnpjs" in frase and "não tem como pedir menos" not in frase
+
+
+def test_a_descricao_nao_promete_porte_nem_cita_fonte_que_nao_serve():
+    descricao = _descricoes_das_ferramentas_novas()["comparar_empresas"]
+    assert "porte" not in descricao.split("Não traz:")[0]
+    assert "FRE" not in descricao and "IPE" not in descricao
+    assert "DFP e ITR" in descricao
+
+
+def test_cnpj_de_tamanho_absurdo_e_recusado_pelo_esquema_antes_de_qualquer_pedido():
+    pedidos: list[httpx.Request] = []
+    with aj.conector(
+        _api_do_historico(hoje=_tres_fichas(), pedidos=pedidos)
+    ) as cliente:
+        n = len(pedidos)
+        erro, _ = aj.chamar(
+            cliente, CHAVE_A, "comparar_empresas", cnpjs=[EMPRESA, "9" * 5000]
+        )
+    assert erro
+    assert not [p for p in pedidos[n:] if "/companies/" in p.url.path]

@@ -133,6 +133,7 @@ DICAS_DE_RESPOSTA_GRANDE = {
     "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
     "vinculos": "Peça menos níveis (`profundidade`) ou só alguns tipos de vínculo (`tipos`).",
     "novidades": "Peça menos dias (`dias`).",
+    "comparar_empresas": "Compare menos empresas por vez (`cnpjs`).",
     "compradores_do_setor": "Peça menos compradores (`limite`), menos anos (`anos`) ou uma UF (`uf`).",
 }
 DICA_SEM_PARAMETRO = "Esta ferramenta não tem como pedir menos: diga ao analista que este pedido não cabe na conversa."

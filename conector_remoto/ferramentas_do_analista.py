@@ -538,12 +538,16 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
 
 MINIMO_DE_EMPRESAS = 2
 MAXIMO_DE_EMPRESAS = 5
+MAXIMO_DE_ENTREGAS = 8  # por empresa: as mais novas; o histórico inteiro de 5 companhias passaria do teto
 CELULA_SEM_DADO = "não disponível"
 AVISO_DA_COMPARACAO = {
     "code": "comparar_empresas",
     "text": (
         f"Cada coluna é a ficha de uma empresa. `{CELULA_SEM_DADO}` quer dizer que a base não tem aquele campo "
-        "para ela, não que o valor seja zero; a empresa que a base não serve vem em `not_available`."
+        "para ela, não que o valor seja zero; a empresa que a base não serve vem em `not_available`. Cada empresa "
+        f"mostra as {MAXIMO_DE_ENTREGAS} entregas mais novas (`filings_cut` diz quantas a base tem). "
+        "`unavailable_filings` e `unavailable_registration_fields` dizem o que a chave não consultou de cada "
+        "empresa: a lista que falta ali não quer dizer que a empresa não entregou."
     ),
 }
 
@@ -561,8 +565,38 @@ def _cnpjs_do_pedido(textos: list[str]) -> list[str]:
     return numeros
 
 
-def _entregas(corpo: object) -> list[dict]:
-    return _itens(corpo, "periodic_filings") if isinstance(corpo, dict) else []
+def _entregas(corpo: object) -> list[dict] | str:
+    """As entregas mais novas (até `MAXIMO_DE_ENTREGAS`, pelo período); a célula sem dado se a API não as consultou.
+    A API só manda `periodic_filings` quando consultou algum documento: lista que falta não é lista vazia."""
+    if not isinstance(corpo, dict) or not isinstance(
+        corpo.get("periodic_filings"), list
+    ):
+        return CELULA_SEM_DADO
+    todas = _itens(corpo, "periodic_filings")
+    return sorted(todas, key=_periodo_da_entrega, reverse=True)[:MAXIMO_DE_ENTREGAS]
+
+
+def _periodo_da_entrega(entrega: dict) -> str:
+    periodo = entrega.get("reference_period")
+    valor = periodo.get("value") if isinstance(periodo, dict) else None
+    return valor if isinstance(valor, str) else ""
+
+
+def _quantas_entregas(corpo: object) -> int:
+    lista = corpo.get("periodic_filings") if isinstance(corpo, dict) else None
+    return len(lista) if isinstance(lista, list) else 0
+
+
+def _avisos_por_empresa(
+    ok: dict[str, RespostaDaApi], chave: str
+) -> dict[str, list[object]]:
+    """O que a API disse que não consultou (`chave`), só das empresas em que ela disse alguma coisa."""
+    avisos: dict[str, list[object]] = {}
+    for cnpj, resposta in ok.items():
+        lista = resposta.corpo.get(chave) if isinstance(resposta.corpo, dict) else None
+        if isinstance(lista, list) and lista:
+            avisos[cnpj] = lista
+    return avisos
 
 
 def _tabela_de_campos(fichas: dict[str, Retrato | None]) -> list[dict[str, object]]:
@@ -595,7 +629,7 @@ def _montar_a_comparacao(respostas: dict[str, RespostaDaApi]) -> dict[str, objec
         for cnpj, r in respostas.items()
     }
     corpos = [r.corpo for r in ok.values()]
-    return {
+    saida: dict[str, object] = {
         "cnpjs": list(respostas),
         "fields": _tabela_de_campos(fichas),
         "periodic_filings": {
@@ -606,6 +640,17 @@ def _montar_a_comparacao(respostas: dict[str, RespostaDaApi]) -> dict[str, objec
         "limits": [*_juntar_sem_repetir(corpos, "limits"), AVISO_DA_COMPARACAO],
         "sources": _juntar_sem_repetir(corpos, "sources"),
     }
+    cortadas = {
+        cnpj: _quantas_entregas(r.corpo)
+        for cnpj, r in ok.items()
+        if _quantas_entregas(r.corpo) > MAXIMO_DE_ENTREGAS
+    }
+    if cortadas:
+        saida["filings_cut"] = cortadas
+    for chave in ("unavailable_filings", "unavailable_registration_fields"):
+        if avisos := _avisos_por_empresa(ok, chave):
+            saida[chave] = avisos
+    return saida
 
 
 def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
@@ -618,7 +663,7 @@ def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
     )
     async def comparar_empresas(
         cnpjs: Annotated[
-            list[str],
+            list[Annotated[str, Field(max_length=40)]],
             Field(
                 description=(
                     f"De {MINIMO_DE_EMPRESAS} a {MAXIMO_DE_EMPRESAS} CNPJs (14 caracteres; com ou sem "
@@ -628,12 +673,12 @@ def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
         ],
     ) -> str:
         """A ficha de 2 a 5 empresas lado a lado: uma linha por campo do cadastro na Receita (razão social,
-        situação, abertura, CNAE, porte, natureza jurídica, Simples) e uma coluna por empresa, mais as entregas
+        situação, abertura, CNAE, natureza jurídica, Simples) e uma coluna por empresa, mais as entregas
         de DFP e ITR à CVM de cada uma, cada valor com a fonte e o dia em que ficou público. O que a base não
         tem de uma empresa vem como `não disponível`, nunca como zero. Serve para pôr lado a lado empresas que
         o analista já escolheu, antes de uma reunião ou de uma lista curta.
-        Fonte: cadastro CNPJ da Receita Federal; FRE, FCA e IPE da CVM, nas entregas.
-        Não traz: sócio pessoa física, contato nem endereço, faturamento de empresa fechada, nota nem
+        Fonte: cadastro CNPJ da Receita Federal; entregas de DFP e ITR à CVM.
+        Não traz: porte, sócio pessoa física, contato nem endereço, faturamento de empresa fechada, nota nem
         ordenação das empresas nem opinião sobre elas."""
         numeros = _cnpjs_do_pedido(cnpjs)
         acesso = acesso_do_pedido()
