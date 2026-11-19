@@ -117,3 +117,30 @@ def test_a_porta_so_serve_a_linha_com_a_marca_de_pessoa_falsa(
         "SELECT * FROM t", TABELAS[tabela], ["id"]
     )
     assert con.execute(sem_a_coluna).fetchall() == []
+
+
+@pytest.mark.parametrize("tabela", DA_INTEGRIDADE)
+def test_o_registro_de_verdade_libera_a_tabela_pelo_piloto(tabela: str) -> None:
+    falta = prontidao.negacao_do_piloto(
+        (tabela,),
+        prontidao.PRONTIDAO_DE_PILOTO,
+        prontidao.versoes_maiores(),
+        prontidao.tabelas_com_pessoa_decidida(),
+        HOJE,
+    )
+    assert falta is None
+
+
+@pytest.mark.parametrize("tabela", DA_INTEGRIDADE)
+def test_a_versao_e_as_duas_provas_sao_as_do_piloto(tabela: str) -> None:
+    registro = prontidao.PRONTIDAO_DE_PILOTO[tabela]
+    assert registro.versao_maior == prontidao.versoes_maiores()[tabela]
+    assert registro.qualidade is not None and registro.dicionario is not None
+    assert registro.qualidade.data == HOJE
+    assert prontidao.prova_publicavel(registro.qualidade.prova)
+    assert prontidao.prova_publicavel(registro.dicionario.prova)
+
+
+@pytest.mark.parametrize("tabela", DA_INTEGRIDADE)
+def test_a_tabela_inteira_de_pessoa_nao_vira_prontidao_cheia(tabela: str) -> None:
+    assert tabela not in prontidao.PRONTIDAO

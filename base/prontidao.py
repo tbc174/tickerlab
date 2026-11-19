@@ -381,6 +381,91 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
         dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
     ),
+    # linha 981 (ADR 0108, Emenda 3, D11.4): sanções da CGU, embargos do IBAMA e Lista Suja do MTE. Têm marca de pessoa
+    # (`pessoa=True`) e só entram porque o servidor guarda apenas a cópia reduzida só-PJ, conferida por `conferir_cadastros`;
+    # a porta serve só a linha com `trata_como_pessoa` falso. Placar de 19/11/2026 sem vermelho (36598, 15466 e 133 linhas)
+    "sancoes_cgu": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "ibama_embargos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "mte_lista_suja": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    # lote 3 da linha 978: placar de 19/11/2026 sem vermelho e sem coluna de CNPJ (a marca de pessoa não se aplica);
+    # as outras tabelas medidas do lote deram vermelho sem explicação verificada e ficaram de fora
+    "anm_amb_agua_mineral": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "antt_siade": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "bcb_selic_focus": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "cftc_cot_agro": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "cnes_competencias": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "comex_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "comex_urf": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "comex_via": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "conab_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "faostat_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "ma_datas": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "ons_capacidade": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "usda_psd_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
