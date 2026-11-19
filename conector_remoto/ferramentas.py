@@ -628,7 +628,7 @@ def registrar_ferramentas(
         visao: Annotated[
             Literal["consolidado", "individual", "ambos"],
             Field(
-                description="`consolidado` (o padrão: o consolidado de cada conta e, onde ela não tem, o individual), `individual` ou `ambos`."
+                description="`consolidado` (o padrão: o consolidado de cada demonstrativo e, no que não tem consolidado, o individual), `individual` ou `ambos`."
             ),
         ] = "consolidado",
         conta: Annotated[
