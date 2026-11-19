@@ -390,7 +390,7 @@ def _vigentes_sql(fonte: Fonte, hoje: date) -> str:
             SELECT *, {janela} AS n FROM {_view(fonte.tabela)}
             WHERE CAST(disponivel_em AS DATE) <= {dia} {_da_lista(fonte)}
         )
-        WHERE {condicao} AND NOT coalesce(trata_como_pessoa, false) {filtro_cnpj}
+        WHERE {condicao} AND NOT coalesce(trata_como_pessoa, true) {filtro_cnpj}
     """
 
 

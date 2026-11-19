@@ -442,6 +442,19 @@ def test_sancao_nao_aparece_nem_como_contagem(rede, vista):
     assert SANCIONADORA not in texto and "sancionada_por" not in texto
 
 
+def test_marca_de_pessoa_vazia_conta_como_pessoa(tmp_path, vista):
+    """Regressão: com `trata_como_pessoa` vazio (e o tipo preenchido), a entidade passava como empresa e a
+    razão social saía. Na dúvida, é pessoa: fica bloqueada, como a do empresário individual."""
+    pasta = tmp_path / "rede_sem_marca"
+    entidades = _entidades().astype({"trata_como_pessoa": object})
+    entidades.loc[entidades["id_entidade"] == "EA", "trata_como_pessoa"] = None
+    _gravar(pasta, "rede/entidades.parquet", entidades)
+    _gravar(pasta, "rede/identificadores.parquet", _identificadores())
+    _gravar(pasta, "rede/ligacoes.parquet", _ligacoes(*LIGACOES_DO_PASSADO[:1]))
+    dossie = _montar(pasta, vista)
+    assert _assuntos(dossie, "identificacao")["razão social"] == dc.BLOQUEADA
+
+
 def test_razao_social_de_mei_ou_empresario_individual_fica_bloqueada(tmp_path, vista):
     """A razão social do MEI e do empresário individual é o nome da pessoa (ADR 0077, item 1)."""
     pasta = tmp_path / "rede_do_mei"
