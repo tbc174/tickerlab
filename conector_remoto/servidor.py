@@ -255,7 +255,7 @@ def criar_servidor(
             validate_token_resource=True,
         ),
     )
-    registrar_ferramentas(servidor, cliente)
+    registrar_ferramentas(servidor, cliente, com_proximo_passo=True)
     registrar_prompts(servidor, ORIENTACAO_DO_DOSSIE)
 
     @servidor.custom_route("/saude", methods=["GET"])
