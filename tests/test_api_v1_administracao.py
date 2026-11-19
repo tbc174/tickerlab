@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from src import administracao_das_chaves as adc
 from src import api
 from src.api_externa import conjuntos as conjuntos_da_api
+from src.api_externa.tabelas_por_cnpj import REGISTRO
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso
 from src.api_v1 import administracao as rotas_da_administracao
 from src.api_v1.rotas import openapi_v1
@@ -333,6 +334,7 @@ def test_as_ofertas_do_painel_cobrem_todo_conjunto_que_a_api_por_chave_serve():
         )
     ]
     servidos = {m.CONJUNTO for m in modulos if hasattr(m, "CONJUNTO")}
+    servidos |= {entrada.conjunto for entrada in REGISTRO}  # saem na análise completa
     assert len(servidos) >= 13
     ofertas = adc.ofertas_da_api()
     assert {conjunto for conjunto, _ in ofertas} == servidos

@@ -316,7 +316,11 @@ def _regras(cheias=analise_de_mentira.DO_PERFIL) -> portao.Regras:
     prova = Prova(AGORA.date(), "conferida no teste", "teste")
     versoes = prontidao.versoes_maiores()
     vigentes = portao.regras_vigentes()
-    do_lote = {e.tabela for e in tabelas_por_cnpj.REGISTRO}
+    do_lote = {
+        e.tabela
+        for e in tabelas_por_cnpj.REGISTRO
+        if e.conjunto != tabelas_por_cnpj.INTEGRIDADE
+    }
     assert do_lote <= set(vigentes.prontidao_de_piloto)  # hoje as seis estão no piloto
     return dataclasses.replace(
         vigentes,

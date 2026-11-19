@@ -59,6 +59,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
+    "credito_da_empresa": frozenset({"credit"}),
 }
 # o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
 TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
@@ -77,6 +78,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "setores": "Setores acompanhados",
     "setor": "Séries e concentração de um setor",
     "o_que_posso_ver": "O que a sua chave pode ver",
+    "credito_da_empresa": "Fatos de crédito de uma empresa",
 }
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
@@ -559,8 +561,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
     _registrar_analise(servidor, pedidos)
-    # encaixe da linha 980: as ferramentas que só compõem o que a API devolve entram com uma linha aqui,
-    # `ferramentas_do_analista.registrar(servidor, pedidos)`, e os conjuntos delas em `CONJUNTOS_DA_FERRAMENTA`
+    # linha 980: as ferramentas que só compõem o que a API devolve; import aqui por causa do ciclo (o módulo
+    # delas usa `Pedidos` e os tipos deste)
+    from conector_remoto import ferramentas_do_analista
+
+    ferramentas_do_analista.registrar(servidor, pedidos)
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["setores"],
@@ -637,7 +642,10 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
         (a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o
         auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das
         agências reguladoras (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de
-        fundo imobiliário na CVM. Traz também uma
+        fundo imobiliário na CVM. Para a organização com o conjunto de integridade no contrato, traz também as
+        sanções da CGU (CEIS, CNEP, CEPIM e acordos de leniência), os termos de embargo do IBAMA e o Cadastro de
+        Empregadores do MTE, só da pessoa jurídica, cada um com a fonte, a data e "nada encontrado" quando não
+        acha. Traz também uma
         frase no topo (fato), a linha do tempo com os marcos datados dos blocos, as leituras (dedução do TickerLab,
         separada do fato e com os blocos de onde veio), o que não foi achado em cada bloco, o bloco que não
         respondeu a tempo e as bases que a análise ainda não consulta. Cada valor traz a fonte e o dia em que
@@ -651,7 +659,8 @@ def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
         idade, endereço ou contato), e só na análise de hoje (sem `como_era_em`), porque o quadro é o do retrato
         vigente. Sem a permissão, ou se esse bloco não estiver disponível, a análise sai sem ele.
         Não traz: contato, endereço, faturamento de empresa fechada, nem as bases listadas em `not_included`
-        (dívida ativa, sanções, ambiente, contratos públicos, processos)."""
+        (dívida ativa, contratos públicos, processos e, sem o conjunto de integridade, sanções, ambiente e o
+        cadastro do MTE)."""
         numeros = cnpj_do_pedido(cnpj)
         analise = await pedidos.pedir(
             "analise_completa",

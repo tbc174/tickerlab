@@ -19,6 +19,7 @@ import { Limites } from "../pecas/Limites";
 import { Selo } from "../pecas/Selo";
 import type { BlocoDaFichaV1, FichaDaEmpresaV1, FichaDoCnpjV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
+import { AnaliseDaFicha } from "./AnaliseDaFicha";
 import { ContatoDaFicha } from "./ContatoDaFicha";
 import { EventosDaFicha } from "./EventosDaFicha";
 import { SociosDaFicha } from "./SociosDaFicha";
@@ -263,6 +264,7 @@ function abasDaFicha(
 ) {
   return [
     { chave: "resumo", rotulo: "Resumo", conteudo: <Resumo ficha={ficha} /> },
+    { chave: "analise", rotulo: "Análise completa", conteudo: <AnaliseDaFicha rota={rota} cnpj={cnpj} /> },
     {
       chave: "cadastro",
       rotulo: "Cadastro",

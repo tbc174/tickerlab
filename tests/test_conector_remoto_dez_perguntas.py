@@ -847,6 +847,7 @@ def test_o_conector_barra_pessoa_fisica_que_a_api_mandar(sinal):
 # ferramenta que as dez perguntas não chamam e que mede o próprio teto noutro arquivo (com o motivo)
 MEDIDAS_A_PARTE = {
     "socios_e_donos": "pessoa física só da organização com a permissão; teto em test_conector_remoto_socios_e_donos",
+    "credito_da_empresa": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
 }
 
 

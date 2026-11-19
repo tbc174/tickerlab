@@ -74,7 +74,9 @@ LICENCAS = {
     "inss": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
     "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
     "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
-    "mte": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+    # leitura de 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4): o MTE não tem termo próprio para o cadastro;
+    # vale o rodapé do portal gov.br, CC BY-ND 3.0
+    "mte": "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
     "gleif": "CC0 (GLEIF, Global LEI Index)",
     "termos": "Termos de uso de terceiros: só prova interna da versão lida",
     "catalogo": "Lista de conjuntos de portais de dados abertos (metadados)",
@@ -305,6 +307,15 @@ VENDAVEL_RISCO_ASSUMIDO = (
     "resposta escrita sobre uso comercial"
 )
 SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o dado)"
+# CGU, IBAMA e MTE (ADR 0122, Emenda 1, 18/11/2026; risco assumido pelo Tiago): continuam só de uso interno em tudo
+# (base, app, site, marca), menos na API por chave, e lá só a linha de pessoa jurídica, só no conjunto de
+# integridade (`CONJUNTO_DE_INTEGRIDADE`) e só para a organização que tem esse conjunto no contrato. A licença em
+# `LICENCAS` continua dizendo o que a fonte escreveu, e cada bloco servido cita a fonte
+INTEGRIDADE_SOB_CONTRATO = (
+    "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de "
+    "integridade no contrato (ADR 0122, Emenda 1; citar a fonte)"
+)
+CONJUNTO_DE_INTEGRIDADE = "integrity"
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
     "comercial até a resposta)"
@@ -360,13 +371,14 @@ REVENDA = {
     "sefmg": VENDAVEL_RISCO_ASSUMIDO,  # idem para Minas: lista pública (Res. Conj. SEF/AGE 5.625/2022, CTN art. 198 §3º II), sem licença escrita
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": VENDAVEL_RISCO_ASSUMIDO,
-    # dado pessoal (autuados, empregadores pessoa física): só interno
-    "cgu": SO_USO_INTERNO,
+    # dado pessoal (autuados, empregadores pessoa física): só interno, menos a pessoa jurídica no conjunto de
+    # integridade da API por chave (ADR 0122, Emenda 1)
+    "cgu": INTEGRIDADE_SOB_CONTRATO,
     "transparencia": VENDAVEL_COM_ATRIBUICAO,
     "bndes": VENDAVEL_ODBL,
     "inss": VENDAVEL_COM_ATRIBUICAO,
-    "ibama": SO_USO_INTERNO,
-    "mte": SO_USO_INTERNO,
+    "ibama": INTEGRIDADE_SOB_CONTRATO,
+    "mte": INTEGRIDADE_SOB_CONTRATO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
     "catalogo": VENDAVEL_RISCO_ASSUMIDO,
@@ -547,6 +559,7 @@ MARCA_DA_REVENDA = {
     VENDAVEL_COM_ATRIBUICAO: Marca.VENDAVEL,
     VENDAVEL_RISCO_ASSUMIDO: Marca.VENDAVEL,
     SO_USO_INTERNO: Marca.USO_INTERNO,
+    INTEGRIDADE_SOB_CONTRATO: Marca.USO_INTERNO,  # fora do conjunto de integridade, como hoje
     A_CONFIRMAR: Marca.A_CONFIRMAR,
     NAO_COMERCIAL: Marca.NAO_COMERCIAL,
 }
@@ -747,7 +760,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
-            "mte",
             "comexstat",
             "wayback",
             "tce-rs",
@@ -866,6 +878,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
         ),
         _NAO_RESPONDIDA,
     ),
+    # leitura de 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4, decisoes-delegadas.md): o cadastro de
+    # empregadores é publicado aberto no gov.br, sem termo que vede a coleta nem prazo de guarda
+    "mte": _ABERTA_SEM_PRAZO,
 }
 MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
 USOS = ("treinar", "rotular", "exportar", MOSTRAR)
@@ -1104,18 +1119,36 @@ def licenca_do_site(licenca: str) -> str:
     return sem_decisao.replace("perguntar a licença", "reuso em consulta")
 
 
+# famílias em que o 2º pedaço do nome da fonte tem resposta própria em `REVENDA`
+FAMILIAS_COM_SUBFAMILIA = frozenset({"anm", "mte"})
+
+
 def revenda_da_fonte(fonte: str) -> str:
     """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
     (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
     partes = fonte.split("-")
-    # a ANM tem subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem"), linha 657
-    subfamilia = REVENDA.get("-".join(partes[:2])) if partes[0] == "anm" else None
+    # a ANM e o MTE têm subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem", linha 657;
+    # "mte-pat-beneficiarias" → "mte-pat", de uso interno, e não o "mte" da integridade: revisão do #1229)
+    subfamilia = (
+        REVENDA.get("-".join(partes[:2]))
+        if partes[0] in FAMILIAS_COM_SUBFAMILIA
+        else None
+    )
     return REVENDA.get(fonte) or subfamilia or REVENDA.get(partes[0], A_CONFIRMAR)
 
 
 def marca_da_fonte(fonte: str) -> Marca:
     """A marca da fonte ("yahoo-bvsp" → não comercial; "cvm-ipe" → vendável)."""
     return MARCA_DA_REVENDA[revenda_da_fonte(fonte)]
+
+
+def sai_no_conjunto_de_integridade(fonte: str, conjunto: str) -> bool:
+    """A fonte é de CGU, IBAMA ou MTE (`INTEGRIDADE_SOB_CONTRATO`) e o pedido é do conjunto de integridade: a
+    marca de uso interno não barra (ADR 0122, Emenda 1). Fora desse conjunto, ou outra fonte, nada muda."""
+    return (
+        conjunto == CONJUNTO_DE_INTEGRIDADE
+        and revenda_da_fonte(fonte) == INTEGRIDADE_SOB_CONTRATO
+    )
 
 
 def marca_mais_restrita(marcas: Iterable[Marca]) -> Marca:

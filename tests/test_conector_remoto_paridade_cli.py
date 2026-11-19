@@ -44,6 +44,7 @@ SEM_FERRAMENTA: dict[str, str] = {
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
 SO_NO_CONECTOR: dict[str, str] = {
     "socios_e_donos": "pessoa física fica fora da CLI (AGENTS.md, Exceção; ADR 0128, Emenda 4)",
+    "credito_da_empresa": "linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)",
 }
 
 ENDERECO = "https://api.exemplo.test"

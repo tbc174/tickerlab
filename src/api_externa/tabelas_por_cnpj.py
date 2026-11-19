@@ -18,7 +18,14 @@ Fica de fora, com o porquê:
 - campos cujo nome a trava do D2.4 nega (`cotistas_pessoa_fisica`, `cnpj_administrador`): a lista dos fundos que
   uma administradora administra espera decisão da Diretoria, porque a ligação é justamente essa coluna;
 - o texto livre `motivo_do_cancelamento` do cadastro de administradores (pode trazer nome de pessoa);
-- a `faixa` do IDSS: o nome de fora de `faixa` já é o da faixa de concentração dos setores (um nome por coluna).
+- a `faixa` do IDSS: o nome de fora de `faixa` já é o da faixa de concentração dos setores (um nome por coluna);
+- de CGU, IBAMA e MTE (conjunto de integridade, ADR 0122, Emenda 1): o texto livre que pode trazer nome de pessoa
+  (`nome` e `situacao_do_termo` do embargo; `empregador` e `estabelecimento` da lista suja, que é o endereço da
+  propriedade), o `processo` (o nome de fora de `processo` já é o do processo minerário) e o `cadastro` (a fonte
+  de cada campo já diz de que cadastro da CGU ele vem).
+
+As entradas de integridade têm `marca_de_pessoa`: a leitura só serve a linha com a marca falsa (MEI, empresário
+individual e linha sem a marca nunca saem, nem na contagem) e confere todo texto servido contra CPF e e-mail.
 """
 
 from dataclasses import dataclass
@@ -29,6 +36,7 @@ FUNDO = "fundo"
 # a licença de cada entrada (a prova da linha de direito sai do portão por esta chave)
 LICENCA_DA_CVM = "cvm"
 LICENCA_DAS_AGENCIAS = "agencias"
+LICENCA_DE_INTEGRIDADE = "integridade"
 # a coluna que liga a tabela à empresa: a raiz do CNPJ (o fundo se confere depois pelo CNPJ inteiro)
 RAIZ = "cnpj_basico"
 CNPJ = "cnpj"
@@ -37,6 +45,14 @@ REGULADOS = "regulados"
 BALANCO_NO_BC = "balanco_no_bc"
 ADMINISTRADORA_DE_FII = "administradora_de_fii"
 INFORMES_DO_FUNDO = "informes_do_fundo"
+SANCOES = "sancoes"
+EMBARGOS_AMBIENTAIS = "embargos_ambientais"
+LISTA_SUJA = "lista_suja"
+# o conjunto do contrato das três (o mesmo nome de `src/banco/coletas.py::CONJUNTO_DE_INTEGRIDADE`; este módulo
+# só tem dados e não importa o banco)
+INTEGRIDADE = "integrity"
+# a marca de pessoa das tabelas de integridade (`base/sancoes.py`, `base/ibama_embargos.py`, `base/mte_lista_suja.py`)
+TRATA_COMO_PESSOA = "trata_como_pessoa"
 
 
 @dataclass(frozen=True)
@@ -47,7 +63,11 @@ class TabelaPorCnpj:
     em `fonte_pelo_valor`). `ordem`: as colunas da lista (`-` na frente: da maior para a menor), depois da data do
     fato (sempre da mais nova para a mais velha). `so_a_data_mais_nova`: a lista só tem a data do fato mais nova
     já pública no dia. `uma_por`: de cada valor destas colunas, só a primeira linha na ordem (a versão mais nova
-    de um informe, por exemplo)."""
+    de um informe, por exemplo). `marca_de_pessoa`: a coluna que marca a linha de pessoa (MEI, empresário
+    individual); com ela, só sai a linha com a marca falsa, e todo texto servido passa pela varredura de CPF e
+    e-mail (achou: a resposta inteira cai, nunca sai um "não achou" falso). `diz_o_retrato`: a lista é a edição
+    vigente de um cadastro em retratos (a lista suja do MTE), e o corpo diz o dia da mudança mais nova que a base viu
+    nela até o dia pedido (`retrato_da_lista`); o registro que saiu da lista não aparece, nem como situação atual."""
 
     tabela: str
     fontes: tuple[str, ...]
@@ -64,6 +84,8 @@ class TabelaPorCnpj:
     uma_por: tuple[str, ...] = ()
     coluna_da_fonte: str | None = None
     fonte_pelo_valor: tuple[tuple[str, str], ...] = ()
+    marca_de_pessoa: str | None = None
+    diz_o_retrato: bool = False
 
 
 REGISTRO: tuple[TabelaPorCnpj, ...] = (
@@ -254,6 +276,104 @@ REGISTRO: tuple[TabelaPorCnpj, ...] = (
             ("trimestral", "cvm-fip-trimestral"),
             ("quadrimestral", "cvm-fip-quadrimestral"),
         ),
+    ),
+    # CGU, IBAMA e MTE (ADR 0122, Emenda 1, 18/11/2026): só no conjunto de integridade, que se concede por linha
+    # do contrato da organização; só a linha de pessoa jurídica
+    TabelaPorCnpj(
+        tabela="sancoes_cgu",
+        fontes=("cgu-ceis", "cgu-cnep", "cgu-cepim", "cgu-leniencia"),
+        conjunto=INTEGRIDADE,
+        onde_sai=ANALISE,
+        bloco=SANCOES,
+        chave="sancoes_da_cgu",
+        campos=(
+            "categoria",
+            "situacao",
+            "assunto",
+            "orgao",
+            "uf_do_orgao",
+            "esfera_do_orgao",
+            "origem_da_informacao",
+            "fundamentacao_legal",
+            "abrangencia",
+            "inicio",
+            "fim",
+            "publicado_em",
+            "transito_em_julgado",
+            "informado_em",
+            "valor_multa",
+        ),
+        data_do_fato="inicio",
+        licenca=LICENCA_DE_INTEGRIDADE,
+        cobertura=(
+            "Cadastros da CGU no Portal da Transparência: empresas inidôneas e suspensas (CEIS), punidas pela "
+            "Lei Anticorrupção (CNEP), entidades sem fins lucrativos impedidas (CEPIM) e acordos de leniência; "
+            "cada registro como a CGU publicou, enquanto consta do cadastro. Pelo known_at, o registro conta como público a partir do último dia do mês em que apareceu."
+        ),
+        ordem=("categoria",),
+        coluna_da_fonte="cadastro",
+        fonte_pelo_valor=(
+            ("ceis", "cgu-ceis"),
+            ("cnep", "cgu-cnep"),
+            ("cepim", "cgu-cepim"),
+            ("leniencia", "cgu-leniencia"),
+        ),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="ibama_embargos",
+        fontes=("ibama-embargos",),
+        conjunto=INTEGRIDADE,
+        onde_sai=ANALISE,
+        bloco=EMBARGOS_AMBIENTAIS,
+        chave="embargos_do_ibama",
+        campos=(
+            "numero_do_termo",
+            "numero_do_auto",
+            "embargada_em",
+            "area_embargada_ha",
+            "uf",
+            "codigo_do_municipio",
+            "cancelado",
+            "desembargado",
+            "desembargada_em",
+        ),
+        data_do_fato="embargada_em",
+        licenca=LICENCA_DE_INTEGRIDADE,
+        cobertura=(
+            "Termos de embargo do IBAMA (Dados Abertos do IBAMA), com a área, o município e se o embargo foi "
+            "cancelado ou levantado; cada termo como o IBAMA publicou. Pelo known_at, o termo conta como público a partir do último dia do mês em que apareceu."
+        ),
+        ordem=("numero_do_termo",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="mte_lista_suja",
+        fontes=("mte-lista-suja",),
+        conjunto=INTEGRIDADE,
+        onde_sai=ANALISE,
+        bloco=LISTA_SUJA,
+        chave="lista_suja_do_mte",
+        campos=(
+            "ano_da_acao",
+            "uf",
+            "cnae",
+            "trabalhadores",
+            "incluida_em",
+        ),
+        data_do_fato="incluida_em",
+        licenca=LICENCA_DE_INTEGRIDADE,
+        cobertura=(
+            "Cadastro de Empregadores que tenham submetido trabalhadores a condições análogas à de escravo, do "
+            "Ministério do Trabalho e Emprego: diz se a empresa consta da lista vigente na edição mais nova que "
+            "a base guarda até o dia pedido, com a data do retrato (o dia da mudança mais nova que a base viu na "
+            "lista); o registro que saiu da lista não aparece. Cada registro como o MTE publicou, sem o nome do "
+            "empregador nem o endereço do estabelecimento. Pelo known_at, o registro conta como público a partir "
+            "do último dia do mês em que apareceu."
+        ),
+        ordem=("ano_da_acao",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+        diz_o_retrato=True,
     ),
 )
 

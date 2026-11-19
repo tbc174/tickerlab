@@ -31,6 +31,16 @@ ATRIBUICOES_DA_API = {
     # as tabelas ligadas pelo CNPJ do registro (linha 978, `src/api_externa/tabelas_por_cnpj.py`)
     "aneel-fiscalizacao": "Fonte: ANEEL, Dados Abertos, indicadores comerciais das distribuidoras (ODbL)",
     "ans-qualidade": "Fonte: ANS, dados abertos, IDSS (CC BY)",
+    # CGU, IBAMA e MTE no conjunto de integridade (ADR 0122, Emenda 1): a fonte citada em cada bloco
+    "cgu-ceis": "Fonte: CGU, Portal da Transparência, CEIS (dados abertos, Decreto 8.777/2016)",
+    "cgu-cnep": "Fonte: CGU, Portal da Transparência, CNEP (dados abertos, Decreto 8.777/2016)",
+    "cgu-cepim": "Fonte: CGU, Portal da Transparência, CEPIM (dados abertos, Decreto 8.777/2016)",
+    "cgu-leniencia": "Fonte: CGU, Portal da Transparência, acordos de leniência (dados abertos, Decreto 8.777/2016)",
+    "ibama-embargos": "Fonte: IBAMA, Dados Abertos, termos de embargo (licença aberta do IBAMA)",
+    "mte-lista-suja": (
+        "Fonte: Ministério do Trabalho e Emprego, Cadastro de Empregadores (gov.br, CC BY-ND 3.0); registro "
+        "como publicado, sem alteração"
+    ),
 }
 
 
