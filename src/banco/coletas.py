@@ -152,6 +152,10 @@ LICENCAS = {
     "anatel-pados": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
     "anatel-homologados": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
     "anp-tancagem": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+    # conferência de 19/11/2026: o Banco de Preços em Saúde não declara licença (o S3 do CKAN não tem página, e o
+    # portal do SUS não a mostra); a resposta do Fala.BR do "ms" cobriu só CNES, SIH, SIA, CIHA e oncologia.
+    # Leitura mais estreita (ADR 0102): a confirmar, sem perguntar à fonte
+    "bps": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
@@ -436,6 +440,7 @@ REVENDA = {
     "anatel-pados": A_CONFIRMAR,
     "anatel-homologados": A_CONFIRMAR,
     "anp-tancagem": A_CONFIRMAR,
+    "bps": A_CONFIRMAR,  # conferência de 19/11/2026 (ver `LICENCAS`)
     "mme": VENDAVEL_RISCO_ASSUMIDO,
     "finep": VENDAVEL_RISCO_ASSUMIDO,
     "aneel": VENDAVEL_ODBL,
@@ -868,6 +873,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anatel-pados",
             "anatel-homologados",
             "anp-tancagem",
+            # conferência de 19/11: o Banco de Preços em Saúde não tem página de licença nem de termos
+            "bps",
         ),
         _NAO_RESPONDIDA,
     ),

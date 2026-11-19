@@ -110,7 +110,6 @@ src/api_v1/compartilhados.py: unused variable 'titulo_do_veredito' (60% confiden
 src/api_v1/esquemas.py: unused variable 'a_partir_de' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'a_partir_de' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'aberturas_por_ano' (60% confidence)
-src/api_v1/esquemas.py: unused variable 'ainda_nao_traz' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'ainda_socio' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'alem_do_maximo' (60% confidence)
 src/api_v1/esquemas.py: unused variable 'alem_dos_ativos' (60% confidence)
