@@ -399,6 +399,18 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
         dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
     ),
+    # setores da linha 978: só pela cópia reduzida (`COPIA_REDUZIDA_PELA_RAIZ`); placar de 19/11/2026 sem vermelho (27196 e
+    # 6427133 linhas), com o motivo de cada vazio e de cada salto escrito na regra
+    "empresa_serie": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "anatel_acessos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
     # lote 3 da linha 978: placar de 19/11/2026 sem vermelho e sem coluna de CNPJ (a marca de pessoa não se aplica);
     # as outras tabelas medidas do lote deram vermelho sem explicação verificada e ficaram de fora
     "anm_amb_agua_mineral": ProntidaoDePiloto(
@@ -511,6 +523,11 @@ COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
 # falsa". São as tabelas que `base/recorte_dos_cadastros.py` reduz (só linha de empresa, raiz na `cnpj_empresas_pj`,
 # texto livre sem CPF nem e-mail) e que têm a marca por linha (`linhas_de_pessoa`), que a porta usa para esconder o resto.
 COPIA_REDUZIDA_SO_PJ = frozenset({"sancoes_cgu", "ibama_embargos", "mte_lista_suja"})
+# linha 978 (PR B dos setores): as duas tabelas dos setores com CNPJ ou raiz e sem marca por linha. A tabela inteira, de casa,
+# tem raiz fora da `cnpj_empresas_pj` e linha sem documento; ao servidor da API só vai a cópia de
+# `base/recorte_dos_setores.py` (raiz dentro da lista sem MEI, linha sem documento fora, sem nome), conferida por máquina a
+# cada montagem (`conferir_setores`). Por isso contam como decididas: a negação é da cópia que o servidor guarda.
+COPIA_REDUZIDA_PELA_RAIZ = frozenset({"empresa_serie", "anatel_acessos"})
 
 
 def pessoa_decidida(
@@ -523,7 +540,11 @@ def pessoa_decidida(
     """
     if pessoa and not (nome in COPIA_REDUZIDA_SO_PJ and linhas_de_pessoa.strip()):
         return False
-    if nome in TABELAS_DA_REDE or nome in SEM_PESSOA_NA_MONTAGEM:
+    if (
+        nome in TABELAS_DA_REDE
+        or nome in SEM_PESSOA_NA_MONTAGEM
+        or nome in COPIA_REDUZIDA_PELA_RAIZ
+    ):
         return True
     if not any(COLUNA_DE_CNPJ.search(coluna) for coluna in colunas):
         return True
