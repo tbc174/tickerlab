@@ -276,7 +276,6 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
     for trecho in (
         "consulta a base inteira num computador próprio, fora do app, inclusive pelo CPF",
         "Nada disso aparece para contas, organizações ou terceiros.",
-        "Hoje essa cópia fica fechada: o site e a API que rodam nesse servidor não leem dados de pessoas.",
         "**Para todas as contas, a linha de comando, o site, o chat de IA do app e a API e o conector de IA de quem não tem a permissão de ver pessoas**",
         "sócio e administrador pessoa física não aparecem: nem o nome, nem a qualificação, nem quantos são",
         "nunca para lhe oferecer algo como consumidor",
@@ -313,6 +312,36 @@ def test_texto_16_diz_o_que_a_organizacao_com_a_permissao_ve_e_o_que_segue_fora(
         assert promessa_antiga not in privacidade, promessa_antiga
 
 
+def test_versao_19_1_diz_que_a_copia_do_servidor_alugado_so_abre_para_a_organizacao_com_a_permissao():
+    """Texto 19.1 (19/11/2026): a frase do servidor alugado, aprovada pelo Tiago ("Aprovo a frase").
+
+    A frase antiga ("o site e a API ... não leem dados de pessoas") deixaria de ser verdade quando o acervo de pessoa
+    subir ao servidor para a organização com `pessoa_no_conector`. Só o item do servidor muda, e sem novo aceite.
+    """
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-11-14.15"
+    privacidade = conformidade.carregar_texto("privacidade")
+    topo = privacidade.splitlines()[2]
+    versao_19_1 = topo[: topo.index("versão 19, de 18/11/2026")]
+    assert versao_19_1.startswith(
+        "Última atualização: 19/11/2026 (versão 19.1: no item do servidor alugado"
+    )
+    assert "esta versão não pede novo aceite" in versao_19_1
+    hostinger = next(
+        linha
+        for linha in privacidade.splitlines()
+        if linha.startswith("- **Hostinger**")
+    )
+    assert (
+        "Essa cópia fica fechada para o site e para quem não tem a permissão de ver pessoas: a API só lê o nome de "
+        "sócios e de titulares, sem CPF, para atender a organização com essa permissão, como descreve a seção "
+        '"A base de dados de empresas e as pessoas que aparecem nela".'
+    ) in hostinger
+    assert (
+        "Hoje essa cópia fica fechada: o site e a API que rodam nesse servidor não leem dados de pessoas."
+        not in (privacidade)
+    )
+
+
 def test_versao_19_diz_que_a_organizacao_com_a_segunda_permissao_recebe_pessoas_pela_api_e_pelo_conector():
     """Texto 19 (18/11/2026; ADR 0128, Emenda 4): `pessoa_no_conector`, aprovado pelo Tiago ("Aprovo como está").
 
@@ -324,7 +353,8 @@ def test_versao_19_diz_que_a_organizacao_com_a_segunda_permissao_recebe_pessoas_
     assert conformidade.VERSAO_DOS_TERMOS == "2026-11-14.15"
     privacidade = conformidade.carregar_texto("privacidade")
     topo = privacidade.splitlines()[2]
-    assert topo.startswith("Última atualização: 18/11/2026 (versão 19: ")
+    assert topo.startswith("Última atualização: 19/11/2026 (versão 19.1: ")
+    assert "versão 19, de 18/11/2026: " in topo
     assert topo.index("versão 19") < topo.index("versão 18, de 14/11/2026")
     versao_19 = topo[: topo.index("versão 18, de 14/11/2026")]
     assert "esta versão não pede novo aceite" in versao_19
@@ -348,6 +378,7 @@ def test_versao_19_diz_que_a_organizacao_com_a_segunda_permissao_recebe_pessoas_
         "**Para todas as contas, a API, a linha de comando, o site e o conector de IA**",
         "enquanto o PR do contato",
         "sai da tela e da API em até 15 dias",
+        "Hoje essa cópia fica fechada: o site e a API que rodam nesse servidor não leem dados de pessoas.",
     ):
         assert promessa_antiga not in privacidade, promessa_antiga
 
