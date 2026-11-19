@@ -172,6 +172,37 @@ def test_cada_bloco_tem_titulo_na_tela():
         assert bloco.nome in analise.TITULOS, bloco.nome
 
 
+def test_fontes_ampliadas_nunca_abrem_na_tela_mesmo_com_o_portao_liberando(
+    pasta, monkeypatch
+):
+    """Anatel, ANM, ANP e o PAT do MTE (ADR 0122, Emenda 2) só saem para a organização com o conjunto no contrato,
+    como a integridade: a tela não o tem, e o bloco não aparece mesmo que o portão libere."""
+    monkeypatch.setattr(
+        analise,
+        "decidir",
+        lambda *_args, **_kw: type("Libera", (), {"libera": True})(),
+    )
+    regras = analise_de_mentira._regras()
+    liberadas = analise.liberadas_na_tela(HOJE, regras)
+    assert liberadas
+    assert tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA not in {c for c, *_ in liberadas}
+    fechado = analise.portao_da_tela(HOJE, regras, piloto=False)(
+        tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA, Finalidade.ANALISE.value
+    )
+    for fonte in (
+        "anatel-pados",
+        "anatel-homologados",
+        "anm-tah",
+        "anp-tancagem",
+        "mte-pat",
+    ):
+        assert not fechado(fonte, "cnpj", False), fonte
+    corpo = _analise(pasta, regras=regras).corpo
+    assert tabelas_por_cnpj.REGISTROS_ADICIONAIS not in {
+        b["nome"] for b in corpo["blocos"]
+    }
+
+
 def test_integridade_nunca_abre_na_tela_mesmo_com_o_portao_liberando(
     pasta, monkeypatch
 ):
