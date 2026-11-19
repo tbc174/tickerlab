@@ -60,6 +60,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Eventos | O que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho. |
 | Vínculos | As controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM. Só companhia aberta informa, uma vez por ano. |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
+| Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público. Só aparece se a sua chave tem o conjunto de crédito. Não é rating, nota nem elegibilidade, e não traz o SCR individual |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |
 

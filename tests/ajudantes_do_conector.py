@@ -99,6 +99,7 @@ def api_de_mentira(
         "buyers",
         "research",
         "assets",
+        "credit",
         "pessoa_no_conector",  # a permissão de pessoa física (ADR 0128, Emenda 4)
     ),
     pedidos: list[httpx.Request] | None = None,
