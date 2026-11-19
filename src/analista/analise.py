@@ -7,8 +7,10 @@ com login e o plano da página da ficha; o analista vê só o que uma chave veri
 
 Na leitura mais estreita, a tela abre só os blocos de finalidade **análise**: o bloco de crédito (finalidade crédito,
 "dossiê e monitoramento") tem contrato próprio na API e aqui sai como "não disponível nesta tela", com os itens que a
-análise não consulta para ninguém (sanções, ambiente, lista suja, dívida ativa, contratos públicos, processos e
-pessoas físicas). **Sem pessoa:** a montagem só lê empresa e sócio pessoa jurídica; o bloco de pessoas, com a
+análise não consulta para ninguém (dívida ativa, contratos públicos, processos e pessoas físicas). O conjunto de
+integridade (sanções da CGU, embargos do IBAMA e lista suja do MTE) só sai para a organização que o tem no contrato
+(ADR 0122, Emenda 1); a tela não tem o contrato, então o conjunto fica fora dela mesmo que o portão o libere, e a
+análise diz "não disponível nesta tela". **Sem pessoa:** a montagem só lê empresa e sócio pessoa jurídica; o bloco de pessoas, com a
 permissão `pessoa_na_tela`, fica para outro PR.
 
 Os estados são os da ficha (`leitura`): `pronta`; `nao_liberada` (nenhum cadastro aberto pelo portão: decide-se sem
@@ -18,12 +20,14 @@ limites trocam o nome de campo de quem programa pela frase da tela. O que sai pe
 (`leitura.com_aviso_de_piloto`), como a ficha.
 """
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import date
 
 from base import cnpj as cnpj_
 from base.porta import Porta
 from src.analista import leitura, vinculos
+from src.api_externa import tabelas_por_cnpj
+from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos import analise as analise_
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import para_fora
@@ -39,6 +43,10 @@ from src.portao_externo import (
 # a lista inteira de cada bloco está na aba dele na ficha; a análise é o resumo, como na API
 LINHAS_POR_BLOCO = analise_.LINHAS_POR_BLOCO
 NAO_DISPONIVEL_NA_TELA = "não disponível nesta tela"
+# conjuntos que dependem do contrato da organização, que a tela não tem: nunca abrem aqui
+CONJUNTOS_FORA_DA_TELA = frozenset(
+    {tabelas_por_cnpj.INTEGRIDADE, tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA}
+)
 CREDITO_NAO_DISPONIVEL = (
     "Fatos de crédito (dívida e pagamentos ao poder público): não disponível nesta tela"
 )
@@ -82,6 +90,24 @@ TITULOS: dict[str, tuple[str, str]] = {
         "Fundos que administra",
         "CVM: fundos imobiliários de que a empresa é a administradora.",
     ),
+    # o conjunto de integridade não abre na tela (CONJUNTOS_FORA_DA_TELA); o título fica para quando abrir
+    tabelas_por_cnpj.SANCOES: (
+        "Sanções",
+        "CGU: sanções e impedimentos de contratar com o governo.",
+    ),
+    tabelas_por_cnpj.EMBARGOS_AMBIENTAIS: (
+        "Embargos ambientais",
+        "IBAMA: autuações e embargos ambientais.",
+    ),
+    tabelas_por_cnpj.LISTA_SUJA: (
+        "Lista suja do trabalho escravo",
+        "MTE: cadastro de empregadores do trabalho análogo ao de escravo.",
+    ),
+    # as fontes ampliadas (ADR 0122, Emenda 2) também são por contrato e não abrem na tela
+    tabelas_por_cnpj.REGISTROS_ADICIONAIS: (
+        "Registros adicionais",
+        "Anatel, ANM, ANP e MTE: processos, homologações, taxa por hectare, tancagem e PAT, como publicados.",
+    ),
 }
 
 # os limites da montagem falam do campo da API (ainda_nao_traz, truncated) e da organização; a tela tem os dela
@@ -122,6 +148,7 @@ def liberadas_na_tela(
         for linha in regras.linhas
         if linha.canal == Canal.API_EXTERNA
         and linha.finalidade == Finalidade.ANALISE
+        and linha.conjunto not in CONJUNTOS_FORA_DA_TELA
         and decidir(
             Pedido(
                 fonte=linha.fonte,
@@ -135,6 +162,24 @@ def liberadas_na_tela(
             regras,
         ).libera
     }
+
+
+def _fechado(_fonte: str, _campo: str, _derivado: bool) -> bool:
+    return False
+
+
+def portao_da_tela(
+    hoje: date, regras: Regras, *, piloto: bool
+) -> Callable[[str, str], Permitido]:
+    """O portão que a montagem pede por bloco: o da ficha (`leitura.permitido_na_tela`), fechado para os conjuntos
+    que dependem do contrato da organização."""
+
+    def portao(conjunto: str, _finalidade: str) -> Permitido:
+        if conjunto in CONJUNTOS_FORA_DA_TELA:
+            return _fechado
+        return leitura.permitido_na_tela(conjunto, hoje, regras, piloto=piloto)
+
+    return portao
 
 
 def analise(
@@ -169,9 +214,7 @@ def _sem_aviso(
         hoje,
         porta=porta,
         liberadas=liberadas,
-        portao=lambda conjunto, _: leitura.permitido_na_tela(
-            conjunto, hoje, regras, piloto=piloto
-        ),
+        portao=portao_da_tela(hoje, regras, piloto=piloto),
         linhas=LINHAS_POR_BLOCO,
     )
     if servida is None or not servida.corpo:

@@ -27,7 +27,12 @@ from src.api_externa.conjuntos import (
     vinculos,
 )
 from src.api_externa.tabelas_por_cnpj import REGISTRO, TRATA_COMO_PESSOA
-from src.banco.coletas import Marca, marca_da_fonte, sai_no_conjunto_de_integridade
+from src.banco.coletas import (
+    Marca,
+    marca_da_fonte,
+    sai_no_conjunto_de_integridade,
+    sai_sem_trava_de_licenca,
+)
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
     NUNCA_SAEM,
@@ -62,9 +67,14 @@ CONJUNTOS_DO_BETA = {
     "assets",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
-# conjunto só por contrato (ADR 0122, Emenda 1): a fonte é de uso interno fora dele e a tabela tem linha de pessoa,
-# que o leitor tira pela marca `trata_como_pessoa` (`src/api_externa/tabelas_por_cnpj.py`)
-CONJUNTOS_SOB_CONTRATO = {"integrity"}
+# conjunto só por contrato (ADR 0122, Emendas 1 e 2): a marca da fonte não serve fora dele (de uso interno, ou
+# sem coleta e guarda) e a linha de pessoa sai pela marca `trata_como_pessoa` (`src/api_externa/tabelas_por_cnpj.py`);
+# cada um diz a regra que abre a fonte só nele
+ABRE_SO_NO_CONJUNTO = {
+    "integrity": sai_no_conjunto_de_integridade,
+    "extended_sources": sai_sem_trava_de_licenca,
+}
+CONJUNTOS_SOB_CONTRATO = set(ABRE_SO_NO_CONJUNTO)
 SOB_CONTRATO = {
     (e.conjunto, e.tabela): e for e in REGISTRO if e.conjunto in CONJUNTOS_SOB_CONTRATO
 }
@@ -183,6 +193,16 @@ def test_toda_tabela_existe_e_nao_guarda_dado_de_pessoa():
             assert not TABELAS[tabela].pessoa, (linha, tabela)
 
 
+def _destino(fonte: str):
+    """O destino da fonte no acervo; a fonte que é família de arquivos (`mte-pat` → `mte-pat-beneficiarias`,
+    `-facilitadoras`, `-fornecedoras`) vale se todos os arquivos dela vão para as mesmas tabelas."""
+    if fonte in DESTINOS:
+        return DESTINOS[fonte]
+    arquivos = [d for nome, d in DESTINOS.items() if nome.startswith(f"{fonte}-")]
+    assert arquivos and len({d.tabelas for d in arquivos}) == 1, fonte
+    return arquivos[0]
+
+
 def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
     for linha in DIREITOS_DA_API_EXTERNA:
         tabelas = linha.tabelas
@@ -210,11 +230,11 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
             else:
-                assert linha.fonte in DESTINOS, linha
+                destino = _destino(linha.fonte)
                 origem = MONTADAS_DE_OUTRA_TABELA.get(tabela, tabela)
                 if tabela in TABELAS_DA_REDE:
                     origem = ORIGEM_NA_REDE[linha.fonte]
-                assert origem in DESTINOS[linha.fonte].tabelas, (linha, tabela)
+                assert origem in destino.tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 
 
@@ -355,9 +375,10 @@ def test_nenhum_campo_de_pessoa_tem_direito():
 
 def test_toda_fonte_do_beta_e_vendavel():
     for linha in DIREITOS_DA_API_EXTERNA:
-        if linha.conjunto in CONJUNTOS_SOB_CONTRATO:  # vendável só no conjunto dela
-            assert sai_no_conjunto_de_integridade(linha.fonte, linha.conjunto), linha
-            assert marca_da_fonte(linha.fonte) is not Marca.VENDAVEL, linha
+        abre = ABRE_SO_NO_CONJUNTO.get(linha.conjunto)
+        if abre is not None:  # sai só no conjunto dela, e por nenhum outro
+            assert abre(linha.fonte, linha.conjunto), linha
+            assert not abre(linha.fonte, "profiles"), linha
             continue
         assert marca_da_fonte(linha.fonte) is Marca.VENDAVEL, linha.fonte
 

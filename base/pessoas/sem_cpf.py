@@ -58,3 +58,28 @@ def tirar_cpf[T: (str, None)](nome: T) -> T:
 def tirar_cpf_da_coluna(nomes: pd.Series) -> pd.Series:
     """`tirar_cpf` em cada texto da coluna (ausente continua ausente)."""
     return nomes.map(lambda n: tirar_cpf(n) if isinstance(n, str) else n)
+
+
+# Nome de pessoa (sócio ou titular de MEI) que vai ao acervo de pessoa: o que sobra depois do CPF ainda pode
+# trazer a raiz do CNPJ, um CEP, um telefone, um CPF digitado com dígito a menos ou um e-mail (achados da
+# prova do acervo de 19/11/2026). Número de cinco dígitos ou mais, mesmo partido por espaço ou pontuação, e
+# palavra com arroba saem; número curto ("24 HORAS", "2023") fica. Entre os dígitos vale qualquer coisa que não
+# seja letra (o mesmo critério da prova, `ONZE_DIGITOS_SEPARADOS`): "*", ":", "_", "|", espaço de largura zero.
+EMAIL_NO_NOME = re.compile(r"\S*@\S*")
+NUMERO_NO_NOME = re.compile(r"\d(?:(?:[^\w]|_)*\d)*")
+DIGITOS_DE_NUMERO_LONGO = 5
+
+
+def _sai_se_for_longo(achado: re.Match[str]) -> str:
+    digitos = sum(c.isdigit() for c in achado.group())
+    return " " if digitos >= DIGITOS_DE_NUMERO_LONGO else achado.group()
+
+
+def tirar_numero_longo_e_email(nomes: pd.Series) -> pd.Series:
+    """Os nomes sem palavra com arroba e sem número de cinco dígitos ou mais (ausente vira vazio)."""
+    sem_email = nomes.fillna("").astype(str).str.replace(EMAIL_NO_NOME, " ", regex=True)
+    return (
+        sem_email.str.replace(NUMERO_NO_NOME, _sai_se_for_longo, regex=True)
+        .str.replace(ESPACOS, " ", regex=True)
+        .str.strip()
+    )

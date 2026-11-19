@@ -14,6 +14,7 @@ import pytest
 from base.dossie import COLUNAS_DE_PESSOA, conferir_sem_pessoas
 from base.porta import Porta
 from src.analista import analise, leitura
+from src.api_externa import tabelas_por_cnpj
 from src.api_externa.conjuntos import analise as analise_
 from src.api_externa.conjuntos import socios_pj
 from src.portao_externo import Finalidade
@@ -169,3 +170,67 @@ def test_cada_bloco_tem_titulo_na_tela():
     nome interno: o teste cobra."""
     for bloco in (*analise_.CADASTROS, *analise_.BLOCOS):
         assert bloco.nome in analise.TITULOS, bloco.nome
+
+
+def test_fontes_ampliadas_nunca_abrem_na_tela_mesmo_com_o_portao_liberando(
+    pasta, monkeypatch
+):
+    """Anatel, ANM, ANP e o PAT do MTE (ADR 0122, Emenda 2) só saem para a organização com o conjunto no contrato,
+    como a integridade: a tela não o tem, e o bloco não aparece mesmo que o portão libere."""
+    monkeypatch.setattr(
+        analise,
+        "decidir",
+        lambda *_args, **_kw: type("Libera", (), {"libera": True})(),
+    )
+    regras = analise_de_mentira._regras()
+    liberadas = analise.liberadas_na_tela(HOJE, regras)
+    assert liberadas
+    assert tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA not in {c for c, *_ in liberadas}
+    fechado = analise.portao_da_tela(HOJE, regras, piloto=False)(
+        tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA, Finalidade.ANALISE.value
+    )
+    for fonte in (
+        "anatel-pados",
+        "anatel-homologados",
+        "anm-tah",
+        "anp-tancagem",
+        "mte-pat",
+    ):
+        assert not fechado(fonte, "cnpj", False), fonte
+    corpo = _analise(pasta, regras=regras).corpo
+    assert tabelas_por_cnpj.REGISTROS_ADICIONAIS not in {
+        b["nome"] for b in corpo["blocos"]
+    }
+
+
+def test_integridade_nunca_abre_na_tela_mesmo_com_o_portao_liberando(
+    pasta, monkeypatch
+):
+    """Sanções (CGU), embargos (IBAMA) e lista suja (MTE) só saem para a organização com o conjunto de integridade
+    no contrato (ADR 0122, Emenda 1). A tela não tem o contrato da organização: mesmo que a prontidão um dia libere
+    as tabelas, o conjunto fica fora e a análise diz "não disponível nesta tela"."""
+    monkeypatch.setattr(
+        analise,
+        "decidir",
+        lambda *_args, **_kw: type("Libera", (), {"libera": True})(),
+    )
+    regras = analise_de_mentira._regras()
+    liberadas = analise.liberadas_na_tela(HOJE, regras)
+    assert liberadas  # o portão de mentira libera tudo o mais
+    assert tabelas_por_cnpj.INTEGRIDADE not in {conjunto for conjunto, *_ in liberadas}
+    fechado = analise.portao_da_tela(HOJE, regras, piloto=False)(
+        tabelas_por_cnpj.INTEGRIDADE, Finalidade.ANALISE.value
+    )
+    assert not fechado("cgu-ceis", "cnpj", False)
+    corpo = _analise(pasta, regras=regras).corpo
+    integridade = {
+        tabelas_por_cnpj.SANCOES,
+        tabelas_por_cnpj.EMBARGOS_AMBIENTAIS,
+        tabelas_por_cnpj.LISTA_SUJA,
+    }
+    assert not integridade & {b["nome"] for b in corpo["blocos"]}
+    for fonte in ("CGU", "IBAMA", "MTE"):
+        assert any(
+            fonte in t and analise.NAO_DISPONIVEL_NA_TELA in t
+            for t in corpo["ainda_nao_traz"]
+        ), fonte
