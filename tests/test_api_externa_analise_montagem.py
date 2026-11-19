@@ -154,6 +154,8 @@ def test_cada_rota_por_cnpj_da_analise_tem_um_bloco_com_o_conjunto_dela():
         "funds",
         # CGU, IBAMA e MTE, só com o conjunto de integridade no contrato (ADR 0122, Emenda 1)
         "integrity",
+        # Anatel, ANM, ANP e o PAT do MTE, só com o conjunto no contrato (ADR 0122, Emenda 2)
+        "extended_sources",
     }
 
 
