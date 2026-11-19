@@ -93,13 +93,16 @@ function colunasDaLista(
       celula: (empresa) => {
         const marcada = selecionados.includes(empresa.cnpj);
         return (
-          <input
-            type="checkbox"
-            checked={marcada}
+          <button
+            type="button"
+            className="botao-de-texto"
+            aria-pressed={marcada}
             disabled={!marcada && selecionados.length >= MAXIMO_NA_COMPARACAO}
-            aria-label={`Escolher ${nomeOuCnpj(empresa)} para comparar`}
-            onChange={() => alternarEmpresa(empresa)}
-          />
+            aria-label={`Pôr ${nomeOuCnpj(empresa)} na comparação`}
+            onClick={() => alternarEmpresa(empresa)}
+          >
+            {marcada ? "Na comparação ✓" : "Pôr na comparação"}
+          </button>
         );
       },
     },
@@ -473,13 +476,14 @@ function Formulario({
           <button className="botao primario" type="submit" disabled={vazio}>
             Encontrar empresas
           </button>
-          <button className="botao" type="button" disabled={vazio && !comBusca} onClick={aoLimpar}>
-            Limpar filtros
-          </button>
         </div>
       </div>
+      <div className="linha-dos-extras">
       <details className="opcoes-avancadas mais-filtros" open={emUsoNoMais > 0}>
-        <summary>Mais filtros{emUsoNoMais > 0 ? ` (${emUsoNoMais} em uso)` : ""}</summary>
+        <summary>
+          Mais filtros{emUsoNoMais > 0 ? ` (${emUsoNoMais} em uso)` : ""}
+          <span className="apagado">: idade, capital social, estabelecimentos</span>
+        </summary>
         <div className="campos-do-formulario">
           <label>
             <span>Idade mínima (anos)</span>
@@ -546,6 +550,10 @@ function Formulario({
         </fieldset>
         <p className="apagado">{APROXIMACAO}</p>
       </details>
+      <button className="botao" type="button" disabled={vazio && !comBusca} onClick={aoLimpar}>
+        Limpar filtros
+      </button>
+      </div>
     </form>
   );
 }

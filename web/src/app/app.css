@@ -224,6 +224,13 @@ button.resultado-da-busca { margin-top: var(--e3); }
   .botoes-da-busca { padding-top: var(--e5); }
 }
 .botoes-da-busca { display: flex; flex-wrap: wrap; gap: var(--e2); }
+/* "Mais filtros" recolhido e o "Limpar filtros" à direita, na mesma linha */
+.linha-dos-extras { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--e3); }
+.linha-dos-extras .mais-filtros { flex: 1; min-width: 0; }
+/* "Pôr na comparação" em cada linha da lista: botão com cara de link */
+.botao-de-texto { padding: 0; border: 0; background: none; color: var(--azul-texto); font: inherit; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.botao-de-texto[aria-pressed="true"] { color: var(--texto); text-decoration: none; font-weight: 600; }
+.botao-de-texto:disabled { color: var(--apagado); text-decoration: none; cursor: not-allowed; }
 .setores-da-busca .etiquetas-de-filtro { margin: var(--e2) 0 0; }
 .estados-da-busca { min-width: 0; margin: 0; padding: 0; border: 0; }
 .estados-da-busca legend { margin-bottom: var(--e1); padding: 0; font-size: .88rem; color: var(--apagado); }
