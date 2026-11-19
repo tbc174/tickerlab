@@ -61,6 +61,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Vínculos | As controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM. Só companhia aberta informa, uma vez por ano. |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
 | Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público. Só aparece se a sua chave tem o conjunto de crédito. Não é rating, nota nem elegibilidade, e não traz o SCR individual |
+| O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia que você escolhe contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público. Vale para retomar uma empresa que você já analisou. Mostra só os blocos que a sua chave vê e diz quais ficaram de fora. Não traz o que mudou mas ainda não foi publicado na base |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |
 

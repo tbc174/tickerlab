@@ -60,6 +60,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
     "credito_da_empresa": frozenset({"credit"}),
+    "o_que_mudou": frozenset({"profiles", "companies", "links", "events"}),
 }
 # o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
 TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
@@ -79,6 +80,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "setor": "Séries e concentração de um setor",
     "o_que_posso_ver": "O que a sua chave pode ver",
     "credito_da_empresa": "Fatos de crédito de uma empresa",
+    "o_que_mudou": "O que mudou numa empresa desde um dia",
 }
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")

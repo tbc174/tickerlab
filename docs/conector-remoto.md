@@ -143,11 +143,12 @@ Ferramentas do analista, que só compõem o que a API já devolve (linha 980, on
 | Ferramenta | O que faz | Conjunto que a chave precisa |
 |---|---|---|
 | `credito_da_empresa` | Os fatos de crédito da rota `/credit` (situação na Receita, fatos relevantes e cessão a FIDC), cada um com fonte e dia em que ficou público; `como_era_em` vai como `known_at`. Não traz rating, elegibilidade como cedente ou sacado, SCR individual nem pessoa. Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | `credit` |
+| `o_que_mudou` | A diferença entre o que a base sabia em `desde` e o que sabe hoje, em até três blocos: cadastro (com as entregas de DFP e ITR), vínculos e eventos, cada um com o antes e o depois (ou só o que entrou ou saiu), a fonte e o dia em que ficou público. Os seis pedidos correm juntos; o lado antigo vai com `known_at = desde` e, mesmo que a API deixasse passar, a ferramenta tira dele o que ficou público depois de `desde`. Bloco que a chave não vê ou a API não serve vem em `not_consulted`; `before_not_available`, `after_not_available` e `partial` avisam o que faltou. Erro que não é 404 em qualquer bloco derruba a resposta inteira. Não traz mudança ainda não publicada na base nem pessoa. Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | `profiles` ou `companies`, `links`, `events` (qualquer um; cada bloco pede o seu) |
 
 Resposta acima do teto (`conector_remoto/saida.py`, `TETO_DE_CARACTERES`) vira erro com o jeito de pedir menos que aquela ferramenta tem (`DICAS_DE_RESPOSTA_GRANDE` em `conector_remoto/ferramentas.py`); a que não tem parâmetro para isso diz que o pedido não cabe. Um teste confere que a frase só cita parâmetro da própria ferramenta.
 
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
-quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista tem `socios_e_donos` e `credito_da_empresa`.
+quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista tem `socios_e_donos`, `credito_da_empresa` e `o_que_mudou`.
 
 Cada ferramenta tem um título (`title`, em `TITULOS_DAS_FERRAMENTAS`), que é o que o analista vê no
 cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico (`buscar_empresas`) não muda,
