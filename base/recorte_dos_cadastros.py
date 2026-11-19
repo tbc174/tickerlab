@@ -14,7 +14,7 @@ estreita que a inteira:
   de `tirar_raizes_de_mei`). Linha da SUSEP sem CNPJ não sai.
 - **Só as colunas de `COLUNAS`:** códigos, datas, situação e as colunas de controle. Sem nome, razão social, nome
   fantasia, empregador, estabelecimento (texto livre: o endereço da fazenda) nem o motivo do descredenciamento
-  da ANS (texto livre). Nas sanções da CGU sai o número do processo (do convênio, no CEPIM) e a linha que traz CPF
+  da ANS (texto livre). Nas sanções da CGU sai a coluna do número do processo (o `id_na_fonte` do CEPIM ainda leva o número do convênio na chave, que não é dado de pessoa e a API não serve) e a linha que traz CPF
   ou e-mail dentro de um texto livre (inclusive o CPF mascarado como a CGU publica). A situação do termo do IBAMA (`situacao_do_termo`) também não sai: o sinal usa só as marcas
   `cancelado` e `desembargado`.
 - **A chave da Lista Suja vira impressão digital:** o `id_na_fonte` do MTE junta CNPJ, ano e estabelecimento
