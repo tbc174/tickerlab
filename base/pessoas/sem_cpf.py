@@ -63,9 +63,10 @@ def tirar_cpf_da_coluna(nomes: pd.Series) -> pd.Series:
 # Nome de pessoa (sócio ou titular de MEI) que vai ao acervo de pessoa: o que sobra depois do CPF ainda pode
 # trazer a raiz do CNPJ, um CEP, um telefone, um CPF digitado com dígito a menos ou um e-mail (achados da
 # prova do acervo de 19/11/2026). Número de cinco dígitos ou mais, mesmo partido por espaço ou pontuação, e
-# palavra com arroba saem; número curto ("24 HORAS", "2023") fica.
+# palavra com arroba saem; número curto ("24 HORAS", "2023") fica. Entre os dígitos vale qualquer coisa que não
+# seja letra (o mesmo critério da prova, `ONZE_DIGITOS_SEPARADOS`): "*", ":", "_", "|", espaço de largura zero.
 EMAIL_NO_NOME = re.compile(r"\S*@\S*")
-NUMERO_NO_NOME = re.compile(r"\d(?:[\s.,/\-()+]*\d)*")
+NUMERO_NO_NOME = re.compile(r"\d(?:(?:[^\w]|_)*\d)*")
 DIGITOS_DE_NUMERO_LONGO = 5
 
 

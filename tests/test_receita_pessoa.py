@@ -203,3 +203,12 @@ def test_socio_sem_id_para_a_oposicao_fica_fora(documento):
     assert list(socios["cnpj_basico"]) == ["22333444"]
     assert descartes == {rp.SEM_ID: 1}
     assert (socios["id_pessoa"].str.len() == 32).all()
+
+
+# o arquivo de s\u00f3cios \u00e9 latin-1: o espa\u00e7o de largura zero n\u00e3o cabe nele (fica no teste de sem_cpf)
+@pytest.mark.parametrize("separador", ["*", ":", "_", "|", "\u00b7"])
+def test_cpf_com_separador_fora_do_comum_sai_do_nome_do_socio(separador):
+    cpf = CPF_DE_TESTE
+    partido = separador.join((cpf[:3], cpf[3:6], cpf[6:9], cpf[9:]))
+    socios, _ = _ler(_linha("11222333", "2", f"FULANA {partido} EXEMPLO"))
+    assert list(socios["nome_socio"]) == ["FULANA EXEMPLO"]

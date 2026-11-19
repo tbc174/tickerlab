@@ -148,8 +148,20 @@ def test_numero_longo_e_email_saem_do_nome(nome, esperado):
     assert tirar_numero_longo_e_email(pd.Series([nome])).iloc[0] == esperado
 
 
-@given(st.from_regex(r"[A-Z ]{0,12}[0-9 .\-/@]{0,20}[A-Z ]{0,12}", fullmatch=True))
+@given(
+    st.from_regex(
+        r"[A-Z ]{0,12}[0-9 .\-/@*:_|\u200b·–]{0,20}[A-Z ]{0,12}", fullmatch=True
+    )
+)
 def test_nome_limpo_nunca_tem_arroba_nem_cinco_digitos_seguidos(nome):
     limpo = tirar_numero_longo_e_email(pd.Series([nome])).iloc[0]
     assert "@" not in limpo
-    assert not re.search(r"\d(?:[\s.,/\-()+]*\d){4}", limpo)
+    assert not re.search(r"\d(?:(?:[^\w]|_)*\d){4}", limpo)
+
+
+@pytest.mark.parametrize("separador", ["*", ":", "_", "|", "\u200b", "·", " ; "])
+def test_cpf_com_separador_fora_do_comum_sai_do_nome(separador):
+    cpf = _cpf_valido(NOVE_INVENTADOS)
+    partido = separador.join((cpf[:3], cpf[3:6], cpf[6:9], cpf[9:]))
+    limpo = tirar_numero_longo_e_email(pd.Series([f"FULANA {partido} EXEMPLO"])).iloc[0]
+    assert limpo == "FULANA EXEMPLO"
