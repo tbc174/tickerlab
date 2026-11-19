@@ -71,6 +71,7 @@ SO_NO_CONECTOR = frozenset(
         "credito_da_empresa",
         "o_que_mudou",
         "comparar_empresas",
+        "de_onde_vem",
     }
 )
 

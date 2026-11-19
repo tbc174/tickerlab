@@ -75,6 +75,11 @@ def chamar(
     return resultado["isError"], conteudo["text"]
 
 
+def sem_proximo_passo(corpo: dict) -> dict:
+    """O corpo sem o rodapé `next_step` que o conector junta às listas (para comparar com o que a API mandou)."""
+    return {k: v for k, v in corpo.items() if k != "next_step"}
+
+
 def chamar_ok(
     cliente: TestClient, chave: str, ferramenta: str, /, **argumentos
 ) -> object:
