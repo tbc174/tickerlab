@@ -1,4 +1,4 @@
-"""Os cinco cadastros em retrato no recorte da API (linha 915): o degrau 5, o filtro e a trava de zero pessoa.
+"""Os cinco cadastros em retrato e as sanções da CGU no recorte da API (linhas 915 e 981): o degrau 5, o filtro e a trava de zero pessoa.
 
 Todo dado aqui é inventado: CNPJs montados com o dígito certo a partir de raízes de mentira, nenhum nome real.
 """
@@ -42,6 +42,7 @@ NOMES_DE_MENTIRA = {
     "empregador": "'FULANO DE MENTIRA'",
     "estabelecimento": "'FAZENDA DO FULANO DE MENTIRA'",
     "situacao_do_termo": "'ATIVO'",
+    "processo": "'00000.000000/2020-00'",
 }
 VALORES_DE_MENTIRA = {
     "modalidade": "'Cooperativa médica'", "uf": "'SP'", "registrada_em": "DATE '2001-01-01'",
@@ -52,6 +53,11 @@ VALORES_DE_MENTIRA = {
     "numero_do_termo": "'123456'", "cancelado": "'N'", "codigo_do_municipio": "3550308",
     "desembargado": "'N'", "numero_do_auto": "'654321-E'", "area_embargada_ha": "1.5",
     "embargada_em": "DATE '2025-01-01'", "desembargada_em": "NULL::DATE",
+    "cadastro": "'ceis'", "assunto": "'Impedimento de licitar'", "orgao": "'Ministério de Mentira'",
+    "uf_do_orgao": "'DF'", "esfera_do_orgao": "'Federal'", "origem_da_informacao": "'Órgão de Mentira'",
+    "fundamentacao_legal": "'Lei de Mentira, art. 1'", "abrangencia": "'Nacional'",
+    "inicio": "DATE '2020-01-01'", "fim": "DATE '2030-01-01'", "publicado_em": "DATE '2020-01-02'",
+    "transito_em_julgado": "NULL::DATE", "informado_em": "DATE '2020-01-03'", "valor_multa": "NULL::DOUBLE",
 }  # fmt: skip
 
 
@@ -105,8 +111,8 @@ def _cadastro(base: Path, nome: str, arquivo: str, linhas: list[str]) -> None:
     _parquet(base / nome / f"{arquivo}.parquet", " UNION ALL BY NAME ".join(linhas))
 
 
-def _base_com_os_cinco(base: Path) -> None:
-    """Em cada cadastro: uma RAIZ_PJ boa e, na Lista Suja, todo tipo de linha que não pode sair."""
+def _base_com_os_cadastros(base: Path) -> None:
+    """Em cada cadastro: uma RAIZ_PJ boa e, na Lista Suja e nas sanções, todo tipo de linha que não pode sair."""
     _empresas_pj(base)
     errado = _cnpj(RAIZ_OUTRA)[:-1] + str((int(_cnpj(RAIZ_OUTRA)[-1]) + 1) % 10)
     _cadastro(
@@ -166,6 +172,29 @@ def _base_com_os_cinco(base: Path) -> None:
             _linha(recorte.IBAMA, "2", _cnpj(RAIZ_MEI), "true"),
         ],
     )
+    _cadastro(
+        base,
+        recorte.SANCOES,
+        "ceis",
+        [
+            _linha(recorte.SANCOES, "1", _cnpj(RAIZ_PJ), "false"),
+            _linha(
+                recorte.SANCOES, "2", _cnpj(RAIZ_OUTRA), "true"
+            ),  # marcada como pessoa
+            _linha(
+                recorte.SANCOES, "3", _cnpj(RAIZ_FORA), "false"
+            ),  # fora da lista sem pessoa
+            _linha(
+                recorte.SANCOES, "4", None, "false"
+            ),  # CPF mascarado da CGU: sem CNPJ
+        ],
+    )
+    _cadastro(
+        base,
+        recorte.SANCOES,
+        "cepim",
+        [_linha(recorte.SANCOES, f"{_cnpj(RAIZ_OUTRA)}|1", _cnpj(RAIZ_OUTRA), "false")],
+    )
 
 
 def _ler(arquivo: Path, colunas: str = "*") -> list[tuple]:
@@ -182,8 +211,8 @@ def _colunas(arquivo: Path) -> list[str]:
 # --- a lista e o degrau ----------------------------------------------------------------------------
 
 
-def test_os_cadastros_sao_os_cinco_do_comando_da_montagem():
-    assert set(recorte.CADASTROS) == set(carga_cadastros.MODULOS)
+def test_os_cadastros_sao_os_cinco_do_comando_da_montagem_e_as_sancoes_da_cgu():
+    assert set(recorte.CADASTROS) == {*carga_cadastros.MODULOS, recorte.SANCOES}
 
 
 def test_as_colunas_que_saem_existem_e_nenhuma_e_de_nome_ou_texto_livre():
@@ -222,7 +251,7 @@ def test_os_cadastros_so_vao_pelo_degrau_5():
 
 def test_so_a_linha_de_pj_sai_sem_nome_nem_texto_livre(tmp_path):
     base, saida = tmp_path / "base", tmp_path / "saida"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     resultados = {r.tabela: r for r in envio.montar(base, saida, COM_CADASTROS)}
     mte = saida / recorte.MTE / "empregadores.parquet"
     assert _ler(mte, "cnpj") == [(_cnpj(RAIZ_PJ),)]
@@ -250,16 +279,36 @@ def test_so_a_linha_de_pj_sai_sem_nome_nem_texto_livre(tmp_path):
     ]
 
 
+def test_a_copia_das_sancoes_leva_so_a_pj_e_so_as_colunas_da_lista(tmp_path):
+    """CEIS, CNEP, CEPIM e leniência (um arquivo cada): só a linha de PJ na lista sem pessoa, sem o processo."""
+    base, saida = tmp_path / "base", tmp_path / "saida"
+    _base_com_os_cadastros(base)
+    resultados = {r.tabela: r for r in envio.montar(base, saida, COM_CADASTROS)}
+    assert _ler(saida / recorte.SANCOES / "ceis.parquet", "cnpj") == [(_cnpj(RAIZ_PJ),)]
+    assert _ler(saida / recorte.SANCOES / "cepim.parquet", "cnpj") == [
+        (_cnpj(RAIZ_OUTRA),)
+    ]
+    assert resultados[recorte.SANCOES].arquivos == 2
+    assert resultados[recorte.SANCOES].linhas_tiradas == 3
+    for arquivo in (saida / recorte.SANCOES).glob("*.parquet"):
+        assert _colunas(arquivo) == list(recorte.COLUNAS[recorte.SANCOES]), arquivo
+        assert "processo" not in _colunas(arquivo)
+    assert sorted(p.name for p in (saida / recorte.SANCOES).iterdir()) == [
+        "ceis.parquet",
+        "cepim.parquet",
+    ]
+
+
 def test_os_cadastros_nao_vao_sem_empresas_pj(tmp_path):
     base = tmp_path / "base"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     with pytest.raises(envio.RecorteErro, match="junto com cnpj_empresas_pj"):
         envio.montar(base, tmp_path / "saida", recorte.CADASTROS)
 
 
 def test_cadastro_sem_arquivo_na_base_derruba_o_envio(tmp_path):
     base = tmp_path / "base"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     for arquivo in (base / recorte.GLEIF).glob("*"):
         arquivo.unlink()
     with pytest.raises(envio.RecorteErro, match="gleif_ponte: sem arquivo na base"):
@@ -269,7 +318,7 @@ def test_cadastro_sem_arquivo_na_base_derruba_o_envio(tmp_path):
 def test_cadastro_que_fica_vazio_derruba_o_envio(tmp_path):
     """Sem a Receita na montagem toda linha fica marcada: a cópia vazia trocaria a do VPS por nada."""
     base = tmp_path / "base"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     _cadastro(
         base,
         recorte.GLEIF,
@@ -295,7 +344,7 @@ def test_sem_o_filtro_a_trava_derruba_o_envio(tmp_path, monkeypatch):
 
     monkeypatch.setattr(recorte, "montar_cadastro", sem_filtro)
     base = tmp_path / "base"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     with pytest.raises(envio.RecorteErro, match="fora da lista"):
         envio.montar(base, tmp_path / "saida", COM_CADASTROS)
 
@@ -343,6 +392,53 @@ def test_a_trava_pega_cada_coisa_fora_da_regra(tmp_path, trocas, erro):
         _saida_conferida(tmp_path, recorte.GLEIF, _gleif(_cnpj(RAIZ_PJ), **trocas))
 
 
+def _sancao(documento: str, **trocas: str) -> str:
+    valores = {
+        "id_na_fonte": "'1'", "cnpj": f"'{documento}'", "cnpj_basico": f"'{documento[:8]}'", "consta": "true",
+        "trata_como_pessoa": "false", "visto_em": "TIMESTAMP '2026-11-10 03:00:00'",
+        "disponivel_em": "DATE '2026-11-10'", "origem_sha256": "'abc'",
+        "origem_coletada_em": "TIMESTAMP '2026-11-10 02:00:00'", "montado_em": "TIMESTAMP '2026-11-10 04:00:00'",
+        "versao_do_codigo": "'teste'", **{c: VALORES_DE_MENTIRA[c] for c in recorte.COLUNAS[recorte.SANCOES] if c in VALORES_DE_MENTIRA}, **trocas,
+    }  # fmt: skip
+    return "SELECT " + ", ".join(f"{v} AS {c}" for c, v in valores.items())
+
+
+def test_a_saida_certa_das_sancoes_passa(tmp_path):
+    assert _saida_conferida(tmp_path, recorte.SANCOES, _sancao(_cnpj(RAIZ_PJ))) == {
+        recorte.SANCOES: 1
+    }
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        f"Sócio com CPF {formatado(CPF_DE_TESTE)} impedido",
+        f"processo do sócio {CPF_DE_TESTE} impedido",
+        "CPF ***.123.456-** impedido",
+        "contato fulano@exemplo.com.br",
+    ],
+)
+@pytest.mark.parametrize("coluna", ["assunto", "fundamentacao_legal", "categoria"])
+def test_a_trava_pega_cpf_ou_email_dentro_do_texto_livre_das_sancoes(
+    tmp_path, coluna, texto
+):
+    with pytest.raises(recorte.CadastroComPessoa, match="texto livre"):
+        _saida_conferida(
+            tmp_path,
+            recorte.SANCOES,
+            _sancao(_cnpj(RAIZ_PJ), **{coluna: f"'{texto}'"}),
+        )
+
+
+def test_o_texto_livre_comum_das_sancoes_passa_inclusive_numero_de_lei(tmp_path):
+    texto = "'Lei 8.666/1993, art. 87, III; portaria 1234567890'"
+    assert _saida_conferida(
+        tmp_path,
+        recorte.SANCOES,
+        _sancao(_cnpj(RAIZ_PJ), fundamentacao_legal=texto),
+    ) == {recorte.SANCOES: 1}
+
+
 def test_a_trava_pega_raiz_fora_da_lista(tmp_path):
     with pytest.raises(recorte.CadastroComPessoa, match="raiz fora da lista"):
         _saida_conferida(tmp_path, recorte.GLEIF, _gleif(_cnpj(RAIZ_FORA)))
@@ -350,7 +446,7 @@ def test_a_trava_pega_raiz_fora_da_lista(tmp_path):
 
 def test_a_trava_pega_a_chave_da_lista_suja_que_nao_e_impressao_digital(tmp_path):
     base = tmp_path / "base"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     saida = tmp_path / "saida"
     envio.montar(base, saida, COM_CADASTROS)
     arquivo = saida / recorte.MTE / "empregadores.parquet"
@@ -384,9 +480,11 @@ def test_o_sinal_de_credito_le_a_copia_reduzida_no_vps(tmp_path):
     """No VPS a porta acha a cópia no caminho da tabela inteira e o sinal conta só a RAIZ_PJ (o público da Lista Suja
     e do embargo é o fim do mês do retrato: o dia da ficha é em dezembro)."""
     base, saida = tmp_path / "base", tmp_path / "saida"
-    _base_com_os_cinco(base)
+    _base_com_os_cadastros(base)
     envio.montar(base, saida, COM_CADASTROS)
-    arquivos = {nome: ARQUIVOS[nome] for nome in (recorte.MTE, recorte.IBAMA)}
+    arquivos = {
+        nome: ARQUIVOS[nome] for nome in (recorte.MTE, recorte.IBAMA, recorte.SANCOES)
+    }
     with Porta(saida, arquivos=arquivos, conferidas={}) as porta:
         sinais = {
             f.chave: f
@@ -394,3 +492,4 @@ def test_o_sinal_de_credito_le_a_copia_reduzida_no_vps(tmp_path):
         }
     assert sinais["registros_na_lista_suja"].valor == 1
     assert sinais["embargos_vigentes_no_ibama"].valor == 1
+    assert sinais["sancoes_vigentes_na_cgu"].valor == 1
