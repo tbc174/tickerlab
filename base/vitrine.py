@@ -731,6 +731,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "debentures_assembleias",
             "ratings",
             "securitizacao_certificados",
+            "securitizacao_cedente_devedor",
         ),
     ),
     TemaDoCnpj(
