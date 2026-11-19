@@ -165,8 +165,19 @@ NEGADAS_DESDE_O_PRIMEIRO_DIA = frozenset(
 )
 # CC BY-ND: a CONAB sai como publicada, sem recorte, soma ou derivado (D2.3); a lista suja do MTE também (rodapé
 # CC BY-ND 3.0 do gov.br, lido em 18/11/2026): o registro sai como o MTE publicou, nunca uma conta nossa sobre ele;
-# e o PAT do MTE, sob o mesmo rodapé, no conjunto sem trava de licença (ADR 0122, Emenda 2)
-SO_COMO_PUBLICADO = frozenset({"conab", "mte-lista-suja", "mte-pat"})
+# e, no conjunto sem trava de licença (ADR 0122, Emenda 2), o PAT do MTE, a TAH da ANM e a tancagem da ANP (o mesmo
+# rodapé) e os PADOs e homologados da Anatel (licença a confirmar): leitura mais estreita, sem conta nossa
+SO_COMO_PUBLICADO = frozenset(
+    {
+        "conab",
+        "mte-lista-suja",
+        "mte-pat",
+        "anm-tah",
+        "anp-tancagem",
+        "anatel-pados",
+        "anatel-homologados",
+    }
+)
 # agregados de crédito (SCR, MDCR e crédito rural do SICOR): só saem como agregado, nunca por empresa
 FONTES_DE_AGREGADO_DE_CREDITO = frozenset({"bcb-scr", "bcb-mdcr", "bcb-sicor"})
 # Segunda trava do D2.4, pelo nome do campo: pega a linha escrita com a categoria errada. Na dúvida,

@@ -93,7 +93,27 @@ def _pados() -> pd.DataFrame:
 def _homologados() -> pd.DataFrame:
     tabela = _linhas(
         ["cnpj", "numero_da_homologacao", "modelo", "data_da_homologacao"],
-        [(EMPRESA, "H-1", "ROTEADOR X", "2023-05-02", "2023-05-10", True, False)],
+        [
+            (EMPRESA, "H-1", "ROTEADOR X", "2023-05-02", "2023-05-10", True, False),
+            (
+                EMPRESA,
+                "H-SAIU",
+                "SAIU-DO-ARQUIVO",
+                "2023-05-02",
+                "2023-05-10",
+                False,
+                False,
+            ),
+            (
+                RAIZ + "000270",
+                "H-PESSOA",
+                DE_PESSOA,
+                "2023-05-02",
+                "2023-05-10",
+                True,
+                True,
+            ),
+        ],
     )
     tabela["data_da_homologacao"] = pd.to_datetime(
         tabela["data_da_homologacao"]
@@ -116,6 +136,26 @@ def _tah() -> pd.DataFrame:
                 False,
             ),
             (
+                RAIZ + "000270",
+                "TAH-PESSOA",
+                5.0,
+                9.0,
+                "2025-01-31",
+                "2025-02-05",
+                True,
+                True,
+            ),
+            (
+                EMPRESA,
+                "TAH-SAIU",
+                5.0,
+                9.0,
+                "2025-01-31",
+                "2025-02-05",
+                False,
+                False,
+            ),
+            (
                 EMPRESA,
                 "800.002/2020",
                 10.0,
@@ -132,7 +172,8 @@ def _tah() -> pd.DataFrame:
 
 
 def _tancagem() -> pd.DataFrame:
-    """A mesma instalação em duas posições: só a mais nova já pública no dia sai."""
+    """A mesma instalação em duas posições: só a mais nova já pública no dia sai. A posição de pessoa, mais nova,
+    não conta para escolher a data."""
     tabela = _linhas(
         [
             "cnpj",
@@ -162,6 +203,16 @@ def _tancagem() -> pd.DataFrame:
                 True,
                 False,
             ),
+            (
+                EMPRESA,
+                "INST-PESSOA",
+                DE_PESSOA,
+                9.0,
+                "2025-03-01",
+                "2025-03-10",
+                True,
+                True,
+            ),
         ],
     )
     tabela["data_da_posicao"] = pd.to_datetime(tabela["data_da_posicao"]).dt.date
@@ -177,7 +228,29 @@ def _pat() -> pd.DataFrame:
             "trabalhadores_atendidos",
             "data_do_cadastro",
         ],
-        [(EMPRESA, "PAT-1", "Ativa", 230, "2022-08-01", "2024-07-01", True, False)],
+        [
+            (EMPRESA, "PAT-1", "Ativa", 230, "2022-08-01", "2024-07-01", True, False),
+            (
+                EMPRESA,
+                "PAT-SAIU",
+                "SAIU-DO-ARQUIVO",
+                1,
+                "2022-08-01",
+                "2024-07-01",
+                False,
+                False,
+            ),
+            (
+                RAIZ + "000270",
+                "PAT-PESSOA",
+                DE_PESSOA,
+                1,
+                "2022-08-01",
+                "2024-07-01",
+                True,
+                True,
+            ),
+        ],
     )
     tabela["data_do_cadastro"] = pd.to_datetime(tabela["data_do_cadastro"]).dt.date
     return tabela
@@ -246,6 +319,35 @@ def test_fora_do_conjunto_o_portao_segue_negando_pela_marca():
         assert portao._negacao_das_marcas(fonte, "profiles", hoje, regras) is not None
 
 
+def test_o_portao_de_verdade_libera_so_no_conjunto():
+    """O pedido inteiro, pela `decidir`: no conjunto (com a prontidão do teste) libera; no `profiles`, no
+    `assets` e no de integridade, nega."""
+    regras = _regras()
+    campos = {
+        "anatel-pados": "multa_aplicada",
+        "anatel-homologados": "modelo",
+        "anm-tah": "valor_pago",
+        "anp-tancagem": "tancagem_m3",
+        "mte-pat": "trabalhadores_atendidos",
+    }
+    for fonte, campo in campos.items():
+        for conjunto in (
+            CONJUNTO,
+            "profiles",
+            "assets",
+            coletas.CONJUNTO_DE_INTEGRIDADE,
+        ):
+            pedido = portao.Pedido(
+                fonte,
+                conjunto,
+                campo,
+                portao.Canal.API_EXTERNA,
+                portao.Finalidade.ANALISE,
+            )
+            decisao = portao.decidir(pedido, AGORA.date(), regras)
+            assert decisao.libera is (conjunto == CONJUNTO), (fonte, conjunto, decisao)
+
+
 def test_o_pat_segue_de_uso_interno_fora_do_conjunto():
     assert coletas.marca_da_fonte("mte-pat") is coletas.Marca.USO_INTERNO
     assert not coletas.sai_no_conjunto_de_integridade(
@@ -253,19 +355,19 @@ def test_o_pat_segue_de_uso_interno_fora_do_conjunto():
     )
 
 
-def test_o_pat_sai_so_como_publicado():
-    """CC BY-ND 3.0: nenhuma conta nossa sobre o registro do PAT, mesmo no conjunto."""
-    assert "mte-pat" in portao.SO_COMO_PUBLICADO
-    pedido = portao.Pedido(
-        "mte-pat",
-        CONJUNTO,
-        "trabalhadores_atendidos",
-        portao.Canal.API_EXTERNA,
-        portao.Finalidade.ANALISE,
-        derivado=True,
-    )
-    decisao = portao.decidir(pedido, AGORA.date(), _regras())
-    assert decisao.motivo is portao.Motivo.SO_COMO_PUBLICADO
+def test_as_cinco_fontes_saem_so_como_publicadas():
+    """Rodapé CC BY-ND 3.0 ou licença a confirmar: nenhuma conta nossa sobre o registro, mesmo no conjunto."""
+    for fonte in FONTES:
+        pedido = portao.Pedido(
+            fonte,
+            CONJUNTO,
+            "qualquer_campo",
+            portao.Canal.API_EXTERNA,
+            portao.Finalidade.ANALISE,
+            derivado=True,
+        )
+        decisao = portao.decidir(pedido, AGORA.date(), _regras())
+        assert decisao.motivo is portao.Motivo.SO_COMO_PUBLICADO, fonte
 
 
 def test_toda_fonte_do_lote_tem_atribuicao():
@@ -300,6 +402,23 @@ def test_so_a_linha_de_empresa_que_consta_sai(base):
         "OUTRA-EMPRESA",
     ):
         assert fora not in texto
+
+
+def test_em_toda_tabela_so_a_linha_de_empresa_que_consta_sai(base):
+    corpo = _corpo(base)
+    esperado = {
+        "processos_sancionadores_da_anatel": ("processo", ["PADO-1"]),
+        "produtos_homologados_na_anatel": ("numero_da_homologacao", ["H-1"]),
+        "taxa_anual_por_hectare_da_anm": ("processo", ["800.001/2020"]),
+        "tancagem_na_anp": ("codigo_da_instalacao", ["INST-1"]),
+        "pat_do_mte": ("registro_no_pat", ["PAT-1"]),
+    }
+    for chave, (campo, valores) in esperado.items():
+        itens = corpo[chave]["itens"]
+        assert [i[campo]["valor"] for i in itens] == valores, chave
+        assert DE_PESSOA not in str(itens) and "SAIU-DO-ARQUIVO" not in str(itens), (
+            chave
+        )
 
 
 def test_cada_tabela_sai_na_chave_dela_com_a_fonte(base):

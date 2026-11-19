@@ -505,7 +505,7 @@ REGISTRO: tuple[TabelaPorCnpj, ...] = (
         data_do_fato="data_do_cadastro",
         licenca=LICENCA_SEM_TRAVA,
         cobertura=(
-            "Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho e Emprego: o registro da empresa como beneficiária, facilitadora ou fornecedora ativa, com os trabalhadores atendidos; cada registro como o MTE publicou."
+            "Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho e Emprego: o registro da empresa como beneficiária, facilitadora ou fornecedora, com a situação e os trabalhadores atendidos; cada registro como o MTE publicou."
         ),
         ordem=("registro_no_pat",),
         marca_de_pessoa=TRATA_COMO_PESSOA,

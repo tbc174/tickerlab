@@ -420,7 +420,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "fase_do_processo": "proceeding_phase",
     "superintendencia": "regional_office",
     "hectares": "area_ha",
-    "valor_total": "amount_due_brl",
+    "valor_total": "amount_charged_brl",
     "valor_pago": "amount_paid_brl",
     "data_da_quitacao": "paid_on",
     "codigo_da_instalacao": "facility_code",
