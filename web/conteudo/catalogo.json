@@ -83,7 +83,7 @@
       "marca": "uso_interno",
       "orgao": "IBAMA (autos e embargos)",
       "ritmo": null,
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-18",
       "uso": "em_uso"
     },
     {
@@ -95,14 +95,14 @@
       ],
       "familia": "mte",
       "licencas": [
-        "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+        "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
         "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno"
       ],
       "link": "https://www.gov.br/trabalho-e-emprego/",
       "marca": "uso_interno",
       "orgao": "Ministério do Trabalho (Lista Suja)",
       "ritmo": null,
-      "termos_lidos_em": null,
+      "termos_lidos_em": "2026-11-18",
       "uso": "em_uso"
     },
     {
@@ -2781,7 +2781,7 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "licenca": "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
       "modulos": [
         "governo_e_sancoes"
       ],
@@ -3495,21 +3495,21 @@
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "marca": "uso_interno",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "ibama-embargos",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "marca": "uso_interno",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "mte-lista-suja",
-      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "licenca": "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
       "marca": "uso_interno",
       "ritmo": "semanal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "gleif-br",
@@ -5742,21 +5742,21 @@
       "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
       "marca": "uso_interno",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "mte-pat-facilitadoras",
       "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
       "marca": "uso_interno",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "mte-pat-fornecedoras",
       "licenca": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
       "marca": "uso_interno",
       "ritmo": "mensal",
-      "termos_lidos_em": null
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "anm-tah",

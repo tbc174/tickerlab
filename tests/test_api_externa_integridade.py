@@ -230,6 +230,64 @@ def test_embargo_e_lista_suja_sem_nome_nem_linha_de_pessoa(base):
     assert "FULANO" not in str(lista.corpo) and "FAZENDA" not in str(lista.corpo)
 
 
+def _lista_com_saida() -> pd.DataFrame:
+    """Dois registros da empresa (um saiu da lista em 10/10/2024) e um de pessoa visto depois."""
+    # fmt: off
+    linhas = [
+        # id, cnpj, ano da ação, inclusão, visto em, consta, é pessoa
+        ("id-a", EMPRESA, 2022, "2023-10-05", "2023-10-10", True, False),
+        ("id-a", EMPRESA, 2022, "2023-10-05", "2024-10-10", False, False),  # saiu da lista
+        ("id-b", EMPRESA, 2024, "2024-04-05", "2024-04-10", True, False),
+        ("id-c", RAIZ + "000270", 2024, "2025-01-10", "2025-01-15", True, True),
+    ]
+    # fmt: on
+    tabela = pd.DataFrame(
+        linhas,
+        columns=[
+            "id_na_fonte",
+            "cnpj",
+            "ano_da_acao",
+            "incluida_em",
+            "visto_em",
+            "consta",
+            "trata_como_pessoa",
+        ],
+    )
+    tabela["incluida_em"] = pd.to_datetime(tabela["incluida_em"]).dt.date
+    tabela["disponivel_em"] = tabela["visto_em"]
+    ids = tabela.pop("id_na_fonte")
+    return _comum(tabela.assign(uf="PA", cnae="0151201", trabalhadores=3)).assign(
+        id_na_fonte=ids
+    )
+
+
+def test_a_lista_suja_diz_o_retrato_e_o_registro_que_saiu_nao_aparece(tmp_path):
+    pasta = tmp_path / "base"
+    gravar(pasta, LISTA_SUJA, _lista_com_saida())
+    sub = _corpo(pasta, tabelas_por_cnpj.LISTA_SUJA).corpo["lista_suja_do_mte"]
+    assert [i["ano_da_acao"]["valor"] for i in sub["itens"]] == [
+        2024
+    ]  # 2022 saiu: nem como fato atual
+    # a mudança mais nova da lista é a saída de 10/10/2024; a linha de pessoa (15/01/2025) não conta
+    assert sub["retrato_da_lista"] == "2024-10-10"
+    antes = _corpo(pasta, tabelas_por_cnpj.LISTA_SUJA, dia=date(2024, 6, 30)).corpo[
+        "lista_suja_do_mte"
+    ]
+    assert sorted(i["ano_da_acao"]["valor"] for i in antes["itens"]) == [
+        2022,
+        2024,
+    ]  # em 06/2024 constava
+    assert antes["retrato_da_lista"] == "2024-04-10"
+
+
+def test_so_a_lista_suja_leva_o_retrato(base):
+    for bloco, chave in (
+        (tabelas_por_cnpj.SANCOES, "sancoes_da_cgu"),
+        (tabelas_por_cnpj.EMBARGOS_AMBIENTAIS, "embargos_do_ibama"),
+    ):
+        assert "retrato_da_lista" not in _corpo(base, bloco).corpo[chave]
+
+
 def test_tabela_sem_a_coluna_da_marca_responde_nao_achou(tmp_path):
     pasta = tmp_path / "sem_marca"
     gravar(pasta, SANCOES, _sancoes().drop(columns=["trata_como_pessoa"]))
@@ -284,7 +342,7 @@ def test_cortar_o_futuro_nao_muda_o_passado(tmp_path, base):
 def _regras() -> portao.Regras:
     """As regras de verdade com o perfil e as três tabelas com a prontidão cheia, a leitura dos termos em dia e a
     coleta e guarda do MTE respondidas (a prova com a data do teste), para ver o que o conjunto abre; hoje a
-    produção nega pela prontidão (e o IBAMA e o MTE também pela leitura dos termos, o MTE pela guarda)."""
+    produção nega só pela prontidão (as marcas, a leitura dos termos e a guarda já passam)."""
     prova = Prova(AGORA.date(), "conferida no teste", "teste")
     versoes = prontidao.versoes_maiores()
     vigentes = portao.regras_vigentes()
@@ -345,6 +403,8 @@ def test_com_o_conjunto_os_tres_blocos_saem_com_fonte_e_data(
     assert embargo["embargo_term_number"]["value"] == "T-1"
     nao_achados = {item["block"] for item in corpo["not_found"]}
     assert nao_achados == {"forced_labor_registry"}  # nada encontrado no MTE
+    lista = corpo["blocks"]["forced_labor_registry"]["mte_forced_labor_registry"]
+    assert lista["found"] is False and lista["list_snapshot_date"] == "2024-04-10"
     fontes = {f["source"] for f in corpo["sources"]}
     assert {"cgu-cnep", "cgu-ceis", "ibama-embargos"} <= fontes
     fora = " ".join(corpo["not_included"])

@@ -241,6 +241,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "barragens_de_mineracao": "mining_dams",
     "royalties_de_mineracao": "mining_royalties",
     "achou": "found",
+    "retrato_da_lista": "list_snapshot_date",  # a lista suja do MTE: o dia da edição vigente que a base guarda
     "dado_mais_novo": "latest_published_at",
     "cobertura": "coverage",
     "nao_coberto": "not_covered",

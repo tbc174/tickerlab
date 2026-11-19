@@ -65,7 +65,9 @@ class TabelaPorCnpj:
     já pública no dia. `uma_por`: de cada valor destas colunas, só a primeira linha na ordem (a versão mais nova
     de um informe, por exemplo). `marca_de_pessoa`: a coluna que marca a linha de pessoa (MEI, empresário
     individual); com ela, só sai a linha com a marca falsa, e todo texto servido passa pela varredura de CPF e
-    e-mail (achou: a resposta inteira cai, nunca sai um "não achou" falso)."""
+    e-mail (achou: a resposta inteira cai, nunca sai um "não achou" falso). `diz_o_retrato`: a lista é a edição
+    vigente de um cadastro em retratos (a lista suja do MTE), e o corpo diz o dia da mudança mais nova que a base viu
+    nela até o dia pedido (`retrato_da_lista`); o registro que saiu da lista não aparece, nem como situação atual."""
 
     tabela: str
     fontes: tuple[str, ...]
@@ -83,6 +85,7 @@ class TabelaPorCnpj:
     coluna_da_fonte: str | None = None
     fonte_pelo_valor: tuple[tuple[str, str], ...] = ()
     marca_de_pessoa: str | None = None
+    diz_o_retrato: bool = False
 
 
 REGISTRO: tuple[TabelaPorCnpj, ...] = (
@@ -362,12 +365,15 @@ REGISTRO: tuple[TabelaPorCnpj, ...] = (
         licenca=LICENCA_DE_INTEGRIDADE,
         cobertura=(
             "Cadastro de Empregadores que tenham submetido trabalhadores a condições análogas à de escravo, do "
-            "Ministério do Trabalho e Emprego, enquanto o empregador consta da edição publicada; cada registro "
-            "como o MTE publicou, sem o nome do empregador nem o endereço do estabelecimento. Pelo known_at, o "
-            "registro conta como público a partir do último dia do mês em que apareceu."
+            "Ministério do Trabalho e Emprego: diz se a empresa consta da lista vigente na edição mais nova que "
+            "a base guarda até o dia pedido, com a data do retrato (o dia da mudança mais nova que a base viu na "
+            "lista); o registro que saiu da lista não aparece. Cada registro como o MTE publicou, sem o nome do "
+            "empregador nem o endereço do estabelecimento. Pelo known_at, o registro conta como público a partir "
+            "do último dia do mês em que apareceu."
         ),
         ordem=("ano_da_acao",),
         marca_de_pessoa=TRATA_COMO_PESSOA,
+        diz_o_retrato=True,
     ),
 )
 

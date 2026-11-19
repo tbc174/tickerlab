@@ -12131,7 +12131,7 @@
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
-      "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+      "licenca": "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
       "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)",

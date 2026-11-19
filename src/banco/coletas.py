@@ -74,7 +74,9 @@ LICENCAS = {
     "inss": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
     "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
     "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
-    "mte": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+    # leitura de 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4): o MTE não tem termo próprio para o cadastro;
+    # vale o rodapé do portal gov.br, CC BY-ND 3.0
+    "mte": "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
     "gleif": "CC0 (GLEIF, Global LEI Index)",
     "termos": "Termos de uso de terceiros: só prova interna da versão lida",
     "catalogo": "Lista de conjuntos de portais de dados abertos (metadados)",
@@ -753,7 +755,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
-            "mte",
             "comexstat",
             "wayback",
             "tce-rs",
@@ -870,6 +871,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
         ),
         _NAO_RESPONDIDA,
     ),
+    # leitura de 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4, decisoes-delegadas.md): o cadastro de
+    # empregadores é publicado aberto no gov.br, sem termo que vede a coleta nem prazo de guarda
+    "mte": _ABERTA_SEM_PRAZO,
 }
 MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
 USOS = ("treinar", "rotular", "exportar", MOSTRAR)

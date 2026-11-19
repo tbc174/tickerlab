@@ -163,28 +163,19 @@ def test_cgu_ibama_e_mte_passam_as_marcas_so_no_conjunto_de_integridade() -> Non
     )
 
 
-def test_hoje_a_cgu_passa_as_marcas_e_ibama_e_mte_esperam_o_registro_da_leitura() -> (
-    None
-):
-    """O estado gravado hoje: a CGU tem a leitura dos termos (21/10/2026) e a coleta e guarda; o IBAMA e o MTE
-    esperam a data da leitura (e o MTE a resposta de coleta e guarda). Quem gravar, ajusta este teste."""
+def test_hoje_cgu_ibama_e_mte_passam_as_marcas_no_conjunto_de_integridade() -> None:
+    """O estado gravado: CGU (termos de 21/10/2026), IBAMA e MTE (termos de 18/11/2026, pode da Diretoria) e a coleta
+    e guarda do MTE (aberta, sem prazo) passam as marcas no conjunto de integridade; fora dele, não."""
     regras = portao_externo.regras_vigentes()
     conjunto = coletas.CONJUNTO_DE_INTEGRIDADE
-    assert (
-        portao_externo._negacao_das_marcas("cgu-ceis", conjunto, HOJE, regras) is None
-    )
-    assert portao_externo._negacao_das_marcas(
-        "ibama-embargos", conjunto, HOJE, regras
-    ) in (
-        None,
-        portao_externo.Motivo.TERMOS_SEM_DATA,
-    )
-    assert portao_externo._negacao_das_marcas(
-        "mte-lista-suja", conjunto, HOJE, regras
-    ) in (
-        None,
-        portao_externo.Motivo.TERMOS_SEM_DATA,
-        portao_externo.Motivo.GUARDA_NAO_PERMITE,
+    for fonte in ("cgu-ceis", "ibama-embargos", "mte-lista-suja"):
+        assert portao_externo._negacao_das_marcas(fonte, conjunto, HOJE, regras) is None
+        assert (
+            portao_externo._negacao_das_marcas(fonte, "profiles", HOJE, regras)
+            is portao_externo.Motivo.REVENDA_NAO_VENDAVEL
+        )
+    assert coletas.COLETA_E_GUARDA["mte"] == coletas.ColetaEGuarda(
+        coletas.Coleta.ABERTA, coletas.Guarda.SEM_PRAZO
     )
 
 

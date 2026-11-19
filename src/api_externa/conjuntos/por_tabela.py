@@ -222,7 +222,8 @@ class LeitorPorTabela:
         fonte = self._fonte_da_linha(entrada, linha)
         if fonte is None or fonte not in servidos:
             return None  # linha de uma fonte que o portão não libera (ou que o registro não conhece)
-        publico_em = _dia(linha.get(PUBLICO_EM_NA_PORTA, linha[PUBLICO_EM]))
+        # o dia da porta (fim do mês na tabela mensal); vazio nela, o `disponivel_em` da linha
+        publico_em = _dia(linha.get(PUBLICO_EM_NA_PORTA)) or _dia(linha[PUBLICO_EM])
         if publico_em is None:
             return None
         visto_em = _dia(linha.get(VISTO_EM))
@@ -233,6 +234,22 @@ class LeitorPorTabela:
         }
         _varrer(entrada, item)
         return (fonte, item) if item else None
+
+    def _retrato(self, entrada: TabelaPorCnpj, como_era_em: date) -> str | None:
+        """O dia da mudança mais nova que a base viu na lista até o dia pedido (entrada ou saída de um registro de
+        empresa; a linha de pessoa não conta), em ISO; None se a tabela não está na base ou não tem a coluna."""
+        if entrada.tabela not in views(self.porta.con):
+            return None
+        marca = [entrada.marca_de_pessoa] if entrada.marca_de_pessoa else []
+        if not {VISTO_EM, *marca} <= _colunas_da_view(self.porta, entrada.tabela):
+            return None
+        tabela = self.porta.ler(
+            entrada.tabela, como_era_em=como_era_em, colunas=[VISTO_EM, *marca]
+        )
+        if marca:
+            tabela = tabela[tabela[marca[0]].map(_de_empresa).astype(bool)]
+        dia = _dia(tabela[VISTO_EM].max()) if not tabela.empty else None
+        return dia.isoformat() if dia else None
 
     def _entrada(
         self,
@@ -256,6 +273,11 @@ class LeitorPorTabela:
             "cobertura": entrada.cobertura,
             "itens": pagina,
             "cortada": len(itens) > len(pagina),
+            **(
+                {"retrato_da_lista": self._retrato(entrada, como_era_em)}
+                if entrada.diz_o_retrato
+                else {}
+            ),
         }
         return corpo, fontes, len(pagina)
 
