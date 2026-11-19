@@ -230,9 +230,8 @@ _PROVA_DAS_AGENCIAS = (
     "marca vendável, revenda com atribuição"
 )
 _PROVA_DE_INTEGRIDADE = (
-    "ADR 0122, Emenda 1 (18/11/2026; risco assumido pelo Tiago): CGU, IBAMA e MTE só no conjunto de integridade, "
-    "concedido por linha do contrato da organização; só a linha de pessoa jurídica, citando a fonte "
-    "(`LICENCAS` de src/banco/coletas.py)"
+    "ADR 0122, Emenda 1 (18-11-2026, risco de licença assumido): CGU, IBAMA e MTE só no conjunto de integridade, "
+    "concedido por linha do contrato da organização; só a linha de pessoa jurídica, citando a fonte"
 )
 _PROVA_DA_ANP = (
     "ADR 0108 D2.2 e D3: dados abertos da ANP, CC BY, revenda com atribuição"

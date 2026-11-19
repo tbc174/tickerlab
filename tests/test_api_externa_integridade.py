@@ -24,6 +24,7 @@ from src.banco import coletas
 from tests import ajudantes_da_api_externa as aj
 from tests import test_api_externa_analise as analise_de_mentira
 from tests import test_api_externa_socios_pj as socios_de_mentira
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
 from tests.test_api_externa_tabelas_por_cnpj import (
     AGORA,
     DIA,
@@ -38,7 +39,7 @@ from tests.test_api_externa_tabelas_por_cnpj import (
 SANCOES = "sancoes_cgu"
 EMBARGOS = "ibama_embargos"
 LISTA_SUJA = "mte_lista_suja"
-CPF_DE_EXEMPLO = "111.444.777-35"  # dígito certo, de ninguém
+CPF_DE_EXEMPLO = formatado(CPF_DE_TESTE)  # dígito certo, montado na hora (ninguém)
 DE_PESSOA = "ORGAO-DE-PESSOA"  # marca do texto que só a linha de pessoa tem
 TABELAS = (SANCOES, EMBARGOS, LISTA_SUJA)
 BLOCOS_DE_FORA = ("sanctions", "environmental_embargoes", "forced_labor_registry")
@@ -296,7 +297,7 @@ def test_tabela_sem_a_coluna_da_marca_responde_nao_achou(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "texto", [f"MINISTERIO {CPF_DE_EXEMPLO}", "11144477735", "fulano@exemplo.com"]
+    "texto", [f"MINISTERIO {CPF_DE_EXEMPLO}", CPF_DE_TESTE, "fulano@exemplo.com"]
 )
 def test_cpf_ou_email_num_texto_servido_derruba_a_leitura(tmp_path, texto):
     pasta = tmp_path / "com_cpf"
@@ -484,4 +485,4 @@ def test_cpf_num_texto_servido_responde_503_sem_o_valor(tmp_path, banco, monkeyp
     resposta = _analise(monkeypatch, chave.valor)
     assert resposta.status_code == 503
     assert CPF_DE_EXEMPLO not in resposta.text
-    assert "11144477735" not in resposta.text
+    assert CPF_DE_TESTE not in resposta.text
