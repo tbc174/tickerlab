@@ -38,6 +38,10 @@ ORGAO_DA_FAMILIA: dict[str, Orgao] = {
     ),
     "ans": Orgao("ANS (planos de saúde)", "https://dadosabertos.ans.gov.br/"),
     "ms": Orgao("Ministério da Saúde (DATASUS)", "https://opendatasus.saude.gov.br/"),
+    "bps": Orgao(
+        "Ministério da Saúde (Banco de Preços em Saúde)",
+        "https://opendatasus.saude.gov.br/",
+    ),
     "antt": Orgao("ANTT (transportes terrestres)", "https://dados.antt.gov.br/"),
     "anvisa": Orgao("Anvisa (vigilância sanitária)", "https://dados.anvisa.gov.br/"),
     "ccee": Orgao(
