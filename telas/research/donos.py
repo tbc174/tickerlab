@@ -23,6 +23,7 @@ from telas.comum import (
     mostrar_grafico,
 )
 from telas.research.comum import _ainda_nao_coletado, _dinheiro, _numero_br
+from telas.research.um_fundo import aba_um_fundo
 
 TAMANHOS_DA_LISTA_DO_MERCADO = (10, 25, 50)
 
@@ -269,11 +270,15 @@ def _detentores_no_mercado():
 def pagina_donos():
     cabecalho_da_pagina("donos")
     c = carregar_contexto()
-    aba_ativo, aba_mercado = st.tabs(["Do ativo do topo", "No mercado"])
+    aba_ativo, aba_mercado, aba_fundo = st.tabs(
+        ["Do ativo do topo", "No mercado", "Um fundo"]
+    )
     with aba_ativo:
         _detentores_do_ativo(normalizar_ticker(c.ticker))
     with aba_mercado:
         _detentores_no_mercado()
+    with aba_fundo:
+        aba_um_fundo()
     with st.expander("Como ler estes dados"):
         st.markdown(
             "- **B3 (fundos):** todo fundo registrado na CVM informa, por mês, o que tem na "
