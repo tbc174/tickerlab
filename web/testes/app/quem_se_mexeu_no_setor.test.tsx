@@ -387,8 +387,10 @@ describe("quem já se mexeu no setor", () => {
     preencher("6201501");
     fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor em RJ" }));
     await screen.findByRole("list", { name: "Filtros em uso" });
-    const dasBuscas = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
-    expect(dasBuscas.at(-1)).toEqual({ setores: ["J"], ufs: ["RJ"] });
+    // as etiquetas aparecem antes do pedido sair: espera o pedido, que sob carga (no CI) chega depois
+    const dasBuscas = () =>
+      buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
+    await waitFor(() => expect(dasBuscas().at(-1)).toEqual({ setores: ["J"], ufs: ["RJ"] }));
   });
 
   it("CNAE de seção que a busca não cobre: abre o Explorar sem filtro e diz por quê", async () => {
