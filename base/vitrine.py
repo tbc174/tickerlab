@@ -707,7 +707,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "ANEEL, os acessos de banda larga, telefonia móvel e TV por assinatura na Anatel, os "
         "beneficiários e o índice de desempenho das operadoras na ANS, prêmios e sinistros das "
         "seguradoras na SUSEP e o balanço, o resultado e o cadastro de bancos e conglomerados no "
-        "IF.data do Banco Central, com a ligação de cada banco à empresa da bolsa.",
+        "IF.data do Banco Central, com a ligação ao CNPJ da empresa da bolsa quando o banco tem uma.",
         (
             "aneel_samp",
             "aneel_inadimplencia",
@@ -771,8 +771,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "operacoes",
         "Operações de compra, venda e fusão",
         "Os documentos que as companhias abertas entregam à CVM e que podem anunciar uma operação, as "
-        "empresas de cada negócio divulgado pelas assessorias, a receita da empresa vendida no último "
-        "exercício antes do negócio e fatos públicos e datados de cooperativas e tradings de café, "
+        "empresas de cada negócio divulgado pelas assessorias, a receita da empresa-alvo no último "
+        "exercício antes do negócio, quando é conhecida, e fatos públicos e datados de cooperativas e tradings de café, "
         "cada um com a fonte e a data.",
         (
             "ma_candidatos",
