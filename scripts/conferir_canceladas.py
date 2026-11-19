@@ -14,6 +14,8 @@ Faltas que a fonte tem e a tabela não, com o motivo conferido à mão, ficam em
 por companhia e tabela) e sai com 1 se houver perdida. Só lê o acervo e a base:
 
     python -m scripts.conferir_canceladas [--pasta <acervo>/base]
+
+Roda: manual (python -m scripts.conferir_canceladas); sem uso registrado em 05/11/2026.
 """
 
 import argparse

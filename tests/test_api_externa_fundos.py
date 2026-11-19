@@ -8,6 +8,7 @@ no custo da taxa e o lote contando 1 na quota.
 
 import dataclasses
 import hashlib
+import sys
 from datetime import UTC, datetime
 
 import duckdb
@@ -28,6 +29,7 @@ from src.banco import chaves_da_api as cb
 from src.banco.coletas import registrar
 from src.ferramentas.custos import custo_da_taxa
 from tests import ajudantes_da_api_externa as aj
+from tests import test_api_externa_tabelas_por_cnpj as informes
 
 AGORA = datetime(2026, 11, 10, 12, tzinfo=UTC)  # o beta começa em 03/11
 BAIXADO_EM = datetime(2026, 11, 5, 3, tzinfo=UTC)  # o dia do retrato do cadastro
@@ -37,6 +39,8 @@ SEM_CADASTRO = "33333333000191"
 URL_DO_CADASTRO = "https://dados.cvm.gov.br/dados/FI/CAD/DADOS/cad_fi.csv"
 ORIGINAL = b"CNPJ_FUNDO;DENOM_SOCIAL\n"  # o conteudo baixado: so o hash importa aqui
 TABELAS_DOS_FUNDOS = ("cadastro_de_fundos", "carteiras_dos_fundos")
+# os informes de FII e de FIP (linha 978, lote 1): com tudo liberado, também prontos
+TABELAS_DOS_INFORMES = ("fii_informe_mensal", "fip_informe")
 ROTA = f"/data/v1/funds/{FUNDO}"
 LOTE = "/data/v1/funds/batch"
 
@@ -118,13 +122,14 @@ def pasta(tmp_path, banco, monkeypatch):
 
 
 def _regras_dos_fundos() -> portao.Regras:
-    """As regras de verdade, com as duas tabelas dos fundos prontas (provas do D10) no dia do teste."""
+    """As regras de verdade, com as tabelas dos fundos e dos informes prontas (provas do D10) no dia do teste."""
     prova = Prova(AGORA.date(), "conferida no teste", "teste")
     versoes = prontidao.versoes_maiores()
     return dataclasses.replace(
         portao.regras_vigentes(),
         prontidao={
-            t: Prontidao(versoes[t], prova, prova, prova) for t in TABELAS_DOS_FUNDOS
+            t: Prontidao(versoes[t], prova, prova, prova)
+            for t in (*TABELAS_DOS_FUNDOS, *TABELAS_DOS_INFORMES)
         },
     )
 
@@ -278,7 +283,124 @@ def test_custo_da_taxa_nao_sai_se_a_fonte_so_sai_como_publicada(
     assert corpo["profile"]["management_fee_pct_per_year"]["value"] == 2.0
 
 
+# ---------------------------------------------------------------- bloco não disponível (linha 882)
+
+
+def _regras_so_com(*tabelas: str, informes: bool = True):
+    """As regras dos fundos com só estas tabelas do fundo prontas (e os informes, se `informes`)."""
+    prontas = (*tabelas, *(TABELAS_DOS_INFORMES if informes else ()))
+
+    def regras() -> portao.Regras:
+        base = _regras_dos_fundos()
+        return dataclasses.replace(
+            base, prontidao={t: base.prontidao[t] for t in prontas}
+        )
+
+    return regras
+
+
+@pytest.mark.parametrize("retorno", [None, 0.08])
+def test_com_tudo_liberado_a_lista_dos_blocos_sai_vazia(cliente, cenario, retorno):
+    parametros = {} if retorno is None else {"assumed_return": retorno}
+    corpo = _get(cliente, cenario, **parametros).json()
+    assert corpo["unavailable_sections"] == []
+    assert corpo["limits"] == []
+
+
+def test_carteira_barrada_vai_na_lista_e_nao_le_como_sem_posicao(
+    cliente, cenario, monkeypatch
+):
+    # sem a prontidão da tabela das carteiras, a lista vazia não leria como "o fundo não tem posição"
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_so_com("cadastro_de_fundos"))
+    corpo = _get(cliente, cenario).json()
+    assert corpo["holdings"]["positions"] == []
+    assert corpo["unavailable_sections"] == ["holdings"]
+    assert corpo["limits"] == [fundos.LIMITE_DO_BLOCO_NAO_DISPONIVEL]
+    assert "unavailable_sections" in corpo["limits"][0]
+    assert corpo["profile"]["management_fee_pct_per_year"]["value"] == 2.0
+
+
+def test_cadastro_barrado_vai_na_lista(cliente, cenario, monkeypatch):
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_so_com("carteiras_dos_fundos"))
+    corpo = _get(cliente, cenario, assumed_return=0.08).json()
+    assert "profile" not in corpo and "fee_cost" not in corpo
+    assert _codigos(corpo)
+    assert corpo["unavailable_sections"] == ["profile", "fee_cost"]
+
+
+def test_custo_derivado_barrado_vai_na_lista_so_quando_pedido(
+    cliente, cenario, monkeypatch
+):
+    def regras():
+        return dataclasses.replace(
+            _regras_dos_fundos(), so_como_publicado=frozenset({"cvm-cadastros"})
+        )
+
+    monkeypatch.setattr(rotas, "regras_da_api", regras)
+    pedido = _get(cliente, cenario, assumed_return=0.08).json()
+    assert pedido["unavailable_sections"] == ["fee_cost"]
+    # sem `assumed_return` o custo não foi pedido: não é "não disponível"
+    assert _get(cliente, cenario).json()["unavailable_sections"] == []
+
+
+def test_duas_organizacoes_so_a_do_contrato_ve_a_lista(banco, monkeypatch, pasta):
+    # a do contrato de `funds`, sem as carteiras prontas, recebe a lista; a outra (só `financials`), 404 sem ela
+    ator = aj.admin(banco)
+    com = aj.organizacao(banco, ator)
+    chave_com = aj.chave(banco, ator, com)
+    aj.contrato(banco, ator, com, conjunto="funds")
+    sem = aj.organizacao(banco, ator)
+    chave_sem = aj.chave(banco, ator, sem)
+    aj.contrato(banco, ator, sem, conjunto="financials")
+    monkeypatch.setattr(rotas, "regras_da_api", _regras_so_com("cadastro_de_fundos"))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    deu = cliente.get(ROTA, headers=aj.bearer(chave_com.valor))
+    assert deu.status_code == 200
+    assert deu.json()["unavailable_sections"] == ["holdings"]
+    negou = cliente.get(ROTA, headers=aj.bearer(chave_sem.valor))
+    assert negou.status_code == 404
+    assert negou.json() == {"detail": "not_available"}
+
+
 # ---------------------------------------------------------------- o que não sai
+
+
+def test_informes_do_fii_e_do_fip_saem_na_rota_do_fundo_como_eram_no_dia(
+    cliente, cenario, pasta
+):
+    informes.gravar(pasta, informes.FII, informes._fii())
+    informes.gravar(pasta, informes.FIP, informes._fip())
+    corpo = _get(cliente, cenario, known_at="2025-06-30").json()
+    reportes = corpo["fund_reports"]
+    mensal = reportes["reit_monthly_report"]["items"]
+    assert [i["reference_period"]["value"] for i in mensal] == [
+        "2025-05-01",
+        "2025-04-01",
+    ]
+    assert [i["net_assets"]["value"] for i in mensal] == [120.0, 110.0]
+    assert mensal[0]["net_assets"]["published_at"] == "2025-06-15"
+    assert reportes["private_equity_fund_report"]["found"] is True
+    assert "12345678000199" not in str(
+        corpo
+    )  # o CNPJ da administradora: a trava do nome
+    assert corpo["unavailable_sections"] == []
+    hoje = _get(cliente, cenario).json()["fund_reports"]["reit_monthly_report"]["items"]
+    assert hoje[0]["net_assets"]["value"] == 999.0  # a reapresentação, já pública hoje
+
+
+def test_informes_sem_prontidao_nao_aparecem_nem_na_lista_dos_nao_disponiveis(
+    cliente, cenario, pasta, monkeypatch
+):
+    """Bloco fechado não vaza pelo nome: os informes fechados não entram em `unavailable_sections`."""
+    informes.gravar(pasta, informes.FII, informes._fii())
+    monkeypatch.setattr(
+        rotas, "regras_da_api", _regras_so_com(*TABELAS_DOS_FUNDOS, informes=False)
+    )
+    corpo = _get(cliente, cenario).json()
+    assert "fund_reports" not in corpo
+    assert corpo["unavailable_sections"] == []
+    assert "fund_reports" not in str(corpo)
+    assert "reit_monthly_report" not in str(corpo)
 
 
 def test_fundo_inexistente_e_fundo_negado_dao_o_mesmo_404(cliente, cenario, banco):
@@ -441,3 +563,18 @@ def test_lote_que_passa_da_quota_volta_inteiro(cliente, cenario, banco):
     assert resposta.status_code == 429
     assert resposta.json() == {"detail": "monthly_quota_exceeded"}
     assert _pedidos_do_mes(banco, org) == 10_000 - 1
+
+
+@pytest.fixture
+def cadastro_com_data_em_texto(monkeypatch):
+    """O cadastro como chegou no VPS (linha 792): `DT_REG` em texto, uma data boa e uma ruim."""
+    modelo = _cadastro().astype({"DT_REG": "object"})
+    modelo["DT_REG"] = ["2015-01-01", "lixo"]
+    monkeypatch.setattr(sys.modules[__name__], "_cadastro", lambda: modelo)
+
+
+@pytest.mark.usefixtures("cadastro_com_data_em_texto")
+@pytest.mark.parametrize("fundo", [FUNDO, OUTRO])
+def test_dt_reg_em_texto_nunca_da_500(cliente, cenario, fundo):
+    resposta = _get(cliente, cenario, f"/data/v1/funds/{fundo}", known_at="2025-01-01")
+    assert resposta.status_code in (200, 404)

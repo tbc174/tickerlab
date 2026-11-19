@@ -531,6 +531,23 @@ def tabela_das_citacoes(notas: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def ligacoes(partes: pd.DataFrame, como_era_em: object) -> pd.DataFrame:
+    """Cada processo de cada companhia uma vez: a primeira comunicação que o liga a ela (o dia em
+    `disponivel_em` e o polo dela nessa comunicação), só com o que era público em `como_era_em`."""
+    dia = pd.Timestamp(como_era_em)
+    da_companhia = partes[
+        (partes["tipo_parte"] == COMPANHIA)
+        & partes["cnpj"].notna()
+        & (pd.to_datetime(partes["disponivel_em"]) <= dia)
+    ]
+    return (
+        da_companhia.assign(disponivel_em=pd.to_datetime(da_companhia["disponivel_em"]))
+        .sort_values("disponivel_em", kind="stable")
+        .drop_duplicates(["cnpj", "numero_processo"])
+        .reset_index(drop=True)
+    )
+
+
 def contagens(
     partes: pd.DataFrame,
     dos_processos: pd.DataFrame,
@@ -540,8 +557,8 @@ def contagens(
     """Por companhia e por ano: quantos processos, em que polo, de que ramo e quantos citados nas
     notas da DFP, só com o que era público em `como_era_em`.
 
-    O processo conta no ano da primeira comunicação que o liga à companhia, com o polo dela nessa
-    comunicação; citado é o que a própria companhia citou numa DFP entregue até o dia."""
+    O processo conta no ano da primeira comunicação que o liga à companhia (`ligacoes`), com o polo
+    dela nessa comunicação; citado é o que a própria companhia citou numa DFP entregue até o dia."""
     dia = pd.Timestamp(como_era_em)
     ramos = sorted(set(tpu.RAMOS.values()))
     contados = [
@@ -552,36 +569,27 @@ def contagens(
         "sem_ramo",
         "citados_na_dfp",
     ]
-    da_companhia = partes[
-        (partes["tipo_parte"] == COMPANHIA)
-        & partes["cnpj"].notna()
-        & (pd.to_datetime(partes["disponivel_em"]) <= dia)
-    ]
-    if da_companhia.empty:
+    ligadas = ligacoes(partes, dia)
+    if ligadas.empty:
         return pd.DataFrame(columns=["cnpj", "ano", *contados])
-    ligacoes = (
-        da_companhia.assign(disponivel_em=pd.to_datetime(da_companhia["disponivel_em"]))
-        .sort_values("disponivel_em", kind="stable")
-        .drop_duplicates(["cnpj", "numero_processo"])
-        .merge(
-            dos_processos[["numero_processo", "ramo"]], on="numero_processo", how="left"
-        )
+    ligadas = ligadas.merge(
+        dos_processos[["numero_processo", "ramo"]], on="numero_processo", how="left"
     )
     citados = citacoes[pd.to_datetime(citacoes["disponivel_em"]) <= dia]
     ja_citados = set(zip(citados["cnpj"], citados["numero_processo"], strict=True))
-    ligacoes = ligacoes.assign(
-        ano=ligacoes["disponivel_em"].dt.year,
+    ligadas = ligadas.assign(
+        ano=ligadas["disponivel_em"].dt.year,
         processos=True,
-        como_autora=ligacoes["polo"] == POLOS["A"],
-        como_re=ligacoes["polo"] == POLOS["P"],
-        **{ramo: ligacoes["ramo"] == ramo for ramo in ramos},
-        sem_ramo=ligacoes["ramo"].isna(),
+        como_autora=ligadas["polo"] == POLOS["A"],
+        como_re=ligadas["polo"] == POLOS["P"],
+        **{ramo: ligadas["ramo"] == ramo for ramo in ramos},
+        sem_ramo=ligadas["ramo"].isna(),
         citados_na_dfp=[
             par in ja_citados
-            for par in zip(ligacoes["cnpj"], ligacoes["numero_processo"], strict=True)
+            for par in zip(ligadas["cnpj"], ligadas["numero_processo"], strict=True)
         ],
     )
-    return ligacoes.groupby(["cnpj", "ano"])[contados].sum().astype(int).reset_index()
+    return ligadas.groupby(["cnpj", "ano"])[contados].sum().astype(int).reset_index()
 
 
 def montar_citacoes(pasta: Path, agora: datetime) -> dict[str, int]:

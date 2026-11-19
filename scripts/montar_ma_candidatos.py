@@ -8,6 +8,8 @@ fatos relevantes, comunicados e editais de OPA candidatos (`base/ma_ipe.py`). Sa
 `<TICKERLAB_ACERVO>/base/ma/candidatos/candidatos.parquet`, com manifesto (só regrava o que mudou).
 Feita para o servidor de casa (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR
 0055). Saída 0 tudo certo.
+
+Roda: cron de casa pelo montar-ma-candidatos.sh (todo dia às 8h50); citado em dicionario.py.
 """
 
 import argparse

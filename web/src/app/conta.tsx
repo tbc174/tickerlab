@@ -6,6 +6,7 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useR
 import { NavLink } from "react-router";
 import { conteudoDoApp, paginasDoApp, planos } from "../conteudo";
 import { URL_DO_SITE } from "../site/textos";
+import { ENDERECO_DA_ADMINISTRACAO, TITULO_DA_ADMINISTRACAO } from "./administracao";
 import { linkDoClassico } from "./classico";
 import { ErroDaApi, SESSAO, pedir } from "./api";
 import { BaixarMeusDados } from "./BaixarMeusDados";
@@ -355,6 +356,12 @@ export function ContaNoTopo() {
               {pagina.titulo}
             </NavLink>
           ))}
+          {/* só um atalho: a rota confere o administrador no servidor, a cada pedido */}
+          {conta.eu.administrador ? (
+            <NavLink to={`/${ENDERECO_DA_ADMINISTRACAO}`} onClick={fechar}>
+              {TITULO_DA_ADMINISTRACAO}
+            </NavLink>
+          ) : null}
         </div>
       </details>
       <button type="button" className="botao pequeno" onClick={conta.sair}>

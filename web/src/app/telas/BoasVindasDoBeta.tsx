@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import type { BoasVindasDoBetaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const SEM_PARAMETROS = {};
 
@@ -17,7 +17,7 @@ export function BoasVindasDoBeta({ pagina }: { pagina: PaginaDoApp }) {
       </p>
     );
   }
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   const dados = pedido.dados;
   return (
     <section>

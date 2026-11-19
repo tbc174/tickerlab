@@ -80,6 +80,7 @@ Fluxo: **mexo nos arquivos, `git status` (o que mudou?), `git add` (separo o que
 - **Como usar:** `git switch main`, depois `git merge feat/app-inicial`. Se a `main` não mudou desde que a branch nasceu, é **fast-forward**: a `main` só avança, sem commit extra.
 - **Depois:** `git push` e `git branch -d feat/app-inicial` (o `-d` minúsculo só apaga se já foi juntada; evite o `-D`).
 - **Cuidado:** se aparecer `CONFLICT`, parar e pedir ajuda antes de mexer nos arquivos.
+- **Cuidado (TickerLab):** aqui ninguém mescla na `main` local nem faz `push` nela: o ramo entra por PR com CI verde (`AGENTS.md`, "Git e GitHub"); a receita acima é só o conceito. Desde 05/11/2026 o GitHub apaga o ramo remoto ao mesclar; o local e a cópia (`git worktree remove`) saem no `/fechar-tarefa`.
 - **Data:** 10/10/2026
 
 ### `git push` e as issues do GitHub

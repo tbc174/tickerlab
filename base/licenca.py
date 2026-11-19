@@ -58,21 +58,29 @@ FAMILIA_DO_ENDERECO = {
     "arquivos.receitafederal.gov.br/": "rfb-cnpj",
     "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
+    "ftp.datasus.gov.br/": "ms",  # SIH RD e SIA PA por competência (`scripts/carga_sus.py`, linha 698)
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
     "comunicaapi.pje.jus.br/": "djen",
     "gateway.cloud.pje.jus.br/tpu/": "cnj",
+    "api-publica.datajud.cnj.jus.br/": "datajud",  # só uso interno (`coletas.FONTES_SO_INTERNAS`)
     "dadosabertos-download.cgu.gov.br/": "transparencia",
     "dadosabertos.bndes.gov.br/": "bndes",
     "download.finep.gov.br/": "finep",
     "dadosabertos.inss.gov.br/": "inss",
     "dadosabertos.ibama.gov.br/": "ibama",
+    "www.gov.br/trabalho-e-emprego/pt-br/servicos/empregador/programa-de-alimentacao-do-trabalhador-pat/": "mte-pat",
     "www.gov.br/trabalho-e-emprego/": "mte",
     "api.gleif.org/": "gleif",
     "dadosabertos.ccee.org.br/": "ccee",
     "dados.antt.gov.br/": "antt",
     "www.gov.br/anp/": "anp",
+    # conferência de 14/11/2026 (linha 904): conjuntos sem licença própria lida, a confirmar
+    "www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-tancagem-do-abastecimento-nacional-de-combustiveis/": "anp-tancagem",
+    "dadosabertos.anm.gov.br/TAH/": "anm-tah",
+    "www.anatel.gov.br/dadosabertos/paineis_de_dados/acompanhamento_e_controle/gestao_de_pados": "anatel-pados",
+    "www.anatel.gov.br/dadosabertos/paineis_de_dados/certificacao_de_produtos/": "anatel-homologados",
     "sistemas.anac.gov.br/": "anac",
     "dadosabertos.ans.gov.br/": "ans",
     "dados.ons.org.br/": "ons",
@@ -99,13 +107,26 @@ FAMILIA_DO_ENDERECO = {
     "sistemas.tce.pe.gov.br/DadosAbertos": "tce-pe",  # contratos e aditivos (linha 652)
     "transparencia.tce.sp.gov.br/": "tce-sp",  # despesas por fornecedor CNPJ (linha 652)
     "dadosabertos.tce.ce.gov.br/": "tce-ce",  # contratos do SIM (linha 652)
+    "api-dados-abertos.tce.ce.gov.br/": "tce-ce",  # o SIM que responde (linha 682)
     "dadosabertos.go.gov.br/": "goias",  # licenças do Ipê (linha 658)
-    "dados.ms.gov.br/": "msestado",  # despesas por credor (linha 658)
+    "www.dados.ms.gov.br/": "msestado",  # despesas por credor (linhas 658 e 688)
+    "dados.ms.gov.br/": "msestado",
+    "dados.es.gov.br/": "esdados",  # ordem cronológica de pagamentos do ES (linha 755)
+    "dados.pe.gov.br/": "sefazpe",  # benefícios fiscais da SEFAZ-PE (linha 578)
+    "listadevedores.sefa.pr.gov.br/": "sefapr",  # dívida ativa do Paraná (linha 755)
+    "www.fazenda.mg.gov.br/transparencia/Divida-Ativa/": "sefmg",  # dívida ativa de Minas (linha 755)
     "dados.prefeitura.sp.gov.br/": "spcapital",  # extrato de contratos (linha 658)
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
     "www.gov.br/conab/": "conab",
+    # fontes pouco visíveis (ADR 0124): FDCO da Sudeco, FDA da Sudam e PDFs de dívida documental
+    "www.gov.br/sudeco/": "sudeco",
+    "www.gov.br/sudam/": "sudam",
+    "auniao.pb.gov.br/": "divida",
+    "digital.jornaldocomercio.com/": "divida",
+    "ecoagro.agr.br/": "divida",
+    "fnet.bmfbovespa.com.br/": "divida",
     "apps.fas.usda.gov/": "usda",
     "bulks-faostat.fao.org/": "faostat",
     "www.fao.org/": "faostat",

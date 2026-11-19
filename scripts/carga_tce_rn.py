@@ -19,6 +19,8 @@ esta carga os lê com o Python em modo isolado (`python -I`).
 
 Licença a confirmar, só uso interno (ADR 0102, Emenda 2); nada é perguntado à fonte. Recusa rodar sem a
 versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 arquivo faltando.
+
+Roda: outro script (carga_go_ms_sp.py, carga_tces.py).
 """
 
 import argparse

@@ -24,6 +24,8 @@ formato antes de o Tiago autorizar a remontagem (ADR 0101, nível 1).
 Versão antiga que falta não vaza o futuro: o documento só aparece a partir da versão que a base tem.
 A base fica com um buraco, e o relatório conta quantas faltaram. Feita para o servidor de casa ou o
 PC (ADR 0031): no ano inteiro, a memória passa de 1 GB.
+
+Roda: manual no servidor (registro na pasta privada); outro script (montar_modelo_8.py).
 """
 
 import argparse

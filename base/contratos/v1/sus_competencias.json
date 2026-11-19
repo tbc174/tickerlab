@@ -1,0 +1,80 @@
+{
+  "tabela": "sus_competencias",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Competência olhada, no formato AAAAMM",
+      "unidade": "número inteiro"
+    },
+    "uf": {
+      "descricao": "UF olhada",
+      "unidade": "texto"
+    },
+    "sistema": {
+      "descricao": "`sih` ou `sia`",
+      "unidade": "texto"
+    },
+    "arquivos": {
+      "descricao": "Nomes dos DBC lidos no FTP, separados por vírgula",
+      "unidade": "texto"
+    },
+    "sha256": {
+      "descricao": "SHA-256 de cada DBC, na ordem de `arquivos`",
+      "unidade": "texto"
+    },
+    "registros": {
+      "descricao": "Quantas linhas dos DBC foram somadas",
+      "unidade": "número inteiro"
+    },
+    "estabelecimentos": {
+      "descricao": "Quantos estabelecimentos saíram na tabela",
+      "unidade": "número inteiro"
+    },
+    "suprimidos": {
+      "descricao": "Quantos saíram com os números vazios",
+      "unidade": "número inteiro"
+    },
+    "fora_pessoa_fisica": {
+      "descricao": "Quantos ficaram fora por serem de pessoa física (CPF)",
+      "unidade": "número inteiro"
+    },
+    "fora_sem_cnpj": {
+      "descricao": "Quantos ficaram fora por não terem CNPJ nenhum",
+      "unidade": "número inteiro"
+    },
+    "fora_sem_cnes": {
+      "descricao": "Linhas do DBC sem código do estabelecimento, que não se somam",
+      "unidade": "número inteiro"
+    },
+    "situacao": {
+      "descricao": "`com_dados` ou `vazia`. `vazia` é o DATASUS ainda não ter publicado a competência",
+      "unidade": "texto"
+    },
+    "coletado_em": {
+      "descricao": "Dia em que a competência foi vista com essa situação",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "sistema",
+    "competencia",
+    "uf"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "coletado_em"
+  },
+  "sinonimos_de_tempo": {
+    "competencia": "referencia",
+    "coletado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-06",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (a coleta olha as competências recentes; as gravadas não mudam sem dado novo)",
+  "atraso": "O DATASUS publica a competência por volta de dois meses depois e reprocessa as anteriores: a competência vale desde o dia em que a coleta a viu (`disponivel_em`), e o reprocesso que muda um número vira versão nova com a data nova"
+}

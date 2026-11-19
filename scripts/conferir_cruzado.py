@@ -5,6 +5,8 @@
 Lê a base **só pela porta** (`base.porta`), compara cada par de `base/cruzada.py::PARES`, grava
 `<acervo>/placar/<dia>/cruzada.json` e imprime uma linha por par. Divergência sem explicação em
 `base/conferidas/divergencias_explicadas.csv` sai com 1 e uma linha `FALHAS: ...` (o Kuma lê). Só lê a base.
+
+Roda: manual (python -m scripts.conferir_cruzado); citado em cruzada.py.
 """
 
 import argparse
@@ -57,6 +59,20 @@ COLUNAS_DA_DFP = [
     "valor",
 ]
 BRASILIA = ZoneInfo("America/Sao_Paulo")
+PASTA_DAS_AMOSTRAS = Path(__file__).resolve().parent.parent / "base" / "conferidas"
+AMOSTRA_DO_ENET = PASTA_DAS_AMOSTRAS / "amostra_enet.csv"
+# documento -> (lista sorteada, contas lidas do ENET); o `scripts/conferir_enet.py` grava os dois
+AMOSTRAS_DO_ENET = {
+    "DFP": (AMOSTRA_DO_ENET, "enet_amostra.csv.gz"),
+    "ITR": (PASTA_DAS_AMOSTRAS / "amostra_enet_itr.csv", "enet_amostra_itr.csv.gz"),
+}
+
+
+def acervo_placar() -> Path:
+    pasta = acervo.pasta_do_acervo()
+    if pasta is None:
+        raise KeyError("o acervo está desligado")
+    return pasta / "placar"
 
 
 def _tabelas_da_selic(p: porta.Porta, dia: str) -> dict[str, pd.DataFrame]:
@@ -91,9 +107,59 @@ def _tabelas_dos_bancos(p: porta.Porta, dia: str) -> dict[str, pd.DataFrame]:
     }
 
 
+def _chave_da_versao(cnpj: pd.Series, referencia: pd.Series) -> list[tuple[str, str]]:
+    """Companhia e data-base: no ITR a mesma companhia entra na amostra em mais de um trimestre."""
+    datas = pd.to_datetime(referencia).dt.strftime("%Y-%m-%d")
+    return list(zip(cnpj, datas, strict=True))
+
+
+def _tabelas_do_enet(
+    p: porta.Porta, dia: str, documento: str = "DFP"
+) -> dict[str, pd.DataFrame]:
+    """A amostra sorteada: nossa leitura da versão sorteada e o que o ENET trouxe (`scripts/conferir_enet.py`)."""
+    lista, nome_do_arquivo = AMOSTRAS_DO_ENET[documento]
+    amostra = pd.read_csv(lista, dtype=str)
+    arquivo = acervo_placar() / nome_do_arquivo
+    if not arquivo.exists():
+        raise KeyError(
+            f"falta o ENET da amostra ({arquivo.name}); rode scripts.conferir_enet baixar"
+        )
+    nossa = p.ler(
+        "demonstracoes_como_era",
+        como_era_em=dia,
+        filtros={
+            "cnpj": sorted(set(amostra["cnpj"])),
+            "documento": documento,
+            "referencia": sorted(
+                {pd.Timestamp(d).date() for d in amostra["referencia"]}
+            ),
+        },
+        colunas=COLUNAS_DA_DFP + ["inicio", "fim", "versao"],
+    )
+    versoes = dict(
+        zip(
+            _chave_da_versao(amostra["cnpj"], amostra["referencia"]),
+            amostra["versao"].astype(int),
+            strict=True,
+        )
+    )
+    sorteada = pd.Series(
+        _chave_da_versao(nossa["cnpj"], nossa["referencia"]), index=nossa.index
+    ).map(versoes)
+    nossa = nossa[nossa["versao"] == sorteada]
+    return {
+        "demonstracoes_como_era": nossa,
+        "enet_amostra": pd.read_csv(arquivo, dtype={"cnpj": str}),
+    }
+
+
 def tabelas_do_par(p: porta.Porta, par: Par, dia: str) -> dict[str, pd.DataFrame]:
     if par.nome.startswith("selic"):
         return _tabelas_da_selic(p, dia)
+    if par.nome.startswith("dfp_enet"):
+        return _tabelas_do_enet(p, dia, "DFP")
+    if par.nome.startswith("itr_enet"):
+        return _tabelas_do_enet(p, dia, "ITR")
     return _tabelas_dos_bancos(p, dia)
 
 
@@ -138,6 +204,8 @@ def main(argv: list[str] | None = None) -> int:
             f"{r.diferentes} diferentes ({r.sem_explicacao} sem explicação), "
             f"só A {r.so_em_a}, só B {r.so_em_b}"
         )
+        if r.informativo:
+            print(f"  INFORMATIVO (fora da exigência 6): {r.informativo}")
     print(f"gravado em {gravar(args.dia, relatorios)}")
     vermelhos = [
         f"{r.par} ({r.sem_explicacao} sem explicação)" for r in relatorios if r.vermelho

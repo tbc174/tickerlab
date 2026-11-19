@@ -61,9 +61,8 @@ def test_toda_fonte_do_lote_tem_licenca_marca_e_data_dos_termos(fonte):
     assert not licenca_da_fonte(fonte).startswith("Desconhecida")
     familia = fonte.split("-", 1)[0]
     assert registro.TERMOS_LIDOS_EM[familia] >= date(2026, 10, 18)
-    # só a SEC escreve o que publica (arquivos das empresas): uso interno; o resto é obra da agência
-    esperada = Marca.USO_INTERNO if familia == "sec" else Marca.VENDAVEL
-    assert marca_da_fonte(fonte) == esperada
+    # a SEC (arquivos das empresas) é vendável por risco assumido (ADR 0122); o resto é obra da agência
+    assert marca_da_fonte(fonte) == Marca.VENDAVEL
 
 
 def test_paginas_de_termos_das_agencias_sao_vigiadas():

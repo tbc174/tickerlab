@@ -8,11 +8,13 @@ from pathlib import Path
 
 import pytest
 import requests
+import sqlalchemy as sa
 
 from scripts import atualizar_series_ibge as coletor
 from src import ibge_sidra
 from src.banco import series as acervo_de_series
 from src.banco.coletas import licenca_da_fonte, ultimas
+from src.banco.modelo import series
 
 EXEMPLOS = Path(__file__).resolve().parent.parent / "dados_de_exemplo" / "ibge"
 CABECALHO = [{"NC": "Nível Territorial (Código)", "V": "Valor"}]
@@ -22,6 +24,10 @@ ARQUIVO_DA_TABELA = {
     8880: "pmc_volume.json",
     8888: "pimpf_secoes.json",
     7060: "ipca_cafe.json",
+    5932: "pib_taxas.json",
+    1092: "abate_bovinos.json",
+    1086: "leite_uf.json",
+    6381: "pnad_desocupacao.json",
 }
 LSPA_MG_ARABICA_PRODUCAO = "ibge-sidra-6588-35-arabica-uf31"
 
@@ -261,3 +267,60 @@ def test_pedido_da_pam_municipal_cabe_no_limite_do_sidra():
     blocos = coleta._blocos("2010-2026", coleta.territorios[0])
     maior = max(int(b.split("-")[1]) - int(b.split("-")[0]) + 1 for b in blocos)
     assert maior * por_ano <= ibge_sidra.VALORES_POR_PEDIDO_NO_SIDRA
+
+
+# --- lote 2: trimestral e PNAD (linha 392) --------------------------------------------------------
+def _datas(banco, codigo: str, formato: str) -> list[str]:
+    with banco.connect() as conexao:
+        serie = acervo_de_series.como_estava_em(conexao, codigo, date(2026, 12, 31))
+    return list(serie.index.strftime(formato))
+
+
+def test_trimestre_grava_no_ultimo_dia_dele_e_nao_no_mes_de_mesmo_numero(banco):
+    _coletar(banco, HOJE)
+    datas = _datas(banco, "ibge-sidra-1092-284-115236-992-118225-br", "%Y-%m-%d")
+    assert datas == ["2026-03-31", "2026-06-30"]
+
+
+def test_trimestre_que_ainda_nao_acabou_nao_entra(banco):
+    # em 15/05 o 1º trimestre acabou (31/03), o 2º (30/06) não
+    _coletar(banco, date(2026, 5, 15))
+    datas = _datas(banco, "ibge-sidra-1092-284-115236-992-118225-br", "%Y-%m-%d")
+    assert datas == ["2026-03-31"]
+
+
+def test_pnad_grava_o_mes_em_que_o_trimestre_movel_termina(banco):
+    _coletar(banco, HOJE)
+    assert _datas(banco, "ibge-sidra-6381-4099-0-br", "%Y-%m") == [
+        "2026-07", "2026-08", "2026-09",
+    ]  # fmt: skip
+    with banco.connect() as conexao:
+        nome = conexao.execute(
+            sa.select(series.c.nome).where(
+                series.c.codigo == "ibge-sidra-6381-4099-0-br"
+            )
+        ).scalar_one()
+    assert "trimestre móvel terminado em" in nome
+
+
+def test_periodo_da_coleta_trimestral_vai_desde_2010_e_depois_so_a_janela():
+    coleta = ibge_sidra.COLETAS_POR_NOME["abate-bovinos"]
+    assert coletor.periodo_da_coleta(coleta, HOJE, primeira_vez=True) == "201001-202604"
+    # 24 meses antes de 19/10/2026 é 10/2024: o 4º trimestre de 2024
+    assert (
+        coletor.periodo_da_coleta(coleta, date(2026, 10, 19), primeira_vez=False)
+        == "202404-202604"
+    )
+
+
+def test_periodo_da_coleta_no_primeiro_mes_do_trimestre():
+    coleta = ibge_sidra.COLETAS_POR_NOME["pib-taxas"]
+    assert (
+        coletor.periodo_da_coleta(coleta, date(2027, 1, 5), primeira_vez=True)
+        == "201001-202701"
+    )
+
+
+def test_periodo_da_pnad_continua_mensal():
+    coleta = ibge_sidra.COLETAS_POR_NOME["pnad-desocupacao"]
+    assert coletor.periodo_da_coleta(coleta, HOJE, primeira_vez=True) == "201001-202610"

@@ -16,6 +16,9 @@ pessoas, e a vista ainda não sabe quem é um e quem é outro), os contatos, o m
 situação especial (sinal negativo de MEI e EI, regra 3.7), a CNAE secundária e o `id_pessoa` (o pseudônimo
 não sai de casa). A coluna `id_pessoa` vai vazia, para `base.pessoas.consulta.socios_da_empresa` ler a vista
 como lê a base.
+
+Roda: manual (python -m scripts.montar_vista_do_cnpj); coberto por test_busca_por_cnpj_fechadas.py;
+citado em vista_do_cnpj.py.
 """
 
 import argparse

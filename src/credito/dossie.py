@@ -31,7 +31,7 @@ from datetime import date
 from typing import Literal
 
 from base import cnpj as cnpj_
-from base.contrapartes.cafe import palavras_vedadas_em
+from base.palavras_vedadas import palavras_vedadas_em
 from base.rede.ids import PREFIXO_DE_PESSOA
 from src.credito.features import OlhouOFuturoError
 from src.rastro import Rastro, datas_em_texto

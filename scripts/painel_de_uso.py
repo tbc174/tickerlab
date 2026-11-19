@@ -6,6 +6,8 @@
 Só contagens (ativos por semana, relatórios gerados, PDFs entregues); nenhum e-mail aparece.
 Roda no servidor, uma vez por semana; a sessão da Diretoria grava a saída na Central
 (`ArtifactData`, ver `central-tickerlab.md`). Não mexe no banco (só lê).
+
+Roda: cron do VPS pelo painel-de-uso.sh (toda segunda às 8h45).
 """
 
 import argparse

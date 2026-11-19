@@ -1,5 +1,5 @@
 """Incentivos por CNPJ (linha 525 da fila; Ficha Clara, etapa 4b): as três coletas da etapa 4a
-(`base/arquivo/fontes.py`) em três tabelas.
+(`base/arquivo/fontes.py`) em três tabelas, mais os benefícios fiscais de Pernambuco (linha 578).
 
 - `mme_reidi`: projetos de energia enquadrados no REIDI (MME), com a portaria, as datas e os valores.
   Um retrato do cadastro a cada vez (o motor de `base/retratos.py`), como as licenças.
@@ -9,6 +9,10 @@
   só dele: a ANEEL pode republicar o mês corrigido, e a correção vira linha nova.
 - `bcb_rde_ied`: os registros de investimento estrangeiro direto (BC, RDE-IED) pelo CNPJ básico da
   empresa que recebeu (a fonte só dá a raiz, 8 caracteres), de nov/2011 a dez/2022.
+- `sefaz_pe_beneficios`: os benefícios fiscais estaduais da SEFAZ-PE (PRODEPE, PEAP, máquinas pesadas...)
+  por CNPJ, com o CACEPE e o prazo (`vigencia_inicio`, `vigencia_fim`). Um Parquet por ano da fonte
+  (`arquivo` diz o ano); a razão social nunca entra (a coleta a tira: firma individual tem nome de
+  pessoa) e o prazo prorrogado vira linha nova.
 
 Lê os arquivos que o arquivista já guardou (não baixa nada).
 
@@ -62,10 +66,12 @@ MESES = (
 FONTE_DO_REIDI = "mme-reidi"
 FONTE_DA_CDE = "aneel-cde"
 FONTE_DO_RDE = "bcb-rde-ied"
+FONTE_DA_PE = "sefazpe-beneficios"
 TABELA_DO_REIDI = "mme_reidi"
 TABELA_DA_CDE = "aneel_cde"
 TABELA_DO_RDE = "bcb_rde_ied"
-TABELAS = (TABELA_DO_REIDI, TABELA_DA_CDE, TABELA_DO_RDE)
+TABELA_DA_PE = "sefaz_pe_beneficios"
+TABELAS = (TABELA_DO_REIDI, TABELA_DA_CDE, TABELA_DO_RDE, TABELA_DA_PE)
 
 _CARIMBOS = ["consta", "trata_como_pessoa", "visto_em", "disponivel_em"]
 TEXTOS_DO_REIDI = [
@@ -97,7 +103,14 @@ COLUNAS_DA_CDE = [
 ]  # fmt: skip
 TEXTOS_DO_RDE = ["codigo_rde", "uf", "pais", "ocorrencia"]
 COLUNAS_DO_RDE = ["id_na_fonte", "cnpj_basico", *TEXTOS_DO_RDE, "mes", *_CARIMBOS]
+TEXTOS_DA_PE = ["programa", "cacepe"]
+DATAS_DA_PE = ["vigencia_inicio", "vigencia_fim"]
+COLUNAS_DA_PE = [
+    "arquivo", "id_na_fonte", "cnpj", "cnpj_basico", *TEXTOS_DA_PE, *DATAS_DA_PE, *_CARIMBOS,
+]  # fmt: skip
 ORDEM = ["id_na_fonte", "visto_em"]
+ANO_NO_NOME_DA_PE = re.compile(r"(\d{4})_?\.csv$")
+FORMATO_DA_DATA_DA_PE = "%Y/%m/%d"  # a fonte escreve "2010/08/04 00:00:00.000"
 
 _REIDI = {
     "processo": "Processo",
@@ -145,6 +158,14 @@ _RDE = {
     "ocorrencia": "Ocorrencia",
 }
 CHAVE_DO_RDE = ["codigo_rde", "ocorrencia", "mes", "pais"]
+# a coleta da SEFAZ-PE guarda só estas colunas (`lote_sefaz_pe.COLUNAS_GUARDADAS`); a razão social não
+_PE = {
+    "programa": "programa",
+    "cnpj": "cnpj",
+    "cacepe": "cacepe",
+    "vigencia_inicio": "termo_inicial",
+    "vigencia_fim": "termo_final",
+}
 
 
 def _reais(texto: pd.Series) -> pd.Series:
@@ -309,6 +330,67 @@ def ler_cde(caminho: Path, mensal: bool) -> tuple[pd.DataFrame, dict[str, int]]:
     return tabela, {"linhas": linhas, "cnpj_invalido": invalidos}
 
 
+# SEFAZ-PE
+
+
+def ano_da_pe(url: str) -> str:
+    """O ano do arquivo da SEFAZ-PE pelo fim do endereço ("beneficios_fiscais_2025_.csv" → "2025")."""
+    achado = ANO_NO_NOME_DA_PE.search(url.rstrip("/").rsplit("/", 1)[-1].lower())
+    if achado is None:
+        raise ValueError(f"{url}: sem o ano no nome do arquivo da SEFAZ-PE")
+    return achado.group(1)
+
+
+def _data_da_pe(texto: pd.Series) -> pd.Series:
+    """ "2010/08/04 00:00:00.000" em data; vazio e data impossível ficam nulos."""
+    return pd.to_datetime(texto.str[:10], format=FORMATO_DA_DATA_DA_PE, errors="coerce")
+
+
+def ler_pe(caminho: Path) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Os benefícios de CNPJ inteiro de um arquivo da SEFAZ-PE e a contagem do que ficou de fora.
+
+    A identidade do benefício é o programa, o CNPJ, o CACEPE e o início do prazo: a prorrogação (o fim
+    do prazo mudar) é o mesmo benefício com valor novo, não outro.
+    """
+    pedacos = list(_csv(caminho, UTF8, set(_PE.values())))
+    bruta = (
+        pd.concat(pedacos, ignore_index=True)
+        if pedacos
+        else pd.DataFrame(columns=list(_PE.values()), dtype=str)
+    )
+    nossas = pd.DataFrame(
+        {c: bruta.get(f, pd.Series("", index=bruta.index)) for c, f in _PE.items()}
+    )
+    cnpj, valido = _cnpjs_validos(nossas["cnpj"])
+    nossas = nossas[valido.to_numpy()].assign(cnpj=cnpj[valido])
+    inicio = _data_da_pe(nossas["vigencia_inicio"])
+    nossas = nossas.assign(
+        vigencia_inicio=inicio,
+        vigencia_fim=_data_da_pe(nossas["vigencia_fim"]),
+        inicio_em_texto=inicio.dt.strftime("%Y-%m-%d").fillna(""),
+    )
+    nossas["id_na_fonte"] = motor.chave(
+        nossas, ["programa", "cnpj", "cacepe", "inicio_em_texto"]
+    )
+    repetido = nossas["id_na_fonte"].duplicated(keep="first")
+    nossas = nossas[~repetido]
+    pronta = pd.DataFrame(
+        {
+            "id_na_fonte": nossas["id_na_fonte"],
+            "cnpj": nossas["cnpj"].map(cnpjs.formatar),
+            "cnpj_basico": nossas["cnpj"].str[: cnpjs.TAMANHO_DA_RAIZ],
+            **{c: motor.sem_vazio(nossas[c]) for c in TEXTOS_DA_PE},
+            **{c: nossas[c] for c in DATAS_DA_PE},
+        }
+    ).reset_index(drop=True)
+    contagem = {
+        "linhas": len(bruta),
+        "cnpj_invalido": int((~valido).sum()),
+        "id_repetido": int(repetido.sum()),
+    }
+    return pronta, contagem
+
+
 def _e_mensal(url: str) -> bool:
     return url.lower().endswith(".zip")
 
@@ -422,6 +504,17 @@ def _montagens(conexao: sa.Connection, pasta: Path) -> Iterator[tuple[str, _Mont
             [*TEXTOS_DO_RDE, "cnpj_basico", "consta"],
             COLUNAS_DO_RDE, ["mes"], {},
         )  # fmt: skip
+    # um Parquet por ano; o endereço leva o código do recurso, que o portal pode trocar: o nome do
+    # arquivo (e não o endereço) é que junta os retratos do mesmo ano
+    por_ano: dict[str, list[motor.Retrato]] = {}
+    for retrato in motor.retratos(conexao, FONTE_DA_PE):
+        por_ano.setdefault(nome_do_arquivo(retrato.url), []).append(retrato)
+    for nome, achados in por_ano.items():
+        yield nome, _Montagem(
+            pasta / TABELA_DA_PE / nome, achados, ler_pe,
+            ["vigencia_fim", "consta"],
+            COLUNAS_DA_PE, DATAS_DA_PE, {"arquivo": ano_da_pe(achados[0].url)},
+        )  # fmt: skip
 
 
 def _para_gravar(
@@ -454,10 +547,10 @@ def montar(
     pessoas: Collection[str] | np.ndarray | None = None,
     refazer: bool = False,
 ) -> dict[str, dict[str, int]]:
-    """`<pasta>/<tabela>/<arquivo>.parquet` para cada arquivo guardado das três fontes.
+    """`<pasta>/<tabela>/<arquivo>.parquet` para cada arquivo guardado das quatro fontes.
 
     O REIDI e o RDE são um Parquet cada; a CDE, um por arquivo da ANEEL (o mês ou o ano da rede
-    básica). Sem arquivo novo desde a última montagem, é pulado (`refazer` relê mesmo assim, para
+    básica); a SEFAZ-PE, um por ano. Sem arquivo novo desde a última montagem, é pulado (`refazer` relê mesmo assim, para
     código novo). `pessoas`: as raízes de pessoa já sabidas; sem elas, pergunta à Receita guardada.
     """
     resumo: dict[str, dict[str, int]] = {}

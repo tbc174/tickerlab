@@ -5,8 +5,10 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
   da fonte: uma linha por instituição, relatório, conta e coluna. O inventário de 14/10/2026 achou:
   - tipo 1 (conglomerado prudencial) desde mar/2014; tipos 2 (conglomerado financeiro) e 3
     (instituição individual) desde mar/2000; o tipo 4 (câmbio) e o relatório 15 (câmbio) ficam fora;
-  - só o prudencial tem as carteiras de crédito (relatórios 5 a 16); o financeiro e o individual têm
-    os relatórios 1 a 4 (o 5 até 2005) e respondem vazio aos outros. Medido em 14/10/2026: ~193 MB de
+  - as carteiras de crédito (relatórios 7 a 14) vêm do financeiro (tipo 2) de 06/2014 (o 9, de 09/2014)
+    a 12/2024 e do prudencial (tipo 1) desde 03/2025; o capital (5) do financeiro vai até 12/2014 e o
+    do prudencial começa em 03/2015; o individual (tipo 3) só tem os relatórios 1 a 4 e responde vazio
+    aos outros. Medido em 14/10/2026: ~193 MB de
     JSON por trimestre no prudencial e ~58 MB nos outros dois; ~50× menor em gzip no acervo;
   - em 2000, 34 linhas de total sem código de instituição (somas da fonte): ficam fora;
   - o nome da coluna vem com a letra da nota numa linha nova ("Disponibilidades \\n(a)"): vira um
@@ -24,6 +26,7 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
 """
 
 import json
+import logging
 import re
 from collections.abc import Sequence
 
@@ -32,6 +35,8 @@ import pandas as pd
 from base.cnpj import raiz as raiz_do_cnpj
 from base.fca import vale_na_data
 from base.setoriais import revisoes
+
+log = logging.getLogger(__name__)
 
 API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
 PRIMEIRO_ANO = 2000
@@ -151,7 +156,23 @@ def ler_valores(conteudo_json: bytes) -> pd.DataFrame:
         valores[coluna] = _texto_limpo(valores[coluna])
     valores["relatorio"] = valores["relatorio"].astype(int)
     valores["saldo"] = valores["saldo"].astype(float)
-    return valores.reset_index(drop=True)
+    return _sem_linhas_identicas(valores).reset_index(drop=True)
+
+
+def _sem_linhas_identicas(valores: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha de cada: a resposta da data-base 2025-09 veio com a mesma linha cerca de três vezes
+    (medido em 12/11/2026, linha 877). Só sai a linha idêntica em todas as colunas; a chave repetida
+    com valor diferente fica (não há como saber qual vale) e só entra no log, com a contagem."""
+    identicas = valores.duplicated()
+    unicas = valores[~identicas]
+    chave_repetida = int(unicas.duplicated(list(CHAVE_DOS_VALORES)).sum())
+    if identicas.any() or chave_repetida:
+        log.warning(
+            "IF.data: %d linhas idênticas tiradas da resposta; %d linhas com a chave repetida e valor diferente",
+            int(identicas.sum()),
+            chave_repetida,
+        )
+    return unicas
 
 
 def ler_cadastro(conteudo_json: bytes) -> pd.DataFrame:

@@ -2,6 +2,8 @@
 
 Uso: python -m scripts.montar_retrato_semanal <pasta das fichas do dia>
 O retrato vai para conteudo/relatorios_semanais/eletricas.json e é versionado: o site não lê o acervo.
+
+Roda: manual (python -m scripts.montar_retrato_semanal); sem uso registrado em 05/11/2026.
 """
 
 import json

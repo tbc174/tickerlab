@@ -1,0 +1,91 @@
+{
+  "tabela": "receita_transacoes_individual",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ do estabelecimento (14 caracteres, com máscara)",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "processo": {
+      "descricao": "Número do processo administrativo do acordo",
+      "unidade": "texto"
+    },
+    "data_acordo": {
+      "descricao": "Mês do acordo (a fonte só traz mês e ano; vale o dia 1)",
+      "unidade": "data (dia)"
+    },
+    "divida_transacionada": {
+      "descricao": "Dívida transacionada, em reais",
+      "unidade": "reais (R$)"
+    },
+    "reducao": {
+      "descricao": "Redução concedida sobre a dívida, em reais",
+      "unidade": "reais (R$)"
+    },
+    "divida_com_reducao": {
+      "descricao": "Dívida depois da redução, em reais",
+      "unidade": "reais (R$)"
+    },
+    "creditos_pf_bcn": {
+      "descricao": "Créditos de prejuízo fiscal e base negativa usados, em reais (vazio: nenhum)",
+      "unidade": "reais (R$)"
+    },
+    "saldo_devedor": {
+      "descricao": "Saldo devedor do acordo, em reais",
+      "unidade": "reais (R$)"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Sempre falso: a raiz de pessoa já saiu na montagem. Fica para a porta recusar uma linha que um dia vier diferente (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Dia em que o arquivo foi modificado na fonte (o `Last-Modified`), nunca antes: a fonte não diz quando cada linha foi entregue. Um arquivo regravado vale desde o dia dele",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "processo"
+  ],
+  "datas": {
+    "aconteceu_em": "data_acordo",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "data_acordo": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-07-28",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Transações da Receita: sem licença escrita; risco assumido (ADR 0122)",
+  "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
+  "pessoa": false,
+  "frequencia": "Variável (a Receita regrava o arquivo inteiro)",
+  "atraso": "A fonte publica o arquivo inteiro sem dizer quando cada linha foi entregue: tudo vale desde o dia em que a página do arquivo diz 'Atualizado em', que é o `disponivel_em`",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}

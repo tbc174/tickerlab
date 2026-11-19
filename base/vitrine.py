@@ -11,7 +11,7 @@ e a frase da tabela e o atraso perdem o que é conversa interna (código, ADR, s
 import json
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
@@ -23,20 +23,28 @@ if TYPE_CHECKING:
 
 import pandas as pd
 
+from base import cruzamentos_das_fechadas as fechadas
 from base.cnpj import normalizar_cnpj
-from base.dossie import (
-    CONTAS_DA_DRE,
-    TABELAS_SO_EM_CONTAGEM,
-    exigir_que_pode_contar,
-    exigir_que_pode_mostrar,
-)
+from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar_aberto
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
+from src.banco.coletas import (
+    FONTES_SO_INTERNAS,
+    PARENTESES_INTERNO,
+    licenca_da_fonte,
+    licenca_do_site,
+)
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da CVM", "CVM"),
     (r"do Banco Central", "Banco Central"),
     (r"assessorias de M&A", "Assessorias de M&A"),
+    # conferência de 14/11/2026: uma licença por conjunto, antes da linha geral do órgão (a 1ª que casa vale)
+    (r"^Tancagem da ANP", "ANP (tancagem)"),
+    (r"^PADOs da Anatel", "Anatel (PADOs)"),
+    (r"^Homologados da Anatel", "Anatel (homologados)"),
+    (r"^TAH da ANM", "ANM (TAH)"),
+    (r"^PAT do MTE", "MTE (PAT)"),
     (r"da ANP\b", "ANP"),
     (r"da ANAC\b", "ANAC"),
     (r"da ANTT\b", "ANTT"),
@@ -48,6 +56,10 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
     (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
     (r"TCE-PE:", "TCE-PE"),
+    (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
+    (r"Sefa-PR, dívida", "Sefa-PR"),
+    (r"Governo do ES \(citar", "Governo do ES"),
+    (r"SEF-MG, dívida", "SEF-MG"),
     (r"TCE-SP:", "TCE-SP"),
     (r"TCE-CE:", "TCE-CE"),
     (r"LicitaCon do TCE-RS", "TCE-RS"),
@@ -60,8 +72,11 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da Finep\b", "Finep"),
     (r"empregadores do MTE", "MTE"),
     (r"do IBAMA\b", "IBAMA"),
+    (r"\bINPI\b", "INPI"),
     (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
+    (r"Receita \(DIRBI", "Receita Federal (renúncias)"),
+    (r"Transações da Receita", "Receita Federal (transações)"),
     (r"Receita", "Receita Federal"),
     (r"da PGFN\b", "PGFN"),
     (r"da CGU\b", "CGU"),
@@ -77,6 +92,36 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bMapBiomas\b", "MapBiomas"),
     (r"guardadas? só como prova", "Imprensa e páginas públicas"),
 )
+# A conta "N órgãos públicos" da página inicial e do Início do app (linha 927) só conta órgão ou entidade
+# pública. Ficam de fora as fontes que não são do Estado: associação civil ou fundação privada (CCEE, ONS,
+# GLEIF, Internet Archive, MapBiomas), organismo internacional (FAO), as assessorias de M&A e a imprensa.
+# Elas continuam na lista de fontes e nos cartões dos temas, com o nome; só não entram neste número. Na
+# dúvida, a fonte fica de fora.
+ORGAOS_QUE_NAO_SAO_PUBLICOS: frozenset[str] = frozenset(
+    {
+        "Assessorias de M&A",
+        "CCEE",
+        "FAO",
+        "ONS",
+        "GLEIF",
+        "Internet Archive",
+        "MapBiomas",
+        "Imprensa e páginas públicas",
+    }
+)
+# o mesmo órgão com mais de um nome em `ORGAOS` (uma licença por conjunto de dados) conta uma vez só; a CMED
+# é uma câmara cuja secretaria é da Anvisa, e por isso conta com ela; o INMET é um instituto do MAPA
+MESMO_ORGAO: dict[str, str] = {
+    "Receita Federal (renúncias)": "Receita Federal",
+    "Receita Federal (transações)": "Receita Federal",
+    "CMED (Anvisa)": "Anvisa",
+    "INMET": "MAPA",
+    "ANP (tancagem)": "ANP",
+    "Anatel (PADOs)": "Anatel",
+    "Anatel (homologados)": "Anatel",
+    "ANM (TAH)": "ANM",
+    "MTE (PAT)": "MTE",
+}
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {
     "mercado_e_empresas": "Mercado e empresas",
@@ -101,11 +146,6 @@ _INTERNO = re.compile(
     re.IGNORECASE,
 )
 _ENTRE_PARENTESES = re.compile(r"\s*\([^)]*\)")
-# o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
-_PARENTESES_INTERNO = re.compile(
-    r"\s*\((?:(?:ADR|PR|passo|série|modelo)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)",
-    re.IGNORECASE,
-)
 _INTERNO_NA_FRASE = re.compile(
     r"servidor|VPS|\bADR\b|\b\w+/\w+\.py|lista de trabalho|\bdo app\b|\bdo Capital\b|\bB13\b",
     re.IGNORECASE,
@@ -149,6 +189,9 @@ class TabelaDoSite:
     frequencia: str
     atraso: str | None
     historico_desde: str
+    consultavel: (
+        bool  # dá para consultar e exportar pela página Dados e pela API aberta
+    )
 
 
 def orgao_da_licenca(licenca: str) -> str:
@@ -173,16 +216,55 @@ def situacao_da_licenca(licenca: str, revenda: str) -> str:
     return LICENCIADA
 
 
-def licenca_do_site(licenca: str) -> str:
-    """O texto da licença sem a decisão interna entre parênteses ("(ADR 0082)")."""
-    sem_decisao = _PARENTESES_INTERNO.sub("", licenca)
-    return sem_decisao.replace("perguntar a licença", "reuso em consulta")
-
-
 def repasse_do_site(licenca: str, situacao: str) -> str:
     if situacao == EM_CONSULTA:
         return REPASSE_EM_CONSULTA
     return REPASSE_ODBL if "ODbL" in licenca else REPASSE_COM_ATRIBUICAO
+
+
+# Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
+# por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
+TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
+# Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
+# mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.
+COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
+
+
+# A lista das tabelas com arquivo conferido no acervo (linha 916, Diretoria 13/11/2026). O CI não vê o
+# acervo, então a lista é gravada no repositório por `scripts/gravar_tabelas_montadas.py` (roda no servidor
+# de casa, com a data). Tabela nova do catálogo NÃO conta até entrar nela: o número público é o do que
+# existe de verdade, não o do que está prometido no contrato.
+TABELAS_MONTADAS_ARQUIVO = Path(__file__).parent / "tabelas_montadas.json"
+
+
+def tabelas_montadas(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> frozenset[str]:
+    """Os nomes das tabelas que o acervo tinha montadas na data da lista."""
+    return frozenset(json.loads(arquivo.read_text(encoding="utf-8"))["tabelas"])
+
+
+def tabelas_conferidas_em(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> str:
+    """O dia (AAAA-MM-DD) em que a lista de tabelas montadas foi conferida no acervo. É a data que fica ao
+    lado da contagem de tabelas: vem do arquivo, nunca digitada nem da fotografia dos outros números."""
+    return json.loads(arquivo.read_text(encoding="utf-8"))["conferido_em"]
+
+
+def catalogo_publico(catalogo: dict, montadas: frozenset[str] | None = None) -> dict:
+    """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
+    DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
+    no dicionário do repositório, mas o site não anuncia dado que não pode sair em tela, relatório,
+    API nem exportação. As cópias reduzidas (`COPIAS_REDUZIDAS`) também ficam de fora: a tabela de onde
+    saem já está no catálogo. E só conta tabela montada (`tabelas_montadas`): a que está no contrato
+    mas ainda sem arquivo no acervo não entra no número nem na lista."""
+    internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
+    existentes = tabelas_montadas() if montadas is None else montadas
+    tabelas = {
+        nome: tabela
+        for nome, tabela in catalogo["tabelas"].items()
+        if tabela["licenca"] not in internas
+        and nome not in TABELAS_SO_INTERNAS | COPIAS_REDUZIDAS
+        and nome in existentes
+    }
+    return {**catalogo, "tabelas": tabelas}
 
 
 def fontes_do_catalogo(catalogo: dict) -> list[Fonte]:
@@ -241,6 +323,7 @@ def tabelas_do_catalogo(catalogo: dict, frases: dict[str, str]) -> list[TabelaDo
             frequencia=frequencia_do_site(t["frequencia"]),
             atraso=atraso_do_site(t["atraso"]),
             historico_desde=t["historico_desde"],
+            consultavel=pode_consultar_aberto(nome),
         )
         for nome, t in catalogo["tabelas"].items()
     ]
@@ -273,7 +356,7 @@ def _fim_da_primeira_frase(texto: str) -> int:
 
 def primeira_frase(texto: str) -> str:
     """A primeira frase da descrição, sem código, sem número de ADR e com até `LIMITE_DA_FRASE` letras."""
-    limpo = _PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
+    limpo = PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
     frase = limpo[: _fim_da_primeira_frase(limpo)].strip()
     interno = _INTERNO_NA_FRASE.search(frase)
     if interno:  # fica o que vem antes da última vírgula que precede o termo interno
@@ -425,12 +508,14 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "donos",
         "Quem é dono e quem controla",
-        "Sócios e administradores na Receita, acionistas no formulário de referência e a rede de "
-        "controladas e coligadas, com a data de cada ligação.",
+        "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de "
+        "referência e a rede de controladas e coligadas, com a data de cada ligação.",
         (
             "cnpj_qsa",
             "cnpj_qsa_mudancas",
+            "entradas_de_socio_pj",
             "fre_acionistas",
+            "fre_distribuicao_capital",
             "controladas",
             "entidades",
             "identificadores",
@@ -441,7 +526,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "cadastro",
         "Cadastro e situação na Receita",
         "Matriz e filiais, situação cadastral, falência ou recuperação no cadastro, Simples "
-        "Nacional e o que mudou de um mês para o outro.",
+        "Nacional, a forma de tributação do lucro declarada na ECF e o que mudou de um mês para o outro.",
         (
             "cnpj_estabelecimentos",
             "cnpj_estabelecimentos_mudancas",
@@ -449,18 +534,30 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cnpj_situacao_especial",
             "cnpj_simples",
             "cnpj_simples_mudancas",
+            "cnpj_simples_historico",
+            "cnpj_empresas_historico",
+            "cnpj_empresas_pj",
+            "cnpj_estabelecimentos_pj",
+            "receita_regime_tributario",
         ),
     ),
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, empresas punidas pela CGU, penalidades da ANS, o cadastro de "
+        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de "
         "empregadores do MTE, os embargos do IBAMA, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
             "pgfn_divida",
+            "sefa_pr_divida_ativa",
+            "sef_mg_divida_ativa",
+            "sef_mg_parcelamentos",
             "sancoes_cgu",
             "ans_penalidades",
+            "aneel_autos_de_infracao",
+            "aneel_termos_de_notificacao",
+            "anatel_pados",
+            "bcb_regimes_especiais",
             "mte_lista_suja",
             "ibama_embargos",
             "processos_partes",
@@ -470,31 +567,57 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "licencas",
         "Licenças e registros nas agências",
-        "Autorizações da Anvisa, concessões da ANP, transportadoras na ANTT, registros no MAPA, "
-        "outorgas da Anatel, títulos, barragens e royalties na ANM, preços de remédios na CMED, "
-        "a Ancine, as operadoras da ANS, as entidades da SUSEP e os estabelecimentos de saúde do CNES.",
+        "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
+        "os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, "
+        "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
+        "patentes, desenhos e programas de computador no INPI.",
         (
             "ans_operadoras",
             "susep_cadastro",
             "anvisa_registros",
+            "anvisa_por_empresa",
             "anp_concessionarios",
+            "anp_tancagem",
             "antt_rntrc",
+            "antt_operadores_multimodais",
+            "antt_seguros_de_transportadores",
+            "bcb_supervisionadas",
+            "bcb_cooperativas",
+            "bcb_correspondentes",
+            "bcb_filiais_de_consorcio",
             "mapa_sipeagro",
+            "sigsif_habilitados",
+            "sigsif_estabelecimentos",
+            "aneel_agentes",
             "anatel_outorgas",
+            "anatel_produtos_homologados",
             "anm_titulos",
+            "anm_tah",
             "anm_sigbm_barragens",
             "anm_cfem_arrecadacao",
             "cmed_precos",
             "ancine_agentes",
             "cnes_estabelecimentos",
+            "mte_pat",
+            "inpi_marcas_titulares",
+            "inpi_patentes_depositantes",
+            "inpi_desenhos_depositantes",
+            "inpi_programas_titulares",
         ),
+    ),
+    TemaDoCnpj(
+        "saude",
+        "Atendimento pelo SUS",
+        "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês "
+        "a mês, nos dados abertos do DATASUS, sem nada do paciente.",
+        ("sus_internacoes", "sus_ambulatorial"),
     ),
     TemaDoCnpj(
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
-        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, contratos com estados "
-        "e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco "
-        "Central.",
+        "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
+        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento "
+        "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
             "financiamentos_finep",
@@ -507,6 +630,13 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "tce_ce_contratos",
             "tce_rs_contratos",
             "bcb_rde_ied",
+            "sefaz_pe_beneficios",
+            "sefaz_pe_ordem_cronologica",
+            "es_ordem_cronologica",
+            "receita_dirbi",
+            "receita_ecf_renuncia",
+            "receita_transacoes_individual",
+            "receita_transacoes_adesao",
         ),
     ),
 )
@@ -550,6 +680,17 @@ def _orgaos(catalogo: dict, tabelas: Sequence[str]) -> list[str]:
     )
 
 
+def orgaos_publicos(orgaos: Iterable[str]) -> list[str]:
+    """Só os órgãos públicos, cada um uma vez, na ordem em que aparecem (a conta da página inicial)."""
+    return list(
+        dict.fromkeys(
+            MESMO_ORGAO.get(orgao, orgao)
+            for orgao in orgaos
+            if orgao not in ORGAOS_QUE_NAO_SAO_PUBLICOS
+        )
+    )
+
+
 def ligado_pelo_cnpj(
     catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
 ) -> dict:
@@ -557,28 +698,35 @@ def ligado_pelo_cnpj(
     ligadas = tabelas_ligadas_pelo_cnpj(catalogo)
     cartoes = []
     for tema in temas:
-        fora = [t for t in tema.tabelas if t not in catalogo["tabelas"]]
-        if fora:
-            raise ValueError(
-                f"tema {tema.chave} com tabela fora do catálogo: {', '.join(fora)}"
-            )
-        sem_cnpj = [t for t in tema.tabelas if t not in ligadas]
+        # o catálogo público só tem tabela montada (`catalogo_publico`): o cartão conta as que existem e
+        # some quando nenhuma existe. O nome errado de tabela se pega no teste contra o contrato inteiro.
+        presentes = [t for t in tema.tabelas if t in catalogo["tabelas"]]
+        if not presentes:
+            continue
+        sem_cnpj = [t for t in presentes if t not in ligadas]
         if sem_cnpj:
             raise ValueError(
                 f"tema {tema.chave} com tabela sem coluna de CNPJ: {', '.join(sem_cnpj)}"
+            )
+        texto = tema.texto
+        if len(presentes) < len(tema.tabelas):
+            # o texto do tema descreve o desenho inteiro; quando só parte está montada, diz isso (linha 916)
+            texto += (
+                f" Hoje estão montadas {len(presentes)} de {len(tema.tabelas)} tabelas deste tema;"
+                " o texto acima descreve o que o tema prevê, não só o que já está na base."
             )
         cartoes.append(
             {
                 "chave": tema.chave,
                 "titulo": tema.titulo,
-                "texto": tema.texto,
-                "orgaos": _orgaos(catalogo, tema.tabelas),
-                "tabelas": len(tema.tabelas),
+                "texto": texto,
+                "orgaos": _orgaos(catalogo, presentes),
+                "tabelas": len(presentes),
             }
         )
     return {
         "tabelas": len(ligadas),
-        "orgaos": len(_orgaos(catalogo, ligadas)),
+        "orgaos": len(orgaos_publicos(_orgaos(catalogo, ligadas))),
         "temas": cartoes,
     }
 
@@ -645,7 +793,8 @@ VAGAS_DA_VITRINE: tuple[Vaga, ...] = (
     Vaga(
         "cruzamentos",
         "Cruzamentos da base",
-        "O que só aparece juntando fontes: um balanço refeito depois da troca de auditor, por exemplo.",
+        "O que só aparece juntando fontes: crédito público, dívida ativa e quadro de sócios das empresas, "
+        "contados juntos.",
         PRONTA,
         "/#cruzamentos",
     ),
@@ -666,7 +815,6 @@ REMUNERACAO = "fre_remuneracao"
 PROVENTOS = "proventos"
 PARECERES = "pareceres_dfp"
 INSOLVENCIA = "insolvencia"
-# o atraso só entra como contagem (`TABELAS_SO_EM_CONTAGEM`, em `base/dossie.py`)
 TABELAS_DOS_CRUZAMENTOS = (
     DEMONSTRACOES,
     TROCAS_DE_AUDITOR,
@@ -1165,16 +1313,13 @@ def parecer_e_insolvencia(
 
 def medir_cruzamentos(porta: PortaQueLe, catalogo: dict, ate: date) -> Cruzamentos:
     """Mede os cruzamentos pela porta, só com o que era público em `ate`. Tabela fora do catálogo ou que
-    a licença não deixa mostrar dá erro, como nos números da página Dados; o atraso só pode ser contado."""
+    a licença não deixa mostrar dá erro, como nos números da página Dados."""
     ausentes = [t for t in TABELAS_DOS_CRUZAMENTOS if t not in catalogo["tabelas"]]
     if ausentes:
         raise ValueError(
             f"fora do catálogo, não vira fato público: {', '.join(ausentes)}"
         )
-    exigir_que_pode_mostrar(
-        t for t in TABELAS_DOS_CRUZAMENTOS if t not in TABELAS_SO_EM_CONTAGEM
-    )
-    exigir_que_pode_contar(TABELAS_SO_EM_CONTAGEM)
+    exigir_que_pode_mostrar(TABELAS_DOS_CRUZAMENTOS)
     lucros = linhas_do_lucro(porta, ate)
     balancos = balancos_anuais(lucros)
     lucro = lucro_por_exercicio(lucros)
@@ -1380,6 +1525,273 @@ def _fato_do_parecer(parecer: ParecerEInsolvencia, data: str) -> Fato:
     )
 
 
+# --- os cartões de empresa fechada (linha 925): o texto de cada um sai daqui, e só daqui ----------------
+
+FECHADA_E_ATIVA = (
+    "Empresa fechada é a sociedade empresária privada no cadastro do CNPJ (sem MEI, sem empresário individual, "
+    "sem empresa pública ou de economia mista) que nunca entregou o formulário cadastral à CVM até o dia da "
+    "medição; ativa é a que tem ao menos um estabelecimento ativo no retrato da Receita que valia no dia. "
+    "Contagens abaixo de 10 não saem."
+)
+RECEITA_DO_CNPJ = "Receita Federal: cadastro do CNPJ"
+DOZE_MESES = "nos 12 meses até o dia da medição"
+
+
+@dataclass(frozen=True)
+class MoldeDoFato:
+    """O texto de um cartão de empresa fechada: o número é a parte (contagem) ou a parte sobre o todo."""
+
+    em_porcento: bool
+    texto: Callable[[str, str, str], str]  # (parte, todo, porcento) -> frase
+    fonte: str
+    tabelas: tuple[str, ...]
+    como_foi_calculado: str
+
+
+def _molde(
+    em_porcento: bool,
+    texto: Callable[[str, str, str], str],
+    fonte: str,
+    tabelas: tuple[str, ...],
+    como: str,
+) -> MoldeDoFato:
+    return MoldeDoFato(em_porcento, texto, fonte, tabelas, f"{como} {FECHADA_E_ATIVA}")
+
+
+MOLDES_DOS_FATOS: Mapping[str, MoldeDoFato] = {
+    "saiu_do_simples": _molde(
+        False,
+        lambda parte, todo, pct: (
+            f"empresas fechadas saíram do Simples Nacional {DOZE_MESES} e seguem ativas: {pct} das {todo} "
+            "que eram optantes um ano antes."
+        ),
+        f"{RECEITA_DO_CNPJ} e opção pelo Simples Nacional",
+        (fechadas.SIMPLES, fechadas.EMPRESAS, fechadas.ESTABELECIMENTOS),
+        "A opção pelo Simples de cada empresa como a Receita a publicava 12 meses antes e no dia da medição. "
+        "Sair pode ser por faturamento acima do limite, por escolha da empresa ou por exclusão: o cartão não "
+        "separa o motivo.",
+    ),
+    "tres_filiais": _molde(
+        False,
+        lambda parte, todo, pct: (
+            f"empresas fechadas ativas abriram três filiais ou mais {DOZE_MESES}, entre {todo} ativas."
+        ),
+        RECEITA_DO_CNPJ,
+        (fechadas.EMPRESAS, fechadas.ESTABELECIMENTOS),
+        "Filial é o estabelecimento que não é a matriz, contado pela data de início de atividade que a "
+        "Receita registra, no retrato que valia no dia e em qualquer situação (a filial aberta e já fechada "
+        "conta).",
+    ),
+    "bndes_e_finep": _molde(
+        True,
+        lambda parte, todo, pct: (
+            f"das {todo} empresas fechadas ativas com crédito contratado no BNDES também tiveram crédito "
+            f"da Finep ({parte} empresas)."
+        ),
+        "BNDES: operações de crédito não automáticas; Finep: crédito direto e descentralizado",
+        (fechadas.BNDES, fechadas.FINEP, fechadas.EMPRESAS),
+        "Os contratos com data de assinatura até o dia da medição, nas listas que os dois bancos publicam, "
+        "como a base as viu até o dia. Só contratos com CNPJ de empresa: a linha de pessoa física fica de "
+        "fora. O cartão não diz o valor nem se o crédito foi pago.",
+    ),
+    "socia_entrou": _molde(
+        False,
+        lambda parte, todo, pct: (
+            f"empresas fechadas ativas ganharam uma empresa como sócia {DOZE_MESES}, pelo quadro de sócios "
+            f"da Receita, entre {todo} ativas."
+        ),
+        f"{RECEITA_DO_CNPJ} (quadro de sócios)",
+        (fechadas.SOCIAS, fechadas.EMPRESAS),
+        "A data de entrada que a Receita registra para a sócia empresa, numa mudança do quadro já publicada "
+        "no dia. Sócio pessoa física não entra na conta. Entrar como sócia não quer dizer compra: holding da "
+        "família, reorganização e aumento de capital também entram.",
+    ),
+    "capital_estrangeiro": _molde(
+        False,
+        lambda parte, todo, pct: (
+            f"empresas fechadas ativas têm ou já tiveram investimento estrangeiro direto registrado no Banco "
+            f"Central, entre {todo} ativas."
+        ),
+        "Banco Central: registros de investimento estrangeiro direto (RDE-IED)",
+        (fechadas.RDE, fechadas.EMPRESAS),
+        "Ao menos uma linha de registro de investimento estrangeiro direto (efetuado ou já encerrado) na lista "
+        "aberta do Banco Central, como a base a viu até o dia. A série vai de nov/2011 a dez/2022, quando o "
+        "Banco Central parou de publicá-la. O registro diz que houve investimento de fora, não quanto nem se "
+        "ele continua.",
+    ),
+    "tres_niveis": _molde(
+        False,
+        lambda parte, todo, pct: (
+            f"empresas fechadas ativas têm três camadas de empresas sócias acima delas: {pct} das {todo} "
+            "que têm uma empresa como sócia."
+        ),
+        f"{RECEITA_DO_CNPJ} (quadro de sócios)",
+        (fechadas.SOCIAS, fechadas.EMPRESAS),
+        "Três camadas: a empresa tem uma sócia empresa, que tem uma sócia empresa, que tem uma sócia "
+        "empresa, no quadro de sócios que valia no dia (entrou e não saiu até ali). A cadeia que volta a uma "
+        "empresa já contada também entra. Sócio pessoa física não entra na conta.",
+    ),
+    "bndes_e_divida": _molde(
+        True,
+        lambda parte, todo, pct: (
+            f"das {todo} empresas fechadas ativas com crédito do BNDES contratado desde 2015 têm dívida "
+            f"ativa da União inscrita ({parte} empresas)."
+        ),
+        "BNDES e PGFN: lista de devedores da dívida ativa da União",
+        (fechadas.BNDES, fechadas.PGFN, fechadas.EMPRESAS),
+        "Os contratos do BNDES assinados de 2015 até o dia, cruzados com a lista de devedores da PGFN do "
+        "trimestre mais novo já público no dia. Só CNPJ de empresa, nas duas listas. A dívida inscrita pode "
+        "estar parcelada, garantida ou em discussão na Justiça.",
+    ),
+    "anvisa_e_divida": _molde(
+        True,
+        lambda parte, todo, pct: (
+            f"das {todo} empresas fechadas ativas com autorização de funcionamento da Anvisa em vigor têm "
+            f"dívida ativa da União inscrita ({parte} empresas)."
+        ),
+        "Anvisa: autorizações de funcionamento; PGFN: lista de devedores da dívida ativa da União",
+        (fechadas.ANVISA, fechadas.PGFN, fechadas.EMPRESAS),
+        "Ao menos uma autorização de funcionamento da Anvisa em vigor no retrato mais novo já público no dia, "
+        "cruzada com a lista de devedores da PGFN do trimestre mais novo já público no dia. Só CNPJ de "
+        "empresa. A dívida inscrita pode estar parcelada, garantida ou em discussão na Justiça.",
+    ),
+    "recuperacao_e_divida": _molde(
+        True,
+        lambda parte, todo, pct: (
+            f"das {todo} empresas fechadas que entraram em recuperação judicial no cadastro da Receita já "
+            f"tinham dívida ativa da União inscrita um ano antes ({parte} empresas)."
+        ),
+        f"{RECEITA_DO_CNPJ} (situação especial) e PGFN: lista de devedores da dívida ativa da União",
+        (fechadas.SITUACAO_ESPECIAL, fechadas.PGFN, fechadas.EMPRESAS),
+        "A entrada é a data em que a Receita registra o início da recuperação judicial. A dívida é a da lista "
+        "da PGFN que já era pública naquele dia, com a inscrição mais antiga feita ao menos 12 meses antes; "
+        "só entram as recuperações depois do primeiro trimestre da PGFN que a base guarda. É um piso: a "
+        "dívida paga ou cancelada antes do trimestre some da lista. O cartão mostra uma frequência, não uma "
+        "previsão.",
+    ),
+    "industria_e_marca": _molde(
+        True,
+        lambda parte, todo, pct: (
+            # a tabela do INPI guarda o titular de cada pedido, sem a situação do processo: a frase não pode
+            # dizer "concedida" nem "registrada" ("marca registrada" é também frase vigiada em tests/test_site.py)
+            f"das {todo} indústrias fechadas ativas acima do porte de pequena empresa são titulares de ao menos "
+            f"um pedido de marca no INPI ({parte} empresas)."
+        ),
+        f"{RECEITA_DO_CNPJ} e INPI: titulares de marcas",
+        (fechadas.MARCAS, fechadas.EMPRESAS, fechadas.ESTABELECIMENTOS),
+        "Indústria: o CNAE principal da matriz é da indústria de transformação (divisões 10 a 33). Porte: o "
+        'da Receita, que não tem "médio"; entram as do porte "demais", acima do limite da empresa de '
+        "pequeno porte, pela declaração da própria empresa. Marca: ao menos um processo no INPI com a "
+        "empresa como titular, como a base o viu até o dia.",
+    ),
+    "finep_e_patente": _molde(
+        True,
+        lambda parte, todo, pct: (
+            f"das {todo} empresas fechadas ativas com crédito da Finep depositaram ao menos um pedido de "
+            f"patente no INPI ({parte} empresas)."
+        ),
+        "Finep: crédito direto e descentralizado; INPI: depositantes de patentes",
+        (fechadas.FINEP, fechadas.PATENTES, fechadas.EMPRESAS),
+        "Os contratos da Finep assinados até o dia, cruzados com os pedidos de patente no INPI que têm a "
+        "empresa como depositante, como a base viu os dois até o dia. Só CNPJ de empresa. Pedir a patente "
+        "não quer dizer que ela foi concedida.",
+    ),
+}
+
+
+def fato_da_fechada(cartao: fechadas.CartaoMedido, data: str) -> Fato:
+    """O cartão medido vira o fato da página, com o molde dele."""
+    molde = MOLDES_DOS_FATOS[cartao.chave]
+    parte, todo = _milhar(cartao.parte), _milhar(cartao.todo)
+    porcento = _porcento(cartao.parte, cartao.todo)
+    return Fato(
+        chave=cartao.chave,
+        numero=porcento if molde.em_porcento else parte,
+        texto=molde.texto(parte, todo, porcento),
+        fonte=molde.fonte,
+        tabelas=molde.tabelas,
+        data=data,
+        como_foi_calculado=molde.como_foi_calculado,
+    )
+
+
+# o recorte por UF e por seção da CNAE da matriz (linha 925, 2º PR): a página só desenha estas barras
+ROTULO_SEM_INFORMACAO = "Sem informação no cadastro"
+COMO_FOI_RECORTADO = (
+    "Cada empresa do cartão entra no estado e no setor (seção da CNAE) da matriz, como o cadastro da Receita "
+    "estava no mês da medição. Estado ou setor com menos de 10 empresas não aparece, e também não aparece "
+    "o que permitiria chegar a ele pela subtração do total."
+)
+
+
+ROTULO_DO_EXTERIOR = "Exterior"
+UF_DO_EXTERIOR = "EX"  # a Receita marca assim a matriz fora do Brasil
+MENOR_PORCENTO_ESCRITO = (
+    0.05  # abaixo disso o "%.1f" daria "0,0%" ao lado de centenas de empresas
+)
+
+
+def _rotulo_da_celula(dimensao: str, chave: str) -> str:
+    if chave == fechadas.SEM_INFORMACAO:
+        return ROTULO_SEM_INFORMACAO
+    if dimensao == "setor":
+        return fechadas.cnae.SECOES[chave]
+    return ROTULO_DO_EXTERIOR if chave == UF_DO_EXTERIOR else chave
+
+
+def _porcento_da_barra(parte: int, todo: int) -> str:
+    """O porcento da barra, sem "0,0%" quando há empresa: aí sai "menos de 0,1%"."""
+    if parte and 100 * parte / todo < MENOR_PORCENTO_ESCRITO:
+        return "menos de 0,1%"
+    return _porcento(parte, todo)
+
+
+def _filtro_no_app(dimensao: str, chave: str) -> dict[str, str] | None:
+    """O filtro da tela Encontrar empresas que abre as empresas ativas daquele estado ou setor (o app lê só
+    `uf` e `setor` do endereço); None quando a busca não tem esse valor ("sem informação", seção fora dela)."""
+    # importa só aqui: a busca puxa o leitor da API, que o resto da vitrine não usa
+    from src.analista import busca
+
+    if dimensao == "uf":
+        return {"uf": chave} if chave in busca.UFS else None
+    return {"setor": chave} if chave in busca.SETORES else None
+
+
+def barras_do_recorte(celulas: Sequence[fechadas.Celula], dimensao: str) -> dict:
+    """As células que saem, da maior parte para a menor, com a largura da barra (a parte sobre a maior parte,
+    em %) e o filtro do app que abre as empresas ativas daquele estado ou setor, e os rótulos das que não
+    saem."""
+    visiveis = sorted(
+        (c for c in celulas if c.todo is not None and c.parte is not None),
+        key=lambda c: (-(c.parte or 0), c.chave),
+    )
+    maior = max((c.parte or 0 for c in visiveis), default=0)
+    barras = [
+        {
+            "rotulo": _rotulo_da_celula(dimensao, c.chave),
+            "parte": _milhar(c.parte),
+            "todo": _milhar(c.todo),
+            "porcento": _porcento_da_barra(c.parte, c.todo),
+            "largura": round(100 * c.parte / maior, 1) if maior else 0.0,
+            "filtro_no_app": _filtro_no_app(dimensao, c.chave),
+        }
+        for c in visiveis
+        if c.todo is not None and c.parte is not None
+    ]
+    escondidas = sorted(
+        _rotulo_da_celula(dimensao, c.chave) for c in celulas if c.todo is None
+    )
+    return {"barras": barras, "escondidas": escondidas}
+
+
+def recorte_do_fato(recorte: fechadas.RecorteDoCartao) -> dict:
+    return {
+        "por_uf": barras_do_recorte(recorte.por_uf, "uf"),
+        "por_setor": barras_do_recorte(recorte.por_setor, "setor"),
+        "como_foi_calculado": COMO_FOI_RECORTADO,
+    }
+
+
 def fatos_agregados(cruzamentos: Cruzamentos) -> list[Fato]:
     """Os cartões dos cruzamentos, na ordem da página inicial."""
     data = cruzamentos.medido_em
@@ -1393,14 +1805,97 @@ def fatos_agregados(cruzamentos: Cruzamentos) -> list[Fato]:
     ]
 
 
-def fatos_da_base(fotografia: Path = FOTOGRAFIA_DOS_CRUZAMENTOS) -> dict:
-    """O `web/conteudo/fatos_da_base.json`: os cartões da fotografia e a data curta que a página mostra."""
-    cruzamentos = cruzamentos_da_fotografia(
-        json.loads(fotografia.read_text(encoding="utf-8"))
+CHAVE_DAS_FECHADAS = (
+    "fechadas"  # a medição dos cartões de empresa fechada, dentro do `fatos.json`
+)
+GRUPO_DAS_ABERTAS = ("abertas", "Nas companhias abertas")
+FATOS_DAS_ABERTAS = (
+    "lucros",
+    "parecer",
+)  # os dois cartões de companhia aberta que ficam na página
+SUBTITULO_DOS_CRUZAMENTOS = (
+    "Contagens de empresas fechadas e de companhias abertas, medidas em {data}, sem nome de empresa, sócio "
+    "ou pessoa. Cada número diz de onde veio e como foi contado."
+)
+SUBTITULO_SO_DAS_ABERTAS = (
+    "Contagens das companhias abertas, medidas em {data}, sem nome de empresa. Cada número diz de onde veio "
+    "e como foi contado."
+)
+
+
+def _fato_com_recorte(fato: Fato, recorte: fechadas.RecorteDoCartao | None) -> dict:
+    dados = asdict(fato)
+    if recorte is not None:
+        dados["recorte"] = recorte_do_fato(recorte)
+    return dados
+
+
+def grupos_dos_fatos(
+    cruzamentos: Cruzamentos,
+    medicao: fechadas.MedicaoDasFechadas | None,
+    recortes: fechadas.RecortesDasFechadas | None = None,
+) -> list[dict]:
+    """Os cartões da página por pergunta: os de empresa fechada primeiro (só os de pé), os de companhia aberta
+    por último. Pergunta sem cartão de pé não aparece. O recorte só entra se for da mesma medição."""
+    grupos = []
+    medidos = {} if medicao is None else {c.chave: c for c in medicao.cartoes}
+    recortados = (
+        {r.chave: r for r in recortes.cartoes}
+        if recortes is not None
+        and medicao is not None
+        and recortes.medido_em == medicao.medido_em
+        else {}
     )
+    for grupo in fechadas.GRUPOS:
+        fatos = [
+            _fato_com_recorte(
+                fato_da_fechada(medidos[c], medicao.medido_em), recortados.get(c)
+            )
+            for c in grupo.cartoes
+            if medicao is not None and c in medidos
+        ]
+        if fatos:
+            grupos.append(
+                {"chave": grupo.chave, "pergunta": grupo.pergunta, "fatos": fatos}
+            )
+    chave, pergunta = GRUPO_DAS_ABERTAS
+    abertas = [
+        asdict(f) for f in fatos_agregados(cruzamentos) if f.chave in FATOS_DAS_ABERTAS
+    ]
+    grupos.append({"chave": chave, "pergunta": pergunta, "fatos": abertas})
+    return grupos
+
+
+NOME_DOS_RECORTES = "recortes_das_fechadas.json"  # ao lado do `fatos.json`
+
+
+def fatos_da_base(fotografia: Path = FOTOGRAFIA_DOS_CRUZAMENTOS) -> dict:
+    """O `web/conteudo/fatos_da_base.json`: os cartões da fotografia por pergunta, o parágrafo da seção e a
+    data curta que a página mostra; com o recorte por estado e setor, se ele estiver ao lado."""
+    dados = json.loads(fotografia.read_text(encoding="utf-8"))
+    das_fechadas = dados.pop(CHAVE_DAS_FECHADAS, None)
+    cruzamentos = cruzamentos_da_fotografia(dados)
+    medicao = (
+        None if das_fechadas is None else fechadas.fechadas_da_fotografia(das_fechadas)
+    )
+    arquivo_dos_recortes = fotografia.with_name(NOME_DOS_RECORTES)
+    recortes = (
+        fechadas.recortes_da_fotografia(
+            json.loads(arquivo_dos_recortes.read_text(encoding="utf-8"))
+        )
+        if arquivo_dos_recortes.exists()
+        else None
+    )
+    grupos = grupos_dos_fatos(cruzamentos, medicao, recortes)
+    com_fechadas = len(grupos) > 1
+    data = dia_e_mes(
+        medicao.medido_em if medicao is not None else cruzamentos.medido_em
+    )
+    subtitulo = SUBTITULO_DOS_CRUZAMENTOS if com_fechadas else SUBTITULO_SO_DAS_ABERTAS
     return {
-        "fatos": [asdict(f) for f in fatos_agregados(cruzamentos)],
-        "medido_em_curto": dia_e_mes(cruzamentos.medido_em),
+        "grupos": grupos,
+        "subtitulo": subtitulo.format(data=data),
+        "medido_em_curto": data,
     }
 
 

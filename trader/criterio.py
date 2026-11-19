@@ -241,14 +241,22 @@ def avaliar_holdout(
     b1_no_holdout: pd.Series,
     sharpe_do_desenvolvimento: float,
     queda_mediana_do_desenvolvimento: float,
+    *,
+    sharpe_minimo: float = SHARPE_MINIMO_NO_HOLDOUT,
+    fracao_minima_do_desenvolvimento: float = DESCONTO_DE_DECAIMENTO,
+    queda_maxima_relativa: float = QUEDA_MAXIMA_RELATIVA,
 ) -> Veredito:
-    """Critérios B1 a B4, no holdout (pontuado uma vez, via `trader.holdout.pontuar`)."""
+    """Critérios B1 a B4, no holdout (pontuado uma vez, via `trader.holdout.pontuar`).
+
+    Os três limiares valem os da M2 (v0.4) se ninguém disser outra coisa; o critério quant passa
+    os dele por `trader.criterio_quant.avaliar_holdout`.
+    """
     sharpe = _sharpe(holdout)
     piso = max(
-        SHARPE_MINIMO_NO_HOLDOUT, DESCONTO_DE_DECAIMENTO * sharpe_do_desenvolvimento
+        sharpe_minimo, fracao_minima_do_desenvolvimento * sharpe_do_desenvolvimento
     )
     queda = avaliacao.maior_queda(holdout)
-    limite_da_queda = QUEDA_MAXIMA_RELATIVA * abs(queda_mediana_do_desenvolvimento)
+    limite_da_queda = queda_maxima_relativa * abs(queda_mediana_do_desenvolvimento)
     sharpe_b1 = _sharpe(b1_no_holdout)
     sharpe_x2 = _sharpe(holdout_x2)
     itens = [

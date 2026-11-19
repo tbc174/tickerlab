@@ -14,6 +14,7 @@ import pytest
 from base.arquivo import coleta, fontes, obter
 from base.arquivo.coleta import Alvo, Fonte, Resposta
 from src.banco import coletas
+from tests.ajudantes_de_cpf import CPF_DE_TESTE
 
 AGORA = datetime(2026, 10, 14, 5, tzinfo=UTC)
 URL_DO_ZIP = "https://www.anatel.gov.br/dadosabertos/x/acessos.zip"
@@ -249,9 +250,9 @@ def test_filtro_por_cnpj_tira_cpf_e_cnpj_mascarado(tmp_path):
     bruto = (
         '"Processo","CPF/CNPJ do titular","Titular","Situação"\n'
         '"1/2020","12.345.678/0001-95","EMPRESA FICTICIA","Ativo"\n'
-        '"2/2020","123.456.789-09","PESSOA FICTICIA","Ativo"\n'
+        '"2/2020","888.000.000-46","PESSOA FICTICIA","Ativo"\n'
         '"3/2020","**.***.678/0001-**","OUTRA","Ativo"\n'
-        '"4/2020","00012345678909","PESSOA COM ZEROS","Ativo"\n'
+        f'"4/2020","000{CPF_DE_TESTE}","PESSOA COM ZEROS","Ativo"\n'
         '"5/2020","12.ABC.345/01DE-35","EMPRESA NOVA","Ativo"\n'
     ).encode("latin-1")
     url = "https://exemplo/scm.csv"
@@ -353,7 +354,7 @@ def test_rntrc_pega_so_o_csv_mais_novo_e_tira_o_nome(tmp_path):
     bruto = (
         "nome_transportador;numero_rntrc;cpfcnpjtransportador;cep;uf\n"
         "EMPRESA FICTICIA;1;12345678000195;01000000;SP\n"
-        "PESSOA FICTICIA;2;12345678909;02000000;RJ\n"
+        "PESSOA FICTICIA;2;88800000046;02000000;RJ\n"
     ).encode("latin-1")
     url_do_pacote = f"{fontes.PORTAL_DA_ANTT}/api/3/action/package_show?id=rntrc"
     servidor = ServidorComTrechos(
@@ -656,7 +657,7 @@ def test_cde_mensal_tira_o_cpf_e_o_nome_do_cliente(tmp_path):
     csv_ = (
         f"{cabecalho}\n"
         f'{inicio},EMPRESA FICTICIA,12345678000195,SubsIrrigacao,"1.234,56"\n'
-        f'{inicio},PESSOA FICTICIA,12345678909,SubsBaixaRenda,"12,30"\n'
+        f'{inicio},PESSOA FICTICIA,88800000046,SubsBaixaRenda,"12,30"\n'
     )
     url = f"{PASTA_DA_CDE}/1/download/cde-beneficiarios-01may2026.zip"
     servidor = ServidorComTrechos({url: _zip({"cde.csv": csv_.encode("latin-1")})})
@@ -671,7 +672,7 @@ def test_cde_mensal_tira_o_cpf_e_o_nome_do_cliente(tmp_path):
     destino = tmp_path / "cde.csv"
     alvo.obter(servidor, destino)
     texto = destino.read_text(encoding="latin-1")
-    assert "FICTICIA" not in texto and "12345678909" not in texto
+    assert "FICTICIA" not in texto and "88800000046" not in texto
     assert texto.splitlines()[1].endswith(";12345678000195;SubsIrrigacao;1.234,56")
 
 

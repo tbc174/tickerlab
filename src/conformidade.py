@@ -11,9 +11,12 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from src import auditoria
-from src.banco import novidades_por_email
+from src.banco import novidades_por_email, perguntas_do_chat
 from src.banco.compartilhamentos import dados_para_exportar as links_para_exportar
 from src.banco.garantias import dados_para_exportar as garantias_para_exportar
+from src.banco.membros_da_organizacao import (
+    dados_para_exportar as organizacao_para_exportar,
+)
 from src.banco.modelo import (
     alertas,
     assinaturas,
@@ -62,7 +65,13 @@ from src.sala.documentos import apagar_arquivos_da_conta
 # Versão 13: o registro de quem entra no servidor e usa sudo vai a outro computador por 12 meses
 # (linha 207 da fila; RIPD da sala, R-S1). O texto 14 (a ficha de originação e as garantias da
 # sala, linha 194) entrou sem novo aceite: descreve o que a pessoa já anota, sem uso novo
-VERSAO_DOS_TERMOS = "2026-10-22.13"
+# Versão 14 do aceite (texto 16 da política, linha 809): o vínculo da conta com a organização e o
+# registro das consultas a dados de pessoas são usos novos de dado da conta; a organização com a
+# permissão de ver pessoas (ADR 0128, Emenda 1) e a consulta da base pelo próprio responsável
+# Versão 15 do aceite (texto 18 da política, linha 903): no chat de IA, o texto da pergunta que a
+# pessoa escreve e as últimas trocas vão a um modelo de linguagem, um compartilhamento novo do que
+# ela escreve; os números de cada pergunta ficam, sem a conta, depois da exclusão
+VERSAO_DOS_TERMOS = "2026-11-14.15"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 # a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
@@ -170,6 +179,11 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 "versao": perfil.termos_versao,
                 "em": _texto(perfil.termos_aceitos_em),
             },
+            # o bloqueio do incidente (0045) também é dado sobre a pessoa: vai junto, só o código
+            "bloqueio": {
+                "em": _texto(perfil.bloqueada_em),
+                "motivo": perfil.motivo_do_bloqueio,
+            },
         },
         "preferencias": dict(prefs.dados) if prefs else {},
         "tentativas_por_ativo": contar_por_ativo(conexao, usuario_id),
@@ -182,6 +196,10 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "originacao": originacao_para_exportar(conexao, usuario_id=usuario_id),
         # as garantias das operações (B-17): exposição, haircut, validade e o laudo citado
         "garantias": garantias_para_exportar(conexao, usuario_id=usuario_id),
+        # a organização de que a conta é membro (ADR 0128, Emenda 1): o nome dela e desde quando
+        "organizacao": organizacao_para_exportar(conexao, usuario_id=usuario_id),
+        # o chat de IA (linha 903): só a data, o modelo e os números; a pergunta e a resposta não são guardadas
+        "perguntas_ao_chat": perguntas_do_chat.para_exportar(conexao, usuario_id),
         "origem_do_cadastro": _origem_do_cadastro(conexao, usuario_id),
         "favoritos": [
             l.ticker

@@ -7,6 +7,8 @@ Sem `--todos`, só os e-mails de `TICKERLAB_ADMINS` recebem: confira o e-mail na
 mandar para todo mundo. Cada pessoa recebe a mesma campanha uma vez só (o registro do envio e a
 chave de idempotência do Resend); rodar de novo só tenta quem falhou. Sem `RESEND_API_KEY`, nada
 sai. Nenhum e-mail aparece nos registros (logs): só o id da conta.
+
+Roda: manual (python -m scripts.enviar_novidades); sem uso registrado em 05/11/2026.
 """
 
 import argparse

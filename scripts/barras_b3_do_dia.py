@@ -16,6 +16,8 @@ cujo resumo foi feito com outros arquivos (a B3 corrigiu o dia, o boletim chegou
 
 Pregão `incompleto` faz a última linha da saída ser `FALHAS: ...` e a saída 1 (o `rodar-tarefa.sh`
 leva ao Kuma). Avisa uma vez: o mesmo arquivo não é refeito; uma versão nova é.
+
+Roda: cron de casa pelo barras-b3.sh (todo dia às 7h00); outro script (gerar_pregao_do_dia.py).
 """
 
 import argparse

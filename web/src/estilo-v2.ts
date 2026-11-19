@@ -63,14 +63,6 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-degrade { background: linear-gradient(90deg, ${escuro.azul_texto} 0%, #a9c1ff 55%, ${escuro.azul_texto} 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-.v2-pilula { display: inline-flex; align-items: center; gap: .55rem; margin-bottom: 1.4rem; padding: .35rem .8rem .35rem .6rem;
-  border-radius: 999px; border: 1px solid var(--linha-forte); background: rgba(16, 39, 82, .6);
-  color: var(--texto); font-size: .86rem; font-weight: 600; text-decoration: none; backdrop-filter: blur(8px);
-  transition: border-color 160ms ease; }
-.v2-pilula:hover { border-color: var(--azul-texto); }
-.v2-ponto { width: 8px; height: 8px; border-radius: 50%; background: ${escuro.atencao}; box-shadow: 0 0 0 4px rgba(245, 184, 61, .18); }
-.v2-pilula-seta { color: var(--azul-texto); transition: transform 160ms ease; }
-.v2-pilula:hover .v2-pilula-seta { transform: translateX(3px); }
 
 /* painel do número principal (Ledger): vidro escuro, um número grande, o gráfico e três métricas */
 .v2-painel-pilha { position: relative; animation: tl-chegar 700ms cubic-bezier(.2, .7, .2, 1) 220ms both; }
@@ -132,19 +124,29 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: var(--azul-texto); }
 .v2-fato-fonte { color: var(--apagado); font-size: .84rem; }
 .v2-fato .como-foi-calculado { margin: .3rem 0 0; font-size: .88rem; }
+/* o recorte de um cartão por estado e por setor: barras de CSS, recolhidas num <details> */
+.v2-recorte { margin: .3rem 0 0; font-size: .86rem; }
+.v2-recorte summary { cursor: pointer; color: var(--azul-texto); font-weight: 600; }
+.v2-recorte-lado { margin-top: .7rem; }
+.v2-recorte-titulo { font-weight: 600; }
+.v2-recorte-barras { list-style: none; margin: .35rem 0 0; padding: 0; display: grid; gap: .3rem; }
+.v2-recorte-barras li { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(2rem, 1fr); gap: .1rem .5rem;
+  align-items: center; }
+.v2-recorte-rotulo { overflow-wrap: anywhere; }
+.v2-recorte-barra { display: block; height: 6px; border-radius: 999px; background: var(--linha); overflow: hidden; }
+.v2-recorte-barra i { display: block; height: 100%; width: calc(var(--p) * 100%); border-radius: inherit;
+  background: var(--azul-texto); }
+.v2-recorte-conta { grid-column: 2; color: var(--apagado); font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: .78rem; }
+.v2-recorte-link { grid-column: 2; font-size: .78rem; }
+.v2-recorte-escondidas, .v2-recorte-nota { margin-top: .5rem !important; color: var(--apagado); font-size: .8rem; }
+.v2-fatos-grupo + .v2-fatos-grupo { margin-top: 2rem; }
+.v2-fatos-pergunta { margin: 0 0 .8rem; font-size: 1.1rem; }
 
 /* as quatro regras da base, recolhidas, em duas colunas */
 .v2-regras-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .8rem; }
 .v2-regras-lista .como-foi-calculado { margin: 0; }
 
-/* as fontes com licença: uma pílula por fonte, com o selo nas que estão em consulta */
-.v2-lista-de-fontes { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: .6rem;
-  list-style: none; margin: 1.4rem 0 1.4rem; padding: 0; }
-.v2-lista-de-fontes li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .5rem; max-width: none;
-  padding: .7rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--destaque); }
-:root[data-tema="escuro"] .v2-lista-de-fontes li { background: var(--superficie); }
-.v2-lista-de-fontes strong { font-size: .98rem; letter-spacing: -0.01em; }
-.v2-lista-de-fontes span:not(.selo) { color: var(--sutil); font-size: .8rem; }
 .final .acoes { justify-content: center; }
 .v2-aviso-final { margin: 1.6rem auto 0; color: var(--apagado); font-size: .86rem; }
 
@@ -229,7 +231,10 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   .v2-bento .v2-larga { grid-template-columns: 1fr; }
   .v2-bento .v2-faixa-cartao { flex-direction: column; align-items: start; }
   .v2-regras-lista { grid-template-columns: 1fr; }
-  .v2-vagas, .v2-fatos, .v2-temas-cnpj { grid-template-columns: 1fr; }
+  .v2-vagas, .v2-temas-cnpj { grid-template-columns: 1fr; }
+  /* no celular cada pergunta vira uma fileira que corre de lado: a seção não cresce sem fim para baixo */
+  .v2-fatos { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: .8rem; padding-bottom: .4rem; }
+  .v2-fatos .v2-fato { flex: 0 0 85%; scroll-snap-align: start; }
   .v2-vaga, .v2-vaga.breve { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -551,21 +556,52 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 @media (prefers-reduced-motion: reduce) {
   .v2-plano-destaque::before { animation: none !important; }
 }
-/* o estudo do dia (Raio-X do choque): a chamada logo abaixo do herói e o botão do PDF no fim dele */
-.v2-estudo { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.5rem 2.5rem; align-items: center;
-  margin-block: 2.5rem; padding-block: 1.75rem; border-block: 1px solid var(--linha); }
-.v2-estudo h2 { font-size: clamp(1.35rem, 2.6vw, 1.9rem); margin-bottom: .5rem; }
-.v2-estudo h2 a { color: inherit; text-decoration: none; }
-.v2-estudo h2 a:hover { color: var(--azul-texto); }
-.v2-estudo .acoes { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
-.v2-estudo-numeros { display: grid; gap: .9rem; margin: 0; }
-.v2-estudo-numeros div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
-  padding-bottom: .6rem; border-bottom: 1px solid var(--linha); }
-.v2-estudo-numeros dt { color: var(--apagado); font-size: .92rem; }
-.v2-estudo-numeros dd { margin: 0; font: 700 1.6rem/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: -0.02em; }
+/* o botão do PDF no fim do Raio-X do choque */
 .rx-baixar { max-width: 920px; padding-bottom: 2.5rem; }
+
+/* a inicial do posicionamento v3 (ADR 0127): a linha do que há por trás, o terminal do herói, os
+   comandos, o agente, a faixa da base e as outras janelas */
+.v2-para-quem { margin: .9rem 0 0; font-size: .95rem; line-height: 1.55; color: var(--apagado); }
+.v2-terminal { margin: 0; }
+.v2-terminal-linhas { margin: 0; padding: .2rem 0 .3rem; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 500 .86rem/1.6 "JetBrains Mono", ui-monospace, monospace; }
+.v2-terminal-linhas code { display: block; margin-bottom: .75rem; font: inherit; }
+.v2-terminal-comentario { color: var(--apagado); }
+.v2-terminal-cifrao { color: var(--azul-texto); user-select: none; }
+.v2-comando-linha { margin: 0 0 .6rem; }
+.v2-comando-linha code { font-size: .82rem; font-weight: 600; color: var(--azul-texto); overflow-wrap: anywhere; }
+.v2-agente-colunas { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 1.5rem 3rem; margin-top: 1.75rem; }
+.v2-passos-da-cli { display: grid; gap: 1.2rem; margin: 0; padding: 0; list-style: none; counter-reset: passo; }
+.v2-passos-da-cli li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); column-gap: .8rem; counter-increment: passo; max-width: none; }
+.v2-passos-da-cli li::before { content: counter(passo); grid-row: span 2; font: 700 1.15rem/1.4 "JetBrains Mono", ui-monospace, monospace;
+  color: var(--azul-texto); }
+.v2-passos-da-cli strong, .v2-passos-da-cli span { grid-column: 2; }
+.v2-passos-da-cli span { color: var(--apagado); }
+.v2-travas { display: grid; gap: .9rem; margin: 0; padding-left: 1.25rem; border-left: 2px solid var(--linha-forte); align-content: start; }
+.v2-travas dt { font-weight: 700; }
+.v2-travas dd { margin: .1rem 0 0; color: var(--apagado); font-size: .95rem; }
+.v2-base-faixa { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+/* a demonstração da conversa (linha 903, PR E): pergunta à direita, resposta à esquerda, tudo texto fixo */
+.v2-conversa { display: grid; gap: .9rem; max-width: 52rem; margin-top: 1.75rem; }
+.v2-fala { margin: 0; padding: .9rem 1.1rem; border: 1px solid var(--linha); border-radius: 16px; background: var(--superficie); color: var(--texto); }
+.v2-fala p { margin: 0; max-width: none; }
+.v2-fala-pergunta { justify-self: end; max-width: min(100%, 34rem); border-color: var(--azul-texto); border-bottom-right-radius: 4px;
+  background: color-mix(in srgb, var(--azul) 12%, var(--superficie)); }
+.v2-fala-resposta { display: grid; gap: .8rem; min-width: 0; border-bottom-left-radius: 4px; }
+.v2-conversa-tabela { overflow-x: auto; }
+.v2-conversa-tabela table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.v2-conversa-tabela th, .v2-conversa-tabela td { padding: .45rem .7rem .45rem 0; text-align: left; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+.v2-conversa-tabela thead th { font-size: .78rem; font-weight: 700; color: var(--apagado); }
+.v2-conversa-tabela tbody th { font-weight: 600; }
+.v2-conversa-notas { display: grid; gap: .5rem; margin: 0; font-size: .92rem; }
+.v2-conversa-notas dt { font-size: .78rem; font-weight: 700; color: var(--apagado); }
+.v2-conversa-notas dd { margin: 0; }
+.v2-conversa-notas code { font-size: .86rem; font-weight: 600; color: var(--azul-texto); }
+.v2-conversa-rodape { max-width: 52rem; margin: 1rem 0 0; color: var(--apagado); font-size: .92rem; }
+.v2-janelas { padding-block: 0 clamp(2.5rem, 6vw, 4rem); }
+.v2-janelas p { max-width: 46rem; margin: 0; color: var(--apagado); }
 @media (max-width: 860px) {
-  .v2-estudo { grid-template-columns: minmax(0, 1fr); }
+  .v2-agente-colunas, .v2-base-faixa { grid-template-columns: minmax(0, 1fr); }
 }
 
 .busca-base { margin-top: 1.6rem; scroll-margin-top: 6rem; }
@@ -582,5 +618,31 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .busca-base-resultado small { color: var(--apagado); font-size: .72rem; }
 .busca-base [role="alert"] { font-size: .86rem; line-height: 1.5; }
 @media (max-width: 440px) { .busca-base-campos { flex-direction: column; } }
+
+/* Dados: a coluna "Consulta" da lista e o painel que mostra a amostra de uma tabela (site/ConsultaDaBase.tsx) */
+.dados-consulta { white-space: nowrap; }
+/* escondidos até a API responder (mostrarSeAConsultaResponde): nenhuma regra de display os reabre */
+[data-com-consulta][hidden] { display: none !important; }
+.dados-consultar { font: 600 .85rem "Manrope", sans-serif; color: var(--azul-texto); background: transparent;
+  border: 1px solid var(--linha); border-radius: .45rem; padding: .3rem .6rem; cursor: pointer; }
+.dados-consultar:hover { border-color: var(--azul-texto); }
+.dados-consultar:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.consulta-base { margin-top: 2rem; padding: 1rem 1.2rem; border: 1px solid var(--linha); border-radius: .7rem;
+  background: var(--fundo); scroll-margin-top: 6rem; }
+.consulta-base label { display: block; margin: .6rem 0 .4rem; font-weight: 650; }
+.consulta-base-campos { display: flex; gap: .55rem; }
+.consulta-base input { min-width: 0; flex: 1; max-width: 18rem; border: 1px solid var(--linha); border-radius: .55rem;
+  padding: .7rem .8rem; color: var(--texto); background: var(--fundo); font: inherit; }
+.consulta-base input:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.consulta-base-tabela { margin: 0 0 .4rem; }
+.consulta-base-limite, .consulta-base-origem { font-size: .85rem; color: var(--apagado); line-height: 1.6; margin: .6rem 0 0; }
+.consulta-base [role="alert"] { font-size: .9rem; line-height: 1.5; }
+.consulta-base-linhas { margin-top: .8rem; overflow-x: auto; }
+.consulta-base-linhas table { font-size: .82rem; }
+.consulta-base-linhas th, .consulta-base-linhas td { white-space: nowrap; }
+@media (max-width: 440px) {
+  .consulta-base-campos { flex-direction: column; }
+  .consulta-base input { max-width: none; }
+}
 `;
 }
