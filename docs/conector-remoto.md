@@ -228,5 +228,9 @@ conector para de funcionar na chamada seguinte.
 
 ## Pessoa física
 
-O filtro de pessoa (`pessoa.py`) recusa a resposta inteira quando um campo parece dado de pessoa física. Os
+O filtro de pessoa (`pessoa.py`) recusa a resposta inteira quando um campo parece dado de pessoa física. A
+exceção é `socios_e_donos` (e o segundo bloco da `analise_completa`), que aparece só para a chave de uma
+organização com `pessoa_no_conector`, desligada por padrão, e passa pela tranca própria de
+`socios_e_donos.py`: só nome, qualificação e data de entrada, nunca CPF, menor, endereço ou contato
+(política de privacidade, versão 19). Os
 testes, os exemplos e este guia não usam dado de pessoa real nem CNPJ de empresa real escolhido à mão.

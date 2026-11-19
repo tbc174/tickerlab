@@ -1,7 +1,8 @@
 # Chat de IA do app (linha 903)
 
 O analista pergunta em português na tela Perguntar (`POST /v1/chat`) e um modelo da Anthropic responde
-consultando só as 12 ferramentas do conector, só de leitura e sem pessoa física. O código fica em
+consultando só as 12 ferramentas do conector, só de leitura e sem pessoa física, também para a organização
+com `pessoa_no_conector`: `socios_e_donos` e `analise_completa` ficam só no conector. O código fica em
 `src/chat/` (como funciona, na docstring do `src/chat/__init__.py`) e a rota em `src/api_v1/chat.py`.
 
 ## As variáveis (no `.env` do servidor, lido pelo serviço `tickerlab-api`)

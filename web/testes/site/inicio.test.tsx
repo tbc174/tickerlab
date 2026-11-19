@@ -210,11 +210,16 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     expect(titulos).toEqual([
       "Fonte e data em cada número",
       "Nenhum número inventado",
-      "Sem dado de pessoa física",
+      "Pessoa física só com permissão",
       "A chave não vai ao chat",
       "Só leitura, as mesmas regras",
       "Nada é recomendação de investimento",
     ]);
+    // política de privacidade, versão 19: pessoa física só para a organização com a permissão, e nunca o resto
+    expect(semTags(secao)).toContain("Sem a permissão de ver pessoas, desligada por padrão");
+    expect(semTags(secao)).toContain("nunca CPF, menor de idade, endereço ou contato");
+    expect(semTags(heroi())).toContain("Sem CPF nem contato de pessoa");
+    expect(semTags(html)).not.toContain("Sem dado de pessoa física");
   });
 
   it("como era na data: três datas, a mais nova aberta, e cada resposta valendo no dia escolhido", () => {
