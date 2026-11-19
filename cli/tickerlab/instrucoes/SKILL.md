@@ -70,7 +70,8 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
 - **Não invente número que a CLI não devolveu.** Dado ausente é ausente; conta sua sai separada e com a
   origem de cada parcela.
 - **A chave é segredo:** nunca num comando, arquivo, log ou no chat.
-- **Sem pessoa física:** a API não serve sócio PF, CPF, MEI nem empresário individual; não procure por outros
-  caminhos.
+- **Sem pessoa física:** a linha de comando não traz sócio PF, CPF, MEI nem empresário individual (a API só
+  serve o nome de sócio PF à organização com a permissão de ver pessoas pela API, e nunca o CPF); não procure por
+  outros caminhos.
 
 Instruções completas: `tickerlab instrucoes` (o AGENTS.md do pacote).
