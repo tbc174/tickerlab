@@ -3172,7 +3172,7 @@ Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punid
 
 - **Fonte:** CGU: Portal da Transparência, download de dados do CEIS, CNEP, CEPIM e acordos de leniência (`base/sancoes.py`)
 - **Licença:** Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)
-- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
 - **Frequência:** Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -4419,8 +4419,8 @@ Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência,
 Cadastro de Empregadores do MTE (a "lista suja" do trabalho análogo ao escravo), só pessoa jurídica. Quando a página do MTE linka CSVs de layouts diferentes, vale o do arquivo baixado mais recentemente. A chave é CNPJ + ano da ação fiscal + estabelecimento: o `ID` do arquivo é só a posição na lista. Ser citado no cadastro não é condenação criminal. Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
 
 - **Fonte:** MTE: Cadastro de Empregadores (dados abertos) (`base/mte_lista_suja.py`)
-- **Licença:** Cadastro de empregadores do MTE (dado público; citar o MTE)
-- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Licença:** Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
 - **Frequência:** Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -4458,7 +4458,7 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 
 - **Fonte:** IBAMA: dados abertos, termos de embargo (`base/ibama_embargos.py`)
 - **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
-- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
 - **Frequência:** Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
