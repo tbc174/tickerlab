@@ -394,7 +394,7 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     });
     // política de privacidade, versão 19: na tela, pessoa física só para a organização com a permissão
     expect(semTags(secao)).toContain("Nome de pessoa física só aparece para a organização");
-    expect(semTags(secao)).toContain("com a permissão de ver pessoas, desligada por padrão, e nunca o CPF");
+    expect(semTags(secao)).toContain("com a permissão de ver pessoas na tela, desligada por padrão, e nunca o CPF");
     expect(semTags(html)).not.toContain("nome de pessoa física não aparece");
     expect(secao).toContain('href="/dados.html#');
   });
