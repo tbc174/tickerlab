@@ -68,9 +68,13 @@ def test_cada_organizacao_ve_so_as_ferramentas_do_seu_contrato(cliente, cenario)
     sem_nada = cenario["chave_sem_nada"].valor
     assert aj.nomes_das_ferramentas(cliente, com_busca) == [
         "buscar_empresas",
+        "de_onde_vem",
         "o_que_posso_ver",
     ]
-    assert aj.nomes_das_ferramentas(cliente, sem_nada) == ["o_que_posso_ver"]
+    assert aj.nomes_das_ferramentas(cliente, sem_nada) == [
+        "de_onde_vem",
+        "o_que_posso_ver",
+    ]
     erro, _ = aj.chamar(cliente, sem_nada, "buscar_empresas", uf=["SP"])
     assert erro
 

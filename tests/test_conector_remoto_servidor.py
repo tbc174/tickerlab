@@ -112,7 +112,7 @@ def test_lista_so_o_que_o_catalogo_da_chave_libera():
         erro, texto = aj.chamar(
             cliente, aj.CHAVE_DE_MENTIRA, "buscar_empresas", uf=["SP"]
         )
-    assert nomes == ["demonstracoes", "o_que_posso_ver"]
+    assert nomes == ["de_onde_vem", "demonstracoes", "o_que_posso_ver"]
     assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
 
 
