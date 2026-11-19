@@ -193,6 +193,16 @@ def test_toda_tabela_existe_e_nao_guarda_dado_de_pessoa():
             assert not TABELAS[tabela].pessoa, (linha, tabela)
 
 
+def _destino(fonte: str):
+    """O destino da fonte no acervo; a fonte que é família de arquivos (`mte-pat` → `mte-pat-beneficiarias`,
+    `-facilitadoras`, `-fornecedoras`) vale se todos os arquivos dela vão para as mesmas tabelas."""
+    if fonte in DESTINOS:
+        return DESTINOS[fonte]
+    arquivos = [d for nome, d in DESTINOS.items() if nome.startswith(f"{fonte}-")]
+    assert arquivos and len({d.tabelas for d in arquivos}) == 1, fonte
+    return arquivos[0]
+
+
 def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
     for linha in DIREITOS_DA_API_EXTERNA:
         tabelas = linha.tabelas
@@ -220,11 +230,11 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
             else:
-                assert linha.fonte in DESTINOS, linha
+                destino = _destino(linha.fonte)
                 origem = MONTADAS_DE_OUTRA_TABELA.get(tabela, tabela)
                 if tabela in TABELAS_DA_REDE:
                     origem = ORIGEM_NA_REDE[linha.fonte]
-                assert origem in DESTINOS[linha.fonte].tabelas, (linha, tabela)
+                assert origem in destino.tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 
 
