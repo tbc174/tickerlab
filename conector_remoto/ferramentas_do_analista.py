@@ -45,6 +45,7 @@ def registrar(servidor: MCPServer, pedidos: Pedidos) -> None:
     """Põe as ferramentas do analista no servidor (chamada por `registrar_ferramentas`)."""
     _registrar_credito(servidor, pedidos)
     _registrar_o_que_mudou(servidor, pedidos)
+    _registrar_comparar_empresas(servidor, pedidos)
 
 
 def _registrar_credito(servidor: MCPServer, pedidos: Pedidos) -> None:
@@ -527,4 +528,137 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
                     pedidos.entregar(resposta, "o_que_mudou")
         return pedidos.entregar(
             RespostaDaApi(200, _montar_a_saida(numeros, desde, blocos)), "o_que_mudou"
+        )
+
+
+# ---------------------------------------------------------------- comparar_empresas
+#
+# A ficha de 2 a 5 empresas lado a lado: uma linha por campo, uma coluna por empresa (a chave é o CNPJ). É o
+# mesmo pedido de `ficha_da_empresa` repetido por empresa, sem rota nova e com o mesmo conjunto.
+
+MINIMO_DE_EMPRESAS = 2
+MAXIMO_DE_EMPRESAS = 5
+CELULA_SEM_DADO = "não disponível"
+AVISO_DA_COMPARACAO = {
+    "code": "comparar_empresas",
+    "text": (
+        f"Cada coluna é a ficha de uma empresa. `{CELULA_SEM_DADO}` quer dizer que a base não tem aquele campo "
+        "para ela, não que o valor seja zero; a empresa que a base não serve vem em `not_available`."
+    ),
+}
+
+
+def _cnpjs_do_pedido(textos: list[str]) -> list[str]:
+    """Os CNPJs pedidos, só números, sem repetir; `ToolError` se são menos de 2, mais de 5 ou algum não é CNPJ."""
+    if not MINIMO_DE_EMPRESAS <= len(textos) <= MAXIMO_DE_EMPRESAS:
+        raise ToolError(
+            f"Compare de {MINIMO_DE_EMPRESAS} a {MAXIMO_DE_EMPRESAS} empresas por vez: vieram {len(textos)}. "
+            "Para mais, divida em duas comparações ou use `buscar_empresas`."
+        )
+    numeros = [cnpj_do_pedido(t) for t in textos]
+    if len(set(numeros)) != len(numeros):
+        raise ToolError("Há CNPJ repetido na lista: cada empresa entra uma vez.")
+    return numeros
+
+
+def _entregas(corpo: object) -> list[dict]:
+    return _itens(corpo, "periodic_filings") if isinstance(corpo, dict) else []
+
+
+def _tabela_de_campos(fichas: dict[str, Retrato | None]) -> list[dict[str, object]]:
+    """Uma linha por campo (em ordem alfabética), com o envelope de cada empresa ou a célula sem dado."""
+    campos = sorted({c for r in fichas.values() if r for c in r.folhas})
+    return [
+        {
+            "field": campo,
+            "values": {
+                cnpj: (retrato.folhas.get(campo) if retrato else None)
+                or CELULA_SEM_DADO
+                for cnpj, retrato in fichas.items()
+            },
+        }
+        for campo in campos
+    ]
+
+
+def _montar_a_comparacao(respostas: dict[str, RespostaDaApi]) -> dict[str, object]:
+    """A tabela da comparação. Resposta 404 é coluna sem dado; qualquer outra que não seja 200 já parou antes."""
+    ok = {cnpj: r for cnpj, r in respostas.items() if r.ok}
+    if not ok:
+        raise ToolError(
+            mensagem_do_erro(
+                RespostaDaApi(STATUS_NAO_DISPONIVEL, {"detail": MOTIVO_NAO_DISPONIVEL})
+            )
+        )
+    fichas: dict[str, Retrato | None] = {
+        cnpj: _retrato("registration", r.corpo) if r.ok else None
+        for cnpj, r in respostas.items()
+    }
+    corpos = [r.corpo for r in ok.values()]
+    return {
+        "cnpjs": list(respostas),
+        "fields": _tabela_de_campos(fichas),
+        "periodic_filings": {
+            cnpj: _entregas(r.corpo) if r.ok else CELULA_SEM_DADO
+            for cnpj, r in respostas.items()
+        },
+        "not_available": [cnpj for cnpj, r in respostas.items() if not r.ok],
+        "limits": [*_juntar_sem_repetir(corpos, "limits"), AVISO_DA_COMPARACAO],
+        "sources": _juntar_sem_repetir(corpos, "sources"),
+    }
+
+
+def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A ficha de 2 a 5 empresas lado a lado."""
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["comparar_empresas"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def comparar_empresas(
+        cnpjs: Annotated[
+            list[str],
+            Field(
+                description=(
+                    f"De {MINIMO_DE_EMPRESAS} a {MAXIMO_DE_EMPRESAS} CNPJs (14 caracteres; com ou sem "
+                    "pontuação). Só pessoa jurídica."
+                )
+            ),
+        ],
+    ) -> str:
+        """A ficha de 2 a 5 empresas lado a lado: uma linha por campo do cadastro na Receita (razão social,
+        situação, abertura, CNAE, porte, natureza jurídica, Simples) e uma coluna por empresa, mais as entregas
+        de DFP e ITR à CVM de cada uma, cada valor com a fonte e o dia em que ficou público. O que a base não
+        tem de uma empresa vem como `não disponível`, nunca como zero. Serve para pôr lado a lado empresas que
+        o analista já escolheu, antes de uma reunião ou de uma lista curta.
+        Fonte: cadastro CNPJ da Receita Federal; FRE, FCA e IPE da CVM, nas entregas.
+        Não traz: sócio pessoa física, contato nem endereço, faturamento de empresa fechada, nota nem
+        ordenação das empresas nem opinião sobre elas."""
+        numeros = _cnpjs_do_pedido(cnpjs)
+        acesso = acesso_do_pedido()
+        conjuntos = acesso.conjuntos if acesso else frozenset()
+        # as fichas correm juntas: a espera é a de um pedido, não a soma de cinco
+        resultados = await asyncio.gather(
+            *(_buscar(pedidos, "registration", n, None, conjuntos) for n in numeros),
+            return_exceptions=True,
+        )
+        for resultado in resultados:
+            if isinstance(resultado, BaseException):
+                raise resultado
+        respostas = dict(
+            zip(
+                numeros,
+                (r for r in resultados if isinstance(r, RespostaDaApi)),
+                strict=True,
+            )
+        )
+        for resposta in respostas.values():
+            if not resposta.ok and resposta.status != STATUS_NAO_DISPONIVEL:
+                raise ToolError(mensagem_do_erro(resposta))
+        for resposta in respostas.values():  # a tranca vê cada resposta crua
+            if resposta.ok:
+                pedidos.entregar(resposta, "comparar_empresas")
+        return pedidos.entregar(
+            RespostaDaApi(200, _montar_a_comparacao(respostas)), "comparar_empresas"
         )

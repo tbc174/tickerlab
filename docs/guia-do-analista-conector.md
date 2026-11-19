@@ -62,6 +62,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
 | Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público. Só aparece se a sua chave tem o conjunto de crédito. Não é rating, nota nem elegibilidade, e não traz o SCR individual |
 | O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia que você escolhe contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público. Vale para retomar uma empresa que você já analisou. Mostra só os blocos que a sua chave vê e diz quais ficaram de fora. Não traz o que mudou mas ainda não foi publicado na base |
+| Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas, para pôr lado a lado as que você já escolheu. O que a base não tem vem como «não disponível», nunca como zero. Não traz nota nem ordenação das empresas |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |
 

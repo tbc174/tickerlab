@@ -285,8 +285,9 @@ def test_resposta_acima_do_teto_vira_frase_clara_e_nao_corta_o_dado_no_meio():
 
 
 def _descricoes_das_ferramentas_novas() -> dict[str, str]:
-    novas = {"credito_da_empresa", "o_que_mudou"}
-    with aj.conector(_api_do_credito()) as cliente:
+    novas = {"credito_da_empresa", "o_que_mudou", "comparar_empresas"}
+    catalogo = {CHAVE_A: (*TODOS_OS_BLOCOS, credito.CONJUNTO)}
+    with aj.conector(_api_do_historico(catalogos=catalogo)) as cliente:
         lista = aj.rpc(cliente, CHAVE_A, "tools/list").json()["result"]["tools"]
     return {f["name"]: f["description"] for f in lista if f["name"] in novas}
 
@@ -1037,3 +1038,330 @@ def test_se_a_api_vazar_um_vinculo_do_futuro_o_item_inteiro_sai_do_lado_antigo()
         "55555555",
         "77777777",
     }
+
+
+# ================================================================ comparar_empresas
+#
+# A ficha de 2 a 5 empresas lado a lado: uma linha por campo, uma coluna por empresa (a chave é o CNPJ).
+
+TERCEIRA_EMPRESA = "55444333000122"
+SO_O_CADASTRO = ("profiles", "companies")
+
+
+def _ficha_de(cnpj: str, nome: str, **extra) -> dict:
+    """A ficha de uma empresa, do jeito da API; `extra` põe campos a mais no cadastro."""
+    ficha = _ficha(nome, "2025-03-10")
+    ficha["cnpj"] = cnpj
+    ficha["registration"] |= extra
+    return ficha
+
+
+def _fichas(por_cnpj: dict[str, dict | None]) -> dict[str, dict]:
+    """As rotas de ficha de cada empresa (`None` = a base não a tem)."""
+    return {
+        f"/companies/{cnpj}/profile": ficha
+        for cnpj, ficha in por_cnpj.items()
+        if ficha is not None
+    }
+
+
+def _tres_fichas() -> dict[str, dict]:
+    return _fichas(
+        {
+            EMPRESA: _ficha_de(
+                EMPRESA, "ALFA S.A.", size=_fato("grande", "rfb-cnpj", "2025-12-01")
+            ),
+            OUTRA_EMPRESA: _ficha_de(OUTRA_EMPRESA, "BETA LTDA"),
+            TERCEIRA_EMPRESA: _ficha_de(
+                TERCEIRA_EMPRESA,
+                "GAMA S.A.",
+                size=_fato("pequeno", "rfb-cnpj", "2025-12-01"),
+            ),
+        }
+    )
+
+
+def _comparar(cliente, *cnpjs: str, chave: str = CHAVE_A):
+    return aj.chamar_ok(cliente, chave, "comparar_empresas", cnpjs=list(cnpjs))
+
+
+def _linha(corpo: dict, campo: str) -> dict:
+    (linha,) = [f for f in corpo["fields"] if f["field"] == campo]
+    return linha["values"]
+
+
+def test_comparar_empresas_so_aparece_para_quem_ve_o_cadastro():
+    catalogos = {CHAVE_A: SO_O_CADASTRO, CHAVE_B: ("credit", "links", "events")}
+    with aj.conector(_api_do_historico(catalogos=catalogos)) as cliente:
+        com = aj.nomes_das_ferramentas(cliente, CHAVE_A)
+        sem = aj.nomes_das_ferramentas(cliente, CHAVE_B)
+        erro, _ = aj.chamar(
+            cliente,
+            CHAVE_B,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, OUTRA_EMPRESA],
+        )
+    assert "comparar_empresas" in com
+    assert "comparar_empresas" not in sem
+    assert erro
+
+
+def test_comparar_poe_cada_empresa_numa_coluna_com_fonte_e_dia_em_cada_valor():
+    with aj.conector(_api_do_historico(hoje=_tres_fichas())) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA, TERCEIRA_EMPRESA)
+    assert corpo["cnpjs"] == [EMPRESA, OUTRA_EMPRESA, TERCEIRA_EMPRESA]
+    nomes = _linha(corpo, "legal_name")
+    assert nomes[EMPRESA] == _fato("ALFA S.A.", "rfb-cnpj", "2025-03-10")
+    assert nomes[OUTRA_EMPRESA]["value"] == "BETA LTDA"
+    assert nomes[TERCEIRA_EMPRESA]["value"] == "GAMA S.A."
+    assert corpo["not_available"] == []
+    assert {f["source"] for f in corpo["sources"]} == {"rfb-cnpj"}
+
+
+def test_campo_que_a_empresa_nao_tem_vem_como_nao_disponivel_e_nunca_como_zero():
+    with aj.conector(_api_do_historico(hoje=_tres_fichas())) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA, TERCEIRA_EMPRESA)
+    porte = _linha(corpo, "size")
+    assert porte[EMPRESA]["value"] == "grande"
+    assert porte[OUTRA_EMPRESA] == "não disponível"
+    assert porte[TERCEIRA_EMPRESA]["value"] == "pequeno"
+    assert any(limite["code"] == "comparar_empresas" for limite in corpo["limits"])
+
+
+def test_as_entregas_de_dfp_e_itr_vem_por_empresa():
+    alfa = _ficha_de(EMPRESA, "ALFA S.A.")
+    alfa["periodic_filings"] = [_entrega("late", 7, "2025-11-25")]
+    fichas = _fichas(
+        {EMPRESA: alfa, OUTRA_EMPRESA: _ficha_de(OUTRA_EMPRESA, "BETA LTDA")}
+    )
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+    entregas = corpo["periodic_filings"]
+    assert entregas[EMPRESA][0]["filing_status"]["value"] == "late"
+    assert entregas[OUTRA_EMPRESA] == []
+
+
+def test_empresa_que_a_base_nao_tem_vira_coluna_nao_disponivel_e_as_outras_seguem():
+    fichas = _fichas(
+        {
+            EMPRESA: _ficha_de(EMPRESA, "ALFA S.A."),
+            OUTRA_EMPRESA: None,
+        }
+    )
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+    assert corpo["not_available"] == [OUTRA_EMPRESA]
+    nomes = _linha(corpo, "legal_name")
+    assert nomes[EMPRESA]["value"] == "ALFA S.A."
+    assert nomes[OUTRA_EMPRESA] == "não disponível"
+    assert corpo["periodic_filings"][OUTRA_EMPRESA] == "não disponível"
+
+
+def test_nenhuma_empresa_na_base_devolve_o_nao_disponivel_de_sempre():
+    with aj.conector(_api_do_historico(hoje={})) as cliente:
+        erro, texto = aj.chamar(
+            cliente,
+            CHAVE_A,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, OUTRA_EMPRESA],
+        )
+    assert erro and "Não disponível" in texto
+
+
+@pytest.mark.parametrize("quantas", [6, 7, 25])
+def test_mais_de_cinco_empresas_e_erro_claro_e_nao_chama_a_api(quantas):
+    pedidos: list[httpx.Request] = []
+    cnpjs = [f"{n:014d}" for n in range(1, quantas + 1)]
+    with aj.conector(_api_do_historico(pedidos=pedidos)) as cliente:
+        erro, texto = aj.chamar(cliente, CHAVE_A, "comparar_empresas", cnpjs=cnpjs)
+    assert erro and "2 a 5 empresas" in texto and f"vieram {quantas}" in texto
+    assert not [p for p in pedidos if "/companies/" in p.url.path]
+
+
+def test_cinco_empresas_e_o_maximo_aceito():
+    cnpjs = [f"{n:014d}" for n in range(1, 6)]
+    fichas = _fichas({c: _ficha_de(c, f"EMPRESA {c}") for c in cnpjs})
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        corpo = _comparar(cliente, *cnpjs)
+    assert corpo["cnpjs"] == cnpjs
+
+
+def test_uma_empresa_so_nao_e_comparacao():
+    with aj.conector(_api_do_historico(hoje=_tres_fichas())) as cliente:
+        erro, texto = aj.chamar(cliente, CHAVE_A, "comparar_empresas", cnpjs=[EMPRESA])
+    assert erro and "2 a 5 empresas" in texto
+
+
+def test_cnpj_repetido_e_cpf_sao_recusados_sem_chamar_a_api():
+    pedidos: list[httpx.Request] = []
+    with aj.conector(_api_do_historico(pedidos=pedidos)) as cliente:
+        repetido = aj.chamar(
+            cliente,
+            CHAVE_A,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, "11.222.333/0001-81"],
+        )
+        cpf = aj.chamar(
+            cliente,
+            CHAVE_A,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, formatado(cpf_que_confere("888654321"))],
+        )
+    assert repetido[0] and "repetido" in repetido[1]
+    assert cpf[0] and "nunca CPF" in cpf[1]
+    assert not [p for p in pedidos if "/companies/" in p.url.path]
+
+
+def test_cada_empresa_vai_a_api_so_com_o_cnpj_sem_pontuacao_e_sem_known_at():
+    pedidos: list[httpx.Request] = []
+    with aj.conector(
+        _api_do_historico(hoje=_tres_fichas(), pedidos=pedidos)
+    ) as cliente:
+        _comparar(cliente, "11.222.333/0001-81", OUTRA_EMPRESA)
+    fichas = [p for p in pedidos if "/companies/" in p.url.path]
+    assert sorted(p.url.path for p in fichas) == sorted(
+        f"/data/v1/companies/{c}/profile" for c in (EMPRESA, OUTRA_EMPRESA)
+    )
+    assert all("known_at" not in p.url.params for p in fichas)
+
+
+def test_chave_so_com_companies_usa_o_cadastro_plano_de_reserva():
+    plano = {
+        f"/companies/{c}": {
+            "cnpj": c,
+            "known_at": HOJE,
+            "legal_name": _fato(f"EMPRESA {c}", "rfb-cnpj", "2025-03-10"),
+        }
+        for c in (EMPRESA, OUTRA_EMPRESA)
+    }
+    transporte = _api_do_historico(hoje=plano, catalogos={CHAVE_A: ("companies",)})
+    with aj.conector(transporte) as cliente:
+        corpo = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+    assert set(_linha(corpo, "legal_name")) == {EMPRESA, OUTRA_EMPRESA}
+
+
+def test_duas_organizacoes_cada_uma_ve_so_o_que_a_chave_dela_libera():
+    pedidos: list[httpx.Request] = []
+    catalogos = {CHAVE_A: SO_O_CADASTRO, CHAVE_B: ("credit",)}
+    with aj.conector(
+        _api_do_historico(hoje=_tres_fichas(), catalogos=catalogos, pedidos=pedidos)
+    ) as cliente:
+        da_a = _comparar(cliente, EMPRESA, OUTRA_EMPRESA)
+        erro, texto = aj.chamar(
+            cliente,
+            CHAVE_B,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, OUTRA_EMPRESA],
+        )
+    assert _linha(da_a, "legal_name")[EMPRESA]["value"] == "ALFA S.A."
+    assert erro and "ALFA" not in texto and "BETA" not in texto
+    de_b = [p for p in pedidos if p.headers["authorization"] == f"Bearer {CHAVE_B}"]
+    assert not [p for p in de_b if "/companies/" in p.url.path]
+
+
+@pytest.mark.parametrize(
+    ("status", "cabecalhos", "corpo", "frase"),
+    [
+        (
+            429,
+            {"Retry-After": "17"},
+            {"detail": "rate_limited"},
+            "tente de novo em 17 s",
+        ),
+        (401, {}, {"detail": "invalid_api_key"}, "chave foi recusada"),
+        (422, {}, {"detail": "invalid"}, "formato errado"),
+        (503, {}, {"detail": "unavailable"}, "fora do ar"),
+        (500, {}, {"detail": "boom"}, "erro inesperado (status 500)"),
+    ],
+)
+def test_erro_da_api_na_comparacao_vira_frase_clara_em_portugues(
+    status, cabecalhos, corpo, frase
+):
+    with aj.conector(_api_que_so_responde(status, corpo, **cabecalhos)) as cliente:
+        erro, texto = aj.chamar(
+            cliente,
+            CHAVE_A,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, OUTRA_EMPRESA],
+        )
+    assert erro and frase in texto
+    assert CHAVE_A not in texto and "Traceback" not in texto
+
+
+def test_erro_de_uma_empresa_que_nao_e_404_derruba_a_comparacao_inteira():
+    """Uma coluna a menos, calada, pareceria 'não disponível': a ferramenta para e diz o motivo."""
+
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        if pedido.url.path == "/data/v1/catalog":
+            conjuntos = [{"dataset": c} for c in SO_O_CADASTRO]
+            return httpx.Response(200, json={"datasets": conjuntos, "sources": []})
+        if OUTRA_EMPRESA in pedido.url.path:
+            return httpx.Response(
+                429, json={"detail": "rate_limited"}, headers={"Retry-After": "9"}
+            )
+        return httpx.Response(200, json=_ficha_de(EMPRESA, "ALFA S.A."))
+
+    with aj.conector(httpx.MockTransport(responder)) as cliente:
+        erro, texto = aj.chamar(
+            cliente,
+            CHAVE_A,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, OUTRA_EMPRESA],
+        )
+    assert erro and "tente de novo em 9 s" in texto and "ALFA" not in texto
+
+
+def test_api_lenta_nao_trava_o_conector_e_as_fichas_correm_juntas():
+    espera = 0.3
+
+    async def lenta(pedido: httpx.Request) -> httpx.Response:
+        if pedido.url.path.endswith("/catalog"):
+            return httpx.Response(
+                200, json={"datasets": [{"dataset": c} for c in SO_O_CADASTRO]}
+            )
+        await asyncio.sleep(espera)
+        raise httpx.ReadTimeout("a API demorou", request=pedido)
+
+    cnpjs = [f"{n:014d}" for n in range(1, 6)]
+    inicio = time.perf_counter()
+    with aj.conector(httpx.MockTransport(lenta)) as cliente:
+        erro, texto = aj.chamar(cliente, CHAVE_A, "comparar_empresas", cnpjs=cnpjs)
+    gasto = time.perf_counter() - inicio
+    assert erro and "não respondeu" in texto
+    assert gasto < TEMPO_LIMITE_DA_API_S
+    assert gasto < 3 * espera  # cinco fichas em fila custariam 5 * espera
+
+
+@pytest.mark.parametrize(
+    "sujar",
+    [
+        lambda ficha: ficha["registration"].update(
+            partners=[{"name": "FULANA EXEMPLO"}]
+        ),
+        lambda ficha: ficha.update(contact="fulana@exemplo.invalid"),
+        lambda ficha: ficha.update(cpf="x"),
+    ],
+    ids=["sócio no cadastro", "e-mail na ficha", "chave de CPF"],
+)
+def test_pessoa_na_ficha_de_qualquer_empresa_recusa_a_comparacao_sem_repetir_o_valor(
+    sujar,
+):
+    fichas = _tres_fichas()
+    sujar(fichas[f"/companies/{OUTRA_EMPRESA}/profile"])
+    with aj.conector(_api_do_historico(hoje=fichas)) as cliente:
+        erro, texto = aj.chamar(
+            cliente,
+            CHAVE_A,
+            "comparar_empresas",
+            cnpjs=[EMPRESA, OUTRA_EMPRESA],
+        )
+    assert erro and ferramentas.MENSAGEM_DE_PESSOA in texto
+    assert "FULANA" not in texto and "exemplo.invalid" not in texto
+
+
+def test_a_descricao_do_comparar_empresas_diz_o_que_nao_traz():
+    descricao = _descricoes_das_ferramentas_novas()["comparar_empresas"]
+    nao_traz = descricao.split("Não traz:")[1]
+    for ausente in ("pessoa física", "faturamento", "opinião"):
+        assert ausente in nao_traz
+    assert "2 a 5" in descricao

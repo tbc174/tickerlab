@@ -62,7 +62,7 @@ def _executar(caixa, nome, entrada):
 # `socios_e_donos` é pessoa física: o chat do app segue sem pessoa (AGENTS.md, Exceção: tela e conector, não o chat)
 # `analise_completa` (frente 3, 18/11) também: o chat já compõe pelas ferramentas de cada bloco, e uma resposta
 # com todos os blocos encheria o contexto do modelo do chat; o dono do chat decide se ela entra.
-# `credito_da_empresa` e `o_que_mudou` (linha 980, onda 1): ferramentas do analista no conector; o dono do chat decide.
+# `credito_da_empresa`, `o_que_mudou` e `comparar_empresas` (linha 980, onda 1): ferramentas do analista no conector; o dono do chat decide.
 SO_NO_CONECTOR = frozenset(
     {
         "ativos",
@@ -70,6 +70,7 @@ SO_NO_CONECTOR = frozenset(
         "analise_completa",
         "credito_da_empresa",
         "o_que_mudou",
+        "comparar_empresas",
     }
 )
 

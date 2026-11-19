@@ -101,7 +101,7 @@ MAPA_DAS_PERGUNTAS = (
     "que a pesquisa provou na semana: `novidades`. O que a chave pode ver e o consumo do mês: "
     "`o_que_posso_ver`. Os fatos de crédito de uma empresa (situação na Receita, fatos relevantes e cessão a "
     "FIDC, sem rating nem elegibilidade): `credito_da_empresa`. O que mudou numa empresa desde um dia (cadastro, vínculos e eventos, o antes e o "
-    "depois): `o_que_mudou`. Ferramenta que não aparece na lista é de um conjunto que a chave não vê: diga "
+    "depois): `o_que_mudou`. As fichas de 2 a 5 empresas lado a lado: `comparar_empresas`. Ferramenta que não aparece na lista é de um conjunto que a chave não vê: diga "
     "isso ao analista, sem estimar a resposta. "
 )
 LACUNAS = (

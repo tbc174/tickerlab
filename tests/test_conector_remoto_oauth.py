@@ -403,6 +403,7 @@ def test_cada_analista_ve_so_o_que_a_chave_dele_libera(api):
         de_b = _ferramentas(cliente, tokens_b["access_token"])
     assert de_a == [
         "analise_completa",
+        "comparar_empresas",
         "demonstracoes",
         "ficha_da_empresa",
         "o_que_mudou",
