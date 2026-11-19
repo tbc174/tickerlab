@@ -307,7 +307,7 @@ SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o 
 # `LICENCAS` continua dizendo o que a fonte escreveu, e cada bloco servido cita a fonte
 INTEGRIDADE_SOB_CONTRATO = (
     "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de "
-    "integridade no contrato (ADR 0122, Emenda 1, 18/11/2026: risco assumido pelo Tiago; citar a fonte)"
+    "integridade no contrato (ADR 0122, Emenda 1; citar a fonte)"
 )
 CONJUNTO_DE_INTEGRIDADE = "integrity"
 A_CONFIRMAR = (

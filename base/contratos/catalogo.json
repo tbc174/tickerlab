@@ -8446,7 +8446,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
-      "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+      "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)",
       "atraso": "A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)"
@@ -12132,7 +12132,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
-      "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+      "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)",
       "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
@@ -12252,7 +12252,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
-      "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+      "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)",
       "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
