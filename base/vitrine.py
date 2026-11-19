@@ -516,8 +516,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "Quantos conselheiros, diretores e membros de comitês a companhia tem e quantos são "
         "independentes, a maior, a menor e a média da remuneração por órgão, a diversidade e os "
         "empregados, o capital social e as transações com partes relacionadas, como a CVM publica no "
-        "formulário de referência, e as compras e vendas de ações pela administração e pelos "
-        "controladores, declaradas à CVM.",
+        "formulário de referência, e as compras e vendas de ações declaradas à CVM por cargo, pela "
+        "administração, pelos controladores e pela própria companhia.",
         (
             "fre_conselho",
             "fre_comites",
@@ -583,8 +583,9 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "Registro na CVM e códigos na bolsa",
         "Cada registro de companhia aberta na CVM, inclusive as que saíram, o cadastro como era em "
         "cada formulário, os códigos de negociação e os valores mobiliários com as datas em que "
-        "valeram, a ligação de cada emissor ao CNPJ, com os casos difíceis conferidos um a um, e o "
-        "código global (LEI) do GLEIF que liga a entidade ao CNPJ.",
+        "valeram, a ligação de cada emissor ao CNPJ, com os emissores que saíram da bolsa, mudaram "
+        "de código ou ficaram sem ligação conferidos à mão, e o código global (LEI) do GLEIF que liga "
+        "a entidade ao CNPJ.",
         (
             "cadastro_das_companhias",
             "fca_geral",
