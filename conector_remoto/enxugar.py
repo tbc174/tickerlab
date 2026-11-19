@@ -21,7 +21,8 @@ LIMITE_MAXIMO_DAS_ENTREGAS = 100
 # a folga para as frases de `limits` e para o resto do corpo
 FOLGA_EM_CARACTERES = 4_000
 # do que mais se pergunta ao que menos: resultado, balanço, caixa, valor adicionado, o resto, as mutações
-ORDEM_DOS_DEMONSTRATIVOS = ("DRE", "BPA", "BPP", "DFC", "DVA", "DRA", "DMPL")
+# a DMPL não está aqui: a rota de demonstrações não a serve (ela fica em tabela própria, `base/dmpl.py`)
+ORDEM_DOS_DEMONSTRATIVOS = ("DRE", "BPA", "BPP", "DFC", "DVA", "DRA")
 CONSOLIDADO, INDIVIDUAL = "con", "ind"
 
 
@@ -89,14 +90,20 @@ def _so_a_versao_mais_nova(linhas: list[dict]) -> list[dict]:
     return [linha for linha in linhas if melhor[_fato(linha)] is linha]
 
 
+def _do_demonstrativo_e_periodo(linha: dict) -> tuple:
+    return (_valor(linha, "statement"), _valor(linha, "end"))
+
+
 def _so_o_grupo_pedido(linhas: list[dict], visao: str) -> list[dict]:
-    """`consolidado`: o consolidado de cada conta e, onde ela não tem, o individual; `individual` ou `ambos`."""
+    """`consolidado`: o consolidado de cada demonstrativo e, no que não tem consolidado naquele período, o
+    individual (as contas detalhadas do individual não somam nas do consolidado: os grupos não se misturam
+    dentro de um demonstrativo); `individual` ou `ambos`."""
     if visao == "ambos":
         return linhas
     if visao == "individual":
         return [linha for linha in linhas if _valor(linha, "group") == INDIVIDUAL]
     com_consolidado = {
-        _fato(linha)[:1] + _fato(linha)[2:]
+        _do_demonstrativo_e_periodo(linha)
         for linha in linhas
         if _valor(linha, "group") == CONSOLIDADO
     }
@@ -104,7 +111,7 @@ def _so_o_grupo_pedido(linhas: list[dict], visao: str) -> list[dict]:
         linha
         for linha in linhas
         if _valor(linha, "group") == CONSOLIDADO
-        or _fato(linha)[:1] + _fato(linha)[2:] not in com_consolidado
+        or _do_demonstrativo_e_periodo(linha) not in com_consolidado
     ]
 
 
@@ -152,6 +159,7 @@ def _avisos(
     outros_periodos: list[str],
     antigas: int,
     do_grupo_de_fora: int,
+    visao: str,
     no_corte: Counter,
     entregues: Counter,
 ) -> list[str]:
@@ -159,22 +167,28 @@ def _avisos(
     if outros_periodos:
         avisos.append(
             f"Período entregue: o que termina em {periodo}, o mais novo da base. A base tem também os que "
-            f"terminam em {', '.join(outros_periodos[:6])}; peça um deles com `fim_do_periodo`."
+            f"terminam em {', '.join(outros_periodos[:6])}"
+            f"{' e mais' if len(outros_periodos) > 6 else ''}; peça um deles com `fim_do_periodo`."
         )
     if antigas:
         avisos.append(
             f"De cada conta, só a versão mais nova: {antigas} linha(s) de versão mais antiga ficaram de fora."
         )
-    if do_grupo_de_fora:
+    if do_grupo_de_fora and visao == "individual":
         avisos.append(
-            f"Consolidado onde a conta existe, individual onde não existe: {do_grupo_de_fora} linha(s) do outro "
-            "grupo ficaram de fora; peça `visao` individual ou ambos."
+            f"Só o individual: {do_grupo_de_fora} linha(s) do consolidado ficaram de fora; peça `visao` "
+            "consolidado ou ambos."
+        )
+    elif do_grupo_de_fora:
+        avisos.append(
+            f"Consolidado em cada demonstrativo que o tem, individual no que não tem consolidado: "
+            f"{do_grupo_de_fora} linha(s) do individual ficaram de fora; peça `visao` individual ou ambos."
         )
     if no_corte:
         avisos.append(
             "A resposta foi cortada para caber na conversa; ficaram de fora "
             f"{_lista_de(no_corte)} linha(s) por demonstrativo. Peça um `demonstrativo` (DRE, BPA, BPP, DFC, "
-            "DVA, DRA, DMPL) ou uma `conta` (ex.: 3.01) para ver o resto."
+            "DVA, DRA) ou uma `conta` (ex.: 3.01) para ver o resto."
         )
     if entregues and no_corte:
         avisos.append(f"Entregues: {_lista_de(entregues)} linha(s) por demonstrativo.")
@@ -224,6 +238,7 @@ def enxugar_demonstracoes(
         [p for p in periodos if p != periodo] if periodo else [],
         antigas,
         do_grupo_de_fora,
+        visao,
         no_corte,
         Counter(str(_valor(l, "statement")) for l in cabem),
     )

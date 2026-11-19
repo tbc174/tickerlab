@@ -144,6 +144,7 @@ DICAS_DE_RESPOSTA_GRANDE = {
     "buscar_empresas": "Peça menos empresas por página (`limite`) ou filtre mais (`cnae`, `uf`, `municipio`).",
     "comparaveis": "Peça menos pares (`limite`).",
     "demonstracoes": "Peça um demonstrativo só (`demonstrativo`, ex.: DRE) ou uma conta (`conta`, ex.: 3.01).",
+    "ficha_da_empresa": "Peça menos entregas de DFP e ITR (`limite_de_entregas`).",
     "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
     "vinculos": "Peça menos níveis (`profundidade`) ou só alguns tipos de vínculo (`tipos`).",
     "novidades": "Peça menos dias (`dias`).",
@@ -621,7 +622,7 @@ def registrar_ferramentas(
             str | None,
             Field(
                 pattern=r"^[A-Za-z_]{2,8}$",
-                description="Só um demonstrativo: DRE, BPA, BPP, DFC, DVA, DRA ou DMPL. Sem ele vêm todos, na ordem, até caber.",
+                description="Só um demonstrativo: DRE, BPA, BPP, DFC, DVA ou DRA. Sem ele vêm todos, na ordem, até caber.",
             ),
         ] = None,
         visao: Annotated[

@@ -32,7 +32,7 @@ from tests.test_api_externa_piloto import (  # noqa: F401 (fixtures)
 
 CHAVE = aj.CHAVE_DE_MENTIRA
 # quantas contas tem cada demonstrativo da companhia de mentira (os números de uma companhia grande)
-CONTAS = {"DRE": 35, "BPA": 45, "BPP": 55, "DFC_MI": 45, "DVA": 30, "DMPL": 60}
+CONTAS = {"DRE": 40, "BPA": 55, "BPP": 65, "DFC_MI": 55, "DVA": 40}
 INICIOS = {"DRE": "2025-01-01", "DFC_MI": "2025-01-01", "DVA": "2025-01-01"}
 
 
@@ -239,6 +239,25 @@ def test_visao_individual_traz_so_o_individual(conector) -> None:
     assert {g for _d, g, _c in _chaves_das_linhas(corpo)} == {"ind"}
 
 
+def test_visao_individual_diz_que_so_o_individual_veio(conector) -> None:
+    corpo = _demonstracoes(
+        conector, fim_do_periodo="2025-12-31", demonstrativo="DRE", visao="individual"
+    )
+    avisos = " ".join(corpo["limits"])
+    assert "Só o individual" in avisos
+    assert "Consolidado em cada demonstrativo" not in avisos
+
+
+def test_dmpl_nao_e_oferecida_porque_a_rota_nao_a_serve() -> None:
+    assert "DMPL" not in enxugar.ORDEM_DOS_DEMONSTRATIVOS
+    corpo = enxugar.enxugar_demonstracoes(
+        {"rows": [_linha("DRE", "con", "3.01", "2025-12-31", 1)] * 2},
+        periodo_pedido=True,
+    )
+    assert isinstance(corpo, dict)
+    assert "DMPL" not in " ".join(corpo.get("limits", []))
+
+
 def test_sem_fim_do_periodo_vem_o_mais_novo_e_diz_quais_ha(conector) -> None:
     corpo = _demonstracoes(conector)
     assert {l["end"]["value"] for l in corpo["rows"]} == {"2026-03-31"}
@@ -334,6 +353,25 @@ def test_as_linhas_do_mesmo_fato_viram_uma_a_mais_nova() -> None:
     saida = enxugar.enxugar_demonstracoes({"rows": [antiga, nova]}, periodo_pedido=True)
     assert isinstance(saida, dict)
     assert saida["rows"] == [nova]
+
+
+def test_o_consolidado_nao_se_mistura_com_contas_do_individual() -> None:
+    """Numa holding o individual tem contas que o consolidado não tem: dentro de um demonstrativo que tem
+    consolidado, nenhuma linha do individual entra."""
+    linhas = [
+        _linha("DFC_MI", "con", "6.01.01.01", "2025-12-31", 1),
+        _linha("DFC_MI", "ind", "6.01.01.01", "2025-12-31", 1),
+        _linha("DFC_MI", "ind", "6.01.01.05", "2025-12-31", 1),
+        _linha("BPA", "ind", "1.01", "2025-12-31", 1),
+    ]
+    saida = enxugar.enxugar_demonstracoes({"rows": linhas}, periodo_pedido=True)
+    assert isinstance(saida, dict)
+    entregues = [
+        (l["statement"]["value"], l["group"]["value"], l["account"]["value"])
+        for l in saida["rows"]
+    ]
+    assert entregues == [("BPA", "ind", "1.01"), ("DFC_MI", "con", "6.01.01.01")]
+    assert "Consolidado em cada demonstrativo" in " ".join(saida["limits"])
 
 
 def test_o_aviso_da_api_nao_some() -> None:
