@@ -144,6 +144,8 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem; em casa até o pode do envio
     "receita_regime_tributario", "mte_pat", "anm_tah", "anatel_pados", "anatel_produtos_homologados",
     "anp_tancagem",
+    # conferência de 19/11: SICAF e Banco de Preços em Saúde; em casa até o pode do envio
+    "comprasgov_sicaf", "bps_compras",
 })  # fmt: skip
 
 

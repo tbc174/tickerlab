@@ -15503,6 +15503,318 @@
       "atraso": "A fonte não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos",
       "linhas_de_pessoa": "trata_como_pessoa"
     },
+    "comprasgov_sicaf": {
+      "tabela": "comprasgov_sicaf",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ do fornecedor (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres)",
+          "unidade": "texto"
+        },
+        "ativo": {
+          "descricao": "Verdadeiro se o cadastro do fornecedor está ativo no SICAF",
+          "unidade": "verdadeiro ou falso"
+        },
+        "habilitado_a_licitar": {
+          "descricao": "Verdadeiro se o fornecedor está habilitado a licitar; vazio quando a API não informa",
+          "unidade": "verdadeiro ou falso"
+        },
+        "cnae": {
+          "descricao": "CNAE do fornecedor no SICAF (7 dígitos, sem máscara)",
+          "unidade": "texto"
+        },
+        "descricao_do_cnae": {
+          "descricao": "Descrição do CNAE, como o SICAF escreve",
+          "unidade": "texto"
+        },
+        "natureza_juridica": {
+          "descricao": "Código da natureza jurídica no SICAF",
+          "unidade": "texto"
+        },
+        "descricao_da_natureza_juridica": {
+          "descricao": "Natureza jurídica, como o SICAF escreve",
+          "unidade": "texto"
+        },
+        "porte": {
+          "descricao": "Código do porte no SICAF",
+          "unidade": "texto"
+        },
+        "descricao_do_porte": {
+          "descricao": "Porte, como o SICAF escreve (microempresa, empresa de pequeno porte, demais)",
+          "unidade": "texto"
+        },
+        "municipio": {
+          "descricao": "Município do fornecedor, como o SICAF escreve",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "Sigla da unidade da federação do fornecedor",
+          "unidade": "texto"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-19",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "A API inteira, página por página (o arquivista olha todo mês)",
+      "atraso": "O SICAF não diz quando o cadastro mudou; a linha vale desde o dia da coleta em que a vimos",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "bps_compras": {
+      "tabela": "bps_compras",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ do fornecedor (14 dígitos com máscara)",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ do fornecedor (8 caracteres)",
+          "unidade": "texto"
+        },
+        "cnpj_do_fabricante": {
+          "descricao": "CNPJ do fabricante (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo",
+          "unidade": "texto"
+        },
+        "cnpj_basico_do_fabricante": {
+          "descricao": "Raiz do CNPJ do fabricante (8 caracteres)",
+          "unidade": "texto"
+        },
+        "cnpj_da_instituicao": {
+          "descricao": "CNPJ da instituição compradora (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo",
+          "unidade": "texto"
+        },
+        "ano_da_compra": {
+          "descricao": "Ano da compra",
+          "unidade": "número inteiro"
+        },
+        "data_da_compra": {
+          "descricao": "Dia da compra",
+          "unidade": "data (dia)"
+        },
+        "data_de_insercao": {
+          "descricao": "Dia em que a compra entrou no sistema do Ministério",
+          "unidade": "data (dia)"
+        },
+        "instituicao": {
+          "descricao": "Instituição compradora, como o Ministério escreve",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "Sigla da unidade da federação da instituição",
+          "unidade": "texto"
+        },
+        "municipio": {
+          "descricao": "Município da instituição, como o Ministério escreve",
+          "unidade": "texto"
+        },
+        "esfera": {
+          "descricao": "Esfera da instituição (municipal, estadual...)",
+          "unidade": "texto"
+        },
+        "validade_da_compra": {
+          "descricao": "Validade da compra, como o Ministério escreve (sem unidade)",
+          "unidade": "texto"
+        },
+        "catmat": {
+          "descricao": "Código do item no catálogo de materiais (CATMAT)",
+          "unidade": "texto"
+        },
+        "item": {
+          "descricao": "Descrição do item, como o catálogo escreve",
+          "unidade": "texto"
+        },
+        "pdm": {
+          "descricao": "Código do padrão descritivo de material (PDM)",
+          "unidade": "texto"
+        },
+        "descricao_do_pdm": {
+          "descricao": "Descrição do PDM",
+          "unidade": "texto"
+        },
+        "classe": {
+          "descricao": "Código da classe do material",
+          "unidade": "texto"
+        },
+        "descricao_da_classe": {
+          "descricao": "Descrição da classe do material",
+          "unidade": "texto"
+        },
+        "generico": {
+          "descricao": "S se o medicamento é genérico, N se não; vazio quando o Ministério não informa",
+          "unidade": "texto"
+        },
+        "registro_na_anvisa": {
+          "descricao": "Número do registro do produto na Anvisa",
+          "unidade": "texto"
+        },
+        "tipo_de_compra": {
+          "descricao": "Tipo de compra (administrativa ou judicial)",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "Modalidade da compra, como o Ministério escreve",
+          "unidade": "texto"
+        },
+        "processo_de_compra": {
+          "descricao": "Número do processo de compra",
+          "unidade": "texto"
+        },
+        "ata": {
+          "descricao": "Número da ata de registro de preços",
+          "unidade": "texto"
+        },
+        "unidade_de_medida": {
+          "descricao": "Sigla da unidade de medida",
+          "unidade": "texto"
+        },
+        "unidade_de_fornecimento": {
+          "descricao": "Unidade de fornecimento",
+          "unidade": "texto"
+        },
+        "unidade_da_capacidade": {
+          "descricao": "Unidade da capacidade",
+          "unidade": "texto"
+        },
+        "capacidade": {
+          "descricao": "Capacidade da unidade de fornecimento",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "quantidade": {
+          "descricao": "Quantidade comprada",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "preco_unitario": {
+          "descricao": "Preço unitário pago",
+          "unidade": "reais (R$)"
+        },
+        "preco_total": {
+          "descricao": "Preço total da compra",
+          "unidade": "reais (R$)"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador da linha no arquivo da fonte",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "data_da_compra",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "data_da_compra": "aconteceu_em",
+        "data_de_insercao": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-19",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Um arquivo por ano, republicado inteiro (o arquivista olha todo mês)",
+      "atraso": "O Ministério não escreve a data de publicação (a data de inserção é a do sistema dele); a linha vale desde o dia do arquivo em que a vimos",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
     "cnes_estabelecimentos": {
       "tabela": "cnes_estabelecimentos",
       "modulo": "governo_e_sancoes",
