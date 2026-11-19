@@ -23,6 +23,7 @@ from pydantic import Field
 from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
 from conector_remoto.pessoa import RespostaComPessoa
+from conector_remoto.proximo_passo import com_proximo_passo
 from conector_remoto.saida import RespostaGrandeDemais, preparar_saida
 from conector_remoto.socios_e_donos import (
     CAMINHO as CAMINHO_DAS_PESSOAS,
@@ -215,7 +216,8 @@ def mensagem_do_erro(resposta: RespostaDaApi) -> str:
     if resposta.status == STATUS_NAO_DISPONIVEL:
         return (
             "Não disponível: o dado não está na base para esse pedido, ou a chave não tem acesso a "
-            "ele (a API não diz qual dos dois, de propósito)."
+            "ele (a API não diz qual dos dois, de propósito). Para ver o que a chave enxerga, chame "
+            "`o_que_posso_ver`; não estime o que faltou."
         )
     if resposta.status == STATUS_LIMITE and codigo == CODIGO_DO_MINUTO:
         espera = resposta.espera_s or ESPERA_PADRAO_S
@@ -272,8 +274,9 @@ def _dia(valor: date | None) -> str | None:
 class Pedidos:
     """Faz o pedido da ferramenta à API com a chave do analista e prepara a resposta."""
 
-    def __init__(self, cliente: ClienteDaApi) -> None:
+    def __init__(self, cliente: ClienteDaApi, com_proximo_passo: bool = False) -> None:
         self._cliente = cliente
+        self._com_proximo_passo = com_proximo_passo
 
     async def resposta(
         self, caminho: str, parametros: dict[str, ParametroDaApi] | None = None
@@ -302,7 +305,10 @@ class Pedidos:
         if not resposta.ok:
             raise ToolError(mensagem_do_erro(resposta))
         try:
-            return _como_texto(preparar(resposta.corpo))
+            saida = preparar(resposta.corpo)
+            if self._com_proximo_passo:
+                saida = com_proximo_passo(ferramenta, saida)
+            return _como_texto(saida)
         except RespostaComPessoa as recusa:
             acesso = acesso_do_pedido()
             registro.error(
@@ -345,9 +351,14 @@ async def pedir_pessoas(pedidos: Pedidos, numeros: str) -> str:
     )
 
 
-def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
-    """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
-    pedidos = Pedidos(cliente)
+def registrar_ferramentas(
+    servidor: MCPServer, cliente: ClienteDaApi, com_proximo_passo: bool = False
+) -> None:
+    """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`).
+
+    `com_proximo_passo` liga o rodapé das listas (`proximo_passo.py`): só o conector o quer, porque o texto
+    cita ferramentas que o chat do app não tem."""
+    pedidos = Pedidos(cliente, com_proximo_passo)
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["buscar_empresas"],

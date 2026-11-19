@@ -79,7 +79,8 @@ Exemplos de pedidos:
 
 A IA pode encadear as consultas: o resultado de uma vira a entrada da seguinte. Cada busca traz no
 máximo 100 empresas. Se a lista vier cortada, peça "continue da próxima página" e a IA
-segue de onde parou. Três roteiros prontos para colar e adaptar:
+segue de onde parou. No fim de cada lista o conector diz qual ferramenta usar a seguir, e a IA costuma seguir a
+dica sem você pedir. Três roteiros prontos para colar e adaptar:
 
 **1. Mapa de alvos num setor e numa UF.**
 

@@ -149,6 +149,15 @@ Ferramentas do analista, que só compõem o que a API já devolve (linha 980, on
 
 Resposta acima do teto (`conector_remoto/saida.py`, `TETO_DE_CARACTERES`) vira erro com o jeito de pedir menos que aquela ferramenta tem (`DICAS_DE_RESPOSTA_GRANDE` em `conector_remoto/ferramentas.py`); a que não tem parâmetro para isso diz que o pedido não cabe. Um teste confere que a frase só cita parâmetro da própria ferramenta.
 
+**Próximo passo no fim da lista** (linha 984, item 2; `conector_remoto/proximo_passo.py`). A resposta de cada
+ferramenta de lista (`buscar_empresas`, `compradores_do_setor`, `comparaveis`, `eventos`, `vinculos`,
+`setores`) traz o campo `next_step`: uma frase fixa que diz qual ferramenta chamar a seguir; com a lista vazia,
+diz o que ficou de fora do pedido, como alargá-lo e que não se estima. O texto não vem da API, não repete o
+que o analista digitou e só cita ferramentas e parâmetros que existem (um teste confere, e confere também que
+não há preço, promessa, recomendação nem palavra de pessoa). O rodapé é só do conector: o chat do app usa as
+mesmas ferramentas, mas não tem todas as que o texto cita, então `registrar_ferramentas` o desliga por
+padrão. O erro "não disponível" também diz o que fazer (`o_que_posso_ver`) e pede para não estimar.
+
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
 quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista tem `socios_e_donos`, `credito_da_empresa`, `o_que_mudou`, `comparar_empresas` e `de_onde_vem`.
 
