@@ -43,6 +43,7 @@ NOMES_DE_MENTIRA = {
     "estabelecimento": "'FAZENDA DO FULANO DE MENTIRA'",
     "situacao_do_termo": "'ATIVO'",
     "processo": "'00000.000000/2020-00'",
+    "nome_comercial": "'PRODUTO DE MENTIRA'",
 }
 VALORES_DE_MENTIRA = {
     "modalidade": "'Cooperativa médica'", "uf": "'SP'", "registrada_em": "DATE '2001-01-01'",
