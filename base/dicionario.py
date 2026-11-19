@@ -8333,7 +8333,7 @@ TABELAS: dict[str, Tabela] = {
     "amostra_painel": Tabela(
         descricao=(
             "A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o "
-            "que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já "
+            "que se sabia dela naquele dia (cadastro, tickers e demonstrações da CVM). Cada bloco usa a linha mais nova já "
             "pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que "
             "nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco "
             "universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os "

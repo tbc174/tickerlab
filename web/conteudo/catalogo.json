@@ -7915,7 +7915,7 @@
     {
       "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
       "consultavel": false,
-      "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base.",
+      "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia (cadastro, tickers e demonstrações da CVM).",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
