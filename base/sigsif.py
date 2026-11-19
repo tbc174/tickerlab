@@ -94,6 +94,8 @@ def ler_estabelecimentos(conteudo: bytes, coletado_em: date) -> pd.DataFrame:
         columns=list(COLUNAS_DOS_REGISTRADOS),
     ).reset_index(drop=True)
     tabela.attrs["descartadas_sem_cnpj"] = int((~com_cnpj).sum())
+    # SIF que também aparece numa linha sem CNPJ (CPF, por exemplo) não tem dono único
+    tabela.attrs["sifs_sem_cnpj"] = frozenset(bruta.loc[~com_cnpj, "NR_SIF"].map(_sif))
     return tabela
 
 

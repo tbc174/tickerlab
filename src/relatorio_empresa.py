@@ -81,6 +81,8 @@ ORDEM_DAS_SECOES = (
     "eventos",
     "negocios",  # negócios e acontecimentos
     "insolvencia",  # registros de insolvência e situação especial (ADR 0103, D2)
+    "divida_com_a_uniao",  # dívida ativa com a União, como fato datado (virada de 5/11/2026, fase 1)
+    "entrega_das_demonstracoes",  # entrega de DFP e ITR no prazo (idem)
     *list(SECOES)[list(SECOES).index("notas_classicas") :],
 )
 # uma seção nova da base, que a ordem ainda não conhece, vai com os negócios e acontecimentos
@@ -1585,6 +1587,15 @@ SEM_CONTROLADORA = (
     "à CVM (uma controladora de fora do Brasil, por exemplo, não entrega)."
 )
 SEM_FICHA_DA_BASE = "A ficha da base desta empresa ainda não chegou ao app."
+SEM_FREE_FLOAT = (
+    "A ficha não traz o free float: o FRE mais recente desta empresa não tem o item 15.7 com um "
+    "percentual de ações em circulação maior que 0 e até 100%."
+)
+SEM_TAG_ALONG = (
+    "A base ainda não tem o tag along: ele vem do estatuto e do segmento de listagem da B3, que "
+    "ainda não estão em campos que a base leia. Veja o estatuto no site de relações com "
+    "investidores da empresa."
+)
 DIAS_DO_ITR = 45  # prazo da CVM: o ITR sai até 45 dias depois do fim do trimestre
 MESES_DA_DFP = 3  # e a DFP até 3 meses depois do fim do exercício
 
@@ -1750,6 +1761,28 @@ def _auditor_e_controlador(
     return [auditor, _controlador(secao, atual.base)]
 
 
+def _free_float_e_tag_along(
+    e: Entradas, do_dossie: list[Secao], plano: str | None
+) -> list[Item]:
+    """O free float declarado no FRE (item 15.7) e o tag along, que a base ainda não tem.
+
+    O free float vem do dossiê (governança), com a data de entrega do FRE e a comparação com o FRE
+    anterior; sem ele (plano, ficha ou FRE sem o item) o motivo fica escrito, nunca um número
+    inventado. O tag along nunca é deduzido do segmento de listagem: sem fonte estruturada, "—"."""
+    secao = next(
+        (s for s in do_dossie if s.chave == "governanca" and not s.trancada), None
+    )
+    if secao is None:
+        free_float = _sem_o_dossie("free_float", "Free float", e, plano)
+    else:
+        encontrado = next((i for i in secao.itens if i.chave == "free_float"), None)
+        free_float = encontrado or Item(
+            "free_float", "Free float", "—", None, TEXTO, "", SEM_FREE_FLOAT
+        )
+    tag_along = Item("tag_along", "Tag along", "—", None, TEXTO, "", SEM_TAG_ALONG)
+    return [free_float, tag_along]
+
+
 def _ultimo_dia(tabela: pd.DataFrame | None, coluna: str) -> date | None:
     if tabela is None or tabela.empty:
         return None
@@ -1819,6 +1852,7 @@ def _ficha_tecnica(
         _setor(e, c),
         *_auditor_e_controlador(e, do_dossie, plano),
         _acoes_em_circulacao(e, c),
+        *_free_float_e_tag_along(e, do_dossie, plano),
         ultima_demonstracao(e.dados.documentos),
     ]
     return Secao(

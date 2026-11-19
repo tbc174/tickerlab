@@ -52,7 +52,8 @@ COLUNAS = (
 E_EBIT = re.compile(r"antes do resultado financeiro")
 DEPRECIACAO = re.compile(r"deprecia|amortiza|exaust")
 NAO_E_DEPRECIACAO = re.compile(r"capta|juros|emprest|financ|debent")
-IMOBILIZADO = re.compile(r"imobiliz|intang")
+# concessionárias: a obra vai para o ativo contratual ou o ativo financeiro da concessão
+IMOBILIZADO = re.compile(r"imobiliz|intang|contratual|concessao")
 NAO_E_CAPEX = re.compile(r"venda|vend|aliena|receb|baixa|distrato|ressarc|reembols")
 DIVIDENDOS = re.compile(r"dividend|juros sobre (?:o )?capital|jcp|jscp")
 NAO_E_RECEBIDO = re.compile(r"a receber|imposto|retid|irrf|pag")

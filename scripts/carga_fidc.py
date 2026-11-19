@@ -16,6 +16,8 @@ Nada de dado pessoal: CPF de cedente, diretor e gestor pessoa física saem no le
 vem do acervo (o arquivista guarda os do FIDC, `cvm-fidc`) e só é baixado se faltar (fonte
 `cvm-fidc-base`), um pedido por vez. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 `--refazer` regrava mesmo com as mesmas origens (o leitor mudou); a tabela anterior vira versão.
+
+Roda: cron de casa pelo carga-serie3.sh (todo mês, dia 12, às 9h10); citado em dicionario.py.
 """
 
 import argparse

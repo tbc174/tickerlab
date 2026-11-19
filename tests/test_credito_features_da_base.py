@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 
 from base import cnpj as cnpj_
 from base.porta import Porta
+from base.rede import ids
 from src.credito import features as fc
 from src.credito import features_da_base as fb
 from src.credito.dicionario import DA_BASE, DAS_DEMONSTRACOES, DICIONARIO
@@ -52,7 +53,7 @@ def _situacao(cnpj, mes, visto, rotulo, matriz=True) -> dict:
     return {"cnpj": _formatado(cnpj), "cnpj_basico": cnpj[:8], "matriz": matriz,
             "situacao_especial": rotulo.upper(), "rotulo": rotulo,
             "data_situacao_especial": pd.Timestamp("2026-01-01"), "mes_do_retrato": mes,
-            "disponivel_em": pd.Timestamp(visto)}  # fmt: skip
+            "trata_como_pessoa": False, "disponivel_em": pd.Timestamp(visto)}  # fmt: skip
 
 
 def _insolvencia(cnpj, protocolo, versao, rotulo, conhecido_em) -> dict:
@@ -68,6 +69,18 @@ def _evento(cnpj, protocolo, rotulo, tema, publicado_em) -> dict:
             "categoria": rotulo, "tipo": "", "assunto": "", "rotulo": rotulo, "tema": tema,
             "materialidade": 50, "referencia": pd.Timestamp(publicado_em),
             "publicado_em": pd.Timestamp(publicado_em), "link": f"https://cvm/{protocolo}"}  # fmt: skip
+
+
+def _entidade(cnpj, natureza, pessoa) -> tuple[dict, dict]:
+    """A entidade da rede e o identificador da raiz do CNPJ, públicos antes de qualquer retrato."""
+    id_entidade = ids.id_entidade("empresa", "cnpj_raiz", cnpj[:8])
+    publico = pd.Timestamp("2024-12-31")
+    return (
+        {"id_entidade": id_entidade, "tipo": "empresa", "nome": "X", "natureza_juridica": natureza,
+         "natureza_fonte": "receita", "mei": pessoa, "trata_como_pessoa": pessoa, "publico_em": publico},
+        {"id_entidade": id_entidade, "sistema": "cnpj_raiz", "valor": cnpj[:8], "desde": publico,
+         "publico_em": publico},
+    )  # fmt: skip
 
 
 def _scr(data_base, secao, ativa, inadimplencia, uf, cliente="PJ") -> dict:
@@ -122,9 +135,15 @@ SCR = [
     _scr("2026-04-30", "Educação", 500.0, 400.0, "SP"),
     _scr("2026-05-31", SECAO, 6000.0, 1800.0, "SP"),
 ]
+# a rede diz quem é pessoa (a MEI, natureza 213-5); a NOVA não consta nela
+REDE = [_entidade(EMPRESA, "2046", pessoa=False), _entidade(MEI, "2135", pessoa=True)]
+ENTIDADES = [entidade for entidade, _ in REDE]
+IDENTIFICADORES = [identificador for _, identificador in REDE]
 TABELAS = {
     "scr_credito": SCR,
     "pgfn_divida": PGFN,
+    "entidades": ENTIDADES,
+    "identificadores": IDENTIFICADORES,
     "cnpj_situacao_especial": SITUACAO,
     "insolvencia": INSOLVENCIA,
     "eventos": EVENTOS,
@@ -133,6 +152,8 @@ TABELAS = {
 PUBLICO_EM = {
     "scr_credito": lambda linha: linha["disponivel_em"],
     "pgfn_divida": lambda linha: linha["disponivel_em"] + pd.offsets.MonthEnd(0),
+    "entidades": lambda linha: linha["publico_em"],
+    "identificadores": lambda linha: linha["publico_em"],
     "cnpj_situacao_especial": lambda linha: (
         linha["disponivel_em"] + pd.offsets.MonthEnd(0)
     ),
@@ -141,10 +162,16 @@ PUBLICO_EM = {
 }
 
 
-def _porta(pasta, corte: date | None = None, sem: tuple[str, ...] = ()) -> Porta:
-    """A porta com as tabelas acima (com `corte`, só o que era público até ele)."""
+def _porta(
+    pasta,
+    corte: date | None = None,
+    sem: tuple[str, ...] = (),
+    trocas: dict[str, list[dict]] | None = None,
+) -> Porta:
+    """A porta com as tabelas acima (com `corte`, só o que era público até ele; `trocas` põe outras
+    linhas no lugar das de uma tabela)."""
     extras = {}
-    for nome, linhas in TABELAS.items():
+    for nome, linhas in {**TABELAS, **(trocas or {})}.items():
         if nome in sem:
             continue
         tabela = pd.DataFrame(linhas)
@@ -199,6 +226,8 @@ def test_empresa_fora_do_retrato_tem_zero_e_antes_do_retrato_nao_observado(porta
 
 
 def test_mei_nao_sai_da_base(porta):
+    """A porta esconde as linhas da MEI na PGFN (ADR 0075) e as `entidades` dizem que o CNPJ é pessoa:
+    a feature fica não observada, em vez de um zero falso."""
     f = _da_base(porta, MEI, date(2026, 11, 1))
     for chave in (
         "divida_ativa_da_uniao",
@@ -206,6 +235,45 @@ def test_mei_nao_sai_da_base(porta):
         "inscricoes_em_divida_ativa",
     ):
         assert f[chave].valor is None and f[chave].motivo == fb.COMO_PESSOA
+
+
+def test_a_porta_nao_entrega_a_linha_da_mei(porta):
+    """O que a feature lê da PGFN nunca traz a MEI: a view da porta já a esconde."""
+    linhas = porta.ler("pgfn_divida", como_era_em=date(2026, 11, 1))
+    assert not linhas["trata_como_pessoa"].fillna(False).astype(bool).any()
+    assert _formatado(MEI) not in set(linhas["cnpj"])
+
+
+def test_sem_a_rede_na_base_a_empresa_segue_com_os_numeros(tmp_path):
+    with _porta(tmp_path, sem=("entidades", "identificadores")) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor == 3000.0
+        and f["divida_ativa_da_uniao"].motivo == ""
+    )
+
+
+def test_identificador_que_leva_a_uma_pessoa_na_rede_e_pessoa(tmp_path):
+    """Se a raiz do CNPJ leva a uma entidade de pessoa (id `P...`, só da vista interna), as features
+    ficam não observadas sem nem abrir a `entidades`."""
+    da_pessoa = {**IDENTIFICADORES[0], "id_entidade": ids.PREFIXO_DE_PESSOA + "1" * 20}
+    with _porta(tmp_path, trocas={"identificadores": [da_pessoa]}) as p:
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor is None
+        and f["divida_ativa_da_uniao"].motivo == fb.COMO_PESSOA
+    )
+
+
+def test_identificador_sem_a_entidade_na_rede_segue_como_empresa(tmp_path):
+    """O identificador existe, mas a entidade não está na base: nada diz que é pessoa, e a porta já
+    esconde as linhas de pessoa da PGFN, então os números seguem."""
+    with _porta(tmp_path, trocas={"entidades": [ENTIDADES[1]]}) as p:  # só a da MEI
+        f = _da_base(p, EMPRESA, date(2026, 11, 1))
+    assert (
+        f["divida_ativa_da_uniao"].valor == 3000.0
+        and f["divida_ativa_da_uniao"].motivo == ""
+    )
 
 
 # --- situação especial na Receita -----------------------------------------------------------------
@@ -252,6 +320,16 @@ def test_sem_fato_na_janela_e_zero_com_a_data_do_ultimo_documento(porta):
     assert f["eventos_de_insolvencia"].valor == 0
     assert f["ultimo_evento_de_insolvencia"].valor == fb.NENHUM
     assert f["fatos_relevantes_12_meses"].disponivel_em == date(2026, 6, 1)
+
+
+def test_com_insolvencia_e_sem_evento_nenhum_conta_zero_eventos(tmp_path):
+    """Regressão (linha 754): a janela de 12 meses sobre `eventos` vazio não pode falhar."""
+    so_da_outra = [evento for evento in EVENTOS if evento["cnpj"] == _formatado(OUTRA)]
+    with _porta(tmp_path, trocas={"eventos": so_da_outra}) as porta:
+        f = _da_base(porta, EMPRESA, date(2026, 8, 1))
+    assert f["fatos_relevantes_12_meses"].valor == 0
+    # só a P1: a P2 é exposição a terceiro e a P3 é de 09/2026
+    assert f["eventos_de_insolvencia"].valor == 1
 
 
 def test_quem_nao_entrega_a_cvm_fica_nao_observado(porta):

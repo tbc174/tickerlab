@@ -21,14 +21,11 @@ QUANTOS_ESTABELECIMENTOS = 20
 QUANTOS_SOCIOS = 50
 QUANTAS_MUDANCAS = 50
 SITUACAO_ATIVA = "02"
-SOCIO_PESSOA_JURIDICA, SOCIO_PESSOA_FISICA, SOCIO_ESTRANGEIRO = "1", "2", "3"
+SOCIO_PESSOA_JURIDICA = "1"
 ENTROU, SAIU = "entrou", "saiu"
 SETA = " → "
-SEM_SOCIOS = "A Receita não publica quadro de sócios para esta empresa (é o caso do MEI e do empresário individual)."
+SEM_SOCIOS = "Nenhum sócio pessoa jurídica no cadastro da Receita desta empresa."
 SEM_MUDANCAS = "Nenhuma mudança no cadastro, no Simples ou nos sócios nos últimos 12 meses publicados."
-SOCIO_SEM_NOME = (
-    "O sócio pessoa física aparece sem o nome: só a qualificação e o mês de entrada."
-)
 
 
 def _dia(valor: object) -> str | None:
@@ -174,23 +171,25 @@ def _quem(
     pais: str | None,
     nome: str | None = None,
 ) -> str:
-    """Quem é o sócio sem dizer o nome da pessoa física (o nome só vem do portão aberto)."""
+    """Quem é o sócio pessoa jurídica; pessoa física e estrangeiro não chegam aqui (ver `_so_pessoa_juridica`)."""
     if nome:
         return str(nome)
-    if tipo_socio == SOCIO_PESSOA_JURIDICA and raiz_socio_pj:
-        return f"pessoa jurídica {_raiz_formatada(raiz_socio_pj)}"
-    if tipo_socio == SOCIO_ESTRANGEIRO:
-        lugar = codigos.pais(pais)
-        return f"sócio estrangeiro ({lugar})" if lugar else "sócio estrangeiro"
-    return "sócio pessoa física"
+    return f"pessoa jurídica {_raiz_formatada(raiz_socio_pj or '')}"
 
 
 def _qualificacao(codigo: str | None) -> str:
     return (codigos.qualificacao(codigo) or "não informada").lower()
 
 
+def _so_pessoa_juridica(socios: pd.DataFrame) -> pd.DataFrame:
+    """Terceiros não veem pessoa física (ADR 0128, item 2): nem o nome, nem a qualificação, nem a contagem.
+    Sócio estrangeiro fica de fora também (a Receita não separa a pessoa da empresa)."""
+    com_raiz = socios["raiz_socio_pj"].fillna("").astype(str).str.strip() != ""
+    return socios[(socios["tipo_socio"] == SOCIO_PESSOA_JURIDICA) & com_raiz]
+
+
 def secao_dos_socios(cadastro: CadastroDaReceita) -> Secao:
-    socios = cadastro.socios.sort_values(
+    socios = _so_pessoa_juridica(cadastro.socios).sort_values(
         ["data_entrada", "tipo_socio"], na_position="last", kind="stable"
     )
     linhas = [
@@ -205,8 +204,6 @@ def secao_dos_socios(cadastro: CadastroDaReceita) -> Secao:
     paragrafos = [_paragrafo_da_fonte(cadastro)]
     if not linhas:
         paragrafos.append(SEM_SOCIOS)
-    elif (socios["tipo_socio"] == SOCIO_PESSOA_FISICA).any():
-        paragrafos.append(SOCIO_SEM_NOME)
     return Secao(
         "socios_da_receita",
         "Quadro de sócios",
@@ -273,6 +270,8 @@ def _mudancas_do_simples(linha: Any) -> str:  # noqa: ANN401 (linha do itertuple
 
 
 def _mudancas_de_socio(linha: Any) -> str:  # noqa: ANN401 (linha do itertuples)
+    if linha.tipo_socio != SOCIO_PESSOA_JURIDICA or not linha.raiz_socio_pj:
+        return ""  # pessoa física e estrangeiro não aparecem (ADR 0128)
     quem = _quem(linha.tipo_socio, linha.raiz_socio_pj, None)
     if linha.tipo == ENTROU:
         return f"entrou: {quem}, {_qualificacao(linha.qualificacao_depois)}"

@@ -2,7 +2,7 @@
 // O esqueleto do app em React (série 3 da ADR 0048): rotas, moldura e a API ligada ou não.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { navegador } from "../../src/app/navegador";
 import { ENDERECOS_SO_DO_CLASSICO, TELAS_DO_APP, temTelaPronta } from "../../src/app/rotas";
@@ -25,15 +25,22 @@ describe("rotas do app novo", () => {
     const comContrato = paginasDoApp.filter((p) => p.contrato !== null).map((p) => p.url);
     expect(TELAS_DO_APP.map((p) => p.url)).toEqual(comContrato);
     expect(comContrato).toContain("visao-geral");
-    expect(TELAS_DO_APP.every((p) => !p.e_pro && !p.somente_admin)).toBe(true);
+    expect(TELAS_DO_APP.every((p) => !p.somente_admin)).toBe(true);
+    // a ficha, a busca e a comparação de empresas (tela do analista, linha 798) são as telas do plano Pro no app
+    // novo: o 403 do plano vira o caminho para os Planos (Erro); outra tela Pro entra aqui de propósito
+    expect(TELAS_DO_APP.filter((p) => p.e_pro).map((p) => p.url)).toEqual([
+      "ficha-da-empresa",
+      "encontrar-empresas",
+      "comparar-empresas",
+    ]);
   });
 
-  it("a página inicial lista as telas novas", async () => {
+  it("a página inicial abre pelos passos do analista", async () => {
     abrir("/");
     // o <main> do aviso "Carregando" é trocado quando a configuração chega: pegar o de depois
     await screen.findByRole("navigation", { name: "Telas" });
     const principal = screen.getByRole("main");
-    expect(await within(principal).findByRole("link", { name: "Visão geral" })).toBeTruthy();
+    expect(await within(principal).findByRole("link", { name: "Encontrar empresas" })).toBeTruthy();
   });
 
   it("endereço desconhecido mostra que a página não existe", async () => {
@@ -69,10 +76,13 @@ describe("link antigo de página que ainda só existe na versão clássica (o St
     expect(trocar).toHaveBeenCalledWith("/classico/research?ticker=VALE3");
   });
 
-  it("a administração também (o catálogo dela fica fora do bundle; só o endereço entra)", async () => {
-    const trocar = abrirLinkAntigo("/admin");
-    await screen.findByRole("link", { name: /Abrir na versão clássica/ });
-    expect(trocar).toHaveBeenCalledWith("/classico/admin");
+  it("a administração não: tem tela no app novo (linha 955) e pede o login dele", async () => {
+    // o que a tela mostra, e a ida à antiga quando a API está desligada, está em administracao.test.tsx
+    const trocar = vi.spyOn(navegador, "trocar").mockImplementation(() => undefined);
+    const { google } = abrirApp("/admin", { entraSozinho: false });
+    await waitFor(() => expect(google.id.initialize).toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: /Abrir na versão clássica/ })).toBeNull();
+    expect(trocar).not.toHaveBeenCalled();
   });
 
   it("sem a API ligada e sem login: mesmo assim (o link antigo não depende do app novo)", async () => {
@@ -110,7 +120,7 @@ describe("link antigo de página que ainda só existe na versão clássica (o St
       .filter((url) => url !== "inicio" && !comTela.has(url) && !ENDERECOS_SO_DO_CLASSICO.includes(url));
     expect(semDestino).toEqual([]);
     expect(ENDERECOS_SO_DO_CLASSICO).toContain("research");
-    expect(ENDERECOS_SO_DO_CLASSICO).toContain("admin");
+    expect(ENDERECOS_SO_DO_CLASSICO).not.toContain("admin");
     expect(ENDERECOS_SO_DO_CLASSICO).not.toContain("visao-geral");
   });
 });

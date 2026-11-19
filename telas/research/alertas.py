@@ -21,6 +21,7 @@ from src.banco.dados_do_usuario import (
 from src.dados import DadosIndisponiveisError
 from src.planos import LimiteDoPlanoError, limites_do
 from telas.comum import cabecalho_da_pagina, carregar_dados, plano_atual
+from telas.conta.guarda import conta_da_sessao_valendo
 from telas.research.comum import _listas_do_research, _sem_banco_agora
 
 PERIODO_DOS_ALERTAS = "2y"  # o bastante para médias de 200 pregões e 50 semanas
@@ -210,6 +211,8 @@ def _apagar_alerta(usuario, alerta_id, nome):
         st.session_state["alertas_locais"] = [
             r for r in st.session_state.get("alertas_locais", []) if r.nome != nome
         ]
+        return
+    if not conta_da_sessao_valendo(usuario):
         return
     with obter_engine().begin() as conexao:
         apagar_alerta(conexao, usuario.id, alerta_id)

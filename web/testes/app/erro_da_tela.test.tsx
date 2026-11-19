@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi } from "../../src/app/api";
-import { ErroDaTela } from "../../src/app/telas/ErroDaTela";
+import { Erro } from "../../src/app/pecas/Erro";
 import { abrirApp, respostaJson } from "./ajudantes";
 
 const MOTIVO = "Pairs trading faz parte do plano Pro. Você está no plano Gratuito.";
@@ -18,7 +18,7 @@ describe("erro da tela", () => {
   it("fora do plano: o motivo e o link para os planos", () => {
     render(
       <MemoryRouter>
-        <ErroDaTela erro={new ErroDaApi("plano", MOTIVO)} />
+        <Erro erro={new ErroDaApi("plano", MOTIVO)} />
       </MemoryRouter>,
     );
     expect(screen.getByRole("alert").textContent).toContain(MOTIVO);
@@ -31,7 +31,7 @@ describe("erro da tela", () => {
     (tipo) => {
       render(
         <MemoryRouter>
-          <ErroDaTela erro={new ErroDaApi(tipo, "Mensagem da API.")} />
+          <Erro erro={new ErroDaApi(tipo, "Mensagem da API.")} />
         </MemoryRouter>,
       );
       expect(screen.getByRole("alert").textContent).toContain("Mensagem da API.");

@@ -16,12 +16,25 @@ from base.arquivo import lote_licitacoes, obter_pj, registro
 from base.arquivo.coleta import ErroDeDescoberta, Resposta, SemArquivo
 from base.arquivo.destinos import DESTINOS
 from base.arquivo.fontes import FONTES, POR_ID
-from src.banco.coletas import Marca, licenca_da_fonte, marca_da_fonte
+from src.banco.coletas import (
+    VENDAVEL_COM_ATRIBUICAO,
+    VENDAVEL_RISCO_ASSUMIDO,
+    Marca,
+    licenca_da_fonte,
+    marca_da_fonte,
+    revenda_da_fonte,
+)
 
 AGORA = datetime(2026, 10, 22, 14, tzinfo=UTC)
 DUBLES = Path(__file__).parent / "arquivos" / "licitacoes"
 FONTES_DO_LOTE = {f.id: f for f in lote_licitacoes.fontes()}
-PESSOAS_FISICAS = ("98765432100", "JOAO DA SILVA", "11122233344", "maria", "Servidor")
+PESSOAS_FISICAS = (
+    "99900000774",
+    "PESSOA INVENTADA LICITACAO",
+    "11122233344",
+    "maria",
+    "Servidor",
+)
 
 
 class Servidor:
@@ -105,14 +118,15 @@ def test_toda_fonte_do_lote_tem_licenca_marca_data_dos_termos_e_destino(fonte):
         "seges-pesquisa-precos",
         "transferegov-especiais-pagamentos",
     }
-    esperada = Marca.A_CONFIRMAR if sem_licenca_escrita else Marca.VENDAVEL
-    assert marca_da_fonte(fonte) == esperada
+    # sem licença escrita: vendável por risco assumido (ADR 0122, 05/11/2026)
+    assert marca_da_fonte(fonte) == Marca.VENDAVEL
+    assert (revenda_da_fonte(fonte) == VENDAVEL_RISCO_ASSUMIDO) == sem_licenca_escrita
     assert fonte in DESTINOS
 
 
-def test_o_preco_de_referencia_da_seges_nao_herda_a_marca_vendavel_da_familia():
-    assert marca_da_fonte("seges-pncp-compras") == Marca.VENDAVEL
-    assert marca_da_fonte("seges-pesquisa-precos") == Marca.A_CONFIRMAR
+def test_o_preco_de_referencia_da_seges_nao_herda_a_licenca_escrita_da_familia():
+    assert revenda_da_fonte("seges-pncp-compras") == VENDAVEL_COM_ATRIBUICAO
+    assert revenda_da_fonte("seges-pesquisa-precos") == VENDAVEL_RISCO_ASSUMIDO
 
 
 def test_fontes_da_seges_conferem_a_assinatura_antes_de_baixar():
@@ -312,7 +326,7 @@ def test_api_que_nao_para_de_paginar_e_erro_e_nao_arquivo_cortado(tmp_path):
         b"",  # o 204 do PNCP, sem corpo
         b'{"data": [], "paginasRestantes": 0}',
         json.dumps(
-            {"data": [{"tipoPessoa": "PF", "niFornecedor": "98765432100"}]}
+            {"data": [{"tipoPessoa": "PF", "niFornecedor": "99900000774"}]}
         ).encode(),
     ],
 )
@@ -414,7 +428,7 @@ def test_tcu_pagina_pelo_offset_e_guarda_so_cnpj_formatado_ou_nao(tmp_path):
                     "processo": "1",
                 },
                 {
-                    "nome": "JOAO DA SILVA",
+                    "nome": "PESSOA INVENTADA LICITACAO",
                     "cpf_cnpj": "123.456.789-00",
                     "processo": "2",
                 },
@@ -553,7 +567,7 @@ def test_pagamentos_do_transferegov_usam_a_api_nova_com_pagina_e_tamanho():
 def test_pagamentos_guardam_so_cnpj_normalizado_sem_conta_nem_cpf(tmp_path):
     itens = [
         _subtransacao(1, "13399033000106"),
-        _subtransacao(2, "***456789**", "JOAO DA SILVA"),
+        _subtransacao(2, "***456789**", "PESSOA INVENTADA LICITACAO"),
     ]
     resto = [_subtransacao(3, "41499157000190", "VH ENGENHARIA LTDA")]
     saida = _ler_pagamentos(
@@ -569,7 +583,7 @@ def test_pagamentos_guardam_so_cnpj_normalizado_sem_conta_nem_cpf(tmp_path):
         "41499157000190",
     ]
     texto = json.dumps(saida)
-    assert "JOAO DA SILVA" not in texto
+    assert "PESSOA INVENTADA LICITACAO" not in texto
     for campo in ("codigo_banco", "codigo_agencia", "codigo_conta"):
         assert campo not in texto
     # a ligação com a transferência-mãe vai pela chave do lançamento, não por texto

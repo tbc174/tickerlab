@@ -10,6 +10,9 @@ saiu sai dali), nunca para `vigente/` nem para `mudancas/`, onde o sócio é só
 lápide deixou (`base.pessoas.oposicoes`). Tudo do mês é
 montado numa pasta de trabalho e só então trocado pelo vigente: queda no meio não deixa mês pela metade.
 O `manifesto.json` guarda, por mês, o SHA-256 de cada ZIP lido.
+
+Roda: outro script (montar_historico_do_cnpj.py, montar_vista_do_cnpj.py); citado em ancoragem.py,
+cnpj_historico.py.
 """
 
 import hashlib

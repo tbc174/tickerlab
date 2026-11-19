@@ -7,6 +7,8 @@ Roda no cron do VPS (23h e 3h), num contêiner próprio, sem o banco e sem a red
 inteiros e apaga os pregões com mais de 90 dias (a casa guarda tudo).
 
 Saída 0 tudo certo; 1 alguma falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
+
+Roda: cron do VPS (todo dia às 3h00 e 23h00); outro script (montar_rede.py).
 """
 
 import argparse

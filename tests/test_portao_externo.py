@@ -9,7 +9,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from base.prontidao import PRAZO_DA_PROVA, Prontidao, Prova
+from base.prontidao import PRAZO_DA_PROVA, Prontidao, ProntidaoDePiloto, Prova
 from src import portao_externo as portao
 from src.banco import coletas
 from src.banco.coletas import Coleta, ColetaEGuarda, Guarda
@@ -140,8 +140,8 @@ def test_linha_fora_da_vigencia_nega() -> None:
 
 
 def test_revenda_que_nao_e_vendavel_nega() -> None:
-    linha = _linha(fonte="sec-10k")  # SEC: só uso interno
-    decisao = decidir(_pedido(fonte="sec-10k"), HOJE, _regras(linha))
+    linha = _linha(fonte="wipo-patentes")  # WIPO: não revender, só uso interno
+    decisao = decidir(_pedido(fonte="wipo-patentes"), HOJE, _regras(linha))
     assert decisao.motivo is Motivo.REVENDA_NAO_VENDAVEL
 
 
@@ -236,6 +236,7 @@ def test_a_lista_negada_e_a_da_auditoria_n0() -> None:
     assert {
         "b3", "yahoo", "fnc", "cecafe", "kraken", "mb", "fmi",
         "wayback", "contrapartes", "termos", "ico", "bcb-sgs-189",
+        "datajud",  # só uso interno (plano dos processos, PR 3)
     } == portao.NEGADAS_DESDE_O_PRIMEIRO_DIA  # fmt: skip
     assert set(coletas.LICENCAS) >= portao.NEGADAS_DESDE_O_PRIMEIRO_DIA
 
@@ -264,12 +265,10 @@ def test_conab_sai_so_como_publicada(monkeypatch: pytest.MonkeyPatch) -> None:
     assert decidir(derivado, HOJE, regras).motivo is Motivo.SO_COMO_PUBLICADO
 
 
-def test_conab_hoje_e_a_confirmar_e_nao_sai() -> None:
+def test_conab_vendavel_por_risco_assumido_sai_sem_forcar_a_marca() -> None:
+    """ADR 0122 (05/11/2026): a CONAB passou a vendável por risco assumido; antes era a confirmar."""
     regras = _regras(_linha(fonte="conab"))
-    assert (
-        decidir(_pedido(fonte="conab"), HOJE, regras).motivo
-        is Motivo.REVENDA_NAO_VENDAVEL
-    )
+    assert decidir(_pedido(fonte="conab"), HOJE, regras).libera
 
 
 # --- D2.4: o que nunca sai pela API externa, qualquer que seja a marca ---
@@ -477,7 +476,7 @@ def test_toda_negacao_tem_o_mesmo_codigo_publico_sem_fonte_nem_campo() -> None:
         decidir(_pedido(campo="cpf"), HOJE, _regras(_linha(campo="cpf"))),
         decidir(_pedido(fonte="b3-negocios"), HOJE, _regras()),
         decidir(_pedido(), HOJE, _regras()),
-        decidir(_pedido(fonte="sec-10k"), HOJE, _regras(_linha(fonte="sec-10k"))),
+        decidir(_pedido(fonte="wipo-x"), HOJE, _regras(_linha(fonte="wipo-x"))),
         decidir(_pedido(), HOJE, _regras(_linha(), termos_lidos_em={})),
         decidir(_pedido(), HOJE, _regras(_linha(tabelas=()))),
         decidir(_pedido(), HOJE, _regras(_linha(), prontidao={})),
@@ -639,11 +638,17 @@ def test_nos_canais_do_app_o_portao_so_repete_pode_usar(canal: Canal) -> None:
             )
 
 
-def test_pode_usar_libera_tudo_inclusive_a_b3() -> None:
-    """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou no app; a API externa tem a regra própria."""
+def test_pode_usar_libera_tudo_inclusive_a_b3_menos_as_so_internas() -> None:
+    """ADR 0008, Emenda 6 (22/10/2026): a B3 entrou no app; a API externa tem a regra própria. As
+    `FONTES_SO_INTERNAS` (o DataJud) só treinam e rotulam (`tests/test_trava_so_interna.py`); as
+    `FONTES_SEM_TREINO` (o DATASUS, ADR 0122) fazem tudo menos treinar (`tests/test_trava_sem_treino.py`)."""
     for familia in coletas.LICENCAS:
         for uso in coletas.USOS:
-            assert coletas.pode_usar(uso, familia) is True, (familia, uso)
+            esperado = (
+                familia not in coletas.FONTES_SO_INTERNAS
+                or uso in coletas.USOS_INTERNOS
+            ) and not (familia in coletas.FONTES_SEM_TREINO and uso == "treinar")
+            assert coletas.pode_usar(uso, familia) is esperado, (familia, uso)
 
 
 def test_nenhuma_tela_nem_a_api_do_app_usa_o_portao_externo() -> None:
@@ -660,3 +665,136 @@ def test_nenhuma_tela_nem_a_api_do_app_usa_o_portao_externo() -> None:
 
 def test_coleta_e_guarda_so_de_familias_do_licencas() -> None:
     assert set(coletas.COLETA_E_GUARDA) <= set(coletas.LICENCAS)
+
+
+# --- D11 (Emenda 2): a prontidão de piloto, só para a organização do piloto ---
+
+DE_PILOTO = ProntidaoDePiloto(versao_maior=2, qualidade=PROVA, dicionario=PROVA)
+
+
+def _regras_de_piloto(*linhas: LinhaDeDireito, **outros: object) -> Regras:
+    """A tabela sem a prontidão cheia, com o registro de piloto em dia e a marca de pessoa decidida."""
+    base = {
+        "prontidao": {},
+        "prontidao_de_piloto": {TABELA: DE_PILOTO},
+        "pessoa_decidida": frozenset({TABELA}),
+    }
+    return _regras(*(linhas or (_linha(),)), **(base | outros))
+
+
+def test_organizacao_do_piloto_sai_pelo_piloto_e_a_comum_nao() -> None:
+    regras = _regras_de_piloto()
+    do_piloto = decidir(_pedido(piloto=True), HOJE, regras)
+    comum = decidir(_pedido(), HOJE, regras)
+    assert do_piloto.libera and do_piloto.piloto
+    assert do_piloto.motivo is Motivo.LIBERADO_PELO_PILOTO
+    assert do_piloto.coleta is Coleta.ABERTA
+    assert comum == Decisao(False, Motivo.SEM_PRONTIDAO)
+    assert not comum.piloto
+
+
+def test_tabela_pronta_sai_pela_prontidao_cheia_mesmo_para_o_piloto() -> None:
+    """O aviso é só do que não tem a prontidão cheia: a tabela pronta sai sem ele."""
+    regras = _regras_de_piloto(prontidao={TABELA: PRONTA})
+    decisao = decidir(_pedido(piloto=True), HOJE, regras)
+    assert decisao.motivo is Motivo.LIBERADO and not decisao.piloto
+
+
+def test_piloto_com_prova_7_vencida_nega() -> None:
+    """No limite dos 90 dias ainda sai; no dia seguinte, não (o motivo no log segue o da prontidão cheia)."""
+    limite = PROVA.data + PRAZO_DA_PROVA
+    depois = limite + timedelta(days=1)
+    termos = dict.fromkeys(("cvm", "bcb", "conab"), limite)
+    regras = _regras_de_piloto(termos_lidos_em=termos)
+    assert decidir(_pedido(piloto=True), limite, regras).piloto
+    assert decidir(_pedido(piloto=True), depois, regras) == Decisao(
+        False, Motivo.SEM_PRONTIDAO
+    )
+
+
+def test_piloto_com_versao_maior_diferente_nega() -> None:
+    regras = _regras_de_piloto(versoes_maiores={TABELA: DE_PILOTO.versao_maior + 1})
+    assert decidir(_pedido(piloto=True), HOJE, regras) == Decisao(
+        False, Motivo.SEM_PRONTIDAO
+    )
+
+
+def test_piloto_sem_a_marca_de_pessoa_decidida_nega() -> None:
+    regras = _regras_de_piloto(pessoa_decidida=frozenset())
+    assert not decidir(_pedido(piloto=True), HOJE, regras).libera
+
+
+def test_piloto_sem_registro_de_piloto_nega() -> None:
+    regras = _regras_de_piloto(prontidao_de_piloto={})
+    assert not decidir(_pedido(piloto=True), HOJE, regras).libera
+
+
+def test_piloto_com_linha_sem_tabela_nega() -> None:
+    regras = _regras_de_piloto(_linha(tabelas=()))
+    assert decidir(_pedido(piloto=True), HOJE, regras) == Decisao(
+        False, Motivo.SEM_TABELA
+    )
+
+
+@pytest.mark.parametrize("campo", CAMPOS_DE_PESSOA_E_DE_RISCO)
+def test_piloto_nunca_solta_campo_de_pessoa(campo: str) -> None:
+    """Direito e pessoa vêm antes do piloto e não mudam (D11.4)."""
+    regras = _regras_de_piloto(_linha(campo=campo))
+    assert decidir(_pedido(campo=campo, piloto=True), HOJE, regras) == Decisao(
+        False, Motivo.NUNCA_SAI
+    )
+
+
+def test_piloto_nao_solta_categoria_de_pessoa_nem_sem_direito() -> None:
+    pessoa = _regras_de_piloto(_linha(categoria=Categoria.PESSOA_NATURAL))
+    sem_linha = _regras_de_piloto(_linha(campo="outro"))
+    negada = _regras_de_piloto(_linha(fonte="b3-negocios"))
+    assert decidir(_pedido(piloto=True), HOJE, pessoa).motivo is Motivo.NUNCA_SAI
+    assert (
+        decidir(_pedido(piloto=True), HOJE, sem_linha).motivo
+        is Motivo.SEM_LINHA_DE_DIREITO
+    )
+    assert not decidir(_pedido(fonte="b3-negocios", piloto=True), HOJE, negada).libera
+
+
+def test_piloto_nao_solta_familia_sem_marcas() -> None:
+    regras = _regras_de_piloto(termos_lidos_em={})
+    assert decidir(_pedido(piloto=True), HOJE, regras).motivo is Motivo.TERMOS_SEM_DATA
+
+
+@pytest.mark.parametrize("canal", sorted(portao.CANAIS_DO_APP))
+def test_canais_do_app_ignoram_a_marca_de_piloto(canal: Canal) -> None:
+    """Conta do app (com ou sem organização): a regra é a da ADR 0102, com ou sem a marca."""
+    regras = _regras_de_piloto()
+    com, sem = (
+        decidir(_pedido(canal=canal, piloto=marca), HOJE, regras)
+        for marca in (True, False)
+    )
+    assert com == sem and com.motivo is Motivo.REGRA_DO_APP and not com.piloto
+
+
+def test_regras_vigentes_leem_o_registro_de_piloto_e_a_marca_de_pessoa() -> None:
+    from base import prontidao
+
+    regras = portao.regras_vigentes()
+    assert regras.prontidao_de_piloto is prontidao.PRONTIDAO_DE_PILOTO
+    assert regras.pessoa_decidida == prontidao.tabelas_com_pessoa_decidida()
+
+
+def test_hoje_nada_sai_pelo_piloto() -> None:
+    """O registro de piloto nasce vazio: nem a organização do piloto recebe nada até a mesa Dados gravar."""
+    for linha in portao.DIREITOS_DA_API_EXTERNA:
+        pedido = Pedido(
+            fonte=linha.fonte, conjunto=linha.conjunto, campo=linha.campo,
+            canal=Canal.API_EXTERNA, finalidade=linha.finalidade, piloto=True,
+        )  # fmt: skip
+        assert not decidir(pedido, HOJE).piloto
+
+
+def test_conjunto_da_marca_nunca_e_conjunto_de_dado() -> None:
+    """A linha de contrato da marca de piloto não pode virar, sem querer, o contrato de um conjunto servido."""
+    from src.banco.chaves_da_api import CONJUNTO_DO_PILOTO
+
+    assert all(
+        linha.conjunto != CONJUNTO_DO_PILOTO for linha in portao.DIREITOS_DA_API_EXTERNA
+    )

@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from base import sigsif
+from tests.ajudantes_de_cpf import CPF_DE_TESTE
 
 PASTA = Path(__file__).parent.parent / "dados_de_exemplo" / "mapa"
 ESTABELECIMENTOS = (PASTA / "sigsif_estabelecimentos_registrados.csv").read_bytes()
@@ -96,8 +97,10 @@ def test_atribuicao_cita_o_mapa_e_a_licenca():
 
 def test_cpf_no_fim_da_razao_social_do_mei_sai():
     cru = ESTABELECIMENTOS.decode().splitlines()
-    mei = cru[1].replace("FRIGORIFICO EXEMPLO ALFA S/A", "FULANO FICTICIO 12345678909")
+    mei = cru[1].replace(
+        "FRIGORIFICO EXEMPLO ALFA S/A", f"FULANO FICTICIO {CPF_DE_TESTE}"
+    )
     conteudo = "\n".join([cru[0], mei]).encode()
     tabela = sigsif.ler_estabelecimentos(conteudo, COLETA)
     assert tabela["razao_social"].item() == "FULANO FICTICIO"
-    assert "12345678909" not in tabela.to_csv()
+    assert CPF_DE_TESTE not in tabela.to_csv()

@@ -4,7 +4,7 @@
 // e descrição de contradição vem da API (src/api_v1/sala_painel.py). A API só devolve a sala da própria conta.
 import { type FormEvent, type ReactNode, useRef, useState } from "react";
 import { ErroDaApi, baixar, mudar } from "../api";
-import { Carregando } from "../Carregando";
+import { Carregando } from "../pecas/Carregando";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type {
@@ -15,7 +15,7 @@ import type {
   SalaV1,
 } from "../tiposDaSala";
 import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { Erro } from "../pecas/Erro";
 
 const KB = 1024;
 const MB = KB * KB;
@@ -386,7 +386,7 @@ function Operacao({ sala, id, aoMudar }: { sala: SalaV1; id: string; aoMudar: ()
     aoMudar();
   };
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Abrindo a operação…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   const painel = pedido.dados;
   return (
     <div className="operacao-da-sala">
@@ -430,7 +430,7 @@ function ConteudoDaSala() {
   const [aberta, setAberta] = useState<string | null>(null);
   const pedido = usarPedido<SalaV1>("/v1/sala", { versao });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Abrindo a sala…" />;
-  if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
+  if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
   const sala = pedido.dados;
   const recarregar = () => setVersao((v) => v + 1);
   return (

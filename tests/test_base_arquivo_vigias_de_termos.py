@@ -41,6 +41,13 @@ _SEM_VIGIA = {
             "anm-amb",  # linha 657: sem licença declarada no portal, a confirmar
             "anm-cfem",
             "anm-sigbm",
+            # conferência de 14/11/2026 (linha 904): sem licença do conjunto, a confirmar (o PAT, só o rodapé
+            # do gov.br: uso interno)
+            "mte-pat",
+            "anm-tah",
+            "anatel-pados",
+            "anatel-homologados",
+            "anp-tancagem",
             "estban",  # linha 659: termos gerais do BC lidos em 04/11/2026, sem página própria do ESTBAN
             "ancine",
             # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)
@@ -79,6 +86,7 @@ _SEM_VIGIA = {
             "tce-ce",
             "goias",
             "msestado",
+            "sefazpe",  # linha 578: licença CC BY na ficha do conjunto, sem página de termos
             "spcapital",
             "conab",
             "comexstat",
@@ -158,6 +166,9 @@ _SEM_VIGIA = {
         ),
         "a licença é o Decreto 8.777/2016 (dados abertos do governo federal), sem página de termos própria",
     ),
+    "esdados": "o portal CKAN do ES publica a licença CC BY na ficha do conjunto, sem página de termos: nada a vigiar",
+    "sefapr": "o portal da Sefa-PR não publica licença nem termos de uso da lista de devedores (a confirmar): nada a vigiar",
+    "sefmg": "a SEF-MG não publica licença nem termos de uso da lista de devedores, só a base legal da divulgação (a confirmar): nada a vigiar",
     "pncp": "a licença do PNCP não está escrita (a confirmar); o portal não tem página de termos a vigiar",
     "tcu": "a lista de inidôneos não declara licença: não há texto de termos a vigiar",
     **dict.fromkeys(
@@ -175,7 +186,20 @@ _SEM_VIGIA = {
     "termos": "são as próprias cópias das páginas vigiadas",
     "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
     "djen": "a regra é a Resolução CNJ 455/2022 (norma publicada); a API não tem página de termos",
+    # lote Europa e RBA (linha 512, 05/11/2026): as páginas de termos conhecidas deram 404 ou ficam atrás de
+    # desafio anti-robô (sem contorno); a licença foi lida à mão em 29/10/2026
+    **dict.fromkeys(
+        ("statat", "statbel", "cso", "ines"),
+        "a página de termos não responde ao nosso agente (404 ou desafio anti-robô); licença lida à mão em 29/10/2026",
+    ),
+    "snb": "sem coleta: só a marca não comercial; os termos do portal data.snb.ch são um app JavaScript",
     "cnj": "a regra é a Resolução CNJ 46/2007 (norma publicada); o serviço da TPU não tem termos",
+    # fontes pouco visíveis (ADR 0124)
+    **dict.fromkeys(
+        ("sudeco", "sudam"),
+        "a licença (CC BY-ND 3.0) está no rodapé de cada página do gov.br, sem página de termos própria",
+    ),
+    "divida": "PDFs de sites diferentes guardados só como prova; não há uma página de termos a vigiar",
 }
 
 

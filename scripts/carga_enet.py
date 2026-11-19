@@ -21,6 +21,8 @@ acervo e no registro de coletas.
 - Os pacotes do formato antigo (`.dfp` até ~2020) são lidos por `base/enet_antigo.py`.
 - Depois da carga inicial, a tarefa continua útil: as empresas reapresentam documentos o tempo
   todo, e cada reapresentação nova torna antiga a versão de antes.
+
+Roda: cron de casa (todo dia às 0h30); outro script (carga_enet_notas.py).
 """
 
 import argparse

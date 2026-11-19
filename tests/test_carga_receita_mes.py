@@ -42,7 +42,7 @@ def _qsa(*socios):
                 "nome_socio": n,
                 "qualificacao": q,
                 "data_entrada": pd.NaT,
-                "cpf_mascarado": "***982247**",
+                "cpf_mascarado": "***000001**",
             }
             for b, t, _, q, n in socios
             if t != "1"

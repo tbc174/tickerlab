@@ -260,7 +260,7 @@ def test_nome_que_nao_esta_na_entrada():
     [
         "O CFO Fulano Beltrano assinou o balanço.",
         "Fulano Beltrano, Diretor-Presidente, assinou.",
-        "O CPF 123.456.789-09 aparece no documento.",
+        "O CPF 888.000.000-46 aparece no documento.",
     ],
 )
 def test_pessoa(texto):

@@ -11,6 +11,8 @@ Grava `<saida>/<cnpj>.json` por empresa e `<saida>/manifesto.json` (quantas saí
 fora e por quê). Falha numa empresa não derruba as outras. Fica de fora, com o motivo anotado: empresa
 sem ticker no cadastro, sem demonstrações no banco, com a ficha do dossiê barrada ou ilegível, com
 pessoa na entrada (LGPD: a entrada não sai do servidor) e com data depois do corte.
+
+Roda: manual (python -m scripts.exportar_entradas_da_analise); sem uso registrado em 05/11/2026.
 """
 
 import argparse

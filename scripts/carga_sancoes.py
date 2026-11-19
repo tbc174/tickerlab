@@ -10,6 +10,8 @@ CNPJ de dígito certo entra; nome e CPF nunca (ADR 0075). Saída padrão:
 `<TICKERLAB_ACERVO>/base/sancoes_cgu/<cadastro>.parquet` e `.../ans_penalidades/penalidades.parquet`.
 Feita para o servidor de casa (ADR 0031), todo dia depois do arquivista; recusa rodar sem a versão do
 código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo de sanção guardado.
+
+Roda: cron de casa pelo carga-conferencias.sh (todo dia às 5h10); citado em dicionario.py.
 """
 
 import argparse

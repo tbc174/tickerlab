@@ -1,0 +1,82 @@
+{
+  "tabela": "processos_datajud_movimentos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "numero_processo": {
+      "descricao": "Número único do processo (CNJ, NNNNNNN-DD.AAAA.J.TR.OOOO), com o dígito conferido",
+      "unidade": "texto"
+    },
+    "grau": {
+      "descricao": "Grau no DataJud: G1, G2, JE (juizado), TR (turma recursal), SUP...",
+      "unidade": "texto"
+    },
+    "movimento_codigo": {
+      "descricao": "Código do movimento (Tabelas Processuais Unificadas do CNJ)",
+      "unidade": "texto"
+    },
+    "movimento": {
+      "descricao": "Nome do movimento, como o DataJud escreve",
+      "unidade": "texto"
+    },
+    "complementos": {
+      "descricao": "Complementos tabelados do CNJ, `nome: descrição`, separados por `; ` (texto vazio: sem complemento)",
+      "unidade": "texto"
+    },
+    "aconteceu_em": {
+      "descricao": "Quando o movimento aconteceu, como o tribunal informou",
+      "unidade": "data e hora (UTC)"
+    },
+    "disponivel_em": {
+      "descricao": "Primeiro dia em que uma consulta mostrou o movimento: desde quando a linha vale (o movimento pode ter acontecido muito antes)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da primeira consulta que trouxe o movimento",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "numero_processo",
+    "grau",
+    "aconteceu_em",
+    "movimento_codigo",
+    "complementos"
+  ],
+  "datas": {
+    "aconteceu_em": "aconteceu_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "aconteceu_em": "aconteceu_em",
+    "disponivel_em": "publico_em",
+    "visto_em": "visto_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "a_conferir"
+  },
+  "historico_desde": "2026-11-05",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "DataJud do CNJ: só uso interno (termo de uso, itens 3.3 e 3.8)",
+  "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+  "pessoa": false,
+  "frequencia": "Semanal (o processo volta a ser consultado quando o DJEN mostra comunicação nova)",
+  "atraso": "O processo é consultado na semana seguinte à comunicação mais recente do DJEN; a linha vale desde o dia da consulta (`disponivel_em`), porque o DataJud não diz quando cada dado ficou público"
+}

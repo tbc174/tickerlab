@@ -133,8 +133,21 @@ export interface AreaDoApp {
   paginas: string[]; // chaves das páginas
 }
 
+/** Um item do menu do app (`ItemDoMenu` de src/paginas.py): um assunto e as telas dele, na ordem. */
+export interface ItemDoMenuDoApp {
+  chave: string;
+  rotulo: string;
+  icone: string; // o nome do desenho em web/src/app/Icone.tsx
+  paginas: string[]; // chaves das páginas que já existem no mapa
+  secundario: boolean; // fica depois do divisor, no fim do menu
+  novo: boolean; // ganha o selo "Novo"
+}
+
 export const conteudoDoApp: {
   areas: AreaDoApp[];
+  menu: ItemDoMenuDoApp[];
+  /** As contagens do catálogo que o Início mostra ("O que a base tem"). */
+  base: { tabelas: number; ligadas_pelo_cnpj: number; orgaos: number; fontes: number };
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
@@ -328,6 +341,7 @@ export interface TabelaDaBase {
   frequencia: string;
   atraso: string | null;
   historico_desde: string;
+  consultavel: boolean; // dá para consultar e exportar pela página Dados e pela API aberta
 }
 
 /** Um cartão do "ligado pelo CNPJ" (`TemaDoCnpj` de base/vitrine.py): os órgãos e a contagem vêm do catálogo. */
@@ -350,6 +364,8 @@ export interface LigadoPeloCnpj {
 export const catalogo: {
   totais: {
     tabelas: number;
+    /** O dia/mês em que a lista de tabelas montadas foi conferida no acervo (vem de `base/tabelas_montadas.json`). */
+    tabelas_conferidas_em_curto: string;
     fontes: number;
     fontes_em_consulta: number;
     modulos: number;
@@ -390,6 +406,30 @@ export interface VagaDaVitrine {
 export const vitrine: VagaDaVitrine[] = vitrineJson as never;
 import fatosJson from "../conteudo/fatos_da_base.json";
 
+/** Uma barra do recorte: um estado ou um setor, já formatado (`barras_do_recorte` de base/vitrine.py). */
+export interface BarraDoRecorte {
+  rotulo: string;
+  parte: string;
+  todo: string;
+  porcento: string;
+  largura: number; // a parte sobre a maior parte do recorte, em %
+  // o filtro da tela Encontrar empresas ({uf} ou {setor}) que abre as empresas ativas dali; null sem link
+  filtro_no_app?: Record<string, string> | null;
+}
+
+/** Um lado do recorte: as barras que saem e os rótulos das que não saem (contagem pequena). */
+export interface LadoDoRecorte {
+  barras: BarraDoRecorte[];
+  escondidas: string[];
+}
+
+/** O recorte de um cartão de empresa fechada por estado e por setor da matriz (linha 925, 2º PR). */
+export interface RecorteDoFato {
+  por_uf: LadoDoRecorte;
+  por_setor: LadoDoRecorte;
+  como_foi_calculado: string;
+}
+
 /** Um fato agregado da página inicial (`Fato` de base/vitrine.py): só contagens, com a fonte e a data. */
 export interface FatoDaBase {
   chave: string;
@@ -399,7 +439,20 @@ export interface FatoDaBase {
   tabelas: string[];
   data: string;
   como_foi_calculado: string;
+  recorte?: RecorteDoFato;
 }
 
-/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão. */
-export const fatosDaBase: { fatos: FatoDaBase[]; medido_em_curto: string } = fatosJson as never;
+/** Uma pergunta da seção de cruzamentos e os cartões dela (`grupos_dos_fatos` de base/vitrine.py). */
+export interface GrupoDeFatos {
+  chave: string;
+  pergunta: string;
+  fatos: FatoDaBase[];
+}
+
+/** Os cruzamentos medidos na base (fotografia `fatos.json` do servidor de casa): nada digitado à mão.
+ * Os de empresa fechada vêm primeiro, por pergunta; os de companhia aberta, no último grupo. */
+export const fatosDaBase: {
+  grupos: GrupoDeFatos[];
+  subtitulo: string;
+  medido_em_curto: string;
+} = fatosJson as never;

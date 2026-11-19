@@ -70,6 +70,7 @@ def _o_resto_com_a_publicacao(pasta: Path) -> None:
                 "novo": ["Deloitte"],
                 "anos_com_o_anterior": [5],
                 "conhecido_em": [D(AUDITOR_CONHECIDO_EM)],
+                "trata_como_pessoa": [False],
             }
         ),
     )

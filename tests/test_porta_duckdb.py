@@ -11,7 +11,8 @@ import pandas as pd
 import pytest
 
 from base.contrato import contrato_da_tabela
-from base.dicionario import DATA, MOMENTO, TABELAS, TEXTO, Tabela
+from base.dicionario import DATA, MOMENTO, NUMERO, REAIS_EXATOS, TABELAS, TEXTO, Tabela
+from base.porta import Porta
 from base.porta import duckdb as porta_duckdb
 from base.porta.duckdb import (
     ARQUIVOS,
@@ -22,6 +23,7 @@ from base.porta.duckdb import (
     nome_da_view,
     sem_o_fim_futuro,
 )
+from base.porta.rede import resolver
 
 
 def _tabela(**campos: object) -> Tabela:
@@ -269,6 +271,88 @@ def test_renomeadas_entram_no_contrato_so_quando_existem():
     assert com["renomeadas"] == {"a": "b"}
 
 
+def test_linhas_de_pessoa_entram_no_contrato_so_quando_existem():
+    sem = contrato_da_tabela("fatos", FATOS)
+    com = contrato_da_tabela(
+        "fatos", replace(FATOS, linhas_de_pessoa="trata_como_pessoa")
+    )
+    assert "linhas_de_pessoa" not in sem
+    assert com["linhas_de_pessoa"] == "trata_como_pessoa"
+
+
+def test_linhas_de_pessoa_apontam_coluna_da_propria_tabela_sem_pessoa():
+    """A marca só faz sentido numa tabela de empresas (`pessoa` falso) e numa coluna que ela tem."""
+    marcadas = {n: t for n, t in TABELAS.items() if t.linhas_de_pessoa}
+    assert "pgfn_divida" in marcadas
+    for nome, tabela in marcadas.items():
+        assert tabela.linhas_de_pessoa in tabela.colunas, nome
+        assert not tabela.pessoa, nome
+
+
+# --- as linhas de pessoa ficam fora da porta (ADR 0075 depois da virada de 5/11/2026) -------------
+
+DIVIDAS = _tabela(
+    colunas={
+        "id": ("Identificador", TEXTO),
+        "trata_como_pessoa": ("Empresário individual ou MEI (ADR 0075)", TEXTO),
+        "publicado_em": ("Entrega", DATA),
+    },
+    datas={"publico_em": "publicado_em"},
+    linhas_de_pessoa="trata_como_pessoa",
+)
+
+
+def _dividas(**colunas: list) -> pd.DataFrame:
+    dias = pd.to_datetime(["2024-01-02"] * len(colunas["id"]))
+    return pd.DataFrame({"publicado_em": dias, **colunas})
+
+
+def _porta_das_dividas(pasta, tabela: Tabela = DIVIDAS):
+    return conectar(
+        pasta,
+        tabelas={"dividas": tabela},
+        arquivos={"dividas": "dividas/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_view_esconde_as_linhas_marcadas_como_pessoa(tmp_path):
+    """A linha do empresário individual e do MEI não sai da porta, nem na vista da versão; a linha com
+    a marca vazia também fica fora (na dúvida, é pessoa)."""
+    _gravar(
+        tmp_path,
+        "dividas/2024.parquet",
+        _dividas(
+            id=["empresa", "mei", "sem_marca"], trata_como_pessoa=[False, True, None]
+        ),
+    )
+    with _porta_das_dividas(tmp_path) as con:
+        servidas = con.execute("SELECT id FROM dividas ORDER BY id").fetchall()
+        na_versao = con.execute(
+            f"SELECT id FROM {nome_da_view('dividas', '1')} ORDER BY id"
+        ).fetchall()
+    assert servidas == [("empresa",)]
+    assert na_versao == servidas
+
+
+def test_sem_a_coluna_da_pessoa_a_view_nao_serve_linha_nenhuma(tmp_path):
+    """Sem a marca no arquivo não dá para separar empresa de pessoa: o conservador é não servir."""
+    _gravar(tmp_path, "dividas/2024.parquet", _dividas(id=["empresa"]))
+    with _porta_das_dividas(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM dividas").fetchone() == (0,)
+
+
+def test_tabela_sem_a_marca_de_pessoa_serve_toda_linha(tmp_path):
+    """A marca só vale para a tabela que a declara: as outras seguem servindo tudo."""
+    _gravar(
+        tmp_path,
+        "dividas/2024.parquet",
+        _dividas(id=["a", "b"], trata_como_pessoa=[True, True]),
+    )
+    with _porta_das_dividas(tmp_path, replace(DIVIDAS, linhas_de_pessoa="")) as con:
+        assert con.execute("SELECT count(*) FROM dividas").fetchone() == (2,)
+
+
 def _cnpj(raiz: str) -> str:
     return f"{raiz[:2]}.{raiz[2:5]}.{raiz[5:8]}/0001-00"
 
@@ -318,6 +402,7 @@ def test_eventos_da_rede(tmp_path):
                 "conhecido_em": ["2024-01-10"],
                 "anterior": ["Firma A"],
                 "novo": ["Firma B"],
+                "trata_como_pessoa": [False],
             }
         ),
     )
@@ -333,6 +418,7 @@ def test_eventos_da_rede(tmp_path):
                 "mes_do_retrato": ["2024-07"],
                 "disponivel_em": [pd.Timestamp("2024-07-31").date()],
                 "origem_coletada_em": ["2024-07-10T12:00:00+00:00"],
+                "trata_como_pessoa": [False],
             }
         ),
     )
@@ -347,6 +433,18 @@ def test_eventos_da_rede(tmp_path):
                 "desde": [None, None],
                 "ate": [None, None],
                 "publico_em": pd.to_datetime(["2010-01-01", "2010-01-01"]),
+            }
+        ),
+    )
+    _gravar(  # E1 é empresa: sem isso a porta não serve o identificador dela (linha 787)
+        tmp_path,
+        "rede/entidades.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": ["E1"],
+                "tipo": ["empresa"],
+                "trata_como_pessoa": [False],
+                "publico_em": pd.to_datetime(["2010-01-01"]),
             }
         ),
     )
@@ -470,3 +568,504 @@ def test_conferida_lida_do_repositorio(tmp_path):
         ).fetchone()
     assert linhas > 0
     assert isinstance(conferidas_em, date)
+
+
+# --- ler_pagina e contar: a consulta aberta pela API e pelo site (virada de 5/11, fase 1, PR 3) ---
+SALDOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "ano": ("Ano", NUMERO),
+        "valor": ("Saldo", REAIS_EXATOS),
+        "disponivel_em": ("Público em", DATA),
+    },
+    chaves=("cnpj", "ano"),
+    datas={"publico_em": "disponivel_em"},
+)
+# revisão gravada como linha nova da mesma chave, como a ANS e a Anatel (`base/setoriais/revisoes.py`)
+REVISADOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "mes": ("Mês", TEXTO),
+        "valor": ("Valor", NUMERO),
+        "visto_em": ("Visto em", DATA),
+    },
+    chaves=("cnpj", "mes", "visto_em"),
+    datas={"publico_em": "visto_em"},
+)
+
+
+def _porta_paginada(pasta) -> Porta:
+    # dois arquivos fora de ordem: a página só é estável se a ordem vem das chaves, não do arquivo
+    _gravar(
+        pasta,
+        "saldos/2024.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["B", "A", "C"],
+                "ano": [2024, 2024, 2024],
+                "valor": [20.0, 10.0, 30.0],
+                "disponivel_em": pd.to_datetime(
+                    ["2024-06-30", "2024-03-01", "2024-06-30"]
+                ),
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "saldos/2023.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["A", "B"],
+                "ano": [2023, 2023],
+                "valor": [1.0, 2.0],
+                "disponivel_em": pd.to_datetime(["2024-01-15", "2024-01-15"]),
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "revisados/tudo.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": ["A", "A", "B"],
+                "mes": ["2024-01"] * 3,
+                "valor": [1, 2, 3],
+                "visto_em": pd.to_datetime(["2024-02-10", "2024-03-10", "2024-02-10"]),
+            }
+        ),
+    )
+    return Porta(
+        pasta,
+        tabelas={"saldos": SALDOS, "revisados": REVISADOS},
+        arquivos={"saldos": "saldos/*.parquet", "revisados": "revisados/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_ler_pagina_ordena_pelas_chaves_e_corta_no_sql(tmp_path):
+    """A página vem na ordem das chaves do contrato (não na do arquivo), do tamanho pedido; a seguinte
+    continua de onde a anterior parou; depois do fim vem vazia, com as mesmas colunas."""
+    with _porta_paginada(tmp_path) as p:
+        primeira = p.ler_pagina("saldos", limite=2)
+        segunda = p.ler_pagina("saldos", limite=2, deslocamento=2)
+        resto = p.ler_pagina("saldos", limite=2, deslocamento=4)
+        vazia = p.ler_pagina("saldos", limite=2, deslocamento=10)
+        so_valor = p.ler_pagina("saldos", colunas=["valor"], limite=5)
+        assert p.contar("saldos") == 5
+
+    def chaves(pagina):
+        return list(zip(pagina["cnpj"], pagina["ano"], strict=True))
+
+    assert chaves(primeira) == [("A", 2023), ("A", 2024)]
+    assert chaves(segunda) == [("B", 2023), ("B", 2024)]
+    assert chaves(resto) == [("C", 2024)]
+    assert vazia.empty and list(vazia.columns) == list(primeira.columns)
+    assert (
+        "publico_em" in primeira.columns
+    )  # a página traz os apelidos das datas, como `ler`
+    # só a coluna pedida, ainda assim na ordem das chaves
+    assert list(so_valor.columns) == ["valor"]
+    assert list(so_valor["valor"]) == [1.0, 10.0, 2.0, 20.0, 30.0]
+
+
+def test_ler_pagina_recusa_o_que_nao_existe(tmp_path):
+    """Filtro ou coluna que a tabela não tem é recusado antes de virar SQL; limite e deslocamento fora
+    da faixa também; tabela fora do dicionário é KeyError."""
+    with _porta_paginada(tmp_path) as p:
+        with pytest.raises(ValueError, match="coluna 'nao_existe'"):
+            p.ler_pagina("saldos", filtros={"nao_existe": 1}, limite=10)
+        with pytest.raises(ValueError, match="coluna 'nao_existe'"):
+            p.ler_pagina("saldos", colunas=["nao_existe"], limite=10)
+        with pytest.raises(ValueError, match="coluna 'nao_existe'"):
+            p.contar("saldos", filtros={"nao_existe": 1})
+        with pytest.raises(ValueError, match="limite"):
+            p.ler_pagina("saldos", limite=0)
+        with pytest.raises(ValueError, match="deslocamento"):
+            p.ler_pagina("saldos", limite=1, deslocamento=-1)
+        with pytest.raises(KeyError):
+            p.ler_pagina("nao_existe", limite=1)
+
+
+def test_ler_pagina_e_contar_respeitam_como_era_em_e_os_filtros(tmp_path):
+    """ "Como era em D" só enxerga o que já era público em D, e `contar` conta exatamente as linhas
+    que as páginas trazem, com os mesmos filtros."""
+    with _porta_paginada(tmp_path) as p:
+        em_marco = p.ler_pagina("saldos", como_era_em="2024-03-01", limite=10)
+        total_em_marco = p.contar("saldos", como_era_em="2024-03-01")
+        antes = p.contar("saldos", como_era_em="2023-12-31")
+        so_a = p.ler_pagina("saldos", filtros={"cnpj": "A"}, limite=10)
+        total_a = p.contar("saldos", filtros={"cnpj": "A"})
+        total_a_em_janeiro = p.contar(
+            "saldos", filtros={"cnpj": "A"}, como_era_em="2024-01-31"
+        )
+        # `ao_menos` continua valendo, junto com os filtros
+        grandes = p.contar("saldos", ao_menos={"valor": 10}, filtros={"ano": 2024})
+    assert list(zip(em_marco["cnpj"], em_marco["ano"], strict=True)) == [
+        ("A", 2023),
+        ("A", 2024),
+        ("B", 2023),
+    ]
+    assert total_em_marco == 3 and antes == 0
+    assert list(so_a["ano"]) == [2023, 2024] and total_a == 2
+    assert total_a_em_janeiro == 1
+    assert grandes == 3
+
+
+def test_contar_com_como_era_em_fica_so_com_a_revisao_mais_nova(tmp_path):
+    """Numa foto de D, de cada chave fica a revisão mais nova já pública (como em `ler`): `contar`
+    conta depois desse corte, senão o total não bate com as páginas."""
+    with _porta_paginada(tmp_path) as p:
+        tudo = p.contar("revisados")
+        fevereiro = p.ler_pagina("revisados", como_era_em="2024-02-28", limite=10)
+        marco = p.ler_pagina("revisados", como_era_em="2024-03-31", limite=10)
+        totais = (
+            p.contar("revisados", como_era_em="2024-02-28"),
+            p.contar("revisados", como_era_em="2024-03-31"),
+        )
+    assert tudo == 3
+    assert list(zip(fevereiro["cnpj"], fevereiro["valor"], strict=True)) == [
+        ("A", 1),
+        ("B", 3),
+    ]
+    assert list(zip(marco["cnpj"], marco["valor"], strict=True)) == [("A", 2), ("B", 3)]
+    assert totais == (len(fevereiro), len(marco)) == (2, 2)
+
+
+def test_tipos_diz_o_que_e_dia_o_que_e_momento_e_o_que_e_texto(tmp_path):
+    """Quem serve a tabela em JSON ou CSV separa o dia (`DATE`), o momento e o texto pelos tipos do
+    DuckDB, sem ler linha nenhuma; o apelido `publico_em` é sempre um dia."""
+    with _porta_paginada(tmp_path) as porta:
+        tipos = porta.tipos("saldos")
+        assert list(tipos) == porta.colunas("saldos")
+    assert set(tipos) == set(SALDOS.colunas) | {"publico_em"}
+    assert tipos["cnpj"] == "VARCHAR"
+    assert tipos["ano"] == "BIGINT"
+    assert tipos["valor"] == "DOUBLE"
+    assert tipos["disponivel_em"].startswith("TIMESTAMP")  # o arquivo guarda o momento
+    assert tipos["publico_em"] == "DATE"  # o apelido entrega só o dia
+
+
+REPETIDOS = _tabela(
+    colunas={
+        "cnpj": ("CNPJ", TEXTO),
+        "valor": ("Valor", NUMERO),
+        "nota": ("Nota", TEXTO),
+        "disponivel_em": ("Público em", DATA),
+    },
+    chaves=(
+        "cnpj",
+    ),  # a chave do contrato que se repete na base (negociacoes, controladas...)
+    datas={"publico_em": "disponivel_em"},
+)
+LINHAS_EM_LOTES = 5_000  # mais que dois vetores do DuckDB (2.048 linhas): vários lotes
+
+
+def _porta_com_chave_repetida(pasta) -> Porta:
+    # a mesma chave em vários arquivos e fora de ordem, como na base real
+    for parte, valores in enumerate([[3.0, 1.0], [2.0, 5.0], [4.0]]):
+        _gravar(
+            pasta,
+            f"repetidos/{parte}.parquet",
+            pd.DataFrame(
+                {
+                    "cnpj": ["A"] * len(valores),
+                    "valor": valores,
+                    "nota": ["x"] * len(valores),
+                    "disponivel_em": pd.to_datetime(["2024-01-15"] * len(valores)),
+                }
+            ),
+        )
+    _gravar(
+        pasta,
+        "muitos/tudo.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [f"C{i % 7}" for i in range(LINHAS_EM_LOTES)],
+                "valor": [float(LINHAS_EM_LOTES - i) for i in range(LINHAS_EM_LOTES)],
+                "nota": ["y"] * LINHAS_EM_LOTES,
+                "disponivel_em": pd.to_datetime(
+                    ["2024-01-15", "2025-01-15"] * (LINHAS_EM_LOTES // 2)
+                ),
+            }
+        ),
+    )
+    return Porta(
+        pasta,
+        tabelas={"repetidos": REPETIDOS, "muitos": REPETIDOS},
+        arquivos={"repetidos": "repetidos/*.parquet", "muitos": "muitos/*.parquet"},
+        contratos=pasta / "contratos",
+    )
+
+
+def test_ler_pagina_desempata_a_chave_repetida_pelas_outras_colunas(tmp_path):
+    """Regressão (revisão do PR 3): com a chave repetida, cada página era uma consulta com empate, e o
+    DuckDB não repete a ordem entre empatadas; o CSV de 5.000 em 5.000 perdia umas linhas e repetia
+    outras, com o total certo. A ordem total (chaves e depois as outras colunas) percorre a tabela
+    inteira, sem repetir, e do mesmo jeito em toda leitura."""
+    with _porta_com_chave_repetida(tmp_path) as p:
+        uma_a_uma = pd.concat(
+            [p.ler_pagina("repetidos", limite=1, deslocamento=k) for k in range(5)]
+        )
+        inteira = p.ler("repetidos")
+        so_valor = p.ler_pagina("repetidos", colunas=["valor"], limite=10)
+    assert list(uma_a_uma["valor"]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+    assert sorted(uma_a_uma["valor"]) == sorted(inteira["valor"])
+    assert list(so_valor["valor"]) == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+
+def test_ler_em_lotes_traz_numa_consulta_o_que_as_paginas_trazem(tmp_path):
+    """Os lotes, juntos, são as primeiras `limite` linhas na ordem de `ler_pagina`, sem `OFFSET`;
+    `como_era_em` e os filtros valem do mesmo jeito; depois do último lote não vem nada."""
+    with _porta_com_chave_repetida(tmp_path) as p:
+        lotes = list(p.ler_em_lotes("muitos", limite=LINHAS_EM_LOTES))
+        juntos = pd.concat(lotes, ignore_index=True)
+        paginas = p.ler_pagina("muitos", limite=LINHAS_EM_LOTES)
+        cortados = pd.concat(p.ler_em_lotes("muitos", limite=10), ignore_index=True)
+        em_2024 = pd.concat(
+            p.ler_em_lotes(
+                "muitos",
+                como_era_em="2024-12-31",
+                filtros={"cnpj": "C1"},
+                colunas=["cnpj", "valor"],
+                limite=LINHAS_EM_LOTES,
+            ),
+            ignore_index=True,
+        )
+        assert p.contar("muitos", como_era_em="2024-12-31", filtros={"cnpj": "C1"}) == (
+            len(em_2024)
+        )
+        with pytest.raises(ValueError, match="limite"):
+            next(p.ler_em_lotes("muitos", limite=0))
+    assert len(lotes) > 1
+    pd.testing.assert_frame_equal(juntos, paginas)
+    pd.testing.assert_frame_equal(cortados, paginas.head(10))
+    assert list(em_2024.columns) == ["cnpj", "valor"]
+    assert set(em_2024["cnpj"]) == {"C1"} and em_2024["valor"].is_monotonic_increasing
+
+
+# --- linha 787: nenhuma pessoa sai da porta (ADR 0075) -------------------------------------------
+RAIZ_DO_MEI = "90000001"  # fictícia
+
+
+def _situacao_especial(cnpjs: list[str], pessoa: list[bool | None]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "cnpj": cnpjs,
+            "cnpj_basico": [c[:8] for c in cnpjs],
+            "rotulo": ["falencia"] * len(cnpjs),
+            "situacao_especial": ["FALIDO"] * len(cnpjs),
+            "data_situacao_especial": ["2024-07-05"] * len(cnpjs),
+            "mes_do_retrato": ["2024-07"] * len(cnpjs),
+            "disponivel_em": [pd.Timestamp("2024-07-31").date()] * len(cnpjs),
+            "origem_coletada_em": ["2024-07-10T12:00:00+00:00"] * len(cnpjs),
+            "trata_como_pessoa": pessoa,
+        }
+    )
+
+
+def test_falencia_do_mei_nao_sai_nos_eventos_da_rede(tmp_path):
+    """A falência do MEI (marcada na montagem) não sai na tabela nem nos eventos da rede; a da
+    empresa sai. A marca vazia também esconde (na dúvida, é pessoa)."""
+    _gravar(
+        tmp_path,
+        "cnpj_situacao_especial/2024-07.parquet",
+        _situacao_especial(
+            ["12345678000100", f"{RAIZ_DO_MEI}000100", "90000002000100"],
+            [False, True, None],
+        ),
+    )
+    with conectar(tmp_path) as con:
+        na_tabela = con.execute("SELECT cnpj FROM cnpj_situacao_especial").fetchall()
+        nos_eventos = con.execute("SELECT raiz FROM eventos_da_rede").fetchall()
+    assert na_tabela == [("12345678000100",)]
+    assert nos_eventos == [("12345678",)]
+
+
+def test_situacao_especial_sem_a_marca_nao_serve_nada(tmp_path):
+    """O arquivo montado antes da marca não separa empresa de pessoa: até a montagem nova, nada sai."""
+    _gravar(
+        tmp_path,
+        "cnpj_situacao_especial/2024-07.parquet",
+        _situacao_especial(["12345678000100"], [False]).drop(
+            columns="trata_como_pessoa"
+        ),
+    )
+    with conectar(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM eventos_da_rede").fetchone() == (0,)
+
+
+EMPRESA_A, EMPRESA_B, ORGAO = "E" + "a" * 20, "E" + "b" * 20, "E" + "f" * 20
+ENTIDADE_MEI, SEM_NATUREZA, FORA_DA_REDE = (
+    "E" + "c" * 20,
+    "E" + "d" * 20,
+    "E" + "9" * 20,
+)
+PESSOA = "P" + "e" * 20
+NOME_FICTICIO = "Nome Ficticio de Exemplo"
+
+
+def _gravar_rede_com_pessoa(pasta: Path) -> None:
+    _gravar(
+        pasta,
+        "rede/entidades.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": [EMPRESA_A, EMPRESA_B, ENTIDADE_MEI, SEM_NATUREZA],
+                "tipo": ["empresa"] * 4,
+                "nome": ["Alfa Exemplo S.A.", "Beta Exemplo Ltda", None, NOME_FICTICIO],
+                "natureza_juridica": ["2054", "2062", "2135", None],
+                "natureza_fonte": ["receita", "receita", "receita", "nao_informada"],
+                "mei": [False, False, True, False],
+                "trata_como_pessoa": [False, False, True, True],
+                "fontes": ["teste"] * 4,
+                "publico_em": pd.to_datetime(["2020-01-01"] * 4),
+            }
+        ),
+    )
+    arestas = [
+        (EMPRESA_A, EMPRESA_B, "controlada_de"),  # sai
+        (ENTIDADE_MEI, EMPRESA_A, "coligada_de"),  # sai: não é sinal negativo
+        (EMPRESA_A, ORGAO, "sancionada_por"),  # sai: negativo sobre empresa
+        (PESSOA, EMPRESA_A, "socio_de"),  # fica: aresta de pessoa
+        (EMPRESA_B, PESSOA, "socio_de"),  # fica: aresta de pessoa
+        (ENTIDADE_MEI, ORGAO, "sancionada_por"),  # fica: negativo sobre o MEI
+        (SEM_NATUREZA, ORGAO, "deve_a"),  # fica: negativo sobre quem pode ser pessoa
+        (FORA_DA_REDE, ORGAO, "deve_a"),  # fica: fora da rede conta como pessoa
+        (None, EMPRESA_A, "socio_de"),  # fica: a lápide sem a ponta
+    ]
+    _gravar(
+        pasta,
+        "rede/ligacoes.parquet",
+        pd.DataFrame(
+            {
+                "de": [a[0] for a in arestas],
+                "para": [a[1] for a in arestas],
+                "tipo": [a[2] for a in arestas],
+                "papel": [None] * len(arestas),
+                "aconteceu_em": pd.to_datetime(["2020-01-01"] * len(arestas)),
+                "publico_em": pd.to_datetime(["2020-01-02"] * len(arestas)),
+                "coletado_em": pd.to_datetime(["2020-01-03"] * len(arestas)),
+                "fonte": ["teste"] * len(arestas),
+            }
+        ),
+    )
+
+
+def test_entidade_tratada_como_pessoa_sai_sem_o_nome(tmp_path):
+    """A entidade de natureza não informada guardava o nome: a porta o apaga de quem é tratado como
+    pessoa, mas a linha fica (é ela que diz às rotas que o CNPJ é de pessoa)."""
+    _gravar_rede_com_pessoa(tmp_path)
+    with conectar(tmp_path) as con:
+        nomes = dict(con.execute("SELECT id_entidade, nome FROM entidades").fetchall())
+    assert nomes == {
+        EMPRESA_A: "Alfa Exemplo S.A.",
+        EMPRESA_B: "Beta Exemplo Ltda",
+        ENTIDADE_MEI: None,
+        SEM_NATUREZA: None,
+    }
+
+
+def test_ligacoes_saem_pela_vista_publicada(tmp_path):
+    """A porta serve as ligações como a vista publicada (`base/rede/vistas.py`): sem aresta de pessoa,
+    sem a lápide sem ponta e sem sinal negativo sobre quem não é empresa."""
+    _gravar_rede_com_pessoa(tmp_path)
+    with conectar(tmp_path) as con:
+        servidas = set(con.execute("SELECT de, para, tipo FROM ligacoes").fetchall())
+    assert servidas == {
+        (EMPRESA_A, EMPRESA_B, "controlada_de"),
+        (ENTIDADE_MEI, EMPRESA_A, "coligada_de"),
+        (EMPRESA_A, ORGAO, "sancionada_por"),
+    }
+
+
+def test_sem_as_entidades_nenhum_sinal_negativo_sai(tmp_path):
+    """Sem a tabela de entidades não dá para saber quem é empresa: todo sinal negativo fica."""
+    _gravar_rede_com_pessoa(tmp_path)
+    (tmp_path / "rede" / "entidades.parquet").unlink()
+    with conectar(tmp_path) as con:
+        tipos = {t for (t,) in con.execute("SELECT tipo FROM ligacoes").fetchall()}
+    assert tipos == {"controlada_de", "coligada_de"}
+
+
+def test_identificador_leva_o_mei_a_entidade_marcada_e_o_de_pessoa_nao_sai(tmp_path):
+    """O hash P (pessoa da vista interna) não sai, nem o CPF. O CNPJ do MEI sai, sim: é ele que leva à
+    entidade marcada `trata_como_pessoa` (sem nome) e diz às rotas e ao crédito que aquele CNPJ é de
+    pessoa; o CNPJ que leva a uma pessoa da rede sai com o id `P` e a raiz, sem o hash. Escondê-los faria o "não achou"
+    virar empresa nesses consumidores."""
+    _gravar_rede_com_pessoa(tmp_path)
+    donos = [EMPRESA_A, ENTIDADE_MEI, SEM_NATUREZA, FORA_DA_REDE, PESSOA, PESSOA]
+    _gravar(
+        tmp_path,
+        "rede/identificadores.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": donos,
+                "sistema": ["cnpj_raiz"] * (len(donos) - 1) + ["cpf"],
+                "valor": [
+                    "12345678",
+                    RAIZ_DO_MEI,
+                    "90000002",
+                    "90000003",
+                    "90000004",
+                    "x",
+                ],
+                "desde": [None] * len(donos),
+                "ate": [None] * len(donos),
+                "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
+            }
+        ),
+    )
+    with conectar(tmp_path) as con:
+        servidos = con.execute(
+            "SELECT id_entidade, valor FROM identificadores"
+        ).fetchall()
+    assert sorted(servidos) == sorted(
+        [
+            (EMPRESA_A, "12345678"),
+            (ENTIDADE_MEI, RAIZ_DO_MEI),
+            (SEM_NATUREZA, "90000002"),
+            (FORA_DA_REDE, "90000003"),
+            ("P90000004", "90000004"),
+        ]
+    )
+
+
+def test_rede_de_uma_pessoa_nao_traz_o_cnpj_de_outra(tmp_path):
+    """Duas pessoas da rede com CNPJ: cada uma resolve para o seu id mascarado, e a rede de uma não
+    traz o CNPJ da outra (o id sem o hash não pode juntar todas as pessoas num só)."""
+    _gravar_rede_com_pessoa(tmp_path)
+    outra = "P" + "9" * 20
+    donos = [PESSOA, PESSOA, outra]
+    _gravar(
+        tmp_path,
+        "rede/identificadores.parquet",
+        pd.DataFrame(
+            {
+                "id_entidade": donos,
+                "sistema": ["cnpj_raiz", "cnpj", "cnpj_raiz"],
+                "valor": ["90000004", "90000004000100", "90000005"],
+                "desde": [None] * len(donos),
+                "ate": [None] * len(donos),
+                "publico_em": pd.to_datetime(["2010-01-01"] * len(donos)),
+            }
+        ),
+    )
+    with conectar(tmp_path) as con:
+        centro = resolver(con, "90000004000100", None)
+        valores = con.execute(
+            "SELECT valor FROM identificadores WHERE id_entidade = $id", {"id": centro}
+        ).fetchall()
+    assert centro == "P90000004"
+    assert sorted(valores) == [("90000004",), ("90000004000100",)]
+
+
+def test_rede_sem_as_colunas_das_pontas_nao_serve_nada(tmp_path):
+    """Arquivo das ligações sem `de`/`para` (montagem antiga ou parcial): não dá para saber quem é
+    pessoa, então nada sai, e a conexão abre do mesmo jeito."""
+    _gravar(
+        tmp_path,
+        "rede/ligacoes.parquet",
+        pd.DataFrame({"aconteceu_em": pd.to_datetime(["2020-01-01"])}),
+    )
+    with conectar(tmp_path) as con:
+        assert con.execute("SELECT count(*) FROM ligacoes").fetchone() == (0,)

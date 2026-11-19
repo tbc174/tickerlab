@@ -67,7 +67,7 @@ def test_historia_so_roda_pelo_id_e_os_pacotes_sao_diarios_e_pesados():
 @pytest.mark.parametrize("fonte", [f.id for f in lote_sec.fontes()])
 def test_toda_fonte_do_lote_tem_licenca_marca_e_destino(fonte):
     assert licenca_da_fonte(fonte) == licenca_da_fonte("sec-edgar-13f")
-    assert marca_da_fonte(fonte) is Marca.USO_INTERNO
+    assert marca_da_fonte(fonte) is Marca.VENDAVEL  # risco assumido (ADR 0122)
     assert fonte in destinos.DESTINOS
 
 

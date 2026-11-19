@@ -7,6 +7,9 @@ Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
+
+Roda: hook do Claude Code no PC (travas.py); outro script (gerar_site.py, juntar_main.py,
+markdown_simples.py); citado em amostra_do_relatorio.py, metodologia_das_notas.py.
 """
 
 import json
@@ -120,6 +123,22 @@ def _areas() -> list[dict]:
     ]
 
 
+def _menu() -> list[dict]:
+    """O menu do app novo (plano de 13/11/2026), na ordem. De cada item saem só as páginas que já
+    existem: item sem página nenhuma fica fora do menu até a tela nascer."""
+    return [
+        {
+            "chave": item.chave,
+            "rotulo": item.rotulo,
+            "icone": item.icone,
+            "paginas": [c for c in item.paginas if c in paginas.POR_CHAVE],
+            "secundario": item.secundario,
+            "novo": item.novo,
+        }
+        for item in paginas.MENU_DO_APP
+    ]
+
+
 def _marca() -> dict:
     return {
         "fonte": marca.FONTE,
@@ -136,6 +155,7 @@ def _marca() -> dict:
         ],  # lista: a ordem vira a do CSS
         "site_escuro": [list(p) for p in marca.SITE_ESCURO.items()],
         "site_faixa_marinha": [list(p) for p in marca.SITE_FAIXA_MARINHA.items()],
+        "janela_de_codigo": dict(marca.JANELA_DE_CODIGO),
     }
 
 
@@ -261,6 +281,18 @@ def _partes_da_ajuda(texto: str) -> list[dict[str, str | None]]:
     return partes
 
 
+def _base_no_inicio() -> dict[str, int]:
+    """O "O que a base tem" do Início do app: só as contagens do catálogo (o catálogo inteiro não vai ao app)."""
+    catalogo = vitrine.catalogo_publico(contrato.catalogo())
+    ligado = vitrine.ligado_pelo_cnpj(catalogo)
+    return {
+        "tabelas": len(catalogo["tabelas"]),
+        "ligadas_pelo_cnpj": ligado["tabelas"],
+        "orgaos": ligado["orgaos"],
+        "fontes": len(vitrine.fontes_do_catalogo(catalogo)),
+    }
+
+
 def _app() -> dict[str, object]:
     """O que o app em React mostra e vem do Python: o painel da visão geral e o "?" de cada número."""
     glossario = carregar_glossario()
@@ -279,6 +311,8 @@ def _app() -> dict[str, object]:
     )
     return {
         "areas": _areas(),
+        "menu": _menu(),
+        "base": _base_no_inicio(),
         "painel": {
             "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
             "legenda": analises.LEGENDA_DO_PAINEL,
@@ -364,7 +398,7 @@ def _app() -> dict[str, object]:
 
 def _catalogo() -> dict:
     """A página Dados: fontes, módulos e uma linha por tabela, tudo contado do contrato da base."""
-    catalogo = contrato.catalogo()
+    catalogo = vitrine.catalogo_publico(contrato.catalogo())
     frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
     fontes = vitrine.fontes_do_catalogo(catalogo)
     modulos_da_base = vitrine.modulos_do_catalogo(catalogo)
@@ -372,6 +406,9 @@ def _catalogo() -> dict:
     return {
         "totais": {
             "tabelas": len(catalogo["tabelas"]),
+            "tabelas_conferidas_em_curto": vitrine.dia_e_mes(
+                vitrine.tabelas_conferidas_em()
+            ),
             "fontes": len(fontes),
             "fontes_em_consulta": sum(
                 f.situacao == vitrine.EM_CONSULTA for f in fontes
