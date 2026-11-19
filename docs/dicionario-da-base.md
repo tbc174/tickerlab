@@ -3176,10 +3176,11 @@ Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punid
 - **Frequência:** Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/sancoes_cgu/<cadastro>.parquet` (servidor de casa, `scripts/carga_sancoes.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -4424,10 +4425,11 @@ Cadastro de Empregadores do MTE (a "lista suja" do trabalho análogo ao escravo)
 - **Frequência:** Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `incluida_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/mte_lista_suja/empregadores.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -4462,10 +4464,11 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 - **Frequência:** Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `embargada_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/ibama_embargos/termos.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 

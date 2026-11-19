@@ -11361,7 +11361,7 @@ _CONTRATO = {
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", linhas_de_pessoa="trata_como_pessoa", versao_do_contrato="1.1.0"),  # 1.1.0 (19/11/2026): `linhas_de_pessoa`; a porta só serve a linha de empresa (ADR 0108, Emenda 3)
     "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.2.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo); 1.2.0 (04/11/2026): o teor conferido (`tipo_de_ato`, `resultado`, `resultado_trecho`, `valor_citado`, `teor_conferido_em`)
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -11424,6 +11424,8 @@ _CONTRATO = {
     "mte_lista_suja": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a linha de empresa (ADR 0108, Emenda 3)
+        versao_do_contrato="1.1.0",
         chaves=("id_na_fonte", "visto_em"),
         datas={"aconteceu_em": "incluida_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
         historico_desde=_GOVERNO,
@@ -11432,6 +11434,8 @@ _CONTRATO = {
     "ibama_embargos": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a linha de empresa (ADR 0108, Emenda 3)
+        versao_do_contrato="1.1.0",
         chaves=("id_na_fonte", "visto_em"),
         datas={"aconteceu_em": "embargada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
         historico_desde=_GOVERNO,

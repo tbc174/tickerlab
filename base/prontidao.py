@@ -421,13 +421,22 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
     }
 )
 COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
+# ADR 0108, Emenda 3 (19/11/2026), D11.4: "tabela marcada com pessoa só sai pelo piloto quando o servidor guarda apenas a
+# cópia reduzida só-PJ, conferida por máquina (conferir_cadastros), e a resposta serve só a linha com marca de pessoa
+# falsa". São as tabelas que `base/recorte_dos_cadastros.py` reduz (só linha de empresa, raiz na `cnpj_empresas_pj`,
+# texto livre sem CPF nem e-mail) e que têm a marca por linha (`linhas_de_pessoa`), que a porta usa para esconder o resto.
+COPIA_REDUZIDA_SO_PJ = frozenset({"sancoes_cgu", "ibama_embargos", "mte_lista_suja"})
 
 
 def pessoa_decidida(
     nome: str, *, pessoa: bool, colunas: Iterable[str], linhas_de_pessoa: str
 ) -> bool:
-    """A tabela não guarda pessoa e tem a marca de pessoa decidida (ou não precisa dela)?"""
-    if pessoa:
+    """A tabela não guarda pessoa e tem a marca de pessoa decidida (ou não precisa dela)?
+
+    A tabela marcada com pessoa só conta quando é a cópia reduzida só-PJ de `COPIA_REDUZIDA_SO_PJ` **e** tem a marca
+    por linha: sem ela a porta não separa a empresa da pessoa e a tabela segue fechada (D11.4, Emenda 3).
+    """
+    if pessoa and not (nome in COPIA_REDUZIDA_SO_PJ and linhas_de_pessoa.strip()):
         return False
     if nome in TABELAS_DA_REDE or nome in SEM_PESSOA_NA_MONTAGEM:
         return True
@@ -440,7 +449,7 @@ def pessoa_decidida(
 def tabelas_com_pessoa_decidida() -> frozenset[str]:
     """As tabelas do dicionário sem pessoa e com a marca de pessoa decidida: só estas podem sair pelo piloto.
 
-    Fica fora a tabela marcada com pessoa e a que tem coluna de CNPJ sem `linhas_de_pessoa` nem ser da rede (o
+    Fica fora a tabela marcada com pessoa (salvo a cópia reduzida só-PJ do D11.4) e a que tem coluna de CNPJ sem `linhas_de_pessoa` nem ser da rede (o
     inventário `AINDA_SEM_A_MARCA`). `pessoa_tirada_na_rota` não basta: na dúvida, a leitura mais estreita.
     """
     from base.dicionario import TABELAS

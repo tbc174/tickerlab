@@ -8307,7 +8307,7 @@
       "tabela": "sancoes_cgu",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cadastro": {
           "descricao": "De que cadastro veio: ceis, cnep, cepim, leniencia ou penalidades (ANS)",
@@ -8449,7 +8449,8 @@
       "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)",
-      "atraso": "A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)"
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "ans_penalidades": {
       "tabela": "ans_penalidades",
@@ -12038,7 +12039,7 @@
       "tabela": "mte_lista_suja",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "id_na_fonte": {
           "descricao": "O que identifica o registro na fonte",
@@ -12135,13 +12136,14 @@
       "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)",
-      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "ibama_embargos": {
       "tabela": "ibama_embargos",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "id_na_fonte": {
           "descricao": "O que identifica o registro na fonte",
@@ -12255,7 +12257,8 @@
       "revenda": "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)",
       "pessoa": true,
       "frequencia": "Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)",
-      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)"
+      "atraso": "A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "inpi_marcas_titulares": {
       "tabela": "inpi_marcas_titulares",
