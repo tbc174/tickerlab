@@ -90,6 +90,11 @@ LISTA_DO_BLOCO = {
     "events": "events",
 }
 PROVENIENCIA = frozenset({"source", "published_at", "observed_at"})
+# o mês do retrato da Receita diz qual retrato a base leu, não o que mudou na empresa: fora da comparação
+CAMPOS_DO_RETRATO = frozenset({"snapshot_month", "registry_snapshot_month"})
+# o campo que faz um item existir naquele dia (o vínculo existe pelo `kind`, que vem do FRE ou do FCA): se ele
+# ficou público depois de `desde`, o item inteiro é do futuro, ainda que as pontas tenham datas antigas
+DEFINIDOR_DO_ITEM = {"links": "kind"}
 EVENTOS_POR_BLOCO = (
     100  # a página cheia da API: quem tem mais que isso recebe `partial`
 )
@@ -106,7 +111,7 @@ AVISO_DE_PAGINA_CHEIA = {
     "code": "partial",
     "text": (
         f"A API entrega até {EVENTOS_POR_BLOCO} itens por pedido: nos blocos com `partial`, o que passou "
-        "disso não foi comparado."
+        "disso não foi comparado e `removed` não lista o que saiu da lista, só o que mudou ou entrou."
     ),
 }
 
@@ -136,7 +141,8 @@ def _folhas(no: object, caminho: str = "") -> dict[str, dict]:
         return {}
     achadas: dict[str, dict] = {}
     for chave, filho in no.items():
-        achadas |= _folhas(filho, f"{caminho}.{chave}" if caminho else chave)
+        if chave not in CAMPOS_DO_RETRATO:
+            achadas |= _folhas(filho, f"{caminho}.{chave}" if caminho else chave)
     return achadas
 
 
@@ -184,8 +190,12 @@ def _sem_envelopes_depois_de(no: object, limite: str) -> object:
     return no
 
 
-def _item_ate(item: dict, limite: str) -> dict | None:
-    """O item sem o que ficou público depois de `limite`; None se tudo o que tem de datado é posterior."""
+def _item_ate(item: dict, limite: str, definidor: str | None = None) -> dict | None:
+    """O item sem o que ficou público depois de `limite`; None se o campo que o define, ou tudo o que tem de
+    datado, é posterior."""
+    marca = item.get(definidor) if definidor else None
+    if isinstance(marca, dict) and _depois_de(marca.get("published_at"), limite):
+        return None
     datas = list(_datas(item))
     if datas and all(dia > limite for dia in datas):
         return None
@@ -193,14 +203,17 @@ def _item_ate(item: dict, limite: str) -> dict | None:
     return podado if isinstance(podado, dict) else None
 
 
-def _ate_o_dia(retrato: Retrato, limite: str) -> Retrato:
+def _ate_o_dia(bloco: str, retrato: Retrato, limite: str) -> Retrato:
     """O retrato do dia `limite`: se a API deixou passar algo publicado depois dele, sai daqui (sem olhar o futuro)."""
     folhas = {
         campo: envelope
         for campo, envelope in retrato.folhas.items()
         if not _depois_de(envelope["published_at"], limite)
     }
-    itens = [podado for i in retrato.itens if (podado := _item_ate(i, limite))]
+    definidor = DEFINIDOR_DO_ITEM.get(bloco)
+    itens = [
+        podado for i in retrato.itens if (podado := _item_ate(i, limite, definidor))
+    ]
     return dataclasses.replace(retrato, folhas=folhas, itens=itens)
 
 
@@ -209,7 +222,11 @@ def _valores(no: object) -> object:
     if _e_envelope(no):
         return no["value"]
     if isinstance(no, dict):
-        return {c: _valores(f) for c, f in no.items() if c not in PROVENIENCIA}
+        return {
+            c: _valores(f)
+            for c, f in no.items()
+            if c not in PROVENIENCIA | CAMPOS_DO_RETRATO
+        }
     if isinstance(no, list):
         return [_valores(f) for f in no]
     return no
@@ -222,24 +239,38 @@ def _identidade_padrao(item: dict) -> str:
 def _ponta(ponta: object) -> str | None:
     if not isinstance(ponta, dict):
         return None
-    achada = ponta.get("cnpj_root") or ponta.get("id")
+    achada = ponta.get("entity_id") or ponta.get("cnpj_root") or ponta.get("id")
     return str(achada) if achada else None
 
 
 def _identidade_do_vinculo(item: dict) -> str:
-    """O vínculo é o mesmo se tem o tipo e as duas pontas iguais; a participação pode ter mudado."""
+    """O vínculo é o mesmo se tem o tipo, as duas pontas e o começo iguais; a participação e o fim podem ter
+    mudado. O começo entra porque a rede pode ter duas linhas do mesmo tipo e das mesmas pontas."""
     tipo, de, para = (
-        _valores(item.get("type")),
+        _valores(item.get("kind")),
         _ponta(item.get("from")),
         _ponta(item.get("to")),
     )
     if tipo and de and para:
-        return json.dumps([tipo, de, para], ensure_ascii=False)
+        return json.dumps(
+            [tipo, de, para, _valores(item.get("valid_from"))], ensure_ascii=False
+        )
+    return _identidade_padrao(item)
+
+
+def _identidade_da_entrega(item: dict) -> str:
+    """A entrega de DFP ou ITR é o mesmo documento do mesmo período; a situação e o atraso mudam com o dia."""
+    documento, periodo = (
+        _valores(item.get("document")),
+        _valores(item.get("reference_period")),
+    )
+    if documento and periodo:
+        return json.dumps([documento, periodo], ensure_ascii=False)
     return _identidade_padrao(item)
 
 
 IDENTIDADE_DO_BLOCO: dict[str, Callable[[dict], str]] = {
-    "registration": _identidade_padrao,
+    "registration": _identidade_da_entrega,
     "links": _identidade_do_vinculo,
     "events": _identidade_padrao,
 }
@@ -267,6 +298,7 @@ def _diferenca_dos_itens(
     identidade: Callable[[dict], str],
     antes: Retrato | None,
     depois: Retrato | None,
+    pagina_inteira: bool,
 ) -> dict[str, list[dict]]:
     antigos = {identidade(i): i for i in (antes.itens if antes else [])}
     atuais = {identidade(i): i for i in (depois.itens if depois else [])}
@@ -277,11 +309,13 @@ def _diferenca_dos_itens(
             saida["added"].append({"field": lista, "item": atual})
         elif _valores(antigo) != _valores(atual):
             saida["changed"].append({"field": lista, "before": antigo, "after": atual})
-    saida["removed"] = [
-        {"field": lista, "item": antigo}
-        for chave, antigo in antigos.items()
-        if chave not in atuais
-    ]
+    # com a página cheia o que sobrou fora dela não saiu da base: não se pode dizer que saiu
+    if pagina_inteira:
+        saida["removed"] = [
+            {"field": lista, "item": antigo}
+            for chave, antigo in antigos.items()
+            if chave not in atuais
+        ]
     return saida
 
 
@@ -289,16 +323,17 @@ def _comparar(
     bloco: str, antes: Retrato | None, depois: Retrato | None
 ) -> dict[str, object]:
     """A diferença de um bloco entre os dois dias. `antes` ou `depois` None = a API não serviu aquele dia."""
+    cortado = any(r is not None and r.cortado for r in (antes, depois))
     campos = _diferenca_dos_campos(antes, depois)
     itens = _diferenca_dos_itens(
-        LISTA_DO_BLOCO[bloco], IDENTIDADE_DO_BLOCO[bloco], antes, depois
+        LISTA_DO_BLOCO[bloco], IDENTIDADE_DO_BLOCO[bloco], antes, depois, not cortado
     )
     resultado: dict[str, object] = {tipo: campos[tipo] + itens[tipo] for tipo in campos}
     if antes is None:
         resultado["before_not_available"] = True
     if depois is None:
         resultado["after_not_available"] = True
-    if any(r is not None and r.cortado for r in (antes, depois)):
+    if cortado:
         resultado["partial"] = True
     return resultado
 
@@ -384,7 +419,7 @@ def _montar_a_saida(
             nao_consultados.append({"block": bloco, "reason": MOTIVO_NAO_DISPONIVEL})
             continue
         antes = (
-            _ate_o_dia(_retrato(bloco, dois.antes.corpo), desde.isoformat())
+            _ate_o_dia(bloco, _retrato(bloco, dois.antes.corpo), desde.isoformat())
             if dois.antes.ok
             else None
         )

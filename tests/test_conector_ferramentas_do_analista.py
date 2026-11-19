@@ -338,13 +338,27 @@ def _ficha(nome: str, dia_do_nome: str, **extra) -> dict:
     }
 
 
-def _vinculo(raiz: str, participacao: float, dia: str) -> dict:
+def _ponta(raiz: str, retrato: str = "2025-12") -> dict:
+    """Uma ponta do vínculo como a API a devolve: o nome e o mês do retrato da Receita, cada um com o seu envelope."""
     return {
-        "type": "subsidiary_of",
-        "from": {"cnpj_root": "11222333", "legal_name": "ALFA S.A."},
-        "to": {"cnpj_root": raiz, "legal_name": f"EMPRESA {raiz}"},
-        "ownership_pct": _fato(participacao, "cvm-fre", dia),
-        "valid_from": dia,
+        "entity_id": f"E{raiz}",
+        "cnpj_root": raiz,
+        "legal_name": _fato(f"EMPRESA {raiz}", "rfb-cnpj", "2025-12-31"),
+        "registry_snapshot_month": _fato(retrato, "rfb-cnpj", "2025-12-31"),
+    }
+
+
+def _vinculo(
+    raiz: str, participacao: float, dia: str, retrato: str = "2025-12"
+) -> dict:
+    """Um vínculo no formato real da rota `/links`: `kind` e `valid_from` com envelope do FRE."""
+    return {
+        "hops": 1,
+        "kind": _fato("subsidiary_of", "cvm-hist-fre", dia),
+        "from": _ponta("11222333", retrato),
+        "to": _ponta(raiz, retrato),
+        "ownership_pct": _fato(participacao, "cvm-hist-fre", dia),
+        "valid_from": _fato("2018-12-31", "cvm-hist-fre", dia),
     }
 
 
@@ -925,3 +939,101 @@ def test_a_descricao_do_o_que_mudou_diz_o_que_nao_traz():
     nao_traz = descricao.split("Não traz:")[1]
     for ausente in ("sócio pessoa física", "não foi publicada", "faturamento"):
         assert ausente in nao_traz
+
+
+# ---------------------------------------------------------------- achados da revisão cruzada
+
+
+def test_o_vinculo_que_so_trocou_o_mes_do_retrato_da_ponta_nao_vira_removido_e_novo():
+    hoje = _como_hoje() | {
+        CAMINHO_DOS_VINCULOS: _vinculos(
+            _vinculo("55555555", 40.0, "2025-05-31", retrato="2026-10")
+        )
+    }
+    with aj.conector(_api_do_historico(hoje=hoje)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    vinculos = corpo["links"]
+    assert vinculos["added"] == [] and vinculos["removed"] == []
+    assert vinculos["changed"] == []
+
+
+def test_o_mes_do_retrato_da_receita_no_cadastro_nao_conta_como_mudanca():
+    def com_retrato(mes: str) -> dict:
+        ficha = _ficha("ALFA S.A.", "2025-03-10")
+        ficha["registration"]["snapshot_month"] = _fato(mes, "rfb-cnpj", "2026-10-31")
+        ficha["registration"]["registry_snapshot_month"] = _fato(
+            mes, "rfb-cnpj", "2026-10-31"
+        )
+        return ficha
+
+    hoje = _como_era() | {CAMINHO_DA_FICHA: com_retrato("2026-10")}
+    era = _como_era() | {CAMINHO_DA_FICHA: com_retrato("2025-12")}
+    with aj.conector(_api_do_historico(hoje=hoje, era=era)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    assert corpo["changes_found"] == 0
+
+
+def _entrega(situacao: str, atraso: int, entregue_em: str | None) -> dict:
+    return {
+        "document": _fato("ITR", "cvm-hist-itr", "2025-11-14"),
+        "reference_period": _fato("2025-09-30", "cvm-hist-itr", "2025-11-14"),
+        "due_date": _fato("2025-11-14", "cvm-hist-itr", "2025-11-14"),
+        "first_filed_on": _fato(entregue_em, "cvm-hist-itr", "2025-11-14"),
+        "business_days_late": _fato(atraso, "cvm-hist-itr", "2025-11-14"),
+        "filing_status": _fato(situacao, "cvm-hist-itr", "2025-11-14"),
+    }
+
+
+def test_entrega_que_mudou_de_situacao_e_uma_mudanca_nao_um_documento_que_sumiu_e_outro_que_entrou():
+    era = _como_era() | {
+        CAMINHO_DA_FICHA: _ficha(
+            "ALFA S.A.", "2025-03-10", entregas=[_entrega("not_filed", 4, None)]
+        )
+    }
+    hoje = _como_era() | {
+        CAMINHO_DA_FICHA: _ficha(
+            "ALFA S.A.", "2025-03-10", entregas=[_entrega("late", 7, "2025-11-25")]
+        )
+    }
+    with aj.conector(_api_do_historico(hoje=hoje, era=era)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    cadastro = corpo["registration"]
+    assert cadastro["added"] == [] and cadastro["removed"] == []
+    (mudou,) = cadastro["changed"]
+    assert mudou["before"]["filing_status"]["value"] == "not_filed"
+    assert mudou["after"]["filing_status"]["value"] == "late"
+
+
+def test_pagina_cheia_nao_diz_que_saiu_o_que_so_ficou_fora_da_pagina():
+    """Hoje a página traz só os 2 eventos mais novos; o P1, mais velho, não saiu da base: ficou fora dela."""
+    era = _como_era() | {
+        CAMINHO_DOS_EVENTOS: _eventos(_evento("P1", "2025-12-20"), truncado=True)
+    }
+    hoje = _como_hoje() | {
+        CAMINHO_DOS_EVENTOS: _eventos(
+            _evento("P3", "2026-10-02"), _evento("P2", "2026-03-15"), truncado=True
+        )
+    }
+    with aj.conector(_api_do_historico(hoje=hoje, era=era)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    eventos = corpo["events"]
+    assert eventos["partial"] is True
+    assert eventos["removed"] == []
+    assert _protocolos(eventos["added"]) == {"P2", "P3"}
+
+
+def test_se_a_api_vazar_um_vinculo_do_futuro_o_item_inteiro_sai_do_lado_antigo():
+    """O vínculo novo tem o `kind` público depois de `desde`, mas as pontas trazem datas antigas (Receita): a
+    casca das pontas não pode ficar no lado antigo como 'havia vínculo com X em `desde`'."""
+    pedidos: list[httpx.Request] = []
+    with aj.conector(_api_do_historico(pedidos=pedidos, vaza=True)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    antigos = [e.get("before", e.get("item")) for e in corpo["links"]["removed"]] + [
+        e["before"] for e in corpo["links"]["changed"]
+    ]
+    assert "77777777" not in json.dumps(antigos)
+    # os dois vínculos de hoje têm o `kind` público depois de `desde`: são novos, não "o que já havia"
+    assert {e["item"]["to"]["cnpj_root"] for e in corpo["links"]["added"]} == {
+        "55555555",
+        "77777777",
+    }
