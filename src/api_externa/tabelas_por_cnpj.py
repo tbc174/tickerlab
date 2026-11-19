@@ -37,6 +37,7 @@ FUNDO = "fundo"
 LICENCA_DA_CVM = "cvm"
 LICENCA_DAS_AGENCIAS = "agencias"
 LICENCA_DE_INTEGRIDADE = "integridade"
+LICENCA_SEM_TRAVA = "sem_trava"
 # a coluna que liga a tabela à empresa: a raiz do CNPJ (o fundo se confere depois pelo CNPJ inteiro)
 RAIZ = "cnpj_basico"
 CNPJ = "cnpj"
@@ -48,9 +49,13 @@ INFORMES_DO_FUNDO = "informes_do_fundo"
 SANCOES = "sancoes"
 EMBARGOS_AMBIENTAIS = "embargos_ambientais"
 LISTA_SUJA = "lista_suja"
+REGISTROS_ADICIONAIS = "registros_adicionais"
 # o conjunto do contrato das três (o mesmo nome de `src/banco/coletas.py::CONJUNTO_DE_INTEGRIDADE`; este módulo
 # só tem dados e não importa o banco)
 INTEGRIDADE = "integrity"
+# o conjunto sem trava de licença (o mesmo nome de `src/banco/coletas.py::CONJUNTO_SEM_TRAVA_DE_LICENCA`; ADR 0122,
+# Emenda 2): Anatel, ANM (TAH), ANP (tancagem) e o PAT do MTE, só para a organização com ele no contrato
+SEM_TRAVA_DE_LICENCA = "extended_sources"
 # a marca de pessoa das tabelas de integridade (`base/sancoes.py`, `base/ibama_embargos.py`, `base/mte_lista_suja.py`)
 TRATA_COMO_PESSOA = "trata_como_pessoa"
 
@@ -374,6 +379,136 @@ REGISTRO: tuple[TabelaPorCnpj, ...] = (
         ordem=("ano_da_acao",),
         marca_de_pessoa=TRATA_COMO_PESSOA,
         diz_o_retrato=True,
+    ),
+    # lote 2 da ADR 0122, Emenda 2 (19/11/2026): a licença da fonte não trava, só no conjunto sem trava de licença
+    TabelaPorCnpj(
+        tabela="anatel_pados",
+        fontes=("anatel-pados",),
+        conjunto=SEM_TRAVA_DE_LICENCA,
+        onde_sai=ANALISE,
+        bloco=REGISTROS_ADICIONAIS,
+        chave="processos_sancionadores_da_anatel",
+        campos=(
+            "processo",
+            "tema",
+            "servico",
+            "status_do_processo",
+            "fase",
+            "situacao_do_pagamento",
+            "multa_aplicada",
+        ),
+        data_do_fato="disponivel_em",
+        licenca=LICENCA_SEM_TRAVA,
+        cobertura=(
+            "Processos de apuração de descumprimento de obrigações (PADOs) da Anatel, com o tema, o serviço, a fase, a multa aplicada e a situação do pagamento; cada processo como a Anatel publicou."
+        ),
+        ordem=("processo",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="anatel_produtos_homologados",
+        fontes=("anatel-homologados",),
+        conjunto=SEM_TRAVA_DE_LICENCA,
+        onde_sai=ANALISE,
+        bloco=REGISTROS_ADICIONAIS,
+        chave="produtos_homologados_na_anatel",
+        campos=(
+            "numero_da_homologacao",
+            "certificado",
+            "situacao_do_certificado",
+            "situacao_do_requerimento",
+            "tipo_do_produto",
+            "categoria",
+            "modelo",
+            "nome_comercial",
+            "pais_do_fabricante",
+            "data_da_homologacao",
+            "validade_do_certificado",
+        ),
+        data_do_fato="data_da_homologacao",
+        licenca=LICENCA_SEM_TRAVA,
+        cobertura=(
+            "Produtos de telecomunicações homologados pela Anatel em nome da empresa, com o certificado, a situação, o modelo e o país do fabricante; cada homologação como a Anatel publicou."
+        ),
+        ordem=("numero_da_homologacao",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="anm_tah",
+        fontes=("anm-tah",),
+        conjunto=SEM_TRAVA_DE_LICENCA,
+        onde_sai=ANALISE,
+        bloco=REGISTROS_ADICIONAIS,
+        chave="taxa_anual_por_hectare_da_anm",
+        campos=(
+            "processo",
+            "ano_do_processo",
+            "fase_do_processo",
+            "superintendencia",
+            "hectares",
+            "valor_total",
+            "valor_pago",
+            "data_da_quitacao",
+        ),
+        data_do_fato="data_da_quitacao",
+        licenca=LICENCA_SEM_TRAVA,
+        cobertura=(
+            "Taxa Anual por Hectare (TAH) paga à ANM pelos processos minerários da empresa, com a fase, a área e os valores; cada pagamento como a ANM publicou."
+        ),
+        ordem=("processo",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="anp_tancagem",
+        fontes=("anp-tancagem",),
+        conjunto=SEM_TRAVA_DE_LICENCA,
+        onde_sai=ANALISE,
+        bloco=REGISTROS_ADICIONAIS,
+        chave="tancagem_na_anp",
+        campos=(
+            "codigo_da_instalacao",
+            "segmento",
+            "tipo_da_unidade",
+            "grupo_de_produtos",
+            "uf",
+            "municipio",
+            "tancagem_m3",
+            "data_da_posicao",
+        ),
+        data_do_fato="data_da_posicao",
+        licenca=LICENCA_SEM_TRAVA,
+        cobertura=(
+            "Capacidade de tancagem autorizada pela ANP nas instalações da empresa, por grupo de produtos, na posição mais nova já pública no dia; cada instalação como a ANP publicou."
+        ),
+        ordem=("codigo_da_instalacao", "grupo_de_produtos"),
+        so_a_data_mais_nova=True,
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="mte_pat",
+        fontes=("mte-pat",),
+        conjunto=SEM_TRAVA_DE_LICENCA,
+        onde_sai=ANALISE,
+        bloco=REGISTROS_ADICIONAIS,
+        chave="pat_do_mte",
+        campos=(
+            "registro_no_pat",
+            "situacao",
+            "matriz_ou_filial",
+            "uf",
+            "municipio",
+            "data_do_cadastro",
+            "trabalhadores_atendidos",
+            "trabalhadores_ate_5_salarios",
+            "trabalhadores_acima_de_5_salarios",
+        ),
+        data_do_fato="data_do_cadastro",
+        licenca=LICENCA_SEM_TRAVA,
+        cobertura=(
+            "Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho e Emprego: o registro da empresa como beneficiária, facilitadora ou fornecedora ativa, com os trabalhadores atendidos; cada registro como o MTE publicou."
+        ),
+        ordem=("registro_no_pat",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
     ),
 )
 

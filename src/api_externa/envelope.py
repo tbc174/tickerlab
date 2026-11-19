@@ -41,6 +41,15 @@ ATRIBUICOES_DA_API = {
         "Fonte: Ministério do Trabalho e Emprego, Cadastro de Empregadores (gov.br, CC BY-ND 3.0); registro "
         "como publicado, sem alteração"
     ),
+    # o conjunto sem trava de licença (ADR 0122, Emenda 2): a fonte citada em cada campo
+    "anatel-pados": "Fonte: Anatel, Dados Abertos, processos de apuração de descumprimento de obrigações (PADOs)",
+    "anatel-homologados": "Fonte: Anatel, Dados Abertos, produtos homologados",
+    "anm-tah": "Fonte: ANM, Dados Abertos, Taxa Anual por Hectare (TAH)",
+    "anp-tancagem": "Fonte: ANP, Dados Abertos, capacidade de tancagem autorizada",
+    "mte-pat": (
+        "Fonte: Ministério do Trabalho e Emprego, Programa de Alimentação do Trabalhador (gov.br, CC BY-ND 3.0); "
+        "registro como publicado, sem alteração"
+    ),
 }
 
 
