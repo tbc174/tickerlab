@@ -59,6 +59,7 @@ CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
+    "credito_da_empresa": frozenset({"credit"}),
 }
 # o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
 TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
@@ -77,6 +78,7 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "setores": "Setores acompanhados",
     "setor": "Séries e concentração de um setor",
     "o_que_posso_ver": "O que a sua chave pode ver",
+    "credito_da_empresa": "Fatos de crédito de uma empresa",
 }
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
@@ -559,8 +561,11 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
     _registrar_analise(servidor, pedidos)
-    # encaixe da linha 980: as ferramentas que só compõem o que a API devolve entram com uma linha aqui,
-    # `ferramentas_do_analista.registrar(servidor, pedidos)`, e os conjuntos delas em `CONJUNTOS_DA_FERRAMENTA`
+    # linha 980: as ferramentas que só compõem o que a API devolve; import aqui por causa do ciclo (o módulo
+    # delas usa `Pedidos` e os tipos deste)
+    from conector_remoto import ferramentas_do_analista
+
+    ferramentas_do_analista.registrar(servidor, pedidos)
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["setores"],

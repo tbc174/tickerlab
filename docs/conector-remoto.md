@@ -137,10 +137,17 @@ com as ferramentas que existem.
 | `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
 | `novidades` | `novidades` (`dias` de 1 a 30) |
 
+Ferramentas do analista, que só compõem o que a API já devolve (linha 980, onda 1; código em
+`conector_remoto/ferramentas_do_analista.py`, que não abre rota nem direito novo):
+
+| Ferramenta | O que faz | Conjunto que a chave precisa |
+|---|---|---|
+| `credito_da_empresa` | Os fatos de crédito da rota `/credit` (situação na Receita, fatos relevantes e cessão a FIDC), cada um com fonte e dia em que ficou público; `como_era_em` vai como `known_at`. Não traz rating, elegibilidade como cedente ou sacado, SCR individual nem pessoa. Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | `credit` |
+
 Resposta acima do teto (`conector_remoto/saida.py`, `TETO_DE_CARACTERES`) vira erro com o jeito de pedir menos que aquela ferramenta tem (`DICAS_DE_RESPOSTA_GRANDE` em `conector_remoto/ferramentas.py`); a que não tem parâmetro para isso diz que o pedido não cabe. Um teste confere que a frase só cita parâmetro da própria ferramenta.
 
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
-quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista está vazia.
+quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista tem `socios_e_donos` e `credito_da_empresa`.
 
 Cada ferramenta tem um título (`title`, em `TITULOS_DAS_FERRAMENTAS`), que é o que o analista vê no
 cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico (`buscar_empresas`) não muda,
