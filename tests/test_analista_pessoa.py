@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 
 from base import receita_contato
 from src.analista import pessoa
@@ -311,3 +312,22 @@ def test_individual_sai_so_com_municipio_uf_telefone_e_email_e_empresa_comum_int
         and do_mei["telefones"]
         and do_mei["email"]
     )
+
+
+def test_o_compose_monta_o_acervo_de_pessoa_so_na_api_e_so_para_leitura():
+    """A pasta de pessoa vai só ao contêiner da API, `:ro`, fora do acervo da base, e a variável aponta para ela."""
+    compose = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "compose.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    servicos = compose["services"]
+    api = servicos["tickerlab-api"]
+    assert "./acervo_pessoa:/app/acervo_pessoa:ro" in api["volumes"]
+    assert "./acervo_api:/app/acervo:ro" in api["volumes"]  # a base continua à parte
+    # a pasta-mãe é montada e a variável aponta para a filha que o recebedor troca por mv
+    assert api["environment"][pessoa.VARIAVEL] == "/app/acervo_pessoa/atual"
+    com_pessoa = sorted(
+        nome for nome, servico in servicos.items() if "acervo_pessoa" in str(servico)
+    )
+    assert com_pessoa == ["tickerlab-api"]
