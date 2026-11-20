@@ -2,6 +2,8 @@
 
 import io
 import json
+import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -192,3 +194,18 @@ def test_valor_com_traco_ou_vazio_e_nao_declarado():
     assert transacoes.valor_individual("") is None
     assert transacoes.valor_da_adesao("-") is None
     assert transacoes.valor_individual("1.234") == 1234
+
+
+def test_script_roda_pela_linha_de_comando() -> None:
+    """`python -m scripts.carga_receita_transacoes` chama o `main` (em 20/11/2026 saía 0 sem fazer nada)."""
+    raiz = Path(__file__).resolve().parent.parent
+    resultado = subprocess.run(
+        [sys.executable, "-m", "scripts.carga_receita_transacoes"],
+        cwd=raiz,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=120,
+    )
+    assert resultado.returncode == 2
+    assert "--baixar" in resultado.stderr

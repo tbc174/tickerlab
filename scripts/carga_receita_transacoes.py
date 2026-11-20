@@ -25,6 +25,7 @@ import hashlib
 import json
 import logging
 import re
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -164,3 +165,7 @@ def main(argv: list[str] | None = None) -> int:
     adesao = carregar_adesao(opcoes.origem, saida, opcoes.forcar)
     log.info("Individual: %s; adesão: %s", individual, adesao)
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

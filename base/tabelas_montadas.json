@@ -1,5 +1,5 @@
 {
-  "conferido_em": "2026-11-19",
+  "conferido_em": "2026-11-20",
   "tabelas": [
     "achados_de_qualidade",
     "amostra_painel",
@@ -145,6 +145,8 @@
     "processos_nas_notas",
     "proventos",
     "ratings",
+    "receita_transacoes_adesao",
+    "receita_transacoes_individual",
     "registro_de_fundos",
     "rotulos_atraso",
     "sancoes_cgu",

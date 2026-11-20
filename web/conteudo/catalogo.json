@@ -2609,6 +2609,17 @@
       "tabelas": 2
     },
     {
+      "historico_desde": "2026-07-28",
+      "licenca": "Transações da Receita: sem licença escrita; risco assumido",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Receita Federal (transações)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
       "historico_desde": "2026-11-05",
       "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
       "modulos": [
@@ -2931,7 +2942,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 25,
-    "tabelas": 131,
+    "tabelas": 133,
     "temas": [
       {
         "chave": "cvm",
@@ -3041,10 +3052,11 @@
           "ANEEL",
           "Banco Central",
           "SEFAZ-PE",
-          "Governo do ES"
+          "Governo do ES",
+          "Receita Federal (transações)"
         ],
-        "tabelas": 8,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 8 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 10,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 10 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -3118,7 +3130,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 43
+      "tabelas": 45
     },
     {
       "chave": "credito_e_fidc",
@@ -8179,6 +8191,28 @@
       "tabela": "sigsif_estabelecimentos"
     },
     {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Acordos de transação tributária individual deferidos pela Receita (Procuradoria-Geral da Fazenda Nacional e Receita): uma linha por CNPJ e processo, com a dívida transacionada.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-07-28",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal (transações)",
+      "situacao": "licenciada",
+      "tabela": "receita_transacoes_individual"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Adesões às modalidades de transação tributária (por exemplo a de pequeno valor e as dos editais), um pedido por linha, com a dívida, a redução, os créditos usados e o número de parcelas.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-11",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal (transações)",
+      "situacao": "licenciada",
+      "tabela": "receita_transacoes_adesao"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -9172,10 +9206,10 @@
   "totais": {
     "familias": 134,
     "familias_em_uso": 46,
-    "fontes": 45,
+    "fontes": 46,
     "fontes_em_consulta": 11,
     "modulos": 6,
-    "tabelas": 162,
-    "tabelas_conferidas_em_curto": "19/11"
+    "tabelas": 164,
+    "tabelas_conferidas_em_curto": "20/11"
   }
 }
