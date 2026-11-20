@@ -361,10 +361,13 @@ def _informes_em_que_cede(
     if not cedentes:
         return None, []
     aparece = " OR ".join(f'CAST("{coluna}" AS VARCHAR) = $cnpj' for coluna in cedentes)
+    # a versão mais nova de cada fundo e competência vale; só depois se procura o CNPJ (uma versão
+    # corrigida que tirou o CNPJ dos cedentes não pode deixar a velha valendo)
     consulta = (
-        f'SELECT * FROM "{nome_da_view("fidc_informe")}" WHERE '
+        f'SELECT * FROM (SELECT * FROM "{nome_da_view("fidc_informe")}" WHERE '
         f"{condicao_como_era(colunas, 'fidc_informe')} AND competencia > CAST($inicio AS DATE) "
-        f"AND ({aparece})"
+        "QUALIFY ROW_NUMBER() OVER (PARTITION BY cnpj_fundo, competencia "
+        f"ORDER BY publico_em DESC) = 1) WHERE ({aparece})"
     )
     parametros = {
         "dia": dia.isoformat(),
@@ -454,6 +457,19 @@ def _perspectiva(valor: object) -> str:
     return _PERSPECTIVAS.get(str(valor), str(valor).replace("_", " "))
 
 
+def _aviso_de_documento_nao_lido(
+    linhas: pd.DataFrame, legiveis: pd.DataFrame, publico: date
+) -> str:
+    """Há documento de rating mais novo que o usado e sem rating legível: o "mais recente" pode estar
+    desatualizado, e o período diz isso."""
+    ilegiveis = linhas.drop(legiveis.index)
+    datas = [fb._dia(dia) for dia in ilegiveis["publico_em"].dropna()]
+    mais_novos = [dia for dia in datas if dia > publico]
+    if not mais_novos:
+        return ""
+    return f"; há documento mais novo, de {max(mais_novos):%d/%m/%Y}, não lido"
+
+
 def _rating(porta: Porta, cnpj_formatado: str, dia: date) -> list[Feature]:
     linhas = fb._ler(porta, "ratings", dia, {"cnpj": cnpj_formatado})
     if linhas is None:
@@ -470,6 +486,7 @@ def _rating(porta: Porta, cnpj_formatado: str, dia: date) -> list[Feature]:
         f"CVM: rating no IPE, protocolo {linha['protocolo']}, versão {linha['versao']}"
     )
     documentos = [DocumentoUsado(nome, publico, str(linha["link"] or ""))]
+    periodo += _aviso_de_documento_nao_lido(linhas, legiveis, publico)
     escala = f", escala {linha['escala']}" if linha["escala"] else ""
     texto = f"{linha['nota']} ({agencia_de_rating(linha['agencia'])}{escala})"
     return [
