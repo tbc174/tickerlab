@@ -99,7 +99,9 @@ MAPA_DAS_PERGUNTAS = (
     "intenção de compra): `compradores_do_setor`. Um fundo pelo CNPJ dele: "
     "`fundo`. Setores, concentração e participação de cada empresa: `setores` e `setor`. Fontes novas "
     "que a pesquisa provou na semana: `novidades`. O que a chave pode ver e o consumo do mês: "
-    "`o_que_posso_ver`. Ferramenta que não aparece na lista é de um conjunto que a chave não vê: diga "
+    "`o_que_posso_ver`. Os fatos de crédito de uma empresa (situação na Receita, fatos relevantes e cessão a "
+    "FIDC, sem rating nem elegibilidade): `credito_da_empresa`. O que mudou numa empresa desde um dia (cadastro, vínculos e eventos, o antes e o "
+    "depois): `o_que_mudou`. As fichas de 2 a 5 empresas lado a lado: `comparar_empresas`. De onde vem um conjunto ou um campo (fonte, licença e marca de piloto): `de_onde_vem`. Ferramenta que não aparece na lista é de um conjunto que a chave não vê: diga "
     "isso ao analista, sem estimar a resposta. "
 )
 LACUNAS = (
@@ -253,7 +255,7 @@ def criar_servidor(
             validate_token_resource=True,
         ),
     )
-    registrar_ferramentas(servidor, cliente)
+    registrar_ferramentas(servidor, cliente, com_proximo_passo=True)
     registrar_prompts(servidor, ORIENTACAO_DO_DOSSIE)
 
     @servidor.custom_route("/saude", methods=["GET"])

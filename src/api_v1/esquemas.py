@@ -1720,6 +1720,95 @@ def de_vinculos_do_analista(
     )
 
 
+class FraseDaAnaliseCompletaV1(BaseModel):
+    """A frase do topo da análise: só fato do cadastro (`tipo` "fact"), com o bloco de onde saiu."""
+
+    texto: str
+    tipo: str
+    a_partir_de: list[str]
+
+
+class BlocoDaAnaliseCompletaV1(BaseModel):
+    """Um bloco da análise, na ordem da montagem: o nome da tela, o título, o que traz e o corpo do leitor da
+    API (cada campo no envelope com `valor`, `fonte` e `publico_em`)."""
+
+    nome: str
+    titulo: str
+    o_que_traz: str
+    corpo: dict[str, object]
+
+
+class MarcoDaAnaliseCompletaV1(BaseModel):
+    """Um marco da linha do tempo: o dia, o que aconteceu, o bloco de onde veio, a fonte e o dia em que ficou
+    público."""
+
+    dia: str
+    o_que: str
+    bloco: str
+    titulo_do_bloco: str
+    fonte: str | None = None
+    publico_em: str | None = None
+
+
+class LeituraDaAnaliseCompletaV1(BaseModel):
+    """Uma dedução do TickerLab a partir dos blocos citados (`tipo` "inference"): nunca fato de uma fonte."""
+
+    texto: str
+    tipo: str
+    a_partir_de: list[str]
+
+
+class BlocoSemDadoV1(BaseModel):
+    """Um bloco aberto que não trouxe dado (ou não respondeu a tempo), com o porquê."""
+
+    bloco: str
+    titulo: str
+    por_que: str
+
+
+class AnaliseCompletaV1(BaseModel):
+    """A análise completa da empresa na ficha (19/11/2026): a mesma montagem da rota /analysis, pelo portão da
+    tela. Sem pessoa física. O estado, as fontes e os limites vêm sempre; o resto só quando `pronta`."""
+
+    estado: str  # "pronta", "nao_liberada" ou "nao_disponivel", como a ficha
+    cnpj: str | None = None
+    como_era_em: date | None = None
+    frase: FraseDaAnaliseCompletaV1 | None = None
+    blocos: list[BlocoDaAnaliseCompletaV1] = []
+    linha_do_tempo: list[MarcoDaAnaliseCompletaV1] = []
+    leituras: list[LeituraDaAnaliseCompletaV1] = []
+    nao_encontrado: list[BlocoSemDadoV1] = []
+    nao_respondeu_a_tempo: list[BlocoSemDadoV1] = []
+    # o que a análise não consulta nesta tela: a ausência não quer dizer que a empresa não tem registro
+    ainda_nao_traz: list[str] = []
+    fontes: list[FonteDaFichaV1]
+    limites: list[str]
+    # D11: a frase fixa quando a resposta saiu pela prontidão de piloto; vale para todos os campos dela
+    aviso_de_piloto: str | None = None
+
+
+def de_analise_completa(
+    resposta: leitura_do_analista.Resposta, limites: tuple[str, ...]
+) -> AnaliseCompletaV1:
+    corpo = resposta.corpo or {}
+    return AnaliseCompletaV1(
+        estado=resposta.estado,
+        cnpj=corpo.get("cnpj"),
+        como_era_em=corpo.get("como_era_em"),
+        frase=corpo.get("frase"),  # type: ignore[arg-type]
+        blocos=corpo.get("blocos", []),
+        linha_do_tempo=corpo.get("linha_do_tempo", []),
+        leituras=corpo.get("leituras", []),
+        nao_encontrado=corpo.get("nao_encontrado", []),
+        nao_respondeu_a_tempo=corpo.get("nao_respondeu_a_tempo", []),
+        ainda_nao_traz=list(corpo.get("ainda_nao_traz", [])),
+        fontes=[FonteDaFichaV1.model_validate(f) for f in resposta.fontes],
+        # com a análise servida, os limites do corpo (só dos blocos lidos); sem ela, o texto fixo
+        limites=list(corpo.get("limites", limites)),
+        aviso_de_piloto=corpo.get(piloto_da_api_externa.AVISO),
+    )
+
+
 class EmpresaDaBuscaV1(BaseModel):
     """Uma empresa achada: o CNPJ, os campos do leitor da API (cada um com fonte e dia; None se o portão
     não serve) e o nome ao lado de cada código, pelas tabelas de códigos da Receita."""

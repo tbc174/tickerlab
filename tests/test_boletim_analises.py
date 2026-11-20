@@ -2,6 +2,7 @@
 mão, o rodízio e as travas (só tabelas permitidas, nenhum nome de empresa no que sai)."""
 
 import json
+from dataclasses import replace
 from datetime import date
 
 import pandas as pd
@@ -9,6 +10,7 @@ import pytest
 
 from base.boletim import analises as an
 from base.boletim import fotografia as fo
+from base.dicionario import TABELAS
 from base.porta import Porta
 
 HOJE = date(2026, 10, 17)
@@ -224,3 +226,24 @@ def test_titulos_batem_com_as_secoes(raiz):
     for analise in an.ANALISES:
         assert an.TITULOS[analise.__name__] == analise(ctx).titulo
     assert an.titulo_do_dia(HOJE) == an.analise_do_dia(ctx).titulo
+
+
+def test_pgfn_marca_de_pessoa_vazia_nao_entra_na_soma(tmp_path, monkeypatch):
+    """Regressão: a linha com `trata_como_pessoa` vazio entrava na soma como empresa. Hoje a porta já esconde
+    essa linha (`linhas_de_pessoa` da `pgfn_divida`); o teste tira essa primeira trava para conferir que a
+    do boletim vale sozinha. Na dúvida, é pessoa."""
+    monkeypatch.setitem(
+        TABELAS, "pgfn_divida", replace(TABELAS["pgfn_divida"], linhas_de_pessoa="")
+    )
+    r = tmp_path / "base"
+    _grava(r, "pgfn_divida/2026-06/a", pd.DataFrame({
+        "tipo_divida": ["Previdenciária", "Previdenciária", "Previdenciária"],
+        "ajuizado": [False, False, False],
+        "inscricoes": [1, 7, 4],
+        "valor_consolidado": [10.0, 70.0, 40.0],
+        "trata_como_pessoa": pd.array([False, None, True], dtype="boolean"),
+        "origem_sha256": ["novo"] * 3,
+    }), origens=[{"url": "y", "sha256": "novo"}])  # fmt: skip
+    s = an.pgfn(_contexto(r))
+    assert s.numeros["valor"] == 10.0
+    assert s.numeros["inscricoes"] == 1

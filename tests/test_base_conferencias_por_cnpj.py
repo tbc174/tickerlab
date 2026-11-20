@@ -830,3 +830,44 @@ def test_sem_o_banco_o_comando_segue_sem_o_cadastro(
 
     monkeypatch.setattr(exportar_conferencias, "obter_engine", sem_banco)
     assert exportar_conferencias.cadastro_da_cvm() is None
+
+
+def test_marca_de_pessoa_vazia_conta_como_pessoa_e_nao_sai(base, tmp_path):
+    """Regressão: a linha com `trata_como_pessoa` vazio saía como empresa (`coalesce(..., false)`). A porta só
+    esconde a linha de pessoa das tabelas com `linhas_de_pessoa` no dicionário; nas outras (o RDE-IED, por
+    exemplo), o filtro daqui é a única trava. Na dúvida, é pessoa: a linha fica fora do arquivo do site."""
+    vazia = "99000111"
+    rde = {
+        "codigo_rde": "RDE1",
+        "uf": "SP",
+        "pais": "Portugal",
+        "ocorrencia": "Registro",
+        "mes": "2020-05",
+        "consta": True,
+        "visto_em": pd.Timestamp("2026-10-29"),
+        "disponivel_em": pd.Timestamp("2026-10-29"),
+    }
+    _gravar(
+        base,
+        "bcb_rde_ied",
+        [
+            {
+                **rde,
+                "id_na_fonte": "9",
+                "cnpj_basico": OUTRA,
+                "trata_como_pessoa": False,
+            },
+            {
+                **rde,
+                "id_na_fonte": "10",
+                "cnpj_basico": vazia,
+                "trata_como_pessoa": None,
+            },
+        ],
+    )
+    destino = tmp_path / "marca_vazia.sqlite"
+    conferencias.montar(base, destino, agora=AGORA)
+    banco, _ = _abrir(destino)
+    assert _registros(banco, vazia, "bcb_rde_ied") is None
+    # a marcada como empresa continua
+    assert _registros(banco, OUTRA, "bcb_rde_ied") is not None

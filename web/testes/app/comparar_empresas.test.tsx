@@ -206,6 +206,42 @@ describe("comparar empresas", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Escolha de 2 a 5 CNPJs diferentes");
   });
 
+  it("CNPJ com formato errado: a tela diz qual campo, e nada é pedido até corrigir", async () => {
+    const { buscar } = abrir(() => respostaJson(200, PRONTA));
+    await comparar(EMPRESA, "11.222.333/0001");
+    const errado = screen.getByLabelText("CNPJ 2");
+    expect(errado.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("CNPJ 1").getAttribute("aria-invalid")).not.toBe("true");
+    const aviso = document.getElementById(String(errado.getAttribute("aria-describedby")));
+    expect(aviso?.textContent).toMatch(/14 caracteres/);
+    expect(pedidos(buscar)).toHaveLength(0);
+    fireEvent.change(errado, { target: { value: "11.222.333/0001-81" } });
+    expect(errado.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
+    await waitFor(() => expect(pedidos(buscar)).toHaveLength(1));
+  });
+
+  it("o nome no topo de cada coluna abre a ficha da empresa, com o CNPJ pelo estado da navegação", async () => {
+    const OUTRA_PRONTA: EmpresaComparadaV1 = { ...MODELO, cnpj: OUTRA, razao_social: campo("OUTRA EMPRESA LTDA") };
+    const { buscar } = abrirApp("/comparar-empresas", {
+      rotas: (endereco) => {
+        if (endereco === "/api/v1/analista/ficha") return new Promise(() => {}) as never;
+        return endereco === ROTA ? respostaJson(200, { ...PRONTA, empresas: [MODELO, OUTRA_PRONTA] }) : undefined;
+      },
+    });
+    await comparar(EMPRESA, OUTRA);
+    const link = await screen.findByRole("link", { name: "OUTRA EMPRESA LTDA" });
+    expect(link.getAttribute("href")).toBe("/ficha-da-empresa"); // o CNPJ não vai no endereço
+    fireEvent.click(link);
+    await waitFor(() =>
+      expect(
+        buscar.mock.calls
+          .filter(([e]) => String(e) === "/api/v1/analista/ficha")
+          .map(([, p]) => JSON.parse(String(p?.body))),
+      ).toEqual([{ cnpj: OUTRA }]),
+    );
+  });
+
   it("Baixar em Excel: pede a planilha por POST com os mesmos CNPJs no corpo", async () => {
     const criar = vi.fn(() => "blob:xlsx");
     Object.assign(URL, { createObjectURL: criar, revokeObjectURL: vi.fn() });

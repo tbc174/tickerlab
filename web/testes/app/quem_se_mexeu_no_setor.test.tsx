@@ -2,9 +2,11 @@
 // Aba "Quem já se mexeu" da tela do setor (linha 903, PR D): o setor vai no corpo do POST (nunca no endereço),
 // cada linha leva fonte e data, o sinal que o portão não libera aparece como "não consultado", o que a rota não
 // dá (contagem por UF, aberturas por ano) é dito à vista e o estado "não liberada" não vira "sem movimento".
+// O setor se escolhe pelo nome da atividade (a tabela de CNAEs da Receita, web/conteudo/cnaes.json) ou pelo
+// código; a UF e os anos são listas prontas.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { BuscaDeEmpresasV1, CompradoresDoSetorV1, PerfilDoSetorV1, SetoresV1 } from "../../src/app/tipos";
+import type { BuscaDeEmpresasV1, CompradoresDoSetorV1, FichaDaEmpresaV1, PerfilDoSetorV1, SetoresV1 } from "../../src/app/tipos";
 import { abrirApp, respostaJson } from "./ajudantes";
 
 const SETORES: SetoresV1 = { setores: [{ chave: "eletricas", nome: "Elétricas", empresas: 12, como_era_em: null }] };
@@ -93,12 +95,17 @@ function abrir(resposta: CompradoresDoSetorV1 | (() => Response), perfil: Perfil
   });
 }
 
+const campoDoSetor = () => screen.findByRole("combobox", { name: "Setor" });
+
 function preencher(cnae: string, uf = "", anos = "") {
-  fireEvent.change(screen.getByLabelText("CNAE"), { target: { value: cnae } });
-  fireEvent.change(screen.getByLabelText(/UF/), { target: { value: uf } });
-  fireEvent.change(screen.getByLabelText(/Anos/), { target: { value: anos } });
+  fireEvent.change(screen.getByRole("combobox", { name: "Setor" }), { target: { value: cnae } });
+  fireEvent.change(screen.getByLabelText("Estado"), { target: { value: uf.toUpperCase() } });
+  if (anos !== "") fireEvent.change(screen.getByLabelText("Período"), { target: { value: anos } });
   fireEvent.click(screen.getByRole("button", { name: "Ver quem já se mexeu" }));
 }
+
+const sugeridas = async () =>
+  within(await screen.findByRole("listbox", { name: "Atividades do CNAE" })).getAllByRole("option");
 
 const corpos = (buscar: ReturnType<typeof abrir>["buscar"]) =>
   buscar.mock.calls.filter(([e]) => String(e) === ROTA).map(([, p]) => JSON.parse(String(p?.body)));
@@ -108,17 +115,19 @@ afterEach(() => cleanup());
 describe("quem já se mexeu no setor", () => {
   it("sem pedido não busca nada e diz que é movimento passado", async () => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     expect(corpos(buscar)).toEqual([]);
     expect(screen.getByText(/não intenção de compra/)).toBeTruthy();
   });
 
   it("pronta: o setor vai no corpo, a linha traz nome, CNPJ parcial, data e fonte", async () => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501", "sp", "5");
     const tabela = await screen.findByRole("region", { name: "Quem já se mexeu neste setor" });
     expect(corpos(buscar)).toEqual([{ cnae: "6201501", uf: "SP", anos: 5 }]);
+    // o cabeçalho diz o nome da atividade, não só o código
+    expect(await screen.findByText("Desenvolvimento de programas de computador sob encomenda (CNAE 6201-5/01)")).toBeTruthy();
     expect(buscar.mock.calls.every(([e]) => !String(e).includes("6201501"))).toBe(true);
     expect(within(tabela).getByText("COMPRADORA S.A.")).toBeTruthy();
     expect(within(tabela).getByText("CNPJ 11111111/…")).toBeTruthy();
@@ -131,7 +140,7 @@ describe("quem já se mexeu no setor", () => {
 
   it("diz o sinal não consultado e o que a lista não traz, e mantém os limites", async () => {
     abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     await screen.findByText(/Não consultados nesta base: Companhia aberta com controlada no setor/);
     expect(screen.getByRole("heading", { name: "O que não temos aqui" })).toBeTruthy();
@@ -141,29 +150,83 @@ describe("quem já se mexeu no setor", () => {
 
   it("lista vazia usa a frase do vazio, sem tabela", async () => {
     abrir({ ...PRONTA, compradores: [], total_de_compradores: 0, sinais_nao_disponiveis: [] });
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     await screen.findByText(/Nenhuma empresa com esse movimento/);
   });
 
   it("não liberada não vira 'sem movimento'", async () => {
     abrir({ ...PRONTA, estado: "nao_liberada", setor: null, compradores: [], total_de_compradores: 0 });
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     await screen.findByText(/ainda não foi liberado/);
     expect(screen.queryByText(/Nenhuma empresa com esse movimento/)).toBeNull();
   });
 
-  it.each([
-    ["62", "", "", /CNAE com 5 ou 7/],
-    ["6201501", "XYZ", "", /UF tem 2 letras/],
-    ["6201501", "", "11", /de 1 a 10/],
-  ])("pedido fora da forma não vai ao servidor: %s %s %s", async (cnae, uf, anos, aviso) => {
+  it.each(["62", "farmácia", ""])("setor que não é da lista nem um CNAE de 5 ou 7 dígitos não vai ao servidor: %s", async (texto) => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
-    preencher(cnae, uf, anos);
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(aviso));
+    await campoDoSetor();
+    preencher(texto);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Escolha uma atividade da lista ou digite o CNAE/));
     expect(corpos(buscar)).toEqual([]);
+  });
+
+  it("acha o setor pelo nome da atividade, sem acento, e a sugestão mostra o nome e o código", async () => {
+    const { buscar } = abrir(PRONTA);
+    const campo = await campoDoSetor();
+    fireEvent.change(campo, { target: { value: "farmacia" } });
+    const opcoes = await sugeridas();
+    const textos = opcoes.map((o) => o.textContent);
+    expect(textos).toContain("Comércio varejista de produtos farmacêuticos, sem manipulação de fórmulas4771-7/01");
+    fireEvent.click(opcoes.find((o) => o.textContent?.includes("4771-7/01"))!);
+    expect((campo as HTMLInputElement).value).toBe("Comércio varejista de produtos farmacêuticos, sem manipulação de fórmulas");
+    expect(screen.getByText("CNAE 4771-7/01")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ver quem já se mexeu" }));
+    await waitFor(() => expect(corpos(buscar)).toEqual([{ cnae: "4771701", uf: null, anos: 3 }]));
+  });
+
+  it("o campo de setor anda pelo teclado: setas marcam, Enter escolhe sem enviar e Esc fecha", async () => {
+    const { buscar } = abrir(PRONTA);
+    const campo = await campoDoSetor();
+    expect(campo.getAttribute("aria-autocomplete")).toBe("list");
+    fireEvent.change(campo, { target: { value: "transporte de carga" } });
+    const opcoes = await sugeridas();
+    expect(opcoes.every((o) => /carga/i.test(o.textContent ?? ""))).toBe(true);
+    fireEvent.keyDown(campo, { key: "ArrowDown" });
+    expect(campo.getAttribute("aria-activedescendant")).toBe(opcoes[0].id);
+    fireEvent.keyDown(campo, { key: "Enter" });
+    expect((campo as HTMLInputElement).value).toMatch(/^Transporte \S+ de carga/);
+    expect(corpos(buscar)).toEqual([]);
+    fireEvent.change(campo, { target: { value: "transporte" } });
+    await sugeridas();
+    fireEvent.keyDown(campo, { key: "Escape" });
+    expect(screen.queryByRole("listbox", { name: "Atividades do CNAE" })).toBeNull();
+  });
+
+  it("quem sabe o código o digita, com ou sem pontuação; a classe de 5 dígitos também vale", async () => {
+    const { buscar } = abrir(PRONTA);
+    await campoDoSetor();
+    preencher("4771-7/01");
+    await waitFor(() => expect(corpos(buscar)).toEqual([{ cnae: "4771701", uf: null, anos: 3 }]));
+    preencher("47717");
+    await waitFor(() => expect(corpos(buscar).at(-1)).toEqual({ cnae: "47717", uf: null, anos: 3 }));
+  });
+
+  it("a UF é uma lista com o Brasil inteiro como padrão e os anos são opções prontas, 3 anos por padrão", async () => {
+    abrir(PRONTA);
+    await campoDoSetor();
+    const estado = screen.getByLabelText("Estado") as HTMLSelectElement;
+    expect(estado.value).toBe("");
+    expect(estado.options[0].textContent).toBe("Brasil inteiro");
+    expect(estado.options).toHaveLength(28);
+    const periodo = screen.getByLabelText("Período") as HTMLSelectElement;
+    expect(periodo.value).toBe("3");
+    expect([...periodo.options].map((o) => o.textContent)).toEqual([
+      "Último ano",
+      "Últimos 3 anos",
+      "Últimos 5 anos",
+      "Últimos 10 anos",
+    ]);
   });
 
   it("a aba das companhias abertas continua a primeira e a outra não busca antes de abrir", async () => {
@@ -177,9 +240,12 @@ describe("quem já se mexeu no setor", () => {
 
   it("os números do setor: total, UF e aberturas com fonte e data, o CNAE só no corpo e o limite do MEI", async () => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     const numeros = await screen.findByRole("region", { name: /Números do setor/ });
+    expect(within(numeros).getByRole("heading", { level: 2 }).textContent).toBe(
+      "Números do setor: Desenvolvimento de programas de computador sob encomenda (CNAE 6201-5/01)",
+    );
     expect(within(numeros).getByText("12.345")).toBeTruthy();
     const uf = within(numeros).getByRole("region", { name: "Empresas ativas do setor por UF" });
     expect(within(uf).getByText("8.000")).toBeTruthy();
@@ -194,12 +260,12 @@ describe("quem já se mexeu no setor", () => {
 
   it("bloco não consultado diz 'Não consultado', nunca zero; não liberada não vira setor vazio", async () => {
     abrir(PRONTA, { ...PERFIL, por_uf: null, blocos_nao_disponiveis: ["por_uf"] });
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     await screen.findByText(/Não consultado nesta base/);
     cleanup();
     abrir(PRONTA, { ...PERFIL, estado: "nao_liberada", empresas_ativas: null, por_uf: null, aberturas_por_ano: null });
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     await screen.findByText(/ainda não foram liberados nesta base/);
   });
@@ -248,7 +314,7 @@ describe("quem já se mexeu no setor", () => {
       total_de_compradores: 3,
     };
     abrir(dois);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     const tabela = await screen.findByRole("region", { name: "Quem já se mexeu neste setor" });
     expect(within(tabela).getByRole("columnheader", { name: "Tipo" })).toBeTruthy();
@@ -268,7 +334,7 @@ describe("quem já se mexeu no setor", () => {
 
   it("o quadro Como ler esta lista diz que é movimento passado e como a ordem e as colunas se leem", async () => {
     abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     expect(screen.queryByRole("heading", { name: "Como ler esta lista" })).toBeNull();
     preencher("6201501");
     const quadro = (await screen.findByRole("heading", { name: "Como ler esta lista" })).closest("section")!;
@@ -280,7 +346,7 @@ describe("quem já se mexeu no setor", () => {
 
   it("não liberada não leva o quadro Como ler: não há lista para ler", async () => {
     abrir({ ...PRONTA, estado: "nao_liberada", setor: null, compradores: [], total_de_compradores: 0 });
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     await screen.findByText(/ainda não foi liberado/);
     expect(screen.queryByRole("heading", { name: "Como ler esta lista" })).toBeNull();
@@ -288,7 +354,7 @@ describe("quem já se mexeu no setor", () => {
 
   it("empresas por UF ganham barras proporcionais ao maior, e o número segue na tabela", async () => {
     abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     const numeros = await screen.findByRole("region", { name: /Números do setor/ });
     const barras = [...numeros.querySelectorAll<HTMLElement>(".barra-da-uf")];
@@ -301,7 +367,7 @@ describe("quem já se mexeu no setor", () => {
 
   it("Ver as empresas leva o CNAE e a UF pedidos ao Explorar, que abre já filtrado, sem nada no endereço", async () => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501", "sp", "5");
     fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor em SP" }));
     expect(await screen.findByRole("heading", { name: "Encontrar empresas" })).toBeTruthy();
@@ -317,17 +383,19 @@ describe("quem já se mexeu no setor", () => {
 
   it("o link de uma UF da tabela abre o Explorar nessa UF, mesmo que o pedido fosse do Brasil todo", async () => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("6201501");
     fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor em RJ" }));
     await screen.findByRole("list", { name: "Filtros em uso" });
-    const dasBuscas = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
-    expect(dasBuscas.at(-1)).toEqual({ setores: ["J"], ufs: ["RJ"] });
+    // as etiquetas aparecem antes do pedido sair: espera o pedido, que sob carga (no CI) chega depois
+    const dasBuscas = () =>
+      buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
+    await waitFor(() => expect(dasBuscas().at(-1)).toEqual({ setores: ["J"], ufs: ["RJ"] }));
   });
 
   it("CNAE de seção que a busca não cobre: abre o Explorar sem filtro e diz por quê", async () => {
     const { buscar } = abrir(PRONTA);
-    await screen.findByLabelText("CNAE");
+    await campoDoSetor();
     preencher("8411600");
     fireEvent.click(await screen.findByRole("link", { name: "Ver as empresas do setor" }));
     expect(await screen.findByText(/não está nesta busca/)).toBeTruthy();
@@ -335,5 +403,42 @@ describe("quem já se mexeu no setor", () => {
     expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
     const dasBuscas = buscar.mock.calls.filter(([e]) => String(e) === ROTA_DA_BUSCA).map(([, p]) => JSON.parse(String(p?.body)));
     expect(dasBuscas).toEqual([{}]);
+  });
+
+  it("a ficha da empresa abre quem já se mexeu no setor dela, já buscado, sem o CNAE no endereço", async () => {
+    const ficha: FichaDaEmpresaV1 = {
+      estado: "pronta",
+      ficha: {
+        cnpj: "02429144000193",
+        como_era_em: "2026-11-10",
+        cadastro_na_receita: {
+          razao_social: campo("EMPRESA MODELO S.A."),
+          cnae_principal: campo("4771701"),
+        },
+      },
+      fontes: [],
+      limites: ["Nada aqui é recomendação de investimento."],
+      o_que_vem: [],
+    };
+    const { buscar } = abrirApp("/ficha-da-empresa", {
+      rotas: (endereco) => {
+        if (endereco === "/api/v1/analista/ficha") return respostaJson(200, ficha);
+        if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
+        if (endereco === ROTA_DO_PERFIL) return respostaJson(200, PERFIL);
+        if (endereco === ROTA) return respostaJson(200, { ...PRONTA, setor: { ...PRONTA.setor!, cnae_principal: "4771701", uf: null } });
+        return undefined;
+      },
+    });
+    fireEvent.change(await screen.findByLabelText("CNPJ"), { target: { value: "02.429.144/0001-93" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ver a ficha" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Quem já se mexeu no setor desta empresa" }));
+    expect((await screen.findByRole("tab", { name: "Quem já se mexeu" })).getAttribute("aria-selected")).toBe("true");
+    await waitFor(() => expect(corpos(buscar)).toEqual([{ cnae: "4771701", uf: null, anos: 3 }]));
+    expect(await screen.findByText(/^Comércio varejista de produtos farmacêuticos, sem manipulação de fórmulas \(CNAE 4771-7\/01\)$/)).toBeTruthy();
+    await waitFor(() =>
+      expect((screen.getByRole("combobox", { name: "Setor" }) as HTMLInputElement).value).toMatch(/^Comércio varejista de produtos farmacêuticos/),
+    );
+    expect(window.location.href).not.toContain("4771701");
+    expect(buscar.mock.calls.every(([e]) => !String(e).includes("4771701"))).toBe(true);
   });
 });

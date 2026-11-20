@@ -97,9 +97,28 @@ def _cadastro_do_fundo(porta: Porta, cnpj: str) -> pd.Series | None:
     return tabela.iloc[-1]
 
 
+COLUNAS_NUMERICAS_DO_CADASTRO = ("TAXA_ADM", "TAXA_PERFM", "VL_PATRIM_LIQ")
+
+
+def _numero(valor: object) -> object:
+    """Número vindo do cadastro: a coleta lê o CSV da CVM como texto, então "2.0" e "2,0" viram 2.0.
+
+    O que não é número vira None (ausência nunca vira zero)."""
+    if not isinstance(valor, str):
+        return valor
+    try:
+        return float(valor.strip().replace(",", "."))
+    except ValueError:
+        return None
+
+
 def _taxas(linha: pd.Series) -> dict:
     return {
-        nome: _limpo(linha[coluna])
+        nome: _limpo(
+            _numero(linha[coluna])
+            if coluna in COLUNAS_NUMERICAS_DO_CADASTRO
+            else linha[coluna]
+        )
         for coluna, nome in CAMPOS_DO_CADASTRO.items()
         if coluna in linha.index
     }

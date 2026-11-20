@@ -6,6 +6,8 @@
 // não foi consultado e a seção diz isso (linha 889, o molde da linha 878 nos eventos). Cada tipo vai no
 // masculino plural ("os vínculos de ..."): a frase concorda com um tipo ou com vários.
 import { formatarData } from "../formatar";
+import { Carregando } from "../pecas/Carregando";
+import { Erro } from "../pecas/Erro";
 import type { PontaDoVinculoV1, VinculoDaEmpresaV1, VinculosDaEmpresaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 
@@ -94,7 +96,19 @@ function Tabela({ vinculos }: { vinculos: VinculoDaEmpresaV1[] }) {
 
 export function VinculosDaFicha({ rota, cnpj }: { rota: string; cnpj: string }) {
   const pedido = usarPedido<VinculosDaEmpresaV1>(`${rota}${CAMINHO}`, {}, { cnpj });
-  if (pedido.estado !== "pronto") return null; // carregando ou qualquer falha: a ficha segue sem a seção
+  // a aba inteira é desta seção: carregando ou com falha, ela diz o que acontece em vez de ficar em branco
+  if (pedido.estado !== "pronto") {
+    return (
+      <section className="secao-do-relatorio" aria-labelledby="vinculos-da-ficha">
+        <h2 id="vinculos-da-ficha">Vínculos com outras empresas</h2>
+        {pedido.estado === "carregando" ? (
+          <Carregando tipo="lista" rotulo="Carregando os vínculos da empresa" />
+        ) : (
+          <Erro erro={pedido.erro} />
+        )}
+      </section>
+    );
+  }
   const dados = pedido.dados;
   // um tipo barrado não foi consultado: a lista vazia (ou curta) não pode parecer "a empresa não tem"
   const naoConsultados = (dados.tipos_de_vinculo_nao_disponiveis ?? []).map((tipo) => TIPOS_NO_PLURAL[tipo] ?? tipo);

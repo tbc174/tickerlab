@@ -1878,7 +1878,7 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 
 ## `amostra_painel`
 
-A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os outros entram um por PR
+A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia (cadastro, tickers e demonstrações da CVM). Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os outros entram um por PR
 
 - **Fonte:** Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR), `tickers_no_tempo` e `demonstracoes_como_era`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -3172,14 +3172,15 @@ Sanções da CGU por CNPJ de empresa: CEIS (inidôneas e suspensas), CNEP (punid
 
 - **Fonte:** CGU: Portal da Transparência, download de dados do CEIS, CNEP, CEPIM e acordos de leniência (`base/sancoes.py`)
 - **Licença:** Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)
-- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
 - **Frequência:** Diária (o portal gera um arquivo por dia; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `inicio`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/sancoes_cgu/<cadastro>.parquet` (servidor de casa, `scripts/carga_sancoes.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -4419,15 +4420,16 @@ Entidades supervisionadas pela SUSEP (seguradoras, resseguradores, previdência,
 Cadastro de Empregadores do MTE (a "lista suja" do trabalho análogo ao escravo), só pessoa jurídica. Quando a página do MTE linka CSVs de layouts diferentes, vale o do arquivo baixado mais recentemente. A chave é CNPJ + ano da ação fiscal + estabelecimento: o `ID` do arquivo é só a posição na lista. Ser citado no cadastro não é condenação criminal. Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
 
 - **Fonte:** MTE: Cadastro de Empregadores (dados abertos) (`base/mte_lista_suja.py`)
-- **Licença:** Cadastro de empregadores do MTE (dado público; citar o MTE)
-- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Licença:** Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
 - **Frequência:** Semanal (o MTE atualiza o cadastro; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `incluida_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/mte_lista_suja/empregadores.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -4458,14 +4460,15 @@ Termos de embargo do IBAMA por CNPJ do embargado, um por linha. Só quem, onde, 
 
 - **Fonte:** IBAMA: dados abertos, termos de embargo (`base/ibama_embargos.py`)
 - **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
-- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
 - **Frequência:** Semanal (o IBAMA republica o arquivo; o arquivista guarda só o que mudou)
 - **Atraso de divulgação:** A fonte publica o estado de hoje: no 1º arquivo guardado a linha vale desde a data do ato público que ela informa, e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa no dia em que o arquivista passou a guardar a fonte: ver o histórico da tabela)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
 - **Chaves:** `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `embargada_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/ibama_embargos/termos.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -5670,6 +5673,110 @@ Os tanques das instalações autorizadas pela ANP no abastecimento de combustív
 | `grupo_de_produtos` | Grupo de produtos que o tanque armazena | texto |
 | `data_da_posicao` | Dia da posição que o arquivo mensal da ANP retrata | data (dia) |
 | `tancagem_m3` | Capacidade do tanque em metros cúbicos | número com decimais, na unidade da fonte |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `comprasgov_sicaf`
+
+O cadastro de fornecedores do governo federal (SICAF): se a empresa está ativa no cadastro e habilitada a licitar, o CNAE, a natureza jurídica, o porte e o município. Mostra quem já se preparou para vender ao governo. Uma linha por CNPJ, das listas de ativos e de inativos. Só CNPJ de dígito certo (o CPF, inteiro ou mascarado, sai e é contado); o nome do titular fica de fora (a razão social sai pelo CNPJ, na Receita)
+
+- **Fonte:** Compras.gov.br: dados abertos, SICAF (`base/cadastros_conferidos_19_11.py`)
+- **Licença:** Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** A API inteira, página por página (o arquivista olha todo mês)
+- **Atraso de divulgação:** O SICAF não diz quando o cadastro mudou; a linha vale desde o dia da coleta em que a vimos
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/comprasgov_sicaf/<ativos ou inativos>.parquet` (servidor de casa, `base/cadastros_conferidos_19_11.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do fornecedor (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ativo` | Verdadeiro se o cadastro do fornecedor está ativo no SICAF | verdadeiro ou falso |
+| `habilitado_a_licitar` | Verdadeiro se o fornecedor está habilitado a licitar; vazio quando a API não informa | verdadeiro ou falso |
+| `cnae` | CNAE do fornecedor no SICAF (7 dígitos, sem máscara) | texto |
+| `descricao_do_cnae` | Descrição do CNAE, como o SICAF escreve | texto |
+| `natureza_juridica` | Código da natureza jurídica no SICAF | texto |
+| `descricao_da_natureza_juridica` | Natureza jurídica, como o SICAF escreve | texto |
+| `porte` | Código do porte no SICAF | texto |
+| `descricao_do_porte` | Porte, como o SICAF escreve (microempresa, empresa de pequeno porte, demais) | texto |
+| `municipio` | Município do fornecedor, como o SICAF escreve | texto |
+| `uf` | Sigla da unidade da federação do fornecedor | texto |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `bps_compras`
+
+As compras públicas de medicamentos e produtos de saúde registradas no Banco de Preços em Saúde do Ministério da Saúde: quem vendeu (o fornecedor), o fabricante, a instituição compradora, o item (CATMAT), a quantidade, o preço unitário e o total, por compra. Mostra quem vende saúde ao setor público, a que preço e para quem. Só fornecedor com CNPJ de dígito certo (o CPF sai e é contado); os nomes do fornecedor e do fabricante e a observação, texto livre, ficam de fora
+
+- **Fonte:** Ministério da Saúde: Banco de Preços em Saúde, um arquivo por ano (`base/cadastros_conferidos_19_11.py`)
+- **Licença:** Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Um arquivo por ano, republicado inteiro (o arquivista olha todo mês)
+- **Atraso de divulgação:** O Ministério não escreve a data de publicação (a data de inserção é a do sistema dele); a linha vale desde o dia do arquivo em que a vimos
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `data_da_compra`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/bps_compras/compras.parquet` (servidor de casa, `base/cadastros_conferidos_19_11.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ do fornecedor (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ do fornecedor (8 caracteres) | texto |
+| `cnpj_do_fabricante` | CNPJ do fabricante (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo | texto |
+| `cnpj_basico_do_fabricante` | Raiz do CNPJ do fabricante (8 caracteres) | texto |
+| `cnpj_da_instituicao` | CNPJ da instituição compradora (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo | texto |
+| `ano_da_compra` | Ano da compra | número inteiro |
+| `data_da_compra` | Dia da compra | data (dia) |
+| `data_de_insercao` | Dia em que a compra entrou no sistema do Ministério | data (dia) |
+| `instituicao` | Instituição compradora, como o Ministério escreve | texto |
+| `uf` | Sigla da unidade da federação da instituição | texto |
+| `municipio` | Município da instituição, como o Ministério escreve | texto |
+| `esfera` | Esfera da instituição (municipal, estadual...) | texto |
+| `validade_da_compra` | Validade da compra, como o Ministério escreve (sem unidade) | texto |
+| `catmat` | Código do item no catálogo de materiais (CATMAT) | texto |
+| `item` | Descrição do item, como o catálogo escreve | texto |
+| `pdm` | Código do padrão descritivo de material (PDM) | texto |
+| `descricao_do_pdm` | Descrição do PDM | texto |
+| `classe` | Código da classe do material | texto |
+| `descricao_da_classe` | Descrição da classe do material | texto |
+| `generico` | S se o medicamento é genérico, N se não; vazio quando o Ministério não informa | texto |
+| `registro_na_anvisa` | Número do registro do produto na Anvisa | texto |
+| `tipo_de_compra` | Tipo de compra (administrativa ou judicial) | texto |
+| `modalidade` | Modalidade da compra, como o Ministério escreve | texto |
+| `processo_de_compra` | Número do processo de compra | texto |
+| `ata` | Número da ata de registro de preços | texto |
+| `unidade_de_medida` | Sigla da unidade de medida | texto |
+| `unidade_de_fornecimento` | Unidade de fornecimento | texto |
+| `unidade_da_capacidade` | Unidade da capacidade | texto |
+| `capacidade` | Capacidade da unidade de fornecimento | número com decimais, na unidade da fonte |
+| `quantidade` | Quantidade comprada | número com decimais, na unidade da fonte |
+| `preco_unitario` | Preço unitário pago | reais (R$) |
+| `preco_total` | Preço total da compra | reais (R$) |
 | `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
 | `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
 | `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |

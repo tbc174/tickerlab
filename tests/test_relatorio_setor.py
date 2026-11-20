@@ -168,6 +168,8 @@ def test_aviacao_fica_na_reserva() -> None:
         "seguros",
         "saude_suplementar",
         "telecom",
+        "combustiveis",
+        "ferrovias",
     ]
 
 

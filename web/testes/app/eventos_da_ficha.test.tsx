@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Eventos da empresa na ficha (linha 798, PR 4): documentos à CVM e trocas de auditor, do mais novo ao
 // mais velho, com a fonte e o dia de cada um, e "Carregar mais" com o cursor. Sem dado liberado ou sem
-// eventos é uma frase da tela, nunca erro; se o pedido falha, a ficha segue sem a seção.
+// eventos é uma frase da tela, nunca erro; se o pedido falha, a aba diz o porquê.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { EventosDaEmpresaV1, FichaDaEmpresaV1 } from "../../src/app/tipos";
@@ -172,11 +172,19 @@ describe("eventos da ficha", () => {
     expect(within(secao).getByText(/liberados para a tela: os documentos à CVM\. A falta deles/)).toBeTruthy();
   });
 
-  it("se o pedido falha, a ficha segue sem a seção", async () => {
+  it("se o pedido falha, a aba diz o porquê em vez de ficar em branco", async () => {
     abrir(() => respostaJson(503, { detail: "A base não está disponível agora." }));
     await verFicha();
     expect(screen.getByRole("tablist")).toBeTruthy();
-    expect(screen.queryByRole("region", { name: SECAO })).toBeNull();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect((await within(secao).findByRole("alert")).textContent).toMatch(/A base não está disponível agora\./);
+  });
+
+  it("enquanto o pedido não volta, a aba mostra que está carregando", async () => {
+    abrir(() => new Promise(() => {}) as never);
+    await verFicha();
+    const secao = await screen.findByRole("region", { name: SECAO });
+    expect(within(secao).getByRole("status").getAttribute("aria-busy")).toBe("true");
   });
 
   it("dado de piloto: o aviso do servidor fica à vista na seção", async () => {

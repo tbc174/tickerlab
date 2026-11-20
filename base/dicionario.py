@@ -3855,6 +3855,149 @@ def _tabelas_dos_cadastros_conferidos() -> dict[str, Tabela]:
     }
 
 
+_ONDE_DOS_CONFERIDOS_19_11 = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/cadastros_conferidos_19_11.py`)"
+
+
+def _tabelas_dos_conferidos_19_11() -> dict[str, Tabela]:
+    """SICAF e Banco de Preços em Saúde (`base/cadastros_conferidos_19_11.py`: as fontes 206 e 205 que a
+    conferência de 19/11/2026 confirmou). A licença de cada conjunto está em `src/banco/coletas.py::LICENCAS`."""
+    comum = {"linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO}
+    carimbos = _carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO)
+    return {
+        "comprasgov_sicaf": Tabela(
+            descricao=(
+                "O cadastro de fornecedores do governo federal (SICAF): se a empresa está ativa no cadastro e "
+                "habilitada a licitar, o CNAE, a natureza jurídica, o porte e o município. Mostra quem já se "
+                "preparou para vender ao governo. Uma linha por CNPJ, das listas de ativos e de inativos. "
+                + _SO_CNPJ_SEM_NOME
+            ),
+            fonte="Compras.gov.br: dados abertos, SICAF (`base/cadastros_conferidos_19_11.py`)",
+            familia_da_fonte="comprasgov",
+            frequencia="A API inteira, página por página (o arquivista olha todo mês)",
+            atraso="O SICAF não diz quando o cadastro mudou; a linha vale desde o dia da coleta em que a vimos",
+            onde=_ONDE_DOS_CONFERIDOS_19_11.format(
+                pasta="comprasgov_sicaf", arquivo="<ativos ou inativos>"
+            ),
+            colunas={
+                "cnpj": ("CNPJ do fornecedor (14 dígitos com máscara)", TEXTO),
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+                "ativo": (
+                    "Verdadeiro se o cadastro do fornecedor está ativo no SICAF",
+                    SIM_OU_NAO,
+                ),
+                "habilitado_a_licitar": (
+                    "Verdadeiro se o fornecedor está habilitado a licitar; vazio quando a API não informa",
+                    SIM_OU_NAO,
+                ),
+                "cnae": ("CNAE do fornecedor no SICAF (7 dígitos, sem máscara)", TEXTO),
+                "descricao_do_cnae": ("Descrição do CNAE, como o SICAF escreve", TEXTO),
+                "natureza_juridica": ("Código da natureza jurídica no SICAF", TEXTO),
+                "descricao_da_natureza_juridica": (
+                    "Natureza jurídica, como o SICAF escreve",
+                    TEXTO,
+                ),
+                "porte": ("Código do porte no SICAF", TEXTO),
+                "descricao_do_porte": (
+                    "Porte, como o SICAF escreve (microempresa, empresa de pequeno porte, demais)",
+                    TEXTO,
+                ),
+                "municipio": ("Município do fornecedor, como o SICAF escreve", TEXTO),
+                "uf": ("Sigla da unidade da federação do fornecedor", TEXTO),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "bps_compras": Tabela(
+            descricao=(
+                "As compras públicas de medicamentos e produtos de saúde registradas no Banco de Preços em Saúde "
+                "do Ministério da Saúde: quem vendeu (o fornecedor), o fabricante, a instituição compradora, o "
+                "item (CATMAT), a quantidade, o preço unitário e o total, por compra. Mostra quem vende saúde ao "
+                "setor público, a que preço e para quem. Só fornecedor com CNPJ de dígito certo (o CPF sai e é "
+                "contado); os nomes do fornecedor e do fabricante e a observação, texto livre, ficam de fora"
+            ),
+            fonte="Ministério da Saúde: Banco de Preços em Saúde, um arquivo por ano (`base/cadastros_conferidos_19_11.py`)",
+            familia_da_fonte="bps",
+            frequencia="Um arquivo por ano, republicado inteiro (o arquivista olha todo mês)",
+            atraso=(
+                "O Ministério não escreve a data de publicação (a data de inserção é a do sistema dele); a linha "
+                "vale desde o dia do arquivo em que a vimos"
+            ),
+            onde=_ONDE_DOS_CONFERIDOS_19_11.format(
+                pasta="bps_compras", arquivo="compras"
+            ),
+            colunas={
+                "cnpj": ("CNPJ do fornecedor (14 dígitos com máscara)", TEXTO),
+                "cnpj_basico": ("Raiz do CNPJ do fornecedor (8 caracteres)", TEXTO),
+                "cnpj_do_fabricante": (
+                    "CNPJ do fabricante (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo",
+                    TEXTO,
+                ),
+                "cnpj_basico_do_fabricante": (
+                    "Raiz do CNPJ do fabricante (8 caracteres)",
+                    TEXTO,
+                ),
+                "cnpj_da_instituicao": (
+                    "CNPJ da instituição compradora (14 dígitos com máscara); vazio quando não é um CNPJ de dígito certo",
+                    TEXTO,
+                ),
+                "ano_da_compra": ("Ano da compra", NUMERO),
+                "data_da_compra": ("Dia da compra", DATA),
+                "data_de_insercao": (
+                    "Dia em que a compra entrou no sistema do Ministério",
+                    DATA,
+                ),
+                "instituicao": (
+                    "Instituição compradora, como o Ministério escreve",
+                    TEXTO,
+                ),
+                "uf": ("Sigla da unidade da federação da instituição", TEXTO),
+                "municipio": (
+                    "Município da instituição, como o Ministério escreve",
+                    TEXTO,
+                ),
+                "esfera": ("Esfera da instituição (municipal, estadual...)", TEXTO),
+                "validade_da_compra": (
+                    "Validade da compra, como o Ministério escreve (sem unidade)",
+                    TEXTO,
+                ),
+                "catmat": ("Código do item no catálogo de materiais (CATMAT)", TEXTO),
+                "item": ("Descrição do item, como o catálogo escreve", TEXTO),
+                "pdm": ("Código do padrão descritivo de material (PDM)", TEXTO),
+                "descricao_do_pdm": ("Descrição do PDM", TEXTO),
+                "classe": ("Código da classe do material", TEXTO),
+                "descricao_da_classe": ("Descrição da classe do material", TEXTO),
+                "generico": (
+                    "S se o medicamento é genérico, N se não; vazio quando o Ministério não informa",
+                    TEXTO,
+                ),
+                "registro_na_anvisa": (
+                    "Número do registro do produto na Anvisa",
+                    TEXTO,
+                ),
+                "tipo_de_compra": (
+                    "Tipo de compra (administrativa ou judicial)",
+                    TEXTO,
+                ),
+                "modalidade": (
+                    "Modalidade da compra, como o Ministério escreve",
+                    TEXTO,
+                ),
+                "processo_de_compra": ("Número do processo de compra", TEXTO),
+                "ata": ("Número da ata de registro de preços", TEXTO),
+                "unidade_de_medida": ("Sigla da unidade de medida", TEXTO),
+                "unidade_de_fornecimento": ("Unidade de fornecimento", TEXTO),
+                "unidade_da_capacidade": ("Unidade da capacidade", TEXTO),
+                "capacidade": ("Capacidade da unidade de fornecimento", NUMERO_DECIMAL),
+                "quantidade": ("Quantidade comprada", NUMERO_DECIMAL),
+                "preco_unitario": ("Preço unitário pago", REAIS_EXATOS),
+                "preco_total": ("Preço total da compra", REAIS_EXATOS),
+                **carimbos,
+            },
+            **comum,
+        ),
+    }
+
+
 def _tabelas_da_fiscalizacao_da_aneel() -> dict[str, Tabela]:
     """Agentes do setor elétrico, autos de infração e termos de notificação da ANEEL
     (`base/aneel_fiscalizacao.py`: lote 2 das 300 tabelas pelo CNPJ)."""
@@ -8190,7 +8333,7 @@ TABELAS: dict[str, Tabela] = {
     "amostra_painel": Tabela(
         descricao=(
             "A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o "
-            "que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já "
+            "que se sabia dela naquele dia (cadastro, tickers e demonstrações da CVM). Cada bloco usa a linha mais nova já "
             "pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que "
             "nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco "
             "universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os "
@@ -9017,6 +9160,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_cadastros_do_bcb(),
     **_tabelas_dos_cadastros_da_antt(),
     **_tabelas_dos_cadastros_conferidos(),
+    **_tabelas_dos_conferidos_19_11(),
     **_tabelas_do_cnes(),
     **_tabelas_do_sus(),
     **_tabelas_dos_tces(),
@@ -11248,6 +11392,8 @@ _CADASTROS_DO_BCB_E_DA_ANTT = "2026-11-16"
 # linha 904 (conferência de 14/11): a 1ª coleta do arquivista das fontes novas (ECF, PAT, TAH, PADOs, homologados,
 # tancagem); a posição de cada dia vale desde o dia do arquivo, nunca antes
 _CADASTROS_CONFERIDOS = "2026-11-17"
+# conferência de 19/11 (SICAF e BPS): entram no arquivista neste dia; a linha vale desde o dia do arquivo
+_CONFERIDOS_19_11 = "2026-11-19"
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
@@ -11361,7 +11507,7 @@ _CONTRATO = {
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", linhas_de_pessoa="trata_como_pessoa", versao_do_contrato="1.1.0"),  # 1.1.0 (19/11/2026): `linhas_de_pessoa`; a porta só serve a linha de empresa (ADR 0108, Emenda 3)
     "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.2.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo); 1.2.0 (04/11/2026): o teor conferido (`tipo_de_ato`, `resultado`, `resultado_trecho`, `valor_citado`, `teor_conferido_em`)
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -11424,6 +11570,8 @@ _CONTRATO = {
     "mte_lista_suja": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a linha de empresa (ADR 0108, Emenda 3)
+        versao_do_contrato="1.1.0",
         chaves=("id_na_fonte", "visto_em"),
         datas={"aconteceu_em": "incluida_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
         historico_desde=_GOVERNO,
@@ -11432,6 +11580,8 @@ _CONTRATO = {
     "ibama_embargos": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
+        linhas_de_pessoa="trata_como_pessoa",  # a porta só serve a linha de empresa (ADR 0108, Emenda 3)
+        versao_do_contrato="1.1.0",
         chaves=("id_na_fonte", "visto_em"),
         datas={"aconteceu_em": "embargada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
         historico_desde=_GOVERNO,
@@ -11517,6 +11667,9 @@ _CONTRATO = {
     "anatel_pados": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "anatel_produtos_homologados": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_homologacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "anp_tancagem": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_posicao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    # conferência de 19/11: SICAF (206) e Banco de Preços em Saúde (205) (licenças em src/banco/coletas.py)
+    "comprasgov_sicaf": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONFERIDOS_19_11, granularidade_do_publico_em="dia"),
+    "bps_compras": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_compra", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONFERIDOS_19_11, granularidade_do_publico_em="dia"),
     "ans_idss": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_FUNDOS_E_REGULADORES, granularidade_do_publico_em="dia"),
     "gleif_ponte": _contrato(modulo=_ME, pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="dia"),
     "financiamentos_finep": _contrato(
@@ -11918,6 +12071,15 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "anp_tancagem",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "codigo_da_instalacao"),
         "faixas": {c: _SEM_NEGATIVO for c in ("tancagem_m3",)},
+    },
+    "comprasgov_sicaf": {
+        "pasta": "comprasgov_sicaf",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ativo"),
+    },
+    "bps_compras": {
+        "pasta": "bps_compras",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("capacidade", "quantidade", "preco_unitario", "preco_total")},
     },
     "ans_idss": {
         "pasta": "ans_idss",

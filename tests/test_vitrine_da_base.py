@@ -197,7 +197,7 @@ def test_as_listas_da_conta_de_orgaos_so_citam_nomes_que_existem():
 ORGAOS_PUBLICOS_CONFERIDOS = frozenset(
     {
         "ANAC", "ANEEL", "ANM", "ANP", "ANS", "ANTT", "Anatel", "Ancine", "Anvisa", "BNDES", "Banco Central",
-        "CFTC", "CGU", "CNJ", "CONAB", "CVM", "Finep", "Governo do ES", "IBAMA", "INPI", "MAPA", "MDIC", "MME",
+        "CFTC", "CGU", "CNJ", "CONAB", "CVM", "Compras.gov.br", "Finep", "Governo do ES", "IBAMA", "INPI", "MAPA", "MDIC", "MME",
         "MTE", "Ministério da Saúde (DATASUS)", "PGFN", "Receita Federal", "SEF-MG", "SEFAZ-PE", "SUSEP",
         "Sefa-PR", "TCE-CE", "TCE-PE", "TCE-RS", "TCE-SP", "Tesouro Nacional", "USDA",
     }
@@ -1282,6 +1282,35 @@ def test_toda_tabela_nova_de_orgao_publico_com_cnpj_entra_num_tema():
         f"tabela nova ligada pelo CNPJ fora da página inicial: {', '.join(sem_tema)}. Ponha-a num "
         "tema de base/vitrine.py::TEMAS_DO_CNPJ (e o órgão na frase do tema), rode os geradores do "
         "site e faça o commit junto"
+    )
+
+
+def test_tabela_sem_tema_cobra_todos_os_modulos_quando_pedido():
+    tema = vitrine.TemaDoCnpj("x", "X", "X.", ("a",))
+    catalogo = {
+        "tabelas": {
+            "a": _com_colunas("a", "governo_e_sancoes", PGFN, "cnpj"),
+            "c": _com_colunas("c", "mercado_e_empresas", CVM, "cnpj"),
+            "d": _com_colunas("d", "mercado_e_empresas", CVM, "data"),
+        }
+    }
+
+    assert vitrine.tabelas_sem_tema(catalogo, (tema,)) == []
+    assert vitrine.tabelas_sem_tema(catalogo, (tema,), modulos=None) == ["c"]
+
+
+def test_toda_tabela_ligada_pelo_cnpj_que_o_site_mostra_tem_tema():
+    """O catálogo do site (só tabela montada): todo módulo, não só os dos órgãos públicos (pedido do
+    Tiago, 18/11/2026: "tudo conferido e já explicado no site")."""
+    contrato = _contrato_inteiro()
+    sem_tema = vitrine.tabelas_sem_tema(
+        vitrine.catalogo_publico(contrato), modulos=None
+    )
+
+    assert not sem_tema, (
+        f"tabela ligada pelo CNPJ que o site mostra e nenhum cartão explica: {', '.join(sem_tema)}. "
+        "Ponha-a num tema de base/vitrine.py::TEMAS_DO_CNPJ, rode os geradores do site e faça o "
+        "commit junto"
     )
 
 

@@ -19,6 +19,7 @@ import { Limites } from "../pecas/Limites";
 import { Selo } from "../pecas/Selo";
 import type { BlocoDaFichaV1, FichaDaEmpresaV1, FichaDoCnpjV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
+import { AnaliseDaFicha } from "./AnaliseDaFicha";
 import { ContatoDaFicha } from "./ContatoDaFicha";
 import { EventosDaFicha } from "./EventosDaFicha";
 import { SociosDaFicha } from "./SociosDaFicha";
@@ -65,6 +66,8 @@ const chavesBarradas = (ficha: FichaDoCnpjV1): ReadonlySet<string> =>
 
 const ROTA_DO_EXPLORAR = "/encontrar-empresas";
 const ROTA_DO_RELATORIO_DO_SETOR = "/relatorio-do-setor";
+const ROTA_DE_QUEM_SE_MEXEU = `${ROTA_DO_RELATORIO_DO_SETOR}?aba=quem-se-mexeu`;
+const DIGITOS_DO_CNAE = 7;
 const NAO_E_RECOMENDACAO = "Nada aqui é recomendação de investimento.";
 
 /** O rodapé das telas do analista, depois do resultado: o aviso de que nada é recomendação e, se a tela tem,
@@ -263,6 +266,7 @@ function abasDaFicha(
 ) {
   return [
     { chave: "resumo", rotulo: "Resumo", conteudo: <Resumo ficha={ficha} /> },
+    { chave: "analise", rotulo: "Análise completa", conteudo: <AnaliseDaFicha rota={rota} cnpj={cnpj} /> },
     {
       chave: "cadastro",
       rotulo: "Cadastro",
@@ -286,6 +290,30 @@ function SeloDaSituacao({ ficha }: { ficha: FichaDoCnpjV1 }) {
   if (situacao === undefined || situacao === null) return null;
   const ativa = String(situacao).padStart(2, "0") === "02";
   return <Selo tom={ativa ? "bom" : "atencao"}>{textoDoValor("situacao_cadastral", situacao)}</Selo>;
+}
+
+/** Os 7 dígitos do CNAE principal da ficha ("4771701"; o zero da frente volta se o valor veio como número), ou
+ * null quando a ficha não tem um CNAE de 7 dígitos. */
+function cnaePrincipal(ficha: FichaDoCnpjV1): string | null {
+  const valor = ficha.cadastro_na_receita.cnae_principal?.valor;
+  if (typeof valor !== "string" && typeof valor !== "number") return null;
+  const digitos = String(valor).replace(/\D/g, "").padStart(DIGITOS_DO_CNAE, "0");
+  return digitos.length === DIGITOS_DO_CNAE && digitos !== "0".repeat(DIGITOS_DO_CNAE) ? digitos : null;
+}
+
+/** Abre a aba "Quem já se mexeu" de Setores com o CNAE da empresa; o código vai pelo estado da navegação,
+ * nunca pelo endereço (como o CNPJ do "Pôr na comparação"). */
+function QuemSeMexeuNoSetorDaEmpresa({ ficha }: { ficha: FichaDoCnpjV1 }) {
+  const cnae = cnaePrincipal(ficha);
+  if (cnae === null) return null;
+  return (
+    <>
+      <Link to={ROTA_DE_QUEM_SE_MEXEU} state={{ quemSeMexeu: { cnae } }}>
+        Quem já se mexeu no setor desta empresa
+      </Link>
+      {" · "}
+    </>
+  );
 }
 
 function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; cnpj: string }) {
@@ -338,6 +366,7 @@ function Ficha({ dados, rota, cnpj }: { dados: FichaDaEmpresaV1; rota: string; c
       />
       <RodapeDaTela rotulo="Rodapé da ficha">
         <p>
+          <QuemSeMexeuNoSetorDaEmpresa ficha={ficha} />
           <Link to={ROTA_DO_RELATORIO_DO_SETOR}>Ver o Relatório de um setor</Link>
         </p>
       </RodapeDaTela>
