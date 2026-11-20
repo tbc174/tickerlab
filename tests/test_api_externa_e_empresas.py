@@ -551,11 +551,6 @@ def test_identificador_com_id_entidade_nulo_nao_e_empresa_e_nao_cai_para_as_list
         }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=TypeError,
-    reason="O resolver em base/porta/rede.py não junta ids válidos e nulos.",
-)
 def test_identificador_com_id_valido_e_nulo_nao_e_empresa(tmp_path):
     cnpj = "75757575000191"
     identificadores = _identificadores(
