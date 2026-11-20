@@ -26,11 +26,12 @@ ORDEM_DOS_DEMONSTRATIVOS = ("DRE", "BPA", "BPP", "DFC", "DVA", "DRA")
 CONSOLIDADO, INDIVIDUAL = "con", "ind"
 
 
-def _com_aviso(corpo: dict, avisos: list[str]) -> dict:
-    """O corpo com `truncated` e os avisos em `limits`, depois dos que a API já pôs."""
+def _com_aviso(corpo: dict, avisos: list[str], *, cortou: bool = True) -> dict:
+    """O corpo com os avisos em `limits`, depois dos que a API já pôs, e `truncated` (só se `cortou`: um aviso
+    que só explica o que o filtro faz não diz que faltou algo)."""
     limites = corpo.get("limits")
     return corpo | {
-        "truncated": True,
+        **({"truncated": True} if cortou else {}),
         "limits": [*limites, *avisos] if isinstance(limites, list) else avisos,
     }
 
@@ -249,3 +250,230 @@ def enxugar_demonstracoes(
         )
     novo = corpo | {CHAVE_DAS_LINHAS: cabem}
     return _com_aviso(novo, avisos) if avisos else novo
+
+
+# ---------------------------------------------------------------- a divisão do orçamento entre listas
+
+
+def _quantos_cabem[C](base: dict, listas: dict[C, list]) -> dict[C, int]:
+    """Quantos itens de cada lista cabem no teto junto com o resto do corpo (`base`, com as listas vazias).
+
+    O orçamento se reparte de item em item entre as listas, na ordem em que vieram: uma lista enorme não toma o
+    lugar das outras. Dentro de cada lista a ordem é a da API e o corte é sempre no fim."""
+    sobra = (
+        saida.TETO_DE_CARACTERES
+        - FOLGA_EM_CARACTERES
+        - saida.tamanho_em_caracteres(base)
+    )
+    pesos = {
+        c: [saida.tamanho_em_caracteres(i) + 1 for i in itens]
+        for c, itens in listas.items()
+    }
+    ficam = dict.fromkeys(listas, 0)
+    parados: set[C] = set()
+    usado = 0
+    for rodada in range(max((len(p) for p in pesos.values()), default=0)):
+        for chave, peso in pesos.items():
+            if chave in parados or rodada >= len(peso):
+                continue
+            if usado + peso[rodada] > sobra:
+                parados.add(chave)
+                continue
+            usado += peso[rodada]
+            ficam[chave] += 1
+    return ficam
+
+
+# ---------------------------------------------------------------- os ativos: o que cabe, filtrado
+
+# o nome que o analista usa (o mesmo da descrição da ferramenta) -> o bloco da resposta da API
+BLOCOS_DOS_ATIVOS = {
+    "petroleo_e_gas": "oil_gas_contracts",
+    "barragens": "mining_dams",
+    "royalties": "mining_royalties",
+}
+NOMES_DOS_BLOCOS_DE_ATIVOS = {
+    "oil_gas_contracts": "contratos de petróleo e gás",
+    "mining_dams": "barragens de mineração",
+    "mining_royalties": "processos de royalties de mineração",
+}
+BLOCOS_DE_ATIVOS_COM_UF = ("mining_dams", "mining_royalties")
+BLOCO_DE_ATIVOS_COM_OPERADOR = "oil_gas_contracts"
+CHAVE_DOS_ITENS = "items"
+LIMITE_MAXIMO_DOS_ATIVOS = 500
+
+
+def _envelope_do_item(item: object, campo: str) -> object:
+    envelope = item.get(campo) if isinstance(item, dict) else None
+    return envelope.get("value") if isinstance(envelope, dict) else None
+
+
+def _lista_de_itens(bloco: object) -> list | None:
+    itens = bloco.get(CHAVE_DOS_ITENS) if isinstance(bloco, dict) else None
+    return itens if isinstance(itens, list) else None
+
+
+def _filtrar_ativos(
+    itens: dict[str, list], tipo: str | None, uf: str | None, so_operador: bool
+) -> tuple[dict[str, list], list[str]]:
+    """Os itens que passam nos filtros do pedido, e o que dizer de cada filtro."""
+    avisos: list[str] = []
+    if uf:
+        sigla = uf.upper()
+        for bloco in BLOCOS_DE_ATIVOS_COM_UF:
+            if bloco in itens:
+                antes = len(itens[bloco])
+                itens[bloco] = [
+                    i
+                    for i in itens[bloco]
+                    if _envelope_do_item(i, "state_code") == sigla
+                ]
+                if antes != len(itens[bloco]):
+                    avisos.append(
+                        f"Só a UF {sigla}: {antes - len(itens[bloco])} item(ns) de outras UFs ficaram de fora "
+                        f"de {NOMES_DOS_BLOCOS_DE_ATIVOS[bloco]}."
+                    )
+        if BLOCO_DE_ATIVOS_COM_OPERADOR in itens:
+            avisos.append(
+                f"`uf` não filtra os {NOMES_DOS_BLOCOS_DE_ATIVOS[BLOCO_DE_ATIVOS_COM_OPERADOR]}: "
+                "a fonte (ANP) não traz a UF do contrato."
+            )
+    if so_operador and BLOCO_DE_ATIVOS_COM_OPERADOR in itens:
+        antes = len(itens[BLOCO_DE_ATIVOS_COM_OPERADOR])
+        itens[BLOCO_DE_ATIVOS_COM_OPERADOR] = [
+            i
+            for i in itens[BLOCO_DE_ATIVOS_COM_OPERADOR]
+            if _envelope_do_item(i, "is_operator") is True
+        ]
+        avisos.append(
+            f"Só os contratos em que a empresa opera: {antes - len(itens[BLOCO_DE_ATIVOS_COM_OPERADOR])} "
+            "contrato(s) em que ela não opera ficaram de fora."
+        )
+    return itens, avisos
+
+
+def _so_o_bloco_pedido(corpo: dict, tipo: str) -> tuple[dict, list[str]]:
+    """O corpo só com o bloco do tipo pedido; os outros blocos de ativos saem, dizendo quais."""
+    escolhido = BLOCOS_DOS_ATIVOS[tipo]
+    de_fora = [b for b in NOMES_DOS_BLOCOS_DE_ATIVOS if b != escolhido and b in corpo]
+    novo = {c: v for c, v in corpo.items() if c not in de_fora}
+    avisos = []
+    if de_fora:
+        avisos.append(
+            f"Só o bloco pedido (`tipo_de_ativo` {tipo}); ficaram de fora: "
+            f"{', '.join(NOMES_DOS_BLOCOS_DE_ATIVOS[b] for b in de_fora)}. Peça sem `tipo_de_ativo` ou com outro tipo."
+        )
+    if escolhido not in corpo:
+        avisos.append(
+            f"O bloco pedido ({NOMES_DOS_BLOCOS_DE_ATIVOS[escolhido]}) não veio: a chave não o vê ou a rota "
+            "ainda não o serve (veja `not_covered`)."
+        )
+    return novo, avisos
+
+
+def enxugar_ativos(
+    corpo: object,
+    *,
+    tipo: str | None = None,
+    uf: str | None = None,
+    so_operador: bool = False,
+    limite: int | None = None,
+) -> object:
+    """Os ativos que cabem na conversa: só o tipo, a UF e o operador pedidos, no máximo `limite` itens por bloco
+    e, de qualquer jeito, o que couber no teto (cada item leva ~2,6 mil caracteres, e uma petroleira tem
+    centenas de contratos). O que ficou de fora vai em `limits`, com `truncated` (no bloco e na resposta)."""
+    if not isinstance(corpo, dict):
+        return corpo
+    avisos: list[str] = []
+    blocos_de_fora = False
+    if tipo:
+        sem_o_resto, avisos = _so_o_bloco_pedido(corpo, tipo)
+        blocos_de_fora = len(sem_o_resto) < len(corpo)
+        corpo = sem_o_resto
+    itens = {
+        b: lista
+        for b in NOMES_DOS_BLOCOS_DE_ATIVOS
+        if (lista := _lista_de_itens(corpo.get(b))) is not None
+    }
+    if not itens:
+        return _com_aviso(corpo, avisos, cortou=blocos_de_fora) if avisos else corpo
+    antes_dos_filtros = sum(len(lista) for lista in itens.values())
+    itens, dos_filtros = _filtrar_ativos(itens, tipo, uf, so_operador)
+    avisos += dos_filtros
+    totais = {b: len(lista) for b, lista in itens.items()}
+    if limite:
+        itens = {b: lista[:limite] for b, lista in itens.items()}
+    base = corpo | {b: corpo[b] | {CHAVE_DOS_ITENS: []} for b in itens}
+    ficam = _quantos_cabem(base, itens)
+    cortados = {b: totais[b] - ficam[b] for b in itens if totais[b] > ficam[b]}
+    novo = corpo | {
+        b: corpo[b]
+        | {CHAVE_DOS_ITENS: itens[b][: ficam[b]]}
+        | ({"truncated": True} if b in cortados else {})
+        for b in itens
+    }
+    if cortados:
+        de_cada = ", ".join(
+            f"{NOMES_DOS_BLOCOS_DE_ATIVOS[b]} ({ficam[b]} de {totais[b]})"
+            for b in cortados
+        )
+        avisos.append(
+            f"A resposta foi cortada (pelo que cabe na conversa ou por `limite`); entregues: {de_cada}. Peça o "
+            "resto por partes, com `tipo_de_ativo`, `uf` ou `somente_operador`."
+        )
+    cortou = blocos_de_fora or antes_dos_filtros > sum(ficam.values())
+    return _com_aviso(novo, avisos, cortou=cortou) if avisos else novo
+
+
+# ---------------------------------------------------------------- o que mudou: as mudanças que cabem
+
+BLOCOS_DO_QUE_MUDOU = ("registration", "links", "events")
+TIPOS_DE_MUDANCA = ("changed", "added", "removed")
+LIMITE_MAXIMO_DAS_MUDANCAS = 200
+
+
+def enxugar_o_que_mudou(corpo: object, *, limite: int | None = None) -> object:
+    """As mudanças que cabem na conversa: no máximo `limite` por lista (alteradas, novas e removidas de cada
+    bloco) e, de qualquer jeito, o que couber no teto (uma entrega de DFP ou ITR que mudou leva o antes e o
+    depois, uns 3 mil caracteres, e uma companhia aberta tem 60 e poucas). `changes_found` continua sendo a
+    contagem inteira; o que ficou de fora vai em `limits`, com `truncated` e `changes_shown`."""
+    if not isinstance(corpo, dict):
+        return corpo
+    blocos = [b for b in BLOCOS_DO_QUE_MUDOU if isinstance(corpo.get(b), dict)]
+    listas = {
+        (b, t): corpo[b][t]
+        for b in blocos
+        for t in TIPOS_DE_MUDANCA
+        if isinstance(corpo[b].get(t), list)
+    }
+    if not listas:
+        return corpo
+    totais = {chave: len(lista) for chave, lista in listas.items()}
+    if limite:
+        listas = {chave: lista[:limite] for chave, lista in listas.items()}
+    vazios = {b: corpo[b] | {t: [] for (bb, t) in listas if bb == b} for b in blocos}
+    ficam = _quantos_cabem(corpo | vazios, listas)
+    cortados = {
+        chave: totais[chave] - ficam[chave]
+        for chave in listas
+        if totais[chave] > ficam[chave]
+    }
+    if not cortados:
+        return corpo
+    cortes_por_bloco = {b for b, _ in cortados}
+    novo = corpo | {
+        b: corpo[b]
+        | {t: listas[(bb, t)][: ficam[(bb, t)]] for (bb, t) in listas if bb == b}
+        | ({"truncated": True} if b in cortes_por_bloco else {})
+        for b in blocos
+    }
+    entregues = sum(ficam.values())
+    de_cada = ", ".join(
+        f"{b}.{t} ({ficam[(b, t)]} de {totais[(b, t)]})" for b, t in cortados
+    )
+    aviso = (
+        f"A resposta foi cortada (pelo que cabe na conversa ou por `limite`): {entregues} de "
+        f"{sum(totais.values())} mudanças entregues; ficaram de fora {de_cada}. `changes_found` é a contagem "
+        "inteira. Peça um bloco por vez com `blocos` (cadastro, vinculos ou eventos) para ver o resto."
+    )
+    return _com_aviso(novo | {"changes_shown": entregues}, [aviso])

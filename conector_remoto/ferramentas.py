@@ -12,7 +12,7 @@ import logging
 import re
 from collections.abc import Callable
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NoReturn
 
 import httpx
 from mcp.server.mcpserver import MCPServer
@@ -24,15 +24,18 @@ from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
 from conector_remoto.enxugar import (
     LIMITE_MAXIMO_DAS_ENTREGAS,
+    LIMITE_MAXIMO_DOS_ATIVOS,
     LIMITE_PADRAO_DAS_ENTREGAS,
     cortar_entregas,
+    enxugar_ativos,
     enxugar_demonstracoes,
 )
-from conector_remoto.pessoa import RespostaComPessoa
+from conector_remoto.pessoa import RespostaComPessoa, exigir_sem_pessoa
 from conector_remoto.proximo_passo import com_proximo_passo
 from conector_remoto.saida import (
     TETO_DE_CARACTERES,
     RespostaGrandeDemais,
+    limpar_texto,
     preparar_saida,
     tamanho_em_caracteres,
 )
@@ -141,8 +144,10 @@ LIMITE_MAXIMO_DOS_PARES = 50
 LIMITE_PADRAO_DOS_PARES = 10
 # O que dizer quando a resposta não cabe: só parâmetro que a ferramenta tem (um teste confere cada uma)
 DICAS_DE_RESPOSTA_GRANDE = {
+    "ativos": "Peça um tipo só (`tipo_de_ativo`), uma UF (`uf`), só os contratos em que a empresa opera (`somente_operador`) ou menos itens por bloco (`limite`).",
     "buscar_empresas": "Peça menos empresas por página (`limite`) ou filtre mais (`cnae`, `uf`, `municipio`).",
     "comparaveis": "Peça menos pares (`limite`).",
+    "o_que_mudou": "Peça um bloco só (`blocos`: cadastro, vinculos ou eventos) ou menos mudanças por lista (`limite`).",
     "demonstracoes": "Peça um demonstrativo só (`demonstrativo`, ex.: DRE) ou uma conta (`conta`, ex.: 3.01).",
     "ficha_da_empresa": "Peça menos entregas de DFP e ITR (`limite_de_entregas`).",
     "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
@@ -275,6 +280,22 @@ def cortar_pares(corpo: object, limite: int) -> object:
     }
 
 
+def _com_ativos_enxutos(
+    resposta: RespostaDaApi,
+    tipo: str | None,
+    uf: str | None,
+    so_operador: bool,
+    limite: int | None,
+) -> RespostaDaApi:
+    """A resposta dos ativos no que cabe na conversa (`enxugar.py`); o resto fica como veio."""
+    if not resposta.ok:
+        return resposta
+    corpo = enxugar_ativos(
+        resposta.corpo, tipo=tipo, uf=uf, so_operador=so_operador, limite=limite
+    )
+    return dataclasses.replace(resposta, corpo=corpo)
+
+
 def _com_entregas_cortadas(resposta: RespostaDaApi, limite: int) -> RespostaDaApi:
     """A resposta da ficha só com as entregas de DFP e ITR mais novas (o resto fica como veio)."""
     if not resposta.ok:
@@ -332,6 +353,30 @@ class Pedidos:
                 "A API do TickerLab não respondeu; tente de novo em instantes."
             ) from None
 
+    def conferir_pessoa(self, resposta: RespostaDaApi, ferramenta: str) -> None:
+        """Só a trava de pessoa física, sem o teto de tamanho: para a resposta crua que a ferramenta compõe e não
+        entrega inteira (a que vai à IA passa depois por `entregar`, com o teto)."""
+        if not resposta.ok:
+            return
+        try:
+            exigir_sem_pessoa(limpar_texto(resposta.corpo))
+        except RespostaComPessoa as recusa:
+            self._recusar_pessoa(ferramenta, recusa, MENSAGEM_DE_PESSOA)
+
+    def _recusar_pessoa(
+        self, ferramenta: str, recusa: RespostaComPessoa, frase: str
+    ) -> NoReturn:
+        acesso = acesso_do_pedido()
+        registro.error(
+            "resposta_com_pessoa_recusada",
+            extra={
+                "ferramenta": ferramenta,
+                "caminhos": recusa.caminhos[:20],
+                "chave": acesso.subject if acesso else None,
+            },
+        )
+        raise ToolError(frase) from None
+
     def entregar(
         self,
         resposta: RespostaDaApi,
@@ -351,16 +396,7 @@ class Pedidos:
                     raise RespostaGrandeDemais(tamanho_em_caracteres(saida))
             return _como_texto(saida)
         except RespostaComPessoa as recusa:
-            acesso = acesso_do_pedido()
-            registro.error(
-                "resposta_com_pessoa_recusada",
-                extra={
-                    "ferramenta": ferramenta,
-                    "caminhos": recusa.caminhos[:20],
-                    "chave": acesso.subject if acesso else None,
-                },
-            )
-            raise ToolError(recusa_de_pessoa) from None
+            self._recusar_pessoa(ferramenta, recusa, recusa_de_pessoa)
         except RespostaGrandeDemais as grande:
             raise ToolError(
                 mensagem_de_resposta_grande(ferramenta, grande.tamanho)
@@ -928,20 +964,55 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         annotations=SO_LEITURA,
         structured_output=False,
     )
-    async def ativos(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
-        """Os ativos físicos da empresa como eram no dia, um bloco por base aberta de agência. Hoje sai um
-        bloco: os contratos de exploração e produção de petróleo e gás em que a empresa é sócia (`oil_gas_contracts`:
-        rodada, fase, campo ou bloco, bacia, terra ou mar, participação e se opera). Cada bloco diz se achou a empresa
-        (`found`), a fonte e o dia do dado mais novo da base; não achar não quer dizer que a empresa não tem o ativo,
-        como explicam os `limits`. Serve para a pergunta de que ativos e concessões uma empresa tem.
-        Fonte: contratos de E&P da ANP.
-        Não traz: o que `not_covered` lista (mineração, por exemplo), os outros sócios do consórcio nem pessoa
-        física."""
+    async def ativos(
+        cnpj: Cnpj,
+        como_era_em: ComoEraEm = None,
+        tipo_de_ativo: Annotated[
+            Literal["petroleo_e_gas", "barragens", "royalties"] | None,
+            Field(
+                description="Só um tipo de ativo: contratos de petróleo e gás, barragens de mineração ou royalties de mineração."
+            ),
+        ] = None,
+        uf: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[A-Za-z]{2}$",
+                description="Só os itens dessa UF (sigla, ex.: MG). Vale para barragens e royalties; os contratos de petróleo e gás não têm UF.",
+            ),
+        ] = None,
+        somente_operador: Annotated[
+            bool,
+            Field(
+                description="Só os contratos de petróleo e gás em que a empresa é a operadora."
+            ),
+        ] = False,
+        limite: Annotated[
+            int | None,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DOS_ATIVOS,
+                description="No máximo quantos itens trazer por bloco, na ordem da API. Sem ele, vai o que couber na conversa.",
+            ),
+        ] = None,
+    ) -> str:
+        """Os ativos físicos da empresa como eram no dia, um bloco por base aberta de agência: os contratos de
+        exploração e produção de petróleo e gás em que a empresa é sócia (`oil_gas_contracts`: rodada, fase, campo
+        ou bloco, bacia, terra ou mar, participação e se opera) e, quando a chave os vê, as barragens e os royalties
+        de mineração. Cada bloco diz se achou a empresa (`found`), a fonte e o dia do dado mais novo da base; não
+        achar não quer dizer que a empresa não tem o ativo, como explicam os `limits`. Uma empresa com centenas de
+        contratos não cabe numa resposta: o que passa do teto da conversa fica de fora, com `truncated` e a
+        contagem em `limits`, e `tipo_de_ativo`, `uf`, `somente_operador` e `limite` pedem o resto por partes.
+        Serve para a pergunta de que ativos e concessões uma empresa tem.
+        Fonte: contratos de E&P da ANP; barragens (SIGBM) e royalties (CFEM) da ANM.
+        Não traz: o que `not_covered` lista (mineração, por exemplo, quando a chave não a vê), os outros sócios do
+        consórcio nem pessoa física."""
         numeros = cnpj_do_pedido(cnpj)
-        return await pedidos.pedir(
+        resposta = await pedidos.resposta(
+            f"/companies/{numeros}/assets", {"known_at": _dia(como_era_em)}
+        )
+        return pedidos.entregar(
+            _com_ativos_enxutos(resposta, tipo_de_ativo, uf, somente_operador, limite),
             "ativos",
-            f"/companies/{numeros}/assets",
-            {"known_at": _dia(como_era_em)},
         )
 
     @servidor.tool(

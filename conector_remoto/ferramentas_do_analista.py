@@ -12,7 +12,7 @@ import json
 import re
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -20,6 +20,7 @@ from pydantic import Field
 
 from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ParametroDaApi, RespostaDaApi
+from conector_remoto.enxugar import LIMITE_MAXIMO_DAS_MUDANCAS, enxugar_o_que_mudou
 from conector_remoto.ferramentas import (
     SO_LEITURA,
     STATUS_NAO_DISPONIVEL,
@@ -103,6 +104,13 @@ EVENTOS_POR_BLOCO = (
     100  # a página cheia da API: quem tem mais que isso recebe `partial`
 )
 MOTIVO_SEM_CONJUNTO = "not_in_key"
+MOTIVO_NAO_PEDIDO = "not_requested"
+# o nome que o analista usa (o mesmo da CLI e da descrição) -> o bloco do `o_que_mudou`
+BLOCOS_PEDIDOS = {
+    "cadastro": "registration",
+    "vinculos": "links",
+    "eventos": "events",
+}
 MOTIVO_NAO_DISPONIVEL = "not_available"
 AVISO_DA_FERRAMENTA = {
     "code": "o_que_mudou",
@@ -409,10 +417,14 @@ def _montar_a_saida(
     numeros: str,
     desde: date,
     blocos: dict[str, DoisDias | None],
+    fora_do_pedido: tuple[str, ...] = (),
 ) -> dict[str, object]:
-    """A resposta da ferramenta, de cada bloco consultado (`None` = a chave não vê o conjunto dele)."""
+    """A resposta da ferramenta, de cada bloco consultado (`None` = a chave não vê o conjunto dele);
+    `fora_do_pedido` são os blocos que o analista deixou de pedir (`blocos`)."""
     saida: dict[str, object] = {}
-    nao_consultados: list[dict[str, str]] = []
+    nao_consultados: list[dict[str, str]] = [
+        {"block": bloco, "reason": MOTIVO_NAO_PEDIDO} for bloco in fora_do_pedido
+    ]
     todos: list[object] = []
     achadas = 0
     for bloco, dois in blocos.items():
@@ -473,6 +485,43 @@ Desde = Annotated[
 ]
 
 
+BlocosPedidos = Annotated[
+    list[Literal["cadastro", "vinculos", "eventos"]] | None,
+    Field(
+        description=(
+            "Só estes blocos: cadastro, vinculos e/ou eventos. Sem ele, vão todos os que a chave vê; pedir um "
+            "bloco por vez dá a cada um o espaço inteiro da resposta."
+        )
+    ),
+]
+LimiteDeMudancas = Annotated[
+    int | None,
+    Field(
+        ge=1,
+        le=LIMITE_MAXIMO_DAS_MUDANCAS,
+        description=(
+            "No máximo quantas mudanças trazer por lista (alteradas, novas e removidas de cada bloco). "
+            "Sem ele, vai o que couber na conversa."
+        ),
+    ),
+]
+
+
+def _blocos_do_pedido(
+    blocos: list[str] | None, conjuntos: frozenset[str]
+) -> tuple[list[str], tuple[str, ...]]:
+    """Os blocos que a chave vê e o analista pediu, e os que ele não pediu (na ordem do bloco)."""
+    pedidos_ = (
+        {BLOCOS_PEDIDOS[b] for b in blocos} if blocos else set(CONJUNTOS_DO_BLOCO)
+    )
+    visiveis = [
+        b
+        for b, exigidos in CONJUNTOS_DO_BLOCO.items()
+        if exigidos & conjuntos and b in pedidos_
+    ]
+    return visiveis, tuple(b for b in CONJUNTOS_DO_BLOCO if b not in pedidos_)
+
+
 def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A diferença do cadastro, dos vínculos e dos eventos entre um dia passado e hoje."""
 
@@ -481,14 +530,22 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
         annotations=SO_LEITURA,
         structured_output=False,
     )
-    async def o_que_mudou(cnpj: Cnpj, desde: Desde) -> str:
+    async def o_que_mudou(
+        cnpj: Cnpj,
+        desde: Desde,
+        blocos: BlocosPedidos = None,
+        limite: LimiteDeMudancas = None,
+    ) -> str:
         """O que mudou numa empresa desde um dia: compara o que a base sabia em `desde` com o que sabe hoje e
         lista só a diferença, nos blocos que a chave vê: o cadastro na Receita (com as entregas de DFP e ITR),
         os vínculos e os eventos. Cada item traz o antes e o depois (ou só o que entrou ou saiu), com a fonte e o
         dia em que ficou público; republicar o mesmo valor não conta como mudança, e o lado antigo nunca traz
         nada publicado depois de `desde`. `not_consulted` lista o bloco que a chave não vê ou a base não serve,
         `before_not_available` diz que a base ainda não conhecia a empresa em `desde` e `partial`, que a página
-        veio cheia. Serve para retomar uma empresa já analisada e ler, antes da reunião, o que é novo.
+        veio cheia. Companhia aberta pode ter mais mudanças do que cabem numa resposta: o que passa do teto
+        fica de fora, com `truncated`, `changes_shown` e a contagem em `limits` (`changes_found` é a inteira), e
+        `blocos` e `limite` pedem o resto por partes. Serve para retomar uma empresa já analisada e ler, antes da
+        reunião, o que é novo.
         Fonte: as dos blocos: cadastro CNPJ da Receita Federal; FRE, FCA e IPE da CVM.
         Não traz: mudança que ainda não foi publicada na base, sócio pessoa física, contato nem endereço,
         faturamento de empresa fechada, o motivo de cada mudança nem opinião sobre ela."""
@@ -499,9 +556,7 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
             )
         acesso = acesso_do_pedido()
         conjuntos = acesso.conjuntos if acesso else frozenset()
-        visiveis = [
-            b for b, exigidos in CONJUNTOS_DO_BLOCO.items() if exigidos & conjuntos
-        ]
+        visiveis, fora_do_pedido = _blocos_do_pedido(blocos, conjuntos)
         dias = (desde.isoformat(), None)
         # os dois dias de cada bloco correm juntos: a espera é a de um pedido, não a soma de seis
         resultados = await asyncio.gather(
@@ -521,16 +576,19 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
             for i in range(0, len(respostas), 2)
         ]
         _exigir_que_a_api_serviu(pares)
-        blocos: dict[str, DoisDias | None] = {b: None for b in CONJUNTOS_DO_BLOCO}
-        blocos.update(zip(visiveis, pares, strict=True))
-        for dois in (
-            pares
-        ):  # a tranca vê cada resposta crua, inclusive o que a comparação não repete
+        dos_blocos: dict[str, DoisDias | None] = {
+            b: None for b in CONJUNTOS_DO_BLOCO if b not in fora_do_pedido
+        }
+        dos_blocos.update(zip(visiveis, pares, strict=True))
+        # a tranca de pessoa vê cada resposta crua, inclusive o que a comparação não repete; o teto de tamanho
+        # só vale para o que vai à IA, que é a diferença (uma ficha crua de companhia aberta já passa de 90 mil)
+        for dois in pares:
             for resposta in (dois.antes, dois.depois):
-                if resposta.ok:
-                    pedidos.entregar(resposta, "o_que_mudou")
+                pedidos.conferir_pessoa(resposta, "o_que_mudou")
+        saida = _montar_a_saida(numeros, desde, dos_blocos, fora_do_pedido)
         return pedidos.entregar(
-            RespostaDaApi(200, _montar_a_saida(numeros, desde, blocos)), "o_que_mudou"
+            RespostaDaApi(200, enxugar_o_que_mudou(saida, limite=limite)),
+            "o_que_mudou",
         )
 
 

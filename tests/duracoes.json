@@ -454,6 +454,7 @@
  "tests/test_compartilhar_no_app.py": 13.3,
  "tests/test_comps_por_transacao.py": 7.3,
  "tests/test_concentracao.py": 0.9,
+ "tests/test_conector_ativos_e_o_que_mudou_grandes.py": 12.0,
  "tests/test_conector_de_onde_vem.py": 1.3,
  "tests/test_conector_ferramentas_do_analista.py": 39.7,
  "tests/test_conector_proximo_passo.py": 2.4,
