@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import { pedir } from "../api";
 import { useConta } from "../conta";
 import { formatarData } from "../formatar";
+import { Carregando } from "../pecas/Carregando";
+import { Erro } from "../pecas/Erro";
 import type { EventoDaEmpresaV1, EventosDaEmpresaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 
@@ -120,7 +122,19 @@ export function EventosDaFicha({
     setFalhou(false);
   }, [cnpj]);
 
-  if (primeira.estado !== "pronto") return null; // carregando ou qualquer falha: a ficha segue sem a seção
+  // a aba inteira é desta seção: carregando ou com falha, ela diz o que acontece em vez de ficar em branco
+  if (primeira.estado !== "pronto") {
+    return (
+      <section className="secao-do-relatorio" aria-labelledby="eventos-da-ficha">
+        <h2 id="eventos-da-ficha">Documentos à CVM e trocas de auditor</h2>
+        {primeira.estado === "carregando" ? (
+          <Carregando tipo="lista" rotulo="Carregando os eventos da empresa" />
+        ) : (
+          <Erro erro={primeira.erro} />
+        )}
+      </section>
+    );
+  }
   const dados = primeira.dados;
   const todas = [dados, ...seguintes.filter((s) => s.cnpj === cnpj).map((s) => s.pagina)];
   const eventos = todas.flatMap((pagina) => pagina.eventos);

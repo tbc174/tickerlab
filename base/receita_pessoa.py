@@ -7,7 +7,9 @@ tela com login de organização com a permissão `pessoa_na_tela`.
 **O que sai:** raiz da empresa, nome do sócio, qualificação e data de entrada. Nada mais.
 
 **O que nunca sai** (a coluna é lida só para decidir o descarte, e não é guardada):
-- CPF: o documento do sócio nem é lido; um CPF escrito no nome sai (`base.pessoas.sem_cpf`);
+- CPF: o documento do sócio só é lido para o id da oposição; um CPF escrito no nome sai (`base.pessoas.sem_cpf`),
+  e também número de cinco dígitos ou mais e palavra com arroba (CEP, telefone, CPF incompleto, e-mail);
+- quem fica sem id da oposição (documento fora do formato): sem ele, um pedido de oposição não acharia a linha;
 - **menor de idade**, pela leitura mais estreita: fora as faixas etárias 0 a 12 e 13 a 20 (a Receita junta
   13 a 20 numa faixa só), a faixa ausente ou desconhecida, todo sócio com representante legal e toda
   qualificação de menor ou incapaz;
@@ -26,7 +28,7 @@ from typing import IO, NamedTuple
 import pandas as pd
 
 from base.oposicao_na_tela import Opostos
-from base.pessoas.sem_cpf import tirar_cpf_da_coluna
+from base.pessoas.sem_cpf import tirar_cpf_da_coluna, tirar_numero_longo_e_email
 from base.receita_retrato import CAMPOS_DO_SOCIO, CPF_MASCARADO, _datas, _partes
 
 # posição de cada campo no arquivo; o país (6) nem é lido; o documento (3) só entra em `SOCIO_COM_DOCUMENTO`
@@ -57,12 +59,17 @@ FAIXA_DESCONHECIDA = "faixa_desconhecida"
 COM_REPRESENTANTE = "com_representante_legal"
 QUALIFICACAO_DE_MENOR = "qualificacao_de_menor_ou_incapaz"
 QUALIFICACAO_DE_REPRESENTANTE = "qualificacao_de_quem_representa"
+# vazio, ou sem nenhuma letra depois de tirar CPF, número longo e e-mail
 SEM_NOME = "sem_nome"
+SEM_ID = "sem_id_para_a_oposicao"  # documento fora do formato: a oposição não acharia a linha
 OPOSTO = "oposto"  # pediu a oposição (linha 829): sai da tela da organização
 MOTIVOS = (
     NAO_E_PESSOA_FISICA, MENOR_PELA_FAIXA, FAIXA_DESCONHECIDA, COM_REPRESENTANTE,
-    QUALIFICACAO_DE_MENOR, QUALIFICACAO_DE_REPRESENTANTE, SEM_NOME, OPOSTO,
+    QUALIFICACAO_DE_MENOR, QUALIFICACAO_DE_REPRESENTANTE, SEM_NOME, SEM_ID, OPOSTO,
 )  # fmt: skip
+# não é descarte: a linha fica, com o número longo ou o e-mail tirado do nome; o manifesto conta quantas
+NOME_COM_NUMERO_OU_EMAIL_LIMPO = "nome_com_numero_ou_email_limpo"
+CONTAGENS = (*MOTIVOS, NOME_COM_NUMERO_OU_EMAIL_LIMPO)
 
 
 class ParteDosSocios(NamedTuple):
@@ -72,7 +79,7 @@ class ParteDosSocios(NamedTuple):
     descartes: Counter[str]
 
 
-def _motivo_do_descarte(parte: pd.DataFrame) -> pd.Series:
+def _motivo_do_descarte(parte: pd.DataFrame, nome_limpo: pd.Series) -> pd.Series:
     """O primeiro motivo que tira a linha, na ordem de `MOTIVOS`; vazio para quem fica."""
     faixa = parte["faixa_etaria"].str.strip()
     com_representante = (
@@ -90,7 +97,8 @@ def _motivo_do_descarte(parte: pd.DataFrame) -> pd.Series:
         QUALIFICACAO_DE_REPRESENTANTE: qualificacao.isin(
             QUALIFICACOES_DE_QUEM_REPRESENTA
         ),
-        SEM_NOME: parte["nome_socio"].str.strip() == "",
+        SEM_NOME: ~nome_limpo.str.contains(r"[^\W\d_]", regex=True),  # nenhuma letra
+        SEM_ID: parte["id_pessoa"] == "",
     }
     motivo = pd.Series("", index=parte.index)
     for nome in reversed(tuple(condicoes)):  # o primeiro da ordem vence
@@ -110,17 +118,22 @@ def _sem_documento(nomes: pd.Series) -> pd.Series:
 
 def _socios_pf(parte: pd.DataFrame, opostos: Opostos) -> ParteDosSocios:
     parte = parte.rename(columns=SOCIO_COM_DOCUMENTO)
-    motivo = _motivo_do_descarte(parte)
+    sem_cpf = _sem_documento(parte["nome_socio"])
+    nome = tirar_numero_longo_e_email(sem_cpf)
     parte["id_pessoa"] = opostos.ids_de(parte["documento"], parte["nome_socio"])
+    motivo = _motivo_do_descarte(parte, nome)
     oposto = opostos.marcar(parte["id_pessoa"]) & (motivo == "")
     motivo = motivo.mask(oposto, OPOSTO)
     fica = parte.loc[motivo == "", list(COLUNAS_COM_ID)].copy()
     fica["cnpj_basico"] = fica["cnpj_basico"].str.strip().str.upper()
-    fica["nome_socio"] = _sem_documento(fica["nome_socio"])
+    fica["nome_socio"] = nome.loc[fica.index]
     fica["qualificacao"] = fica["qualificacao"].str.strip().str.zfill(2)
     fica["data_entrada"] = _datas(fica["data_entrada"])
     descartes = Counter(motivo[motivo != ""].value_counts().to_dict())
-    return ParteDosSocios(fica.reset_index(drop=True), descartes)
+    descartes[NOME_COM_NUMERO_OU_EMAIL_LIMPO] = int(
+        ((nome != sem_cpf) & (motivo == "")).sum()
+    )
+    return ParteDosSocios(fica.reset_index(drop=True), +descartes)
 
 
 def ler_socios_pf(

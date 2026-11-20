@@ -102,8 +102,21 @@ function abrir(busca: BuscaDeEmpresasV1, consulta = "") {
 const corpos = (buscar: ReturnType<typeof abrir>["buscar"], rota = ROTA) =>
   buscar.mock.calls.filter(([e]) => String(e) === rota).map(([, p]) => JSON.parse(String(p?.body)));
 
-async function buscarPor(setores: string[], idade?: string) {
-  for (const nome of setores) fireEvent.click(await screen.findByRole("checkbox", { name: nome }));
+const SETORES = new Set(OPCOES.setores.map((s) => s.nome));
+
+/** Escolhe um setor pela caixa de busca: digita o nome e clica na sugestão. */
+async function escolherSetor(nome: string) {
+  const campo = await screen.findByRole("combobox", { name: /^Setor/ });
+  fireEvent.change(campo, { target: { value: nome } });
+  fireEvent.click(await screen.findByRole("option", { name: new RegExp(`^${nome}`) }));
+}
+
+/** Escolhe setores (pela caixa) e estados (pela lista), mais a idade, e busca. */
+async function buscarPor(filtros: string[], idade?: string) {
+  for (const nome of filtros) {
+    if (SETORES.has(nome)) await escolherSetor(nome);
+    else fireEvent.click(await screen.findByRole("checkbox", { name: nome }));
+  }
   if (idade !== undefined) fireEvent.change(screen.getByLabelText("Idade mínima (anos)"), { target: { value: idade } });
   fireEvent.click(screen.getByRole("button", { name: "Encontrar empresas" }));
 }
@@ -116,19 +129,67 @@ describe("encontrar empresas", () => {
   it("abre o formulário com as opções da API e só busca com um filtro escolhido", async () => {
     const { buscar } = abrir(PRIMEIRA);
     expect(await screen.findByRole("heading", { name: "Encontrar empresas" })).toBeTruthy();
-    expect(await screen.findByRole("checkbox", { name: "Informação e comunicação" })).toBeTruthy();
+    expect(await screen.findByRole("combobox", { name: /^Setor/ })).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: "SP" })).toBeTruthy();
+    expect(screen.getByText("Brasil inteiro")).toBeTruthy();
     expect(corpos(buscar)).toEqual([{}]);
+    // o esboço aprovado: o botão principal na linha do setor e do estado; "Limpar" na linha de "Mais filtros"
+    const principal = screen.getByRole("button", { name: "Encontrar empresas" });
+    const limpar = screen.getByRole("button", { name: "Limpar filtros" });
+    expect(principal.closest(".linha-essencial")).not.toBeNull();
+    expect(limpar.closest(".linha-essencial")).toBeNull();
+    expect(limpar.closest(".linha-dos-extras")?.querySelector("details.mais-filtros")).not.toBeNull();
     expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(/pessoa física, MEI e empresário individual não aparecem/i)).toBeTruthy();
   });
 
-  it("até três setores: o quarto fica desligado", async () => {
+  it("até três setores: escolhidos viram etiquetas e a caixa se desliga no terceiro", async () => {
     abrir(PRIMEIRA);
-    for (const nome of ["Agricultura", "Indústrias de transformação", "Comércio"]) {
-      fireEvent.click(await screen.findByRole("checkbox", { name: nome }));
-    }
-    expect((screen.getByRole("checkbox", { name: "Informação e comunicação" }) as HTMLInputElement).disabled).toBe(true);
+    for (const nome of ["Agricultura", "Indústrias de transformação", "Comércio"]) await escolherSetor(nome);
+    const escolhidos = screen.getByRole("list", { name: "Setores escolhidos" });
+    expect(within(escolhidos).getAllByRole("listitem").map((i) => i.textContent)).toEqual([
+      "Agricultura ×",
+      "Indústrias de transformação ×",
+      "Comércio ×",
+    ]);
+    expect((screen.getByRole("combobox", { name: /^Setor/ }) as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Tirar o setor Comércio" }));
+    expect((screen.getByRole("combobox", { name: /^Setor/ }) as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it("a caixa do setor lista todas as seções ao abrir e acha a seção pelo nome de uma atividade", async () => {
+    abrir(PRIMEIRA);
+    const campo = await screen.findByRole("combobox", { name: /^Setor/ });
+    fireEvent.focus(campo);
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Agricultura",
+      "Indústrias de transformação",
+      "Comércio",
+      "Informação e comunicação",
+    ]);
+    fireEvent.change(campo, { target: { value: "programas de computador" } });
+    const opcao = await screen.findByRole("option", { name: /^Informação e comunicação/ });
+    expect(opcao.textContent).toMatch(/pela atividade: .*programas de computador/i);
+    fireEvent.click(opcao);
+    expect(screen.getByRole("button", { name: "Tirar o setor Informação e comunicação" })).toBeTruthy();
+    expect((campo as HTMLInputElement).value).toBe("");
+  });
+
+  it("o estado fica numa lista compacta que resume a escolha", async () => {
+    abrir(PRIMEIRA);
+    expect(await screen.findByText("Brasil inteiro")).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: "SP" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "MG" }));
+    expect(screen.getByText("SP, MG")).toBeTruthy();
+    const lista = screen.getByText("SP, MG").closest("details") as HTMLDetailsElement;
+    lista.open = true;
+    fireEvent.mouseDown(screen.getByRole("checkbox", { name: "SP" }));
+    expect(lista.open).toBe(true); // clicar dentro não fecha
+    fireEvent.mouseDown(document.body);
+    expect(lista.open).toBe(false);
+    lista.open = true;
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(lista.open).toBe(false);
   });
 
   it("pronta: os filtros vão no corpo; a tabela traz os nomes da Receita, a fonte e os limites", async () => {
@@ -160,22 +221,31 @@ describe("encontrar empresas", () => {
     expect(screen.getByText(AVISO_DE_PILOTO)).toBeTruthy();
   });
 
-  it("capital, estabelecimentos e ordem vão no corpo; a tabela mostra os dois, como aproximação", async () => {
+  it("capital e estabelecimentos ficam em Mais filtros e vão no corpo; a ordem, ao lado da lista, refaz a busca", async () => {
     const { buscar } = abrir(PRIMEIRA);
     const capital = await screen.findByLabelText("Capital social mínimo (R$)");
+    expect(capital.closest("details")?.open).toBe(false);
     expect(screen.getByText(/só uma aproximação do tamanho/)).toBeTruthy();
     fireEvent.change(capital, { target: { value: "1000000" } });
     fireEvent.change(screen.getByLabelText("Estabelecimentos ativos, no mínimo"), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    expect(screen.getByText("Mais filtros (2 em uso)")).toBeTruthy();
+    expect(screen.queryByLabelText("Ordenar por")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Encontrar empresas" }));
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)[1]).toEqual({ setores: [], ufs: [], capital_minimo: 1000000, estabelecimentos_minimo: 2 });
+    // o formulário se refaz com os filtros buscados: "Mais filtros" abre, porque há filtro lá dentro
+    expect(screen.getByLabelText("Capital social mínimo (R$)").closest("details")?.open).toBe(true);
+    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    await waitFor(() =>
+      expect(corpos(buscar)[2]).toEqual({
+        setores: [],
+        ufs: [],
+        capital_minimo: 1000000,
+        estabelecimentos_minimo: 2,
+        ordem: "maior_capital",
+      }),
+    );
     const linha = await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
-    expect(corpos(buscar)[1]).toEqual({
-      setores: [],
-      ufs: [],
-      capital_minimo: 1000000,
-      estabelecimentos_minimo: 2,
-      ordem: "maior_capital",
-    });
     expect(linha.textContent).toMatch(/R\$\s6\.000\.000/);
     expect(screen.getByRole("columnheader", { name: "Estabelecimentos ativos" })).toBeTruthy();
     // a ordem vai junto no "Carregar mais", com o cursor
@@ -184,12 +254,38 @@ describe("encontrar empresas", () => {
     expect(corpos(buscar).at(-1)).toMatchObject({ ordem: "maior_capital", cursor: "cursor-2" });
   });
 
-  it("a ordem sozinha não é filtro: o botão segue desligado", async () => {
-    abrir(PRIMEIRA);
-    fireEvent.change(await screen.findByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
-    expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Capital social máximo (R$)"), { target: { value: "500000" } });
-    expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(false);
+  it("as faixas de capital preenchem o mínimo e o máximo, e o valor ainda se digita", async () => {
+    const { buscar } = abrir(PRIMEIRA);
+    const botao = (await screen.findByRole("button", { name: "Encontrar empresas" })) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+    const faixa = screen.getByRole("button", { name: "R$ 1 mi a 10 mi" });
+    fireEvent.click(faixa);
+    expect(faixa.getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByLabelText("Capital social mínimo (R$)") as HTMLInputElement).value).toBe("1000000");
+    expect((screen.getByLabelText("Capital social máximo (R$)") as HTMLInputElement).value).toBe("10000000");
+    expect(botao.disabled).toBe(false);
+    fireEvent.change(screen.getByLabelText("Capital social máximo (R$)"), { target: { value: "500000000" } });
+    expect(faixa.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Acima de R$ 100 mi" }));
+    fireEvent.click(botao);
+    await waitFor(() => expect(corpos(buscar)[1]).toEqual({ setores: [], ufs: [], capital_minimo: 100000000 }));
+  });
+
+  it("antes da busca, exemplos que se clicam: a lista aparece e o formulário mostra os filtros", async () => {
+    const { buscar } = abrir(PRIMEIRA);
+    const exemplos = await screen.findByRole("region", { name: "Exemplos de busca" });
+    expect(within(exemplos).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Comércio em SP",
+      "Indústrias de transformação em MG, com 20 anos ou mais",
+      "Informação e comunicação, com capital social a partir de R$ 10 mi",
+    ]);
+    fireEvent.click(within(exemplos).getByRole("button", { name: "Indústrias de transformação em MG, com 20 anos ou mais" }));
+    await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
+    expect(corpos(buscar)[1]).toEqual({ setores: ["C"], ufs: ["MG"], idade_minima: 20 });
+    expect(screen.getByRole("button", { name: "Tirar o setor Indústrias de transformação" })).toBeTruthy();
+    expect((screen.getByRole("checkbox", { name: "MG" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Idade mínima (anos)") as HTMLInputElement).value).toBe("20");
+    expect(screen.queryByRole("region", { name: "Exemplos de busca" })).toBeNull();
   });
 
   it("carregar mais: manda o cursor com os mesmos filtros e junta a página seguinte embaixo", async () => {
@@ -217,12 +313,16 @@ describe("encontrar empresas", () => {
     const { buscar } = abrir(DUAS);
     await buscarPor(["SP"]);
     expect(screen.queryByRole("region", { name: "Comparar" })).toBeNull();
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Escolher EMPRESA ALFA S.A. para comparar" }));
+    const alfa = await screen.findByRole("button", { name: "Pôr EMPRESA ALFA S.A. na comparação" });
+    expect(alfa.textContent).toBe("Pôr na comparação");
+    fireEvent.click(alfa);
+    expect(alfa.getAttribute("aria-pressed")).toBe("true");
+    expect(alfa.textContent).toBe("Na comparação ✓");
     const bandeja = screen.getByRole("region", { name: "Comparar" });
     expect(within(bandeja).getByText(/EMPRESA ALFA S\.A\./)).toBeTruthy();
     expect(within(bandeja).getByText(/escolha ao menos mais 1/)).toBeTruthy();
     expect((within(bandeja).getByRole("button", { name: "Comparar" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Escolher EMPRESA GAMA LTDA para comparar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pôr EMPRESA GAMA LTDA na comparação" }));
     fireEvent.click(within(screen.getByRole("region", { name: "Comparar" })).getByRole("button", { name: "Comparar" }));
     expect(await screen.findByRole("heading", { name: "Comparar 2 empresas" })).toBeTruthy();
     expect((screen.getAllByLabelText(/^CNPJ/)[0] as HTMLInputElement).value).toBe("11111111000191");
@@ -234,9 +334,12 @@ describe("encontrar empresas", () => {
     abrir({ ...PRIMEIRA, empresas: SEIS.map(([c, n]) => empresa(c, n)), proximo_cursor: null });
     await buscarPor(["SP"]);
     for (const [, nome] of SEIS.slice(0, 5)) {
-      fireEvent.click(await screen.findByRole("checkbox", { name: `Escolher ${nome} para comparar` }));
+      fireEvent.click(await screen.findByRole("button", { name: `Pôr ${nome} na comparação` }));
     }
-    expect((screen.getByRole("checkbox", { name: `Escolher ${SEIS[5][1]} para comparar` }) as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: `Pôr ${SEIS[5][1]} na comparação` }) as HTMLButtonElement).disabled).toBe(true);
+    // tirar uma da comparação libera a sexta
+    fireEvent.click(screen.getByRole("button", { name: `Pôr ${SEIS[0][1]} na comparação` }));
+    expect((screen.getByRole("button", { name: `Pôr ${SEIS[5][1]} na comparação` }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Limpar a escolha" }));
     expect(screen.queryByRole("region", { name: "Comparar" })).toBeNull();
   });
@@ -272,14 +375,16 @@ describe("encontrar empresas", () => {
     ]);
   });
 
-  it("a ordem em uso aparece ao lado da contagem: a escolhida, ou o número do CNPJ", async () => {
-    abrir(PRIMEIRA);
+  it("a ordem fica ao lado da contagem e continua quando a busca muda pelo formulário", async () => {
+    const { buscar } = abrir(PRIMEIRA);
     await buscarPor(["SP"]);
-    const contagem = await screen.findByText(/empresa até aqui/);
-    expect(contagem.textContent).toContain("ordem: número do CNPJ");
+    expect(((await screen.findByLabelText("Ordenar por")) as HTMLSelectElement).value).toBe("");
     fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
+    await waitFor(() => expect(corpos(buscar)[2]).toEqual({ setores: [], ufs: ["SP"], ordem: "maior_capital" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "MG" }));
     fireEvent.click(screen.getByRole("button", { name: "Encontrar empresas" }));
-    await waitFor(() => expect(screen.getByText(/empresa até aqui/).textContent).toContain("ordem: maior capital social"));
+    await waitFor(() => expect(corpos(buscar)[3]).toEqual({ setores: [], ufs: ["SP", "MG"], ordem: "maior_capital" }));
+    expect(((await screen.findByLabelText("Ordenar por")) as HTMLSelectElement).value).toBe("maior_capital");
   });
 
   it("Limpar filtros volta ao formulário vazio e tira a lista, sem nova busca", async () => {
@@ -287,25 +392,24 @@ describe("encontrar empresas", () => {
     expect(((await screen.findByRole("button", { name: "Limpar filtros" })) as HTMLButtonElement).disabled).toBe(true);
     await buscarPor(["Comércio", "SP"], "10");
     await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
-    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "maior_capital" } });
     const antes = corpos(buscar).length;
     fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
     expect(await screen.findByText(/Escolha ao menos um filtro/)).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByRole("list", { name: "Filtros em uso" })).toBeNull();
-    expect((screen.getByRole("checkbox", { name: "Comércio" }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByRole("list", { name: "Setores escolhidos" })).toBeNull();
     expect((screen.getByRole("checkbox", { name: "SP" }) as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText("Idade mínima (anos)") as HTMLInputElement).value).toBe("");
-    expect((screen.getByLabelText("Ordenar por") as HTMLSelectElement).value).toBe("");
+    expect(screen.queryByLabelText("Ordenar por")).toBeNull();
     expect((screen.getByRole("button", { name: "Limpar filtros" }) as HTMLButtonElement).disabled).toBe(true);
     expect(corpos(buscar).length).toBe(antes);
   });
 
   it("Limpar filtros também esvazia o que ainda não foi buscado", async () => {
     abrir(PRIMEIRA);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Agricultura" }));
+    await escolherSetor("Agricultura");
     fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
-    expect((screen.getByRole("checkbox", { name: "Agricultura" }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByRole("button", { name: "Tirar o setor Agricultura" })).toBeNull();
     expect((screen.getByRole("button", { name: "Encontrar empresas" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -321,7 +425,7 @@ describe("encontrar empresas", () => {
     const { buscar } = abrir(PRIMEIRA, "?setor=C&uf=SP");
     await screen.findByRole("row", { name: /EMPRESA ALFA S\.A\./ });
     expect(corpos(buscar)).toEqual([{}, { setores: ["C"], ufs: ["SP"] }]);
-    expect((screen.getByRole("checkbox", { name: "Indústrias de transformação" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("button", { name: "Tirar o setor Indústrias de transformação" })).toBeTruthy();
     expect((screen.getByRole("checkbox", { name: "SP" }) as HTMLInputElement).checked).toBe(true);
     const etiquetas = screen.getByRole("list", { name: "Filtros em uso" });
     expect(within(etiquetas).getAllByRole("listitem").map((i) => i.textContent)).toEqual([

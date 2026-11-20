@@ -381,6 +381,128 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 18), "placar-qualidade-2026-11-18"),
         dicionario=Prova(date(2026, 11, 18), "dicionario-escrito-2026-11-18"),
     ),
+    # linha 981 (ADR 0108, Emenda 3, D11.4): sanções da CGU, embargos do IBAMA e Lista Suja do MTE. Têm marca de pessoa
+    # (`pessoa=True`) e só entram porque o servidor guarda apenas a cópia reduzida só-PJ, conferida por `conferir_cadastros`;
+    # a porta serve só a linha com `trata_como_pessoa` falso. Placar de 19/11/2026 sem vermelho (36598, 15466 e 133 linhas)
+    "sancoes_cgu": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "ibama_embargos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "mte_lista_suja": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    # setores da linha 978: só pela cópia reduzida (`COPIA_REDUZIDA_PELA_RAIZ`); placar de 19/11/2026 sem vermelho (27196 e
+    # 6427133 linhas), com o motivo de cada vazio e de cada salto escrito na regra
+    "empresa_serie": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "anatel_acessos": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    # fontes ampliadas da linha 978 (ordem C da Diretoria, 19/11/2026): anatel_pados, anatel_produtos_homologados,
+    # anp_tancagem e mte_pat. O contrato diz `pessoa=False`, mas parte das linhas é de titular de MEI ou de empresário
+    # individual (`trata_como_pessoa`), então só passam pela cópia reduzida só-PJ (`AMPLIADAS`, degrau 8), conferida por
+    # `conferir_cadastros`; a porta serve só a linha com `trata_como_pessoa` falso. Placar de 19/11/2026 sem vermelho
+    # (89495, 189405, 14679 e 110502 linhas)
+    "anatel_pados": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "anatel_produtos_homologados": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "anp_tancagem": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "mte_pat": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    # lote 3 da linha 978: placar de 19/11/2026 sem vermelho e sem coluna de CNPJ (a marca de pessoa não se aplica);
+    # as outras tabelas medidas do lote deram vermelho sem explicação verificada e ficaram de fora
+    "anm_amb_agua_mineral": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "antt_siade": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "bcb_selic_focus": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "cftc_cot_agro": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "cnes_competencias": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "comex_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "comex_urf": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "comex_via": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "conab_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "faostat_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "ma_datas": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "ons_capacidade": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "usda_psd_cafe": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
 }
 
 # A marca de pessoa decidida (D11.4), pelas mesmas regras de `tests/test_porta_sem_pessoa.py`: a rede não tem
@@ -421,15 +543,33 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
     }
 )
 COLUNA_DE_CNPJ = re.compile(r"cnpj|raiz|cpf", re.IGNORECASE)
+# ADR 0108, Emenda 3 (19/11/2026), D11.4: "tabela marcada com pessoa só sai pelo piloto quando o servidor guarda apenas a
+# cópia reduzida só-PJ, conferida por máquina (conferir_cadastros), e a resposta serve só a linha com marca de pessoa
+# falsa". São as tabelas que `base/recorte_dos_cadastros.py` reduz (só linha de empresa, raiz na `cnpj_empresas_pj`,
+# texto livre sem CPF nem e-mail) e que têm a marca por linha (`linhas_de_pessoa`), que a porta usa para esconder o resto.
+COPIA_REDUZIDA_SO_PJ = frozenset({"sancoes_cgu", "ibama_embargos", "mte_lista_suja"})
+# linha 978 (PR B dos setores): as duas tabelas dos setores com CNPJ ou raiz e sem marca por linha. A tabela inteira, de casa,
+# tem raiz fora da `cnpj_empresas_pj` e linha sem documento; ao servidor da API só vai a cópia de
+# `base/recorte_dos_setores.py` (raiz dentro da lista sem MEI, linha sem documento fora, sem nome), conferida por máquina a
+# cada montagem (`conferir_setores`). Por isso contam como decididas: a negação é da cópia que o servidor guarda.
+COPIA_REDUZIDA_PELA_RAIZ = frozenset({"empresa_serie", "anatel_acessos"})
 
 
 def pessoa_decidida(
     nome: str, *, pessoa: bool, colunas: Iterable[str], linhas_de_pessoa: str
 ) -> bool:
-    """A tabela não guarda pessoa e tem a marca de pessoa decidida (ou não precisa dela)?"""
-    if pessoa:
+    """A tabela não guarda pessoa e tem a marca de pessoa decidida (ou não precisa dela)?
+
+    A tabela marcada com pessoa só conta quando é a cópia reduzida só-PJ de `COPIA_REDUZIDA_SO_PJ` **e** tem a marca
+    por linha: sem ela a porta não separa a empresa da pessoa e a tabela segue fechada (D11.4, Emenda 3).
+    """
+    if pessoa and not (nome in COPIA_REDUZIDA_SO_PJ and linhas_de_pessoa.strip()):
         return False
-    if nome in TABELAS_DA_REDE or nome in SEM_PESSOA_NA_MONTAGEM:
+    if (
+        nome in TABELAS_DA_REDE
+        or nome in SEM_PESSOA_NA_MONTAGEM
+        or nome in COPIA_REDUZIDA_PELA_RAIZ
+    ):
         return True
     if not any(COLUNA_DE_CNPJ.search(coluna) for coluna in colunas):
         return True
@@ -440,7 +580,7 @@ def pessoa_decidida(
 def tabelas_com_pessoa_decidida() -> frozenset[str]:
     """As tabelas do dicionário sem pessoa e com a marca de pessoa decidida: só estas podem sair pelo piloto.
 
-    Fica fora a tabela marcada com pessoa e a que tem coluna de CNPJ sem `linhas_de_pessoa` nem ser da rede (o
+    Fica fora a tabela marcada com pessoa (salvo a cópia reduzida só-PJ do D11.4) e a que tem coluna de CNPJ sem `linhas_de_pessoa` nem ser da rede (o
     inventário `AINDA_SEM_A_MARCA`). `pessoa_tirada_na_rota` não basta: na dúvida, a leitura mais estreita.
     """
     from base.dicionario import TABELAS

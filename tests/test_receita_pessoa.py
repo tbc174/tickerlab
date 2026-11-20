@@ -177,3 +177,38 @@ def test_layout_com_campo_a_mais_quebra_a_leitura():
     linha = _linha("11222333", "2", "FULANA EXEMPLO").rstrip("\n") + ';"novo"\n'
     with pytest.raises(ErroDeLayout):
         _ler(linha)
+
+
+def test_numero_longo_e_email_saem_do_nome_do_socio():
+    socios, descartes = _ler(
+        _linha("11222333", "2", "FULANA EXEMPLO 01001-000"),
+        _linha("11222333", "2", "BELTRANA EXEMPLO beltrana@exemplo.com"),
+    )
+    assert list(socios["nome_socio"]) == ["FULANA EXEMPLO", "BELTRANA EXEMPLO"]
+    assert descartes == {rp.NOME_COM_NUMERO_OU_EMAIL_LIMPO: 2}
+
+
+def test_nome_que_e_so_numero_ou_email_fica_fora():
+    socios, descartes = _ler(
+        _linha("11222333", "2", "01001-000"),
+        _linha("11222333", "2", "fulana@exemplo.com"),
+    )
+    assert socios.empty and descartes == {rp.SEM_NOME: 2}
+
+
+@pytest.mark.parametrize("documento", ["", "***12**", "00"])
+def test_socio_sem_id_para_a_oposicao_fica_fora(documento):
+    linha = _linha("11222333", "2", "FULANA EXEMPLO").replace("***123456**", documento)
+    socios, descartes = _ler(linha, _linha("22333444", "2", "BELTRANA EXEMPLO"))
+    assert list(socios["cnpj_basico"]) == ["22333444"]
+    assert descartes == {rp.SEM_ID: 1}
+    assert (socios["id_pessoa"].str.len() == 32).all()
+
+
+# o arquivo de s\u00f3cios \u00e9 latin-1: o espa\u00e7o de largura zero n\u00e3o cabe nele (fica no teste de sem_cpf)
+@pytest.mark.parametrize("separador", ["*", ":", "_", "|", "\u00b7"])
+def test_cpf_com_separador_fora_do_comum_sai_do_nome_do_socio(separador):
+    cpf = CPF_DE_TESTE
+    partido = separador.join((cpf[:3], cpf[3:6], cpf[6:9], cpf[9:]))
+    socios, _ = _ler(_linha("11222333", "2", f"FULANA {partido} EXEMPLO"))
+    assert list(socios["nome_socio"]) == ["FULANA EXEMPLO"]

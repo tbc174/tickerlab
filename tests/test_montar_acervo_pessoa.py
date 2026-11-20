@@ -137,7 +137,7 @@ def test_monta_o_contato_so_dos_estabelecimentos_ativos(tmp_path):
     assert manifesto["tabelas"][montar.CONTATO] == {"linhas": 1, "empresas": 1}
     assert manifesto["descartes"][rc.NAO_ATIVO] == 1
     assert manifesto["descartes"][rc.CONTATO_DE_PESSOA] == 1
-    assert set(manifesto["descartes"]) == {*rp.MOTIVOS, *rc.MOTIVOS, *ri.MOTIVOS}
+    assert set(manifesto["descartes"]) == {*rp.CONTAGENS, *rc.MOTIVOS, *ri.CONTAGENS}
 
 
 def test_sem_os_zips_de_uma_tabela_nada_e_montado(tmp_path):

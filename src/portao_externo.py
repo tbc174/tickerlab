@@ -43,6 +43,7 @@ from src.api_externa.tabelas_por_cnpj import (
     LICENCA_DA_CVM,
     LICENCA_DAS_AGENCIAS,
     LICENCA_DE_INTEGRIDADE,
+    LICENCA_SEM_TRAVA,
     REGISTRO,
 )
 from src.banco.coletas import (
@@ -55,6 +56,7 @@ from src.banco.coletas import (
     marca_da_fonte,
     pode_usar,
     sai_no_conjunto_de_integridade,
+    sai_sem_trava_de_licenca,
 )
 
 
@@ -162,8 +164,20 @@ NEGADAS_DESDE_O_PRIMEIRO_DIA = frozenset(
     }
 )
 # CC BY-ND: a CONAB sai como publicada, sem recorte, soma ou derivado (D2.3); a lista suja do MTE também (rodapé
-# CC BY-ND 3.0 do gov.br, lido em 18/11/2026): o registro sai como o MTE publicou, nunca uma conta nossa sobre ele
-SO_COMO_PUBLICADO = frozenset({"conab", "mte-lista-suja"})
+# CC BY-ND 3.0 do gov.br, lido em 18/11/2026): o registro sai como o MTE publicou, nunca uma conta nossa sobre ele;
+# e, no conjunto sem trava de licença (ADR 0122, Emenda 2), o PAT do MTE, a TAH da ANM e a tancagem da ANP (o mesmo
+# rodapé) e os PADOs e homologados da Anatel (licença a confirmar): leitura mais estreita, sem conta nossa
+SO_COMO_PUBLICADO = frozenset(
+    {
+        "conab",
+        "mte-lista-suja",
+        "mte-pat",
+        "anm-tah",
+        "anp-tancagem",
+        "anatel-pados",
+        "anatel-homologados",
+    }
+)
 # agregados de crédito (SCR, MDCR e crédito rural do SICOR): só saem como agregado, nunca por empresa
 FONTES_DE_AGREGADO_DE_CREDITO = frozenset({"bcb-scr", "bcb-mdcr", "bcb-sicor"})
 # Segunda trava do D2.4, pelo nome do campo: pega a linha escrita com a categoria errada. Na dúvida,
@@ -232,6 +246,11 @@ _PROVA_DAS_AGENCIAS = (
 _PROVA_DE_INTEGRIDADE = (
     "ADR 0122, Emenda 1 (18-11-2026, risco de licença assumido): CGU, IBAMA e MTE só no conjunto de integridade, "
     "concedido por linha do contrato da organização; só a linha de pessoa jurídica, citando a fonte"
+)
+_PROVA_SEM_TRAVA = (
+    "ADR 0122, Emenda 2 (19-11-2026, risco de licença assumido): a licença da fonte não trava só no conjunto "
+    "sem trava de licença, concedido por linha do contrato da organização; só a linha de pessoa jurídica, citando "
+    "a fonte"
 )
 _PROVA_DA_ANP = (
     "ADR 0108 D2.2 e D3: dados abertos da ANP, CC BY, revenda com atribuição"
@@ -700,6 +719,7 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
                 LICENCA_DA_CVM: _PROVA_CVM,
                 LICENCA_DAS_AGENCIAS: _PROVA_DAS_AGENCIAS,
                 LICENCA_DE_INTEGRIDADE: _PROVA_DE_INTEGRIDADE,
+                LICENCA_SEM_TRAVA: _PROVA_SEM_TRAVA,
             }[entrada.licenca],
         )
     ),
@@ -869,7 +889,11 @@ def _negacao_das_marcas(
     fonte: str, conjunto: str, hoje: date, regras: Regras
 ) -> Motivo | None:
     """D3: vendável, guarda permitida, coleta limpa e leitura dos termos em dia, tudo junto. CGU, IBAMA e MTE são
-    de uso interno, menos no conjunto de integridade (ADR 0122, Emenda 1): lá a marca não barra, e o resto vale."""
+    de uso interno, menos no conjunto de integridade (ADR 0122, Emenda 1): lá a marca não barra, e o resto vale. No
+    conjunto sem trava de licença (ADR 0122, Emenda 2), a fonte do lote dele não passa pelas marcas: marca, coleta e
+    guarda e leitura dos termos são a licença da fonte, que lá não trava; a linha, a prontidão e a pessoa valem."""
+    if sai_sem_trava_de_licenca(fonte, conjunto):
+        return None
     if marca_da_fonte(
         fonte
     ) is not Marca.VENDAVEL and not sai_no_conjunto_de_integridade(fonte, conjunto):

@@ -6,14 +6,12 @@ import { Link, useNavigate } from "react-router";
 import type { PaginaDoApp } from "../conteudo";
 import { useDialogo } from "./dialogo";
 import { Icone } from "./Icone";
+import { cnpjDigitado } from "./cnpj";
 import { TELAS_DO_APP, temTelaPronta } from "./rotas";
 
 const ROTULO = "Buscar tela ou abrir um CNPJ";
 const MAXIMO_DE_TELAS = 8;
 const TAMANHO_MAXIMO = 40;
-// o CNPJ como o analista digita ou cola: 14 posições (letras nas 12 primeiras desde 2026), com ou sem pontuação
-const PONTUACAO_DO_CNPJ = /[./\-\s]/g;
-const CNPJ = /^[0-9A-Z]{12}\d{2}$/;
 
 export interface Destino {
   chave: string;
@@ -44,11 +42,8 @@ const simples = (texto: string) =>
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 
-/** O CNPJ digitado inteiro, sem a pontuação; outro texto, null. */
-export function cnpjDigitado(texto: string): string | null {
-  const limpo = texto.replace(PONTUACAO_DO_CNPJ, "").toUpperCase();
-  return CNPJ.test(limpo) ? limpo : null;
-}
+// a conferência do CNPJ mora em ./cnpj (as telas a usam sem importar esta busca); daqui ela segue exportada
+export { cnpjDigitado };
 
 /** As telas cujo nome (ou, depois, a descrição) contém o texto; sem texto, as primeiras do app. */
 export function telasDaBusca(texto: string): Destino[] {

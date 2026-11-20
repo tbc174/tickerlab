@@ -152,6 +152,10 @@ LICENCAS = {
     "anatel-pados": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
     "anatel-homologados": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
     "anp-tancagem": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+    # conferência de 19/11/2026: o Banco de Preços em Saúde não declara licença (o S3 do CKAN não tem página, e o
+    # portal do SUS não a mostra); a resposta do Fala.BR do "ms" cobriu só CNES, SIH, SIA, CIHA e oncologia.
+    # Leitura mais estreita (ADR 0102): a confirmar, sem perguntar à fonte
+    "bps": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
@@ -312,6 +316,15 @@ INTEGRIDADE_SOB_CONTRATO = (
     "integridade no contrato (ADR 0122, Emenda 1; citar a fonte)"
 )
 CONJUNTO_DE_INTEGRIDADE = "integrity"
+# o conjunto das fontes sem trava de licença (ADR 0122, Emenda 2, 19/11/2026; Tiago: "Não to nem aí pra
+# licenciamento dos dados, quero tudo no MCP HOJE"): só na API por chave, só para a organização com o conjunto no
+# contrato (a do piloto), só a linha de pessoa jurídica. Fora dele a fonte segue com a marca, a coleta e guarda e a
+# leitura dos termos de `REVENDA`, `COLETA_E_GUARDA` e `TERMOS_LIDOS_EM`, como hoje (site, app, vitrine, outras
+# organizações). Lote 2: as tabelas ligadas pelo CNPJ que estavam "a confirmar" e o PAT do MTE
+CONJUNTO_SEM_TRAVA_DE_LICENCA = "extended_sources"
+FONTES_SEM_TRAVA_DE_LICENCA = frozenset(
+    {"anatel-pados", "anatel-homologados", "anm-tah", "anp-tancagem", "mte-pat"}
+)
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
     "comercial até a resposta)"
@@ -436,6 +449,7 @@ REVENDA = {
     "anatel-pados": A_CONFIRMAR,
     "anatel-homologados": A_CONFIRMAR,
     "anp-tancagem": A_CONFIRMAR,
+    "bps": A_CONFIRMAR,  # conferência de 19/11/2026 (ver `LICENCAS`)
     "mme": VENDAVEL_RISCO_ASSUMIDO,
     "finep": VENDAVEL_RISCO_ASSUMIDO,
     "aneel": VENDAVEL_ODBL,
@@ -868,6 +882,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anatel-pados",
             "anatel-homologados",
             "anp-tancagem",
+            # conferência de 19/11: o Banco de Preços em Saúde não tem página de licença nem de termos
+            "bps",
         ),
         _NAO_RESPONDIDA,
     ),
@@ -1141,6 +1157,16 @@ def sai_no_conjunto_de_integridade(fonte: str, conjunto: str) -> bool:
     return (
         conjunto == CONJUNTO_DE_INTEGRIDADE
         and revenda_da_fonte(fonte) == INTEGRIDADE_SOB_CONTRATO
+    )
+
+
+def sai_sem_trava_de_licenca(fonte: str, conjunto: str) -> bool:
+    """O pedido é do conjunto sem trava de licença e a fonte (ou um prefixo dela: "mte-pat-beneficiarias" →
+    "mte-pat") está no lote dele (ADR 0122, Emenda 2): lá a licença da fonte não barra. Fora disso, nada muda."""
+    partes = fonte.split("-")
+    prefixos = {"-".join(partes[:corte]) for corte in range(1, len(partes) + 1)}
+    return conjunto == CONJUNTO_SEM_TRAVA_DE_LICENCA and bool(
+        prefixos & FONTES_SEM_TRAVA_DE_LICENCA
     )
 
 

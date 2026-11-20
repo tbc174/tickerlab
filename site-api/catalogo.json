@@ -105,6 +105,57 @@
       "tipo"
     ]
   },
+  "extended_sources": {
+    "fontes": {
+      "anatel-homologados": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "anatel-pados": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+      "anm-tah": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "anp-tancagem": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+      "mte-pat": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno"
+    },
+    "campos": [
+      "ano_do_processo",
+      "categoria",
+      "certificado",
+      "codigo_da_instalacao",
+      "data_da_homologacao",
+      "data_da_posicao",
+      "data_da_quitacao",
+      "data_do_cadastro",
+      "fase",
+      "fase_do_processo",
+      "grupo_de_produtos",
+      "hectares",
+      "matriz_ou_filial",
+      "modelo",
+      "multa_aplicada",
+      "municipio",
+      "nome_comercial",
+      "numero_da_homologacao",
+      "pais_do_fabricante",
+      "processo",
+      "registro_no_pat",
+      "segmento",
+      "servico",
+      "situacao",
+      "situacao_do_certificado",
+      "situacao_do_pagamento",
+      "situacao_do_requerimento",
+      "status_do_processo",
+      "superintendencia",
+      "tancagem_m3",
+      "tema",
+      "tipo_da_unidade",
+      "tipo_do_produto",
+      "trabalhadores_acima_de_5_salarios",
+      "trabalhadores_ate_5_salarios",
+      "trabalhadores_atendidos",
+      "uf",
+      "validade_do_certificado",
+      "valor_pago",
+      "valor_total"
+    ]
+  },
   "financials": {
     "fontes": {
       "bcb-ifdata": "ODbL (dados abertos do Banco Central; citar a fonte)",
