@@ -26,11 +26,12 @@ ORDEM_DOS_DEMONSTRATIVOS = ("DRE", "BPA", "BPP", "DFC", "DVA", "DRA")
 CONSOLIDADO, INDIVIDUAL = "con", "ind"
 
 
-def _com_aviso(corpo: dict, avisos: list[str]) -> dict:
-    """O corpo com `truncated` e os avisos em `limits`, depois dos que a API já pôs."""
+def _com_aviso(corpo: dict, avisos: list[str], *, cortou: bool = True) -> dict:
+    """O corpo com os avisos em `limits`, depois dos que a API já pôs, e `truncated` (só se `cortou`: um aviso
+    que só explica o que o filtro faz não diz que faltou algo)."""
     limites = corpo.get("limits")
     return corpo | {
-        "truncated": True,
+        **({"truncated": True} if cortou else {}),
         "limits": [*limites, *avisos] if isinstance(limites, list) else avisos,
     }
 
@@ -384,15 +385,19 @@ def enxugar_ativos(
     if not isinstance(corpo, dict):
         return corpo
     avisos: list[str] = []
+    blocos_de_fora = False
     if tipo:
-        corpo, avisos = _so_o_bloco_pedido(corpo, tipo)
+        sem_o_resto, avisos = _so_o_bloco_pedido(corpo, tipo)
+        blocos_de_fora = len(sem_o_resto) < len(corpo)
+        corpo = sem_o_resto
     itens = {
         b: lista
         for b in NOMES_DOS_BLOCOS_DE_ATIVOS
         if (lista := _lista_de_itens(corpo.get(b))) is not None
     }
     if not itens:
-        return _com_aviso(corpo, avisos) if avisos else corpo
+        return _com_aviso(corpo, avisos, cortou=blocos_de_fora) if avisos else corpo
+    antes_dos_filtros = sum(len(lista) for lista in itens.values())
     itens, dos_filtros = _filtrar_ativos(itens, tipo, uf, so_operador)
     avisos += dos_filtros
     totais = {b: len(lista) for b, lista in itens.items()}
@@ -416,7 +421,8 @@ def enxugar_ativos(
             f"A resposta foi cortada (pelo que cabe na conversa ou por `limite`); entregues: {de_cada}. Peça o "
             "resto por partes, com `tipo_de_ativo`, `uf` ou `somente_operador`."
         )
-    return _com_aviso(novo, avisos) if avisos else novo
+    cortou = blocos_de_fora or antes_dos_filtros > sum(ficam.values())
+    return _com_aviso(novo, avisos, cortou=cortou) if avisos else novo
 
 
 # ---------------------------------------------------------------- o que mudou: as mudanças que cabem

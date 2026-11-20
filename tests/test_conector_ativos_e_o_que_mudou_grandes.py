@@ -211,6 +211,14 @@ def test_uf_filtra_as_barragens_e_diz_que_nao_filtra_o_petroleo():
     assert "não filtra" in " ".join(corpo["limits"])
 
 
+def test_uf_que_so_explica_o_filtro_nao_marca_truncated():
+    # revisão cruzada: `truncated` quer dizer que faltou algo; só filtro que não tirou nada não diz isso
+    corpo = _ativos_pedidos(_ativos(contratos=5), uf="mg")
+    assert len(corpo["oil_gas_contracts"]["items"]) == 5
+    assert "não filtra" in " ".join(corpo["limits"])
+    assert "truncated" not in corpo
+
+
 def test_tipo_de_ativo_traz_so_o_bloco_pedido_e_diz_o_que_ficou_de_fora():
     corpo = _ativos_pedidos(
         _ativos(contratos=5, barragens=3), tipo_de_ativo="barragens"
