@@ -1,6 +1,7 @@
 """O leitor do acervo de pessoa da tela da equipe (linha 808). Todo nome aqui é inventado."""
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -115,6 +116,41 @@ def test_pasta_do_acervo_vem_da_variavel(tmp_path, monkeypatch):
         pessoa.pasta_do_acervo()
     monkeypatch.setenv(pessoa.VARIAVEL, str(_acervo(tmp_path, LINHAS)))
     assert pessoa.pasta_do_acervo() == tmp_path
+
+
+def _apontar(link: Path, alvo: str) -> None:
+    """Troca o link como o recebedor do VPS: link novo ao lado e rename por cima (uma operação só)."""
+    provisorio = link.with_name(".volta")
+    os.symlink(alvo, provisorio, target_is_directory=True)
+    os.replace(provisorio, link)
+
+
+def test_le_pelo_link_atual_e_ve_a_troca_de_versao_sem_reiniciar(tmp_path, monkeypatch):
+    """No VPS, `atual` é um link RELATIVO para `versoes/<carimbo>`, trocado por rename a cada envio."""
+    _acervo(tmp_path / "versoes" / "v1", LINHAS)
+    _acervo(
+        tmp_path / "versoes" / "v2",
+        [_socio("11222333", "NOVA EXEMPLO", "49", "2024-02-01")],
+    )
+    atual = tmp_path / "atual"
+    try:
+        os.symlink("versoes/v1", atual, target_is_directory=True)
+    except OSError:
+        pytest.skip(
+            "este sistema não deixa criar link simbólico (Windows sem o modo de desenvolvedor)"
+        )
+    monkeypatch.setenv(pessoa.VARIAVEL, str(atual))
+
+    assert pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), EMPRESA).total == 2
+
+    _apontar(atual, "versoes/v2")
+    socios = pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), EMPRESA)
+    assert [socio["nome"] for socio in socios.socios] == ["NOVA EXEMPLO"]
+
+    _apontar(
+        atual, "versoes/v1"
+    )  # o desfazer do recebedor: o link volta para a versão anterior
+    assert pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), EMPRESA).total == 2
 
 
 def test_arquivo_estragado_e_acervo_indisponivel_nao_cnpj_invalido(tmp_path):

@@ -81,9 +81,10 @@ services:
       # só leitura; o recebedor do VPS (~/bin/receber-base-api.sh) troca a pasta base/ por inteiro. Crie
       # a pasta antes do deploy (mkdir -p acervo_api/base); se faltar, o Docker cria uma vazia.
       - ./acervo_api:/app/acervo:ro
-      # só leitura, ao lado (não dentro) do acervo_api. Monta-se a pasta-mãe, como no acervo_api: o recebedor
-      # troca a filha atual/ por mv (a anterior fica em atual.antiga) e o contêiner vê a nova sem reiniciar;
-      # montar a própria pasta trocada prenderia o contêiner na velha. Crie antes do deploy (mkdir -p
+      # só leitura, ao lado (não dentro) do acervo_api. Monta-se a pasta-mãe, como no acervo_api: dentro dela,
+      # atual é um link simbólico RELATIVO para versoes/<carimbo>, que o recebedor troca por rename (o link
+      # anterior guarda a versão de antes); o link resolve dentro da montagem e o contêiner vê a versão nova sem
+      # reiniciar. Montar a própria pasta trocada prenderia o contêiner na velha. Crie antes do deploy (mkdir -p
       # acervo_pessoa); se faltar, o Docker cria uma vazia e as rotas de pessoa dão 503.
       - ./acervo_pessoa:/app/acervo_pessoa:ro
       # onde fica o registro de acesso; sobrevive ao deploy. ANTES do primeiro "up":
