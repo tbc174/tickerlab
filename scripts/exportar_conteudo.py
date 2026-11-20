@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from base import contrato, vitrine
+from base import contrato, receita_codigos, vitrine
 from base.arquivo import registro
 from base.dicionario import TABELAS
 from scripts import gerar_site
@@ -155,6 +155,7 @@ def _marca() -> dict:
         ],  # lista: a ordem vira a do CSS
         "site_escuro": [list(p) for p in marca.SITE_ESCURO.items()],
         "site_faixa_marinha": [list(p) for p in marca.SITE_FAIXA_MARINHA.items()],
+        "janela_de_codigo": dict(marca.JANELA_DE_CODIGO),
     }
 
 
@@ -200,6 +201,19 @@ def _ativos() -> list[dict[str, str]]:
             "rotulo": catalogo.rotulo(simbolo),
         }
         for simbolo, linha in tabela.iterrows()
+    ]
+
+
+def _cnaes() -> list[dict[str, str]]:
+    """As atividades do CNAE (subclasses, a tabela `Cnaes` da Receita) para a busca de setor do app.
+
+    Como o catálogo dos ativos, vai num JSON à parte que o app pede só quando o campo aparece: a lista é
+    pública, estática (muda só com a tabela da Receita) e igual para todas as contas, então não pede rota
+    nem portão na API; quem quiser a mesma lista fora do app a tem na fonte primária (a Receita).
+    """
+    return [
+        {"codigo": codigo, "nome": nome}
+        for codigo, nome in receita_codigos.atividades().items()
     ]
 
 
@@ -405,6 +419,9 @@ def _catalogo() -> dict:
     return {
         "totais": {
             "tabelas": len(catalogo["tabelas"]),
+            "tabelas_conferidas_em_curto": vitrine.dia_e_mes(
+                vitrine.tabelas_conferidas_em()
+            ),
             "fontes": len(fontes),
             "fontes_em_consulta": sum(
                 f.situacao == vitrine.EM_CONSULTA for f in fontes
@@ -451,6 +468,7 @@ def conteudo() -> dict[str, object]:
         "vitrine": [asdict(v) for v in vitrine.VAGAS_DA_VITRINE],
         "fatos_da_base": vitrine.fatos_da_base(),
         "ativos": _ativos(),
+        "cnaes": _cnaes(),
         "empresas_da_base": vitrine.empresas_da_base(),
     }
 

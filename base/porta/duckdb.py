@@ -167,6 +167,8 @@ ARQUIVOS: dict[str, str] = {
     "anatel_pados": "anatel_pados/*.parquet",
     "anatel_produtos_homologados": "anatel_produtos_homologados/*.parquet",
     "anp_tancagem": "anp_tancagem/*.parquet",
+    "comprasgov_sicaf": "comprasgov_sicaf/*.parquet",
+    "bps_compras": "bps_compras/*.parquet",
     "gleif_ponte": "gleif_ponte/*.parquet",
     "cnes_estabelecimentos": "cnes_estabelecimentos/*.parquet",
     "cnes_competencias": "cnes_competencias/*.parquet",

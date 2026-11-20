@@ -48,6 +48,7 @@ _SEM_VIGIA = {
             "anatel-pados",
             "anatel-homologados",
             "anp-tancagem",
+            "bps",  # conferência de 19/11/2026: sem licença do conjunto, a confirmar
             "estban",  # linha 659: termos gerais do BC lidos em 04/11/2026, sem página própria do ESTBAN
             "ancine",
             # Ficha Clara, incentivos (licença lida no portal do MME em 29/10/2026)

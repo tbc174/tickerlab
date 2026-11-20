@@ -13,6 +13,10 @@ as chaves em português (a rota traduz na saída):
 - **carteira**: as posições da competência mais nova já pública em `como_era_em` (`disponivel_em`). A
   fonte de cada posição é `cvm-cda-recente` quando o arquivista a viu aparecer (`visto_em`) e
   `cvm-hist-cda` antes disso.
+- **informes_do_fundo** (linha 978, lote 1): o informe mensal do FII e o informe do FIP, lidos pelo registro
+  `src/api_externa/tabelas_por_cnpj.py` (`conjuntos/por_tabela.py`), só do CNPJ inteiro do fundo e só o que era
+  público no dia; o informe do FII sai um por mês, na versão mais nova já entregue. Sem campo liberado, os
+  informes não aparecem, nem na lista dos blocos não disponíveis (bloco fechado não vaza pelo nome).
 
 `permitido(fonte, campo, derivado)` é o portão (a rota o liga ao contrato e ao `portao_externo`): campo
 negado não aparece. Sem nada liberado, `None`, e a rota responde o mesmo de um fundo que não existe.
@@ -39,8 +43,10 @@ from base.raio_x_de_fundo import (
 )
 from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
+from src.api_externa.conjuntos.por_tabela import LeitorPorTabela, vazio
 from src.api_externa.envelope import campo
 from src.api_externa.nomes import NOMES_DE_FORA
+from src.api_externa.tabelas_por_cnpj import INFORMES_DO_FUNDO
 from src.ferramentas.custos import custo_da_taxa
 
 CONJUNTO = "funds"
@@ -195,6 +201,7 @@ class LeitorDeFundos:
             for nome in CAMPOS_DA_POSICAO
             if self.permitido(fonte, nome, False)
         ]
+        # os informes do registro (FII e FIP) não entram aqui: fechados, não aparecem nem pelo nome
         return blocos
 
     def _posicao(self, linha: dict) -> tuple[dict, str] | None:
@@ -251,9 +258,17 @@ class LeitorDeFundos:
             if campos or custo is not None:
                 fontes.add(FONTE_DO_CADASTRO)
         carteira, fontes_da_carteira = self._carteira(formatado, como_era_em)
-        if not fontes and not carteira["posicoes"]:
+        informes = LeitorPorTabela(
+            self.porta, self.permitido, self.linhas_maximas
+        ).bloco(INFORMES_DO_FUNDO, normal, como_era_em)
+        achou_informe = informes is not None and not vazio(informes.corpo)
+        if not fontes and not carteira["posicoes"] and not achou_informe:
             return None
         corpo[CARTEIRA] = carteira
+        if informes is not None:
+            corpo[INFORMES_DO_FUNDO] = informes.corpo
+            fontes |= informes.fontes
+            linhas += informes.linhas
         nao_disponiveis = nao_disponivel.nao_disponiveis(
             self._blocos_pedidos(retorno_suposto)
         )

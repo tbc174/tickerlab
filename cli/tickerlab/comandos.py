@@ -372,6 +372,31 @@ def empresa(
 @opcao_planilha
 @opcao_json
 @click.pass_context
+def analise(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """A análise completa da empresa numa resposta: cada bloco que a chave pode ver, com fonte e data.
+
+    Os blocos (`blocks`) são o cadastro, os sócios e as participadas pessoa jurídica, os vínculos, os eventos,
+    a ficha de crédito, os ativos e os comparáveis; bloco que a chave não vê não aparece. Traz também a frase do
+    topo (`summary`, fato), a linha do tempo (`timeline`), as leituras (`inferences`, dedução, com os blocos de
+    onde vieram), o que não foi achado (`not_found`), o bloco que não respondeu a tempo (`timed_out`) e as bases
+    que a análise ainda não consulta (`not_included`). Cada bloco conta um pedido na quota (`requests_used`).
+    """
+    corpo = _api(contexto).analise(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
 def comparaveis(
     contexto: click.Context,
     cnpj: str,

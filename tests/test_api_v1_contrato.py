@@ -62,6 +62,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/analista/ficha/planilha",
         "/v1/analista/ficha/eventos",
         "/v1/analista/ficha/vinculos",
+        "/v1/analista/ficha/analise",
         "/v1/analista/setor/compradores",
         "/v1/analista/setor/perfil",
         "/v1/analista/empresas",

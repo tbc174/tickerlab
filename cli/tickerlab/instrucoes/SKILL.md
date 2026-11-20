@@ -16,6 +16,10 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
    - `tickerlab empresa <cnpj> --json`: o perfil: cadastro na Receita (situação, razão social, natureza
      jurídica, Simples) e, de companhia aberta, cada DFP e ITR com prazo da CVM, atraso e situação da entrega;
      leia `limits`. `--so-cadastro` traz só o cadastro.
+   - `tickerlab analise <cnpj> [--como-era AAAA-MM-DD] --json`: a análise completa numa resposta, com cada bloco
+     que a chave vê em `blocks` (cadastro, sócios PJ, vínculos, eventos, crédito, ativos, comparáveis), a frase
+     do topo, a linha do tempo, as leituras (`inferences`, dedução), `not_found`, `timed_out` e `not_included`
+     (bases que a análise não consulta); cada bloco é um pedido na quota.
    - `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD] --json`: as companhias abertas do mesmo grupo de
      setores, cada uma com o último DFP (receita, EBITDA, lucro, dívida líquida e razões), e a mediana de cada
      razão em `peer_medians`; leia `limits` antes de comparar múltiplos.
@@ -66,7 +70,8 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
 - **Não invente número que a CLI não devolveu.** Dado ausente é ausente; conta sua sai separada e com a
   origem de cada parcela.
 - **A chave é segredo:** nunca num comando, arquivo, log ou no chat.
-- **Sem pessoa física:** a API não serve sócio PF, CPF, MEI nem empresário individual; não procure por outros
-  caminhos.
+- **Sem pessoa física:** a linha de comando não traz sócio PF, CPF, MEI nem empresário individual (a API só
+  serve o nome de sócio PF à organização com a permissão de ver pessoas pela API, e nunca o CPF); não procure por
+  outros caminhos.
 
 Instruções completas: `tickerlab instrucoes` (o AGENTS.md do pacote).

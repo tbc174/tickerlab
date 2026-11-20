@@ -38,7 +38,9 @@ Há duas entradas, que levam ao mesmo lugar:
    do servidor (AES-256-GCM, `selo.py`), presos ao cliente e ao recurso `/mcp`. A cada chamada o conector
    abre o token e consulta a API com a chave de dentro.
 6. **Renovação.** Confere a chave na API de novo (chave revogada: `invalid_grant`, e o token de acesso cai
-   na hora) e troca os dois tokens. O token de renovação usado não serve outra vez.
+   na hora) e troca os dois tokens. O token de renovação usado devolve os **mesmos** tokens por 120 s
+   (`JANELA_DE_REUSO_S`) e depois não serve mais; se a API não responde, a renovação sai sem a conferência
+   (ver "Renovação que não derruba", abaixo).
 
 ### Decisões (aceite da Diretoria, 10/11/2026)
 
@@ -58,8 +60,19 @@ Há duas entradas, que levam ao mesmo lugar:
 - **API sem resposta não é chave revogada.** Só 401 e 403 do `/catalog` dizem que a chave não vale.
   Limite de pedidos da organização (429), erro da API (5xx) ou a API desligada (404) são falha passageira:
   o `/mcp` responde 503 com `Retry-After: 30` (um 401 faria a IA pedir a chave de novo), a renovação
-  responde `invalid_request` sem gastar o token e a página diz que o TickerLab não respondeu, sem contar
-  no limite por IP.
+  sai sem a conferência (abaixo) e a página diz que o TickerLab não respondeu, sem contar no limite por IP.
+- **Renovação que não derruba (18/11/2026, queda de 17/11).** A renovação respondia 400 em dois casos que não
+  eram culpa do analista, e a IA derrubava a conexão (o cliente oficial do SDK do MCP apaga os tokens em
+  qualquer resposta da renovação que não seja 200; o SDK do servidor só sabe responder 400 a um
+  `TokenError`, então um 503 não está ao alcance e não ajudaria): (1) **API sem resposta** ao conferir a
+  chave: agora os tokens novos saem sem a conferência, com um aviso no log com o id público da chave.
+  Chave revogada não ganha nada com isso: cada chamada do `/mcp` confere a chave na API, e a renovação
+  seguinte, com a API de volta, responde `invalid_grant`. (2) **Mesmo token de renovação duas vezes**
+  (resposta perdida no caminho, ou duas conversas renovando juntas): nos 120 s seguintes à troca, o mesmo
+  token devolve os mesmos tokens já emitidos (quem chega durante a troca espera por ela; a API é conferida
+  uma vez só). Depois da janela, `invalid_grant`. A janela guarda na memória a resposta já emitida (a
+  chave vai cifrada dentro dos tokens, como sempre), presa ao cliente que trocou. Falha inesperada no meio
+  da troca não gasta o token, e quem esperava por ela refaz a troca em vez de receber erro.
 - **Sem o `iss` na volta (RFC 9207).** O ChatGPT usa então o endereço `connector/oauth/<id>`, que está na
   lista fechada.
 
@@ -111,9 +124,10 @@ com as ferramentas que existem.
 | CLI | Conector |
 |---|---|
 | `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
-| `empresa` | `ficha_da_empresa` |
+| `empresa` | `ficha_da_empresa` (as 8 entregas de DFP e ITR mais novas; `limite_de_entregas`, de 1 a 100, pede mais; o corte vai em `truncated` e em `limits`) |
+| `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, inclusive os das tabelas ligadas pelo CNPJ do registro `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, com o conjunto `integrity` no contrato, sanções da CGU, embargos do IBAMA e cadastro de empregadores do MTE, só pessoa jurídica), com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota; com `pessoa_no_conector` e sem a data, um segundo bloco com a resposta de `socios_e_donos`, que é mais um pedido na quota e some se a API negar ou a tranca recusar) |
 | `comparaveis` | `comparaveis` (a data e `limite` de 1 a 50 pares, padrão 10; o corte é no conector, na ordem da API, e as medianas seguem sobre todos os pares) |
-| `demonstracoes` | `demonstracoes` |
+| `demonstracoes` | `demonstracoes` (um período, a versão mais nova de cada conta e o consolidado onde houver; `demonstrativo`, `visao` e `conta` escolhem o recorte; o que não coube vai em `truncated` e em `limits`) |
 | `eventos` | `eventos` (tipos, `limite` e `cursor`) |
 | `fundo` | `fundo` |
 | `setor` | `setores` e `setor` |
@@ -123,10 +137,29 @@ com as ferramentas que existem.
 | `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
 | `novidades` | `novidades` (`dias` de 1 a 30) |
 
+Ferramentas do analista, que só compõem o que a API já devolve (linha 980, onda 1; código em
+`conector_remoto/ferramentas_do_analista.py`, que não abre rota nem direito novo):
+
+| Ferramenta | O que faz | Conjunto que a chave precisa |
+|---|---|---|
+| `credito_da_empresa` | Os fatos de crédito da rota `/credit` (situação na Receita, fatos relevantes e cessão a FIDC), cada um com fonte e dia em que ficou público; `como_era_em` vai como `known_at`. Não traz rating, elegibilidade como cedente ou sacado, SCR individual nem pessoa. Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | `credit` |
+| `o_que_mudou` | A diferença entre o que a base sabia em `desde` e o que sabe hoje, em até três blocos: cadastro (com as entregas de DFP e ITR), vínculos e eventos, cada um com o antes e o depois (ou só o que entrou ou saiu), a fonte e o dia em que ficou público. Os seis pedidos correm juntos; o lado antigo vai com `known_at = desde` e, mesmo que a API deixasse passar, a ferramenta tira dele o que ficou público depois de `desde`. Bloco que a chave não vê ou a API não serve vem em `not_consulted`; `before_not_available`, `after_not_available` e `partial` avisam o que faltou. Com `partial` (página de 100 cheia) a ferramenta não lista o que saiu, porque o que ficou fora da página não saiu da base. O mês do retrato da Receita não conta como mudança; a entrega de DFP/ITR se identifica por documento e período, e o vínculo por tipo, pontas e começo. Erro que não é 404 em qualquer bloco derruba a resposta inteira. Não traz mudança ainda não publicada na base nem pessoa. Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | `profiles` ou `companies`, `links`, `events` (qualquer um; cada bloco pede o seu) |
+| `comparar_empresas` | A ficha de 2 a 5 empresas lado a lado: uma linha por campo do cadastro na Receita, uma coluna por empresa (a chave é o CNPJ), mais as 8 entregas de DFP e ITR mais novas de cada uma (`filings_cut` diz quantas a base tem; lista que a chave não consultou vem como `não disponível`, e o que faltou vai em `unavailable_filings` e `unavailable_registration_fields`), cada valor com fonte e dia em que ficou público. O que a base não tem de uma empresa vem como `não disponível`, nunca como zero; a empresa que a base não serve vem em `not_available`. Os pedidos correm juntos. Mais de 5, menos de 2, CNPJ repetido ou CPF dão mensagem clara sem chamar a API; erro que não é 404 em qualquer empresa derruba a resposta. Não traz pessoa, nota nem ordenação. Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | `profiles` ou `companies` |
+| `de_onde_vem` | De onde vem um conjunto ou um campo que a chave vê: a fonte de cada campo, a licença e a atribuição dessa fonte, a finalidade do conjunto e a marca de piloto, com o aviso uma vez só e a lista dos campos de piloto (`pilot_fields`). Lê só o `/catalog` (o mesmo de `o_que_posso_ver`), sem dado de empresa. Conjunto ou campo que a chave não vê dá a mesma mensagem de quem não existe. O catálogo não traz o significado de cada campo nem o dia do retrato; a resposta diz isso em `limits`. Mais de 50 achados vêm cortados (`truncated`). Ainda sem comando na CLI (está em `SO_NO_CONECTOR`). | nenhum (vale para toda chave) |
+
 Resposta acima do teto (`conector_remoto/saida.py`, `TETO_DE_CARACTERES`) vira erro com o jeito de pedir menos que aquela ferramenta tem (`DICAS_DE_RESPOSTA_GRANDE` em `conector_remoto/ferramentas.py`); a que não tem parâmetro para isso diz que o pedido não cabe. Um teste confere que a frase só cita parâmetro da própria ferramenta.
 
+**Próximo passo no fim da lista** (linha 984, item 2; `conector_remoto/proximo_passo.py`). A resposta de cada
+ferramenta de lista (`buscar_empresas`, `compradores_do_setor`, `comparaveis`, `eventos`, `vinculos`,
+`setores`) traz o campo `next_step`: uma frase fixa que diz qual ferramenta chamar a seguir; com a lista vazia,
+diz o que ficou de fora do pedido, como alargá-lo e que não se estima. O texto não vem da API, não repete o
+que o analista digitou e só cita ferramentas e parâmetros que existem (um teste confere, e confere também que
+não há preço, promessa, recomendação nem palavra de pessoa). O rodapé é só do conector: o chat do app usa as
+mesmas ferramentas, mas não tem todas as que o texto cita, então `registrar_ferramentas` o desliga por
+padrão. O erro "não disponível" também diz o que fazer (`o_que_posso_ver`) e pede para não estimar.
+
 Ferramenta que chega antes do comando da CLI fica em `SO_NO_CONECTOR` no teste de paridade, com o motivo;
-quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista está vazia.
+quando o comando entra, ela passa a `FERRAMENTAS_DO_COMANDO` e ganha um caso. Hoje a lista tem `socios_e_donos`, `credito_da_empresa`, `o_que_mudou`, `comparar_empresas` e `de_onde_vem`.
 
 Cada ferramenta tem um título (`title`, em `TITULOS_DAS_FERRAMENTAS`), que é o que o analista vê no
 cliente ao lado da chamada: curto, em português e sem promessa. O nome técnico (`buscar_empresas`) não muda,
@@ -145,9 +178,13 @@ API, comando na CLI e ferramenta aqui, com a paridade cobrando.
 
 ## Prompts
 
-Além das ferramentas, o conector oferece cinco prompts (`conector_remoto/prompts.py`, linha 901), um para
-cada fluxo da casa de M&A: `triagem_de_cnpj`, `alvos_no_setor`, `compradores_no_setor`,
-`comparaveis_da_empresa` e `dossie_da_empresa`. O analista escolhe o prompt no cliente e preenche os
+Além das ferramentas, o conector oferece oito prompts (`conector_remoto/prompts.py`, linhas 901 e 980), um
+para cada fluxo da casa de M&A: `triagem_de_cnpj`, `alvos_no_setor`, `compradores_no_setor`,
+`comparaveis_da_empresa` e `dossie_da_empresa`, mais os três da linha 980: `preparar_reuniao` (uma página
+com quem é a empresa, o que aconteceu e cinco perguntas, cada uma ligada a um fato da base),
+`perfil_sem_nome` (o perfil para circular sem razão social, CNPJ, município, UF nem nada que identifique; só
+consulta a `ficha_da_empresa`) e `lista_longa_de_compradores` (todos os que a base traz do setor, até 50,
+sem corte). Nenhum pede faturamento estimado nem recomendação. O analista escolhe o prompt no cliente e preenche os
 argumentos. O prompt só monta o pedido, que leva às ferramentas, e não lê a base nem a API: o dado continua
 saindo só pelas ferramentas, com o portão por conjunto e o filtro de pessoa delas.
 
@@ -156,6 +193,8 @@ saindo só pelas ferramentas, com o portão por conjunto e o filtro de pessoa de
 - **Dossiê:** usa a mesma orientação das instruções (`ORIENTACAO_DO_DOSSIE`), um lugar só para ela.
 - **Fecho comum:** todo prompt termina com o mesmo pedido de fonte e data, de lacunas à parte e de nenhum
   dado de pessoa física.
+  A exceção é `perfil_sem_nome`, cujo fecho (`FECHO_ANONIMO`) também proíbe o nome de sócio, porque nome de
+  pessoa identifica a empresa.
 - **Testes:** o teste confere que cada prompt cita só ferramentas que existem.
 - **Clientes:** o Claude aceita prompts (documentação de conectores, lida em 13/11/2026). Se o ChatGPT os
   mostra não está confirmado, e nada do roteiro depende deles.
@@ -214,5 +253,9 @@ conector para de funcionar na chamada seguinte.
 
 ## Pessoa física
 
-O filtro de pessoa (`pessoa.py`) recusa a resposta inteira quando um campo parece dado de pessoa física. Os
+O filtro de pessoa (`pessoa.py`) recusa a resposta inteira quando um campo parece dado de pessoa física. A
+exceção é `socios_e_donos` (e o segundo bloco da `analise_completa`), que aparece só para a chave de uma
+organização com `pessoa_no_conector`, desligada por padrão, e passa pela tranca própria de
+`socios_e_donos.py`: só nome, qualificação e data de entrada, nunca CPF, menor, endereço ou contato
+(política de privacidade, versão 19). Os
 testes, os exemplos e este guia não usam dado de pessoa real nem CNPJ de empresa real escolhido à mão.

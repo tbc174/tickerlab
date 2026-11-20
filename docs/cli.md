@@ -59,6 +59,7 @@ Assim, a chave não vai em texto aberto pela rede.
 | `tickerlab comparaveis <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/comparables` (rota da linha 736) | sim |
 | `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20]` | `GET /data/v1/buyers` (rota da linha 810) | sim, um pedido |
 | `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo ...]` | `GET /data/v1/companies/{cnpj}/links` (rota da linha 736) | sim |
+| `tickerlab analise <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/analysis` (cada bloco que a chave vê) | sim, um pedido por bloco |
 | `tickerlab dossie <cnpj> [--como-era ...]` | `profile`, `events`, `links` e `comparables` da empresa | sim, 4 pedidos |
 | `tickerlab eventos <cnpj> [--tipo ...] [--todas]` | `GET /data/v1/companies/{cnpj}/events` (rota da linha 736) | sim, um pedido por página |
 | `tickerlab ativos <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/assets` (rota da linha 845; hoje o bloco `oil_gas_contracts`, da ANP) | sim |

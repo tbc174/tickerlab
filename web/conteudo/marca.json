@@ -4,6 +4,15 @@
   "claro": "#f6f8fb",
   "fonte": "Manrope",
   "fonte_mono": "JetBrains Mono",
+  "janela_de_codigo": {
+    "chave": "#a9b8d6",
+    "comentario": "#8796b5",
+    "fundo": "#061430",
+    "literal": "#8fb0ff",
+    "numero": "#f5b83d",
+    "rastro": "rgba(41, 98, 255, 0.18)",
+    "texto": "#e8f0ff"
+  },
   "marinho": "#0a1f44",
   "paleta_clara": {
     "alta": "#127a4d",

@@ -1,4 +1,5 @@
 """As rotas de leitura da Administração no app novo (src/api_v1/administracao.py, linha 955, PR 1).
+As de escrita (PR 3) têm os testes em `tests/test_api_v1_administracao_escrita.py`.
 
 Banco SQLite com as migrações. O que estes testes travam: quem é administrador se confere no servidor,
 em toda rota e a cada pedido (conta comum recebe o 404 de um endereço que não existe; visitante, 401;
@@ -18,6 +19,7 @@ from fastapi.testclient import TestClient
 from src import administracao_das_chaves as adc
 from src import api
 from src.api_externa import conjuntos as conjuntos_da_api
+from src.api_externa.tabelas_por_cnpj import REGISTRO
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso
 from src.api_v1 import administracao as rotas_da_administracao
 from src.api_v1.rotas import openapi_v1
@@ -32,6 +34,17 @@ HOJE = datetime.now(UTC).date()
 LISTA = "/v1/admin/organizacoes"
 PAINEL = "/v1/admin/organizacao"
 ID_QUE_NAO_EXISTE = "00000000-0000-4000-8000-000000000000"
+# o que a lista leva para os formulários da tela (PR 3)
+OPCOES_DOS_FORMULARIOS = {
+    "planos_da_api": [{"plano_da_api": "piloto", "nome_do_plano": "Piloto"}],
+    "motivos_da_suspensao": [
+        "contrato",
+        "pagamento",
+        "abuso",
+        "pedido_do_cliente",
+        "fonte",
+    ],
+}
 
 
 @pytest.fixture(autouse=True)
@@ -113,9 +126,16 @@ def test_toda_rota_da_administracao_exige_conta_admin():
 
 
 def test_os_testes_de_acesso_cobrem_todas_as_rotas():
-    """Rota nova precisa entrar em `_leituras`: é a lista que os testes de acesso percorrem."""
+    """Rota de leitura nova precisa entrar em `_leituras`: é a lista que os testes de acesso percorrem
+    (as de escrita têm a lista delas no arquivo de testes da escrita, e as das contas do app, que
+    moram noutro módulo, no arquivo de testes das contas)."""
     cobertas = {endereco for endereco, _ in _leituras(ID_QUE_NAO_EXISTE)}
-    existentes = {rota.path for rota in rotas_da_administracao.router.routes}  # type: ignore[attr-defined]
+    existentes = {
+        rota.path  # type: ignore[attr-defined]
+        for rota in rotas_da_administracao.router.routes
+        if "GET" in rota.methods  # type: ignore[attr-defined]
+        and rota.endpoint.__module__ == rotas_da_administracao.__name__  # type: ignore[attr-defined]
+    }
     assert cobertas == existentes
 
 
@@ -240,12 +260,16 @@ def test_admin_lista_as_organizacoes_com_plano_e_situacao(banco, app, chefe):
                 "nome_do_plano": "Piloto",
                 "suspensa": True,
             },
-        ]
+        ],
+        **OPCOES_DOS_FORMULARIOS,
     }
 
 
 def test_sem_organizacao_a_lista_vem_vazia(banco, app, chefe):
-    assert _cliente(banco, app, chefe).get(LISTA).json() == {"organizacoes": []}
+    assert _cliente(banco, app, chefe).get(LISTA).json() == {
+        "organizacoes": [],
+        **OPCOES_DOS_FORMULARIOS,
+    }
 
 
 # --- o painel -----------------------------------------------------------------------------
@@ -310,6 +334,7 @@ def test_as_ofertas_do_painel_cobrem_todo_conjunto_que_a_api_por_chave_serve():
         )
     ]
     servidos = {m.CONJUNTO for m in modulos if hasattr(m, "CONJUNTO")}
+    servidos |= {entrada.conjunto for entrada in REGISTRO}  # saem na análise completa
     assert len(servidos) >= 13
     ofertas = adc.ofertas_da_api()
     assert {conjunto for conjunto, _ in ofertas} == servidos

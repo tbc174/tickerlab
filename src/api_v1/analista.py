@@ -5,6 +5,8 @@ entregas à CVM), e `POST /v1/analista/ficha/planilha` a mesma ficha em Excel. A
 os termos aceitos e o plano da página `ficha_da_empresa` (`src/paginas.py`, recurso Dossiê da base).
 `POST /v1/analista/empresas` busca empresas por setor, UF, idade mínima, capital social e estabelecimentos
 ativos, com a ordem por um deles (página `encontrar_empresas`, o mesmo recurso), e `POST /v1/analista/empresas/planilha` leva a busca para o Excel.
+`POST /v1/analista/ficha/analise` devolve a análise completa do CNPJ (a mesma montagem da rota `/analysis` da API
+externa, pelo portão da tela), com o acesso e o plano da ficha.
 `POST /v1/analista/comparar` põe de dois a cinco CNPJs lado a lado (página `comparar_empresas`, o mesmo
 recurso), e `POST /v1/analista/comparar/planilha` leva a comparação para o Excel.
 
@@ -32,7 +34,16 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from base.porta import Porta
-from src.analista import busca, comparacao, eventos, leitura, planilha, setor, vinculos
+from src.analista import (
+    analise,
+    busca,
+    comparacao,
+    eventos,
+    leitura,
+    planilha,
+    setor,
+    vinculos,
+)
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
@@ -251,6 +262,33 @@ def vinculos_da_empresa(
             raise HTTPException(status_code=422, detail=CNPJ_INVALIDO) from erro
     log.info("vínculos do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
     return esquemas.de_vinculos_do_analista(resposta, vinculos.LIMITES)
+
+
+@router.post("/ficha/analise")
+def analise_da_empresa(
+    conta: Conta, pedido: PedidoDaFichaV1
+) -> esquemas.AnaliseCompletaV1:
+    """A análise completa da empresa numa chamada: a frase do topo, os blocos (cadastro, sócios PJ, vínculos,
+    eventos e o que mais o portão da tela libera), a linha do tempo, as leituras marcadas como dedução, o que não
+    foi achado e o que a tela não consulta, cada campo com fonte e dia. A mesma montagem da rota /analysis da API
+    externa; mesmo acesso, mesmo plano e mesmos estados da ficha; pessoa física nunca sai."""
+    if len(pedido.cnpj) > TAMANHO_MAXIMO_DO_CNPJ:
+        raise HTTPException(status_code=422, detail=CNPJ_INVALIDO)
+    dia = hoje()
+    piloto = _e_do_piloto(conta, dia)
+    with _porta() as porta:
+        try:
+            resposta = analise.analise(
+                porta,
+                pedido.cnpj,
+                hoje=dia,
+                regras=rotas_da_api_externa.regras_da_api(),
+                piloto=piloto,
+            )
+        except ValueError as erro:
+            raise HTTPException(status_code=422, detail=CNPJ_INVALIDO) from erro
+    log.info("análise do analista: %s", resposta.estado)  # só o estado, nunca o CNPJ
+    return esquemas.de_analise_completa(resposta, analise.LIMITES)
 
 
 def _busca_do_pedido(

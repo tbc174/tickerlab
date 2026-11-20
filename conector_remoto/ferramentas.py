@@ -10,6 +10,7 @@ import dataclasses
 import json
 import logging
 import re
+from collections.abc import Callable
 from datetime import date
 from typing import Annotated, Literal
 
@@ -21,8 +22,27 @@ from pydantic import Field
 
 from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
+from conector_remoto.enxugar import (
+    LIMITE_MAXIMO_DAS_ENTREGAS,
+    LIMITE_PADRAO_DAS_ENTREGAS,
+    cortar_entregas,
+    enxugar_demonstracoes,
+)
 from conector_remoto.pessoa import RespostaComPessoa
-from conector_remoto.saida import RespostaGrandeDemais, preparar_saida
+from conector_remoto.proximo_passo import com_proximo_passo
+from conector_remoto.saida import (
+    TETO_DE_CARACTERES,
+    RespostaGrandeDemais,
+    preparar_saida,
+    tamanho_em_caracteres,
+)
+from conector_remoto.socios_e_donos import (
+    CAMINHO as CAMINHO_DAS_PESSOAS,
+)
+from conector_remoto.socios_e_donos import (
+    CONJUNTO as CONJUNTO_DAS_PESSOAS,
+)
+from conector_remoto.socios_e_donos import preparar_pessoas
 
 registro = logging.getLogger("conector_remoto")
 
@@ -36,33 +56,47 @@ SO_LEITURA = ToolAnnotations(
 CONJUNTOS_DA_FERRAMENTA: dict[str, frozenset[str]] = {
     "buscar_empresas": frozenset({"prospecting"}),
     "ficha_da_empresa": frozenset({"profiles", "companies"}),
+    # a análise precisa de um cadastro; os outros blocos entram pelo que a chave vê, decidido na API
+    "analise_completa": frozenset({"profiles", "companies"}),
     "comparaveis": frozenset({"comparables"}),
     "demonstracoes": frozenset({"financials"}),
     "eventos": frozenset({"events"}),
     "fundo": frozenset({"funds"}),
     "vinculos": frozenset({"links"}),
+    # pessoa física: só a organização com a permissão (ADR 0128, Emenda 4); a API confere de novo a cada pedido
+    "socios_e_donos": frozenset({CONJUNTO_DAS_PESSOAS}),
     "ativos": frozenset({"assets"}),
     "compradores_do_setor": frozenset({"buyers"}),
     "novidades": frozenset({"research"}),
     "setores": frozenset({"sectors"}),
     "setor": frozenset({"sectors"}),
     "o_que_posso_ver": frozenset(),
+    "de_onde_vem": frozenset(),
+    "credito_da_empresa": frozenset({"credit"}),
+    "o_que_mudou": frozenset({"profiles", "companies", "links", "events"}),
+    "comparar_empresas": frozenset({"profiles", "companies"}),
 }
 # o nome que o analista vê no cliente (no Claude, ao lado de cada chamada): curto, em português, sem promessa
 TITULOS_DAS_FERRAMENTAS: dict[str, str] = {
     "buscar_empresas": "Buscar empresas por setor, UF, porte e idade",
     "ficha_da_empresa": "Ficha da empresa",
+    "analise_completa": "Análise completa de uma empresa",
     "comparaveis": "Comparáveis de uma companhia aberta",
     "demonstracoes": "Demonstrações de uma companhia aberta",
     "eventos": "Eventos de uma empresa",
     "fundo": "Fundo de investimento",
     "vinculos": "Participações e auditor de uma empresa",
+    "socios_e_donos": "Sócios e donos de uma empresa",
     "ativos": "Ativos físicos de uma empresa",
     "compradores_do_setor": "Quem já se mexeu no setor",
     "novidades": "Fontes novas provadas pela pesquisa",
     "setores": "Setores acompanhados",
     "setor": "Séries e concentração de um setor",
     "o_que_posso_ver": "O que a sua chave pode ver",
+    "de_onde_vem": "De onde vem um conjunto ou um campo",
+    "credito_da_empresa": "Fatos de crédito de uma empresa",
+    "o_que_mudou": "O que mudou numa empresa desde um dia",
+    "comparar_empresas": "Fichas de 2 a 5 empresas lado a lado",
 }
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
@@ -109,16 +143,22 @@ LIMITE_PADRAO_DOS_PARES = 10
 DICAS_DE_RESPOSTA_GRANDE = {
     "buscar_empresas": "Peça menos empresas por página (`limite`) ou filtre mais (`cnae`, `uf`, `municipio`).",
     "comparaveis": "Peça menos pares (`limite`).",
-    "demonstracoes": "Peça um período só (`fim_do_periodo`).",
+    "demonstracoes": "Peça um demonstrativo só (`demonstrativo`, ex.: DRE) ou uma conta (`conta`, ex.: 3.01).",
+    "ficha_da_empresa": "Peça menos entregas de DFP e ITR (`limite_de_entregas`).",
     "eventos": "Peça menos eventos por página (`limite`) ou um tipo só (`tipos`).",
     "vinculos": "Peça menos níveis (`profundidade`) ou só alguns tipos de vínculo (`tipos`).",
     "novidades": "Peça menos dias (`dias`).",
+    "comparar_empresas": "Compare menos empresas por vez (`cnpjs`).",
     "compradores_do_setor": "Peça menos compradores (`limite`), menos anos (`anos`) ou uma UF (`uf`).",
 }
 DICA_SEM_PARAMETRO = "Esta ferramenta não tem como pedir menos: diga ao analista que este pedido não cabe na conversa."
 
 MENSAGEM_DE_PESSOA = (
     "Resposta recusada: ela trazia um campo de pessoa física, que este conector não entrega. "
+    "O TickerLab foi avisado; os outros pedidos seguem normais."
+)
+MENSAGEM_DE_PESSOA_PROIBIDA = (
+    "Resposta recusada: ela trazia um dado que o conector nunca entrega (CPF, contato ou endereço). "
     "O TickerLab foi avisado; os outros pedidos seguem normais."
 )
 MENSAGEM_SEM_CHAVE = "Pedido sem chave do TickerLab: refaça a ligação do conector."
@@ -188,7 +228,8 @@ def mensagem_do_erro(resposta: RespostaDaApi) -> str:
     if resposta.status == STATUS_NAO_DISPONIVEL:
         return (
             "Não disponível: o dado não está na base para esse pedido, ou a chave não tem acesso a "
-            "ele (a API não diz qual dos dois, de propósito)."
+            "ele (a API não diz qual dos dois, de propósito). Para ver o que a chave enxerga, chame "
+            "`o_que_posso_ver`; não estime o que faltou."
         )
     if resposta.status == STATUS_LIMITE and codigo == CODIGO_DO_MINUTO:
         espera = resposta.espera_s or ESPERA_PADRAO_S
@@ -234,6 +275,33 @@ def cortar_pares(corpo: object, limite: int) -> object:
     }
 
 
+def _com_entregas_cortadas(resposta: RespostaDaApi, limite: int) -> RespostaDaApi:
+    """A resposta da ficha só com as entregas de DFP e ITR mais novas (o resto fica como veio)."""
+    if not resposta.ok:
+        return resposta
+    return dataclasses.replace(resposta, corpo=cortar_entregas(resposta.corpo, limite))
+
+
+def _com_demonstracoes_enxutas(
+    resposta: RespostaDaApi,
+    demonstrativo: str | None,
+    visao: str,
+    conta: str | None,
+    periodo_pedido: bool,
+) -> RespostaDaApi:
+    """A resposta das demonstrações no que cabe na conversa (`enxugar.py`); o resto fica como veio."""
+    if not resposta.ok:
+        return resposta
+    corpo = enxugar_demonstracoes(
+        resposta.corpo,
+        demonstrativo=demonstrativo,
+        visao=visao,
+        conta=conta,
+        periodo_pedido=periodo_pedido,
+    )
+    return dataclasses.replace(resposta, corpo=corpo)
+
+
 def _como_texto(corpo: object) -> str:
     return json.dumps(corpo, ensure_ascii=False, separators=(",", ":"))
 
@@ -245,8 +313,9 @@ def _dia(valor: date | None) -> str | None:
 class Pedidos:
     """Faz o pedido da ferramenta à API com a chave do analista e prepara a resposta."""
 
-    def __init__(self, cliente: ClienteDaApi) -> None:
+    def __init__(self, cliente: ClienteDaApi, com_proximo_passo: bool = False) -> None:
         self._cliente = cliente
+        self._com_proximo_passo = com_proximo_passo
 
     async def resposta(
         self, caminho: str, parametros: dict[str, ParametroDaApi] | None = None
@@ -263,12 +332,24 @@ class Pedidos:
                 "A API do TickerLab não respondeu; tente de novo em instantes."
             ) from None
 
-    def entregar(self, resposta: RespostaDaApi, ferramenta: str) -> str:
-        """O texto que vai para a IA, ou `ToolError` com a frase do problema."""
+    def entregar(
+        self,
+        resposta: RespostaDaApi,
+        ferramenta: str,
+        preparar: Callable[[object], object] = preparar_saida,
+        recusa_de_pessoa: str = MENSAGEM_DE_PESSOA,
+    ) -> str:
+        """O texto que vai para a IA, ou `ToolError` com a frase do problema. `preparar` é a tranca da
+        saída: a de toda ferramenta recusa qualquer pessoa; a dos sócios e donos, só o que nunca sai."""
         if not resposta.ok:
             raise ToolError(mensagem_do_erro(resposta))
         try:
-            return _como_texto(preparar_saida(resposta.corpo))
+            saida = preparar(resposta.corpo)
+            if self._com_proximo_passo:
+                saida = com_proximo_passo(ferramenta, saida)
+                if tamanho_em_caracteres(saida) > TETO_DE_CARACTERES:
+                    raise RespostaGrandeDemais(tamanho_em_caracteres(saida))
+            return _como_texto(saida)
         except RespostaComPessoa as recusa:
             acesso = acesso_do_pedido()
             registro.error(
@@ -279,7 +360,7 @@ class Pedidos:
                     "chave": acesso.subject if acesso else None,
                 },
             )
-            raise ToolError(MENSAGEM_DE_PESSOA) from None
+            raise ToolError(recusa_de_pessoa) from None
         except RespostaGrandeDemais as grande:
             raise ToolError(
                 mensagem_de_resposta_grande(ferramenta, grande.tamanho)
@@ -295,9 +376,30 @@ class Pedidos:
         return self.entregar(await self.resposta(caminho, parametros), ferramenta)
 
 
-def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
-    """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`)."""
-    pedidos = Pedidos(cliente)
+def _pode_ver_pessoas() -> bool:
+    """A chave deste pedido lista a permissão de pessoa física no catálogo (a API confere de novo no `/people`)."""
+    acesso = acesso_do_pedido()
+    return acesso is not None and CONJUNTO_DAS_PESSOAS in acesso.conjuntos
+
+
+async def pedir_pessoas(pedidos: Pedidos, numeros: str) -> str:
+    """Os sócios e donos do CNPJ (já sem pontuação), com a tranca própria da pessoa física. É o encaixe da
+    análise completa do CNPJ: a mesma chamada, a mesma tranca. `ToolError` quando a API não serve (a chave sem
+    a permissão recebe o mesmo "não disponível" de um dado que não existe)."""
+    resposta = await pedidos.resposta(CAMINHO_DAS_PESSOAS.format(numeros=numeros))
+    return pedidos.entregar(
+        resposta, "socios_e_donos", preparar_pessoas, MENSAGEM_DE_PESSOA_PROIBIDA
+    )
+
+
+def registrar_ferramentas(
+    servidor: MCPServer, cliente: ClienteDaApi, com_proximo_passo: bool = False
+) -> None:
+    """Põe as ferramentas no servidor (a lista de cada chave é filtrada no `ServidorDoConector`).
+
+    `com_proximo_passo` liga o rodapé das listas (`proximo_passo.py`): só o conector o quer, porque o texto
+    cita ferramentas que o chat do app não tem."""
+    pedidos = Pedidos(cliente, com_proximo_passo)
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["buscar_empresas"],
@@ -430,7 +532,18 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         annotations=SO_LEITURA,
         structured_output=False,
     )
-    async def ficha_da_empresa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
+    async def ficha_da_empresa(
+        cnpj: Cnpj,
+        como_era_em: ComoEraEm = None,
+        limite_de_entregas: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=LIMITE_MAXIMO_DAS_ENTREGAS,
+                description="Quantas entregas de DFP e ITR trazer, das mais novas para as mais velhas (companhia aberta).",
+            ),
+        ] = LIMITE_PADRAO_DAS_ENTREGAS,
+    ) -> str:
         """A ficha de uma empresa pelo CNPJ: o cadastro na Receita (razão social, natureza jurídica, Simples,
         situação, CNAE principal e município, cada código com o texto da tabela atual da Receita ao lado, UF e data de
         abertura) e, se for companhia aberta, as entregas de DFP e ITR à CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do cadastro que a base não consultou
@@ -447,8 +560,14 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         if "profiles" in conjuntos:
             resposta = await pedidos.resposta(f"/companies/{numeros}/profile", dia)
             if resposta.status != STATUS_NAO_DISPONIVEL or "companies" not in conjuntos:
-                return pedidos.entregar(resposta, "ficha_da_empresa")
-        return await pedidos.pedir("ficha_da_empresa", f"/companies/{numeros}", dia)
+                return pedidos.entregar(
+                    _com_entregas_cortadas(resposta, limite_de_entregas),
+                    "ficha_da_empresa",
+                )
+        resposta = await pedidos.resposta(f"/companies/{numeros}", dia)
+        return pedidos.entregar(
+            _com_entregas_cortadas(resposta, limite_de_entregas), "ficha_da_empresa"
+        )
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["comparaveis"],
@@ -496,13 +615,35 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         fim_do_periodo: Annotated[
             date | None,
             Field(
-                description="Só o período que termina neste dia (AAAA-MM-DD), ex.: 2025-12-31."
+                description="Só o período que termina neste dia (AAAA-MM-DD), ex.: 2025-12-31. Sem ele vem o mais novo."
+            ),
+        ] = None,
+        demonstrativo: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[A-Za-z_]{2,8}$",
+                description="Só um demonstrativo: DRE, BPA, BPP, DFC, DVA ou DRA. Sem ele vêm todos, na ordem, até caber.",
+            ),
+        ] = None,
+        visao: Annotated[
+            Literal["consolidado", "individual", "ambos"],
+            Field(
+                description="`consolidado` (o padrão: o consolidado de cada demonstrativo e, no que não tem consolidado, o individual), `individual` ou `ambos`."
+            ),
+        ] = "consolidado",
+        conta: Annotated[
+            str | None,
+            Field(
+                pattern=r"^[0-9]{1,2}(\.[0-9]{1,2}){0,5}$",
+                description="Só esta conta e as de dentro dela, pelo código do plano de contas da CVM, ex.: 3.01.",
             ),
         ] = None,
     ) -> str:
         """As demonstrações financeiras (DFP e ITR) de uma companhia aberta: um valor por conta e período, com
         o documento, a versão e a data em que ficou público. Serve para ler receita, lucro, dívida e as outras contas
         de uma companhia aberta num período.
+        Traz um período (o mais novo, ou o de `fim_do_periodo`), a versão mais nova de cada conta e o consolidado
+        quando existe; o que couber na conversa. O que ficou de fora vem em `limits`, com `truncated`.
         Fonte: DFP e ITR entregues à CVM.
         Não traz: faturamento de empresa fechada; para ela a resposta é "Não disponível", com o motivo, e o
         TickerLab não estima."""
@@ -513,10 +654,19 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
         )
         if resposta.status == STATUS_NAO_DISPONIVEL:
             raise ToolError(MENSAGEM_SEM_DEMONSTRACAO)
-        return pedidos.entregar(resposta, "demonstracoes")
+        enxuta = _com_demonstracoes_enxutas(
+            resposta, demonstrativo, visao, conta, fim_do_periodo is not None
+        )
+        return pedidos.entregar(enxuta, "demonstracoes")
 
     _registrar_eventos_rede_e_fundo(servidor, pedidos)
     _registrar_novidades(servidor, pedidos)
+    _registrar_analise(servidor, pedidos)
+    # linha 980: as ferramentas que só compõem o que a API devolve; import aqui por causa do ciclo (o módulo
+    # delas usa `Pedidos` e os tipos deste)
+    from conector_remoto import ferramentas_do_analista
+
+    ferramentas_do_analista.registrar(servidor, pedidos)
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["setores"],
@@ -576,6 +726,56 @@ def registrar_ferramentas(servidor: MCPServer, cliente: ClienteDaApi) -> None:
             STATUS_OK, {"catalog": catalogo.corpo, "usage": consumo.corpo}
         )
         return pedidos.entregar(juntos, "o_que_posso_ver")
+
+
+def _registrar_analise(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A análise completa do CNPJ (frente 3): um pedido à API, que junta os blocos que a chave vê."""
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["analise_completa"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def analise_completa(
+        cnpj: Cnpj, como_era_em: ComoEraEm = None
+    ) -> str | list[str]:
+        """A análise de uma empresa pelo CNPJ numa resposta só, com cada bloco que a chave pode ver: o cadastro
+        (a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o
+        auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das
+        agências reguladoras (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de
+        fundo imobiliário na CVM. Para a organização com o conjunto de integridade no contrato, traz também as
+        sanções da CGU (CEIS, CNEP, CEPIM e acordos de leniência), os termos de embargo do IBAMA e o Cadastro de
+        Empregadores do MTE, só da pessoa jurídica, cada um com a fonte, a data e "nada encontrado" quando não
+        acha. Traz também uma
+        frase no topo (fato), a linha do tempo com os marcos datados dos blocos, as leituras (dedução do TickerLab,
+        separada do fato e com os blocos de onde veio), o que não foi achado em cada bloco, o bloco que não
+        respondeu a tempo e as bases que a análise ainda não consulta. Cada valor traz a fonte e o dia em que
+        ficou público; bloco que a chave não vê não aparece. Cada lista vem cortada nas primeiras linhas, com
+        `truncated`.
+        Serve para a triagem completa de um CNPJ antes da reunião, num pedido só.
+        Fonte: as mesmas de cada bloco (cadastro CNPJ da Receita Federal, documentos entregues à CVM e as demais
+        bases do catálogo), citadas em `sources`.
+        Sócio pessoa física e titular de MEI ou empresário individual vêm só para a organização com a permissão,
+        num segundo bloco igual à resposta de `socios_e_donos` (nome, qualificação e data de entrada; nunca CPF,
+        idade, endereço ou contato), e só na análise de hoje (sem `como_era_em`), porque o quadro é o do retrato
+        vigente. Sem a permissão, ou se esse bloco não estiver disponível, a análise sai sem ele.
+        Não traz: contato, endereço, faturamento de empresa fechada, nem as bases listadas em `not_included`
+        (dívida ativa, contratos públicos, processos e, sem o conjunto de integridade, sanções, ambiente e o
+        cadastro do MTE)."""
+        numeros = cnpj_do_pedido(cnpj)
+        analise = await pedidos.pedir(
+            "analise_completa",
+            f"/companies/{numeros}/analysis",
+            {"known_at": _dia(como_era_em)},
+        )
+        if como_era_em is not None or not _pode_ver_pessoas():
+            return analise
+        try:
+            return [analise, await pedir_pessoas(pedidos, numeros)]
+        except ToolError:
+            # sem a permissão no servidor (404), acervo fora do ar (503) ou resposta recusada pela tranca:
+            # a análise vale sozinha, e a tranca já registrou o motivo, sem o valor
+            return analise
 
 
 def _registrar_novidades(servidor: MCPServer, pedidos: Pedidos) -> None:
@@ -700,13 +900,28 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         montar o mapa de um grupo a partir de uma companhia aberta. Controle e coligação só vêm de companhia aberta,
         uma vez por ano, como explicam os `limits`.
         Fonte: FRE e FCA da CVM; a razão social, do cadastro CNPJ da Receita Federal.
-        Não traz: sócio pessoa física nem o quadro de sócios da Receita."""
+        Não traz: o quadro de sócios da Receita (o sócio pessoa física vem em `socios_e_donos`, para a
+        organização com a permissão)."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir("vinculos", f"/companies/{numeros}/links", {
             "known_at": _dia(como_era_em),
             "depth": str(profundidade),  # como a CLI
             "types": [TIPOS_DE_VINCULO[tipo] for tipo in tipos or ()],
         })  # fmt: skip
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["socios_e_donos"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def socios_e_donos(cnpj: Cnpj) -> str:
+        """Quem são os sócios pessoa física da empresa e, no MEI e no empresário individual, o titular: o nome,
+        a qualificação (sócio, administrador) e a data de entrada, do quadro de sócios da Receita. Só os
+        adultos; quem pediu oposição não aparece. Serve para dizer quem é o dono numa triagem de M&A.
+        Fonte: Cadastro Nacional da Pessoa Jurídica (Receita Federal), com o mês do retrato em `snapshot_month`.
+        Não traz: CPF, data de nascimento, menor de idade, endereço nem contato da pessoa; nem o sócio que é
+        empresa (esse vem em `vinculos` e na ficha)."""
+        return await pedir_pessoas(pedidos, cnpj_do_pedido(cnpj))
 
     @servidor.tool(
         title=TITULOS_DAS_FERRAMENTAS["ativos"],
@@ -803,11 +1018,12 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
         ] = None,
     ) -> str:
         """O raio-x de um fundo de investimento pelo CNPJ dele: cadastro (classe, situação, patrimônio e
-        taxas), a carteira da competência mais nova já pública e, com `retorno_suposto`, o custo da taxa em 5 e 20
-        anos (conta sobre a hipótese de quem pergunta, não previsão). Cada valor traz a fonte e o dia em que ficou
-        público. Serve para conhecer um fundo que é sócio ou comprador.
-        Fonte: cadastro de fundos e carteiras (CDA) da CVM.
-        Não traz: busca de fundos por segmento (é um fundo por CNPJ), cotistas nem rentabilidade futura."""
+        taxas), a carteira da competência mais nova já pública, os informes do fundo imobiliário (FII, um por mês) e
+        do fundo de participações (FIP) e, com `retorno_suposto`, o custo da taxa em 5 e 20 anos (conta sobre a
+        hipótese de quem pergunta, não previsão). Cada valor traz a fonte e o dia em que ficou público. Serve para
+        conhecer um fundo que é sócio ou comprador.
+        Fonte: cadastro de fundos, carteiras (CDA) e informes de FII e de FIP da CVM.
+        Não traz: busca de fundos por segmento (é um fundo por CNPJ), a lista de cotistas nem rentabilidade futura."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir(
             "fundo",

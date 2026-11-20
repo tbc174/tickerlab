@@ -4,6 +4,7 @@ promessas que o produto não cumpre.
 As páginas, o CSS e o JS vêm do React (`web/`, ADR 0048; o teste de que estão em dia é do Vitest);
 fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py` (testados aqui)."""
 
+import csv
 import html
 import json
 import re
@@ -14,6 +15,7 @@ import pytest
 
 from base.dicionario import TABELAS
 from base.dossie import pode_consultar_aberto
+from base.vitrine import tabelas_montadas
 from scripts import gerar_site as gs
 from scripts.markdown_simples import markdown_para_html
 from src import marca, planos
@@ -119,8 +121,11 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
 def test_links_para_a_api_sao_o_csv_das_tabelas_consultaveis():
     """A página Dados aponta o CSV de cada tabela consultável para a API, que mora no endereço do app
     (virada de 5/11/2026, fase 1, PR 3): só a rota de exportação, só tabela que a porta serve, e
-    toda tabela consultável tem o seu link."""
-    consultaveis = {nome for nome in TABELAS if pode_consultar_aberto(nome)}
+    toda tabela consultável e montada tem o seu link (a vitrine só mostra o que está no acervo, linha 916)."""
+    montadas = tabelas_montadas()
+    consultaveis = {
+        nome for nome in TABELAS if pode_consultar_aberto(nome) and nome in montadas
+    }
     exportacao = re.compile(r"v1/base/tabelas/([a-z0-9_]+)\.csv")
     apontadas: set[str] = set()
     for arquivo in PAGINAS_HTML:
@@ -557,3 +562,41 @@ def test_toda_pagina_do_site_com_dados_da_base_leva_o_selo_da_data():
         assert selo.findall(html) == dados.findall(html), (
             f"{pagina.name} sai sem o selo da data da base"
         )
+
+
+def _linhas_da_cvm(arquivo: zipfile.ZipFile, nome: str) -> list[dict[str, str]]:
+    """As linhas de um CSV dos dados abertos da CVM (latin-1, separado por ponto e vírgula), pelo nome da coluna."""
+    texto = arquivo.read(nome).decode("latin-1").splitlines()
+    return list(csv.DictReader(texto, delimiter=";"))
+
+
+def test_a_janela_da_inicial_mostra_uma_resposta_real_da_amostra_da_cvm():
+    """A resposta da janela do topo é a da DFP 2024 da Petrobras na amostra da CVM que os testes usam:
+    nada de data digitada de cabeça (linha 966). O valor fica como marcador."""
+    amostra = Path(__file__).parent / "arquivos/cvm/fundamentos/dfp_cia_aberta_2024.zip"
+    petrobras = "33.000.167/0001-01"
+    with zipfile.ZipFile(amostra) as dfp:
+        entregas = _linhas_da_cvm(dfp, "dfp_cia_aberta_2024.csv")
+        dre = _linhas_da_cvm(dfp, "dfp_cia_aberta_DRE_con_2024.csv")
+    entrega = next(e for e in entregas if e["CNPJ_CIA"] == petrobras)
+    referencia, recebida = entrega["DT_REFER"], entrega["DT_RECEB"]
+    receita = next(
+        c
+        for c in dre
+        if c["CNPJ_CIA"] == petrobras
+        and c["CD_CONTA"] == "3.01"
+        and c["DT_FIM_EXERC"] == referencia
+    )
+    janela = re.search(
+        r'<pre class="janela-resposta">(.*?)</pre>',
+        (SITE / "index.html").read_text("utf-8"),
+        re.DOTALL,
+    )
+    assert janela
+    resposta = html.unescape(re.sub(r"<[^>]+>", "", janela.group(1)))
+    assert '"cnpj": "33000167000101"' in resposta
+    assert f'"published_at": "{recebida}"' in resposta
+    assert f'"value": "{referencia}"' in resposta
+    assert f'"value": "{receita["DS_CONTA"]}"' in resposta
+    pedida = re.search(r'"known_at": "([\d-]+)"', resposta)
+    assert pedida and pedida.group(1) >= recebida

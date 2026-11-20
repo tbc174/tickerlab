@@ -3,6 +3,7 @@
 // cuidados". A tranca do plano é do servidor: esta tela só mostra. O setor não é dado pessoal, então
 // a escolha vai no endereço (GET), e o relatório já abre no primeiro setor da lista.
 import { useState } from "react";
+import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, baixar } from "../api";
@@ -91,7 +92,10 @@ function Membros({ dados }: { dados: RelatorioDoSetorV1 }) {
         <ul>
           {dados.membros.map((membro) => (
             <li key={membro.cnpj}>
-              <strong>{membro.empresa}</strong>
+              {/* o nome abre a ficha; o CNPJ vai pelo estado da navegação, nunca pelo endereço */}
+              <Link to="/ficha-da-empresa" state={{ cnpj: membro.cnpj }}>
+                <strong>{membro.empresa}</strong>
+              </Link>
               {membro.tickers.length > 0 ? ` · ${membro.tickers.join(", ")}` : ""}
               <span className="apagado"> · {membro.motivo}</span>
             </li>

@@ -141,6 +141,9 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("anatel_produtos_homologados", "data_do_certificado"): "aconteceu_em",
     ("anatel_produtos_homologados", "validade_do_certificado"): "ate",
     ("anp_tancagem", "data_da_posicao"): "referencia",
+    # conferência de 19/11 (BPS): a compra é um fato; a inserção é o dia em que entrou no sistema do Ministério
+    ("bps_compras", "data_da_compra"): "aconteceu_em",
+    ("bps_compras", "data_de_insercao"): "aconteceu_em",
 }  # fmt: skip
 
 # Sentido que não está claro (ou que a D6 não nomeia): cada grupo é uma linha da fila. As 19 da linha 160

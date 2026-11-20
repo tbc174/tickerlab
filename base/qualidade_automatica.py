@@ -350,9 +350,9 @@ REGRAS: dict[str, Regra] = {
         valor="beneficiarios",
     ),
     # estrita (Diretoria, 12/11/2026, linha 877): nenhuma linha repetida aceita. A resposta do BC de 2025-09
-    # veio com cada linha ~3 vezes e a carga de 14/10 gravou assim: a tabela fica vermelha até essa data-base
-    # ser refeita. Sem `visto_em` na chave: os arquivos de 14/10 não têm a coluna que o contrato 2.0.0 pede;
-    # quando todos a tiverem, ela entra na chave (a revisão do BC é linha nova da mesma chave).
+    # veio com cada linha ~3 vezes e a carga de 14/10 gravou assim; medida em 18/11/2026 (linha 978): verde,
+    # 54.571.412 linhas e sem repetida. Sem `visto_em` na chave: os arquivos de 14/10 não têm a coluna que o
+    # contrato 2.0.0 pede; quando todos a tiverem, ela entra na chave (a revisão do BC é linha nova da mesma chave).
     "ifdata_valores": Regra(
         chave=(
             "data_base",
@@ -376,4 +376,262 @@ REGRAS: dict[str, Regra] = {
     # da Anvisa). Sem coluna de ano nem de valor na regra: a tabela tem um retrato só até a Anvisa publicar outro,
     # e a escala da contagem não se compara entre retratos de dias seguidos.
     "anvisa_por_empresa": Regra(chave=("cnpj_basico", "disponivel_em")),
+    # Lote 1 da linha 978 (piloto D11), medido em 18/11/2026 no acervo de casa: chave natural de cada registro da fonte.
+    # `aneel_inadimplencia` (24.638 linhas sem a sigla do agente e saltos de linhas em 2013 e 2014) e `fii_ativos`
+    # (206.765 linhas repetidas e vazios no código e no nome do ativo) ficaram vermelhas sem explicação escrita:
+    # não têm regra aqui até alguém medir a causa e escrever a explicação (ficam fora do registro de piloto).
+    "aneel_indicadores_comerciais": Regra(
+        chave=(
+            "cnpj",
+            "sigla_do_agente",
+            "tipo_de_outorga",
+            "referencia",
+            "municipio_ibge",
+            "visto_em",
+        ),
+        opcionais={
+            "municipio_ibge": "a fonte manda `0` em vez do código IBGE em algumas linhas (15 de 280.019 em 18/11/2026); o construtor deixa vazio e a base não preenche"
+        },
+        periodo="referencia",
+        valor="unidades_ativas",
+    ),
+    "ans_idss": Regra(
+        chave=("registro_operadora", "indice", "ano_avaliacao", "ano_base", "visto_em")
+    ),
+    "fii_administradores": Regra(chave=("cnpj", "visto_em")),
+    "fii_informe_mensal": Regra(
+        chave=("cnpj", "referencia", "versao", "visto_em"),
+        periodo="referencia",
+        valor="patrimonio_liquido",
+    ),
+    "fip_informe": Regra(
+        chave=("cnpj", "competencia", "periodicidade", "visto_em"),
+        periodo="competencia",
+        valor="patrimonio_liquido",
+    ),
+    # Lote 2A da linha 978 (piloto D11), medido em 18/11/2026 no acervo de casa: chave natural de cada registro (a do
+    # dicionário). As outras 13 tabelas do lote 2 mediram vermelho sem explicação escrita e não têm regra aqui até
+    # alguém medir a causa: fre_capital_social, fre_conselho, fre_remuneracao, ratings, valores_mobiliarios,
+    # tickers_no_tempo, codigos_invalidos, dmpl_como_era, insolvencia, negociacoes, anm_cfem_arrecadacao,
+    # painel_dos_fundos e securitizacao_certificados.
+    "fre_comites": Regra(
+        chave=("cnpj", "referencia", "versao", "tipo_de_comite"), periodo="referencia"
+    ),
+    "fre_distribuicao_capital": Regra(
+        chave=("cnpj", "referencia", "versao", "id_documento"), periodo="referencia"
+    ),
+    "fre_diversidade": Regra(
+        chave=("cnpj", "referencia", "versao", "orgao"), periodo="referencia"
+    ),
+    "fre_empregados": Regra(
+        chave=("cnpj", "referencia", "versao", "recorte", "grupo"), periodo="referencia"
+    ),
+    "fre_remuneracao_extremos": Regra(
+        chave=("cnpj", "referencia", "versao", "fim_do_exercicio", "orgao"),
+        periodo="referencia",
+        valor="media",
+    ),
+    "pareceres_dfp": Regra(
+        chave=("cnpj", "referencia", "versao"), periodo="referencia"
+    ),
+    "pareceres_itr": Regra(
+        chave=("cnpj", "referencia", "versao"), periodo="referencia"
+    ),
+    "emissores": Regra(chave=("emissor", "cnpj")),
+    "debentures_assembleias": Regra(chave=("link",), periodo="referencia"),
+    "processos_nas_notas": Regra(
+        chave=("cnpj", "referencia", "versao", "pagina", "numero_processo"),
+        periodo="referencia",
+    ),
+    # Lote 2B da linha 978 (piloto D11), medido em 18/11/2026 na VM (só contagens). `aneel_inadimplencia` e `fii_ativos`
+    # ficaram vermelhas no lote 1 só pela chave do rascunho; medidas de novo, a chave certa não repete:
+    # - aneel_inadimplencia (1.144.238 linhas): `sigla_do_agente` vem vazia em 24.638 linhas e não é da chave; com
+    #   (cnpj, indicador, referencia, visto_em) há 0 repetidas e 0 vazias.
+    # - fii_ativos (245.030 linhas): 243.192 linhas não têm `codigo` e 231.768 não têm `nome_do_ativo`, então não há
+    #   chave natural nelas; vale o `id_na_fonte` com o `visto_em` (0 repetidas, 0 linhas iguais). O mesmo
+    #   `id_na_fonte` aparece em dois `visto_em` em 32.615 casos: é o histórico (um retrato por data), não duplicata.
+    "aneel_inadimplencia": Regra(
+        chave=("cnpj", "indicador", "referencia", "visto_em"),
+        periodo="referencia",
+        valor="valor",
+        saltos_explicados={
+            2013: "o arquivo da ANEEL tem pouca linha em 2012 (5.120) e em 2013 (11.200); a tabela guarda o que a fonte manda e não completa o que falta (medido em 18/11/2026; o motivo na ANEEL não foi confirmado)",
+            2014: "a série cheia da fonte, de cerca de 90 mil linhas por ano, começa em 2014 (11.200 linhas em 2013 e 94.792 em 2014, medido em 18/11/2026; o motivo na ANEEL não foi confirmado)",
+        },
+    ),
+    "fii_ativos": Regra(
+        chave=("id_na_fonte", "visto_em"), periodo="referencia", valor="valor"
+    ),
+    "cvm_fiagro": Regra(
+        chave=("cnpj", "referencia", "versao"),
+        periodo="referencia",
+        valor="patrimonio_liquido",
+    ),
+    # Lote 3 da linha 978 (piloto D11): séries sem CNPJ (órgãos públicos e mercado) e três tabelas ligadas pelo CNPJ.
+    # A chave é a `chaves` do contrato; o período, a coluna de `aconteceu_em` quando é uma data.
+    "anac_estatistico": Regra(
+        chave=(
+            "competencia",
+            "empresa_sigla",
+            "aeroporto_de_origem_sigla",
+            "aeroporto_de_destino_sigla",
+            "natureza",
+            "grupo_de_voo",
+        ),
+        periodo="competencia",
+        valor="passageiros_pagos",
+    ),
+    "anm_amb_agua_mineral": Regra(chave=("ano", "uf", "substancia")),
+    "anm_amb_producao_beneficiada": Regra(
+        chave=("ano", "uf", "substancia", "contido_indicacao")
+    ),
+    "anm_amb_producao_bruta": Regra(
+        chave=("ano", "uf", "substancia", "contido_indicacao")
+    ),
+    "anp_vendas": Regra(
+        chave=(
+            "competencia",
+            "grupo",
+            "agente",
+            "codigo_do_produto",
+            "uf_origem",
+            "uf_destino",
+            "mercado_destino",
+        ),
+        periodo="competencia",
+        valor="quantidade",
+    ),
+    "antt_siade": Regra(
+        chave=(
+            "competencia",
+            "ferrovia",
+            "mercadoria",
+            "estacao_de_origem",
+            "estacao_de_destino",
+            "visto_em",
+        ),
+        periodo="competencia",
+        valor="toneladas_uteis",
+    ),
+    "area_cafe_municipio": Regra(
+        chave=("codigo", "ano"), periodo="referencia", valor="area_total_ha"
+    ),
+    "bcb_selic_focus": Regra(
+        chave=("serie", "referencia", "divulgado_em"),
+        periodo="referencia",
+        valor="valor",
+    ),
+    "ccee_pld": Regra(
+        chave=("granularidade", "submercado", "referencia", "ordem"),
+        periodo="referencia",
+        valor="pld",
+    ),
+    "cftc_cot_agro": Regra(
+        chave=("relatorio", "contrato"), periodo="relatorio", valor="open_interest"
+    ),
+    "clima_regiao_cafe": Regra(
+        chave=("regiao", "competencia", "fonte"),
+        periodo="competencia",
+        valor="chuva_mm",
+    ),
+    "cnes_competencias": Regra(chave=("competencia",), periodo="competencia"),
+    "comex_cafe": Regra(
+        chave=("competencia", "ncm", "uf_origem", "codigo_do_pais", "divulgado_em"),
+        periodo="competencia",
+        valor="vl_fob_usd",
+    ),
+    "comex_urf": Regra(chave=("urf", "visto_em")),
+    "comex_via": Regra(chave=("via", "visto_em")),
+    "conab_cafe": Regra(
+        chave=("safra", "levantamento", "tipo", "uf", "divulgado_em"),
+        valor="producao_mil_sacas",
+    ),
+    "curva_juros": Regra(
+        chave=("data_base", "curva", "prazo_anos"), periodo="data_base", valor="taxa"
+    ),
+    "faostat_cafe": Regra(
+        chave=("codigo_do_pais", "ano", "elemento", "divulgado_em"), valor="valor"
+    ),
+    "ma_datas": Regra(chave=("assessoria", "url"), periodo="fechamento_em"),
+    "ons_capacidade": Regra(
+        chave=("cod_equipamento", "visto_em"), valor="potencia_efetiva_mw"
+    ),
+    "ons_restricao": Regra(
+        chave=("instante", "tipo", "id_ons", "visto_em"),
+        periodo="instante",
+        valor="geracao_mwmed",
+    ),
+    "usda_psd_cafe": Regra(
+        chave=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"),
+        valor="valor",
+    ),
+    "contraparte_cafe": Regra(chave=("id", "fato", "data"), periodo="data"),
+    "ma_candidatos": Regra(chave=("link",), periodo="referencia"),
+    "ma_regua": Regra(chave=("assessoria", "url"), periodo="fechamento_em"),
+    # integridade (linha 981): sanções da CGU, embargos do IBAMA e Lista Suja do MTE; a chave é a do contrato (uma linha por
+    # valor diferente da fonte, a mudança vira linha nova com outro `visto_em`)
+    "sancoes_cgu": Regra(chave=("cadastro", "id_na_fonte", "visto_em")),
+    "ibama_embargos": Regra(chave=("id_na_fonte", "visto_em")),
+    "mte_lista_suja": Regra(chave=("id_na_fonte", "visto_em")),
+    # conjunto `extended_sources` da frente 3 (ADR 0122, Emenda 2): a chave é a do contrato de cada tabela
+    "anatel_pados": Regra(chave=("id_na_fonte", "visto_em")),
+    "anatel_produtos_homologados": Regra(chave=("id_na_fonte", "visto_em")),
+    "anm_tah": Regra(chave=("id_na_fonte", "visto_em")),
+    "anp_tancagem": Regra(chave=("id_na_fonte", "visto_em")),
+    "mte_pat": Regra(chave=("id_na_fonte", "visto_em")),
+    # setores (linha 978): a ligação das entidades dos reguladores às companhias e os acessos da Anatel.
+    # Medido na base de 19/11/2026 (só contagens): na `empresa_serie`, via e desde só existem na linha ligada a
+    # uma companhia (as 19 ligações do comexstat não trazem `desde`); a chave com `via` e `desde` não repete linha.
+    "empresa_serie": Regra(
+        chave=("fonte", "chave", "cnpj_companhia", "via", "desde"),
+        opcionais={
+            "cnpj_companhia": "toda entidade aparece, ligada ou não: a que nenhuma companhia aberta controla fica sem companhia",
+            "via": "só a linha ligada a uma companhia diz por qual via (própria, controlada, coligada); entidade sem companhia fica sem via",
+            "desde": "só a ligação com companhia tem a data em que apareceu; as 19 ligações do comexstat (produto) não a trazem na fonte",
+        },
+    ),
+    # Na `anatel_acessos` cada planilha (arquivo, serviço e recorte) ou traz uma coluna em todas as linhas ou em
+    # nenhuma (medido: zero planilhas mistas nas 11 colunas): o vazio é do layout da planilha, não de dado perdido.
+    "anatel_acessos": Regra(
+        chave=(
+            "competencia",
+            "servico",
+            "recorte",
+            "cnpj",
+            "uf",
+            "regiao_pgo",
+            "codigo_nacional",
+            "modalidade_de_cobranca",
+            "tecnologia",
+            "geracao",
+            "tipo_de_pessoa",
+            "tipo_de_produto",
+            "faixa_de_velocidade",
+            "meio_de_acesso",
+            "tipo_de_acesso_tv",
+            "visto_em",
+        ),
+        periodo="competencia",
+        valor="acessos",
+        opcionais={
+            coluna: "a Anatel publica uma planilha por serviço e recorte, cada uma com as suas colunas: onde a planilha não tem o campo ele fica vazio em todas as linhas dela"
+            for coluna in (
+                "uf",
+                "regiao_pgo",
+                "codigo_nacional",
+                "modalidade_de_cobranca",
+                "tecnologia",
+                "geracao",
+                "tipo_de_pessoa",
+                "tipo_de_produto",
+                "faixa_de_velocidade",
+                "meio_de_acesso",
+                "tipo_de_acesso_tv",
+            )
+        },
+        saltos_explicados={
+            2007: "a série de banda larga fixa começa em 2007 (319 prestadoras, mediana de 35 acessos contra 92 mil da telefonia móvel): entrou um serviço de escala bem menor",
+            2011: "a banda larga fixa passa de 4 para 12 competências por ano (o recorte mensal), o que quadruplica as linhas sem mudar de fonte; a mediana do conjunto muda porque a banda larga fixa (mediana perto de 45 acessos) passa a pesar mais que a telefonia móvel (perto de 56 mil)",
+        },
+    ),
 }

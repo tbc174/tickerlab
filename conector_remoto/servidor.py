@@ -83,10 +83,15 @@ ORIENTACAO_DO_DOSSIE = (
 # conector. Há teste que cobra toda ferramenta registrada aqui.
 MAPA_DAS_PERGUNTAS = (
     "Qual ferramenta para cada pergunta: quem é uma empresa pelo CNPJ (cadastro na Receita, situação, "
-    "abertura, CNAE, porte e, se for companhia aberta, os prazos de DFP e ITR): `ficha_da_empresa`. Empresas "
+    "abertura, CNAE, porte e, se for companhia aberta, os prazos de DFP e ITR): `ficha_da_empresa`. A análise "
+    "completa de um CNPJ num pedido só (cadastro, sócios pessoa jurídica, vínculos, eventos, crédito, ativos e "
+    "comparáveis que a chave vê, com a linha do tempo, as leituras e o que não foi achado): `analise_completa`; "
+    "as ferramentas de cada bloco trazem o resto das listas cortadas. Empresas "
     "de um setor (CNAE) numa UF ou município, por porte, idade ou só matrizes: `buscar_empresas`. "
     "Demonstrações (DFP e ITR) de companhia aberta: `demonstracoes`. Comparáveis de companhia aberta, "
     "com a mediana dos pares: `comparaveis`. Controladas, coligadas, participadas e auditor: `vinculos`. "
+    "Os sócios pessoa física e o titular do MEI (nome, qualificação e data de entrada), só para a "
+    "organização com essa permissão: `socios_e_donos`. "
     "Ativos físicos da empresa nas bases das agências (hoje, os contratos de exploração e produção de "
     "petróleo e gás da ANP): `ativos`. "
     "Documentos entregues à CVM e trocas de auditor: `eventos`. Quem já se mexeu num setor (empresas e "
@@ -94,12 +99,15 @@ MAPA_DAS_PERGUNTAS = (
     "intenção de compra): `compradores_do_setor`. Um fundo pelo CNPJ dele: "
     "`fundo`. Setores, concentração e participação de cada empresa: `setores` e `setor`. Fontes novas "
     "que a pesquisa provou na semana: `novidades`. O que a chave pode ver e o consumo do mês: "
-    "`o_que_posso_ver`. Ferramenta que não aparece na lista é de um conjunto que a chave não vê: diga "
+    "`o_que_posso_ver`. Os fatos de crédito de uma empresa (situação na Receita, fatos relevantes e cessão a "
+    "FIDC, sem rating nem elegibilidade): `credito_da_empresa`. O que mudou numa empresa desde um dia (cadastro, vínculos e eventos, o antes e o "
+    "depois): `o_que_mudou`. As fichas de 2 a 5 empresas lado a lado: `comparar_empresas`. De onde vem um conjunto ou um campo (fonte, licença e marca de piloto): `de_onde_vem`. Ferramenta que não aparece na lista é de um conjunto que a chave não vê: diga "
     "isso ao analista, sem estimar a resposta. "
 )
 LACUNAS = (
     "O que a base não tem: faturamento de empresa fechada (só companhia aberta tem demonstrações; diga a "
-    "lacuna, nunca estime) e dado de pessoa física (sócio pessoa física, CPF, contato). "
+    "lacuna, nunca estime) e, de pessoa física, nada além do que `socios_e_donos` traz (nunca CPF, data de "
+    "nascimento, endereço ou contato da pessoa). "
 )
 INSTRUCOES = (
     "TickerLab: dados públicos de empresas brasileiras (pessoa jurídica) para a análise de M&A. "
@@ -247,7 +255,7 @@ def criar_servidor(
             validate_token_resource=True,
         ),
     )
-    registrar_ferramentas(servidor, cliente)
+    registrar_ferramentas(servidor, cliente, com_proximo_passo=True)
     registrar_prompts(servidor, ORIENTACAO_DO_DOSSIE)
 
     @servidor.custom_route("/saude", methods=["GET"])

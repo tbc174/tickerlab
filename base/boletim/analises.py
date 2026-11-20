@@ -233,7 +233,7 @@ def pgfn(ctx: Contexto) -> Secao:
         "pgfn_divida",
         "SELECT tipo_divida, sum(inscricoes) AS inscricoes, sum(valor_consolidado) AS valor_consolidado, "
         "sum(CASE WHEN ajuizado THEN valor_consolidado ELSE 0 END) AS valor_ajuizado "
-        f"FROM {{t}} WHERE NOT coalesce(trata_como_pessoa, false) {so_o_retrato} "
+        f"FROM {{t}} WHERE NOT coalesce(trata_como_pessoa, true) {so_o_retrato} "
         "GROUP BY tipo_divida ORDER BY valor_consolidado DESC",
         {"origens": origens} if so_o_retrato else None,
     ).set_index("tipo_divida")  # fmt: skip

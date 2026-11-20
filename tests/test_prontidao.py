@@ -388,7 +388,11 @@ def test_tabela_de_pessoa_nunca_tem_a_marca_decidida() -> None:
     )
     com_pessoa = {nome for nome, tabela in TABELAS.items() if tabela.pessoa}
     assert com_pessoa
-    assert not com_pessoa & prontidao.tabelas_com_pessoa_decidida()
+    # só a cópia reduzida só-PJ do D11.4 (Emenda 3) abre, e `test_prontidao_integridade_da_linha_981.py` a cobra
+    assert (
+        not (com_pessoa - prontidao.COPIA_REDUZIDA_SO_PJ)
+        & prontidao.tabelas_com_pessoa_decidida()
+    )
 
 
 def test_tabela_com_cnpj_precisa_da_marca_por_linha() -> None:
@@ -433,7 +437,15 @@ def test_as_regras_da_marca_sao_as_do_teste_da_porta() -> None:
     assert prontidao.COLUNA_DE_CNPJ.pattern == porta.COLUNA_DE_CNPJ.pattern
     assert prontidao.COLUNA_DE_CNPJ.flags == porta.COLUNA_DE_CNPJ.flags
     assert prontidao.COLUNA_DE_CNPJ.search("CNPJ_Fundo")
-    assert not porta.AINDA_SEM_A_MARCA & prontidao.tabelas_com_pessoa_decidida()
+    # a tabela inteira de casa segue sem a marca; só a cópia reduzida pela raiz (degrau 7, `recorte_dos_setores`) conta
+    # como decidida, e só no piloto: nada mais do inventário pode entrar
+    decididas_sem_a_marca = (
+        porta.AINDA_SEM_A_MARCA & prontidao.tabelas_com_pessoa_decidida()
+    )
+    assert (
+        decididas_sem_a_marca
+        == prontidao.COPIA_REDUZIDA_PELA_RAIZ & porta.AINDA_SEM_A_MARCA
+    )
 
 
 def test_pessoa_tirada_na_rota_nao_basta() -> None:
