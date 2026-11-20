@@ -2564,6 +2564,17 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2026-11-04",
+      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "modulos": [
@@ -2593,17 +2604,6 @@
         "governo_e_sancoes"
       ],
       "orgao": "Anvisa",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
-      "historico_desde": "2026-11-04",
-      "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Ministério da Saúde (DATASUS)",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2942,7 +2942,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 25,
-    "tabelas": 133,
+    "tabelas": 134,
     "temas": [
       {
         "chave": "cvm",
@@ -3044,6 +3044,15 @@
         "titulo": "Licenças e registros nas agências"
       },
       {
+        "chave": "saude",
+        "orgaos": [
+          "Ministério da Saúde (DATASUS)"
+        ],
+        "tabelas": 1,
+        "texto": "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês a mês, nos dados abertos do DATASUS, sem nada do paciente. Hoje estão montadas 1 de 2 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "titulo": "Atendimento pelo SUS"
+      },
+      {
         "chave": "dinheiro_publico",
         "orgaos": [
           "BNDES",
@@ -3130,7 +3139,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 45
+      "tabelas": 46
     },
     {
       "chave": "credito_e_fidc",
@@ -8785,6 +8794,17 @@
       "tabela": "cnes_competencias"
     },
     {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Internações do SUS por estabelecimento e mês (SIH, AIH reduzida), com o CNPJ do estabelecimento e o da mantenedora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Ministério da Saúde (DATASUS)",
+      "situacao": "licenciada",
+      "tabela": "sus_internacoes"
+    },
+    {
       "atraso": "A linha vale desde a data em que a ANM a criou",
       "consultavel": true,
       "frase": "CFEM (royalty da mineração) recolhida por titular do processo, substância e município.",
@@ -9209,7 +9229,7 @@
     "fontes": 46,
     "fontes_em_consulta": 11,
     "modulos": 6,
-    "tabelas": 164,
+    "tabelas": 165,
     "tabelas_conferidas_em_curto": "20/11"
   }
 }
