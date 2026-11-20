@@ -4,7 +4,8 @@
 
 Roda os pares de `base/cruzada_por_taxa.py` (UF contra ANATEL, ANVISA, ANCINE e IF.data; situação contra o
 IF.data; razão social contra a CVM e o IF.data), todos pela porta. Grava `<acervo>/placar/<dia>/cruzada_receita.json`
-(só nomes de par, contagens, taxa, piso e causas: nenhum CNPJ nem nome) e, ao lado, 50 divergências de cada par
+(só nomes de par, contagens, taxa, piso e causas: nenhum CNPJ nem nome; rodada com `--par` grava `parcial: true`
+e nunca `aprovado`) e, ao lado, 50 divergências de cada par
 em `amostra_receita/` para uma pessoa conferir; essa amostra tem CNPJ e fica no acervo, nunca no repositório.
 Sai com 1 se algum par ficou abaixo do piso, e com 2 se alguma causa "não explicado" passou do máximo (avisar a
 Diretoria antes de gravar a prontidão).
@@ -244,7 +245,10 @@ def conferir(
 
 
 def gravar(
-    dia: str, relatorios: list[RelatorioPorTaxa], amostras: dict[str, pd.DataFrame]
+    dia: str,
+    relatorios: list[RelatorioPorTaxa],
+    amostras: dict[str, pd.DataFrame],
+    parcial: bool = False,
 ) -> Path:
     raiz = acervo.pasta_do_acervo()
     if raiz is None:
@@ -259,10 +263,17 @@ def gravar(
             pasta / "amostra_receita" / f"{nome}.csv",
             lambda t, c=csv: t.write_text(c, encoding="utf-8"),
         )
+    # Rodada parcial (`--par`) só olhou parte dos pares: não pode gravar "aprovado", que vale para a prova
+    # inteira (com só o par informativo, `all([])` daria verdadeiro).
+    veredito: dict[str, bool] = (
+        {"parcial": True}
+        if parcial
+        else {"aprovado": all(r.aprovado for r in relatorios if not r.informativo)}
+    )
     texto = json.dumps(
         {
             "dia": dia,
-            "aprovado": all(r.aprovado for r in relatorios if not r.informativo),
+            **veredito,
             "avisa_a_diretoria": any(
                 r.avisa_a_diretoria for r in relatorios if not r.informativo
             ),
@@ -303,7 +314,9 @@ def main(argv: list[str] | None = None) -> int:
                         else ""
                     )
                 )
-    print(f"gravado em {gravar(agora.date().isoformat(), relatorios, amostras)}")
+    print(
+        f"gravado em {gravar(agora.date().isoformat(), relatorios, amostras, parcial=bool(args.par))}"
+    )
     valem = [r for r in relatorios if not r.informativo]
     if not all(r.aprovado for r in valem):
         return 1
