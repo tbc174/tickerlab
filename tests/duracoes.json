@@ -327,6 +327,7 @@
  "tests/test_compartilhar_no_app.py": 13.3,
  "tests/test_comps_por_transacao.py": 7.3,
  "tests/test_concentracao.py": 0.9,
+ "tests/test_conector_ativos_e_o_que_mudou_grandes.py": 12.0,
  "tests/test_conector_resposta_grande.py": 45.0,
  "tests/test_conferencia_cruzada_modelo_8.py": 0.0,
  "tests/test_conferencia_processos.py": 0.2,
