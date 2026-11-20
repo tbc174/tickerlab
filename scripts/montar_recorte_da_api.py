@@ -5,7 +5,7 @@ O contêiner `tickerlab-api` de produção não tinha `<acervo>/base`: sem ela a
 serve**, em degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
 aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843; `--degrau 4`: mais as cópias reduzidas
 da lista de compradores, linha 844; `--degrau 5`: mais as cópias reduzidas dos cinco cadastros, linha 915;
-`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904; `--degrau 7`: mais as cópias reduzidas dos setores, linha 978), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
+`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904; `--degrau 7`: mais as cópias reduzidas dos setores, linha 978; `--degrau 8`: mais as quatro fontes ampliadas, linha 978), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
 
 Lista de permissão (Diretoria, 10/11/2026, ADR 0101 Emenda 4): só vai a tabela escrita em `DEGRAU_1` ou
 `DEGRAU_2_ACRESCENTA`, e só a coluna que o dicionário (`base/dicionario.py`) conhece, menos as
@@ -41,6 +41,14 @@ pelo filtro e pela trava de `base/recorte_dos_setores.py` (só entidade de pesso
 saída, sem linha sem documento e sem nome). A tabela inteira segue em casa. O degrau 7 é o 6 mais as duas: o recebedor do
 VPS troca a `base/` inteira, então o cron noturno (degrau 6) não as leva; o envio do degrau 7 pede o pode da Diretoria.
 
+As quatro fontes ampliadas (`anatel_pados`, `anatel_produtos_homologados`, `anp_tancagem` e `mte_pat`, linha 978) têm
+CNPJ de 14 dígitos em toda linha e a marca `trata_como_pessoa` (titular de MEI ou de empresário individual). Vão no
+degrau 8 (o 7 mais as quatro), pelo mesmo filtro e pela mesma trava dos cadastros (`base/recorte_dos_cadastros.py`:
+só a linha sem a marca, só raiz da `cnpj_empresas_pj` da mesma saída, sem nome nem texto livre com CPF ou e-mail);
+o nome comercial do produto da Anatel fica em casa. Como o recebedor troca a `base/` inteira, quem envia o degrau 8
+leva junto o 7 e o 6; o envio pede o pode da Diretoria com as contagens.
+
+
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
     python -m scripts.montar_recorte_da_api --degrau 3 --base <acervo>/base --saida /tmp/base-api-rede
@@ -48,6 +56,7 @@ VPS troca a `base/` inteira, então o cron noturno (degrau 6) não as leva; o en
     python -m scripts.montar_recorte_da_api --degrau 5 --base <acervo>/base --saida /tmp/base-api-cadastros
     python -m scripts.montar_recorte_da_api --degrau 6 --base <acervo>/base --saida /tmp/base-api-lotes
     python -m scripts.montar_recorte_da_api --degrau 7 --base <acervo>/base --saida /tmp/base-api-setores
+    python -m scripts.montar_recorte_da_api --degrau 8 --base <acervo>/base --saida /tmp/base-api-ampliadas
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -143,11 +152,9 @@ FICAM_EM_CASA = (
     # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem; o envio ao VPS pede o "pode"
     # da Diretoria com a prova de zero pessoa da 1ª carga (quatro delas com a licença a confirmar)
     "receita_regime_tributario",
-    "mte_pat",
     "anm_tah",
-    "anatel_pados",
-    "anatel_produtos_homologados",
-    "anp_tancagem",
+    # (`mte_pat`, `anatel_pados`, `anatel_produtos_homologados` e `anp_tancagem` vão ao VPS só em cópia reduzida, pelo
+    # degrau 8, `AMPLIADAS`, linha 978.)
     # conferência de 19/11: SICAF e Banco de Preços em Saúde; o envio ao VPS pede o "pode" da Diretoria com a
     # prova de zero pessoa da 1ª carga (a licença do BPS está a confirmar)
     "comprasgov_sicaf",
@@ -217,11 +224,14 @@ REDUZIDAS = recorte_dos_compradores.REDUZIDAS
 # As cópias reduzidas dos cinco cadastros em retrato (linha 915): só no degrau 5, pelo filtro e pela trava de
 # `base/recorte_dos_cadastros.py`, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
 CADASTROS = recorte_dos_cadastros.CADASTROS
+# As quatro fontes ampliadas (Anatel PADOs e homologados, ANP tancagem e PAT do MTE; linha 978): só no degrau 8, pelo
+# mesmo filtro e pela mesma trava dos cadastros, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
+AMPLIADAS = recorte_dos_cadastros.AMPLIADAS
 # As cópias reduzidas dos setores (linha 978: a ligação das entidades às companhias e os acessos da Anatel): só no degrau 7,
 # pelo filtro e pela trava de `base/recorte_dos_setores.py`, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
 SETORES = recorte_dos_setores.SETORES
 # o que tem filtro e trava próprios (não passa pela cópia por arquivo)
-COM_FILTRO_PROPRIO = (*REDE_SO_PJ, *REDUZIDAS, *CADASTROS, *SETORES)
+COM_FILTRO_PROPRIO = (*REDE_SO_PJ, *REDUZIDAS, *CADASTROS, *SETORES, *AMPLIADAS)
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
 SUFIXO_DO_MANIFESTO = ".json"
@@ -262,7 +272,9 @@ def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
         return (*tabelas_do_degrau(5), *LOTE_1_DAS_300)
     if degrau == 7:
         return (*tabelas_do_degrau(6), *SETORES)
-    raise RecorteErro(f"degrau {degrau} não existe (1 a 7)")
+    if degrau == 8:
+        return (*tabelas_do_degrau(7), *AMPLIADAS)
+    raise RecorteErro(f"degrau {degrau} não existe (1 a 8)")
 
 
 def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
@@ -279,6 +291,10 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
         if nome in CADASTROS:
             raise RecorteErro(
                 f"{nome}: o cadastro só vai pelo degrau 5, com o filtro e a trava"
+            )
+        if nome in AMPLIADAS:
+            raise RecorteErro(
+                f"{nome}: a cópia reduzida das fontes ampliadas só vai pelo degrau 8, com o filtro e a trava"
             )
         if nome in SETORES:
             raise RecorteErro(
@@ -699,7 +715,7 @@ def montar_cadastros(
     mesmo caminho relativo (a API lê a tabela pelo nome); cadastro sem arquivo na base derruba o envio."""
     if "cnpj_empresas_pj" not in tabelas:
         raise RecorteErro("os cadastros só vão junto com cnpj_empresas_pj")
-    nomes = tuple(t for t in CADASTROS if t in tabelas)
+    nomes = tuple(t for t in (*CADASTROS, *AMPLIADAS) if t in tabelas)
     empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
     origem = {nome: _origem_do_cadastro(base, nome) for nome in nomes}
     destinos: dict[str, list[Path]] = {}
@@ -805,7 +821,7 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     rede = tuple(t for t in tabelas if t in REDE_SO_PJ)
     reduzidas = tuple(t for t in tabelas if t in REDUZIDAS)
-    cadastros = tuple(t for t in tabelas if t in CADASTROS)
+    cadastros = tuple(t for t in tabelas if t in (*CADASTROS, *AMPLIADAS))
     setores = tuple(t for t in tabelas if t in SETORES)
     tabelas_por_arquivo = tuple(t for t in tabelas if t not in COM_FILTRO_PROPRIO)
     conferir_a_lista(tabelas_por_arquivo)
@@ -888,7 +904,9 @@ def comando_ssh_padrao() -> list[str]:
 
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Recorte da base para o VPS (linha 739)")
-    p.add_argument("--degrau", type=int, choices=(1, 2, 3, 4, 5, 6, 7), required=True)
+    p.add_argument(
+        "--degrau", type=int, choices=(1, 2, 3, 4, 5, 6, 7, 8), required=True
+    )
     p.add_argument(
         "--base", type=Path, help="<acervo>/base (padrão: o acervo do ambiente)"
     )
@@ -905,7 +923,7 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
 
 def obrigatorias_sem_arquivo(resultados: list[Resultado]) -> list[str]:
     """As tabelas que não podem sair sem arquivo: o núcleo e o lote 1 das 300 (sem elas a montagem falha)."""
-    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300, *SETORES)
+    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300, *SETORES, *AMPLIADAS)
     return [
         r.tabela for r in resultados if r.arquivos == 0 and r.tabela in obrigatorias
     ]

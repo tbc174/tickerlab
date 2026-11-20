@@ -2,6 +2,7 @@
 // contagens e só pessoa jurídica (MEI e empresário individual não entram, dito à vista). Bloco que o portão não
 // libera diz "Não consultado", nunca zero. O CNAE vai no corpo do POST, nunca no endereço.
 import { Link } from "react-router";
+import { rotuloDoSetor } from "../buscaDeCnaes";
 import { Carregando } from "../pecas/Carregando";
 import { CartaoDeNumero } from "../pecas/CartaoDeNumero";
 import { Erro } from "../pecas/Erro";
@@ -72,7 +73,13 @@ function Barras({ itens }: { itens: AberturasPorAnoV1[] }) {
   );
 }
 
-function Numeros({ dados, cnae, uf }: { dados: PerfilDoSetorV1; cnae: string; uf: string | null }) {
+interface Propriedades {
+  cnae: string;
+  uf: string | null;
+  nome?: string | null; // o nome da atividade, quando a tela já tem a lista do CNAE
+}
+
+function Numeros({ dados, cnae, uf, nome }: Propriedades & { dados: PerfilDoSetorV1 }) {
   if (dados.estado === "nao_liberada") {
     return <Vazio frase="Os números deste setor ainda não foram liberados nesta base. Isto não quer dizer que ele não tenha empresas." />;
   }
@@ -80,7 +87,7 @@ function Numeros({ dados, cnae, uf }: { dados: PerfilDoSetorV1; cnae: string; uf
   const fonte = <Fonte nome="Receita Federal (cadastro do CNPJ)" data={retrato} />;
   return (
     <section className="secao-do-relatorio" aria-labelledby="numeros-do-setor">
-      <h2 id="numeros-do-setor">Números do setor (CNAE {dados.cnae_principal})</h2>
+      <h2 id="numeros-do-setor">Números do setor: {rotuloDoSetor(dados.cnae_principal ?? cnae, nome ?? null)}</h2>
       <div className="numeros">
         <CartaoDeNumero
           rotulo="Empresas ativas"
@@ -138,9 +145,9 @@ function Numeros({ dados, cnae, uf }: { dados: PerfilDoSetorV1; cnae: string; uf
   );
 }
 
-export function NumerosDoSetor({ cnae, uf }: { cnae: string; uf: string | null }) {
+export function NumerosDoSetor({ cnae, uf, nome }: Propriedades) {
   const pedido = usarPedido<PerfilDoSetorV1>(ROTA, {}, { cnae });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Contando as empresas do setor…" />;
   if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
-  return <Numeros dados={pedido.dados} cnae={cnae} uf={uf} />;
+  return <Numeros dados={pedido.dados} cnae={cnae} uf={uf} nome={nome} />;
 }

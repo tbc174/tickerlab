@@ -1730,7 +1730,7 @@
       "orgao": "SEFAZ-PE (Secretaria da Fazenda de Pernambuco)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-05",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -1775,7 +1775,7 @@
       "orgao": "Governo do Espírito Santo (dados abertos)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-06",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2553,6 +2553,17 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2026-10-29",
+      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "MAPA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "modulos": [
@@ -2587,23 +2598,23 @@
       "tabelas": 2
     },
     {
-      "historico_desde": "2026-10-29",
-      "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "MAPA",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 2
-    },
-    {
       "historico_desde": "2026-11-04",
       "licenca": "CNES do Ministério da Saúde: uso comercial liberado (LAI, 05/11/2026); citar",
       "modulos": [
         "governo_e_sancoes"
       ],
       "orgao": "Ministério da Saúde (DATASUS)",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-11-05",
+      "licenca": "CC BY, SEFAZ-PE (citar a fonte). Só CNPJ, sem a razão social",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "SEFAZ-PE",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
@@ -2775,6 +2786,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-06",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Governo do ES",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "modulos": [
@@ -2908,8 +2930,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 23,
-    "tabelas": 127,
+    "orgaos": 25,
+    "tabelas": 131,
     "temas": [
       {
         "chave": "cvm",
@@ -3006,8 +3028,8 @@
           "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 29,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 29 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 30,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 30 de 31 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3017,10 +3039,12 @@
           "Finep",
           "MME",
           "ANEEL",
-          "Banco Central"
+          "Banco Central",
+          "SEFAZ-PE",
+          "Governo do ES"
         ],
-        "tabelas": 5,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 5 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 8,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 8 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -3094,7 +3118,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 39
+      "tabelas": 43
     },
     {
       "chave": "credito_e_fidc",
@@ -8144,6 +8168,17 @@
       "tabela": "sigsif_habilitados"
     },
     {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Quem tem registro no Serviço de Inspeção Federal (SIF) do Ministério da Agricultura, em que município e categoria: uma linha por CNPJ, número do SIF, área, categoria e município.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-02",
+      "modulo": "governo_e_sancoes",
+      "orgao": "MAPA",
+      "situacao": "licenciada",
+      "tabela": "sigsif_estabelecimentos"
+    },
+    {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
       "consultavel": true,
       "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
@@ -8278,6 +8313,17 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Benefícios fiscais estaduais de Pernambuco (SEFAZ-PE: PRODEPE, PEAP, máquinas pesadas...) por CNPJ, com o CACEPE e o prazo de cada um.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-05",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEFAZ-PE",
+      "situacao": "licenciada",
+      "tabela": "sefaz_pe_beneficios"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Débitos inscritos em dívida ativa no Paraná (Sefa-PR: ICMS, IPVA, taxas...) por CNPJ, com o valor, a data da inscrição, a suspensão, a garantia e o parcelamento.",
       "frequencia": "Semanal",
       "historico_desde": "2026-11-06",
@@ -8285,6 +8331,28 @@
       "orgao": "Sefa-PR",
       "situacao": "licenciada",
       "tabela": "sefa_pr_divida_ativa"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Pagamentos do governo de Pernambuco a fornecedores, por CNPJ, com a unidade gestora, o empenho, o dia da liquidação, o dia do pagamento e o valor pago.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "SEFAZ-PE",
+      "situacao": "licenciada",
+      "tabela": "sefaz_pe_ordem_cronologica"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Pagamentos do governo do Espírito Santo a fornecedores, por CNPJ, com a unidade gestora, o empenho, a nota de liquidação, o dia da liquidação, o dia da ordem bancária e o valor pago.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-06",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do ES",
+      "situacao": "licenciada",
+      "tabela": "es_ordem_cronologica"
     },
     {
       "atraso": null,
@@ -9103,11 +9171,11 @@
   ],
   "totais": {
     "familias": 134,
-    "familias_em_uso": 44,
-    "fontes": 43,
+    "familias_em_uso": 46,
+    "fontes": 45,
     "fontes_em_consulta": 11,
     "modulos": 6,
-    "tabelas": 158,
+    "tabelas": 162,
     "tabelas_conferidas_em_curto": "19/11"
   }
 }

@@ -9,6 +9,7 @@ conjunto (`CONJUNTOS_DA_FERRAMENTA`, em `ferramentas.py`, onde ficam também os 
 import asyncio
 import dataclasses
 import json
+import re
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
 from typing import Annotated
@@ -22,6 +23,7 @@ from conector_remoto.cliente_api import ParametroDaApi, RespostaDaApi
 from conector_remoto.ferramentas import (
     SO_LEITURA,
     STATUS_NAO_DISPONIVEL,
+    STATUS_OK,
     TITULOS_DAS_FERRAMENTAS,
     Cnpj,
     ComoEraEm,
@@ -45,6 +47,8 @@ def registrar(servidor: MCPServer, pedidos: Pedidos) -> None:
     """Põe as ferramentas do analista no servidor (chamada por `registrar_ferramentas`)."""
     _registrar_credito(servidor, pedidos)
     _registrar_o_que_mudou(servidor, pedidos)
+    _registrar_comparar_empresas(servidor, pedidos)
+    _registrar_de_onde_vem(servidor, pedidos)
 
 
 def _registrar_credito(servidor: MCPServer, pedidos: Pedidos) -> None:
@@ -527,4 +531,345 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
                     pedidos.entregar(resposta, "o_que_mudou")
         return pedidos.entregar(
             RespostaDaApi(200, _montar_a_saida(numeros, desde, blocos)), "o_que_mudou"
+        )
+
+
+# ---------------------------------------------------------------- comparar_empresas
+#
+# A ficha de 2 a 5 empresas lado a lado: uma linha por campo, uma coluna por empresa (a chave é o CNPJ). É o
+# mesmo pedido de `ficha_da_empresa` repetido por empresa, sem rota nova e com o mesmo conjunto.
+
+MINIMO_DE_EMPRESAS = 2
+MAXIMO_DE_EMPRESAS = 5
+MAXIMO_DE_ENTREGAS = 8  # por empresa: as mais novas; o histórico inteiro de 5 companhias passaria do teto
+CELULA_SEM_DADO = "não disponível"
+AVISO_DA_COMPARACAO = {
+    "code": "comparar_empresas",
+    "text": (
+        f"Cada coluna é a ficha de uma empresa. `{CELULA_SEM_DADO}` quer dizer que a base não tem aquele campo "
+        "para ela, não que o valor seja zero; a empresa que a base não serve vem em `not_available`. Cada empresa "
+        f"mostra as {MAXIMO_DE_ENTREGAS} entregas mais novas (`filings_cut` diz quantas a base tem). "
+        "`unavailable_filings` e `unavailable_registration_fields` dizem o que a chave não consultou de cada "
+        "empresa: a lista que falta ali não quer dizer que a empresa não entregou."
+    ),
+}
+
+
+def _cnpjs_do_pedido(textos: list[str]) -> list[str]:
+    """Os CNPJs pedidos, só números, sem repetir; `ToolError` se são menos de 2, mais de 5 ou algum não é CNPJ."""
+    if not MINIMO_DE_EMPRESAS <= len(textos) <= MAXIMO_DE_EMPRESAS:
+        raise ToolError(
+            f"Compare de {MINIMO_DE_EMPRESAS} a {MAXIMO_DE_EMPRESAS} empresas por vez: vieram {len(textos)}. "
+            "Para mais, divida em duas comparações ou use `buscar_empresas`."
+        )
+    numeros = [cnpj_do_pedido(t) for t in textos]
+    if len(set(numeros)) != len(numeros):
+        raise ToolError("Há CNPJ repetido na lista: cada empresa entra uma vez.")
+    return numeros
+
+
+def _entregas(corpo: object) -> list[dict] | str:
+    """As entregas mais novas (até `MAXIMO_DE_ENTREGAS`, pelo período); a célula sem dado se a API não as consultou.
+    A API só manda `periodic_filings` quando consultou algum documento: lista que falta não é lista vazia."""
+    if not isinstance(corpo, dict) or not isinstance(
+        corpo.get("periodic_filings"), list
+    ):
+        return CELULA_SEM_DADO
+    todas = _itens(corpo, "periodic_filings")
+    return sorted(todas, key=_periodo_da_entrega, reverse=True)[:MAXIMO_DE_ENTREGAS]
+
+
+def _periodo_da_entrega(entrega: dict) -> str:
+    periodo = entrega.get("reference_period")
+    valor = periodo.get("value") if isinstance(periodo, dict) else None
+    return valor if isinstance(valor, str) else ""
+
+
+def _quantas_entregas(corpo: object) -> int:
+    lista = corpo.get("periodic_filings") if isinstance(corpo, dict) else None
+    return len(lista) if isinstance(lista, list) else 0
+
+
+def _avisos_por_empresa(
+    ok: dict[str, RespostaDaApi], chave: str
+) -> dict[str, list[object]]:
+    """O que a API disse que não consultou (`chave`), só das empresas em que ela disse alguma coisa."""
+    avisos: dict[str, list[object]] = {}
+    for cnpj, resposta in ok.items():
+        lista = resposta.corpo.get(chave) if isinstance(resposta.corpo, dict) else None
+        if isinstance(lista, list) and lista:
+            avisos[cnpj] = lista
+    return avisos
+
+
+def _tabela_de_campos(fichas: dict[str, Retrato | None]) -> list[dict[str, object]]:
+    """Uma linha por campo (em ordem alfabética), com o envelope de cada empresa ou a célula sem dado."""
+    campos = sorted({c for r in fichas.values() if r for c in r.folhas})
+    return [
+        {
+            "field": campo,
+            "values": {
+                cnpj: (retrato.folhas.get(campo) if retrato else None)
+                or CELULA_SEM_DADO
+                for cnpj, retrato in fichas.items()
+            },
+        }
+        for campo in campos
+    ]
+
+
+def _montar_a_comparacao(respostas: dict[str, RespostaDaApi]) -> dict[str, object]:
+    """A tabela da comparação. Resposta 404 é coluna sem dado; qualquer outra que não seja 200 já parou antes."""
+    ok = {cnpj: r for cnpj, r in respostas.items() if r.ok}
+    if not ok:
+        raise ToolError(
+            mensagem_do_erro(
+                RespostaDaApi(STATUS_NAO_DISPONIVEL, {"detail": MOTIVO_NAO_DISPONIVEL})
+            )
+        )
+    fichas: dict[str, Retrato | None] = {
+        cnpj: _retrato("registration", r.corpo) if r.ok else None
+        for cnpj, r in respostas.items()
+    }
+    corpos = [r.corpo for r in ok.values()]
+    saida: dict[str, object] = {
+        "cnpjs": list(respostas),
+        "fields": _tabela_de_campos(fichas),
+        "periodic_filings": {
+            cnpj: _entregas(r.corpo) if r.ok else CELULA_SEM_DADO
+            for cnpj, r in respostas.items()
+        },
+        "not_available": [cnpj for cnpj, r in respostas.items() if not r.ok],
+        "limits": [*_juntar_sem_repetir(corpos, "limits"), AVISO_DA_COMPARACAO],
+        "sources": _juntar_sem_repetir(corpos, "sources"),
+    }
+    cortadas = {
+        cnpj: _quantas_entregas(r.corpo)
+        for cnpj, r in ok.items()
+        if _quantas_entregas(r.corpo) > MAXIMO_DE_ENTREGAS
+    }
+    if cortadas:
+        saida["filings_cut"] = cortadas
+    for chave in ("unavailable_filings", "unavailable_registration_fields"):
+        if avisos := _avisos_por_empresa(ok, chave):
+            saida[chave] = avisos
+    return saida
+
+
+def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A ficha de 2 a 5 empresas lado a lado."""
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["comparar_empresas"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def comparar_empresas(
+        cnpjs: Annotated[
+            list[Annotated[str, Field(max_length=40)]],
+            Field(
+                description=(
+                    f"De {MINIMO_DE_EMPRESAS} a {MAXIMO_DE_EMPRESAS} CNPJs (14 caracteres; com ou sem "
+                    "pontuação). Só pessoa jurídica."
+                )
+            ),
+        ],
+    ) -> str:
+        """A ficha de 2 a 5 empresas lado a lado: uma linha por campo do cadastro na Receita (razão social,
+        situação, abertura, CNAE, natureza jurídica, Simples) e uma coluna por empresa, mais as entregas
+        de DFP e ITR à CVM de cada uma, cada valor com a fonte e o dia em que ficou público. O que a base não
+        tem de uma empresa vem como `não disponível`, nunca como zero. Serve para pôr lado a lado empresas que
+        o analista já escolheu, antes de uma reunião ou de uma lista curta.
+        Fonte: cadastro CNPJ da Receita Federal; entregas de DFP e ITR à CVM.
+        Não traz: porte, sócio pessoa física, contato nem endereço, faturamento de empresa fechada, nota nem
+        ordenação das empresas nem opinião sobre elas."""
+        numeros = _cnpjs_do_pedido(cnpjs)
+        acesso = acesso_do_pedido()
+        conjuntos = acesso.conjuntos if acesso else frozenset()
+        # as fichas correm juntas: a espera é a de um pedido, não a soma de cinco
+        resultados = await asyncio.gather(
+            *(_buscar(pedidos, "registration", n, None, conjuntos) for n in numeros),
+            return_exceptions=True,
+        )
+        for resultado in resultados:
+            if isinstance(resultado, BaseException):
+                raise resultado
+        respostas = dict(
+            zip(
+                numeros,
+                (r for r in resultados if isinstance(r, RespostaDaApi)),
+                strict=True,
+            )
+        )
+        for resposta in respostas.values():
+            if not resposta.ok and resposta.status != STATUS_NAO_DISPONIVEL:
+                raise ToolError(mensagem_do_erro(resposta))
+        for resposta in respostas.values():  # a tranca vê cada resposta crua
+            if resposta.ok:
+                pedidos.entregar(resposta, "comparar_empresas")
+        return pedidos.entregar(
+            RespostaDaApi(200, _montar_a_comparacao(respostas)), "comparar_empresas"
+        )
+
+
+# ---------------------------------------------------------------- de_onde_vem
+#
+# Explica um conjunto ou um campo pelo catálogo que a chave já lê (`/catalog`, o mesmo de `o_que_posso_ver`):
+# a fonte, a licença, a atribuição e a marca de piloto de cada campo. Não pede dado de empresa.
+
+PERGUNTA_VALIDA = re.compile(r"[a-z0-9_]{1,80}")
+MAXIMO_DE_ACHADOS = 50
+LIMITE_DO_CATALOGO = (
+    "O catálogo da chave traz o conjunto, o campo, a fonte, a licença e a marca de piloto; não traz o "
+    "significado de cada campo nem o dia do retrato (o dia de cada valor vem em `published_at`, na resposta "
+    "do dado)."
+)
+
+
+def _pergunta(texto: str) -> str:
+    """O nome pedido, em minúsculas e sem espaço nas pontas; `ToolError` se não é nome de conjunto ou campo."""
+    pergunta = texto.strip().lower()
+    if not PERGUNTA_VALIDA.fullmatch(pergunta):
+        raise ToolError(
+            "Diga o nome de um conjunto ou de um campo, só com letras, números e `_`, como `credit` ou "
+            "`legal_name`. A lista do que a sua chave vê está em `o_que_posso_ver`."
+        )
+    return pergunta
+
+
+def _campos_do_conjunto(conjunto: dict) -> list[dict]:
+    campos = conjunto.get("fields")
+    return (
+        [c for c in campos if isinstance(c, dict)] if isinstance(campos, list) else []
+    )
+
+
+def _campo_enxuto(campo: dict) -> dict[str, object]:
+    enxuto: dict[str, object] = {
+        "field": campo.get("field"),
+        "source": campo.get("source"),
+    }
+    if campo.get("pilot") is True:
+        enxuto["pilot"] = True
+    return enxuto
+
+
+def _achados(corpo: object, pergunta: str) -> tuple[str, list[dict[str, object]]]:
+    """Os conjuntos de nome `pergunta` ou, se não há, os campos de nome `pergunta`, cada um com o conjunto."""
+    lista = corpo.get("datasets") if isinstance(corpo, dict) else None
+    conjuntos = (
+        [c for c in lista if isinstance(c, dict)] if isinstance(lista, list) else []
+    )
+    de_conjunto = [
+        {
+            "dataset": c.get("dataset"),
+            "purpose": c.get("purpose"),
+            "fields": [_campo_enxuto(f) for f in _campos_do_conjunto(c)],
+        }
+        for c in conjuntos
+        if str(c.get("dataset", "")).lower() == pergunta
+    ]
+    if de_conjunto:
+        return "dataset", de_conjunto
+    de_campo = [
+        {"dataset": c.get("dataset"), "purpose": c.get("purpose")} | _campo_enxuto(f)
+        for c in conjuntos
+        for f in _campos_do_conjunto(c)
+        if str(f.get("field", "")).lower() == pergunta
+    ]
+    return "field", de_campo
+
+
+def _campos_do_achado(achado: dict[str, object]) -> list[dict]:
+    """Os campos de um achado: os do conjunto, ou o próprio achado quando é um campo."""
+    campos = achado.get("fields")
+    return campos if isinstance(campos, list) else [achado]
+
+
+def _fontes_do_achado(corpo: object, achados: list[dict[str, object]]) -> list[dict]:
+    """A licença e a atribuição das fontes que aparecem nos achados, uma vez cada, em ordem alfabética."""
+    usadas = {
+        campo.get("source")
+        for achado in achados
+        for campo in _campos_do_achado(achado)
+        if isinstance(campo.get("source"), str)
+    }
+    lista = corpo.get("sources") if isinstance(corpo, dict) else None
+    por_nome = {
+        f["source"]: f
+        for f in (lista if isinstance(lista, list) else [])
+        if isinstance(f, dict) and isinstance(f.get("source"), str)
+    }
+    return [por_nome.get(nome, {"source": nome}) for nome in sorted(usadas, key=str)]
+
+
+def _campos_de_piloto(achados: list[dict[str, object]]) -> list[str]:
+    return sorted(
+        {
+            f"{achado.get('dataset')}.{campo.get('field')}"
+            for achado in achados
+            for campo in _campos_do_achado(achado)
+            if campo.get("pilot") is True
+        }
+    )
+
+
+def _explicacao(corpo: object, pergunta: str) -> dict[str, object]:
+    """A explicação de `pergunta`, com o aviso de piloto uma vez só; `ToolError` se a chave não vê nada assim."""
+    tipo, achados = _achados(corpo, pergunta)
+    if not achados:
+        raise ToolError(
+            "A sua chave não vê um conjunto nem um campo com esse nome. "
+            "A lista do que ela vê está em `o_que_posso_ver`."
+        )
+    cortado = len(achados) > MAXIMO_DE_ACHADOS
+    achados = achados[:MAXIMO_DE_ACHADOS]
+    saida: dict[str, object] = {
+        "asked": pergunta,
+        "kind": tipo,
+        "matches": achados,
+        "sources": _fontes_do_achado(corpo, achados),
+        "limits": [LIMITE_DO_CATALOGO],
+    }
+    if cortado:
+        saida["truncated"] = True
+    de_piloto = _campos_de_piloto(achados)
+    aviso = corpo.get("pilot_notice") if isinstance(corpo, dict) else None
+    if de_piloto and isinstance(aviso, str):
+        saida["pilot_fields"] = de_piloto
+        saida["pilot_notice"] = aviso
+    return saida
+
+
+def _registrar_de_onde_vem(servidor: MCPServer, pedidos: Pedidos) -> None:
+    """A explicação de um conjunto ou de um campo, tirada do catálogo da chave."""
+
+    @servidor.tool(
+        title=TITULOS_DAS_FERRAMENTAS["de_onde_vem"],
+        annotations=SO_LEITURA,
+        structured_output=False,
+    )
+    async def de_onde_vem(
+        sobre: Annotated[
+            str,
+            Field(
+                max_length=80,
+                description="O nome de um conjunto ou de um campo da lista de `o_que_posso_ver`, como `credit` ou `legal_name`.",
+            ),
+        ],
+    ) -> str:
+        """De onde vem um conjunto ou um campo que a sua chave vê: a fonte de cada campo, a licença e a frase
+        de atribuição dessa fonte, a finalidade do conjunto e a marca de piloto, com o aviso uma vez só e a
+        lista dos campos de piloto. Serve para saber de onde veio um número antes de citá-lo e o que pode ser
+        dito dele.
+        Fonte: o catálogo da API do TickerLab para a sua chave.
+        Não traz: dado de empresa, o significado de cada campo, o dia do retrato nem conjunto ou campo que a
+        sua chave não vê."""
+        pergunta = _pergunta(sobre)
+        catalogo = await pedidos.resposta("/catalog")
+        if not catalogo.ok:
+            raise ToolError(mensagem_do_erro(catalogo))
+        return pedidos.entregar(
+            RespostaDaApi(STATUS_OK, _explicacao(catalogo.corpo, pergunta)),
+            "de_onde_vem",
         )

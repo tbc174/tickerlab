@@ -46,6 +46,15 @@ ANS, SUSEP, MTE, GLEIF, IBAMA = (
 # as sanções da CGU (linha 981): a tabela inteira é de pessoa no dicionário, mas o servidor guarda só esta cópia
 SANCOES = "sancoes_cgu"
 CADASTROS = (ANS, SUSEP, MTE, GLEIF, IBAMA, SANCOES)
+# as quatro fontes ampliadas (conferência de 14/11; linha 978), só CNPJ de dígito certo e sem nome, mas com linha marcada
+# em `trata_como_pessoa` (a porta já esconde): vão num degrau à parte (8), pelo mesmo filtro e pela mesma trava
+PADOS, HOMOLOGADOS, TANCAGEM, PAT = (
+    "anatel_pados",
+    "anatel_produtos_homologados",
+    "anp_tancagem",
+    "mte_pat",
+)
+AMPLIADAS = (PADOS, HOMOLOGADOS, TANCAGEM, PAT)
 # as colunas de controle que toda cópia leva (a chave, o CNPJ, a marca e a linhagem)
 CONTROLE = (
     "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em",
@@ -65,6 +74,24 @@ COLUNAS: dict[str, tuple[str, ...]] = {
         "origem_da_informacao", "fundamentacao_legal", "abrangencia", "inicio", "fim", "publicado_em",
         "transito_em_julgado", "informado_em", "valor_multa",
     ),
+    PADOS: (
+        *CONTROLE, "processo", "anexacao", "tema", "servico", "status_do_processo", "fase",
+        "situacao_do_pagamento", "multa_aplicada",
+    ),
+    # sem `nome_comercial` (nome de produto: a leitura mais estreita o deixa em casa)
+    HOMOLOGADOS: (
+        *CONTROLE, "numero_da_homologacao", "certificado", "situacao_do_certificado", "situacao_do_requerimento",
+        "modelo", "categoria", "tipo_do_produto", "pais_do_fabricante", "data_da_homologacao",
+        "data_do_certificado", "validade_do_certificado",
+    ),
+    TANCAGEM: (
+        *CONTROLE, "uf", "municipio", "codigo_da_instalacao", "segmento", "detalhe_da_instalacao", "tag",
+        "tipo_da_unidade", "grupo_de_produtos", "data_da_posicao", "tancagem_m3",
+    ),
+    PAT: (
+        *CONTROLE, "matriz_ou_filial", "municipio", "uf", "registro_no_pat", "situacao", "data_do_cadastro",
+        "trabalhadores_ate_5_salarios", "trabalhadores_acima_de_5_salarios", "trabalhadores_atendidos",
+    ),
 }  # fmt: skip
 # as colunas de texto livre da cópia: CPF ou e-mail dentro delas derruba a linha (filtro) e o envio (trava)
 TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
@@ -72,6 +99,16 @@ TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
         "categoria", "situacao", "assunto", "orgao", "uf_do_orgao", "esfera_do_orgao", "origem_da_informacao",
         "fundamentacao_legal", "abrangencia",
     ),
+    PADOS: ("processo", "anexacao", "tema", "servico", "status_do_processo", "fase", "situacao_do_pagamento"),
+    HOMOLOGADOS: (
+        "numero_da_homologacao", "certificado", "situacao_do_certificado", "situacao_do_requerimento", "modelo",
+        "categoria", "tipo_do_produto", "pais_do_fabricante",
+    ),
+    TANCAGEM: (
+        "uf", "municipio", "codigo_da_instalacao", "segmento", "detalhe_da_instalacao", "tag", "tipo_da_unidade",
+        "grupo_de_produtos",
+    ),
+    PAT: ("matriz_ou_filial", "municipio", "uf", "registro_no_pat", "situacao"),
 }  # fmt: skip
 # pedaços de nome de coluna que nunca saem (o teste confere que a lista acima não tem nenhum)
 PEDACOS_PROIBIDOS = (
@@ -84,7 +121,11 @@ PEDACOS_PROIBIDOS = (
     "cpf",
 )
 # a tabela cuja chave leva texto livre: sai a impressão digital da chave
-CHAVE_COM_TEXTO = {MTE}
+CHAVE_COM_TEXTO = {
+    MTE,
+    PADOS,
+    HOMOLOGADOS,
+}  # a chave dos dois últimos junta tema, serviço, modelo e nome do produto
 TAMANHO_DA_RAIZ = 8
 TAMANHO_DO_CPF = 11
 TAMANHO_DA_IMPRESSAO = 64  # sha256 em hexadecimal

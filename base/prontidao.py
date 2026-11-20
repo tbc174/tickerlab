@@ -411,6 +411,31 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
         qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
         dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
     ),
+    # fontes ampliadas da linha 978 (ordem C da Diretoria, 19/11/2026): anatel_pados, anatel_produtos_homologados,
+    # anp_tancagem e mte_pat. O contrato diz `pessoa=False`, mas parte das linhas é de titular de MEI ou de empresário
+    # individual (`trata_como_pessoa`), então só passam pela cópia reduzida só-PJ (`AMPLIADAS`, degrau 8), conferida por
+    # `conferir_cadastros`; a porta serve só a linha com `trata_como_pessoa` falso. Placar de 19/11/2026 sem vermelho
+    # (89495, 189405, 14679 e 110502 linhas)
+    "anatel_pados": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "anatel_produtos_homologados": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "anp_tancagem": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
+    "mte_pat": ProntidaoDePiloto(
+        versao_maior=1,
+        qualidade=Prova(date(2026, 11, 19), "placar-qualidade-2026-11-19"),
+        dicionario=Prova(date(2026, 11, 19), "dicionario-escrito-2026-11-19"),
+    ),
     # lote 3 da linha 978: placar de 19/11/2026 sem vermelho e sem coluna de CNPJ (a marca de pessoa não se aplica);
     # as outras tabelas medidas do lote deram vermelho sem explicação verificada e ficaram de fora
     "anm_amb_agua_mineral": ProntidaoDePiloto(
