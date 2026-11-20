@@ -76,6 +76,7 @@ class Pesquisador:
         linha_inicial: int = 1,
         planilha: str | None = None,
         contem: list[str] | None = None,
+        filtro_por_coluna: dict[str, list[str]] | None = None,
     ) -> dict[str, object]:
         """Lê o texto e as tabelas de um original já baixado, com o lugar de cada trecho."""
         arquivo = self._original(sha256)
@@ -96,6 +97,7 @@ class Pesquisador:
             linha_inicial=max(linha_inicial, 1),
             planilha=planilha,
             contem=tuple(contem or ()),
+            filtro_por_coluna=filtro_por_coluna,
         )
         return {
             "ok": True,
