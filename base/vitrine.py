@@ -55,6 +55,9 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da ANS\b", "ANS"),
     (r"\bCMED\b", "CMED (Anvisa)"),  # antes da Anvisa: as listas não têm a licença dela
     (r"CNES do Ministério da Saúde", "Ministério da Saúde (DATASUS)"),
+    # conferência de 19/11/2026: SICAF (família do compras.gov.br) e Banco de Preços em Saúde
+    (r"^Banco de Preços em Saúde \(MS\)", "Ministério da Saúde (BPS)"),
+    (r"do compras\.gov\.br", "Compras.gov.br"),
     (r"TCE-PE:", "TCE-PE"),
     (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
     (r"Sefa-PR, dívida", "Sefa-PR"),
@@ -121,6 +124,7 @@ MESMO_ORGAO: dict[str, str] = {
     "Anatel (homologados)": "Anatel",
     "ANM (TAH)": "ANM",
     "MTE (PAT)": "MTE",
+    "Ministério da Saúde (BPS)": "Ministério da Saúde (DATASUS)",
 }
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {
@@ -230,18 +234,39 @@ TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
 COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
 
 
-def catalogo_publico(catalogo: dict) -> dict:
+# A lista das tabelas com arquivo conferido no acervo (linha 916, Diretoria 13/11/2026). O CI não vê o
+# acervo, então a lista é gravada no repositório por `scripts/gravar_tabelas_montadas.py` (roda no servidor
+# de casa, com a data). Tabela nova do catálogo NÃO conta até entrar nela: o número público é o do que
+# existe de verdade, não o do que está prometido no contrato.
+TABELAS_MONTADAS_ARQUIVO = Path(__file__).parent / "tabelas_montadas.json"
+
+
+def tabelas_montadas(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> frozenset[str]:
+    """Os nomes das tabelas que o acervo tinha montadas na data da lista."""
+    return frozenset(json.loads(arquivo.read_text(encoding="utf-8"))["tabelas"])
+
+
+def tabelas_conferidas_em(arquivo: Path = TABELAS_MONTADAS_ARQUIVO) -> str:
+    """O dia (AAAA-MM-DD) em que a lista de tabelas montadas foi conferida no acervo. É a data que fica ao
+    lado da contagem de tabelas: vem do arquivo, nunca digitada nem da fotografia dos outros números."""
+    return json.loads(arquivo.read_text(encoding="utf-8"))["conferido_em"]
+
+
+def catalogo_publico(catalogo: dict, montadas: frozenset[str] | None = None) -> dict:
     """O catálogo que o site mostra: sem as tabelas de fonte só interna (`FONTES_SO_INTERNAS`, o
     DataJud) nem as só internas de uma fonte que sai (`TABELAS_SO_INTERNAS`). Elas estão no contrato e
     no dicionário do repositório, mas o site não anuncia dado que não pode sair em tela, relatório,
     API nem exportação. As cópias reduzidas (`COPIAS_REDUZIDAS`) também ficam de fora: a tabela de onde
-    saem já está no catálogo."""
+    saem já está no catálogo. E só conta tabela montada (`tabelas_montadas`): a que está no contrato
+    mas ainda sem arquivo no acervo não entra no número nem na lista."""
     internas = {licenca_da_fonte(familia) for familia in FONTES_SO_INTERNAS}
+    existentes = tabelas_montadas() if montadas is None else montadas
     tabelas = {
         nome: tabela
         for nome, tabela in catalogo["tabelas"].items()
         if tabela["licenca"] not in internas
         and nome not in TABELAS_SO_INTERNAS | COPIAS_REDUZIDAS
+        and nome in existentes
     }
     return {**catalogo, "tabelas": tabelas}
 
@@ -472,16 +497,54 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "cvm",
         "O que a companhia entrega à CVM",
-        "Balanços em todas as versões, fatos relevantes, auditor e parecer, remuneração da "
-        "diretoria e ofertas de ações e de dívida.",
+        "Balanços em todas as versões, a demonstração das mutações do patrimônio líquido, as notas "
+        "explicativas, fatos relevantes, auditor, troca de auditor e parecer da demonstração anual e "
+        "da trimestral, remuneração da diretoria e ofertas de ações e de dívida.",
         (
             "demonstracoes_como_era",
+            "dmpl_como_era",
+            "notas_dfp",
             "eventos",
             "auditores",
+            "trocas_de_auditor",
             "pareceres_dfp",
+            "pareceres_itr",
             "fre_remuneracao",
             "ofertas_resolucao_160",
             "ofertas_antigas",
+            "amostra_painel",
+        ),
+    ),
+    TemaDoCnpj(
+        "governanca",
+        "Conselho, diretoria e capital",
+        "Quantos conselheiros, diretores e membros de comitês a companhia tem e quantos são "
+        "independentes, a maior, a menor e a média da remuneração por órgão, a diversidade e os "
+        "empregados, o capital social e as transações com partes relacionadas, como a CVM publica no "
+        "formulário de referência, e as compras e vendas de ações declaradas à CVM por cargo, pela "
+        "administração, pelos controladores e pela própria companhia.",
+        (
+            "fre_conselho",
+            "fre_comites",
+            "fre_remuneracao_extremos",
+            "fre_diversidade",
+            "fre_empregados",
+            "fre_capital_social",
+            "fre_partes_relacionadas",
+            "negociacoes",
+        ),
+    ),
+    TemaDoCnpj(
+        "proventos_e_capital",
+        "Dividendos e mudanças no capital",
+        "Dividendos e juros sobre capital próprio de cada exercício, desdobramentos, grupamentos, "
+        "bonificações e aumentos de capital, como a companhia informou à CVM no formulário de "
+        "referência, em todos os anos guardados.",
+        (
+            "fre_proventos",
+            "proventos",
+            "fre_eventos_de_capital",
+            "eventos_de_capital",
         ),
     ),
     TemaDoCnpj(
@@ -521,10 +584,33 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         ),
     ),
     TemaDoCnpj(
+        "bolsa",
+        "Registro na CVM e códigos na bolsa",
+        "Cada registro de companhia aberta na CVM, inclusive as que saíram, o cadastro como era em "
+        "cada formulário, os códigos de negociação e os valores mobiliários com as datas em que "
+        "valeram, a ligação de cada emissor ao CNPJ, com os emissores que saíram da bolsa, mudaram "
+        "de código ou ficaram sem ligação conferidos à mão, e o código global (LEI) do GLEIF que liga "
+        "a entidade ao CNPJ.",
+        (
+            "cadastro_das_companhias",
+            "fca_geral",
+            "tickers_no_tempo",
+            "valores_mobiliarios",
+            "emissores",
+            "emissores_antigos",
+            "emissores_sem_ligacao",
+            "codigos_fora_do_fca",
+            "codigos_invalidos",
+            "empresa_serie",
+            "gleif_ponte",
+        ),
+    ),
+    TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
         "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de "
-        "empregadores do MTE, os embargos do IBAMA, processos "
+        "empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação "
+        "lidas dos documentos que a companhia entrega à CVM, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
         (
             "pgfn_divida",
@@ -539,6 +625,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "bcb_regimes_especiais",
             "mte_lista_suja",
             "ibama_embargos",
+            "insolvencia",
             "processos_partes",
             "processos_nas_notas",
         ),
@@ -618,6 +705,100 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "receita_transacoes_adesao",
         ),
     ),
+    TemaDoCnpj(
+        "setores",
+        "Números dos setores regulados",
+        "O mercado das distribuidoras de energia, a inadimplência e os indicadores comerciais na "
+        "ANEEL, os acessos de banda larga, telefonia móvel e TV por assinatura na Anatel, os "
+        "beneficiários e o índice de desempenho das operadoras na ANS, prêmios e sinistros das "
+        "seguradoras na SUSEP e o balanço, o resultado e o cadastro de bancos e conglomerados no "
+        "IF.data do Banco Central, com a ligação ao CNPJ da empresa da bolsa quando o banco tem uma.",
+        (
+            "aneel_samp",
+            "aneel_inadimplencia",
+            "aneel_indicadores_comerciais",
+            "anatel_acessos",
+            "ans_beneficiarios",
+            "ans_idss",
+            "susep_seguros",
+            "ifdata_valores",
+            "ifdata_cadastro",
+            "ligacao_dos_bancos",
+        ),
+    ),
+    TemaDoCnpj(
+        "divida_emitida",
+        "Debêntures, ratings e recebíveis",
+        "Assembleias e avisos de debenturistas, os ratings de crédito que os documentos da companhia "
+        "citam e os certificados de recebíveis de cada securitizadora, mês a mês, nos documentos que "
+        "as companhias entregam à CVM.",
+        (
+            "debentures_assembleias",
+            "ratings",
+            "securitizacao_certificados",
+            "securitizacao_cedente_devedor",
+        ),
+    ),
+    TemaDoCnpj(
+        "fundos_na_empresa",
+        "Quais fundos têm a empresa",
+        "As posições em ações dos fundos registrados na CVM, mês a mês, compradas, emprestadas e "
+        "vendidas, as cotas de fundos que cada fundo tem, as ações do bloco de ativos não "
+        "codificados, a soma por empresa e os papéis do emissor nos fundos imobiliários, com o fundo "
+        "que saiu continuando na base.",
+        (
+            "carteiras_dos_fundos",
+            "carteiras_bloco_8",
+            "cda_cotas",
+            "painel_dos_fundos",
+            "fii_ativos",
+        ),
+    ),
+    TemaDoCnpj(
+        "fundos",
+        "Os fundos, quem os administra e o informe",
+        "O cadastro e o registro de fundos na CVM, o gestor e o administrador de cada fundo ao longo do "
+        "tempo, o informe mensal dos fundos de direitos creditórios, dos imobiliários e das cadeias "
+        "agroindustriais, o informe dos fundos de participações e quem a CVM registrou para "
+        "administrar fundo imobiliário.",
+        (
+            "cadastro_de_fundos",
+            "registro_de_fundos",
+            "cadastro_gestor_hist",
+            "cadastro_admin_hist",
+            "fidc_informe",
+            "fii_informe_mensal",
+            "cvm_fiagro",
+            "fip_informe",
+            "fii_administradores",
+        ),
+    ),
+    TemaDoCnpj(
+        "operacoes",
+        "Operações de compra, venda e fusão",
+        "Os documentos que as companhias abertas entregam à CVM e que podem anunciar uma operação, as "
+        "empresas de cada negócio divulgado pelas assessorias, a receita da empresa-alvo no último "
+        "exercício antes do negócio, quando é conhecida, e fatos públicos e datados de cooperativas e tradings de café, "
+        "cada um com a fonte e a data.",
+        (
+            "ma_candidatos",
+            "ma_partes",
+            "ma_regua",
+            "contraparte_cafe",
+        ),
+    ),
+    TemaDoCnpj(
+        "conferencias",
+        "Conferências e atraso na entrega",
+        "Os números que as regras fixas de conferência da base apontaram, com o esperado e o porquê, "
+        "e o atraso de cada companhia na entrega do balanço em relação ao prazo da CVM, com as "
+        "colunas conhecidas antes de cada data de previsão.",
+        (
+            "achados_de_qualidade",
+            "rotulos_atraso",
+            "colunas_atraso",
+        ),
+    ),
 )
 
 
@@ -638,14 +819,17 @@ def tabelas_ligadas_pelo_cnpj(catalogo: dict) -> list[str]:
 
 
 def tabelas_sem_tema(
-    catalogo: dict, temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ
+    catalogo: dict,
+    temas: Sequence[TemaDoCnpj] = TEMAS_DO_CNPJ,
+    modulos: Sequence[str] | None = MODULOS_COM_TEMA_OBRIGATORIO,
 ) -> list[str]:
-    """As tabelas de órgão público ligadas pelo CNPJ que nenhum cartão da página inicial conta."""
+    """As tabelas ligadas pelo CNPJ que nenhum cartão da página inicial conta. Por padrão só as dos
+    módulos dos órgãos públicos; `modulos=None` cobra todas (a conferência do catálogo que o site mostra)."""
     nos_temas = {nome for tema in temas for nome in tema.tabelas}
     return [
         nome
         for nome in tabelas_ligadas_pelo_cnpj(catalogo)
-        if catalogo["tabelas"][nome]["modulo"] in MODULOS_COM_TEMA_OBRIGATORIO
+        if (modulos is None or catalogo["tabelas"][nome]["modulo"] in modulos)
         and nome not in nos_temas
     ]
 
@@ -677,23 +861,30 @@ def ligado_pelo_cnpj(
     ligadas = tabelas_ligadas_pelo_cnpj(catalogo)
     cartoes = []
     for tema in temas:
-        fora = [t for t in tema.tabelas if t not in catalogo["tabelas"]]
-        if fora:
-            raise ValueError(
-                f"tema {tema.chave} com tabela fora do catálogo: {', '.join(fora)}"
-            )
-        sem_cnpj = [t for t in tema.tabelas if t not in ligadas]
+        # o catálogo público só tem tabela montada (`catalogo_publico`): o cartão conta as que existem e
+        # some quando nenhuma existe. O nome errado de tabela se pega no teste contra o contrato inteiro.
+        presentes = [t for t in tema.tabelas if t in catalogo["tabelas"]]
+        if not presentes:
+            continue
+        sem_cnpj = [t for t in presentes if t not in ligadas]
         if sem_cnpj:
             raise ValueError(
                 f"tema {tema.chave} com tabela sem coluna de CNPJ: {', '.join(sem_cnpj)}"
+            )
+        texto = tema.texto
+        if len(presentes) < len(tema.tabelas):
+            # o texto do tema descreve o desenho inteiro; quando só parte está montada, diz isso (linha 916)
+            texto += (
+                f" Hoje estão montadas {len(presentes)} de {len(tema.tabelas)} tabelas deste tema;"
+                " o texto acima descreve o que o tema prevê, não só o que já está na base."
             )
         cartoes.append(
             {
                 "chave": tema.chave,
                 "titulo": tema.titulo,
-                "texto": tema.texto,
-                "orgaos": _orgaos(catalogo, tema.tabelas),
-                "tabelas": len(tema.tabelas),
+                "texto": texto,
+                "orgaos": _orgaos(catalogo, presentes),
+                "tabelas": len(presentes),
             }
         )
     return {

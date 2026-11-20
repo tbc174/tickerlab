@@ -52,7 +52,7 @@ ATRIBUICAO_DO_CONTATO = (
 LIMITES_DO_CONTATO = (
     "Endereço, telefone e e-mail como a empresa declarou à Receita no mês do retrato: podem ter mudado.",
     "Só estabelecimentos ativos. Sem nome fantasia e sem fax.",
-    "No MEI e no empresário individual o endereço aparece só até o município e a UF; o telefone costuma ser o da própria pessoa.",
+    "MEI, empresário individual, antiga EIRELI e empresa de um sócio só não aparecem: o contato delas costuma ser o da própria pessoa.",
     "Use só para o contato profissional com a empresa.",
 )
 
@@ -210,20 +210,21 @@ def _estabelecimento(linha: dict) -> dict[str, str | bool | list[str] | None]:
     }
 
 
-def _exigir_corte_do_endereco(pasta: Path) -> None:
-    """Só serve contato de um acervo montado com o corte do endereço de MEI e de empresário individual
-    (linha 859): o manifesto da montagem conta o motivo `endereco_de_individual_cortado`. Acervo anterior
-    ainda teria a rua de toda pessoa; o servidor o trata como fora do ar até a montagem nova."""
+def _exigir_corte_do_contato(pasta: Path) -> None:
+    """Só serve contato de um acervo montado com o corte do contato de quem é pessoa (ADR 0128, Emenda 4):
+    MEI, empresário individual, EIRELI e quadro de um sócio só saem inteiros, e o manifesto da montagem conta
+    o motivo `contato_de_individual_ou_unipessoal_cortado`. Acervo anterior ainda teria o telefone e o e-mail
+    dessas pessoas; o servidor o trata como fora do ar até a montagem nova."""
     try:
         manifesto = json.loads((pasta / MANIFESTO).read_text(encoding="utf-8"))
-        marcado = receita_contato.ENDERECO_CORTADO in manifesto["descartes"]
+        marcado = receita_contato.CONTATO_DE_PESSOA in manifesto["descartes"]
     except (OSError, ValueError, KeyError, TypeError) as erro:
         raise AcervoIndisponivelError(
             "manifesto do acervo de pessoa ilegível"
         ) from erro
     if not marcado:
         raise AcervoIndisponivelError(
-            "acervo de pessoa sem o corte do endereço de individual"
+            "acervo de pessoa sem o corte do contato de individual e unipessoal"
         )
 
 
@@ -235,7 +236,7 @@ def contato_da_empresa(pasta: Path, cnpj: str) -> Contato:
     ou não pôde ser lida. Empresa sem estabelecimento ativo no acervo: lista vazia.
     """
     pedido = _cnpj(cnpj)
-    _exigir_corte_do_endereco(pasta)
+    _exigir_corte_do_contato(pasta)
     linhas = _linhas_da_raiz(
         pasta, CONTATO, pedido[:TAMANHO_DA_RAIZ], COLUNAS_DO_CONTATO
     )

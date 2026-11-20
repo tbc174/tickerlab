@@ -10,6 +10,7 @@ contrato da organização e pelo portão (`acesso.autorizar`). Toda recusa sai c
 mesmo de um CNPJ que não existe, para não dizer qual foi o motivo.
 """
 
+import logging
 import math
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -22,13 +23,26 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
-from base import porta as porta_da_base
 from base.porta import Porta
-from src.api_externa import acesso, deck, lote, piloto
-from src.api_externa.catalogo import catalogo_da_organizacao, consumo_da_organizacao
+from src import auditoria
+from src.analista import pessoa
+from src.api_externa import (
+    acesso,
+    deck,
+    lote,
+    pessoas,
+    piloto,
+    porta_compartilhada,
+)
+from src.api_externa.catalogo import (
+    catalogo_da_organizacao,
+    consumo_da_organizacao,
+    linhas_liberadas,
+)
 from src.api_externa.conjuntos import (
     Permitido,
     Servido,
+    analise,
     ativos,
     comparaveis,
     compradores,
@@ -51,6 +65,7 @@ from src.banco.conexao import obter_engine
 from src.chaves_da_api import ContextoDaChave
 from src.portao_externo import Finalidade, Regras
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/data/v1")
 
 ChaveSemQuota = Annotated[
@@ -71,8 +86,10 @@ def regras_da_api() -> Regras | None:
 
 
 def abrir_porta(banco: sa.Connection) -> Porta:
-    """A porta da base, com o registro de coletas para a linhagem (os testes trocam esta função)."""
-    return porta_da_base.abrir(banco=banco)
+    """A porta da base para um pedido, com o registro de coletas para a linhagem (os testes trocam esta
+    função). É um cursor da porta que o processo abriu uma vez: abrir uma porta por pedido levava de 8 a 12 s
+    na máquina do servidor, antes de qualquer consulta (linha 956)."""
+    return porta_compartilhada.porta_do_pedido(banco)
 
 
 def _fora_do_ar() -> HTTPException:
@@ -673,6 +690,71 @@ def ativos_da_empresa(
     )
 
 
+def _pessoas_permitidas(conexao: sa.Connection, contexto: ContextoDaChave) -> bool:
+    """O contrato da organização dona da chave tem a permissão `pessoa_no_conector` vigente hoje?"""
+    return acesso.contrato_permite(
+        conexao,
+        contexto.organizacao_id,
+        conjunto=pessoas.CONJUNTO,
+        finalidade=FINALIDADE,
+        dia=acesso.agora().date(),
+    )
+
+
+def _corpo_das_pessoas(numeros: str) -> dict[str, object]:
+    """O corpo varrido das pessoas do CNPJ; 503 sem dizer onde nem por quê (nem o CNPJ, nem um nome)."""
+    try:
+        return pessoas.pessoas_da_empresa(pessoa.pasta_do_acervo(), numeros)
+    except pessoa.CnpjInvalidoError as erro:
+        raise _recusa("invalid_cnpj") from erro
+    except pessoa.AcervoIndisponivelError as erro:
+        log.warning("pessoas da empresa: acervo fora do ar")
+        raise _fora_do_ar() from erro
+    except pessoas.RespostaComPessoaProibida as erro:
+        log.error(
+            "pessoas da empresa: varredura falhou em %d lugar(es)", len(erro.caminhos)
+        )
+        raise _fora_do_ar() from erro
+
+
+# fora do contrato público da `/data/v1`: a rota de pessoa não se anuncia (ADR 0128, Emenda 4)
+@router.get("/companies/{cnpj}/people", include_in_schema=False)
+def pessoas_da_empresa(cnpj: str, contexto: Chave, resposta: Response) -> object:
+    """Os sócios pessoa física adultos do CNPJ (nome, qualificação e data de entrada) e o nome do titular do
+    MEI e do empresário individual, do cadastro da Receita. Sem CPF, menor de idade, endereço nem contato.
+
+    Só para a organização com a permissão `pessoa_no_conector`: para as outras chaves a resposta é o mesmo 404
+    de um endereço que não existe, **antes** de validar o CNPJ ou abrir o acervo, e nada conta no consumo; assim
+    a resposta não diz se a empresa tem sócio pessoa física. Cada consulta atendida vai para a auditoria com a
+    organização, a chave, o tipo e quantas pessoas saíram, nunca o CNPJ nem um nome, e a auditoria vem antes
+    da resposta: se ela não grava, nada sai."""
+    with obter_engine().connect() as conexao:
+        if not _pessoas_permitidas(conexao, contexto):
+            raise HTTPException(status_code=404)  # o mesmo corpo da rota inexistente
+    corpo = _corpo_das_pessoas(_cnpj_pedido(cnpj))
+    linhas = pessoas.linhas_servidas(corpo)
+    with obter_engine().begin() as conexao:
+        auditoria.registrar(
+            conexao,
+            None,
+            auditoria.ACAO_PESSOA_VISTA,
+            alvo_id=contexto.organizacao_id,
+            detalhes={
+                "tipo": pessoas.TIPO_DA_AUDITORIA,
+                "linhas": linhas,
+                "canal": pessoas.CANAL_DA_AUDITORIA,
+                "chave_id": str(contexto.chave_id),
+            },
+        )
+        registrar_consumo(
+            conexao, contexto, conjunto=pessoas.CONJUNTO, finalidade=FINALIDADE,
+            linhas=linhas, negado=False, agora=acesso.agora(),
+        )  # fmt: skip
+    log.info("pessoas da empresa: %s", corpo["status"])  # só o estado
+    resposta.headers["Cache-Control"] = "no-store"
+    return corpo
+
+
 @router.get("/companies/{cnpj}/links")
 def vinculos_da_empresa(
     cnpj: str,
@@ -703,6 +785,78 @@ def vinculos_da_empresa(
             acesso.linhas_por_resposta(contexto),
         ).vinculos(numeros, dia, profundidade, tipos),
     )
+
+
+@router.get("/companies/{cnpj}/analysis")
+def analise_da_empresa(
+    cnpj: str, contexto: Chave, known_at: date | None = None
+) -> object:
+    """A análise da empresa como era em `known_at`, numa chamada: cada bloco por CNPJ que a organização pode
+    ver (`profile`, `corporate_ownership`, `links`, `events`, `credit`, `assets`, `comparables` e, com o conjunto
+    `integrity` no contrato, `sanctions`, `environmental_embargoes` e `forced_labor_registry`, e, com o
+    conjunto `extended_sources`, `additional_records` (Anatel, ANM, ANP e PAT), só da pessoa jurídica), lido como na rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
+    as deduções marcadas (`inferences`), o bloco aberto que não achou nada (`not_found`), o que passou do
+    prazo (`timed_out`) e o que a análise não consulta (`not_included`). Bloco que não aparece não foi
+    consultado. Cada bloco aberto conta um pedido no conjunto dele (`requests_used`). Sem `profiles` nem
+    `companies`, MEI, empresário individual e o que não é empresa saem `not_available`."""
+    numeros = _cnpj_pedido(cnpj)
+    dia = _dia_pedido(known_at)
+    with piloto.anotar() as liberados:
+        servida = _analise_contada(contexto, numeros, dia)
+    corpo = piloto.marcar(servida.corpo, liberados)
+    return traduzir_chaves(corpo | {"fontes": fontes_da_resposta(servida.fontes)})
+
+
+def _analise_varrida(
+    montar: Callable[[], analise.Analise | None],
+) -> analise.Analise | None:
+    """A análise montada; 503 sem dizer onde nem por quê se a varredura de pessoa de um bloco (CGU, IBAMA e MTE)
+    achou CPF ou e-mail num texto da fonte: a resposta inteira cai, nunca sai um "não achou" falso."""
+    try:
+        return montar()
+    except pessoas.RespostaComPessoaProibida as erro:
+        log.error(
+            "análise: varredura de pessoa falhou em %d lugar(es)", len(erro.caminhos)
+        )
+        raise _fora_do_ar() from erro
+
+
+def _analise_contada(
+    contexto: ContextoDaChave, cnpj: str, dia: date
+) -> analise.Analise:
+    """A análise lida e contada: a cota de todos os blocos abertos é conferida antes de ler e cada bloco
+    conta no conjunto dele (o que não saiu conta como negado); 404 se nada sai."""
+    with obter_engine().begin() as conexao:
+        liberadas = linhas_liberadas(
+            conexao, contexto, acesso.agora().date(), regras_da_api()
+        )
+        cadastro, outros = analise.blocos_abertos(liberadas)
+        acesso.exigir_quota(
+            conexao, contexto, 1 + len(outros) if cadastro else 1, acesso.agora()
+        )
+        servida = None
+        if cadastro is not None:
+            with _porta(conexao) as porta:
+                servida = _analise_varrida(
+                    lambda: analise.montar_analise(
+                        cnpj, dia, porta=porta, liberadas=liberadas,
+                        portao=lambda conjunto, finalidade: _portao(
+                            conexao, contexto, conjunto, finalidade
+                        ),
+                        linhas=acesso.linhas_por_resposta(contexto),
+                    )
+                )  # fmt: skip
+        consumo = (
+            servida.consumo if servida else {(empresas.CONJUNTO, FINALIDADE): (0, True)}
+        )
+        for (conjunto, finalidade), (linhas, negado) in consumo.items():
+            registrar_consumo(
+                conexao, contexto, conjunto=conjunto, finalidade=finalidade,
+                linhas=linhas, negado=negado, agora=acesso.agora(),
+            )  # fmt: skip
+    if servida is None or not servida.corpo:
+        raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
+    return servida
 
 
 @router.get("/companies/{cnpj}/comparables")
@@ -781,8 +935,8 @@ def lista_de_setores(contexto: ChaveSemQuota) -> object:
 def setor(key: str, contexto: Chave, known_at: date | None = None) -> object:
     """O mercado do setor (tamanho, CR4 e HHI por ano), a participação de cada companhia aberta e quem
     são, como a última noite os deixou; `known_at` antes da noite sai `not_available`. A série que a
-    organização não tem vai em `unavailable_series` e a lista das companhias barrada em `unavailable_sections`,
-    com o aviso em `limits`."""
+    organização não tem vai em `unavailable_series`, e a lista das companhias ou a participação delas barrada,
+    em `unavailable_sections`, com o aviso em `limits`."""
     dia = _dia_pedido(known_at)
     return _pedido_contado(
         contexto, setores.CONJUNTO, _leitura_do_setor(contexto, key, dia)

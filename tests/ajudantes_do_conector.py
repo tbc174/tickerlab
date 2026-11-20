@@ -75,6 +75,11 @@ def chamar(
     return resultado["isError"], conteudo["text"]
 
 
+def sem_proximo_passo(corpo: dict) -> dict:
+    """O corpo sem o rodapé `next_step` que o conector junta às listas (para comparar com o que a API mandou)."""
+    return {k: v for k, v in corpo.items() if k != "next_step"}
+
+
 def chamar_ok(
     cliente: TestClient, chave: str, ferramenta: str, /, **argumentos
 ) -> object:
@@ -99,6 +104,8 @@ def api_de_mentira(
         "buyers",
         "research",
         "assets",
+        "credit",
+        "pessoa_no_conector",  # a permissão de pessoa física (ADR 0128, Emenda 4)
     ),
     pedidos: list[httpx.Request] | None = None,
 ) -> httpx.MockTransport:

@@ -284,6 +284,8 @@ ROTAS_DE_ARQUIVO = {
     "/v1/analista/ficha/pessoas": "/v1/analista/ficha",
     "/v1/analista/ficha/eventos": "/v1/analista/ficha",
     "/v1/analista/ficha/vinculos": "/v1/analista/ficha",
+    # a análise completa (19/11/2026): o plano é o da ficha, a mesma montagem da rota /analysis
+    "/v1/analista/ficha/analise": "/v1/analista/ficha",
     # quem já se mexeu no setor (linha 903, PR D): o plano é o da ficha, o mesmo recurso (Dossiê da base)
     "/v1/analista/setor/compradores": "/v1/analista/ficha",
     "/v1/analista/setor/perfil": "/v1/analista/ficha",

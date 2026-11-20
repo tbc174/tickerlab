@@ -6,11 +6,13 @@ do túnel (4), troca da chave do servidor derruba todos e nada vaza para o log (
 CNPJ real: as chaves são de mentira e a API é um dublê.
 """
 
+import asyncio
 import logging
 import time
 from urllib.parse import quote
 
 import pytest
+from mcp.shared.auth import OAuthToken
 
 from conector_remoto import oauth
 from conector_remoto.selo import nova_chave
@@ -399,8 +401,16 @@ def test_cada_analista_ve_so_o_que_a_chave_dele_libera(api):
         _, tokens_b = ao.tokens_para(cliente, ao.CHAVE_B)
         de_a = _ferramentas(cliente, tokens_a["access_token"])
         de_b = _ferramentas(cliente, tokens_b["access_token"])
-    assert de_a == ["demonstracoes", "ficha_da_empresa", "o_que_posso_ver"]
-    assert de_b == ["o_que_posso_ver", "setor", "setores"]
+    assert de_a == [
+        "analise_completa",
+        "comparar_empresas",
+        "de_onde_vem",
+        "demonstracoes",
+        "ficha_da_empresa",
+        "o_que_mudou",
+        "o_que_posso_ver",
+    ]
+    assert de_b == ["de_onde_vem", "o_que_posso_ver", "setor", "setores"]
 
 
 def test_codigo_reusado_e_recusado(api):
@@ -465,25 +475,152 @@ def test_token_de_acesso_vence(api, monkeypatch):
 # ------------------------------------------------------------------ renovação
 
 
-def test_renovacao_troca_os_tokens_e_o_velho_nao_serve_de_novo(api):
+def test_renovacao_troca_os_tokens_e_o_velho_nao_serve_depois_da_janela(
+    api, monkeypatch
+):
     with aj.conector(api.transporte) as cliente:
         registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
         nova = ao.renovar(cliente, registrado, tokens["refresh_token"])
-        de_novo = ao.renovar(cliente, registrado, tokens["refresh_token"])
         assert nova.status_code == 200, nova.text
         ferramentas = _ferramentas(cliente, nova.json()["access_token"])
+        agora = time.time()
+        monkeypatch.setattr(
+            oauth.time, "time", lambda: agora + oauth.JANELA_DE_REUSO_S + 1
+        )
+        de_novo = ao.renovar(cliente, registrado, tokens["refresh_token"])
     assert nova.json()["refresh_token"] != tokens["refresh_token"]
     assert ferramentas
     assert de_novo.status_code == 400
     assert de_novo.json()["error"] == "invalid_grant"
 
 
-def test_renovacao_de_outro_cliente_e_recusada(api):
+def test_renovacao_repetida_na_janela_devolve_os_mesmos_tokens(api):
+    # a queda de 17/11: a resposta da renovação se perde (ou duas conversas renovam juntas) e a
+    # segunda troca do mesmo token recebia `invalid_grant`, e a IA derrubava a conexão
     with aj.conector(api.transporte) as cliente:
-        _, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        primeira = ao.renovar(cliente, registrado, tokens["refresh_token"])
+        segunda = ao.renovar(cliente, registrado, tokens["refresh_token"])
+        assert segunda.status_code == 200, segunda.text
+        ferramentas = _ferramentas(cliente, segunda.json()["access_token"])
+        # o token novo segue a vida: renova uma vez, como qualquer outro
+        seguinte = ao.renovar(cliente, registrado, segunda.json()["refresh_token"])
+    assert primeira.status_code == 200, primeira.text
+    assert segunda.json()["access_token"] == primeira.json()["access_token"]
+    assert segunda.json()["refresh_token"] == primeira.json()["refresh_token"]
+    assert 0 < segunda.json()["expires_in"] <= primeira.json()["expires_in"]
+    assert ferramentas
+    assert seguinte.status_code == 200, seguinte.text
+
+
+def test_renovacao_repetida_de_outro_cliente_e_recusada_mesmo_na_janela(api):
+    with aj.conector(api.transporte) as cliente:
+        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        assert (
+            ao.renovar(cliente, registrado, tokens["refresh_token"]).status_code == 200
+        )
         intruso = ao.registrar_ok(cliente)
         resposta = ao.renovar(cliente, intruso, tokens["refresh_token"])
     assert resposta.json()["error"] == "invalid_grant"
+
+
+def test_duas_renovacoes_ao_mesmo_tempo_recebem_os_mesmos_tokens():
+    async def cenario() -> tuple[OAuthToken, OAuthToken, int]:
+        api_lenta = ao.ConferenciaLenta()
+        provedor = ao.provedor_de_teste(api_lenta)
+        cliente = ao.cliente_de_teste()
+        tokens = await provedor.exchange_authorization_code(
+            cliente, ao.codigo_de_teste(cliente, ao.CHAVE_A)
+        )
+        renovacao = tokens.refresh_token or ""
+
+        async def renovar() -> OAuthToken:
+            aberto = await provedor.load_refresh_token(cliente, renovacao)
+            assert aberto is not None
+            return await provedor.exchange_refresh_token(cliente, aberto, [])
+
+        primeira = asyncio.create_task(renovar())
+        await api_lenta.chegou.wait()  # a 1ª está esperando a API responder
+        segunda = asyncio.create_task(renovar())
+        await asyncio.sleep(0)
+        api_lenta.liberar.set()
+        a, b = await asyncio.gather(primeira, segunda)
+        return a, b, api_lenta.conferencias
+
+    a, b, conferencias = asyncio.run(cenario())
+    assert a.access_token == b.access_token
+    assert a.refresh_token == b.refresh_token
+    assert conferencias == 1
+
+
+def test_falha_inesperada_na_renovacao_nao_gasta_o_token():
+    async def cenario() -> OAuthToken:
+        provedor = ao.provedor_de_teste(ao.ConferenciaQueQuebra())
+        cliente = ao.cliente_de_teste()
+        tokens = await provedor.exchange_authorization_code(
+            cliente, ao.codigo_de_teste(cliente, ao.CHAVE_A)
+        )
+        aberto = await provedor.load_refresh_token(cliente, tokens.refresh_token or "")
+        assert aberto is not None
+        with pytest.raises(RuntimeError):
+            await provedor.exchange_refresh_token(cliente, aberto, [])
+        de_novo = await provedor.load_refresh_token(cliente, tokens.refresh_token or "")
+        assert de_novo is not None
+        return await provedor.exchange_refresh_token(cliente, de_novo, [])
+
+    assert asyncio.run(cenario()).access_token
+
+
+def test_quem_esperava_a_troca_que_caiu_troca_de_novo_e_nao_recebe_erro():
+    # achado P2 da revisão cruzada: um 400 aqui derrubaria a conexão de quem esperava
+    async def cenario() -> tuple[
+        BaseException | OAuthToken, BaseException | OAuthToken
+    ]:
+        api_lenta = ao.ConferenciaLentaQueQuebra()
+        provedor = ao.provedor_de_teste(api_lenta)
+        cliente = ao.cliente_de_teste()
+        tokens = await provedor.exchange_authorization_code(
+            cliente, ao.codigo_de_teste(cliente, ao.CHAVE_A)
+        )
+        renovacao = tokens.refresh_token or ""
+
+        async def renovar() -> OAuthToken:
+            aberto = await provedor.load_refresh_token(cliente, renovacao)
+            assert aberto is not None
+            return await provedor.exchange_refresh_token(cliente, aberto, [])
+
+        primeira = asyncio.create_task(renovar())
+        await api_lenta.chegou.wait()
+        segunda = asyncio.create_task(renovar())
+        await asyncio.sleep(0)
+        api_lenta.liberar.set()
+        a, b = await asyncio.gather(primeira, segunda, return_exceptions=True)
+        return a, b
+
+    a, b = asyncio.run(cenario())
+    assert isinstance(a, RuntimeError)
+    assert isinstance(b, OAuthToken) and b.access_token
+
+
+def test_chave_revogada_depois_da_renovacao_nao_consulta_nem_na_janela(api):
+    with aj.conector(api.transporte) as cliente:
+        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        assert (
+            ao.renovar(cliente, registrado, tokens["refresh_token"]).status_code == 200
+        )
+        api.revogar(ao.CHAVE_A)
+        repetida = ao.renovar(cliente, registrado, tokens["refresh_token"])
+        erro, _ = aj.chamar(
+            cliente,
+            repetida.json()["access_token"],
+            "ficha_da_empresa",
+            cnpj="11111111000191",
+        )
+        seguinte = ao.renovar(cliente, registrado, repetida.json()["refresh_token"])
+    # a janela devolve os tokens já emitidos, mas a chave dentro deles não consulta mais nada
+    assert repetida.status_code == 200
+    assert erro
+    assert seguinte.json()["error"] == "invalid_grant"
 
 
 def test_chave_revogada_nao_renova_e_nao_consulta(api):
@@ -502,30 +639,41 @@ def test_chave_revogada_nao_renova_e_nao_consulta(api):
     assert depois.status_code == 401
 
 
-def test_api_fora_do_ar_na_renovacao_nao_gasta_o_token(api):
+@pytest.mark.parametrize("falha", ["fora_do_ar", 429, 500, 503, 404])
+def test_api_sem_resposta_na_renovacao_renova_sem_derrubar_a_conexao(api, falha):
+    # a queda de 17/11: a API não respondeu a tempo, a renovação deu 400 e a IA (como o cliente
+    # oficial do SDK, que apaga os tokens em qualquer resposta que não seja 200) pediu reconexão
     with aj.conector(api.transporte) as cliente:
         registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        if falha == "fora_do_ar":
+            api.fora_do_ar = True
+        else:
+            api.status_forcado = int(falha)
+        renovada = ao.renovar(cliente, registrado, tokens["refresh_token"])
+        api.fora_do_ar, api.status_forcado = False, None
+        assert renovada.status_code == 200, renovada.text
+        ferramentas = _ferramentas(cliente, renovada.json()["access_token"])
+        seguinte = ao.renovar(cliente, registrado, renovada.json()["refresh_token"])
+    assert ferramentas
+    assert seguinte.status_code == 200, seguinte.text
+
+
+def test_chave_revogada_com_a_api_fora_renova_mas_nao_consulta_nem_renova_de_novo(api):
+    with aj.conector(api.transporte) as cliente:
+        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
+        api.revogar(ao.CHAVE_A)
         api.fora_do_ar = True
-        falhou = ao.renovar(cliente, registrado, tokens["refresh_token"])
+        renovada = ao.renovar(cliente, registrado, tokens["refresh_token"])
         api.fora_do_ar = False
-        depois = ao.renovar(cliente, registrado, tokens["refresh_token"])
-    assert falhou.status_code == 400
-    assert falhou.json()["error"] == "invalid_request"
-    assert depois.status_code == 200, depois.text
-
-
-@pytest.mark.parametrize("status", [429, 500, 503, 404])
-def test_limite_ou_erro_da_api_na_renovacao_nao_gasta_o_token(api, status):
-    # regressão da revisão cruzada: 429/5xx não é chave revogada (só 401 e 403 são)
-    with aj.conector(api.transporte) as cliente:
-        registrado, tokens = ao.tokens_para(cliente, ao.CHAVE_A)
-        api.status_forcado = status
-        falhou = ao.renovar(cliente, registrado, tokens["refresh_token"])
-        api.status_forcado = None
-        depois = ao.renovar(cliente, registrado, tokens["refresh_token"])
-    assert falhou.status_code == 400
-    assert falhou.json()["error"] == "invalid_request"
-    assert depois.status_code == 200, depois.text
+        acesso = renovada.json()["access_token"]
+        erro, _ = aj.chamar(cliente, acesso, "ficha_da_empresa", cnpj="11111111000191")
+        seguinte = ao.renovar(cliente, registrado, renovada.json()["refresh_token"])
+        depois = aj.rpc(cliente, acesso, "tools/list")
+    # sem a API não há como saber da revogação; o token novo não abre nada e a próxima renovação cai
+    assert renovada.status_code == 200
+    assert erro
+    assert seguinte.json()["error"] == "invalid_grant"
+    assert depois.status_code == 401
 
 
 @pytest.mark.parametrize("status", [401, 403])

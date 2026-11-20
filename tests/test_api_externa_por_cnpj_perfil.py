@@ -28,7 +28,11 @@ AGORA = empresas_de_mentira.AGORA
 EMPRESA = empresas_de_mentira.EMPRESA
 INEXISTENTE = empresas_de_mentira.INEXISTENTE
 ROTA = f"/data/v1/companies/{EMPRESA}/profile"
-TABELAS_PRONTAS = (*empresas.TABELAS, ficha.TABELA_DAS_ENTREGAS)
+TABELAS_PRONTAS = (
+    *empresas.TABELAS,
+    ficha.TABELA_DO_ESTABELECIMENTO,
+    ficha.TABELA_DAS_ENTREGAS,
+)
 
 
 def _rota(cnpj: str) -> str:
@@ -339,7 +343,11 @@ def test_entregas_sem_prontidao_dizem_que_os_dois_documentos_nao_foram_consultad
 # ---------------------------------------------------------------- campo do cadastro não disponível (linha 891)
 
 # o caso do ensaio da noite: a situação e o Simples sem prontidão (fora do registro), o nome e as entregas prontos
-SEM_SITUACAO_NEM_SIMPLES = (empresas.LISTA_DE_EMPRESAS, ficha.TABELA_DAS_ENTREGAS)
+SEM_SITUACAO_NEM_SIMPLES = (
+    empresas.LISTA_DE_EMPRESAS,
+    ficha.TABELA_DO_ESTABELECIMENTO,
+    ficha.TABELA_DAS_ENTREGAS,
+)
 SITUACAO_E_SIMPLES_DE_FORA = [
     "registration_status",
     "registration_status_date",
@@ -349,6 +357,8 @@ SITUACAO_E_SIMPLES_DE_FORA = [
     "simples_nacional",
     "simples_nacional_since",
     "simples_nacional_until",
+    # o texto da situação (linha 955) fica de fora com ela
+    "registration_status_label",
 ]
 
 

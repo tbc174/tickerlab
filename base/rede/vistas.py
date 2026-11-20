@@ -119,11 +119,11 @@ def vista_publicada(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(ligações sem pessoa, atributos das empresas): o que pode sair de casa.
 
-    `entidades` precisa de `id_entidade` e `trata_como_pessoa`.
+    `entidades` precisa de `id_entidade` e `trata_como_pessoa`; a marca vazia conta como pessoa (na dúvida, é
+    pessoa, como na porta).
     """
-    empresas = set(
-        entidades.loc[~entidades["trata_como_pessoa"].astype(bool), "id_entidade"]
-    )
+    e_pessoa = entidades["trata_como_pessoa"].astype("boolean").fillna(True)
+    empresas = set(entidades.loc[~e_pessoa, "id_entidade"])
     sem_pessoa = (
         ligacoes["de"].notna()
         & ligacoes["para"].notna()

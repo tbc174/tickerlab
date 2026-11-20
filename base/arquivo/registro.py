@@ -116,6 +116,9 @@ TERMOS_LIDOS_EM |= dict.fromkeys(("bcb", "tesouro"), date(2026, 10, 22))
 # fontes pouco visíveis (ADR 0124): rodapés do gov.br da Sudeco e da Sudam lidos em 04/11/2026; a
 # família "divida" fica sem data porque os termos dos sites dos PDFs não foram lidos um a um
 TERMOS_LIDOS_EM |= dict.fromkeys(("sudeco", "sudam"), date(2026, 11, 4))
+# IBAMA ("Outra (Aberta)" no portal de dados abertos) e MTE (sem termo próprio; rodapé do gov.br, CC BY-ND 3.0)
+# lidos em 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4; integridade sob contrato, ADR 0122 Emenda 1)
+TERMOS_LIDOS_EM |= dict.fromkeys(("ibama", "mte"), date(2026, 11, 18))
 # lote setoriais Brasil (licencas-por-fonte.md): as licenças lidas na rodada 3 (ANS, ANAC), na
 # rodada 1 (EPE, INEP, Senatran, INPI, ANEEL e Comex Stat); Anatel e ANP seguem o balanço prévio de
 # 14/10/2026 (licença declarada no conjunto do dados.gov.br)

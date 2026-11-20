@@ -364,6 +364,8 @@ export interface LigadoPeloCnpj {
 export const catalogo: {
   totais: {
     tabelas: number;
+    /** O dia/mês em que a lista de tabelas montadas foi conferida no acervo (vem de `base/tabelas_montadas.json`). */
+    tabelas_conferidas_em_curto: string;
     fontes: number;
     fontes_em_consulta: number;
     modulos: number;

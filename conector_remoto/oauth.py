@@ -13,12 +13,22 @@ O fluxo, do jeito que as duas IAs fazem (plano da linha 570, seção 2):
    (`selo.py`), presos ao cliente e ao recurso `/mcp`. Cada ferramenta abre o token e chama a API com a
    chave do analista: revogar a chave na API corta o conector na chamada seguinte.
 5. A renovação confere a chave na API de novo e troca os dois tokens; o token de renovação usado não
-   serve outra vez (lista na memória do processo até ele vencer).
+   serve outra vez (lista na memória do processo até ele vencer), **salvo nos 120 s seguintes**
+   (`JANELA_DE_REUSO_S`): ali o mesmo token devolve os mesmos tokens já emitidos. É o caso da resposta
+   que se perdeu no caminho e o de duas conversas renovando juntas, que derrubavam a conexão (17/11).
+6. **A renovação não cai porque a API não respondeu** (17/11): sem resposta da API, os tokens novos saem
+   sem a conferência. Não abre nada para chave revogada: cada chamada do `/mcp` confere a chave na API
+   (`load_access_token`), e a renovação seguinte, com a API de volta, recusa. O cliente oficial do SDK
+   do MCP apaga os tokens em qualquer resposta da renovação que não seja 200 (e o SDK do servidor só
+   devolve 400 para `TokenError`), então um erro passageiro aqui vira "reconecte" para o analista.
 
 Se a chave do servidor vazar, todo token capturado expõe a chave dentro dele: troque a chave do servidor
 (todos entram de novo) e revogue as chaves das pessoas (`docs/conector-remoto.md`, "Incidente").
 """
 
+import asyncio
+import logging
+import math
 import re
 import secrets
 import time
@@ -66,6 +76,10 @@ VALIDADE_DO_ACESSO_S = 3_600
 VALIDADE_DA_RENOVACAO_S = 30 * 24 * 3_600
 MAXIMO_DE_CODIGOS = 1_000
 MAXIMO_DE_RENOVACOES_USADAS = 50_000
+# o token de renovação recém-trocado devolve os mesmos tokens por este tempo (resposta perdida, duas
+# conversas renovando juntas); curto, para um token capturado e já usado não render nada depois
+JANELA_DE_REUSO_S = 120
+MAXIMO_DE_TROCAS_RECENTES = 5_000
 BYTES_DO_CODIGO = 32  # 256 bits (o mínimo do RFC 6749 é 128)
 
 CLIENTE = "cliente"
@@ -77,6 +91,8 @@ MENSAGEM_API_FORA = (
     "A API do TickerLab não respondeu agora; tente de novo em instantes."
 )
 MENSAGEM_CHAVE_REVOGADA = "A chave TickerLab deste acesso não vale mais: entre de novo."
+
+logger = logging.getLogger(__name__)
 
 
 def nome_da_ia(endereco_de_volta: str) -> str | None:
@@ -124,6 +140,24 @@ class PedidoDeAutorizacao:
         return urlsplit(self.endereco_de_volta).hostname or ""
 
 
+class _TrocaInterrompida(Exception):
+    """A troca em curso parou sem resposta (defeito ou pedido cancelado): quem esperava troca de novo."""
+
+
+@dataclass
+class _TrocaRecente:
+    """Uma troca de token de renovação: o resultado (ou a espera por ele) e até quando ele se repete."""
+
+    client_id: str
+    resultado: asyncio.Future[OAuthToken]
+    # enquanto a troca não termina, quem chega espera por ela
+    vence_em: float = math.inf
+    acesso_vence_em: float = 0.0
+
+    def serve_para(self, client_id: str, agora: float) -> bool:
+        return self.client_id == client_id and self.vence_em > agora
+
+
 def _textos(valor: object) -> list[str] | None:
     if isinstance(valor, list) and all(isinstance(item, str) for item in valor):
         return valor
@@ -149,6 +183,7 @@ class ProvedorOAuth:
         self._recursos_aceitos = frozenset({recurso, url_publica, f"{url_publica}/"})
         self._codigos: dict[str, CodigoComChave] = {}
         self._renovacoes_usadas: dict[str, int] = {}
+        self._trocas_recentes: dict[str, _TrocaRecente] = {}
 
     # ------------------------------------------------------------ registro (DCR) sem estado
 
@@ -326,8 +361,9 @@ class ProvedorOAuth:
 
     # ------------------------------------------------------------ tokens: a chave cifrada
 
-    def _emitir(self, client_id: str, chave: str, escopos: list[str]) -> OAuthToken:
-        agora = time.time()
+    def _emitir(
+        self, client_id: str, chave: str, escopos: list[str], *, agora: float
+    ) -> OAuthToken:
         acesso = self._selador.selar(
             ACESSO,
             {"k": chave, "c": client_id, "a": self._recurso},
@@ -358,20 +394,24 @@ class ProvedorOAuth:
     ) -> OAuthToken:
         """Os tokens do código (o SDK já conferiu o PKCE, o endereço de volta e a validade)."""
         return self._emitir(
-            client.client_id, authorization_code.chave_da_api, authorization_code.scopes
+            client.client_id,
+            authorization_code.chave_da_api,
+            authorization_code.scopes,
+            agora=time.time(),
         )
 
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
     ) -> RenovacaoComChave | None:
-        """O token de renovação aberto, se é deste cliente e ainda não foi usado."""
+        """O token de renovação aberto, se é deste cliente e ainda não foi usado (ou foi há menos de
+        `JANELA_DE_REUSO_S`, e por este mesmo cliente)."""
         pacote = self._selador.abrir(RENOVACAO, refresh_token, agora=time.time())
         if pacote is None or pacote.get("c") != client.client_id:
             return None
         chave, uso, escopos = pacote.get("k"), pacote.get("j"), _textos(pacote.get("e"))
         if not isinstance(chave, str) or not isinstance(uso, str) or escopos is None:
             return None
-        if uso in self._renovacoes_usadas:
+        if uso in self._renovacoes_usadas and self._troca_recente(uso, client) is None:
             return None
         return RenovacaoComChave(
             token=refresh_token,
@@ -398,24 +438,95 @@ class ProvedorOAuth:
         self._renovacoes_usadas[renovacao.uso_unico] = renovacao.expires_at or 0
         return True
 
+    def _troca_recente(
+        self, uso: str, client: OAuthClientInformationFull
+    ) -> _TrocaRecente | None:
+        troca = self._trocas_recentes.get(uso)
+        if troca is None or not troca.serve_para(client.client_id or "", time.time()):
+            return None
+        return troca
+
+    def _guardar_troca(self, uso: str, troca: _TrocaRecente) -> None:
+        agora = time.time()
+        self._trocas_recentes = {
+            u: t for u, t in self._trocas_recentes.items() if t.vence_em > agora
+        }
+        while len(self._trocas_recentes) >= MAXIMO_DE_TROCAS_RECENTES:
+            del self._trocas_recentes[next(iter(self._trocas_recentes))]
+        self._trocas_recentes[uso] = troca
+
+    async def _repetir(self, troca: _TrocaRecente) -> OAuthToken:
+        """O resultado da troca já feita (ou em curso) com este mesmo token de renovação."""
+        tokens = await asyncio.shield(troca.resultado)  # TokenError se a troca recusou
+        restante = math.floor(troca.acesso_vence_em - time.time())
+        return tokens.model_copy(update={"expires_in": max(1, restante)})
+
+    async def _renovar(
+        self,
+        client: OAuthClientInformationFull,
+        refresh_token: RenovacaoComChave,
+        scopes: list[str],
+    ) -> OAuthToken:
+        try:
+            aceita = await self.chave_aceita(refresh_token.chave_da_api)
+        except httpx.HTTPError:
+            # a API não respondeu: renova assim mesmo, porque recusar derruba a conexão da IA; a chave
+            # revogada não ganha nada, já que cada chamada do /mcp confere a chave na API
+            logger.warning(
+                "renovação sem conferir a chave %s: a API não respondeu",
+                refresh_token.subject,
+            )
+            aceita = True
+        if not aceita:
+            raise TokenError("invalid_grant", MENSAGEM_CHAVE_REVOGADA)
+        return self._emitir(
+            client.client_id or "",
+            refresh_token.chave_da_api,
+            scopes,
+            agora=time.time(),
+        )
+
     async def exchange_refresh_token(
         self,
         client: OAuthClientInformationFull,
         refresh_token: RenovacaoComChave,
         scopes: list[str],
     ) -> OAuthToken:
-        """Novos tokens, se a chave ainda vale na API; o token de renovação usado não serve de novo."""
+        """Novos tokens, se a chave ainda vale na API; o token de renovação usado devolve os mesmos tokens
+        por `JANELA_DE_REUSO_S` e depois não serve mais."""
+        uso = refresh_token.uso_unico
+        recente = self._troca_recente(uso, client)
+        if recente is not None:
+            try:
+                return await self._repetir(recente)
+            except _TrocaInterrompida:
+                # o token voltou a valer quando a troca parou: este pedido faz a troca de novo
+                return await self.exchange_refresh_token(client, refresh_token, scopes)
         if not self._marcar_usada(refresh_token):
             raise TokenError("invalid_grant", "Este token de renovação já foi usado.")
+        troca = _TrocaRecente(
+            client.client_id or "", asyncio.get_running_loop().create_future()
+        )
+        self._guardar_troca(uso, troca)
         try:
-            aceita = await self.chave_aceita(refresh_token.chave_da_api)
-        except httpx.HTTPError:
-            # a API não respondeu: o token não foi gasto, a IA tenta de novo depois
-            self._renovacoes_usadas.pop(refresh_token.uso_unico, None)
-            raise TokenError("invalid_request", MENSAGEM_API_FORA) from None
-        if not aceita:
-            raise TokenError("invalid_grant", MENSAGEM_CHAVE_REVOGADA)
-        return self._emitir(client.client_id, refresh_token.chave_da_api, scopes)
+            tokens = await self._renovar(client, refresh_token, scopes)
+        except TokenError as recusa:
+            troca.resultado.set_exception(recusa)
+            troca.resultado.exception()  # já entregue a quem pediu: sem aviso de exceção perdida
+            troca.vence_em = time.time() + JANELA_DE_REUSO_S
+            raise
+        except BaseException:
+            # falha inesperada ou pedido cancelado: o token não foi gasto e quem esperava refaz a troca
+            self._trocas_recentes.pop(uso, None)
+            self._renovacoes_usadas.pop(uso, None)
+            troca.resultado.set_exception(_TrocaInterrompida())
+            troca.resultado.exception()
+            raise
+        agora = time.time()
+        troca.acesso_vence_em = agora + VALIDADE_DO_ACESSO_S
+        troca.vence_em = agora + JANELA_DE_REUSO_S
+        troca.resultado.set_result(tokens)
+        return tokens
 
     # ------------------------------------------------------------ o token na chamada do /mcp
 

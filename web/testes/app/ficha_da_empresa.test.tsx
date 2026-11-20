@@ -125,7 +125,7 @@ describe("ficha da empresa", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "EMPRESA MODELO S.A." })).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("heading", { level: 1, name: "Ficha da empresa" })).toBeNull());
     expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual([
-      "Resumo", "Cadastro", "Quem controla", "Sinais", "Eventos", "Vínculos", "Fontes e limites",
+      "Resumo", "Análise completa", "Cadastro", "Quem controla", "Sinais", "Eventos", "Vínculos", "Fontes e limites",
     ]);
     expect(screen.getByRole("tab", { name: "Resumo" }).getAttribute("aria-selected")).toBe("true");
     const resumo = screen.getByRole("region", { name: "Resumo da ficha" });

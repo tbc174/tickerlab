@@ -269,6 +269,10 @@ _REGULADORES_PLANEJADAS = {
     "anatel-pados": _tabela("anatel_pados"),
     "anatel-homologados": _tabela("anatel_produtos_homologados"),
     "anp-tancagem": _tabela("anp_tancagem"),
+    # conferência de 19/11 (base/cadastros_conferidos_19_11.py)
+    "comprasgov-sicaf-ativos": _tabela("comprasgov_sicaf"),
+    "comprasgov-sicaf-inativos": _tabela("comprasgov_sicaf"),
+    "bps": _tabela("bps_compras"),
     "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
     # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
     "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),

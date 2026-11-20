@@ -16,10 +16,12 @@ from tickerlab import comandos
 from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.saida import TETO_DE_CARACTERES
+from src.api_externa import pessoas
 from src.api_externa.conjuntos import (
     ativos,
     comparaveis,
     compradores,
+    credito,
     demonstracoes,
     empresas,
     eventos,
@@ -110,7 +112,7 @@ def test_lista_so_o_que_o_catalogo_da_chave_libera():
         erro, texto = aj.chamar(
             cliente, aj.CHAVE_DE_MENTIRA, "buscar_empresas", uf=["SP"]
         )
-    assert nomes == ["demonstracoes", "o_que_posso_ver"]
+    assert nomes == ["de_onde_vem", "demonstracoes", "o_que_posso_ver"]
     assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
 
 
@@ -301,6 +303,7 @@ def test_conjuntos_das_ferramentas_sao_os_da_api():
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
         demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
         eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO, ativos.CONJUNTO,
+        pessoas.CONJUNTO, credito.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api
@@ -335,7 +338,7 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
             cnae=["62"], uf=["SP", "MG"], porte=["small"], so_matriz=True,
             aberta_antes_de="2020-01-01", limite=10,
         )  # fmt: skip
-    assert corpo == {"companies": [EMPRESA]}
+    assert aj.sem_proximo_passo(corpo) == {"companies": [EMPRESA]}
     (busca,) = [p for p in pedidos if p.url.path == "/data/v1/companies"]
     assert busca.url.params.multi_items() == [
         ("cnae", "62"), ("state", "SP"), ("state", "MG"), ("size", "small"),
@@ -371,7 +374,7 @@ def test_cnpj_com_pontuacao_e_letras_vai_limpo():
         corpo = aj.chamar_ok(
             cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="12.abc.345/01de-35"
         )
-    assert corpo == {"peers": []}
+    assert aj.sem_proximo_passo(corpo) == {"peers": []}
 
 
 @pytest.mark.parametrize(
@@ -591,7 +594,7 @@ def test_eventos_traduz_os_tipos_e_passa_o_cursor_e_a_data():
             cnpj="11111111000191",
             tipos=["socio"],
         )
-    assert corpo == {"events": []}
+    assert aj.sem_proximo_passo(corpo) == {"events": []}
     (pedido,) = [p for p in pedidos if p.url.path.endswith("/events")]
     assert pedido.url.params.get_list("types") == ["auditor_change", "ipe_filing"]
     assert pedido.url.params.get("cursor") == "abc"
@@ -688,7 +691,7 @@ def test_vinculos_traduz_os_tipos_e_passa_a_profundidade_e_a_data():
             tipos=["socio"],
         )
     assert (
-        corpo == padrao == VINCULOS_DA_API
+        aj.sem_proximo_passo(corpo) == aj.sem_proximo_passo(padrao) == VINCULOS_DA_API
     )  # os nomes de fora passam pelo filtro de pessoa
     primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/links")]
     assert primeiro.url.params.get_list("types") == ["affiliate_of", "audits"]
@@ -796,7 +799,9 @@ def test_compradores_passa_os_filtros_e_a_resposta_passa_pelo_filtro_de_pessoa()
                 {},
             )
         ]
-    assert corpo == COMPRADORES_DA_API  # os nomes de fora passam pelo filtro de pessoa
+    assert (
+        aj.sem_proximo_passo(corpo) == COMPRADORES_DA_API
+    )  # os nomes de fora passam pelo filtro de pessoa
     primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/buyers")]
     assert dict(primeiro.url.params) == {
         "cnae": "3511-5",
@@ -913,3 +918,100 @@ def test_ativos_sem_dado_ou_com_pessoa_vira_frase_sem_o_conteudo():
     assert erro_404 and "Não disponível" in texto_404
     assert erro_pessoa and ferramentas.MENSAGEM_DE_PESSOA in texto_pessoa
     assert "FULANO" not in texto_pessoa
+
+
+# ---------------------------------------------------------------- resposta grande e corte dos pares (linha 955)
+
+
+def _comparaveis_com(numero_de_pares: int) -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "subject_company": {"cnpj": "11111111000191"},
+        "peers": [{"cnpj": f"{n:014d}", "rank": n} for n in range(numero_de_pares)],
+        "truncated": False,
+        "peer_medians": {"ebitda_margin": 0.2},
+        "limits": ["Os pares são as companhias abertas do mesmo grupo de setores."],
+    }
+
+
+def test_comparaveis_entrega_os_dez_primeiros_pares_e_avisa_o_corte():
+    pedidos: list[httpx.Request] = []
+    rotas = {
+        "/companies/11111111000191/comparables": httpx.Response(
+            200, json=_comparaveis_com(30)
+        )
+    }
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        padrao = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191"
+        )
+        tres = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191", limite=3
+        )  # fmt: skip
+    assert [p["rank"] for p in padrao["peers"]] == list(range(10))  # a ordem da API
+    assert [p["rank"] for p in tres["peers"]] == [0, 1, 2]
+    for corpo in (padrao, tres):
+        assert corpo["truncated"] is True
+        assert corpo["peer_medians"] == {"ebitda_margin": 0.2}  # sobre todos os pares
+        assert corpo["limits"][0].startswith("Os pares são")
+        assert "dos 30 pares" in corpo["limits"][-1]
+    # o corte é no conector: o pedido à API é o mesmo da CLI, sem parâmetro novo
+    assert {
+        tuple(p.url.params.keys())
+        for p in pedidos
+        if p.url.path.endswith("/comparables")
+    } == {()}
+
+
+def test_comparaveis_com_poucos_pares_vem_como_a_api_mandou():
+    corpo = _comparaveis_com(10)
+    rotas = {"/companies/11111111000191/comparables": httpx.Response(200, json=corpo)}
+    with _conector(rotas) as cliente:
+        recebido = aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191"
+        )
+    assert aj.sem_proximo_passo(recebido) == corpo
+
+
+@pytest.mark.parametrize("limite", [0, ferramentas.LIMITE_MAXIMO_DOS_PARES + 1])
+def test_comparaveis_recusa_limite_fora_da_faixa(limite):
+    pedidos: list[httpx.Request] = []
+    with _conector(pedidos=pedidos) as cliente:
+        erro, _ = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191", limite=limite
+        )  # fmt: skip
+    assert erro
+    assert not [p for p in pedidos if p.url.path.endswith("/comparables")]
+
+
+def test_a_frase_da_resposta_grande_so_cita_parametro_que_a_ferramenta_tem():
+    lista = _ferramentas_listadas()
+    nomes = {f["name"] for f in lista}
+    assert set(ferramentas.DICAS_DE_RESPOSTA_GRANDE) <= nomes
+    for ferramenta in lista:
+        propriedades = set(ferramenta["inputSchema"].get("properties", {}))
+        frase = ferramentas.mensagem_de_resposta_grande(ferramenta["name"], 200_000)
+        citados = set(re.findall(r"`([^`]+)`", frase))
+        assert citados <= propriedades, (ferramenta["name"], citados - propriedades)
+        # quem tem `limite` precisa dizer que tem: era o parâmetro que a frase antiga citava para todas
+        if "limite" in propriedades:
+            assert "limite" in citados, ferramenta["name"]
+
+
+def test_comparaveis_grande_demais_mesmo_cortado_pede_limite_menor():
+    corpo = _comparaveis_com(50)
+    for par in corpo["peers"]:
+        par["note"] = "x" * (TETO_DE_CARACTERES // 40)
+    rotas = {"/companies/11111111000191/comparables": httpx.Response(200, json=corpo)}
+    with _conector(rotas) as cliente:
+        erro, texto = aj.chamar(
+            cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191", limite=50
+        )  # fmt: skip
+    assert erro and "grande demais" in texto and "`limite`" in texto
+
+
+def test_ferramenta_sem_parametro_de_tamanho_nao_manda_pedir_limite():
+    grande = {"sectors": [{"name": "x" * 1000}] * (TETO_DE_CARACTERES // 1000)}
+    with _conector({"/sectors": httpx.Response(200, json=grande)}) as cliente:
+        erro, texto = aj.chamar(cliente, aj.CHAVE_DE_MENTIRA, "setores")
+    assert erro and "grande demais" in texto and "`" not in texto

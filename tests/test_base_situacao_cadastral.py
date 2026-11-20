@@ -320,6 +320,46 @@ def test_cortar_o_futuro_nao_muda_o_passado_com_retrato_com_defeito(corte):
     pd.testing.assert_frame_equal(_montar_com_defeito(corte), ate_o_corte)
 
 
+def _montar_retratos(
+    retratos: list[list[dict]], meses: tuple[str, ...]
+) -> pd.DataFrame:
+    """Monta as versões de retratos dados à mão, com o mapa de defeito do cenário (`DEFEITO`)."""
+    frames = [_frame(r) for r in retratos]
+    partes = [
+        diff(a, b, ["cnpj"], m)
+        for a, b, m in zip(frames, frames[1:], meses[1:], strict=False)
+    ]
+    return sc.versoes(
+        frames[-1], pd.concat(partes, ignore_index=True), meses[0], RAIZES_PJ, DEFEITO
+    )
+
+
+def test_copia_em_dobro_que_ordena_antes_do_original_nao_gera_versao_nova():
+    """A cópia vem antes do original na `ordem` da chave: o antes e o depois do defeito ainda se igualam."""
+    normal = [_estabelecimento(EMPRESA, "02", "2010-01-01")]
+    com_copia = [
+        _estabelecimento(EMPRESA, "02", "2009-01-01"),  # ordena antes do original
+        _estabelecimento(EMPRESA, "02", "2010-01-01"),
+    ]
+    versoes = _montar_retratos(
+        [normal, normal, com_copia, normal, normal], MESES_COM_DEFEITO
+    )
+    assert list(_de(versoes, EMPRESA)[historico.MES]) == ["2023-05"]
+    assert set(versoes[historico.MES]) == {"2023-05"}
+
+
+def test_mudanca_real_no_mes_com_defeito_sem_copia_vira_versao_no_mes_seguinte():
+    """Mudou de verdade no mês com defeito: uma versão só, no mês seguinte e com o piso dele."""
+    antes = [_estabelecimento(EMPRESA, "02", "2010-01-01")]
+    mudou = [_estabelecimento(EMPRESA, "08", "2023-07-03", "01")]
+    versoes = _montar_retratos([antes, antes, mudou, mudou, mudou], MESES_COM_DEFEITO)
+    empresa = _de(versoes, EMPRESA)
+    assert list(empresa[historico.MES]) == ["2023-05", "2023-08"]
+    assert list(empresa["situacao_cadastral"]) == ["02", "08"]
+    piso = pd.Timestamp(disponivel_em("2023-08"))
+    assert pd.Timestamp(empresa["disponivel_em"].iloc[-1]) >= piso
+
+
 def test_o_retrato_com_defeito_de_estabelecimentos_e_so_o_de_2024_10():
     """Nenhuma regra geral sem evidência: só o mês contado no diagnóstico de 11/11/2026."""
     assert dict(sc.RETRATOS_COM_DEFEITO) == {"2024-10": "2024-11"}

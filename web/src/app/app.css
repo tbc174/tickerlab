@@ -206,6 +206,59 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .sugestoes-do-ativo li:hover, .sugestoes-do-ativo li[aria-selected="true"] { background: var(--fundo); color: var(--azul-texto); }
 .sugestoes-do-ativo li[aria-selected="true"] { outline: 2px solid var(--azul); outline-offset: -2px; }
 .dica-do-ativo { grid-column: 1 / -1; order: 1; font-size: .82rem; color: var(--apagado); }
+/* o campo Setor (CampoDoSetor.tsx): o mesmo combobox, com o nome da atividade à esquerda e o código à direita;
+   no computador o setor ocupa metade da linha (o nome é longo) e o Estado e o Período dividem o resto */
+.campos-do-setor { align-items: start; }
+@media (min-width: 48rem) {
+  .campos-do-setor { grid-template-columns: 2fr 1fr 1fr; }
+  .campo-do-setor .sugestoes-do-ativo { width: max(100%, 36rem); }
+}
+.campo-do-setor .sugestoes-do-ativo li { justify-content: space-between; gap: var(--e3); }
+.codigo-da-sugestao { flex: none; font-size: .82rem; font-variant-numeric: tabular-nums; color: var(--apagado); }
+.dica-do-setor { margin-top: var(--e1); font-size: .82rem; color: var(--apagado); }
+.detalhe-da-sugestao { display: block; font-size: .8rem; color: var(--apagado); }
+/* Encontrar empresas: o essencial numa linha (setor, estado e os botões); no celular, um embaixo do outro */
+.linha-essencial { display: grid; gap: var(--e3) var(--e4); align-items: start; }
+@media (min-width: 48rem) {
+  .linha-essencial { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; }
+  .botoes-da-busca { padding-top: var(--e5); }
+}
+.botoes-da-busca { display: flex; flex-wrap: wrap; gap: var(--e2); }
+/* "Mais filtros" recolhido e o "Limpar filtros" à direita, na mesma linha */
+.linha-dos-extras { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--e3); }
+.linha-dos-extras .mais-filtros { flex: 1; min-width: 0; }
+/* "Pôr na comparação" em cada linha da lista: botão com cara de link */
+.botao-de-texto { padding: 0; border: 0; background: none; color: var(--azul-texto); font: inherit; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.botao-de-texto[aria-pressed="true"] { color: var(--texto); text-decoration: none; font-weight: 600; }
+.botao-de-texto:disabled { color: var(--apagado); text-decoration: none; cursor: not-allowed; }
+.setores-da-busca .etiquetas-de-filtro { margin: var(--e2) 0 0; }
+.estados-da-busca { min-width: 0; margin: 0; padding: 0; border: 0; }
+.estados-da-busca legend { margin-bottom: var(--e1); padding: 0; font-size: .88rem; color: var(--apagado); }
+.lista-que-abre { position: relative; }
+.lista-que-abre summary { display: flex; align-items: center; justify-content: space-between; gap: var(--e2); min-height: 44px;
+  padding: var(--e2) var(--e3); border: 1px solid var(--linha-forte); border-radius: 8px; background: var(--superficie);
+  color: var(--texto); cursor: pointer; list-style: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lista-que-abre summary::-webkit-details-marker { display: none; }
+.lista-que-abre summary::after { content: "▾"; flex: none; color: var(--apagado); }
+.lista-que-abre[open] summary::after { content: "▴"; }
+.grade-de-estados { position: absolute; right: 0; top: 100%; z-index: 5; display: grid; grid-template-columns: repeat(4, minmax(3.5rem, 1fr));
+  gap: 0 var(--e2); width: max(100%, 17rem); margin-top: var(--e1); padding: var(--e2);
+  border: 1px solid var(--linha-forte); border-radius: 8px; background: var(--superficie); box-shadow: var(--sombra); }
+.formulario-do-app .grade-de-estados label { flex-direction: row; align-items: center; gap: var(--e2); min-height: 44px; color: var(--texto); }
+.formulario-do-app .grade-de-estados input[type="checkbox"] { min-width: 0; width: 1.1rem; height: 1.1rem; padding: 0; }
+.mais-filtros > :not(summary) + :not(summary) { margin-top: var(--e4); }
+.capital-da-busca { margin: var(--e4) 0 0; padding: 0; border: 0; }
+.capital-da-busca legend { margin-bottom: var(--e2); padding: 0; font-size: .88rem; color: var(--apagado); }
+.faixas-de-capital { display: flex; flex-wrap: wrap; gap: var(--e2); margin-bottom: var(--e3); }
+.formulario-do-app .faixas-de-capital .botao { align-self: auto; border-radius: 999px; font-size: var(--t-1); }
+.faixas-de-capital .botao[aria-pressed="true"] { border-color: var(--azul); background: var(--azul); color: #fff; }
+.cabeca-da-lista { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--e2) var(--e4); }
+.cabeca-da-lista p { margin: 0; }
+.ordem-da-lista { display: flex; flex-direction: column; gap: var(--e1); font-size: .88rem; color: var(--apagado); }
+.ordem-da-lista select { min-height: 44px; padding: var(--e2) var(--e3); border-radius: 8px; border: 1px solid var(--linha-forte);
+  background: var(--superficie); color: var(--texto); font: inherit; font-size: 16px; }
+.exemplos-de-busca ul { display: flex; flex-wrap: wrap; gap: var(--e2); margin: var(--e2) 0 var(--e4); padding: 0; list-style: none; }
+.exemplos-de-busca .botao { min-height: 44px; text-align: left; }
 .opcoes-avancadas summary { cursor: pointer; width: fit-content; margin-bottom: var(--e3); font-size: .88rem; font-weight: 700; color: var(--azul-texto); }
 .opcoes-avancadas:not([open]) summary { margin-bottom: 0; }
 .formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: var(--e2) var(--e3); border-radius: 8px;
@@ -406,6 +459,12 @@ button.resultado-da-busca { margin-top: var(--e3); }
 .lista-de-operacoes { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--e2); margin: var(--e4) 0; }
 .operacao-da-sala { margin-top: var(--e5); }
 .acoes-da-sala { display: flex; flex-wrap: wrap; gap: var(--e3); align-items: end; margin: var(--e3) 0; }
+/* Administração: ações com a pergunta na própria página e a chave que aparece uma vez só */
+.acoes-da-administracao { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e2) var(--e3); margin: var(--e3) 0; }
+td .acoes-da-administracao { margin: 0; }
+.confirmacao-da-administracao, .chave-nova { margin: var(--e4) 0; padding: var(--e3) var(--e4); border-radius: 10px; border: 1px solid var(--atencao); }
+.confirmacao-da-administracao p, .chave-nova p { margin: 0 0 var(--e2); }
+.chave-nova pre { margin: var(--e2) 0 var(--e3); padding: var(--e3); border-radius: 8px; border: 1px solid var(--linha); overflow-wrap: anywhere; white-space: pre-wrap; user-select: all; }
 .contradicao-da-sala { list-style: none; padding: var(--e3) 0; border-top: 1px solid var(--borda, rgba(128,128,128,.3)); }
 .nota-da-sala { display: flex; flex-direction: column; gap: var(--e1); }
 .nota-da-sala input { width: 100%; padding: var(--e2) var(--e3); border-radius: 8px; }

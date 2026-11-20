@@ -177,38 +177,30 @@ def test_o_log_nao_leva_cnpj_nem_contato(cliente, casa, caplog):
     assert "contato da ficha: pronta" in texto
 
 
-# ------------------------------------------- individual e MEI: endereço só até município e UF (linha 859)
+# ------------------------------- MEI, individual e unipessoal: sem contato nenhum (ADR 0128, Emenda 4)
 
 MEI = "33444555000181"
-SEM_RUA = dict.fromkeys(
-    ("tipo_logradouro", "logradouro", "numero", "complemento", "bairro", "cep")
-)
 
 
 def _com_mei(acervo) -> None:
-    """Regrava o contato como a montagem grava: a raiz de MEI sem rua, a da empresa inteira."""
+    """Regrava o contato como a montagem grava: o MEI não tem linha nenhuma, a empresa vem inteira."""
     pasta = acervo / pessoa.CONTATO
     for arquivo in pasta.glob("*.parquet"):
         arquivo.unlink()
-    linhas = [*acervo_de_mentira.CONTATOS, acervo_de_mentira._contato(MEI) | SEM_RUA]
+    linhas = list(acervo_de_mentira.CONTATOS)
+    assert all(not linha["cnpj"].startswith(MEI[:8]) for linha in linhas)
     tabela = pd.DataFrame(linhas).assign(mes_do_retrato=acervo_de_mentira.MES)
     for prefixo, parte in tabela.groupby(tabela["cnpj_basico"].str[:2]):
         parte.to_parquet(pasta / f"{prefixo}.parquet", index=False)
 
 
-def test_organizacao_com_a_permissao_recebe_o_mei_sem_a_rua_e_a_empresa_inteira(
+def test_organizacao_com_a_permissao_nao_recebe_contato_do_mei_e_a_empresa_vem_inteira(
     cliente, casa, acervo
 ):
     _com_mei(acervo)
-    do_mei = cliente.post(ROTA, json={"cnpj": MEI}).json()["estabelecimentos"][0]
-    assert (
-        do_mei["logradouro"] is None
-        and do_mei["bairro"] is None
-        and do_mei["cep"] is None
-    )
-    assert (
-        do_mei["municipio"] and do_mei["uf"] and do_mei["telefones"] and do_mei["email"]
-    )
+    do_mei = cliente.post(ROTA, json={"cnpj": MEI}).json()
+    assert do_mei["estabelecimentos"] == [] and do_mei["total"] == 0
+    assert do_mei["estado"] == analista_pessoas.SEM_CONTATO
     empresa = cliente.post(ROTA, json={"cnpj": EMPRESA}).json()["estabelecimentos"][0]
     assert empresa["logradouro"] and empresa["cep"]
 

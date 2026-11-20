@@ -154,3 +154,59 @@ def test_known_at_antigo_nao_le_a_resposta_de_hoje(cliente, cenario):
         )
     assert len(compradores._CACHE) >= 1
     assert _get(cliente, cenario).json() == hoje.json()
+
+
+def _leitor(pasta, banco):
+    return compradores.LeitorDeCompradores(Porta(pasta, banco), lambda *_: True, 50)
+
+
+def test_o_mesmo_pedido_ao_mesmo_tempo_e_calculado_uma_vez(pasta, banco, monkeypatch):
+    """O cliente desiste aos 30 s e repete: a repetição espera a primeira e lê do cache (linha 956)."""
+    import threading
+    import time
+
+    montagens: list[int] = []
+    original = compradores.LeitorDeCompradores._montar
+
+    def devagar(self, *args, **kwargs):
+        montagens.append(1)
+        time.sleep(0.3)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(compradores.LeitorDeCompradores, "_montar", devagar)
+    pedido = compradores.PedidoDeCompradores(SETOR, None, 3, 20)
+    respostas: list = []
+
+    def pede() -> None:
+        servido = _leitor(pasta, banco).compradores(pedido, date(2026, 11, 10))
+        respostas.append(servido)
+
+    fios = [threading.Thread(target=pede) for _ in range(4)]
+    for fio in fios:
+        fio.start()
+    for fio in fios:
+        fio.join()
+    assert len(montagens) == 1
+    assert len(respostas) == 4 and all(r == respostas[0] for r in respostas)
+    assert respostas[0] is not None and respostas[0].linhas
+    assert not compradores._EM_CURSO
+
+
+def test_pedido_que_falha_nao_trava_o_seguinte(pasta, banco, monkeypatch):
+    original = compradores.LeitorDeCompradores._montar
+    chamadas: list[int] = []
+
+    def quebra_na_primeira(self, *args, **kwargs):
+        chamadas.append(1)
+        if len(chamadas) == 1:
+            raise RuntimeError("a consulta caiu")
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(compradores.LeitorDeCompradores, "_montar", quebra_na_primeira)
+    pedido = compradores.PedidoDeCompradores(SETOR, None, 3, 20)
+    with pytest.raises(RuntimeError, match="a consulta caiu"):
+        _leitor(pasta, banco).compradores(pedido, date(2026, 11, 10))
+    assert not compradores._EM_CURSO
+    segundo = _leitor(pasta, banco).compradores(pedido, date(2026, 11, 10))
+    assert segundo is not None and segundo.linhas
+    assert len(chamadas) == 2

@@ -11,6 +11,7 @@ from collections import Counter
 import pandas as pd
 import pytest
 
+from base import cnpj
 from base import receita_contato as rc
 from base.receita_retrato import ErroDeLayout
 from tests.ajudantes_de_cpf import CPF_DE_TESTE, no_formato
@@ -45,7 +46,7 @@ def _zip(*linhas: str) -> io.BytesIO:
 
 
 def _ler(*linhas: str) -> tuple[pd.DataFrame, Counter]:
-    partes = list(rc.ler_contato(_zip(*linhas), set()))
+    partes = list(rc.ler_contato(_zip(*linhas), set(), rc.RaizesDeIndividual()))
     tabela = pd.concat([p.estabelecimentos for p in partes], ignore_index=True)
     return tabela, sum((p.descartes for p in partes), Counter())
 
@@ -155,7 +156,11 @@ def test_cnpj_com_letras_sai_em_maiusculas():
 
 def test_layout_com_campo_a_mais_quebra_a_leitura():
     with pytest.raises(ErroDeLayout):
-        list(rc.ler_contato(_zip(_linha().rstrip("\n") + ';"X"\n'), set()))
+        list(
+            rc.ler_contato(
+                _zip(_linha().rstrip("\n") + ';"X"\n'), set(), rc.RaizesDeIndividual()
+            )
+        )
 
 
 @pytest.mark.parametrize(
@@ -196,7 +201,7 @@ def test_numero_de_rua_e_cep_comuns_nao_sao_confundidos_com_cpf():
     assert tabela.loc[0, "complemento"] == "BLOCO 2 APTO 301"
 
 
-# ---------------------------------------- individual e MEI: só município e UF no endereço (linha 859)
+# ------------------------- MEI, empresário individual e unipessoal: sem endereço e sem contato (ADR 0128, Emenda 4)
 
 
 def _raizes(*raizes: str) -> rc.RaizesDeIndividual:
@@ -205,27 +210,48 @@ def _raizes(*raizes: str) -> rc.RaizesDeIndividual:
     return conjunto
 
 
-def test_individual_sai_so_com_municipio_uf_telefone_e_email():
-    partes = list(rc.ler_contato(_zip(_linha()), set(), _raizes("11222333")))
+def test_contato_de_pessoa_sai_inteiro_sem_municipio_telefone_nem_email():
+    """O estabelecimento da raiz cortada não sai: nem rua, nem município e UF, nem telefone, nem e-mail."""
+    partes = list(
+        rc.ler_contato(
+            _zip(_linha(), _linha(ordem="0002", dv="62")), set(), _raizes("11222333")
+        )
+    )
     tabela = pd.concat([p.estabelecimentos for p in partes], ignore_index=True)
-    linha = tabela.iloc[0]
-    for coluna in (*rc.ENDERECO, "cep"):
-        assert pd.isna(linha[coluna]), coluna
-    assert (linha["municipio"], linha["uf"]) == ("7107", "SP")
-    assert linha["telefone_1"] == "1130001000" and linha["email"]
-    assert sum((p.descartes for p in partes), Counter())[rc.ENDERECO_CORTADO] == 1
+    assert tabela.empty
+    assert sum((p.descartes for p in partes), Counter())[rc.CONTATO_DE_PESSOA] == 2
 
 
-def test_empresa_que_nao_e_individual_segue_com_o_endereco_inteiro():
+def test_empresa_que_nao_e_de_pessoa_segue_com_o_contato_inteiro():
     linhas = _zip(_linha(), _linha("22333444"))
     partes = list(rc.ler_contato(linhas, set(), _raizes("22333444")))
     tabela = pd.concat([p.estabelecimentos for p in partes], ignore_index=True)
-    inteira = tabela[tabela["cnpj_basico"] == "11222333"].iloc[0]
+    assert list(tabela["cnpj_basico"]) == ["11222333"]
+    inteira = tabela.iloc[0]
     assert inteira["logradouro"] == "DOS EXEMPLOS" and inteira["cep"] == "01001000"
-    cortada = tabela[tabela["cnpj_basico"] == "22333444"].iloc[0]
-    assert pd.isna(cortada["logradouro"]) and pd.isna(cortada["cep"])
+    assert inteira["telefone_1"] == "1130001000" and inteira["email"]
 
 
-def test_sem_raizes_de_individual_o_conjunto_vazio_nao_corta_nada():
+def test_raizes_juntadas_em_numeros_tambem_cortam():
+    """O MEI do Simples, a EIRELI e o quadro de um sócio só chegam em números (`base/receita_contato_de_pessoa.py`)."""
+    conjunto = rc.RaizesDeIndividual()
+    conjunto.juntar_numeros(cnpj.raizes_em_numeros(pd.Series(["22333444"])))
+    partes = list(rc.ler_contato(_zip(_linha(), _linha("22333444")), set(), conjunto))
+    assert list(partes[0].estabelecimentos["cnpj_basico"]) == ["11222333"]
+
+
+def test_sem_raizes_cortadas_o_conjunto_vazio_nao_corta_nada():
     partes = list(rc.ler_contato(_zip(_linha()), set(), rc.RaizesDeIndividual()))
     assert partes[0].estabelecimentos.iloc[0]["logradouro"] == "DOS EXEMPLOS"
+    assert partes[0].descartes[rc.CONTATO_DE_PESSOA] == 0
+
+
+def test_o_corte_e_obrigatorio():
+    """Sem o conjunto de raízes cortadas o leitor não roda: esquecê-lo soltaria o contato de toda pessoa."""
+    with pytest.raises(TypeError):
+        rc.ler_contato(_zip(_linha()), set())  # type: ignore[call-arg]
+
+
+def test_o_marcador_antigo_saiu_e_o_novo_e_um_motivo():
+    assert rc.CONTATO_DE_PESSOA in rc.MOTIVOS
+    assert "endereco_de_individual_cortado" not in rc.MOTIVOS

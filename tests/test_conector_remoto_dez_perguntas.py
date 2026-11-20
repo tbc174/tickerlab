@@ -16,7 +16,7 @@ há ferramenta, e o conector não finge que há).
 
 | # | situação | ferramentas | o que falta |
 |---|---|---|---|
-| 1 | respondida | ficha_da_empresa | nada: cadastro, situação e matriz ou filial |
+| 1 | respondida | ficha_da_empresa, analise_completa | nada: cadastro, situação e matriz ou filial |
 | 2 | respondida | buscar_empresas | a primeira página não é o universo: o `next_cursor` avisa |
 | 3 | fraca | demonstracoes | faturamento de empresa fechada não existe na base: diz "não temos" |
 | 4 | respondida | vinculos | só pessoa jurídica; controle e coligação só da companhia aberta |
@@ -130,6 +130,38 @@ def _par(cnpj: str, nome: str, receita: float) -> dict:
     }
 
 
+def _analise_de_mentira() -> dict:
+    """A análise completa na forma da API: blocos, frase, linha do tempo, leituras e o que ela não traz."""
+    return {
+        "cnpj": ALFA,
+        "known_at": HOJE.isoformat(),
+        "summary": {"text": "ALFA TECNOLOGIA S.A.; situação ativa na Receita.", "kind": "fact"},
+        "blocks": {
+            "profile": _cadastro(ALFA, "ALFA TECNOLOGIA S.A.", True),
+            "corporate_ownership": {
+                "equity_holders": [
+                    {"cnpj_root": "55555555", "legal_name": _campo("OMEGA HOLDING S.A."),
+                     "entry_date": _campo("2010-05-01")}
+                ],
+                "equity_stakes": [],
+                "truncated": False,
+            },
+        },
+        "timeline": [
+            {"day": "2010-05-01", "what": "Início da atividade (Receita)", "block": "profile",
+             "source": "rfb-cnpj", "published_at": "2026-09-30"}
+        ],
+        "inferences": [
+            {"text": "Cerca de 16 anos de atividade.", "kind": "inference", "based_on": ["profile"]}
+        ],
+        "not_found": [],
+        "timed_out": [],
+        "not_included": ["Dívida ativa da União (PGFN)", "Processos judiciais"],
+        "requests_used": 2,
+        "sources": _fontes("rfb-cnpj"),
+    }  # fmt: skip
+
+
 def _rotas_de_mentira() -> dict[str, httpx.Response]:
     """O que a API de mentira responde a cada rota que as dez perguntas usam."""
     limites = [{"code": "sem_pessoa", "text": "Só pessoa jurídica."}]
@@ -138,6 +170,7 @@ def _rotas_de_mentira() -> dict[str, httpx.Response]:
             _cadastro(ALFA, "ALFA TECNOLOGIA S.A.", True)
             | {"sources": _fontes("rfb-cnpj"), "limits": limites}
         ),
+        f"/companies/{ALFA}/analysis": _json(_analise_de_mentira()),
         f"/companies/{ALFA_FILIAL}/profile": _json(
             _cadastro(ALFA_FILIAL, "ALFA TECNOLOGIA S.A.", False)
             | {"sources": _fontes("rfb-cnpj")}
@@ -455,8 +488,17 @@ def test_a_tabela_do_topo_bate_com_as_ferramentas_do_conector(analista):
             )
 
 
+# ferramenta que nenhuma das dez perguntas chama, com o motivo (a medida dela fica em outro arquivo)
+SEM_PERGUNTA_DAS_DEZ = {
+    "de_onde_vem": "linha 980, onda 1: explica a origem de um conjunto ou campo, que as dez não perguntam; testada em test_conector_de_onde_vem",
+    "o_que_mudou": "linha 980, onda 1: serve à volta a uma empresa já analisada, que as dez não têm; testada em test_conector_ferramentas_do_analista",
+    "comparar_empresas": "linha 980, onda 1: põe lado a lado empresas que o analista já escolheu, que as dez não pedem; testada em test_conector_ferramentas_do_analista",
+}
+
+
 def test_toda_ferramenta_do_conector_serve_a_alguma_pergunta(analista):
     citadas = {f for _s, lista in tabela_do_topo().values() for f in lista}
+    citadas |= set(SEM_PERGUNTA_DAS_DEZ)
     sobram = set(_ferramentas_do_conector(analista.cliente)) - citadas
     assert not sobram, (
         f"Ferramenta nova no conector sem pergunta na tabela do topo: {sorted(sobram)}. "
@@ -516,6 +558,7 @@ def _blocos_com_fonte_e_data(no: object) -> int:
 SEM_BLOCO_DE_FONTE = {
     "setores": "só a lista de chaves dos setores",
     "o_que_posso_ver": "catálogo e consumo da própria chave",
+    "de_onde_vem": "explicação de um conjunto ou campo, tirada do catálogo da chave",
 }
 
 
@@ -547,6 +590,14 @@ def pergunta_1(analista: Analista) -> None:
     assert analista.pedido_a_api(
         f"/companies/{ALFA_FILIAL}/profile"
     )  # a pontuação saiu
+    # a análise completa responde a mesma pergunta num pedido só, com o resto dos blocos que a chave vê
+    analise = analista.perguntar("analise_completa", cnpj=ALFA)
+    assert (
+        analise.corpo["blocks"]["profile"]["legal_name"]["value"]
+        == "ALFA TECNOLOGIA S.A."
+    )
+    assert analise.corpo["not_included"]
+    assert analista.pedido_a_api(f"/companies/{ALFA}/analysis")
 
 
 def pergunta_2(analista: Analista) -> None:
@@ -769,9 +820,10 @@ def test_a_pergunta_5_avisa_que_compradores_sao_movimento_passado(analista):
     assert "nem intenção de compra" in _descricao(no_conector["compradores_do_setor"])
 
 
-def test_as_instrucoes_dizem_que_a_base_nao_tem_pessoa_fisica(analista):
+def test_as_instrucoes_dizem_o_limite_da_pessoa_fisica(analista):
     instrucoes = _instrucoes(analista.cliente)
-    assert "dado de pessoa física (sócio pessoa física, CPF, contato)" in instrucoes
+    assert "de pessoa física, nada além do que `socios_e_donos` traz" in instrucoes
+    assert "nunca CPF, data de nascimento, endereço ou contato da pessoa" in instrucoes
 
 
 # o que a API não deveria mandar, mas, se mandar, o conector tem de barrar (sem repetir o valor)
@@ -802,6 +854,16 @@ def test_o_conector_barra_pessoa_fisica_que_a_api_mandar(sinal):
 # ---------------------------------------------------------------- o tamanho das respostas
 
 
+# ferramenta que as dez perguntas não chamam e que mede o próprio teto noutro arquivo (com o motivo)
+MEDIDAS_A_PARTE = {
+    "socios_e_donos": "pessoa física só da organização com a permissão; teto em test_conector_remoto_socios_e_donos",
+    "credito_da_empresa": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
+    "o_que_mudou": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
+    "comparar_empresas": "linha 980, onda 1: cinco fichas pequenas; teto em test_conector_ferramentas_do_analista",
+    "de_onde_vem": "linha 980, onda 1: só explica o catálogo; teto em test_conector_de_onde_vem",
+}
+
+
 def test_a_maior_resposta_de_dado_de_cada_ferramenta_cabe_no_teto(analista):
     """Mede só resposta de dado (frase de erro não conta). Com dado de mentira (poucas centenas de
     caracteres) isto só prova que toda ferramenta foi medida; o pior caso de verdade, a busca com 100
@@ -819,9 +881,9 @@ def test_a_maior_resposta_de_dado_de_cada_ferramenta_cabe_no_teto(analista):
     medidas = {
         f: t for f, t in maiores.items() if f in ferramentas.CONJUNTOS_DA_FERRAMENTA
     }
-    assert set(medidas) == set(ferramentas.CONJUNTOS_DA_FERRAMENTA), (
-        "ferramenta sem resposta medida: "
-        f"{sorted(set(ferramentas.CONJUNTOS_DA_FERRAMENTA) - set(medidas))}"
+    esperadas = set(ferramentas.CONJUNTOS_DA_FERRAMENTA) - set(MEDIDAS_A_PARTE)
+    assert set(medidas) == esperadas, (
+        f"ferramenta sem resposta medida: {sorted(esperadas - set(medidas))}"
     )
     acima = {f: t for f, t in medidas.items() if t >= TETO_DE_CARACTERES}
     assert not acima, f"resposta acima do teto de {TETO_DE_CARACTERES}: {acima}"

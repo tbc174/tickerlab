@@ -2,8 +2,13 @@
 // de empresas do setor, fundos sócios e companhias abertas com controlada nele. É movimento passado, não
 // intenção de compra, e a tela diz isso à vista. O setor (CNAE e UF) vai no corpo do POST, nunca no endereço.
 // O que a rota não dá (contagem por UF, aberturas por ano) a tela diz que não tem, em vez de inventar.
-import { type FormEvent, useState } from "react";
+// O setor se escolhe pelo nome da atividade (a tabela de CNAEs da Receita) ou pelo código; a UF e os anos são
+// listas prontas. A ficha da empresa abre esta aba com o CNAE dela no estado da navegação, e a busca já sai.
+import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { type AtividadeDoCnae, cnaeComPontuacao, cnaeDigitado, nomeDoCnae, rotuloDoSetor } from "../buscaDeCnaes";
+import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
+import { CampoDoSetor, useAtividadesDoCnae } from "../pecas/CampoDoSetor";
 import { Carregando } from "../pecas/Carregando";
 import { Erro } from "../pecas/Erro";
 import { Fontes, type FonteDaSecao } from "../pecas/Fonte";
@@ -13,6 +18,7 @@ import { NumerosDoSetor } from "./NumerosDoSetor";
 import { Vazio } from "../pecas/Vazio";
 import { formatarData } from "../formatar";
 import type { CompradorDoSetorV1, CompradoresDoSetorV1, ExemploDeProvaV1 } from "../tipos";
+import { UFS } from "../ufs";
 import { usarPedido } from "../usarPedido";
 
 const ROTA = "/v1/analista/setor/compradores";
@@ -27,9 +33,12 @@ const TIPO_DOS_SINAIS: Record<string, string> = {
   fundo_socio: "Fundo sócio",
   controla_no_setor: "Controla no setor",
 };
-const DIGITOS_DO_CNAE = /^(\d{5}|\d{7})$/;
-const UFS = /^[A-Za-z]{2}$/;
-const MAXIMO_DE_ANOS = 10;
+// a janela de anos: as opções da lista e o padrão (o mesmo da API, ANOS_PADRAO em
+// src/api_externa/conjuntos/compradores.py; o máximo dela é 10)
+const OPCOES_DE_ANOS = [1, 3, 5, 10];
+const ANOS_PADRAO = 3;
+const AVISO_DO_SETOR = "Escolha uma atividade da lista ou digite o CNAE com 5 ou 7 dígitos.";
+const CNAE_DA_FICHA = /^\d{7}$/;
 
 interface Pedido {
   cnae: string;
@@ -129,7 +138,7 @@ const colunas = (fontes: FonteDaSecao[]): Coluna<CompradorDoSetorV1>[] => [
   { chave: "o_que_fez", titulo: "O que fez no setor", celula: (c) => <ProvasDe comprador={c} fontes={fontes} /> },
 ];
 
-function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
+function Resultado({ dados, atividades }: { dados: CompradoresDoSetorV1; atividades: AtividadeDoCnae[] | null }) {
   if (dados.estado === "nao_liberada") {
     return (
       <>
@@ -143,7 +152,7 @@ function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
     <>
       {setor ? (
         <p>
-          <strong>CNAE {setor.cnae_principal}</strong>
+          <strong>{rotuloDoSetor(setor.cnae_principal, nomeDoCnae(atividades, setor.cnae_principal))}</strong>
           {setor.uf ? ` · ${setor.uf}` : " · Brasil"} · {setor.empresas_ativas} empresas ativas · desde{" "}
           {formatarData(setor.desde)} ({setor.anos} {setor.anos === 1 ? "ano" : "anos"})
           {dados.como_era_em ? <span className="apagado"> · retrato de {formatarData(dados.como_era_em)}</span> : null}
@@ -198,38 +207,106 @@ function Resultado({ dados }: { dados: CompradoresDoSetorV1 }) {
   );
 }
 
-function Consulta({ pedido }: { pedido: Pedido }) {
+function Consulta({ pedido, atividades }: { pedido: Pedido; atividades: AtividadeDoCnae[] | null }) {
   const resposta = usarPedido<CompradoresDoSetorV1>(ROTA, {}, pedido);
   if (resposta.estado === "carregando") return <Carregando tipo="painel" rotulo="Procurando quem já se mexeu no setor…" />;
   if (resposta.estado === "erro") return <Erro erro={resposta.erro} />;
-  return <Resultado dados={resposta.dados} />;
+  return <Resultado dados={resposta.dados} atividades={atividades} />;
 }
 
-function ConsultaCompleta({ pedido }: { pedido: Pedido }) {
+function ConsultaCompleta({ pedido, atividades }: { pedido: Pedido; atividades: AtividadeDoCnae[] | null }) {
   return (
     <>
-      <NumerosDoSetor cnae={pedido.cnae} uf={pedido.uf} />
-      <Consulta pedido={pedido} />
+      <NumerosDoSetor cnae={pedido.cnae} uf={pedido.uf} nome={nomeDoCnae(atividades, pedido.cnae)} />
+      <Consulta pedido={pedido} atividades={atividades} />
     </>
   );
 }
 
+/** O CNAE que a ficha da empresa mandou pelo estado da navegação ({ quemSeMexeu: { cnae } }), ou null. */
+function cnaeDaNavegacao(estado: unknown): string | null {
+  if (typeof estado !== "object" || estado === null || !("quemSeMexeu" in estado)) return null;
+  const { quemSeMexeu } = estado;
+  if (typeof quemSeMexeu !== "object" || quemSeMexeu === null || !("cnae" in quemSeMexeu)) return null;
+  const { cnae } = quemSeMexeu;
+  return typeof cnae === "string" && CNAE_DA_FICHA.test(cnae) ? cnae : null;
+}
+
+/** A linha embaixo do campo: o código da atividade escolhida ou, para um código digitado, o nome dele. */
+function dicaDoSetor(escolhida: AtividadeDoCnae | null, texto: string, atividades: AtividadeDoCnae[] | null): string {
+  if (escolhida) return `CNAE ${cnaeComPontuacao(escolhida.codigo)}`;
+  const digitado = cnaeDigitado(texto);
+  if (digitado === null) return "";
+  const nome = nomeDoCnae(atividades, digitado);
+  if (nome) return nome;
+  return digitado.length === 5 ? "Classe do CNAE: entram todas as atividades dela." : "";
+}
+
+function Periodo({ anos, aoMudar }: { anos: number; aoMudar(anos: number): void }) {
+  return (
+    <label>
+      <span>Período</span>
+      <select value={anos} onChange={(ev) => aoMudar(Number(ev.target.value))}>
+        {OPCOES_DE_ANOS.map((n) => (
+          <option key={n} value={n}>
+            {n === 1 ? "Último ano" : `Últimos ${n} anos`}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function Estado({ uf, aoMudar }: { uf: string; aoMudar(uf: string): void }) {
+  return (
+    <label>
+      <span>Estado</span>
+      <select value={uf} onChange={(ev) => aoMudar(ev.target.value)}>
+        <option value="">Brasil inteiro</option>
+        {UFS.map((sigla) => (
+          <option key={sigla} value={sigla}>
+            {sigla}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function QuemSeMexeuNoSetor() {
-  const [cnae, setCnae] = useState("");
+  const daFicha = cnaeDaNavegacao(useEstadoDaNavegacaoUmaVez());
+  const atividades = useAtividadesDoCnae();
+  const [texto, setTexto] = useState(daFicha ? cnaeComPontuacao(daFicha) : "");
+  const [escolhida, setEscolhida] = useState<AtividadeDoCnae | null>(null);
   const [uf, setUf] = useState("");
-  const [anos, setAnos] = useState("");
-  const [pedido, setPedido] = useState<Pedido | null>(null);
+  const [anos, setAnos] = useState(ANOS_PADRAO);
+  const [pedido, setPedido] = useState<Pedido | null>(daFicha ? { cnae: daFicha, uf: null, anos: ANOS_PADRAO } : null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // quem veio da ficha vê o nome da atividade no campo assim que a lista chega (antes, o código); só na
+  // chegada da lista: depois, o campo é de quem digita
+  useEffect(() => {
+    const atividade = daFicha ? atividades?.find((a) => a.codigo === daFicha) : undefined;
+    if (atividade) {
+      setEscolhida(atividade);
+      setTexto(atividade.nome);
+    }
+  }, [atividades]);
+
+  const digitar = (novo: string) => {
+    setTexto(novo);
+    setEscolhida(null);
+  };
+  const escolher = (atividade: AtividadeDoCnae) => {
+    setTexto(atividade.nome);
+    setEscolhida(atividade);
+  };
   const buscar = (evento: FormEvent) => {
     evento.preventDefault();
-    const numero = anos.trim() === "" ? null : Number(anos);
-    if (!DIGITOS_DO_CNAE.test(cnae.trim())) return setAviso("Use o CNAE com 5 ou 7 dígitos.");
-    if (uf.trim() !== "" && !UFS.test(uf.trim())) return setAviso("A UF tem 2 letras.");
-    if (numero !== null && (!Number.isInteger(numero) || numero < 1 || numero > MAXIMO_DE_ANOS))
-      return setAviso(`Os anos vão de 1 a ${MAXIMO_DE_ANOS}.`);
+    const cnae = escolhida?.codigo ?? cnaeDigitado(texto);
+    if (cnae === null) return setAviso(AVISO_DO_SETOR);
     setAviso(null);
-    setPedido({ cnae: cnae.trim(), uf: uf.trim() === "" ? null : uf.trim().toUpperCase(), anos: numero });
+    setPedido({ cnae, uf: uf === "" ? null : uf, anos });
   };
 
   return (
@@ -239,19 +316,17 @@ export function QuemSeMexeuNoSetor() {
         abertas com controlada nele. É movimento passado, não intenção de compra.
       </p>
       <form className="formulario-do-app" onSubmit={buscar}>
-        <div className="campos-do-formulario">
-          <label>
-            <span>CNAE</span>
-            <input value={cnae} inputMode="numeric" onChange={(ev) => setCnae(ev.target.value)} />
-          </label>
-          <label>
-            <span>UF (opcional)</span>
-            <input value={uf} maxLength={2} onChange={(ev) => setUf(ev.target.value)} />
-          </label>
-          <label>
-            <span>Anos (1 a {MAXIMO_DE_ANOS})</span>
-            <input value={anos} inputMode="numeric" onChange={(ev) => setAnos(ev.target.value)} />
-          </label>
+        <div className="campos-do-formulario campos-do-setor">
+          <CampoDoSetor
+            rotulo="Setor"
+            texto={texto}
+            atividades={atividades}
+            dica={dicaDoSetor(escolhida, texto, atividades)}
+            aoDigitar={digitar}
+            aoEscolher={escolher}
+          />
+          <Estado uf={uf} aoMudar={setUf} />
+          <Periodo anos={anos} aoMudar={setAnos} />
         </div>
         <button type="submit" className="botao">
           Ver quem já se mexeu
@@ -262,7 +337,7 @@ export function QuemSeMexeuNoSetor() {
           {aviso}
         </p>
       ) : null}
-      {pedido ? <ConsultaCompleta key={JSON.stringify(pedido)} pedido={pedido} /> : null}
+      {pedido ? <ConsultaCompleta key={JSON.stringify(pedido)} pedido={pedido} atividades={atividades} /> : null}
     </>
   );
 }

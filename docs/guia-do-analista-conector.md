@@ -60,8 +60,12 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Eventos | O que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho. |
 | Vínculos | As controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM. Só companhia aberta informa, uma vez por ano. |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
+| Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público. Só aparece se a sua chave tem o conjunto de crédito. Não é rating, nota nem elegibilidade, e não traz o SCR individual |
+| O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia que você escolhe contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público. Vale para retomar uma empresa que você já analisou. Mostra só os blocos que a sua chave vê e diz quais ficaram de fora. Não traz o que mudou mas ainda não foi publicado na base |
+| Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas, para pôr lado a lado as que você já escolheu. O que a base não tem vem como «não disponível», nunca como zero. Não traz nota nem ordenação das empresas |
 | Setores e setor | o panorama de um setor |
 | O que posso ver | o que a sua chave libera |
+| De onde vem um conjunto ou um campo | a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto. Serve para saber de onde veio um número antes de citá-lo. Não traz dado de empresa nem o significado do campo |
 
 Para várias consultas, dá para pedir a informação **como ela era numa data** ("como era em 31/12/2025").
 
@@ -75,7 +79,8 @@ Exemplos de pedidos:
 
 A IA pode encadear as consultas: o resultado de uma vira a entrada da seguinte. Cada busca traz no
 máximo 100 empresas. Se a lista vier cortada, peça "continue da próxima página" e a IA
-segue de onde parou. Três roteiros prontos para colar e adaptar:
+segue de onde parou. No fim de cada lista o conector diz qual ferramenta usar a seguir, e a IA costuma seguir a
+dica sem você pedir. Três roteiros prontos para colar e adaptar:
 
 **1. Mapa de alvos num setor e numa UF.**
 

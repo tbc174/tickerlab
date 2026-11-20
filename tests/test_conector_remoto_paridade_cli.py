@@ -19,6 +19,7 @@ from tests import ajudantes_do_conector as aj
 FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
     "prospectar": ("buscar_empresas",),
     "empresa": ("ficha_da_empresa",),
+    "analise": ("analise_completa",),
     "comparaveis": ("comparaveis",),
     "demonstracoes": ("demonstracoes",),
     "eventos": ("eventos",),
@@ -41,7 +42,13 @@ SEM_FERRAMENTA: dict[str, str] = {
 }
 
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
-SO_NO_CONECTOR: dict[str, str] = {}
+SO_NO_CONECTOR: dict[str, str] = {
+    "socios_e_donos": "pessoa física fica fora da CLI (AGENTS.md, Exceção; ADR 0128, Emenda 4)",
+    "credito_da_empresa": "linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)",
+    "o_que_mudou": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
+    "comparar_empresas": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
+    "de_onde_vem": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
+}
 
 ENDERECO = "https://api.exemplo.test"
 CNPJ = "11111111000191"  # de mentira, com os dígitos verificadores certos
@@ -70,6 +77,12 @@ CASOS = [
         "ficha_da_empresa",
         {"cnpj": CNPJ, "como_era_em": UM_DIA},
         id="empresa",
+    ),
+    pytest.param(
+        ["analise", CNPJ, "--como-era", UM_DIA],
+        "analise_completa",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA},
+        id="analise",
     ),
     pytest.param(
         ["comparaveis", CNPJ, "--como-era", UM_DIA],

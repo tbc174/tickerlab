@@ -2,6 +2,7 @@
 
     python -m scripts.montar_acervo_pessoa --cnpj <acervo>/base/cnpj --bruto <acervo>/bruto/rfb-cnpj \
         --destino <fora do acervo>/acervo_pessoa --restrita <pasta restrita de pessoas> [--ensaio]
+    python -m scripts.montar_acervo_pessoa --conferir <fora do acervo>/acervo_pessoa
 
 Para o mês do retrato vigente da base do CNPJ (o último do `manifesto.json`) lê os ZIPs que a carga já
 guardou em `--bruto` (pelo SHA-256 do manifesto; nada é baixado) e grava, repartidas pelos 2 primeiros
@@ -9,7 +10,10 @@ caracteres da raiz:
 - `socios_pf/<xx>.parquet` (dos `Socios*.zip`): raiz da empresa, nome do sócio pessoa física, qualificação e
   data de entrada. Sem CPF e sem menor de idade (`base/receita_pessoa.py` diz o que é descartado);
 - `contato/<xx>.parquet` (dos `Estabelecimentos*.zip`): endereço, telefones e e-mail dos estabelecimentos
-  ativos. Sem nome fantasia, sem fax e sem nada com cara de CPF (`base/receita_contato.py`);
+  ativos. Sem nome fantasia, sem fax e sem nada com cara de CPF (`base/receita_contato.py`). Sem nenhum
+  estabelecimento de quem tem o contato da própria pessoa (ADR 0128, Emenda 4): empresário individual e MEI
+  (natureza 213-5), MEI pelo `Simples.zip`, antiga EIRELI e quadro de um sócio só
+  (`base/receita_contato_de_pessoa.py`); o manifesto conta as raízes de cada corte em `cortes_do_contato`;
 - `individuais/<xx>.parquet` (dos `Empresas*.zip`): raiz e nome do titular do empresário individual e do MEI
   (natureza 213-5), sem o CPF que vem no fim da razão social (`base/receita_individuais.py`).
 
@@ -27,8 +31,12 @@ A montagem de cada tabela é inteira ou nada: grava numa pasta de trabalho e só
 por motivo (só números, nunca nome nem contato). `--ensaio` só diz o mês e os arquivos. Saída 0 tudo certo;
 1 falha (última linha `FALHAS:`).
 
-Roda: manual (python -m scripts.montar_acervo_pessoa), na VM de casa, uma vez por mês de retrato novo; coberto
-por test_montar_acervo_pessoa.py.
+`--conferir` é a prova por máquina antes de a pasta sair de casa (`base/prova_do_acervo_pessoa.py`): lê
+`socios_pf/`, `individuais/` e o `manifesto.json` e imprime só contagens (zero onze dígitos, CPF, e-mail,
+telefone, CEP, qualificação de menor ou de representante, coluna a mais). Saída 0 aprovado; 1 com `FALHAS:`.
+
+Roda: manual (python -m scripts.montar_acervo_pessoa), na VM de casa, uma vez por mês de retrato novo, e o
+--conferir antes de levar a pasta a outro servidor; coberto por test_montar_acervo_pessoa.py.
 """
 
 import argparse
@@ -42,9 +50,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, NamedTuple
 
+import numpy as np
 import pandas as pd
 
-from base import oposicao_na_tela, receita_contato, receita_individuais, receita_pessoa
+from base import (
+    oposicao_na_tela,
+    prova_do_acervo_pessoa,
+    receita_contato,
+    receita_individuais,
+    receita_pessoa,
+)
+from base import receita_contato_de_pessoa as contato_de_pessoa
 from base.oposicao_na_tela import Opostos, SemOposicoesError
 from base.pessoas.chave import ErroSemChave
 from base.receita_contato import RaizesDeIndividual
@@ -58,6 +74,13 @@ NOME_DA_PASTA = "acervo_pessoa"
 SOCIOS = oposicao_na_tela.SOCIOS
 CONTATO = oposicao_na_tela.CONTATO
 INDIVIDUAIS = oposicao_na_tela.INDIVIDUAIS
+SIMPLES = (
+    "simples"  # não é tabela do acervo: só diz quem é MEI, para o corte do contato
+)
+ARQUIVOS_DO_SIMPLES = "Simples"
+CORTES = prova_do_acervo_pessoa.CORTES
+ACHADOS = prova_do_acervo_pessoa.ACHADOS
+ACHADOS_DO_MANIFESTO = prova_do_acervo_pessoa.ACHADOS_DO_MANIFESTO
 TRABALHO = "_trabalho"
 ANTIGA = "_antiga"  # a tabela anterior, posta de lado só durante a troca
 MANIFESTO = "manifesto.json"
@@ -76,7 +99,7 @@ class Contexto(NamedTuple):
     tiradas: set[
         str
     ]  # preenchida por `individuais`, lida por `contato`: a ordem de TABELAS importa
-    individuais: RaizesDeIndividual  # toda raiz de individual e MEI (linha 859): o contato dela sem rua
+    individuais: RaizesDeIndividual  # toda raiz com o contato da própria pessoa: o contato dela não sai
 
 
 class Tabela(NamedTuple):
@@ -95,7 +118,7 @@ TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai 
         "Socios",
         lambda zip_, c: receita_pessoa.ler_socios_pf(zip_, c.opostos),
         ["cnpj_basico", "nome_socio", "qualificacao", "data_entrada"],
-        receita_pessoa.MOTIVOS,
+        receita_pessoa.CONTAGENS,
     ),
     Tabela(
         INDIVIDUAIS,
@@ -104,7 +127,7 @@ TABELAS = (  # `individuais` antes de `contato`: o contato de quem se opôs sai 
             zip_, c.opostos, c.tiradas, c.individuais
         ),
         ["cnpj_basico"],
-        receita_individuais.MOTIVOS,
+        receita_individuais.CONTAGENS,
     ),
     Tabela(
         CONTATO,
@@ -139,18 +162,43 @@ def zips_do_mes(cnpj: Path, bruto: Path) -> tuple[str, dict[str, dict[str, Path]
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     mes = max(manifesto["meses"])
     achados: dict[str, dict[str, Path]] = {}
-    for tabela in TABELAS:
-        achados[tabela.nome] = {}
-        for nome, sha in _zips_do_mes(manifesto, mes, tabela.arquivos).items():
+    grupos = [(tabela.nome, tabela.arquivos) for tabela in TABELAS]
+    for grupo, comeco in [*grupos, (SIMPLES, ARQUIVOS_DO_SIMPLES)]:
+        achados[grupo] = {}
+        for nome, sha in _zips_do_mes(manifesto, mes, comeco).items():
             guardados = sorted(bruto.glob(f"*/{sha}.zip"))
             if not guardados:
                 raise ZipAusenteError(f"{nome} de {mes} não está no bruto")
-            achados[tabela.nome][nome] = guardados[0]
-        if not achados[tabela.nome]:
-            raise ZipAusenteError(
-                f"o manifesto de {mes} não tem {tabela.arquivos}*.zip"
-            )
+            achados[grupo][nome] = guardados[0]
+        if not achados[grupo]:
+            raise ZipAusenteError(f"o manifesto de {mes} não tem {comeco}*.zip")
     return mes, achados
+
+
+def _juntar(pedacos: list[np.ndarray]) -> np.ndarray:
+    return np.concatenate(pedacos) if pedacos else contato_de_pessoa.VAZIO
+
+
+def cortar_contato_de_pessoa(
+    zips: dict[str, dict[str, Path]], individuais: RaizesDeIndividual
+) -> dict[str, int]:
+    """Junta às raízes cortadas do contato o MEI pelo Simples, a EIRELI e o quadro de um sócio só (a natureza
+    213-5 entra depois, pela leitura de `individuais`). Devolve só quantas raízes distintas cada corte tem."""
+    quadros = contato_de_pessoa.QuadrosDeSocios()
+    for arquivo in zips[SOCIOS].values():
+        quadros.anotar(arquivo)
+    cortes = {
+        "mei_do_simples": _juntar(
+            [contato_de_pessoa.raizes_do_mei(a) for a in zips[SIMPLES].values()]
+        ),
+        "eireli": _juntar(
+            [contato_de_pessoa.raizes_de_eireli(a) for a in zips[INDIVIDUAIS].values()]
+        ),
+        "quadro_de_um_socio": quadros.unipessoais(),
+    }
+    for raizes in cortes.values():
+        individuais.juntar_numeros(raizes)
+    return {nome: int(np.unique(raizes).size) for nome, raizes in cortes.items()}
 
 
 def _repartir_os_zips(
@@ -244,6 +292,7 @@ def montar(
     contagens, descartes = {}, {}
     contexto = Contexto(opostos, set(), RaizesDeIndividual())
     try:
+        cortes = cortar_contato_de_pessoa(zips, contexto.individuais)
         for tabela in TABELAS:
             contagem, da_tabela = _preparar_tabela(
                 tabela, trabalho, mes, zips[tabela.nome], contexto
@@ -260,6 +309,7 @@ def montar(
         "tabelas": contagens,
         "descartes": descartes,
         "oposicoes_aplicadas": len(opostos.ids),  # só a contagem, nunca os ids
+        CORTES: cortes,  # quantas raízes cada corte do contato tirou, nunca quais
         "origens": dict(sorted(shas.items())),
     }
     (destino / MANIFESTO).write_text(
@@ -286,11 +336,28 @@ def carregar(
     return montar(destino, mes, zips, shas, agora, opostos)
 
 
+def conferir(acervo_pessoa: Path) -> int:
+    """Imprime a prova (só números) e, na última linha, o resultado; 0 aprovado, 1 com falhas."""
+    prova, falhas = prova_do_acervo_pessoa.conferir(acervo_pessoa, pd.read_parquet)
+    print(json.dumps(prova, ensure_ascii=False))
+    if falhas:
+        print(f"FALHAS: {', '.join(falhas)}"[:TAMANHO_MAXIMO_DO_RESUMO])
+        return 1
+    print("conferido: zero achado em socios_pf, individuais e manifesto.json")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     analisador = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
-    analisador.add_argument("--cnpj", type=Path, required=True)
-    analisador.add_argument("--bruto", type=Path, required=True)
-    analisador.add_argument("--destino", type=Path, required=True)
+    analisador.add_argument("--cnpj", type=Path)
+    analisador.add_argument("--bruto", type=Path)
+    analisador.add_argument("--destino", type=Path)
+    analisador.add_argument(
+        "--conferir",
+        type=Path,
+        metavar="ACERVO_PESSOA",
+        help="só a prova por máquina de uma pasta já montada (imprime só contagens)",
+    )
     analisador.add_argument(
         "--restrita",
         type=Path,
@@ -298,6 +365,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     analisador.add_argument("--ensaio", action="store_true")
     opcoes = analisador.parse_args(argv)
+    if opcoes.conferir is not None:
+        return conferir(opcoes.conferir)
+    if None in (opcoes.cnpj, opcoes.bruto, opcoes.destino):
+        analisador.error("faltam --cnpj, --bruto e --destino (ou use --conferir)")
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )

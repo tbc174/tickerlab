@@ -26,6 +26,7 @@ import {
   PDF_DO_RAIO_X,
   RAIO_X,
 } from "../src/paginas/RaioXDoChoque";
+import { FRASE_DO_TOPO } from "../src/paginas/Inicio";
 import { DADOS as DADOS_DO_RELATORIO } from "../src/paginas/RelatorioExemplo";
 import { DADOS as DADOS_DO_SETOR } from "../src/paginas/RelatorioSemanalEletricas";
 import { ROTAS } from "../src/rotas";
@@ -154,8 +155,9 @@ describe("movimento sem prejuízo (ADR 0065)", () => {
 describe("página inicial v2", () => {
   const html = renderizar("index.html");
 
-  it("o título é a assinatura do manual", () => {
-    expect(semTags(trecho(html, '<h1 id="titulo-heroi">', "</h1>"))).toBe(esc(ASSINATURA));
+  it("o título é a frase do topo (um site só, linha 966) e a assinatura do manual fica no rodapé", () => {
+    expect(semTags(trecho(html, '<h1 id="titulo-heroi">', "</h1>"))).toBe(FRASE_DO_TOPO);
+    expect(trecho(html, "<footer class=\"rodape", "</footer>")).toContain(`<p class="apagado">${esc(ASSINATURA)}</p>`);
   });
 
   it("o bento das frentes saiu da inicial: backtest e carteira vivem em Ferramentas", () => {

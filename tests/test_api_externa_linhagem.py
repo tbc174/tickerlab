@@ -26,7 +26,13 @@ from src.api_externa.conjuntos import (
     setores,
     vinculos,
 )
-from src.banco.coletas import Marca, marca_da_fonte
+from src.api_externa.tabelas_por_cnpj import REGISTRO, TRATA_COMO_PESSOA
+from src.banco.coletas import (
+    Marca,
+    marca_da_fonte,
+    sai_no_conjunto_de_integridade,
+    sai_sem_trava_de_licenca,
+)
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
     NUNCA_SAEM,
@@ -61,6 +67,17 @@ CONJUNTOS_DO_BETA = {
     "assets",
 }
 FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
+# conjunto só por contrato (ADR 0122, Emendas 1 e 2): a marca da fonte não serve fora dele (de uso interno, ou
+# sem coleta e guarda) e a linha de pessoa sai pela marca `trata_como_pessoa` (`src/api_externa/tabelas_por_cnpj.py`);
+# cada um diz a regra que abre a fonte só nele
+ABRE_SO_NO_CONJUNTO = {
+    "integrity": sai_no_conjunto_de_integridade,
+    "extended_sources": sai_sem_trava_de_licenca,
+}
+CONJUNTOS_SOB_CONTRATO = set(ABRE_SO_NO_CONJUNTO)
+SOB_CONTRATO = {
+    (e.conjunto, e.tabela): e for e in REGISTRO if e.conjunto in CONJUNTOS_SOB_CONTRATO
+}
 # o custo da taxa do raio-x do fundo (`base/raio_x_de_fundo.py`, `_custo`): conta nossa sobre o cadastro
 CAMPOS_DO_CUSTO = {"sem_taxa", "com_taxa", "ficou_com_a_taxa", "fracao_do_resultado"}
 DEPOIS_DO_COMECO = date(2026, 11, 10)
@@ -124,7 +141,9 @@ def _da_familia(fonte: str, familia: str) -> bool:
 
 
 def test_o_beta_tem_os_sete_conjuntos():
-    assert {linha.conjunto for linha in DIREITOS_DA_API_EXTERNA} == CONJUNTOS_DO_BETA
+    assert {linha.conjunto for linha in DIREITOS_DA_API_EXTERNA} == (
+        CONJUNTOS_DO_BETA | CONJUNTOS_SOB_CONTRATO
+    )
 
 
 def _categoria_esperada(linha: LinhaDeDireito) -> Categoria:
@@ -162,7 +181,26 @@ def test_toda_tabela_existe_e_nao_guarda_dado_de_pessoa():
         assert linha.tabelas, linha
         for tabela in linha.tabelas:
             assert tabela in TABELAS, (linha, tabela)
+            sob_contrato = SOB_CONTRATO.get((linha.conjunto, tabela))
+            if (
+                sob_contrato is not None
+            ):  # a linha de pessoa sai pela marca, linha a linha
+                assert sob_contrato.marca_de_pessoa == TRATA_COMO_PESSOA, (
+                    linha,
+                    tabela,
+                )
+                continue
             assert not TABELAS[tabela].pessoa, (linha, tabela)
+
+
+def _destino(fonte: str):
+    """O destino da fonte no acervo; a fonte que é família de arquivos (`mte-pat` → `mte-pat-beneficiarias`,
+    `-facilitadoras`, `-fornecedoras`) vale se todos os arquivos dela vão para as mesmas tabelas."""
+    if fonte in DESTINOS:
+        return DESTINOS[fonte]
+    arquivos = [d for nome, d in DESTINOS.items() if nome.startswith(f"{fonte}-")]
+    assert arquivos and len({d.tabelas for d in arquivos}) == 1, fonte
+    return arquivos[0]
 
 
 def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
@@ -192,11 +230,11 @@ def test_a_fonte_e_o_arquivo_do_acervo_que_alimenta_a_tabela():
                 assert tabela == FONTES_DE_CARGA_PROPRIA[linha.fonte], (linha, tabela)
                 assert f"`{linha.fonte}`" in TABELAS[tabela].linhagem, (linha, tabela)
             else:
-                assert linha.fonte in DESTINOS, linha
+                destino = _destino(linha.fonte)
                 origem = MONTADAS_DE_OUTRA_TABELA.get(tabela, tabela)
                 if tabela in TABELAS_DA_REDE:
                     origem = ORIGEM_NA_REDE[linha.fonte]
-                assert origem in DESTINOS[linha.fonte].tabelas, (linha, tabela)
+                assert origem in destino.tabelas, (linha, tabela)
             assert _da_familia(linha.fonte, TABELAS[tabela].familia_da_fonte), linha
 
 
@@ -215,6 +253,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
         if linha.conjunto == ficha.CONJUNTO and linha.campo == "situacao_da_entrega":
             # conta nossa sobre as colunas booleanas da tabela (`ficha._situacao_entregue`)
             assert set(ficha.COLUNAS_DA_SITUACAO) <= colunas, linha
+            continue
+        if (
+            linha.conjunto == ficha.CONJUNTO
+            and linha.campo in ficha.TEXTOS_DE_FORA_DA_TABELA
+        ):
+            # o texto de um código pela tabela da Receita (`base/receita_codigos`, linha 955): o código é coluna
+            assert ficha.ORIGEM_DO_CAMPO_NOVO[linha.campo] in colunas, linha
             continue
         if linha.conjunto == comparaveis.CONJUNTO and linha.campo not in colunas:
             # conta nossa sobre as colunas da tabela: o grupo do setor, o fim do exercício, as somas e razões
@@ -294,6 +339,14 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             assert tabela == empresas.LISTA_DE_EMPRESAS, linha
             assert linha.campo in {vinculos.NOME, empresas.RETRATO_DO_CADASTRO}, linha
             continue
+        if (
+            linha.conjunto == ficha.CONJUNTO
+            and linha.campo in ficha.TABELA_DO_CAMPO_NOVO
+        ):
+            # o estabelecimento do perfil sai da lista montada sem pessoa (linha 584), depois da trava do leitor de
+            # `companies`; o texto de cada código, da mesma tabela do código (linha 955)
+            assert tabela == ficha.TABELA_DO_CAMPO_NOVO[linha.campo], linha
+            continue
         # o perfil lê o cadastro pelo mesmo leitor de `companies` (`conjuntos/ficha.py`)
         assert linha.conjunto in {empresas.CONJUNTO, ficha.CONJUNTO}, linha
         assert linha.campo in servidos[tabela], linha
@@ -321,8 +374,13 @@ def test_nenhum_campo_de_pessoa_tem_direito():
 
 
 def test_toda_fonte_do_beta_e_vendavel():
-    for fonte in {linha.fonte for linha in DIREITOS_DA_API_EXTERNA}:
-        assert marca_da_fonte(fonte) is Marca.VENDAVEL, fonte
+    for linha in DIREITOS_DA_API_EXTERNA:
+        abre = ABRE_SO_NO_CONJUNTO.get(linha.conjunto)
+        if abre is not None:  # sai só no conjunto dela, e por nenhum outro
+            assert abre(linha.fonte, linha.conjunto), linha
+            assert not abre(linha.fonte, "profiles"), linha
+            continue
+        assert marca_da_fonte(linha.fonte) is Marca.VENDAVEL, linha.fonte
 
 
 def test_hoje_nenhum_campo_sai_sem_a_prontidao_das_tabelas():

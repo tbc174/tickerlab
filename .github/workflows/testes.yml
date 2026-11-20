@@ -269,7 +269,7 @@ jobs:
         run: npm run licencas
 
       - name: Vulnerabilidades altas ou críticas
-        run: npm audit --audit-level=high
+        run: npm run auditoria  # npm audit com exceções escritas e com prazo (scripts/auditoria.mjs)
 
       - name: Tipos
         run: npm run tipos

@@ -6,7 +6,8 @@ este leitor **separado** só alimenta a pasta `acervo_pessoa/`, lida pela tela c
 permissão `pessoa_na_tela` (ADR 0128, Emenda 1).
 
 **O que sai:** a raiz do CNPJ e o nome do titular, sem o CPF. **O que nunca sai:** CPF (inteiro, pontuado,
-mascarado, com qualquer separador entre os dígitos), qualquer outra natureza jurídica (sociedade não é
+mascarado, com qualquer separador entre os dígitos), número de cinco dígitos ou mais e palavra com arroba
+(a raiz do CNPJ, CEP, telefone, CPF incompleto, e-mail), qualquer outra natureza jurídica (sociedade não é
 pessoa) e o nome que, sem o CPF, sobra vazio ou só com números. O arquivo não traz a idade do titular: um
 titular menor emancipado não é detectável aqui (pendência de regra levada à Diretoria no PR).
 """
@@ -21,7 +22,11 @@ import pandas as pd
 
 from base.cnpj_historico import CAMPOS_NO_ARQUIVO_DE_EMPRESAS, EMPRESA
 from base.oposicao_na_tela import Opostos
-from base.pessoas.sem_cpf import CPF_COM_SEPARADOR_LARGO, tirar_cpf_da_coluna
+from base.pessoas.sem_cpf import (
+    CPF_COM_SEPARADOR_LARGO,
+    tirar_cpf_da_coluna,
+    tirar_numero_longo_e_email,
+)
 from base.receita_contato import ONZE_DIGITOS_SEPARADOS, RaizesDeIndividual
 from base.receita_retrato import _partes
 
@@ -35,6 +40,9 @@ OPOSTO = (
     "titular_individual_oposto"  # linha 829: sai da tela, e o contato dessa raiz também
 )
 MOTIVOS = (NAO_E_INDIVIDUAL, TITULAR_SEM_NOME, OPOSTO)
+# não é descarte: a linha fica, com o número longo ou o e-mail tirado do nome; o manifesto conta quantas
+TITULAR_COM_NUMERO_OU_EMAIL_LIMPO = "titular_com_numero_ou_email_limpo"
+CONTAGENS = (*MOTIVOS, TITULAR_COM_NUMERO_OU_EMAIL_LIMPO)
 SEPARADOR = r"[\s.\-/]?"
 CPF_MASCARADO_LARGO = (
     re.compile(  # ***982247**, ***.982.247-** e parecidos: o miolo basta para o id
@@ -83,8 +91,13 @@ def _individuais(
     nome = nome.str.replace(CPF_MASCARADO, " ", regex=True)
     nome = nome.str.replace(ONZE_DIGITOS_SEPARADOS, " ", regex=True)
     nome = nome.str.replace(r"\s{2,}", " ", regex=True).str.strip()
-    com_nome = nome.str.contains(r"[^\W\d_]", regex=True)  # ao menos uma letra
+    limpo = tirar_numero_longo_e_email(nome)
+    com_nome = limpo.str.contains(r"[^\W\d_]", regex=True)  # ao menos uma letra
     descartes[TITULAR_SEM_NOME] += int((~com_nome).sum())
+    descartes[TITULAR_COM_NUMERO_OU_EMAIL_LIMPO] += int(
+        ((limpo != nome) & com_nome).sum()
+    )
+    nome = limpo
     saida = pd.DataFrame(
         {
             "cnpj_basico": fica["cnpj_basico"].str.strip().str.upper(),
