@@ -21,6 +21,7 @@ from src.api_externa.conjuntos import (
     ativos,
     comparaveis,
     compradores,
+    credito,
     demonstracoes,
     empresas,
     eventos,
@@ -111,7 +112,7 @@ def test_lista_so_o_que_o_catalogo_da_chave_libera():
         erro, texto = aj.chamar(
             cliente, aj.CHAVE_DE_MENTIRA, "buscar_empresas", uf=["SP"]
         )
-    assert nomes == ["demonstracoes", "o_que_posso_ver"]
+    assert nomes == ["de_onde_vem", "demonstracoes", "o_que_posso_ver"]
     assert erro and texto == ferramentas.MENSAGEM_NAO_LIBERADA
 
 
@@ -302,7 +303,7 @@ def test_conjuntos_das_ferramentas_sao_os_da_api():
         prospeccao.CONJUNTO, ficha.CONJUNTO, empresas.CONJUNTO, comparaveis.CONJUNTO,
         demonstracoes.CONJUNTO, setores.CONJUNTO, fundos.CONJUNTO,
         eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO, ativos.CONJUNTO,
-        pessoas.CONJUNTO,
+        pessoas.CONJUNTO, credito.CONJUNTO,
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api
@@ -337,7 +338,7 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
             cnae=["62"], uf=["SP", "MG"], porte=["small"], so_matriz=True,
             aberta_antes_de="2020-01-01", limite=10,
         )  # fmt: skip
-    assert corpo == {"companies": [EMPRESA]}
+    assert aj.sem_proximo_passo(corpo) == {"companies": [EMPRESA]}
     (busca,) = [p for p in pedidos if p.url.path == "/data/v1/companies"]
     assert busca.url.params.multi_items() == [
         ("cnae", "62"), ("state", "SP"), ("state", "MG"), ("size", "small"),
@@ -373,7 +374,7 @@ def test_cnpj_com_pontuacao_e_letras_vai_limpo():
         corpo = aj.chamar_ok(
             cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="12.abc.345/01de-35"
         )
-    assert corpo == {"peers": []}
+    assert aj.sem_proximo_passo(corpo) == {"peers": []}
 
 
 @pytest.mark.parametrize(
@@ -593,7 +594,7 @@ def test_eventos_traduz_os_tipos_e_passa_o_cursor_e_a_data():
             cnpj="11111111000191",
             tipos=["socio"],
         )
-    assert corpo == {"events": []}
+    assert aj.sem_proximo_passo(corpo) == {"events": []}
     (pedido,) = [p for p in pedidos if p.url.path.endswith("/events")]
     assert pedido.url.params.get_list("types") == ["auditor_change", "ipe_filing"]
     assert pedido.url.params.get("cursor") == "abc"
@@ -690,7 +691,7 @@ def test_vinculos_traduz_os_tipos_e_passa_a_profundidade_e_a_data():
             tipos=["socio"],
         )
     assert (
-        corpo == padrao == VINCULOS_DA_API
+        aj.sem_proximo_passo(corpo) == aj.sem_proximo_passo(padrao) == VINCULOS_DA_API
     )  # os nomes de fora passam pelo filtro de pessoa
     primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/links")]
     assert primeiro.url.params.get_list("types") == ["affiliate_of", "audits"]
@@ -798,7 +799,9 @@ def test_compradores_passa_os_filtros_e_a_resposta_passa_pelo_filtro_de_pessoa()
                 {},
             )
         ]
-    assert corpo == COMPRADORES_DA_API  # os nomes de fora passam pelo filtro de pessoa
+    assert (
+        aj.sem_proximo_passo(corpo) == COMPRADORES_DA_API
+    )  # os nomes de fora passam pelo filtro de pessoa
     primeiro, segundo = [p for p in pedidos if p.url.path.endswith("/buyers")]
     assert dict(primeiro.url.params) == {
         "cnae": "3511-5",
@@ -967,7 +970,7 @@ def test_comparaveis_com_poucos_pares_vem_como_a_api_mandou():
         recebido = aj.chamar_ok(
             cliente, aj.CHAVE_DE_MENTIRA, "comparaveis", cnpj="11111111000191"
         )
-    assert recebido == corpo
+    assert aj.sem_proximo_passo(recebido) == corpo
 
 
 @pytest.mark.parametrize("limite", [0, ferramentas.LIMITE_MAXIMO_DOS_PARES + 1])

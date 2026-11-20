@@ -97,6 +97,23 @@ def test_taxas_do_cadastro(porta):
     assert raio.cadastro["patrimonio_liquido"] == 1_000_000.0
 
 
+def test_taxas_gravadas_como_texto_viram_numero(tmp_path):
+    """A coleta lê o CSV da CVM como texto: "2,5" e "2.0" têm de virar número, e lixo vira ausência."""
+    cadastro = _cadastro().astype(
+        {"TAXA_ADM": object, "TAXA_PERFM": object, "VL_PATRIM_LIQ": object}
+    )
+    cadastro["TAXA_ADM"] = ["2,5", "0.5"]
+    cadastro["TAXA_PERFM"] = ["20", "x"]
+    cadastro["VL_PATRIM_LIQ"] = ["1000000.50", None]
+    _gravar(tmp_path, "fidc/cadastro/cad_fi.parquet", cadastro)
+    with Porta(tmp_path) as p:
+        raio = raio_x_de_fundo(p, "11111111000191")
+    assert raio.cadastro["taxa_administracao_pct_ao_ano"] == 2.5
+    assert raio.cadastro["taxa_performance_pct"] == 20.0
+    assert raio.cadastro["patrimonio_liquido"] == 1_000_000.5
+    assert raio.custo_da_taxa
+
+
 def test_carteira_e_a_competencia_mais_nova_do_fundo(porta):
     raio = raio_x_de_fundo(porta, FUNDO)
     assert raio.competencia_da_carteira == "2026-02-28"

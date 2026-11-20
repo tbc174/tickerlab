@@ -352,16 +352,18 @@ def _lacuna_da_razao_social() -> dc.Lacuna:
 
 
 def _e_pessoa(id_entidade: str, entidade: pd.Series | None) -> bool:
-    """Pessoa física, MEI, empresário individual, ou entidade sem dados no dia (não dá para saber)."""
+    """Pessoa física, MEI, empresário individual, ou entidade sem dados no dia (não dá para saber). A marca
+    `trata_como_pessoa` vazia também é pessoa (na dúvida, é pessoa, como na porta)."""
     if (
         id_entidade.startswith(PREFIXO_DE_PESSOA)
         or entidade is None
         or pd.isna(entidade.get("tipo"))
     ):
         return True
-    return bool(
-        _ou_falso(entidade.get("mei")) or _ou_falso(entidade.get("trata_como_pessoa"))
-    )
+    marca = entidade.get("trata_como_pessoa")
+    if marca is None or pd.isna(marca):  # type: ignore[arg-type]
+        return True
+    return bool(_ou_falso(entidade.get("mei")) or bool(marca))
 
 
 def _razao_social(parte: _Parte, centro: pd.Series) -> None:

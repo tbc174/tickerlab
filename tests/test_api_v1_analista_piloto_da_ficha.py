@@ -1,4 +1,4 @@
-"""O piloto (D11) na ficha, nos eventos, nos vínculos e no Comparar da tela do analista (linha 905).
+"""O piloto (D11) na ficha, nos eventos, nos vínculos, na análise completa e no Comparar da tela do analista (linha 905).
 
 Em produção estas tabelas ainda não têm a prontidão cheia: só a conta de uma organização com a marca de piloto,
 conferida no servidor a cada pedido, vê o dado, e a resposta leva o aviso de piloto (em cada campo e no topo; na
@@ -23,7 +23,7 @@ from base import prontidao
 from base.porta import Porta
 from base.prontidao import AVISO_DE_PILOTO, Prontidao, ProntidaoDePiloto, Prova
 from src import portao_externo as portao
-from src.analista import comparacao, eventos, leitura, vinculos
+from src.analista import analise, comparacao, eventos, leitura, vinculos
 from src.api_externa import piloto as piloto_
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import analista
@@ -88,9 +88,18 @@ COMPARAR = Tela(
         porta, [EMPRESA, empresas_de_mentira.MEI], **kw
     ),
 )
+# a análise completa (19/11/2026) lê a ficha pela mesma montagem da API: com só as tabelas da ficha no registro de
+# piloto, abre o cadastro e os blocos que dependem só dele
+ANALISE = Tela(
+    "/api/v1/analista/ficha/analise",
+    {"cnpj": EMPRESA},
+    FICHA.gravar,
+    comparacao_de_mentira.TABELAS_DA_FICHA,
+    lambda porta, **kw: analise.analise(porta, EMPRESA, **kw),
+)
 TELAS = pytest.mark.parametrize(
     "tela",
-    [FICHA, EVENTOS, VINCULOS, COMPARAR],
+    [FICHA, EVENTOS, VINCULOS, COMPARAR, ANALISE],
     ids=lambda t: t.rota.rsplit("/", 1)[-1],
 )
 PLANILHAS = pytest.mark.parametrize(
@@ -180,9 +189,11 @@ def _da_ana(banco) -> int:
 
 
 def _envelopes(dado) -> Iterator[dict]:
-    """Todo bloco com fonte (valor, fonte e dia em que ficou público), em qualquer nível do corpo."""
+    """Todo bloco com fonte (valor, fonte e dia em que ficou público), em qualquer nível do corpo. O marco da linha do
+    tempo da análise (dia, fonte e dia público, sem `valor`) é índice de um campo, não campo: fica sob o aviso do
+    topo, como na rota `/analysis` da API (`piloto.marcar`)."""
     if isinstance(dado, dict):
-        if "fonte" in dado and "publico_em" in dado:
+        if {"valor", "fonte", "publico_em"} <= dado.keys():
             yield dado
         for valor in dado.values():
             yield from _envelopes(valor)

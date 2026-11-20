@@ -88,6 +88,27 @@ describe("relatório do setor", () => {
     expect(within(limites).getByText(/recomendação de investimento/)).toBeTruthy();
   });
 
+  it("o nome de quem está no setor abre a ficha, com o CNPJ pelo estado da navegação", async () => {
+    const { buscar } = abrirApp("/relatorio-do-setor", {
+      rotas: (endereco) => {
+        if (endereco.startsWith("/api/v1/setores")) return respostaJson(200, SETORES);
+        if (endereco.startsWith("/api/v1/relatorio-setor")) return respostaJson(200, RELATORIO);
+        if (endereco === "/api/v1/analista/ficha") return new Promise(() => {}) as never;
+        return undefined;
+      },
+    });
+    const link = await screen.findByRole("link", { name: "CPFL Energia S.A." });
+    expect(link.getAttribute("href")).toBe("/ficha-da-empresa"); // o CNPJ não vai no endereço
+    fireEvent.click(link);
+    await waitFor(() =>
+      expect(
+        buscar.mock.calls
+          .filter(([e]) => String(e) === "/api/v1/analista/ficha")
+          .map(([, p]) => JSON.parse(String(p?.body))),
+      ).toEqual([{ cnpj: "02429144000193" }]),
+    );
+  });
+
   it("trocar o setor pede o relatório do outro setor", async () => {
     const { buscar } = abrir((endereco) =>
       respostaJson(

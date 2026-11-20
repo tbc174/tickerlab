@@ -5,6 +5,7 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
+import { cnpjDigitado } from "../cnpj";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { Carregando } from "../pecas/Carregando";
 import { useEstadoDaNavegacaoUmaVez } from "../estadoDaNavegacao";
@@ -153,7 +154,12 @@ function Tabela({ empresas }: { empresas: EmpresaComparadaV1[] }) {
               <th scope="col">Campo</th>
               {empresas.map((empresa) => (
                 <th key={empresa.cnpj} scope="col">
-                  {nomeDaColuna(empresa) ? <strong>{nomeDaColuna(empresa)}</strong> : null}
+                  {/* o nome abre a ficha; o CNPJ vai pelo estado da navegação, nunca pelo endereço */}
+                  {nomeDaColuna(empresa) ? (
+                    <Link to="/ficha-da-empresa" state={{ cnpj: empresa.cnpj }}>
+                      <strong>{nomeDaColuna(empresa)}</strong>
+                    </Link>
+                  ) : null}
                   {nomeDaColuna(empresa) ? <br /> : null}
                   {cnpjComPontuacao(empresa.cnpj)}
                   {empresa.estado === "pronta" ? null : <small className="apagado"> · não disponível</small>}
@@ -264,13 +270,23 @@ export function CompararEmpresas({ pagina }: { pagina: PaginaDoApp }) {
   const [comparado, setComparado] = useState<{ cnpjs: string[]; vez: number } | null>(
     vindos.length >= MINIMO ? { cnpjs: vindos, vez: 1 } : null,
   );
-  const mudar = (posicao: number, valor: string) =>
+  // as posições dos campos com CNPJ fora do formato: a tela aponta o campo em vez de mandar um pedido que volta 422
+  const [invalidos, setInvalidos] = useState<number[]>([]);
+  const mudar = (posicao: number, valor: string) => {
     setRascunhos((atuais) => atuais.map((atual, i) => (i === posicao ? valor : atual)));
-  const tirar = (posicao: number) => setRascunhos((atuais) => atuais.filter((_, i) => i !== posicao));
+    setInvalidos((atuais) => atuais.filter((i) => i !== posicao));
+  };
+  const tirar = (posicao: number) => {
+    setRascunhos((atuais) => atuais.filter((_, i) => i !== posicao));
+    setInvalidos([]); // as posições mudam: a conferência volta no próximo "Comparar"
+  };
   const comparar = (evento: FormEvent) => {
     evento.preventDefault();
     const cnpjs = rascunhos.map((r) => r.trim());
-    if (cnpjs.every((c) => c !== "")) setComparado({ cnpjs, vez: (comparado?.vez ?? 0) + 1 });
+    if (cnpjs.some((c) => c === "")) return;
+    const errados = cnpjs.flatMap((c, i) => (cnpjDigitado(c) === null ? [i] : []));
+    setInvalidos(errados);
+    if (errados.length === 0) setComparado({ cnpjs, vez: (comparado?.vez ?? 0) + 1 });
   };
   return (
     <section>
@@ -298,8 +314,15 @@ export function CompararEmpresas({ pagina }: { pagina: PaginaDoApp }) {
                   autoComplete="off"
                   maxLength={TAMANHO_MAXIMO_DO_CNPJ}
                   placeholder="00.000.000/0000-00"
+                  aria-invalid={invalidos.includes(i)}
+                  aria-describedby={invalidos.includes(i) ? `cnpj-errado-${i}` : undefined}
                 />
               </label>
+              {invalidos.includes(i) ? (
+                <p id={`cnpj-errado-${i}`} className="erro-do-app" role="alert">
+                  Confira o CNPJ {i + 1}: são 14 caracteres, com ou sem a pontuação.
+                </p>
+              ) : null}
               {rascunhos.length > MINIMO ? (
                 <button type="button" className="botao" onClick={() => tirar(i)}>
                   Tirar o CNPJ {i + 1}

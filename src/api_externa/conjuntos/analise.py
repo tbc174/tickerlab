@@ -2,7 +2,8 @@
 
 `montar_analise` junta, para um CNPJ e um dia (`known_at`), os blocos das rotas por CNPJ que já existem (cadastro,
 sócios PJ, vínculos, eventos, crédito, ativos e comparáveis) e os das tabelas ligadas pelo CNPJ do registro
-`src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII), na ordem de
+`src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, para a organização com o
+conjunto de integridade no contrato, sanções da CGU, embargos do IBAMA e lista suja do MTE), na ordem de
 `docs/padrao-de-analise.md`: uma frase no topo (só com o que o cadastro serviu), os blocos, a linha do tempo (só
 com datas que vieram nos blocos), as leituras (dedução, marcada e separada dos fatos), o que não foi achado, o que a
 análise não traz e os limites.
@@ -60,6 +61,7 @@ __all__ = [
     "CADASTROS",
     "Analise",
     "Bloco",
+    "ainda_nao_traz",
     "blocos_abertos",
     "montar_analise",
 ]
@@ -206,19 +208,39 @@ BLOCOS = (
     # servidor; até lá a análise nunca lê pessoa física
 )
 
-# o que a análise não consulta para nenhuma chave hoje (sem linha de direito na API): a mesma frase para todas.
-# Sanções, ambiente e lista suja são só de uso interno até o Tiago decidir (grupo C da ADR 0122): a frase diz que
-# não estão disponíveis nesta chave, sem o motivo (ordem da Diretoria de 18/11/2026)
+# o que a análise não consulta: a mesma frase para toda chave. Sanções, ambiente e lista suja só saem para a
+# organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1): para as outras, a frase diz que não
+# estão disponíveis nesta chave, sem o motivo (ordem da Diretoria de 18/11/2026); com o bloco aberto, a linha sai
+# daqui (o bloco que não achou nada vai para `nao_encontrado`). O bloco de cada linha (None: nenhuma chave o tem)
 NAO_DISPONIVEL_NESTA_CHAVE = "não disponível nesta chave"
-AINDA_NAO_TRAZ = (
-    "Dívida ativa da União (PGFN)",
-    f"Sanções e impedimentos de contratar com o governo (CGU): {NAO_DISPONIVEL_NESTA_CHAVE}",
-    f"Autuações e embargos ambientais (IBAMA): {NAO_DISPONIVEL_NESTA_CHAVE}",
-    f"Cadastro de empregadores do trabalho análogo ao de escravo (MTE): {NAO_DISPONIVEL_NESTA_CHAVE}",
-    "Contratos públicos",
-    "Processos judiciais",
-    "Pessoas físicas (sócio pessoa física, administradores)",
+_AINDA_NAO_TRAZ: tuple[tuple[str | None, str], ...] = (
+    (None, "Dívida ativa da União (PGFN)"),
+    (
+        tabelas_por_cnpj.SANCOES,
+        f"Sanções e impedimentos de contratar com o governo (CGU): {NAO_DISPONIVEL_NESTA_CHAVE}",
+    ),
+    (
+        tabelas_por_cnpj.EMBARGOS_AMBIENTAIS,
+        f"Autuações e embargos ambientais (IBAMA): {NAO_DISPONIVEL_NESTA_CHAVE}",
+    ),
+    (
+        tabelas_por_cnpj.LISTA_SUJA,
+        f"Cadastro de empregadores do trabalho análogo ao de escravo (MTE): {NAO_DISPONIVEL_NESTA_CHAVE}",
+    ),
+    (None, "Contratos públicos"),
+    (None, "Processos judiciais"),
+    (None, "Pessoas físicas (sócio pessoa física, administradores)"),
 )
+# a lista da chave sem nenhum bloco de integridade
+AINDA_NAO_TRAZ = tuple(frase for _, frase in _AINDA_NAO_TRAZ)
+
+
+def ainda_nao_traz(abertos: Iterable[str]) -> list[str]:
+    """O que a análise não consulta para esta chave: tira a linha do bloco aberto (o nome de dentro do bloco)."""
+    nomes = set(abertos)
+    return [frase for bloco, frase in _AINDA_NAO_TRAZ if bloco not in nomes]
+
+
 LIMITES = (
     (
         "A análise junta os blocos que a organização pode ver, cada um lido como na rota dele e passando pelo "
@@ -682,7 +704,7 @@ class _Montagem:
                 {"bloco": para_fora(nome), "por_que": NAO_RESPONDEU}
                 for nome in self.atrasados
             ],
-            "ainda_nao_traz": list(AINDA_NAO_TRAZ),
+            "ainda_nao_traz": ainda_nao_traz(bloco.nome for bloco in self.outros),
             "pedidos_usados": len(consumo),
             "limites": limites,
         }
