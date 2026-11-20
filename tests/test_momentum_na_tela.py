@@ -23,13 +23,25 @@ def _tela():
     momentum.secao_momentum("PETR4.SA", "5y")
 
 
-def _abrir(monkeypatch, dias=DIAS_SUFICIENTES, favoritos="", sem_dados=""):
-    indice = pd.bdate_range("2024-01-01", periods=dias)
+def _abrir(
+    monkeypatch,
+    dias=DIAS_SUFICIENTES,
+    favoritos="",
+    sem_dados="",
+    dias_de=None,
+    salto=0.0,
+):
+    """`dias_de`: dias de histórico de um ticker específico; `salto`: pulo do último fechamento."""
 
     def dados_de_teste(ticker, periodo):
         if ticker == sem_dados:
             raise DadosIndisponiveisError(ticker)
-        return pd.DataFrame({"Close": [100.0 + i for i in range(dias)]}, index=indice)
+        n = (dias_de or {}).get(ticker, dias)
+        fechamento = [100.0 + i for i in range(n)]
+        fechamento[-1] += salto
+        return pd.DataFrame(
+            {"Close": fechamento}, index=pd.bdate_range("2024-01-01", periods=n)
+        )
 
     # a tela guarda `carregar_dados` pelo nome: troca onde ela usa
     monkeypatch.setattr(momentum, "carregar_dados", dados_de_teste)
@@ -56,3 +68,27 @@ def test_historico_curto_em_todos_pede_periodo_maior(monkeypatch):
     assert not app.exception
     assert any("Escolha o período de 2 ou 5 anos." in i.value for i in app.info)
     assert len(app.dataframe) == 0
+
+
+def test_ativo_com_historico_curto_e_nomeado_e_o_resto_segue(monkeypatch):
+    app = _abrir(monkeypatch, favoritos="VALE3.SA", dias_de={"VALE3.SA": 50})
+    assert not app.exception
+    legendas = [c.value for c in app.caption]
+    assert any(
+        "Sem histórico suficiente (menos de 1 ano): VALE3.SA." in c for c in legendas
+    )
+    assert len(app.dataframe) == 1
+    assert list(app.dataframe[0].value.index) == ["PETR4.SA"]
+
+
+def test_reversao_a_media_so_aparece_quando_marcada(monkeypatch):
+    app = _abrir(monkeypatch, salto=100.0)
+    assert "Z-score (20 dias)" not in app.dataframe[0].value.columns
+
+    app.checkbox(key="momentum_reversao").check().run()
+
+    assert not app.exception
+    tabela = app.dataframe[0].value
+    assert "Z-score (20 dias)" in tabela.columns
+    assert tabela["Leitura da reversão"].tolist() == ["esticado para cima"]
+    assert any("aposta que ele volta" in c.value for c in app.caption)
