@@ -257,6 +257,22 @@ _REGULADORES_PLANEJADAS = {
     "bcb-regimes-especiais": _tabela("bcb_regimes_especiais"),
     "antt-operadores-multimodais": _tabela("antt_operadores_multimodais"),
     "antt-seguro-de-responsabilidade-civil": _tabela("antt_seguros_de_transportadores"),
+    # conferência de 14/11 (linha 904): ECF por forma de tributação, PAT, TAH, PADOs, homologados e tancagem
+    "rfb-renuncias-regime-presumido": _tabela("receita_regime_tributario"),
+    "rfb-renuncias-regime-real": _tabela("receita_regime_tributario"),
+    "rfb-renuncias-regime-arbitrado": _tabela("receita_regime_tributario"),
+    "rfb-renuncias-regime-imunes": _tabela("receita_regime_tributario"),
+    "mte-pat-beneficiarias": _tabela("mte_pat"),
+    "mte-pat-facilitadoras": _tabela("mte_pat"),
+    "mte-pat-fornecedoras": _tabela("mte_pat"),
+    "anm-tah": _tabela("anm_tah"),
+    "anatel-pados": _tabela("anatel_pados"),
+    "anatel-homologados": _tabela("anatel_produtos_homologados"),
+    "anp-tancagem": _tabela("anp_tancagem"),
+    # conferência de 19/11 (base/cadastros_conferidos_19_11.py)
+    "comprasgov-sicaf-ativos": _tabela("comprasgov_sicaf"),
+    "comprasgov-sicaf-inativos": _tabela("comprasgov_sicaf"),
+    "bps": _tabela("bps_compras"),
     "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
     # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
     "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),

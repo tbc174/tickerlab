@@ -63,7 +63,8 @@ def test_a_data_da_leitura_dos_termos_e_uma_data_ou_nada():
     por_id = {r.id: r for r in registro.registro_de_fontes()}
     assert por_id["inmet-bdmep"].termos_lidos_em == date(2026, 10, 21)
     assert por_id["cvm-fidc"].termos_lidos_em == date(2026, 10, 21)
-    assert por_id["ibama-autos"].termos_lidos_em is None
+    assert por_id["ibama-autos"].termos_lidos_em == date(2026, 11, 18)
+    assert por_id["termos-sec"].termos_lidos_em is None
     assert por_id["gleif-br"].termos_lidos_em == date(2026, 10, 21)
 
 

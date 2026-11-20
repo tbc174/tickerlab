@@ -121,6 +121,128 @@
         "title": "AcontecimentoV1",
         "type": "object"
       },
+      "AnaliseCompletaV1": {
+        "description": "A análise completa da empresa na ficha (19/11/2026): a mesma montagem da rota /analysis, pelo portão da\ntela. Sem pessoa física. O estado, as fontes e os limites vêm sempre; o resto só quando `pronta`.",
+        "properties": {
+          "ainda_nao_traz": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Ainda Nao Traz",
+            "type": "array"
+          },
+          "aviso_de_piloto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso De Piloto"
+          },
+          "blocos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BlocoDaAnaliseCompletaV1"
+            },
+            "title": "Blocos",
+            "type": "array"
+          },
+          "cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnpj"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "estado": {
+            "title": "Estado",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "$ref": "#/components/schemas/FonteDaFichaV1"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "frase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FraseDaAnaliseCompletaV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "leituras": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LeituraDaAnaliseCompletaV1"
+            },
+            "title": "Leituras",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "linha_do_tempo": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/MarcoDaAnaliseCompletaV1"
+            },
+            "title": "Linha Do Tempo",
+            "type": "array"
+          },
+          "nao_encontrado": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BlocoSemDadoV1"
+            },
+            "title": "Nao Encontrado",
+            "type": "array"
+          },
+          "nao_respondeu_a_tempo": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BlocoSemDadoV1"
+            },
+            "title": "Nao Respondeu A Tempo",
+            "type": "array"
+          }
+        },
+        "required": [
+          "estado",
+          "fontes",
+          "limites"
+        ],
+        "title": "AnaliseCompletaV1",
+        "type": "object"
+      },
       "AnaliseDaEmpresaV1": {
         "description": "A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100), e os\ngráficos e destaques escolhidos para ela.",
         "properties": {
@@ -483,6 +605,36 @@
           "marcas"
         ],
         "title": "BienalidadeDoCafeV1",
+        "type": "object"
+      },
+      "BlocoDaAnaliseCompletaV1": {
+        "description": "Um bloco da análise, na ordem da montagem: o nome da tela, o título, o que traz e o corpo do leitor da\nAPI (cada campo no envelope com `valor`, `fonte` e `publico_em`).",
+        "properties": {
+          "corpo": {
+            "additionalProperties": true,
+            "title": "Corpo",
+            "type": "object"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "o_que_traz": {
+            "title": "O Que Traz",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "titulo",
+          "o_que_traz",
+          "corpo"
+        ],
+        "title": "BlocoDaAnaliseCompletaV1",
         "type": "object"
       },
       "BlocoDaBienalidadeV1": {
@@ -1211,6 +1363,30 @@
           "conteudo"
         ],
         "title": "BlocoDosFundosV1",
+        "type": "object"
+      },
+      "BlocoSemDadoV1": {
+        "description": "Um bloco aberto que não trouxe dado (ou não respondeu a tempo), com o porquê.",
+        "properties": {
+          "bloco": {
+            "title": "Bloco",
+            "type": "string"
+          },
+          "por_que": {
+            "title": "Por Que",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bloco",
+          "titulo",
+          "por_que"
+        ],
+        "title": "BlocoSemDadoV1",
         "type": "object"
       },
       "BoasVindasDoBetaV1": {
@@ -3783,6 +3959,33 @@
         "title": "FonteDaFichaV1",
         "type": "object"
       },
+      "FraseDaAnaliseCompletaV1": {
+        "description": "A frase do topo da análise: só fato do cadastro (`tipo` \"fact\"), com o bloco de onde saiu.",
+        "properties": {
+          "a_partir_de": {
+            "items": {
+              "type": "string"
+            },
+            "title": "A Partir De",
+            "type": "array"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "tipo",
+          "a_partir_de"
+        ],
+        "title": "FraseDaAnaliseCompletaV1",
+        "type": "object"
+      },
       "FraseDaAnaliseV1": {
         "properties": {
           "notas": {
@@ -4295,6 +4498,33 @@
         "title": "JurosEInflacaoV1",
         "type": "object"
       },
+      "LeituraDaAnaliseCompletaV1": {
+        "description": "Uma dedução do TickerLab a partir dos blocos citados (`tipo` \"inference\"): nunca fato de uma fonte.",
+        "properties": {
+          "a_partir_de": {
+            "items": {
+              "type": "string"
+            },
+            "title": "A Partir De",
+            "type": "array"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "tipo",
+          "a_partir_de"
+        ],
+        "title": "LeituraDaAnaliseCompletaV1",
+        "type": "object"
+      },
       "LimitesDoPulseV1": {
         "properties": {
           "alem_do_maximo": {
@@ -4696,6 +4926,57 @@
           "aviso"
         ],
         "title": "MapaDoCafeV1",
+        "type": "object"
+      },
+      "MarcoDaAnaliseCompletaV1": {
+        "description": "Um marco da linha do tempo: o dia, o que aconteceu, o bloco de onde veio, a fonte e o dia em que ficou\npúblico.",
+        "properties": {
+          "bloco": {
+            "title": "Bloco",
+            "type": "string"
+          },
+          "dia": {
+            "title": "Dia",
+            "type": "string"
+          },
+          "fonte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonte"
+          },
+          "o_que": {
+            "title": "O Que",
+            "type": "string"
+          },
+          "publico_em": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publico Em"
+          },
+          "titulo_do_bloco": {
+            "title": "Titulo Do Bloco",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "o_que",
+          "bloco",
+          "titulo_do_bloco"
+        ],
+        "title": "MarcoDaAnaliseCompletaV1",
         "type": "object"
       },
       "MarcoDoCafeV1": {
@@ -8368,6 +8649,45 @@
           }
         },
         "summary": "Ficha Da Empresa"
+      }
+    },
+    "/v1/analista/ficha/analise": {
+      "post": {
+        "description": "A análise completa da empresa numa chamada: a frase do topo, os blocos (cadastro, sócios PJ, vínculos,\neventos e o que mais o portão da tela libera), a linha do tempo, as leituras marcadas como dedução, o que não\nfoi achado e o que a tela não consulta, cada campo com fonte e dia. A mesma montagem da rota /analysis da API\nexterna; mesmo acesso, mesmo plano e mesmos estados da ficha; pessoa física nunca sai.",
+        "operationId": "analise_da_empresa_v1_analista_ficha_analise_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDaFichaV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnaliseCompletaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analise Da Empresa"
       }
     },
     "/v1/analista/ficha/eventos": {

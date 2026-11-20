@@ -35,6 +35,14 @@ class OperacaoInvalidaError(ValueError):
     """A ação pedida não pode ser feita (por exemplo, tirar o último administrador)."""
 
 
+class UsuarioNaoEncontradoError(OperacaoInvalidaError):
+    """A conta pedida não existe. É uma `OperacaoInvalidaError` (quem já trata a recusa segue igual); à
+    parte para a API responder "não achei" em vez de "não pode"."""
+
+    def __init__(self) -> None:
+        super().__init__("Usuário não encontrado.")
+
+
 @dataclass(frozen=True)
 class LinhaDeUsuario:
     id: uuid.UUID
@@ -206,7 +214,7 @@ def alterar_plano(
         sa.select(usuarios.c.plano).where(usuarios.c.id == alvo_id)
     ).scalar()
     if antes is None:
-        raise OperacaoInvalidaError("Usuário não encontrado.")
+        raise UsuarioNaoEncontradoError
     conexao.execute(
         sa.update(usuarios).where(usuarios.c.id == alvo_id).values(plano=plano)
     )
@@ -238,7 +246,7 @@ def alterar_papel(
         sa.select(usuarios.c.papel, usuarios.c.email).where(usuarios.c.id == alvo_id)
     ).first()
     if alvo is None:
-        raise OperacaoInvalidaError("Usuário não encontrado.")
+        raise UsuarioNaoEncontradoError
     antes = alvo.papel
     lista = admins_do_servidor() if emails_de_admin is None else emails_de_admin
     if papel != "admin" and alvo.email.lower() in {e.lower() for e in lista}:
@@ -363,7 +371,7 @@ def _bloqueio_atual(conexao: sa.Connection, alvo_id: uuid.UUID) -> str | None:
         )
     ).first()
     if linha is None:
-        raise OperacaoInvalidaError("Usuário não encontrado.")
+        raise UsuarioNaoEncontradoError
     return linha.motivo_do_bloqueio
 
 
@@ -394,6 +402,23 @@ def eventos_recentes_do_stripe(
         .limit(limite)
     )
     return [(l.id, l.tipo, l.processado_em) for l in linhas]
+
+
+def emails_das_contas(
+    conexao: sa.Connection, ator_id: uuid.UUID, ids: set[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """O e-mail de cada conta de `ids` que ainda existe, para a tela do administrador dizer quem é quem
+    no registro de ações. O registro guarda só ids, e continua assim: o e-mail é lido na hora, só para
+    o administrador, e a conta apagada (ou marcada como excluída) não tem e-mail para mostrar."""
+    exigir_admin(conexao, ator_id)
+    if not ids:
+        return {}
+    linhas = conexao.execute(
+        sa.select(usuarios.c.id, usuarios.c.email).where(
+            usuarios.c.id.in_(ids), usuarios.c.excluido_em.is_(None)
+        )
+    )
+    return {linha.id: linha.email for linha in linhas}
 
 
 def auditoria_recente(

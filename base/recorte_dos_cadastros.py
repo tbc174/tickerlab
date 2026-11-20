@@ -1,7 +1,8 @@
-"""As cópias reduzidas dos cinco cadastros em retrato que vão ao VPS (linha 915): o filtro e a trava.
+"""As cópias reduzidas dos cinco cadastros em retrato e das sanções da CGU que vão ao VPS (linhas 915 e 981): o filtro e a trava.
 
 Os cinco cadastros (`base/cadastros_em_retrato.py`: ANS, SUSEP, Lista Suja do MTE, ponte da GLEIF e embargos do
-IBAMA) são tabelas de pessoa no dicionário: guardam a razão social ou o nome como a fonte escreve, e a linha de
+IBAMA) e as sanções da CGU (`base/sancoes.py`: CEIS, CNEP, CEPIM e leniência, um arquivo por cadastro, só CNPJ)
+são tabelas de pessoa no dicionário: guardam a razão social ou o nome como a fonte escreve, e a linha de
 empresário individual e de MEI fica, marcada em `trata_como_pessoa` (ADR 0075). A tabela inteira fica em casa. Ao
 VPS vai uma cópia **com o mesmo nome e o mesmo caminho** (`<tabela>/<cadastro>.parquet`), porque a API lê a
 tabela pelo nome (os sinais de crédito, `src/credito/sinais.py`, leem `mte_lista_suja` e `ibama_embargos`), e mais
@@ -13,17 +14,19 @@ estreita que a inteira:
   de `tirar_raizes_de_mei`). Linha da SUSEP sem CNPJ não sai.
 - **Só as colunas de `COLUNAS`:** códigos, datas, situação e as colunas de controle. Sem nome, razão social, nome
   fantasia, empregador, estabelecimento (texto livre: o endereço da fazenda) nem o motivo do descredenciamento
-  da ANS (texto livre). A situação do termo do IBAMA (`situacao_do_termo`) também não sai: o sinal usa só as marcas
+  da ANS (texto livre). Nas sanções da CGU sai a coluna do número do processo (o `id_na_fonte` do CEPIM ainda leva o número do convênio na chave, que não é dado de pessoa e a API não serve) e a linha que traz CPF
+  ou e-mail dentro de um texto livre (inclusive o CPF mascarado como a CGU publica). A situação do termo do IBAMA (`situacao_do_termo`) também não sai: o sinal usa só as marcas
   `cancelado` e `desembargado`.
 - **A chave da Lista Suja vira impressão digital:** o `id_na_fonte` do MTE junta CNPJ, ano e estabelecimento
   (texto livre); sai o `sha256` dele, que separa as linhas igual e não leva o texto.
 
 `conferir_cadastros` lê **a saída** e derruba o envio (`CadastroComPessoa`) em qualquer coisa fora disso, sem
 depender do filtro: coluna fora da lista ou faltando, linha marcada ou sem marca, CNPJ que não confere, raiz
-trocada ou fora da lista sem pessoa, valor inteiro com cara de CPF que confere numa coluna de texto, chave do MTE
-que não é impressão digital, tabela vazia. A mensagem leva só contagens, nunca um CNPJ ou um nome.
+trocada ou fora da lista sem pessoa, valor inteiro com cara de CPF que confere numa coluna de texto, CPF ou e-mail
+dentro do texto livre das sanções, chave do MTE que não é impressão digital, tabela vazia. A mensagem leva só contagens, nunca um CNPJ ou um nome.
 """
 
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -40,7 +43,18 @@ ANS, SUSEP, MTE, GLEIF, IBAMA = (
     "gleif_ponte",
     "ibama_embargos",
 )
-CADASTROS = (ANS, SUSEP, MTE, GLEIF, IBAMA)
+# as sanções da CGU (linha 981): a tabela inteira é de pessoa no dicionário, mas o servidor guarda só esta cópia
+SANCOES = "sancoes_cgu"
+CADASTROS = (ANS, SUSEP, MTE, GLEIF, IBAMA, SANCOES)
+# as quatro fontes ampliadas (conferência de 14/11; linha 978), só CNPJ de dígito certo e sem nome, mas com linha marcada
+# em `trata_como_pessoa` (a porta já esconde): vão num degrau à parte (8), pelo mesmo filtro e pela mesma trava
+PADOS, HOMOLOGADOS, TANCAGEM, PAT = (
+    "anatel_pados",
+    "anatel_produtos_homologados",
+    "anp_tancagem",
+    "mte_pat",
+)
+AMPLIADAS = (PADOS, HOMOLOGADOS, TANCAGEM, PAT)
 # as colunas de controle que toda cópia leva (a chave, o CNPJ, a marca e a linhagem)
 CONTROLE = (
     "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em",
@@ -55,6 +69,46 @@ COLUNAS: dict[str, tuple[str, ...]] = {
         *CONTROLE, "numero_do_termo", "cancelado", "codigo_do_municipio", "uf", "desembargado",
         "numero_do_auto", "area_embargada_ha", "embargada_em", "desembargada_em",
     ),
+    SANCOES: (
+        *CONTROLE, "cadastro", "categoria", "situacao", "assunto", "orgao", "uf_do_orgao", "esfera_do_orgao",
+        "origem_da_informacao", "fundamentacao_legal", "abrangencia", "inicio", "fim", "publicado_em",
+        "transito_em_julgado", "informado_em", "valor_multa",
+    ),
+    PADOS: (
+        *CONTROLE, "processo", "anexacao", "tema", "servico", "status_do_processo", "fase",
+        "situacao_do_pagamento", "multa_aplicada",
+    ),
+    # sem `nome_comercial` (nome de produto: a leitura mais estreita o deixa em casa)
+    HOMOLOGADOS: (
+        *CONTROLE, "numero_da_homologacao", "certificado", "situacao_do_certificado", "situacao_do_requerimento",
+        "modelo", "categoria", "tipo_do_produto", "pais_do_fabricante", "data_da_homologacao",
+        "data_do_certificado", "validade_do_certificado",
+    ),
+    TANCAGEM: (
+        *CONTROLE, "uf", "municipio", "codigo_da_instalacao", "segmento", "detalhe_da_instalacao", "tag",
+        "tipo_da_unidade", "grupo_de_produtos", "data_da_posicao", "tancagem_m3",
+    ),
+    PAT: (
+        *CONTROLE, "matriz_ou_filial", "municipio", "uf", "registro_no_pat", "situacao", "data_do_cadastro",
+        "trabalhadores_ate_5_salarios", "trabalhadores_acima_de_5_salarios", "trabalhadores_atendidos",
+    ),
+}  # fmt: skip
+# as colunas de texto livre da cópia: CPF ou e-mail dentro delas derruba a linha (filtro) e o envio (trava)
+TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
+    SANCOES: (
+        "categoria", "situacao", "assunto", "orgao", "uf_do_orgao", "esfera_do_orgao", "origem_da_informacao",
+        "fundamentacao_legal", "abrangencia",
+    ),
+    PADOS: ("processo", "anexacao", "tema", "servico", "status_do_processo", "fase", "situacao_do_pagamento"),
+    HOMOLOGADOS: (
+        "numero_da_homologacao", "certificado", "situacao_do_certificado", "situacao_do_requerimento", "modelo",
+        "categoria", "tipo_do_produto", "pais_do_fabricante",
+    ),
+    TANCAGEM: (
+        "uf", "municipio", "codigo_da_instalacao", "segmento", "detalhe_da_instalacao", "tag", "tipo_da_unidade",
+        "grupo_de_produtos",
+    ),
+    PAT: ("matriz_ou_filial", "municipio", "uf", "registro_no_pat", "situacao"),
 }  # fmt: skip
 # pedaços de nome de coluna que nunca saem (o teste confere que a lista acima não tem nenhum)
 PEDACOS_PROIBIDOS = (
@@ -67,13 +121,22 @@ PEDACOS_PROIBIDOS = (
     "cpf",
 )
 # a tabela cuja chave leva texto livre: sai a impressão digital da chave
-CHAVE_COM_TEXTO = {MTE}
+CHAVE_COM_TEXTO = {
+    MTE,
+    PADOS,
+    HOMOLOGADOS,
+}  # a chave dos dois últimos junta tema, serviço, modelo e nome do produto
 TAMANHO_DA_RAIZ = 8
 TAMANHO_DO_CPF = 11
 TAMANHO_DA_IMPRESSAO = 64  # sha256 em hexadecimal
 # nomes das funções que o filtro e a trava chamam no DuckDB (registradas em cada conexão)
 FUNCAO_CNPJ_DE_EMPRESA = "tl_cadastro_cnpj_de_empresa"
 FUNCAO_CPF_INTEIRO = "tl_cadastro_cpf_inteiro"
+FUNCAO_PESSOA_NO_TEXTO = "tl_cadastro_pessoa_no_texto"
+# um CPF (com ou sem a pontuação) solto no texto, o CPF mascarado como a CGU publica (***.123.456-**) e um e-mail
+CPF_NO_TEXTO = re.compile(r"(?<!\d)(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})(?!\d)")
+CPF_MASCARADO = re.compile(r"\*{3}\.?\d{3}\.?\d{3}-?\*{2}")
+EMAIL_NO_TEXTO = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
 
 
 class CadastroComPessoa(Exception):
@@ -97,11 +160,22 @@ def cpf_inteiro(valor: str | None) -> bool:
     )
 
 
+def pessoa_no_texto(valor: str | None) -> bool:
+    """O texto traz um CPF que confere (com ou sem pontuação), um CPF mascarado ou um e-mail."""
+    if valor is None:
+        return False
+    texto = str(valor)
+    if CPF_MASCARADO.search(texto) or EMAIL_NO_TEXTO.search(texto):
+        return True
+    return any(cpf_confere("".join(partes)) for partes in CPF_NO_TEXTO.findall(texto))
+
+
 def _registrar_funcoes(con: duckdb.DuckDBPyConnection) -> None:
     """Põe as funções na conexão (uma vez por conexão) para o filtro e a trava as chamarem no SQL."""
     for nome, funcao in (
         (FUNCAO_CNPJ_DE_EMPRESA, cnpj_de_empresa),
         (FUNCAO_CPF_INTEIRO, cpf_inteiro),
+        (FUNCAO_PESSOA_NO_TEXTO, pessoa_no_texto),
     ):
         ja_tem = con.execute(
             "SELECT count(*) FROM duckdb_functions() WHERE function_name = ?", [nome]
@@ -129,13 +203,21 @@ def _lista_pj(empresas_pj: Sequence[Path]) -> str:
     return f"SELECT DISTINCT cnpj_basico FROM {fonte_dos_arquivos(empresas_pj)} WHERE cnpj_basico IS NOT NULL"
 
 
-def _so_pj(pj: str) -> str:
+def _sem_pessoa_no_texto(nome: str) -> str:
+    """A condição de que nenhum texto livre da cópia traz CPF nem e-mail (vazia se a cópia não tem texto livre)."""
+    return "".join(
+        f' AND NOT coalesce({FUNCAO_PESSOA_NO_TEXTO}(CAST("{coluna}" AS VARCHAR)), false)'
+        for coluna in TEXTOS_LIVRES.get(nome, ())
+    )
+
+
+def _so_pj(pj: str, nome: str) -> str:
     """A condição da linha que pode sair (a mesma que a trava confere ao contrário)."""
     return (
         "trata_como_pessoa IS NOT DISTINCT FROM false "
         f"AND {FUNCAO_CNPJ_DE_EMPRESA}(CAST(cnpj AS VARCHAR)) "
         f"AND cnpj_basico IS NOT DISTINCT FROM {_raiz_do_cnpj()} "
-        f"AND cnpj_basico IN ({pj})"
+        f"AND cnpj_basico IN ({pj})" + _sem_pessoa_no_texto(nome)
     )
 
 
@@ -162,13 +244,13 @@ def montar_cadastro(
 ) -> tuple[int, int]:
     """Escreve em `destino` a cópia reduzida de um arquivo do cadastro; devolve (linhas que saíram, tiradas)."""
     if nome not in COLUNAS:
-        raise CadastroComPessoa(f"{nome}: não é um dos cinco cadastros")
+        raise CadastroComPessoa(f"{nome}: não é um dos cadastros")
     pj = _lista_pj(empresas_pj)
     _registrar_funcoes(con)
     fonte = fonte_dos_arquivos([origem])
     destino.parent.mkdir(parents=True, exist_ok=True)
     con.execute(
-        f"COPY (SELECT {_selecao(nome)} FROM {fonte} WHERE {_so_pj(pj)} ORDER BY id_na_fonte, visto_em) "
+        f"COPY (SELECT {_selecao(nome)} FROM {fonte} WHERE {_so_pj(pj, nome)} ORDER BY id_na_fonte, visto_em) "
         f"TO {_aspas(destino.as_posix())} (FORMAT PARQUET, COMPRESSION ZSTD)"
     )
     antes = _contar(con, f"SELECT * FROM {fonte}")
@@ -227,6 +309,13 @@ def _consultas_de_linha(
         consultas["valor(es) com cara de CPF que confere numa coluna de texto"] = (
             f"SELECT * FROM {fonte} WHERE {com_cpf}"
         )
+    if textos_livres := TEXTOS_LIVRES.get(nome):
+        com_pessoa = " OR ".join(
+            f'{FUNCAO_PESSOA_NO_TEXTO}(CAST("{c}" AS VARCHAR))' for c in textos_livres
+        )
+        consultas["linha(s) com CPF ou e-mail dentro de texto livre"] = (
+            f"SELECT * FROM {fonte} WHERE {com_pessoa}"
+        )
     if nome in CHAVE_COM_TEXTO:
         consultas["chave(s) que não são a impressão digital"] = (
             f"SELECT * FROM {fonte} WHERE NOT coalesce(regexp_full_match(id_na_fonte, "
@@ -249,7 +338,7 @@ def conferir_cadastros(
     linhas: dict[str, int] = {}
     for nome, arquivos in destinos.items():
         if nome not in COLUNAS:
-            raise CadastroComPessoa(f"{nome}: não é um dos cinco cadastros")
+            raise CadastroComPessoa(f"{nome}: não é um dos cadastros")
         if not arquivos:
             problemas.append(f"{nome}: nenhum arquivo na saída")
             continue

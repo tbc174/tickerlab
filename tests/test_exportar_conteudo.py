@@ -87,6 +87,19 @@ def test_ativos_levam_o_catalogo_inteiro_da_busca_com_o_rotulo_do_python():
     }
 
 
+def test_cnaes_levam_todas_as_atividades_da_tabela_da_receita():
+    """A busca de setor do app (aba "Quem já se mexeu") acha o CNAE pelo nome da atividade: a lista é a tabela
+    `Cnaes` da Receita inteira, com o código de 7 dígitos e o nome como a Receita escreve."""
+    from base import receita_codigos
+
+    cnaes = exp.conteudo()["cnaes"]
+    assert len(cnaes) == len(receita_codigos.atividades()) > 1300
+    assert all(len(c["codigo"]) == 7 and c["codigo"].isdigit() for c in cnaes)
+    farmacia = next(c for c in cnaes if c["codigo"] == "4771701")
+    assert farmacia["nome"] == receita_codigos.cnae("4771701")
+    assert farmacia["nome"].startswith("Comércio varejista de produtos farmacêuticos")
+
+
 def test_planos_levam_os_nomes_para_a_tabela_e_a_cobranca():
     p = exp.conteudo()["planos"]
     assert p["nomes"] == [planos.limites_do(x).nome for x in planos.PLANOS]

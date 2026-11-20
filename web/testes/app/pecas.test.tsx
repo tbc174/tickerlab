@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi } from "../../src/app/api";
@@ -76,6 +77,18 @@ const ABAS = [
   { chave: "eventos", rotulo: "Eventos", conteudo: <p>Texto dos eventos</p>, contagem: 3 },
 ];
 
+function Contador() {
+  const [vezes, setVezes] = useState(0);
+  return (
+    <>
+      <p>Somou {vezes}</p>
+      <button type="button" onClick={() => setVezes(vezes + 1)}>
+        Somar
+      </button>
+    </>
+  );
+}
+
 function Endereco() {
   return <output data-testid="endereco">{useLocation().search}</output>;
 }
@@ -141,6 +154,49 @@ describe("Abas", () => {
   it("aba desconhecida no endereço abre a primeira", () => {
     abrirAbas("/ficha?aba=nao-existe", "aba");
     expect(screen.getByRole("tab", { name: "Resumo" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("a aba marcada para ficar montada continua no documento, escondida, e não perde o que guardava", () => {
+    render(
+      <MemoryRouter>
+        <Abas
+          rotulo="Partes"
+          abas={[
+            { chave: "contador", rotulo: "Contador", conteudo: <Contador />, sempreMontada: true },
+            { chave: "outra", rotulo: "Outra", conteudo: <p>Texto da outra</p> },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Somar" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Outra" }));
+    // só o painel aberto conta para quem lê a tela; o outro está no documento, escondido
+    expect(screen.getByRole("tabpanel").textContent).toBe("Texto da outra");
+    const guardado = screen.getByText("Somou 1").closest('[role="tabpanel"]') as HTMLElement;
+    expect(guardado.hidden).toBe(true);
+    fireEvent.click(screen.getByRole("tab", { name: "Contador" }));
+    expect(screen.getByRole("tabpanel").textContent).toContain("Somou 1");
+    expect(screen.queryByText("Texto da outra")).toBeNull();
+  });
+
+  it("com `aberta` e `aoAbrir`, quem manda na aba é quem usa a peça", () => {
+    const aoAbrir = vi.fn();
+    const { rerender } = render(
+      <MemoryRouter>
+        <Abas rotulo="Partes da ficha" abas={ABAS} aberta="cadastro" aoAbrir={aoAbrir} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("tabpanel").textContent).toBe("Texto do cadastro");
+    fireEvent.click(screen.getByRole("tab", { name: "Resumo" }));
+    expect(aoAbrir).toHaveBeenCalledWith("resumo");
+    // a peça não trocou sozinha: espera quem a usa
+    expect(screen.getByRole("tabpanel").textContent).toBe("Texto do cadastro");
+    rerender(
+      <MemoryRouter>
+        <Abas rotulo="Partes da ficha" abas={ABAS} aberta="resumo" aoAbrir={aoAbrir} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("tabpanel").textContent).toBe("Texto do resumo");
   });
 
   it("sem aba nenhuma, não desenha nada", () => {

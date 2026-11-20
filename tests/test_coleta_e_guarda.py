@@ -3,6 +3,7 @@
 As respostas vêm da auditoria N0 de 21/10/2026; o que ela não respondeu fica `nao_lida` / `nao_diz`.
 """
 
+import dataclasses
 from datetime import date
 
 import pytest
@@ -12,6 +13,7 @@ from src.banco import coletas
 from src.banco.coletas import Coleta, Guarda
 
 HOJE = date(2026, 10, 26)
+OUTRO_CONJUNTO = "companies"  # um conjunto qualquer fora do de integridade
 
 # Famílias que passam as marcas do portão externo (revenda, guarda, coleta, leitura dos termos).
 # Ficam de fora, de propósito: `bm`, `cgu` e `cftc` (revenda só uso interno). `rfb-cnpj` passa desde
@@ -103,9 +105,78 @@ def test_familias_que_passam_o_portao_externo_pelas_marcas() -> None:
     passam = {
         familia
         for familia in coletas.LICENCAS
-        if portao_externo._negacao_das_marcas(familia, HOJE, regras) is None
+        if portao_externo._negacao_das_marcas(familia, OUTRO_CONJUNTO, HOJE, regras)
+        is None
     }
     assert passam == PASSAM_AS_MARCAS
+
+
+def test_cgu_ibama_e_mte_passam_as_marcas_so_no_conjunto_de_integridade() -> None:
+    """ADR 0122, Emenda 1 (18/11/2026): a marca de uso interno não barra no conjunto de integridade; coleta, guarda e
+    leitura dos termos continuam conferidas (com as respostas gravadas, nada barra). Em qualquer outro conjunto, a
+    negação de sempre."""
+    vigentes = portao_externo.regras_vigentes()
+    respondidas = dataclasses.replace(
+        vigentes,
+        termos_lidos_em={
+            **vigentes.termos_lidos_em,
+            **dict.fromkeys(("cgu", "ibama", "mte"), HOJE),
+        },
+        coleta_e_guarda={
+            **vigentes.coleta_e_guarda,
+            **dict.fromkeys(
+                ("cgu", "ibama", "mte"),
+                coletas.ColetaEGuarda(coletas.Coleta.ABERTA, coletas.Guarda.SEM_PRAZO),
+            ),
+        },
+    )
+    for fonte in (
+        "cgu-ceis",
+        "cgu-cnep",
+        "cgu-cepim",
+        "cgu-leniencia",
+        "ibama-embargos",
+        "mte-lista-suja",
+    ):
+        assert (
+            portao_externo._negacao_das_marcas(
+                fonte, coletas.CONJUNTO_DE_INTEGRIDADE, HOJE, respondidas
+            )
+            is None
+        ), fonte
+        assert (
+            portao_externo._negacao_das_marcas(
+                fonte, coletas.CONJUNTO_DE_INTEGRIDADE, HOJE, vigentes
+            )
+            is not portao_externo.Motivo.REVENDA_NAO_VENDAVEL
+        ), fonte
+        for regras in (vigentes, respondidas):
+            assert (
+                portao_externo._negacao_das_marcas(fonte, OUTRO_CONJUNTO, HOJE, regras)
+                is portao_externo.Motivo.REVENDA_NAO_VENDAVEL
+            ), fonte
+    assert (
+        portao_externo._negacao_das_marcas(
+            "mte-pat", coletas.CONJUNTO_DE_INTEGRIDADE, HOJE, respondidas
+        )
+        is portao_externo.Motivo.REVENDA_NAO_VENDAVEL
+    )
+
+
+def test_hoje_cgu_ibama_e_mte_passam_as_marcas_no_conjunto_de_integridade() -> None:
+    """O estado gravado: CGU (termos de 21/10/2026), IBAMA e MTE (termos de 18/11/2026, pode da Diretoria) e a coleta
+    e guarda do MTE (aberta, sem prazo) passam as marcas no conjunto de integridade; fora dele, não."""
+    regras = portao_externo.regras_vigentes()
+    conjunto = coletas.CONJUNTO_DE_INTEGRIDADE
+    for fonte in ("cgu-ceis", "ibama-embargos", "mte-lista-suja"):
+        assert portao_externo._negacao_das_marcas(fonte, conjunto, HOJE, regras) is None
+        assert (
+            portao_externo._negacao_das_marcas(fonte, "profiles", HOJE, regras)
+            is portao_externo.Motivo.REVENDA_NAO_VENDAVEL
+        )
+    assert coletas.COLETA_E_GUARDA["mte"] == coletas.ColetaEGuarda(
+        coletas.Coleta.ABERTA, coletas.Guarda.SEM_PRAZO
+    )
 
 
 def test_nenhuma_marca_de_revenda_mudou() -> None:
@@ -142,7 +213,9 @@ def test_anvisa_foi_lida_em_12_11_e_coleta_aberta_sem_prazo() -> None:
     regras = portao_externo.regras_vigentes()
     for fonte in ("anvisa", "anvisa-produtos", "anvisa-empresas"):
         assert (
-            portao_externo._negacao_das_marcas(fonte, DIA_DA_LEITURA_DA_ANVISA, regras)
+            portao_externo._negacao_das_marcas(
+                fonte, OUTRO_CONJUNTO, DIA_DA_LEITURA_DA_ANVISA, regras
+            )
             is None
         ), fonte
 
@@ -155,7 +228,7 @@ def test_anvisa_cmed_continua_nao_lida_e_negada() -> None:
     regras = portao_externo.regras_vigentes()
     assert (
         portao_externo._negacao_das_marcas(
-            "anvisa-cmed", DIA_DA_LEITURA_DA_ANVISA, regras
+            "anvisa-cmed", OUTRO_CONJUNTO, DIA_DA_LEITURA_DA_ANVISA, regras
         )
         is not None
     )
@@ -176,3 +249,23 @@ def test_a_licenca_da_anvisa_nao_abre_a_tabela_de_pessoa() -> None:
         )
         decisao = portao_externo.decidir(pedido, DIA_DA_LEITURA_DA_ANVISA, regras)
         assert not decisao.libera, campo
+
+
+def test_as_fontes_do_pat_seguem_de_uso_interno_mesmo_com_o_mte_na_integridade():
+    """Regressão da revisão do #1229: "mte-pat-beneficiarias" caía na família "mte" (integridade sob
+    contrato) e passaria nas marcas se ganhasse uma linha no conjunto de integridade."""
+    from src.banco.coletas import (
+        CONJUNTO_DE_INTEGRIDADE,
+        SO_USO_INTERNO,
+        revenda_da_fonte,
+        sai_no_conjunto_de_integridade,
+    )
+
+    for fonte in (
+        "mte-pat-beneficiarias",
+        "mte-pat-facilitadoras",
+        "mte-pat-fornecedoras",
+    ):
+        assert revenda_da_fonte(fonte) == SO_USO_INTERNO
+        assert not sai_no_conjunto_de_integridade(fonte, CONJUNTO_DE_INTEGRIDADE)
+    assert sai_no_conjunto_de_integridade("mte-lista-suja", CONJUNTO_DE_INTEGRIDADE)

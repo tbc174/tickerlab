@@ -60,7 +60,7 @@ def test_tabela_nova_que_a_porta_libera_nao_entra_sozinha():
     """Se a porta passar a mostrar uma tabela, alguém decide: degrau 2 ou fica em casa."""
     decididas = {
         *envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.REDE_SO_PJ, *envio.FICAM_EM_CASA,
-        *envio.LOTE_1_DAS_300,
+        *envio.LOTE_1_DAS_300, *envio.AMPLIADAS,
     }  # fmt: skip
     novas = sorted(n for n in TABELAS if pode_consultar(n) and n not in decididas)
     assert novas == []
@@ -234,7 +234,6 @@ def test_link_simbolico_na_saida_nao_vai_no_tar(tmp_path):
 @pytest.mark.parametrize(
     "tabela",
     [
-        "anatel_acessos",
         "ifdata_cadastro",
         "carteiras_bloco_8",
         "controladas",

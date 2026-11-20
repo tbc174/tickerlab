@@ -59,6 +59,10 @@ FAMILIA_DO_ENDERECO = {
     "www.gov.br/receitafederal/dados/transacoes": "rfb-transacoes",  # transações tributárias
     "apidadosabertos.saude.gov.br/assistencia-a-saude/cnes": "ms",  # CNES por competência
     "ftp.datasus.gov.br/": "ms",  # SIH RD e SIA PA por competência (`scripts/carga_sus.py`, linha 698)
+    # conferência de 19/11/2026: o Banco de Preços em Saúde fica no S3 do CKAN do Ministério; a resposta do
+    # Fala.BR que liberou o "ms" não o cobre, então a família é própria
+    "s3.sa-east-1.amazonaws.com/ckan.saude.gov.br/BPS/": "bps",
+    "dadosabertos.compras.gov.br/modulo-fornecedor/": "comprasgov",  # SICAF pela API de dados abertos
     "www.gov.br/receitafederal/": "rfb",
     "dadosabertos.pgfn.gov.br/": "pgfn",
     "portaldatransparencia.gov.br/": "cgu",
@@ -70,11 +74,17 @@ FAMILIA_DO_ENDERECO = {
     "download.finep.gov.br/": "finep",
     "dadosabertos.inss.gov.br/": "inss",
     "dadosabertos.ibama.gov.br/": "ibama",
+    "www.gov.br/trabalho-e-emprego/pt-br/servicos/empregador/programa-de-alimentacao-do-trabalhador-pat/": "mte-pat",
     "www.gov.br/trabalho-e-emprego/": "mte",
     "api.gleif.org/": "gleif",
     "dadosabertos.ccee.org.br/": "ccee",
     "dados.antt.gov.br/": "antt",
     "www.gov.br/anp/": "anp",
+    # conferência de 14/11/2026 (linha 904): conjuntos sem licença própria lida, a confirmar
+    "www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-tancagem-do-abastecimento-nacional-de-combustiveis/": "anp-tancagem",
+    "dadosabertos.anm.gov.br/TAH/": "anm-tah",
+    "www.anatel.gov.br/dadosabertos/paineis_de_dados/acompanhamento_e_controle/gestao_de_pados": "anatel-pados",
+    "www.anatel.gov.br/dadosabertos/paineis_de_dados/certificacao_de_produtos/": "anatel-homologados",
     "sistemas.anac.gov.br/": "anac",
     "dadosabertos.ans.gov.br/": "ans",
     "dados.ons.org.br/": "ons",

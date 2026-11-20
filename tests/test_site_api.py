@@ -39,15 +39,21 @@ def test_numeros_da_cobertura_batem_com_o_codigo():
     html = (PASTA / "index.html").read_text(encoding="utf-8")
     catalogo = catalogo_do_site()
     fontes = {f for dono in catalogo.values() for f in dono["fontes"]}  # type: ignore[attr-defined]
+    # só as rotas do contrato público: a de pessoa (`/people`, ADR 0128, Emenda 4) não se anuncia
+    publicas = [r for r in router.routes if r.include_in_schema]  # type: ignore[attr-defined]
     rotas_de_dado = {
         r.path
-        for r in router.routes
+        for r in publicas
         if r.path not in ("/data/v1/catalog", "/data/v1/usage")  # type: ignore[attr-defined]
     }
     assert f'data-conta="conjuntos">{len(catalogo)}<' in html
     assert f'data-conta="fontes">{len(fontes)}<' in html
-    assert f'data-conta="rotas">{len(router.routes)}<' in html
-    assert len(rotas_de_dado) == len(router.routes) - 2
+    assert f'data-conta="rotas">{len(publicas)}<' in html
+    assert len(rotas_de_dado) == len(publicas) - 2
+
+
+def test_a_rota_de_pessoa_nao_aparece_no_site():
+    assert "/people" not in _texto_publico()
 
 
 def test_toda_rota_citada_no_site_existe_na_api():
@@ -101,3 +107,39 @@ def test_o_resto_da_api_segue_igual(cliente, monkeypatch):
     assert cliente.get("/qualquer-coisa").json() == {"detail": "Not Found"}
     assert cliente.get("/estatico/../src/api.py").status_code in (400, 404)
     assert cliente.get("/openapi.json").status_code == 404
+
+
+def test_raiz_e_so_referencia_e_aponta_para_o_site_unico():
+    """Um site só (linha 966, 16/11/2026): a raiz da API não vende, não tem preço nem chat nem um segundo
+    pedido de chave; mostra o catálogo de rotas, as regras e leva à documentação e a tickerlab.com.br."""
+    html = (PASTA / "index.html").read_text(encoding="utf-8")
+    assert 'id="catalogo"' in html and 'id="regras"' in html
+    assert 'href="/documentacao/"' in html
+    assert 'href="https://tickerlab.com.br/"' in html
+    for proibido in (
+        r"R\$",
+        r"\bpreços?\b",
+        "Planos por uso",
+        "grátis",
+        "chat",
+        "Perguntar à IA",
+        "Como pedir uma chave",
+    ):
+        assert not re.search(proibido, html, flags=re.IGNORECASE), proibido
+
+
+def test_paginas_so_carregam_scripts_que_existem():
+    for pagina in PAGINAS:
+        for script in re.findall(
+            r'<script src="/estatico/([^"]+)"', pagina.read_text(encoding="utf-8")
+        ):
+            assert (PASTA / "estatico" / script).is_file(), (
+                f"{pagina.name} carrega {script}, que não existe"
+            )
+
+
+def test_ancoras_da_documentacao_para_a_raiz_existem():
+    raiz = (PASTA / "index.html").read_text(encoding="utf-8")
+    docs = (PASTA / "documentacao" / "index.html").read_text(encoding="utf-8")
+    for ancora in set(re.findall(r'href="/#([\w-]+)"', docs)):
+        assert f'id="{ancora}"' in raiz, f"/#{ancora} não existe na raiz"

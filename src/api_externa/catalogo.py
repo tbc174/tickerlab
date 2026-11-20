@@ -15,7 +15,7 @@ from datetime import date
 import sqlalchemy as sa
 
 from base.prontidao import AVISO_DE_PILOTO
-from src.api_externa import envelope, piloto
+from src.api_externa import envelope, pessoas, piloto
 from src.api_externa.acesso import autorizar
 from src.api_externa.conjuntos import novidades
 from src.api_externa.nomes import para_fora
@@ -55,6 +55,22 @@ def _linhas_liberadas(
             yield linha, decisao.piloto
 
 
+def linhas_liberadas(
+    conexao: sa.Connection,
+    contexto: ContextoDaChave,
+    hoje: date,
+    regras: Regras | None = None,
+) -> set[tuple[str, str, str, str]]:
+    """(conjunto, finalidade, fonte, campo) de cada linha que a chave pode pedir no dia: o mesmo corte do
+    catálogo. A análise completa do CNPJ abre os blocos por aqui, antes de ler a empresa."""
+    return {
+        (linha.conjunto, linha.finalidade.value, linha.fonte, linha.campo)
+        for linha, _ in _linhas_liberadas(
+            conexao, contexto, hoje, regras or regras_vigentes()
+        )
+    }
+
+
 def catalogo_da_organizacao(
     conexao: sa.Connection,
     contexto: ContextoDaChave,
@@ -79,8 +95,9 @@ def catalogo_da_organizacao(
         por_conjunto.setdefault(chave, []).append(campo)
         fontes.add(linha.fonte)
     for direito in direitos_vigentes(conexao, contexto.organizacao_id, hoje):
-        # `research` não tem campo no dicionário (é arquivo de citações): o contrato basta para listar
-        if direito.conjunto == novidades.CONJUNTO:
+        # `research` não tem campo no dicionário (é arquivo de citações) e a `pessoa_no_conector` vem do acervo
+        # de pessoa, fora da base: o contrato basta para listar
+        if direito.conjunto in (novidades.CONJUNTO, pessoas.CONJUNTO):
             por_conjunto.setdefault((direito.conjunto, direito.finalidade), [])
     conjuntos = [
         {"conjunto": conjunto, "finalidade": para_fora(finalidade), "campos": campos}

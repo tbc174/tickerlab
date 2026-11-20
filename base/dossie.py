@@ -141,6 +141,11 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     # linha 904 (lote 3): cadastros do Banco Central e da ANTT; em casa até o pode do envio ao VPS
     "bcb_supervisionadas", "bcb_cooperativas", "bcb_correspondentes", "bcb_filiais_de_consorcio",
     "bcb_regimes_especiais", "antt_operadores_multimodais", "antt_seguros_de_transportadores",
+    # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem; em casa até o pode do envio
+    "receita_regime_tributario", "mte_pat", "anm_tah", "anatel_pados", "anatel_produtos_homologados",
+    "anp_tancagem",
+    # conferência de 19/11: SICAF e Banco de Preços em Saúde; em casa até o pode do envio
+    "comprasgov_sicaf", "bps_compras",
 })  # fmt: skip
 
 
@@ -382,6 +387,17 @@ SERIES_DAS_AGENCIAS = (
         "mil m³",
         (("unidade", "mil m³"),),
     ),
+    SerieDaAgencia(
+        "antt_toneladas",
+        "antt-siade",
+        "antt_siade",
+        "ferrovia",
+        "toneladas_uteis",
+        SOMA_DO_ANO,
+        "Carga transportada pelas ferrovias (ANTT)",
+        "toneladas úteis",
+        como_era=True,
+    ),
 )
 
 
@@ -529,6 +545,8 @@ SETORES_DO_LANCAMENTO = (
         mercado_regional=True,
     ),
     SetorDoLancamento("aviacao", "Aviação", "ANAC", ("anac_passageiros",)),
+    SetorDoLancamento("combustiveis", "Combustíveis", "ANP", ("anp_vendas",)),
+    SetorDoLancamento("ferrovias", "Ferrovias", "ANTT", ("antt_toneladas",)),
 )
 
 

@@ -122,7 +122,7 @@ Pedido do Tiago (05/11/2026): crescer organizado, sem deixar coisa sem uso. Quat
   (não é merge de PR): gasto, inclusive o PR que liga um gasto novo; contrato; e-mail ou pedido a
   terceiro; segredo num servidor; e o que leva o nome ou o CNPJ dele. O resto do nível 1 que não é merge
   passa pela Diretoria (abaixo).
-- **Nada espera parecer jurídico** (Tiago, 06/11/2026: "Eu não quero esperar parecer jurídico pra mais nada"). Trava, tarefa ou texto que dizia "espera parecer" passa a ser decidido pela **nossa leitura do texto da norma**, com artigo e data, escrita no PR. Diante de dúvida, a leitura mais estreita. Não muda: as duas revisões antes do merge, as travas de licença (resposta do dono do dado), o que é só do Tiago e a LGPD (pessoa física continua fora). Score de crédito só de quem não emite valor mobiliário (leitura da CVM 9). Detalhe em `docs/virada-empresas-fechadas.md`.
+- **Nada espera parecer jurídico** (Tiago, 06/11/2026: "Eu não quero esperar parecer jurídico pra mais nada"). Trava, tarefa ou texto que dizia "espera parecer" passa a ser decidido pela **nossa leitura do texto da norma**, com artigo e data, escrita no PR. Diante de dúvida, a leitura mais estreita. Não muda: as duas revisões antes do merge, as travas de licença (resposta do dono do dado), o que é só do Tiago e a LGPD (pessoa física só pela "Exceção" de "Análises de empresa e de grupo"). **Exceção à trava de licença** (Tiago, 19/11/2026: "Não to nem aí pra licenciamento dos dados, quero tudo no MCP HOJE"; ADR 0122, Emenda 2): só para a organização do piloto, e só pela API por chave e pelo conector, a licença da fonte não trava a saída. Cada lote sai num conjunto de dados próprio, dado por linha do contrato daquela organização, desligado por padrão e conferido no servidor (`src/portao_externo.py`); ligar o conjunto em produção é só do Tiago. O site, o app e as outras organizações seguem sob a trava, e CPF, menor de idade e endereço residencial nunca saem. Score de crédito só de quem não emite valor mobiliário (leitura da CVM 9). Detalhe em `docs/virada-empresas-fechadas.md`.
 - **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
   (mensagem entre sessões ou, para a IA que não recebe mensagens, escrita na passagem da tarefa), citando as
   palavras do Tiago (autorização dele em 20/10/2026). Essa ordem vale como a do Tiago para push, PR, merge
@@ -225,15 +225,32 @@ aberta, empresa fechada ou grupo. Em resumo: uma frase no topo, o mapa societár
 de sócios da Receita, linha do tempo, atividades com o ano de cada fonte, conferência nas bases oficiais
 (IBAMA, Lista Suja, sanções, dívida, terra) com a data de cada uma, fato separado de dedução, homônimos
 descartados à vista, o que não foi achado, comparação e fontes. Sem CPF, menor de idade, contato ou endereço
-residencial. O relatório de companhia aberta continua seguindo a análise completa da ADR 0100.
+residencial, salvo o que a "Exceção" abaixo libera. O relatório de companhia aberta continua seguindo a análise completa da ADR 0100.
 
 **Exceção** (Tiago, 10/11/2026, ADR 0128 Emenda 1: "eu quero que isso fique para a equipe"; alcance "Nome e
-contato"): na tela com login, a organização com a permissão `pessoa_na_tela`, desligada por padrão, vê do
-cadastro público da Receita o nome do sócio pessoa física, a qualificação e a data de entrada, MEI e empresário
-individual, e telefone, e-mail e endereço do estabelecimento. Sem CPF, sem menor de idade, nada de pessoa fora
-da Receita; API por chave, CLI, site e conector remoto seguem sem pessoa; nenhum dado de pessoa real em teste,
-exemplo ou log. A permissão se confere no servidor (`src/banco/membros_da_organizacao.py`), com teste de duas
-organizações e de conta sem organização; ligar a permissão numa organização em produção é só do Tiago.
+contato"; ampliada em 18/11/2026, ADR 0128 Emenda 4: "foque em entregarmos uma análise com a maior riqueza de
+dados possiveis incluindo dados pessoais", canal "Tela e conector", alcance "Tudo, com contato"): pessoa física
+sai só para a organização com a permissão ligada, desligada por padrão e conferida no servidor a cada pedido. Na
+tela com login a permissão é `pessoa_na_tela` (conta membro da organização, `src/banco/membros_da_organizacao.py`);
+no conector remoto é `pessoa_no_conector`, outra linha do contrato da organização dona da chave, para que ligar a
+tela não abra o conector sem querer. O que pode sair:
+
+- do cadastro público da Receita: nome do sócio ou administrador pessoa física, qualificação e data de entrada;
+  o titular do MEI e do empresário individual, **só o nome**, sem os dígitos do CPF que a razão social traz, e sem
+  endereço e sem contato (o endereço do estabelecimento costuma ser a casa da pessoa); a mesma regra vale para a
+  sociedade de um sócio pessoa física só (unipessoal); telefone, e-mail e endereço do estabelecimento das demais
+  empresas;
+- o que as bases oficiais dizem da própria pessoa (sanções CEIS, CNEP e CEPIM, dívida ativa, autuação ambiental do
+  IBAMA, Lista Suja e processos), **só quando a ligação é pelo documento**, feita dentro do servidor; ligação só pelo
+  nome não entra (homônimo); processos só pelo DJEN, sem a Justiça do Trabalho e sem segredo de justiça. Base nova
+  de pessoa fora desta lista pede emenda.
+
+Nunca sai: CPF (inteiro, mascarado ou o documento usado na ligação), menor de idade, endereço residencial, dado
+sensível (LGPD, art. 11). A oposição do titular vale (quem pediu sai). API por chave de organização sem a permissão,
+CLI e site seguem sem pessoa. Cada consulta vai à auditoria só com ids; nenhum dado de pessoa real em teste,
+exemplo, log, PR ou mensagem entre conversas. Testes obrigatórios: duas organizações (com e sem a permissão), conta
+ou chave sem organização, oposição e varredura por máquina de zero CPF, zero menor e zero endereço residencial em
+toda resposta. Ligar a permissão numa organização em produção é só do Tiago.
 
 ## `trader/` (pesquisa de trading)
 
@@ -255,7 +272,7 @@ internet nem de segredos; se um teste precisar de PostgreSQL e não houver, anot
 
 | Risco | Onde |
 |---|---|
-| **Alto** | login e admins (`src/autenticacao.py`, `src/administracao.py`; OAuth do Google, `TICKERLAB_ADMINS`, `TICKERLAB_AMBIENTE`); API (`src/api.py`, `src/api_v1/`); cobrança e webhook do Stripe (`src/cobranca.py`: assinatura verificada, idempotência, eventos fora de ordem); limites dos planos (`src/planos.py` e quem os confere); **pessoa física na tela** (`src/banco/membros_da_organizacao.py` e as rotas que a consultam: a permissão `pessoa_na_tela` é por organização, desligada por padrão e conferida no servidor); **consulta ao banco sem filtro por `usuario_id`** (vazamento entre contas); SQL montado com texto; migrações (`migracoes/versions/`); compartilhamento por link (`src/compartilhamentos.py`, `src/api_v1/compartilhados.py`); coletas que baixam URL vinda de dado (SSRF); PDF e e-mail com texto do usuário; `Dockerfile`, `compose.yaml`, `.github/workflows/` |
+| **Alto** | login e admins (`src/autenticacao.py`, `src/administracao.py`; OAuth do Google, `TICKERLAB_ADMINS`, `TICKERLAB_AMBIENTE`); API (`src/api.py`, `src/api_v1/`); cobrança e webhook do Stripe (`src/cobranca.py`: assinatura verificada, idempotência, eventos fora de ordem); limites dos planos (`src/planos.py` e quem os confere); **pessoa física na tela e no conector** (`src/banco/membros_da_organizacao.py` e as rotas e ferramentas que a consultam: as permissões `pessoa_na_tela` e `pessoa_no_conector` são por organização, desligadas por padrão e conferidas no servidor; nenhuma resposta leva CPF, menor de idade ou endereço residencial); **consulta ao banco sem filtro por `usuario_id`** (vazamento entre contas); SQL montado com texto; migrações (`migracoes/versions/`); compartilhamento por link (`src/compartilhamentos.py`, `src/api_v1/compartilhados.py`); coletas que baixam URL vinda de dado (SSRF); PDF e e-mail com texto do usuário; `Dockerfile`, `compose.yaml`, `.github/workflows/` |
 | **Alto (dados)** | **olhar o futuro**: em `base/`, `src/backtest.py`, indicadores e rótulos, um dado só pode ser usado a partir da data em que ficou público (colunas como `disponivel_em`, `visto_em`) |
 | **Médio** | regras de negócio (backtest, Research, Radar), estado gravado no banco, telas que mostram dados da conta, exportação e exclusão da conta (LGPD, `src/conformidade.py`) |
 | **Baixo** | textos, CSS, documentação, logs (exceto log com e-mail ou nome: isso é médio) |
@@ -290,5 +307,7 @@ Para revisão de pull request:
 - Toda consulta nova ao banco filtra pelo `usuario_id` e tem teste com duas contas.
 - Webhook do Stripe: assinatura verificada antes de qualquer efeito; nenhuma chave que não seja de teste.
 - Nada de segredo, e-mail ou nome de pessoa em código, log ou teste.
+- Resposta com pessoa física (tela ou conector): permissão da organização conferida no servidor, zero CPF, zero menor
+  de idade e zero endereço residencial, com teste de duas organizações e varredura por máquina.
 - Em `base/` e no backtest: nenhum dado usado antes da data em que ficou público.
 - Migração nova tem caminho de volta (`downgrade`) e não apaga dado sem aviso.

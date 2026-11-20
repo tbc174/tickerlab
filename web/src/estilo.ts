@@ -1,7 +1,9 @@
 // O CSS do site público (e do app em React, que usa o mesmo). As cores vêm de src/marca.py (pelo
 // conteudo/marca.json); o resto é fixo. O visual v2 (ADR 0065) vem depois, em estilo-v2.ts, e as
-// ferramentas grátis por último, em estilo-ferramentas.ts.
+// ferramentas grátis por último, em estilo-ferramentas.ts. Entre os dois, o visual do TickerLab Data na
+// página inicial (estilo-data.ts, "um site só").
 import { marca } from "./conteudo";
+import { cssData } from "./estilo-data";
 import { cssFerramentas } from "./estilo-ferramentas";
 import { cssV2 } from "./estilo-v2";
 
@@ -308,5 +310,5 @@ table.planos thead tr + tr th { text-align: center; color: var(--texto); font-si
     scroll-behavior: auto !important; }
   @view-transition { navigation: none; }
 }
-${cssV2()}${cssFerramentas()}`);
+${cssV2()}${cssData()}${cssFerramentas()}`);
 }

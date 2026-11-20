@@ -15,6 +15,7 @@ devolve é o que a API serviu.
 | Comando | O que devolve |
 |---|---|
 | `tickerlab empresa <cnpj> [--como-era AAAA-MM-DD] [--so-cadastro]` | O perfil: em `registration`, a situação cadastral na Receita Federal (com data e motivo), matriz ou filial, mês do retrato, razão social, natureza jurídica e opção pelo Simples, cada um na versão que valia no dia; em `periodic_filings`, de companhia aberta, cada DFP e ITR devida até o dia, com prazo da CVM, primeira entrega, dias úteis de atraso e situação (`on_time`, `gray_zone`, `late`, `severely_late`, `not_filed`); em `limits`, o que a leitura não cobre. `--so-cadastro` traz só o cadastro (para a chave sem o conjunto `profiles`). |
+| `tickerlab analise <cnpj> [--como-era AAAA-MM-DD]` | A análise completa numa resposta: em `blocks`, cada bloco que a chave pode ver (cadastro, sócios e participadas pessoa jurídica, vínculos, eventos, crédito, ativos, comparáveis), cada valor com fonte e data; `summary` é a frase do topo (fato), `timeline` os marcos datados, `inferences` as leituras (dedução, com os blocos de onde vieram: diga que é dedução), `not_found` o que o bloco consultou e não achou, `timed_out` o bloco que não respondeu a tempo e `not_included` as bases que a análise não consulta (a ausência delas não quer dizer nada sobre a empresa). Cada lista vem cortada (`truncated`): o comando do bloco traz o resto. Cada bloco conta um pedido na quota (`requests_used`). |
 | `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD]` | Os comparáveis da companhia aberta: o grupo de setores (`sector_group`, pelo FCA), a empresa pedida e cada par do mesmo grupo com o último DFP entregue até o dia (receita, EBITDA, lucro, patrimônio, dívida líquida, margens, retorno sobre o patrimônio, dívida líquida/EBITDA), a mediana de cada razão entre os pares (`peer_medians`) e os `limits`. Pede o conjunto `comparables` no contrato; empresa sem FCA no dia sai com o código 5. |
 | `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20] [--como-era AAAA-MM-DD]` | Candidatos a comprador do setor: quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos. Só pessoa jurídica; traz sinais e evidências (empresa do setor, UF, data). Movimento passado não é intenção de compra: leia os `limits`. |
 | `tickerlab ativos <cnpj> [--como-era AAAA-MM-DD]` | Os ativos da empresa por bloco (hoje, contratos de E&P da ANP), cada um com fonte e data. Bloco sem dado vem com `found` falso e o que a base não cobre vem em `not_covered`: não achado não quer dizer que não existe. Só pessoa jurídica. |
@@ -81,8 +82,10 @@ As mensagens de erro saem na saída de erro (stderr), em português.
    conta e os campos de origem, separado do que a API serviu.
 5. **A chave é segredo.** Nunca a escreva num comando, num arquivo do projeto, num log ou no chat. Ela fica
    em `TICKERLAB_API_KEY` ou no arquivo do `tickerlab login`.
-6. **Sem dado de pessoa física.** A API não serve sócio pessoa física, CPF, MEI nem empresário individual;
-   não tente chegar a uma pessoa por outros caminhos.
+6. **Sem dado de pessoa física.** A linha de comando não traz sócio pessoa física, CPF, MEI nem empresário
+   individual. A API só serve o nome de sócio pessoa física à organização com a permissão de ver pessoas
+   pela API e pelo conector, desligada por padrão, e nunca o CPF; nenhum comando daqui o pede. Não tente chegar a uma pessoa por outros
+   caminhos.
 
 ## Configuração
 

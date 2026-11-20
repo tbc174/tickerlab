@@ -74,7 +74,9 @@ LICENCAS = {
     "inss": "Dados abertos do INSS (Decreto 8.777/2016; citar o INSS). Só agregados",
     "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
     "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
-    "mte": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+    # leitura de 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4): o MTE não tem termo próprio para o cadastro;
+    # vale o rodapé do portal gov.br, CC BY-ND 3.0
+    "mte": "Lista de empregadores do MTE: sem termo; CC BY-ND 3.0 (sem alterar, citar o MTE)",
     "gleif": "CC0 (GLEIF, Global LEI Index)",
     "termos": "Termos de uso de terceiros: só prova interna da versão lida",
     "catalogo": "Lista de conjuntos de portais de dados abertos (metadados)",
@@ -140,6 +142,20 @@ LICENCAS = {
     "anm-amb": "ANM, Anuário: licença não declarada; risco assumido (ADR 0122)",
     "estban": "BCB, ESTBAN: reprodução com fonte e integridade; risco assumido (ADR 0122)",
     "ancine": "CC BY (dados abertos da Ancine no dados.gov.br; citar a Ancine)",
+    # conferência de 14/11/2026 (linha 904): nenhum destes conjuntos declara licença própria; o PAT só tem o rodapé
+    # CC BY-ND 3.0 do gov.br (sem derivada: uso interno, como o resto do MTE). A ANM (pasta e
+    # metadados da TAH) e a ANP (página e metadados da tancagem) só têm o rodapé CC BY-ND 3.0 do gov.br, que é
+    # do conteúdo do site; a página de dados abertos da Anatel recusou a leitura (403). Leitura mais estreita
+    # (ADR 0102): a confirmar, sem perguntar à fonte
+    "mte-pat": "PAT do MTE: rodapé CC BY-ND 3.0 do gov.br (lido em 14/11/2026); uso interno",
+    "anm-tah": "TAH da ANM: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+    "anatel-pados": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+    "anatel-homologados": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
+    "anp-tancagem": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+    # conferência de 19/11/2026: o Banco de Preços em Saúde não declara licença (o S3 do CKAN não tem página, e o
+    # portal do SUS não a mostra); a resposta do Fala.BR do "ms" cobriu só CNES, SIH, SIA, CIHA e oncologia.
+    # Leitura mais estreita (ADR 0102): a confirmar, sem perguntar à fonte
+    "bps": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
     # Ficha Clara, incentivos (29/10/2026): o portal do MME diz "Outra (Aberta)" sem dizer qual
     "mme": "Outra (Aberta), sem nome, no portal do MME (a confirmar; citar o MME)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
@@ -291,6 +307,24 @@ VENDAVEL_RISCO_ASSUMIDO = (
     "resposta escrita sobre uso comercial"
 )
 SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o dado)"
+# CGU, IBAMA e MTE (ADR 0122, Emenda 1, 18/11/2026; risco assumido pelo Tiago): continuam só de uso interno em tudo
+# (base, app, site, marca), menos na API por chave, e lá só a linha de pessoa jurídica, só no conjunto de
+# integridade (`CONJUNTO_DE_INTEGRIDADE`) e só para a organização que tem esse conjunto no contrato. A licença em
+# `LICENCAS` continua dizendo o que a fonte escreveu, e cada bloco servido cita a fonte
+INTEGRIDADE_SOB_CONTRATO = (
+    "só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de "
+    "integridade no contrato (ADR 0122, Emenda 1; citar a fonte)"
+)
+CONJUNTO_DE_INTEGRIDADE = "integrity"
+# o conjunto das fontes sem trava de licença (ADR 0122, Emenda 2, 19/11/2026; Tiago: "Não to nem aí pra
+# licenciamento dos dados, quero tudo no MCP HOJE"): só na API por chave, só para a organização com o conjunto no
+# contrato (a do piloto), só a linha de pessoa jurídica. Fora dele a fonte segue com a marca, a coleta e guarda e a
+# leitura dos termos de `REVENDA`, `COLETA_E_GUARDA` e `TERMOS_LIDOS_EM`, como hoje (site, app, vitrine, outras
+# organizações). Lote 2: as tabelas ligadas pelo CNPJ que estavam "a confirmar" e o PAT do MTE
+CONJUNTO_SEM_TRAVA_DE_LICENCA = "extended_sources"
+FONTES_SEM_TRAVA_DE_LICENCA = frozenset(
+    {"anatel-pados", "anatel-homologados", "anm-tah", "anp-tancagem", "mte-pat"}
+)
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
     "comercial até a resposta)"
@@ -346,13 +380,14 @@ REVENDA = {
     "sefmg": VENDAVEL_RISCO_ASSUMIDO,  # idem para Minas: lista pública (Res. Conj. SEF/AGE 5.625/2022, CTN art. 198 §3º II), sem licença escrita
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
     "pgfn": VENDAVEL_RISCO_ASSUMIDO,
-    # dado pessoal (autuados, empregadores pessoa física): só interno
-    "cgu": SO_USO_INTERNO,
+    # dado pessoal (autuados, empregadores pessoa física): só interno, menos a pessoa jurídica no conjunto de
+    # integridade da API por chave (ADR 0122, Emenda 1)
+    "cgu": INTEGRIDADE_SOB_CONTRATO,
     "transparencia": VENDAVEL_COM_ATRIBUICAO,
     "bndes": VENDAVEL_ODBL,
     "inss": VENDAVEL_COM_ATRIBUICAO,
-    "ibama": SO_USO_INTERNO,
-    "mte": SO_USO_INTERNO,
+    "ibama": INTEGRIDADE_SOB_CONTRATO,
+    "mte": INTEGRIDADE_SOB_CONTRATO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
     "catalogo": VENDAVEL_RISCO_ASSUMIDO,
@@ -408,6 +443,13 @@ REVENDA = {
     "anm-amb": VENDAVEL_RISCO_ASSUMIDO,
     "estban": VENDAVEL_RISCO_ASSUMIDO,  # ESTBAN do BCB (linha 659): nada perguntado ao BC
     "ancine": VENDAVEL_COM_ATRIBUICAO,
+    # conferência de 14/11/2026 (linha 904): sem licença do conjunto lida (ver `LICENCAS`)
+    "mte-pat": SO_USO_INTERNO,
+    "anm-tah": A_CONFIRMAR,
+    "anatel-pados": A_CONFIRMAR,
+    "anatel-homologados": A_CONFIRMAR,
+    "anp-tancagem": A_CONFIRMAR,
+    "bps": A_CONFIRMAR,  # conferência de 19/11/2026 (ver `LICENCAS`)
     "mme": VENDAVEL_RISCO_ASSUMIDO,
     "finep": VENDAVEL_RISCO_ASSUMIDO,
     "aneel": VENDAVEL_ODBL,
@@ -526,6 +568,7 @@ MARCA_DA_REVENDA = {
     VENDAVEL_COM_ATRIBUICAO: Marca.VENDAVEL,
     VENDAVEL_RISCO_ASSUMIDO: Marca.VENDAVEL,
     SO_USO_INTERNO: Marca.USO_INTERNO,
+    INTEGRIDADE_SOB_CONTRATO: Marca.USO_INTERNO,  # fora do conjunto de integridade, como hoje
     A_CONFIRMAR: Marca.A_CONFIRMAR,
     NAO_COMERCIAL: Marca.NAO_COMERCIAL,
 }
@@ -726,7 +769,6 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "tce-pe",
             "tce-sp",
             "tce-ce",
-            "mte",
             "comexstat",
             "wayback",
             "tce-rs",
@@ -833,9 +875,21 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "istat",
             "rba",
             "snb",
+            # conferência de 14/11 (linha 904): só o rodapé do gov.br lido em 14/11/2026, sem licença do
+            # conjunto nem robots.txt lido; as páginas da Anatel recusaram o acesso
+            "mte-pat",
+            "anm-tah",
+            "anatel-pados",
+            "anatel-homologados",
+            "anp-tancagem",
+            # conferência de 19/11: o Banco de Preços em Saúde não tem página de licença nem de termos
+            "bps",
         ),
         _NAO_RESPONDIDA,
     ),
+    # leitura de 18/11/2026 (pode da Diretoria, ADR 0101 Emenda 4, decisoes-delegadas.md): o cadastro de
+    # empregadores é publicado aberto no gov.br, sem termo que vede a coleta nem prazo de guarda
+    "mte": _ABERTA_SEM_PRAZO,
 }
 MOSTRAR = "mostrar"  # em tela, relatório, PDF, API ou newsletter
 USOS = ("treinar", "rotular", "exportar", MOSTRAR)
@@ -1074,18 +1128,46 @@ def licenca_do_site(licenca: str) -> str:
     return sem_decisao.replace("perguntar a licença", "reuso em consulta")
 
 
+# famílias em que o 2º pedaço do nome da fonte tem resposta própria em `REVENDA`
+FAMILIAS_COM_SUBFAMILIA = frozenset({"anm", "mte"})
+
+
 def revenda_da_fonte(fonte: str) -> str:
     """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
     (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
     partes = fonte.split("-")
-    # a ANM tem subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem"), linha 657
-    subfamilia = REVENDA.get("-".join(partes[:2])) if partes[0] == "anm" else None
+    # a ANM e o MTE têm subfamílias com resposta própria ("anm-cfem-arrecadacao" → "anm-cfem", linha 657;
+    # "mte-pat-beneficiarias" → "mte-pat", de uso interno, e não o "mte" da integridade: revisão do #1229)
+    subfamilia = (
+        REVENDA.get("-".join(partes[:2]))
+        if partes[0] in FAMILIAS_COM_SUBFAMILIA
+        else None
+    )
     return REVENDA.get(fonte) or subfamilia or REVENDA.get(partes[0], A_CONFIRMAR)
 
 
 def marca_da_fonte(fonte: str) -> Marca:
     """A marca da fonte ("yahoo-bvsp" → não comercial; "cvm-ipe" → vendável)."""
     return MARCA_DA_REVENDA[revenda_da_fonte(fonte)]
+
+
+def sai_no_conjunto_de_integridade(fonte: str, conjunto: str) -> bool:
+    """A fonte é de CGU, IBAMA ou MTE (`INTEGRIDADE_SOB_CONTRATO`) e o pedido é do conjunto de integridade: a
+    marca de uso interno não barra (ADR 0122, Emenda 1). Fora desse conjunto, ou outra fonte, nada muda."""
+    return (
+        conjunto == CONJUNTO_DE_INTEGRIDADE
+        and revenda_da_fonte(fonte) == INTEGRIDADE_SOB_CONTRATO
+    )
+
+
+def sai_sem_trava_de_licenca(fonte: str, conjunto: str) -> bool:
+    """O pedido é do conjunto sem trava de licença e a fonte (ou um prefixo dela: "mte-pat-beneficiarias" →
+    "mte-pat") está no lote dele (ADR 0122, Emenda 2): lá a licença da fonte não barra. Fora disso, nada muda."""
+    partes = fonte.split("-")
+    prefixos = {"-".join(partes[:corte]) for corte in range(1, len(partes) + 1)}
+    return conjunto == CONJUNTO_SEM_TRAVA_DE_LICENCA and bool(
+        prefixos & FONTES_SEM_TRAVA_DE_LICENCA
+    )
 
 
 def marca_mais_restrita(marcas: Iterable[Marca]) -> Marca:

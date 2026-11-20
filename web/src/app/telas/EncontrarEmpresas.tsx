@@ -4,8 +4,8 @@
 // ficha, e baixa a lista em Excel. A rota usa o mesmo leitor e o mesmo portão da API externa: o que a API
 // negaria não aparece aqui. As opções do formulário vêm da API (um pedido sem filtro, que não lê a base);
 // "Limites e cuidados" fica sempre à vista depois da busca.
-import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../pecas/Cabecalho";
 import { ErroDaApi, pedir } from "../api";
@@ -22,6 +22,9 @@ import { secaoDoCnae } from "../secaoDoCnae";
 import type { BuscaDeEmpresasV1, CampoComFonteV1, EmpresaDaBuscaV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { Erro } from "../pecas/Erro";
+import { CaixaDeSugestoes } from "../pecas/CaixaDeSugestoes";
+import { useAtividadesDoCnae } from "../pecas/CampoDoSetor";
+import { type SecaoDaBusca, sugestoesDeSecao } from "../buscaDeSecoes";
 
 const NOME_DA_PLANILHA = "empresas-tickerlab.xlsx";
 const MINIMO_NA_COMPARACAO = 2;
@@ -41,7 +44,8 @@ const REAIS_CURTO = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 const CNAE_DO_SETOR = /^(\d{5}|\d{7})$/;
-const ORDEM_PELO_CNPJ = "número do CNPJ";
+const DICA_DO_SETOR =
+  "Pelo nome do setor ou de uma atividade (farmácia, hospital). A busca usa a seção inteira do CNAE.";
 const APROXIMACAO =
   "Capital social e estabelecimentos ativos são só uma aproximação do tamanho: nenhum dos dois mede faturamento.";
 
@@ -89,13 +93,16 @@ function colunasDaLista(
       celula: (empresa) => {
         const marcada = selecionados.includes(empresa.cnpj);
         return (
-          <input
-            type="checkbox"
-            checked={marcada}
+          <button
+            type="button"
+            className="botao-de-texto"
+            aria-pressed={marcada}
             disabled={!marcada && selecionados.length >= MAXIMO_NA_COMPARACAO}
-            aria-label={`Escolher ${nomeOuCnpj(empresa)} para comparar`}
-            onChange={() => alternarEmpresa(empresa)}
-          />
+            aria-label={`Pôr ${nomeOuCnpj(empresa)} na comparação`}
+            onClick={() => alternarEmpresa(empresa)}
+          >
+            {marcada ? "Na comparação ✓" : "Pôr na comparação"}
+          </button>
         );
       },
     },
@@ -173,14 +180,37 @@ function BandejaDeComparacao({ escolhidas, aoLimpar }: { escolhidas: EmpresaDaBu
   );
 }
 
-/** A ordem da lista pelo nome que a tela dá a ela no formulário (sem ordem, é pelo número do CNPJ). */
-function nomeDaOrdem(filtros: Filtros, resposta: BuscaDeEmpresasV1): string {
-  const nome = resposta.ordens.find((o) => o.codigo === filtros.ordem)?.nome;
-  return nome ? nome.toLowerCase() : ORDEM_PELO_CNPJ;
+/** A ordem da lista, ao lado da contagem: trocar refaz a busca com os mesmos filtros (sem ordem, é pelo CNPJ). */
+function OrdemDaLista({ filtros, ordens, aoOrdenar }: { filtros: Filtros; ordens: BuscaDeEmpresasV1["ordens"]; aoOrdenar: Ordenar }) {
+  return (
+    <label className="ordem-da-lista">
+      <span>Ordenar por</span>
+      <select value={filtros.ordem ?? ""} onChange={(ev) => aoOrdenar(ev.target.value === "" ? undefined : ev.target.value)}>
+        <option value="">Número do CNPJ</option>
+        {ordens.map((opcao) => (
+          <option key={opcao.codigo} value={opcao.codigo}>
+            {opcao.nome}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
+type Ordenar = (ordem: string | undefined) => void;
+
 /** A primeira página veio pronta; "Carregar mais" pede a seguinte pelo cursor e junta embaixo. */
-function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota: string; filtros: Filtros }) {
+function Lista({
+  primeira,
+  rota,
+  filtros,
+  aoOrdenar,
+}: {
+  primeira: BuscaDeEmpresasV1;
+  rota: string;
+  filtros: Filtros;
+  aoOrdenar: Ordenar;
+}) {
   const token = useConta()?.token ?? null;
   const [empresas, setEmpresas] = useState(primeira.empresas);
   const [cursor, setCursor] = useState(primeira.proximo_cursor);
@@ -206,14 +236,16 @@ function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota:
   if (empresas.length === 0) return <Vazio frase="Nenhuma empresa com esses filtros." />;
   return (
     <>
-      <p>
-        {empresas.length} {empresas.length === 1 ? "empresa" : "empresas"}
-        {cursor === null ? "" : " até aqui"}
-        <span className="apagado">
-          {" "}
-          · ordem: {nomeDaOrdem(filtros, primeira)} · como a base conhecia em {formatarData(primeira.como_era_em ?? "")}
-        </span>
-      </p>
+      <div className="cabeca-da-lista">
+        <p>
+          <strong>
+            {empresas.length} {empresas.length === 1 ? "empresa" : "empresas"}
+          </strong>
+          {cursor === null ? "" : " até aqui"}
+          <span className="apagado"> · como a base conhecia em {formatarData(primeira.como_era_em ?? "")}</span>
+        </p>
+        <OrdemDaLista filtros={filtros} ordens={primeira.ordens} aoOrdenar={aoOrdenar} />
+      </div>
       <Baixar rotulo="Baixar em Excel" rota={`${rota}/planilha`} corpo={filtros} nome={NOME_DA_PLANILHA} />
       <Tabela
         legenda="Empresas encontradas"
@@ -241,7 +273,7 @@ function Lista({ primeira, rota, filtros }: { primeira: BuscaDeEmpresasV1; rota:
   );
 }
 
-function Resultado({ rota, filtros }: { rota: string; filtros: Filtros }) {
+function Resultado({ rota, filtros, aoOrdenar }: { rota: string; filtros: Filtros; aoOrdenar: Ordenar }) {
   const pedido = usarPedido<BuscaDeEmpresasV1>(rota, {}, filtros);
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Procurando empresas…" />;
   if (pedido.estado === "erro") return <Erro erro={pedido.erro} />;
@@ -260,7 +292,7 @@ function Resultado({ rota, filtros }: { rota: string; filtros: Filtros }) {
               {dados.aviso_de_piloto}
             </p>
           ) : null}
-          <Lista primeira={dados} rota={rota} filtros={filtros} />
+          <Lista primeira={dados} rota={rota} filtros={filtros} aoOrdenar={aoOrdenar} />
         </>
       )}
       {dados.fontes.length > 0 ? <Fontes fontes={dados.fontes} /> : null}
@@ -285,15 +317,129 @@ function semVazios(filtros: Filtros): Filtros {
 
 const textoDoNumero = (n: number | undefined) => (n === undefined ? "" : String(n));
 
-/** O formulário parte dos filtros da busca em curso: tirar uma etiqueta desmarca o campo aqui também. */
+/** O resumo do estado escolhido, no botão da lista: "Brasil inteiro", "SP" ou "SP, MG". */
+const resumoDosEstados = (ufs: string[]) => (ufs.length === 0 ? "Brasil inteiro" : ufs.join(", "));
+
+/** O setor: uma caixa de busca nas seções do CNAE (pelo nome delas ou pelo de uma atividade) e, embaixo, as
+ * escolhidas como etiquetas que se tiram com um clique. */
+function SetoresDaBusca({
+  secoes,
+  escolhidas,
+  aoMudar,
+}: {
+  secoes: SecaoDaBusca[];
+  escolhidas: string[];
+  aoMudar: (setores: string[]) => void;
+}) {
+  const atividades = useAtividadesDoCnae();
+  const [texto, setTexto] = useState("");
+  const cheio = escolhidas.length >= SETORES_MAXIMOS;
+  const nomeDe = (codigo: string) => secoes.find((s) => s.codigo === codigo)?.nome ?? codigo;
+  const sugestoes = (digitado: string) =>
+    sugestoesDeSecao(secoes, atividades, digitado, escolhidas).map(({ secao, pelaAtividade }) => ({
+      chave: secao.codigo,
+      nome: secao.nome,
+      detalhe: pelaAtividade ? `pela atividade: ${pelaAtividade}` : undefined,
+    }));
+  const escolher = (codigo: string) => {
+    setTexto("");
+    aoMudar([...escolhidas, codigo]);
+  };
+  return (
+    <div className="setores-da-busca">
+      <CaixaDeSugestoes
+        rotulo={`Setor (até ${SETORES_MAXIMOS})`}
+        texto={texto}
+        sugestoes={sugestoes}
+        rotuloDaLista="Setores"
+        placeholder={cheio ? `Já são ${SETORES_MAXIMOS} setores` : "Ex.: comércio, saúde, farmácia"}
+        dica={DICA_DO_SETOR}
+        desligada={cheio}
+        aoDigitar={setTexto}
+        aoEscolher={escolher}
+      />
+      {escolhidas.length > 0 ? (
+        <ul className="etiquetas-de-filtro" aria-label="Setores escolhidos">
+          {escolhidas.map((codigo) => (
+            <li key={codigo}>
+              <button
+                type="button"
+                className="botao"
+                aria-label={`Tirar o setor ${nomeDe(codigo)}`}
+                onClick={() => aoMudar(escolhidas.filter((c) => c !== codigo))}
+              >
+                {nomeDe(codigo)} ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/** Fecha um <details> quando se clica fora dele ou se tecla Esc, como uma lista de escolha comum. */
+function useFechaAoSair() {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const fechar = (evento: Event) => {
+      const caixa = ref.current;
+      if (!caixa?.open) return;
+      const fora = evento instanceof KeyboardEvent ? evento.key === "Escape" : !caixa.contains(evento.target as Node);
+      if (fora) caixa.open = false;
+    };
+    document.addEventListener("mousedown", fechar);
+    document.addEventListener("keydown", fechar);
+    return () => {
+      document.removeEventListener("mousedown", fechar);
+      document.removeEventListener("keydown", fechar);
+    };
+  }, []);
+  return ref;
+}
+
+/** O estado da sede: uma lista que abre e fecha, com o resumo do que está escolhido ("Brasil inteiro" sem nada). */
+function EstadosDaBusca({ ufs, escolhidas, aoMudar }: { ufs: string[]; escolhidas: string[]; aoMudar: (ufs: string[]) => void }) {
+  const lista = useFechaAoSair();
+  return (
+    <fieldset className="estados-da-busca">
+      <legend>Estado da sede</legend>
+      <details className="lista-que-abre" ref={lista}>
+        <summary>{resumoDosEstados(escolhidas)}</summary>
+        <div className="grade-de-estados">
+          {ufs.map((uf) => (
+            <label key={uf}>
+              <input type="checkbox" checked={escolhidas.includes(uf)} onChange={() => aoMudar(alternar(escolhidas, uf))} />
+              {uf}
+            </label>
+          ))}
+        </div>
+      </details>
+    </fieldset>
+  );
+}
+
+/** Faixas prontas de capital social: um clique preenche o mínimo e o máximo (e ainda dá para digitar o valor). */
+const FAIXAS_DE_CAPITAL: { rotulo: string; minimo: string; maximo: string }[] = [
+  { rotulo: "Até R$ 1 mi", minimo: "", maximo: "1000000" },
+  { rotulo: "R$ 1 mi a 10 mi", minimo: "1000000", maximo: "10000000" },
+  { rotulo: "R$ 10 mi a 100 mi", minimo: "10000000", maximo: "100000000" },
+  { rotulo: "Acima de R$ 100 mi", minimo: "100000000", maximo: "" },
+];
+
+/** O formulário parte dos filtros da busca em curso: tirar uma etiqueta desmarca o campo aqui também. O essencial
+ * (setor, estado e o botão) fica numa linha; idade, capital e estabelecimentos ficam em "Mais filtros", aberto só
+ * quando um deles está em uso. A ordem fica ao lado da lista, não aqui. */
 function Formulario({
   opcoes,
   inicial,
+  comBusca,
   aoBuscar,
   aoLimpar,
 }: {
   opcoes: BuscaDeEmpresasV1;
   inicial: Filtros | null;
+  comBusca: boolean;
   aoBuscar: (filtros: Filtros) => void;
   aoLimpar: () => void;
 }) {
@@ -303,10 +449,9 @@ function Formulario({
   const [capitalMinimo, setCapitalMinimo] = useState(textoDoNumero(inicial?.capital_minimo));
   const [capitalMaximo, setCapitalMaximo] = useState(textoDoNumero(inicial?.capital_maximo));
   const [estabelecimentos, setEstabelecimentos] = useState(textoDoNumero(inicial?.estabelecimentos_minimo));
-  const [ordem, setOrdem] = useState(inicial?.ordem ?? "");
-  // a ordem não filtra: sozinha, a busca leria a base inteira
   const numeros = [idade, capitalMinimo, capitalMaximo, estabelecimentos];
-  const vazio = setores.length === 0 && ufs.length === 0 && numeros.every((n) => n === "");
+  const emUsoNoMais = numeros.filter((n) => n !== "").length;
+  const vazio = setores.length === 0 && ufs.length === 0 && emUsoNoMais === 0;
   const enviar = (evento: FormEvent) => {
     evento.preventDefault();
     if (vazio) return;
@@ -318,99 +463,97 @@ function Formulario({
         capital_minimo: numeroDe(capitalMinimo),
         capital_maximo: numeroDe(capitalMaximo),
         estabelecimentos_minimo: numeroDe(estabelecimentos),
-        ordem: ordem === "" ? undefined : ordem,
+        ordem: inicial?.ordem, // a ordem escolhida ao lado da lista continua na busca nova
       }),
     );
   };
   return (
     <form className="formulario-do-app" onSubmit={enviar}>
-      <fieldset className="escolha-do-tipo">
-        <legend>Setor (até {SETORES_MAXIMOS})</legend>
-        {opcoes.setores.map((setor) => (
-          <label key={setor.codigo}>
-            <input
-              type="checkbox"
-              checked={setores.includes(setor.codigo)}
-              disabled={!setores.includes(setor.codigo) && setores.length >= SETORES_MAXIMOS}
-              onChange={() => setSetores((antes) => alternar(antes, setor.codigo))}
-            />
-            {setor.nome}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset className="escolha-do-tipo">
-        <legend>Estado da sede</legend>
-        {opcoes.ufs.map((uf) => (
-          <label key={uf}>
-            <input type="checkbox" checked={ufs.includes(uf)} onChange={() => setUfs((antes) => alternar(antes, uf))} />
-            {uf}
-          </label>
-        ))}
-      </fieldset>
-      <div className="campos-do-formulario">
-        <label>
-          <span>Idade mínima (anos)</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={IDADE_MAXIMA}
-            value={idade}
-            onChange={(ev) => setIdade(ev.target.value)}
-          />
-        </label>
+      <div className="linha-essencial">
+        <SetoresDaBusca secoes={opcoes.setores} escolhidas={setores} aoMudar={setSetores} />
+        <EstadosDaBusca ufs={opcoes.ufs} escolhidas={ufs} aoMudar={setUfs} />
+        <div className="botoes-da-busca">
+          <button className="botao primario" type="submit" disabled={vazio}>
+            Encontrar empresas
+          </button>
+        </div>
       </div>
-      <fieldset className="campos-do-formulario">
-        <legend>Tamanho</legend>
-        <p className="apagado">{APROXIMACAO}</p>
-        <label>
-          <span>Capital social mínimo (R$)</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={capitalMinimo}
-            onChange={(ev) => setCapitalMinimo(ev.target.value)}
-          />
-        </label>
-        <label>
-          <span>Capital social máximo (R$)</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={capitalMaximo}
-            onChange={(ev) => setCapitalMaximo(ev.target.value)}
-          />
-        </label>
-        <label>
-          <span>Estabelecimentos ativos, no mínimo</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={estabelecimentos}
-            onChange={(ev) => setEstabelecimentos(ev.target.value)}
-          />
-        </label>
-        <label>
-          <span>Ordenar por</span>
-          <select value={ordem} onChange={(ev) => setOrdem(ev.target.value)}>
-            <option value="">Número do CNPJ</option>
-            {opcoes.ordens.map((opcao) => (
-              <option key={opcao.codigo} value={opcao.codigo}>
-                {opcao.nome}
-              </option>
+      <div className="linha-dos-extras">
+      <details className="opcoes-avancadas mais-filtros" open={emUsoNoMais > 0}>
+        <summary>
+          Mais filtros{emUsoNoMais > 0 ? ` (${emUsoNoMais} em uso)` : ""}
+          <span className="apagado">: idade, capital social, estabelecimentos</span>
+        </summary>
+        <div className="campos-do-formulario">
+          <label>
+            <span>Idade mínima (anos)</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={IDADE_MAXIMA}
+              value={idade}
+              onChange={(ev) => setIdade(ev.target.value)}
+            />
+          </label>
+          <label>
+            <span>Estabelecimentos ativos, no mínimo</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={estabelecimentos}
+              onChange={(ev) => setEstabelecimentos(ev.target.value)}
+            />
+          </label>
+        </div>
+        <fieldset className="capital-da-busca">
+          <legend>Capital social</legend>
+          <div className="faixas-de-capital" role="group" aria-label="Faixas de capital social">
+            {FAIXAS_DE_CAPITAL.map((faixa) => (
+              <button
+                key={faixa.rotulo}
+                type="button"
+                className="botao"
+                aria-pressed={capitalMinimo === faixa.minimo && capitalMaximo === faixa.maximo}
+                onClick={() => {
+                  setCapitalMinimo(faixa.minimo);
+                  setCapitalMaximo(faixa.maximo);
+                }}
+              >
+                {faixa.rotulo}
+              </button>
             ))}
-          </select>
-        </label>
-      </fieldset>
-      <button className="botao primario" type="submit" disabled={vazio}>
-        Encontrar empresas
-      </button>{" "}
-      <button className="botao" type="button" disabled={vazio && ordem === ""} onClick={aoLimpar}>
+          </div>
+          <div className="campos-do-formulario">
+            <label>
+              <span>Capital social mínimo (R$)</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={capitalMinimo}
+                onChange={(ev) => setCapitalMinimo(ev.target.value)}
+              />
+            </label>
+            <label>
+              <span>Capital social máximo (R$)</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={capitalMaximo}
+                onChange={(ev) => setCapitalMaximo(ev.target.value)}
+              />
+            </label>
+          </div>
+        </fieldset>
+        <p className="apagado">{APROXIMACAO}</p>
+      </details>
+      <button className="botao" type="button" disabled={vazio && !comBusca} onClick={aoLimpar}>
         Limpar filtros
       </button>
+      </div>
     </form>
   );
 }
@@ -513,6 +656,25 @@ export function aberturaDoSetor(estado: unknown, opcoes: BuscaDeEmpresasV1): Abe
   return { filtros: temFiltro(filtros) ? filtros : null, nota };
 }
 
+/** O setor e o estado que chegam no endereço (o link dos cruzamentos do site, linha 925): só `setor` e `uf`,
+ * um de cada, e só valores que o formulário oferece; o resto se ignora, sem erro, e sem nenhum dos dois a
+ * tela abre com o filtro vazio. */
+export function filtrosDoEndereco(busca: URLSearchParams, opcoes: BuscaDeEmpresasV1): Filtros | null {
+  const setor = busca.get("setor");
+  const uf = busca.get("uf");
+  const filtros: Filtros = {
+    setores: setor !== null && opcoes.setores.some((s) => s.codigo === setor) ? [setor] : [],
+    ufs: uf !== null && opcoes.ufs.includes(uf) ? [uf] : [],
+  };
+  return temFiltro(filtros) ? filtros : null;
+}
+
+/** O filtro com que a busca começa: o que o Setor mandou vale primeiro (um clique de dentro do app, que vale uma vez
+ * só), mesmo sem filtro, porque a nota dele diz o que entrou; sem ele, o do endereço. */
+export function filtroInicial(abertura: AberturaDoSetor | null, doEndereco: Filtros | null): Filtros | null {
+  return abertura ? abertura.filtros : doEndereco;
+}
+
 const AVISO_DE_COMECO = (
   <p className="apagado">
     Escolha ao menos um filtro. Aparecem só empresas com cadastro ativo na Receita Federal, uma linha por empresa;
@@ -520,11 +682,68 @@ const AVISO_DE_COMECO = (
   </p>
 );
 
+// buscas de exemplo para a tela vazia: um clique e a lista aparece, com o formulário mostrando os filtros
+const EXEMPLOS: Filtros[] = [
+  { setores: ["G"], ufs: ["SP"] },
+  { setores: ["C"], ufs: ["MG"], idade_minima: 20 },
+  { setores: ["J"], ufs: [], capital_minimo: 10_000_000 },
+];
+
+/** "Indústrias de transformação em MG, com 20 anos ou mais"; null se o exemplo usa setor ou estado que a busca não
+ * oferece (o exemplo some, em vez de dar erro). */
+export function descricaoDoExemplo(filtros: Filtros, opcoes: BuscaDeEmpresasV1): string | null {
+  const nomes = filtros.setores.map((codigo) => opcoes.setores.find((s) => s.codigo === codigo)?.nome);
+  if (nomes.some((n) => n === undefined) || filtros.ufs.some((uf) => !opcoes.ufs.includes(uf))) return null;
+  const onde = filtros.ufs.length > 0 ? ` em ${filtros.ufs.join(", ")}` : "";
+  const extras = [
+    filtros.idade_minima === undefined ? null : `com ${filtros.idade_minima} anos ou mais`,
+    filtros.capital_minimo === undefined ? null : `com capital social a partir de ${reaisCurto(filtros.capital_minimo)}`,
+  ].filter((e) => e !== null);
+  return `${nomes.join(", ")}${onde}${extras.length > 0 ? `, ${extras.join(", ")}` : ""}`;
+}
+
+/** A tela antes da primeira busca: os exemplos que se clicam e o aviso de quem aparece na lista. */
+function ComecoDaBusca({ opcoes, aoBuscar }: { opcoes: BuscaDeEmpresasV1; aoBuscar: (filtros: Filtros) => void }) {
+  const exemplos = EXEMPLOS.map((filtros) => ({ filtros, descricao: descricaoDoExemplo(filtros, opcoes) })).filter(
+    (e): e is { filtros: Filtros; descricao: string } => e.descricao !== null,
+  );
+  return (
+    <>
+      {exemplos.length > 0 ? (
+        <section className="exemplos-de-busca" aria-label="Exemplos de busca">
+          <p>Para começar, experimente uma destas buscas:</p>
+          <ul>
+            {exemplos.map((exemplo) => (
+              <li key={exemplo.descricao}>
+                <button type="button" className="botao" onClick={() => aoBuscar(exemplo.filtros)}>
+                  {exemplo.descricao}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {AVISO_DE_COMECO}
+    </>
+  );
+}
+
 /** O formulário, as etiquetas e a lista, depois que as opções chegaram; a busca já começa com o filtro que o Setor
- * mandou, se houver. */
-function Busca({ rota, opcoes, abertura }: { rota: string; opcoes: BuscaDeEmpresasV1; abertura: AberturaDoSetor | null }) {
+ * mandou ou, sem ele, com o do endereço, se houver. */
+function Busca({
+  rota,
+  opcoes,
+  abertura,
+  doEndereco,
+}: {
+  rota: string;
+  opcoes: BuscaDeEmpresasV1;
+  abertura: AberturaDoSetor | null;
+  doEndereco: Filtros | null;
+}) {
+  const inicial = filtroInicial(abertura, doEndereco);
   const [buscado, setBuscado] = useState<{ filtros: Filtros; vez: number } | null>(
-    abertura?.filtros ? { filtros: abertura.filtros, vez: 1 } : null,
+    inicial ? { filtros: inicial, vez: 1 } : null,
   );
   const [vezDoFormulario, setVezDoFormulario] = useState(0);
   const [comNota, setComNota] = useState(true);
@@ -544,13 +763,25 @@ function Busca({ rota, opcoes, abertura }: { rota: string; opcoes: BuscaDeEmpres
           {abertura.nota}
         </p>
       ) : null}
-      <Formulario key={vezDoFormulario} opcoes={opcoes} inicial={buscado?.filtros ?? null} aoBuscar={buscarDe} aoLimpar={limpar} />
+      <Formulario
+        key={vezDoFormulario}
+        opcoes={opcoes}
+        inicial={buscado?.filtros ?? null}
+        comBusca={buscado !== null}
+        aoBuscar={buscarDe}
+        aoLimpar={limpar}
+      />
       {buscado === null ? (
-        AVISO_DE_COMECO
+        <ComecoDaBusca opcoes={opcoes} aoBuscar={buscarDe} />
       ) : (
         <>
           <EtiquetasDeFiltro filtros={buscado.filtros} opcoes={opcoes} aoMudar={buscarDe} />
-          <Resultado key={buscado.vez} rota={rota} filtros={buscado.filtros} />
+          <Resultado
+            key={buscado.vez}
+            rota={rota}
+            filtros={buscado.filtros}
+            aoOrdenar={(ordem) => buscarDe(semVazios({ ...buscado.filtros, ordem }))}
+          />
         </>
       )}
     </>
@@ -561,13 +792,19 @@ export function EncontrarEmpresas({ pagina }: { pagina: PaginaDoApp }) {
   const rota = pagina.contrato?.rota ?? "";
   const opcoes = usarPedido<BuscaDeEmpresasV1>(rota, {}, SEM_FILTRO);
   const doSetor = useEstadoDaNavegacaoUmaVez(); // o CNAE e a UF do Setor valem uma vez só, como o CNPJ da ficha
+  const [endereco] = useSearchParams();
   return (
     <section>
       <CabecalhoDaTela pagina={pagina} />
       {opcoes.estado === "carregando" && <Carregando tipo="painel" rotulo="Abrindo o formulário…" />}
       {opcoes.estado === "erro" && <Erro erro={opcoes.erro} />}
       {opcoes.estado === "pronto" ? (
-        <Busca rota={rota} opcoes={opcoes.dados} abertura={aberturaDoSetor(doSetor, opcoes.dados)} />
+        <Busca
+          rota={rota}
+          opcoes={opcoes.dados}
+          abertura={aberturaDoSetor(doSetor, opcoes.dados)}
+          doEndereco={filtrosDoEndereco(endereco, opcoes.dados)}
+        />
       ) : (
         AVISO_DE_COMECO
       )}
