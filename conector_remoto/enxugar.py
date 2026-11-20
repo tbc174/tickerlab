@@ -10,6 +10,7 @@ continua onde a API a pôs; o que não cabe fica de fora e **diz** que ficou, em
 Nada aqui vem da API como texto: as frases são fixas e só citam parâmetros que a ferramenta tem.
 """
 
+import re
 from collections import Counter
 
 from conector_remoto import saida
@@ -255,16 +256,14 @@ def enxugar_demonstracoes(
 # ---------------------------------------------------------------- a divisão do orçamento entre listas
 
 
-def _quantos_cabem[C](base: dict, listas: dict[C, list]) -> dict[C, int]:
-    """Quantos itens de cada lista cabem no teto junto com o resto do corpo (`base`, com as listas vazias).
+def _quantos_cabem[C](
+    base: dict, listas: dict[C, list], teto: int = saida.TETO_DE_CARACTERES
+) -> dict[C, int]:
+    """Quantos itens de cada lista cabem no `teto` junto com o resto do corpo (`base`, com as listas vazias).
 
     O orçamento se reparte de item em item entre as listas, na ordem em que vieram: uma lista enorme não toma o
     lugar das outras. Dentro de cada lista a ordem é a da API e o corte é sempre no fim."""
-    sobra = (
-        saida.TETO_DE_CARACTERES
-        - FOLGA_EM_CARACTERES
-        - saida.tamanho_em_caracteres(base)
-    )
+    sobra = teto - FOLGA_EM_CARACTERES - saida.tamanho_em_caracteres(base)
     pesos = {
         c: [saida.tamanho_em_caracteres(i) + 1 for i in itens]
         for c, itens in listas.items()
@@ -477,3 +476,228 @@ def enxugar_o_que_mudou(corpo: object, *, limite: int | None = None) -> object:
         "inteira. Peça um bloco por vez com `blocos` (cadastro, vinculos ou eventos) para ver o resto."
     )
     return _com_aviso(novo | {"changes_shown": entregues}, [aviso])
+
+
+# ---------------------------------------------------------------- a análise completa: o que cabe
+
+# O app do analista recusa a resposta de ferramenta grande demais; a análise de uma companhia aberta passou de
+# 63 mil caracteres (ensaio de 20/11/2026). O teto é uma suposição nossa, abaixo do `TETO_DE_CARACTERES` das
+# outras ferramentas, e o primeiro número a rever se o app voltar a recusar.
+TETO_DA_ANALISE = 50_000
+LIMITE_MAXIMO_DA_ANALISE = 500
+LISTAS_DO_TOPO_DA_ANALISE = ("timeline", "inferences")
+# o bloco da análise -> a ferramenta que o traz sozinho, com o espaço todo da resposta
+FERRAMENTA_DO_BLOCO_DA_ANALISE = {
+    "credit": "credito_da_empresa",
+    "comparables": "comparaveis",
+    "links": "vinculos",
+    "events": "eventos",
+    "assets": "ativos",
+}
+TOPO = ""  # o "bloco" das listas que ficam no topo da análise
+# `blocks.<bloco>.<lista>` e `blocks.<bloco>.<grupo>.<lista>` (os ativos e as tabelas por CNPJ guardam os itens
+# um nível abaixo)
+PROFUNDIDADE_DAS_LISTAS = 2
+# a API entrega a linha do tempo do mais velho para o mais novo: ao cortar, ficam os mais novos
+LISTAS_DOS_MAIS_NOVOS = {(TOPO, "timeline")}
+NOME_DE_BLOCO = re.compile(r"[a-z][a-z0-9_]{1,39}")
+
+type Caminho = tuple[str, ...]
+
+
+def _lista_de_dicts(valor: object) -> bool:
+    return (
+        isinstance(valor, list)
+        and bool(valor)
+        and all(isinstance(i, dict) for i in valor)
+    )
+
+
+def _listas_do_bloco(
+    conteudo: dict, caminho: Caminho, fundo: int
+) -> dict[Caminho, list]:
+    """As listas de itens de um bloco (ou de um grupo dele), até `fundo` níveis."""
+    achadas: dict[Caminho, list] = {}
+    for chave, valor in conteudo.items():
+        if _lista_de_dicts(valor):
+            achadas[(*caminho, chave)] = valor
+        elif isinstance(valor, dict) and fundo > 1:
+            achadas |= _listas_do_bloco(valor, (*caminho, chave), fundo - 1)
+    return achadas
+
+
+def _listas_da_analise(corpo: dict) -> dict[Caminho, list]:
+    """As listas que a análise corta: as de cada bloco e as do topo (`(TOPO, nome)`), na ordem em que vieram."""
+    listas: dict[Caminho, list] = {}
+    for bloco, conteudo in corpo["blocks"].items():
+        if isinstance(conteudo, dict):
+            listas |= _listas_do_bloco(conteudo, (bloco,), PROFUNDIDADE_DAS_LISTAS)
+    for chave in LISTAS_DO_TOPO_DA_ANALISE:
+        if _lista_de_dicts(corpo.get(chave)):
+            listas[(TOPO, chave)] = corpo[chave]
+    return listas
+
+
+def _so_os_blocos_pedidos(
+    corpo: dict, pedidos: list[str] | None
+) -> tuple[dict, list[str]]:
+    """O corpo só com os blocos pedidos, e os avisos do que o pedido tirou ou não encontrou."""
+    if not pedidos:
+        return corpo, []
+    avisos = []
+    fora = [b for b in corpo["blocks"] if b not in pedidos]
+    if fora:
+        avisos.append(
+            f"Só os blocos pedidos (`blocos`); ficaram de fora: {', '.join(fora)}. Peça sem `blocos`, ou com "
+            "outro nome, para vê-los."
+        )
+    ausentes = [b for b in pedidos if b not in corpo["blocks"]]
+    if ausentes:
+        avisos.append(
+            f"Não vieram na análise: {', '.join(ausentes)} (a chave não os vê, a API não os trouxe ou o nome "
+            "não existe; os nomes são os de `blocks`)."
+        )
+    ficam = {b: v for b, v in corpo["blocks"].items() if b in pedidos}
+    return corpo | {"blocks": ficam}, avisos
+
+
+def _aviso_dos_atrasados(corpo: dict) -> list[str]:
+    """Dos blocos que a API deu como `timed_out`: dizer que não é falta de dado e como pedir de novo. Só entra
+    nome com a forma de nome de bloco (o texto da API não vai solto para `limits`), uma vez cada."""
+    atrasados = corpo.get("timed_out")
+    nomes = list(
+        dict.fromkeys(
+            item["block"]
+            for item in (atrasados if isinstance(atrasados, list) else [])
+            if isinstance(item, dict)
+            and isinstance(item.get("block"), str)
+            and NOME_DE_BLOCO.fullmatch(item["block"])
+        )
+    )
+    if not nomes:
+        return []
+    sozinhos = [
+        f"{b} (`{FERRAMENTA_DO_BLOCO_DA_ANALISE[b]}`)"
+        for b in nomes
+        if b in FERRAMENTA_DO_BLOCO_DA_ANALISE
+    ]
+    dica = (
+        f" Alguns saem sozinhos pela ferramenta do bloco: {', '.join(sozinhos)}."
+        if sozinhos
+        else ""
+    )
+    return [
+        (
+            f"Não responderam no prazo da API: {', '.join(nomes)}. Isso não quer dizer que não há dado; peça a "
+            f"análise de novo.{dica}"
+        )
+    ]
+
+
+def _fatia(caminho: Caminho, lista: list, quantos: int) -> list:
+    """Os `quantos` primeiros itens da lista (os mais novos, na linha do tempo)."""
+    if quantos <= 0:
+        return []
+    return lista[-quantos:] if caminho in LISTAS_DOS_MAIS_NOVOS else lista[:quantos]
+
+
+def _trocar_lista(conteudo: dict, caminho: Caminho, nova: list) -> dict:
+    """O conteúdo do bloco com a lista do `caminho` (dentro dele) trocada."""
+    chave = caminho[0]
+    if len(caminho) == 1:
+        return conteudo | {chave: nova}
+    return conteudo | {chave: _trocar_lista(conteudo[chave], caminho[1:], nova)}
+
+
+def _analise_com_as_listas(
+    corpo: dict,
+    listas: dict[Caminho, list],
+    ficam: dict[Caminho, int],
+    cortados: set[Caminho],
+) -> dict:
+    """A análise com cada lista nos itens que couberam; o bloco que perdeu itens leva `truncated`."""
+    blocos = corpo["blocks"]
+    topo: dict[str, list] = {}
+    for caminho, lista in listas.items():
+        nova = _fatia(caminho, lista, ficam[caminho])
+        if caminho[0] == TOPO:
+            topo[caminho[1]] = nova
+        else:
+            blocos = blocos | {
+                caminho[0]: _trocar_lista(blocos[caminho[0]], caminho[1:], nova)
+            }
+    for bloco in {c[0] for c in cortados if c[0] != TOPO}:
+        blocos = blocos | {bloco: blocos[bloco] | {"truncated": True}}
+    return corpo | {"blocks": blocos} | topo
+
+
+def _nome_da_lista(caminho: Caminho) -> str:
+    nome = ".".join(parte for parte in caminho if parte)
+    return f"{nome}, os mais novos" if caminho in LISTAS_DOS_MAIS_NOVOS else nome
+
+
+def enxugar_analise(
+    corpo: object, *, blocos: list[str] | None = None, limite: int | None = None
+) -> object:
+    """A análise completa no que cabe na conversa (`TETO_DA_ANALISE`): só os `blocos` pedidos, no máximo `limite`
+    itens por lista e, de qualquer jeito, o que couber no teto, repartido de item em item entre as listas de todos
+    os blocos, também as que ficam um grupo abaixo (ativos, tabelas por CNPJ): nenhuma fica sem espaço por causa de
+    outra. Dentro de cada lista a ordem é a da API e o corte é no fim (na linha do tempo, no começo: ficam os
+    marcos mais novos). O que ficou de fora vai em `limits`, com `truncated`; o bloco que a API deu como
+    `timed_out` ganha um aviso de como pedir de novo (esperar não é cortar: sem `truncated`)."""
+    if not isinstance(corpo, dict) or not isinstance(corpo.get("blocks"), dict):
+        return corpo
+    sem_blocos, avisos = _so_os_blocos_pedidos(corpo, blocos)
+    tirou_blocos = len(sem_blocos["blocks"]) < len(corpo["blocks"])
+    listas = _listas_da_analise(sem_blocos)
+    totais = {caminho: len(lista) for caminho, lista in listas.items()}
+    if limite:
+        listas = {c: _fatia(c, lista, limite) for c, lista in listas.items()}
+    base = _analise_com_as_listas(sem_blocos, listas, dict.fromkeys(listas, 0), set())
+    # a ordem de entrada no orçamento é a de leitura: nos mais novos, de trás para a frente
+    na_ordem_de_leitura = {
+        c: lista[::-1] if c in LISTAS_DOS_MAIS_NOVOS else lista
+        for c, lista in listas.items()
+    }
+    ficam = _quantos_cabem(base, na_ordem_de_leitura, TETO_DA_ANALISE)
+    cortados = {c for c in listas if totais[c] > ficam[c]}
+    novo = _analise_com_as_listas(sem_blocos, listas, ficam, cortados)
+    if cortados:
+        de_cada = ", ".join(
+            f"{_nome_da_lista(c)} ({ficam[c]} de {totais[c]})" for c in cortados
+        )
+        avisos.append(
+            f"A resposta foi cortada (pelo que cabe na conversa ou por `limite`); entregues: {de_cada}. Peça o "
+            "resto por partes, com `blocos` (os nomes de `blocks`) ou menos itens por lista com `limite`."
+        )
+    avisos += _aviso_dos_atrasados(corpo)
+    if not avisos:
+        return novo
+    return _com_aviso(novo, avisos, cortou=bool(cortados) or tirou_blocos)
+
+
+# ---------------------------------------------------------------- as novidades: dizer por que veio vazio
+
+
+def avisar_novidades_vazias(corpo: object) -> object:
+    """Lista vazia de novidades com a frase que separa "nada mudou" de "o arquivo da pesquisa não chegou":
+    `generated_at` vazio quer dizer que o servidor não tem o arquivo, e aí a lista vazia não prova ausência de
+    novidade (ensaio de 20/11/2026: 7 dias, `total_news` 0 e `generated_at` nulo). Sem `truncated`."""
+    if not isinstance(corpo, dict) or not isinstance(corpo.get("items"), list):
+        return corpo
+    if corpo["items"] or corpo.get("total_news"):
+        return corpo
+    gerado = corpo.get("generated_at")
+    if not isinstance(gerado, str) or not gerado:
+        aviso = (
+            "O arquivo da pesquisa de novidades não chegou ao servidor (`generated_at` vazio): a lista vazia não "
+            "quer dizer que nada mudou, só que não há leitura para dizer. O TickerLab precisa publicar o arquivo."
+        )
+    else:
+        dias = corpo.get("days")
+        periodo = f"nos últimos {dias} dias" if isinstance(dias, int) else "no período"
+        aviso = (
+            f"Sem novidade provada {periodo}; última geração do arquivo da pesquisa em {gerado[:10]}. "
+            "Para olhar mais para trás, peça mais dias (`dias`, até 30)."
+        )
+    return _com_aviso(corpo, [aviso], cortou=False)
