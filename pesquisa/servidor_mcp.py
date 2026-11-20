@@ -52,13 +52,16 @@ def criar_servidor(pesquisador: Pesquisador) -> MCPServer:
         linha_inicial: int = 1,
         planilha: str | None = None,
         contem: list[str] | None = None,
+        filtro_por_coluna: dict[str, list[str]] | None = None,
     ) -> dict[str, object]:
         """Extrai texto (por página) e tabelas (por planilha e linha) de um original já baixado.
         `motor`: "auto" ou "docling" (tabelas de PDF e de planilha). Leia por faixas
         (`pagina_inicial`/`pagina_final`, `linha_inicial`) e, em planilha com várias abas, peça uma
         só por `planilha` (os nomes vêm em `planilhas`). `contem` devolve só as linhas de tabela e as
         páginas em que TODOS os termos aparecem (sem distinguir caixa), com o número da linha ou da
-        página: é como se acha uma usina numa planilha de milhares de linhas. A resposta é limitada."""
+        página: é como se acha uma usina numa planilha de milhares de linhas. `filtro_por_coluna`
+        ({"2": ["EOL"]}: número da coluna, a partir de 1, e os termos) exige os termos só naquela
+        coluna das linhas de tabela, para um termo curto não casar em outra. A resposta é limitada."""
         return pesquisador.extrair(
             sha256,
             motor=motor,
@@ -67,6 +70,7 @@ def criar_servidor(pesquisador: Pesquisador) -> MCPServer:
             linha_inicial=linha_inicial,
             planilha=planilha,
             contem=contem,
+            filtro_por_coluna=filtro_por_coluna,
         )
 
     @servidor.tool()

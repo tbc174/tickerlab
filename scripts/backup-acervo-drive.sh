@@ -110,6 +110,7 @@ subir() {
         --transfers 2 --checkers 4 --tpslimit 6 \
         --drive-chunk-size 128M --drive-stop-on-upload-limit \
         --retries 3 --low-level-retries 10 \
+        --timeout 2m --contimeout 30s \
         --stats 10m --stats-one-line --stats-log-level NOTICE --log-level NOTICE --log-file "$LOG"
     local codigo=$?
     if [ "$codigo" -ne 0 ]; then

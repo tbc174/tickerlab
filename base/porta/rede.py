@@ -90,9 +90,9 @@ def resolver(con: duckdb.DuckDBPyConnection, id_ou_cnpj: str, dia: str | None) -
     for pares in tentativas:
         achados = _procurar(con, pares, dia)
         if len(achados) > 1:
-            raise LookupError(
-                f"{id_ou_cnpj}: mais de uma entidade ({', '.join(achados)})"
-            )
+            # um id_entidade vazio também conta como entidade: a rede não diz de quem é
+            nomes = ", ".join("(id vazio)" if i is None else i for i in achados)
+            raise LookupError(f"{id_ou_cnpj}: mais de uma entidade ({nomes})")
         if achados:
             return achados[0]
     raise LookupError(f"{id_ou_cnpj}: nenhuma entidade{quando} com este identificador")

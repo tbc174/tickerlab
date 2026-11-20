@@ -547,7 +547,27 @@ def test_fidc_sem_as_colunas_do_cedente_fica_nao_observado(tmp_path):
         assert f[chave].valor is None and f[chave].motivo == si.SEM_COLUNA_DO_CEDENTE
 
 
+def test_fidc_versao_corrigida_sem_o_cnpj_substitui_a_antiga(tmp_path):
+    # a CVM republica o informe da EGM (08/2026) sem a Mundial entre os cedentes: a versão velha
+    # não vale mais, mesmo que só ela cite o CNPJ
+    corrigido = _fidc(EGM, "2026-08-31", "2026-10-20", [], "68100000.00", "0")
+    with _porta(tmp_path, trocas={"fidc_informe": [*FIDC, corrigido]}) as p:
+        f = _sinais(p, MUNDIAL)
+    assert f["fundos_em_que_cede"].valor == 1
+    assert f["carteira_dos_fundos_em_que_cede"].valor == pytest.approx(6_340_000.0)
+
+
 # --- rating ---------------------------------------------------------------------------------------
+def test_rating_avisa_que_ha_documento_mais_novo_sem_rating_legivel(tmp_path):
+    nao_lido = _rating(RD, "R4", "2026-06-01", None, None, situacao="nao_extraido")
+    with _porta(tmp_path, trocas={"ratings": [*RATINGS, nao_lido]}) as p:
+        f = _sinais(p, RD)
+    assert f["rating_mais_recente"].valor == "AAA (Fitch, escala nacional)"
+    for chave in si.DO_RATING:
+        assert "01/06/2026" in f[chave].periodo
+        assert "não lido" in f[chave].periodo
+
+
 def test_rating_mais_novo_publico_no_dia(porta):
     f = _sinais(porta, RD)
     assert f["rating_mais_recente"].valor == "AAA (Fitch, escala nacional)"
