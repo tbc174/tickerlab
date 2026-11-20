@@ -16816,7 +16816,7 @@
       "licenca": "TCE-CE: licença não localizada; risco assumido (ADR 0122)",
       "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
       "pessoa": true,
-      "frequencia": "Sem rotina: carga manual de arquivos baixados",
+      "frequencia": "Anual (um pedido por município e ano, com pausa e retomada; rodado à mão, sem agendamento)",
       "atraso": "Sem data de publicação na fonte: a linha vale desde o download"
     },
     "tce_rs_contratos": {

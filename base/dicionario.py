@@ -4666,8 +4666,8 @@ def _tabelas_dos_tces() -> dict[str, Tabela]:
             "ce",
             "Contratados e contratos do SIM do TCE-CE, ligados pela chave município, número e data.",
             ce,
-            "TCE-CE, SIM (arquivos postos à mão; sem coleta automática ainda)",
-            "Sem rotina: carga manual de arquivos baixados",
+            "TCE-CE, SIM (api-dados-abertos.tce.ce.gov.br)",
+            "Anual (um pedido por município e ano, com pausa e retomada; rodado à mão, sem agendamento)",
             "tce_ce_contratos",
         ),
         "tce_rs_contratos": tabela(
