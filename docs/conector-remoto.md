@@ -125,7 +125,7 @@ com as ferramentas que existem.
 |---|---|
 | `prospectar` | `buscar_empresas` (filtros, `limite` e `cursor`) |
 | `empresa` | `ficha_da_empresa` (as 8 entregas de DFP e ITR mais novas; `limite_de_entregas`, de 1 a 100, pede mais; o corte vai em `truncated` e em `limits`) |
-| `analise` | `analise_completa` (a data; cada bloco que a chave vê numa resposta, inclusive os das tabelas ligadas pelo CNPJ do registro `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, com o conjunto `integrity` no contrato, sanções da CGU, embargos do IBAMA e cadastro de empregadores do MTE, só pessoa jurídica), com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota; com `pessoa_no_conector` e sem a data, um segundo bloco com a resposta de `socios_e_donos`, que é mais um pedido na quota e some se a API negar ou a tranca recusar) |
+| `analise` | `analise_completa` (a data, `blocos` e `limite`; cada bloco que a chave vê numa resposta, cortada em até ~50 mil caracteres, repartidos entre as listas de todos os blocos, com `truncated` e o que ficou de fora em `limits`; o bloco que a API deu como `timed_out` ganha em `limits` o aviso de pedir de novo, com a ferramenta própria do bloco quando existe; inclusive os das tabelas ligadas pelo CNPJ do registro `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, com o conjunto `integrity` no contrato, sanções da CGU, embargos do IBAMA e cadastro de empregadores do MTE, só pessoa jurídica), com a frase do topo, a linha do tempo, as leituras e o que não foi achado; um pedido por bloco na quota; com `pessoa_no_conector` e sem a data, um segundo bloco com a resposta de `socios_e_donos`, que é mais um pedido na quota e some se a API negar ou a tranca recusar) |
 | `comparaveis` | `comparaveis` (a data e `limite` de 1 a 50 pares, padrão 10; o corte é no conector, na ordem da API, e as medianas seguem sobre todos os pares) |
 | `demonstracoes` | `demonstracoes` (um período, a versão mais nova de cada conta e o consolidado onde houver; `demonstrativo`, `visao` e `conta` escolhem o recorte; o que não coube vai em `truncated` e em `limits`) |
 | `eventos` | `eventos` (tipos, `limite` e `cursor`) |
@@ -135,7 +135,7 @@ com as ferramentas que existem.
 | `vinculos` | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
 | `ativos` | `ativos` (a data; conjunto `assets`: contratos de E&P da ANP e, quando a chave os vê, barragens e royalties de mineração da ANM; `tipo_de_ativo`, `uf`, `somente_operador` e `limite`, filtros do conector que não vão à API; o que passa do teto da conversa fica de fora, com `truncated` e a contagem em `limits`) |
 | `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
-| `novidades` | `novidades` (`dias` de 1 a 30) |
+| `novidades` | `novidades` (`dias` de 1 a 30; lista vazia vem com `limits` dizendo se o arquivo da pesquisa não chegou ao servidor ou a data da última geração) |
 
 Ferramentas do analista, que só compõem o que a API já devolve (linha 980, onda 1; código em
 `conector_remoto/ferramentas_do_analista.py`, que não abre rota nem direito novo):
