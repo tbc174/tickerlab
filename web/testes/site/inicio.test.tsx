@@ -390,7 +390,7 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
       expect(texto, tema.chave).toContain(esc(tema.titulo));
       expect(texto, tema.chave).toContain(esc(tema.texto));
       for (const orgao of tema.orgaos) expect(cartoes[i], tema.chave).toContain(`<li>${esc(orgao)}</li>`);
-      expect(texto, tema.chave).toContain(`${tema.tabelas} tabelas`);
+      expect(texto, tema.chave).toContain(tema.tabelas === 1 ? "1 tabela" : `${tema.tabelas} tabelas`);
     });
     // política de privacidade, versão 19: na tela, pessoa física só para a organização com a permissão
     expect(semTags(secao)).toContain("Nome de pessoa física só aparece para a organização");
