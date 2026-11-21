@@ -30,6 +30,8 @@ dados_locais/
 # Sala de dados (arquivos cifrados de cada operação; B-20)
 dados_sala/
 acervo_api/
+# acervo de pessoa que a API lê no VPS (compose): dado de pessoa física, nunca no Git
+acervo_pessoa/
 
 # Segredos do Streamlit (login do Google): nunca commitar
 .streamlit/secrets.toml

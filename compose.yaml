@@ -71,10 +71,22 @@ services:
       # (scripts/montar_recorte_da_api.py). Pasta ausente ou vazia: a API sobe igual e as rotas de dado
       # respondem 503; a rota /saude não lê a base.
       TICKERLAB_ACERVO: /app/acervo
+      # o acervo de pessoa (ADR 0128, Emendas 1 e 4): só socios_pf/, individuais/ e manifesto.json, montados na
+      # VM de casa (scripts/montar_acervo_pessoa.py, --conferir com zero achado) e mandados pelo recebedor
+      # próprio (~/bin/receber-acervo-pessoa.sh), FORA da base. O contato fica em casa: sem a pasta, a parte de
+      # contato responde 503. Pasta ausente: a API sobe igual e as rotas de pessoa respondem 503. Ter a pasta
+      # não abre nada: quem vê é a organização com pessoa_na_tela ou pessoa_no_conector, conferida no banco.
+      TICKERLAB_ACERVO_PESSOA: /app/acervo_pessoa/atual
     volumes:
       # só leitura; o recebedor do VPS (~/bin/receber-base-api.sh) troca a pasta base/ por inteiro. Crie
       # a pasta antes do deploy (mkdir -p acervo_api/base); se faltar, o Docker cria uma vazia.
       - ./acervo_api:/app/acervo:ro
+      # só leitura, ao lado (não dentro) do acervo_api. Monta-se a pasta-mãe, como no acervo_api: dentro dela,
+      # atual é um link simbólico RELATIVO para versoes/<carimbo>, que o recebedor troca por rename (o link
+      # anterior guarda a versão de antes); o link resolve dentro da montagem e o contêiner vê a versão nova sem
+      # reiniciar. Montar a própria pasta trocada prenderia o contêiner na velha. Crie antes do deploy (mkdir -p
+      # acervo_pessoa); se faltar, o Docker cria uma vazia e as rotas de pessoa dão 503.
+      - ./acervo_pessoa:/app/acervo_pessoa:ro
       # onde fica o registro de acesso; sobrevive ao deploy. ANTES do primeiro "up":
       #   mkdir -p registros && sudo chown 1000:1000 registros && sudo chmod 750 registros
       - ./registros:/app/registros

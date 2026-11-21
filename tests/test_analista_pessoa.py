@@ -1,10 +1,12 @@
 """O leitor do acervo de pessoa da tela da equipe (linha 808). Todo nome aqui é inventado."""
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 
 from base import receita_contato
 from src.analista import pessoa
@@ -114,6 +116,41 @@ def test_pasta_do_acervo_vem_da_variavel(tmp_path, monkeypatch):
         pessoa.pasta_do_acervo()
     monkeypatch.setenv(pessoa.VARIAVEL, str(_acervo(tmp_path, LINHAS)))
     assert pessoa.pasta_do_acervo() == tmp_path
+
+
+def _apontar(link: Path, alvo: str) -> None:
+    """Troca o link como o recebedor do VPS: link novo ao lado e rename por cima (uma operação só)."""
+    provisorio = link.with_name(".volta")
+    os.symlink(alvo, provisorio, target_is_directory=True)
+    os.replace(provisorio, link)
+
+
+def test_le_pelo_link_atual_e_ve_a_troca_de_versao_sem_reiniciar(tmp_path, monkeypatch):
+    """No VPS, `atual` é um link RELATIVO para `versoes/<carimbo>`, trocado por rename a cada envio."""
+    _acervo(tmp_path / "versoes" / "v1", LINHAS)
+    _acervo(
+        tmp_path / "versoes" / "v2",
+        [_socio("11222333", "NOVA EXEMPLO", "49", "2024-02-01")],
+    )
+    atual = tmp_path / "atual"
+    try:
+        os.symlink("versoes/v1", atual, target_is_directory=True)
+    except OSError:
+        pytest.skip(
+            "este sistema não deixa criar link simbólico (Windows sem o modo de desenvolvedor)"
+        )
+    monkeypatch.setenv(pessoa.VARIAVEL, str(atual))
+
+    assert pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), EMPRESA).total == 2
+
+    _apontar(atual, "versoes/v2")
+    socios = pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), EMPRESA)
+    assert [socio["nome"] for socio in socios.socios] == ["NOVA EXEMPLO"]
+
+    _apontar(
+        atual, "versoes/v1"
+    )  # o desfazer do recebedor: o link volta para a versão anterior
+    assert pessoa.socios_da_empresa(pessoa.pasta_do_acervo(), EMPRESA).total == 2
 
 
 def test_arquivo_estragado_e_acervo_indisponivel_nao_cnpj_invalido(tmp_path):
@@ -311,3 +348,22 @@ def test_individual_sai_so_com_municipio_uf_telefone_e_email_e_empresa_comum_int
         and do_mei["telefones"]
         and do_mei["email"]
     )
+
+
+def test_o_compose_monta_o_acervo_de_pessoa_so_na_api_e_so_para_leitura():
+    """A pasta de pessoa vai só ao contêiner da API, `:ro`, fora do acervo da base, e a variável aponta para ela."""
+    compose = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "compose.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    servicos = compose["services"]
+    api = servicos["tickerlab-api"]
+    assert "./acervo_pessoa:/app/acervo_pessoa:ro" in api["volumes"]
+    assert "./acervo_api:/app/acervo:ro" in api["volumes"]  # a base continua à parte
+    # a pasta-mãe é montada e a variável aponta para a filha que o recebedor troca por mv
+    assert api["environment"][pessoa.VARIAVEL] == "/app/acervo_pessoa/atual"
+    com_pessoa = sorted(
+        nome for nome, servico in servicos.items() if "acervo_pessoa" in str(servico)
+    )
+    assert com_pessoa == ["tickerlab-api"]

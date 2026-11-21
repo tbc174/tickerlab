@@ -13,6 +13,8 @@ guias
 notas
 dados_locais
 dados_sala
+acervo_api
+acervo_pessoa
 *.sqlite
 .env
 .env.sala
