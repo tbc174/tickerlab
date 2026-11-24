@@ -12,13 +12,20 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
 
 1. Rode sempre com `--json` e leia o envelope: cada campo é `{"value", "source", "published_at", ...}` e
    `sources` traz a licença e a frase de atribuição de cada fonte.
-2. Escolha o comando na lista de "Comandos" abaixo. Em qualquer comando de dado:
+2. Escolha o comando na lista de "Comandos" abaixo (`tickerlab <comando> --help` dá o detalhe). Nos comandos
+   que leem a base por CNPJ, setor ou filtro:
    - `--como-era AAAA-MM-DD`: o dado como era público naquele dia.
-   - `--planilha ARQUIVO.xlsx` (ou `.csv`), quando a pessoa quiser a planilha para o Excel: uma aba por tabela, com `fonte` e `publicado_em` em cada linha, e a aba `fontes`.
+   - `--planilha ARQUIVO.xlsx` (ou `.csv`), quando a pessoa quiser a planilha para o Excel: uma aba por
+     tabela, com `fonte` e `publicado_em` em cada linha, e a aba `fontes`.
 3. Código de saída: 0 ok; 2 comando errado; 3 sem chave ou chave recusada (peça `tickerlab login` à pessoa,
    nunca a chave no chat); 4 limite ou quota; 5 nada disponível (veja `tickerlab catalogo`, não insista);
    6 pedido recusado; 7 API fora do ar; 1 erro inesperado. A mensagem sai em stderr.
 4. `truncated: true`: a lista foi cortada no limite do plano. Diga isso; não trate como completa.
+5. Antes de concluir, leia `limits` (o que a leitura não cobre) e, no dossiê, `gaps`: não achado não quer dizer
+   que não existe. `next_cursor` preenchido: há mais páginas (`--todas` busca todas, um pedido da quota por
+   página). Código 5 nas demonstrações: empresa fechada não tem DFP nem ITR, e a base não estima faturamento;
+   diga isso, não invente o número. O dossiê gasta 4 pedidos; `setor` sem chave, `catalogo` e `consumo` não
+   gastam a quota.
 
 ## Comandos
 
