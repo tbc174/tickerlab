@@ -463,3 +463,105 @@ def test_perfil_com_muitas_entregas_leva_as_mais_novas_e_diz_que_cortou(monkeypa
     assert servido.corpo["entregas"] == entregas[: analise.LINHAS_POR_BLOCO]
     assert servido.corpo["cortada"] is True
     assert servido.linhas == analise.LINHAS_POR_BLOCO + 1
+
+
+# --- tempo por bloco (frente 1 de 24/11/2026: o ensaio de 19/11 viu blocos em `timed_out`) ---------------
+
+
+def _tempos(montada) -> dict:
+    return {t.bloco: t for t in montada.tempos}
+
+
+def _linhas_do_log(caplog) -> list[str]:
+    return [r.getMessage() for r in caplog.records if r.name == analise.__name__]
+
+
+def test_cada_bloco_tem_o_tempo_e_o_estado_dele(porta, blocos):
+    def lento(porta_do_bloco, *_):
+        porta_do_bloco.con.execute(
+            "SELECT count(*) FROM range(100000000000) a"
+        ).fetchall()
+
+    def demora(*_):
+        time.sleep(0.15)
+        return _Servido({"vinculos": [{}]})
+
+    blocos(_bloco("vinculos", demora), _bloco("eventos", lento))
+    montada = _montar(porta, conjuntos=("profiles", "vinculos", "eventos"), prazo=0.6)
+    tempos = _tempos(montada)
+    assert set(tempos) == {
+        "profile",
+        "links",
+        "events",
+    }  # nomes de fora, como no `timed_out`
+    assert tempos["profile"].estado == analise.RESPONDEU
+    assert tempos["links"].estado == analise.RESPONDEU
+    assert tempos["links"].duracao_ms >= 100  # o relógio do Windows anda de ~15 ms
+    assert tempos["events"].estado == analise.ATRASADO
+    assert tempos["events"].duracao_ms is None  # não acabou dentro do prazo
+    assert all(t.comecou_ms is not None and t.comecou_ms >= 0 for t in tempos.values())
+
+
+def test_bloco_que_quebra_sai_com_estado_de_erro_no_log(porta, blocos, caplog):
+    def quebra(*_):
+        raise RuntimeError("bloco quebrou")
+
+    blocos(_bloco("vinculos", quebra))
+    caplog.set_level("INFO", logger=analise.__name__)
+    with pytest.raises(RuntimeError):
+        _montar(porta, conjuntos=("profiles", "vinculos"))
+    assert any(
+        "bloco=links" in linha and f"estado={analise.ERRO}" in linha
+        for linha in _linhas_do_log(caplog)
+    )
+
+
+def test_o_tempo_no_portao_e_a_fila_da_trava_sao_contados_por_bloco(porta, blocos):
+    """A trava do portão atende um bloco de cada vez: o que espera por ela aparece na fila do portão."""
+    juntos = threading.Barrier(2)
+
+    def pergunta_junto(_porta, permitido, *_):
+        juntos.wait(timeout=5)
+        permitido("rfb-cnpj", "campo", False)
+        return _Servido({"vinculos": [{}]})
+
+    def portao_lento(_conjunto, _finalidade):
+        def permitido(*_):
+            time.sleep(0.2)
+            return True
+
+        return permitido
+
+    blocos(_bloco("vinculos", pergunta_junto), _bloco("eventos", pergunta_junto))
+    montada = _montar(
+        porta, conjuntos=("profiles", "vinculos", "eventos"), portao=portao_lento
+    )
+    tempos = _tempos(montada)
+    assert tempos["links"].portao_ms >= 150
+    assert tempos["events"].portao_ms >= 150
+    # um dos dois esperou o outro sair do portão
+    assert max(tempos["links"].fila_ms, tempos["events"].fila_ms) >= 100
+
+
+def test_o_log_tem_uma_linha_por_bloco_e_o_total_so_com_ids(porta, blocos, caplog):
+    blocos(_bloco("vinculos", lambda *_: _Servido({"vinculos": [{}]})))
+    caplog.set_level("INFO", logger=analise.__name__)
+    _montar(porta, conjuntos=("profiles", "vinculos"))
+    linhas = _linhas_do_log(caplog)
+    por_bloco = [linha for linha in linhas if "bloco=" in linha]
+    assert sorted(linha.split("bloco=")[1].split()[0] for linha in por_bloco) == [
+        "links",
+        "profile",
+    ]
+    assert any("total_ms=" in linha and "atrasados=0" in linha for linha in linhas)
+    # um pedido, um id: as linhas de pedidos ao mesmo tempo se separam por ele
+    assert len({linha.split("pedido=")[1].split()[0] for linha in linhas}) == 1
+    # só ids e tempos: nem o CNPJ nem o que o bloco leu
+    assert not any(CNPJ in linha or "ALFA" in linha for linha in linhas)
+
+
+def test_sem_cadastro_aberto_nao_ha_tempo_nem_log(porta, blocos, caplog):
+    blocos()
+    caplog.set_level("INFO", logger=analise.__name__)
+    assert _montar(porta, conjuntos=()) is None
+    assert _linhas_do_log(caplog) == []
