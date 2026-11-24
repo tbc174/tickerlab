@@ -641,3 +641,108 @@ def test_as_fontes_na_rede_sao_as_que_a_montagem_grava():
     assert set(vinculos.TIPOS) <= {
         das_fontes.CONTROLADA_DE, das_fontes.COLIGADA_DE, das_fontes.PARTICIPADA_DE, das_fontes.AUDITA,
     }  # fmt: skip
+
+
+# --- a mesma sociedade em FREs de anos diferentes (ensaio de 19/11/2026, linha 996 da fila) -------------
+# A FILHA era 80% da ALFA desde o FRE de referência 2023-12-31; o FRE de referência 2025-12-31 (fim do exercício),
+# entregue em 2025-05-31, passou a mostrar 100%. A rede guarda dois períodos: o de 80% acaba em 2025-12-31 (a
+# referência do FRE seguinte), que é depois do dia; a porta então ainda o mostra, ao lado do de 100%.
+FRE_DE_80 = ("EFILHA", "EALFA", "controlada_de", 80.0, "2023-12-31", "2024-05-31", "2025-12-31", "2025-05-31",
+             "cvm-fre")  # fmt: skip
+FRE_DE_100 = (
+    "EFILHA",
+    "EALFA",
+    "controlada_de",
+    100.0,
+    "2025-12-31",
+    "2025-05-31",
+    None,
+    None,
+    "cvm-fre",
+)
+COLIGADA_ANTES = ("ECOLIGADA", "EALFA", "coligada_de", 30.0, "2023-12-31", "2024-05-31", "2025-12-31",
+                  "2025-05-31", "cvm-fre")  # fmt: skip
+CONTROLADA_DEPOIS = ("ECOLIGADA", "EALFA", "controlada_de", 55.0, "2025-12-31", "2025-05-31", None, None,
+                     "cvm-fre")  # fmt: skip
+
+
+@pytest.fixture
+def pasta_de_dois_fres(tmp_path):
+    return gravar_base(
+        tmp_path / "base",
+        ligacoes=[
+            FRE_DE_80,
+            FRE_DE_100,
+            COLIGADA_ANTES,
+            CONTROLADA_DEPOIS,
+            LIGACOES[9],
+        ],
+    )
+
+
+def _do_fre(servido) -> list[tuple[str, str, float, str]]:
+    return [
+        (
+            v["tipo"]["valor"],
+            v["de"]["id_na_rede"],
+            v["participacao_no_capital"]["valor"],
+            v["aconteceu_em"]["valor"],
+        )
+        for v in servido.corpo["vinculos"]
+        if v["tipo"]["fonte"] == FRE
+    ]
+
+
+def test_cada_sociedade_do_fre_sai_uma_vez_com_a_posicao_mais_nova(pasta_de_dois_fres):
+    # mesmo tipo com outra participação e tipo que mudou (coligada virou controlada): só a do FRE mais novo
+    assert _do_fre(_ler(pasta_de_dois_fres)) == [
+        ("subsidiary_of", "ECOLIGADA", 55.0, "2025-12-31"),
+        ("subsidiary_of", "EFILHA", 100.0, "2025-12-31"),
+    ]
+
+
+def test_a_posicao_mais_nova_e_a_ja_publica_no_dia(pasta_de_dois_fres):
+    # antes da entrega do FRE de referência 2025-12-31, valia a posição do FRE anterior: nada do futuro entra
+    assert _do_fre(_ler(pasta_de_dois_fres, dia=date(2025, 5, 30))) == [
+        ("subsidiary_of", "EFILHA", 80.0, "2023-12-31"),
+        ("affiliate_of", "ECOLIGADA", 30.0, "2023-12-31"),
+    ]
+
+
+def test_a_data_de_referencia_depois_do_dia_veio_de_documento_ja_publico(
+    pasta_de_dois_fres,
+):
+    # a data de referência (fim do exercício) pode ser depois do dia, mas o FRE já tinha saído: não é futuro
+    for vinculo in _ler(pasta_de_dois_fres).corpo["vinculos"]:
+        assert vinculo["aconteceu_em"]["publico_em"] <= DIA.isoformat()
+
+
+def test_a_auditoria_nao_e_juntada_com_o_fre(pasta_de_dois_fres):
+    auditorias = [
+        v
+        for v in _ler(pasta_de_dois_fres).corpo["vinculos"]
+        if v["tipo"]["valor"] == "audits"
+    ]
+    assert len(auditorias) == 1
+
+
+def test_os_limites_do_fre_explicam_a_data_de_referencia():
+    texto = vinculos.LIMITES_DA_FONTE[FRE]
+    assert "data de referência" in texto
+    assert "posição mais nova" in texto
+
+
+@pytest.mark.parametrize("tipo_pedido", ["coligada_de", "participada_de"])
+def test_o_filtro_de_tipo_nao_traz_de_volta_a_posicao_substituida(
+    pasta_de_dois_fres, tipo_pedido
+):
+    # a ECOLIGADA virou controlada no FRE mais novo: pedir só coligadas não pode devolver os 30% de antes
+    # (achado P1 da revisão cruzada)
+    assert _do_fre(_ler(pasta_de_dois_fres, tipos=(tipo_pedido,))) == []
+
+
+def test_o_filtro_de_tipo_devolve_a_posicao_mais_nova_do_tipo(pasta_de_dois_fres):
+    assert _do_fre(_ler(pasta_de_dois_fres, tipos=("controlada_de",))) == [
+        ("subsidiary_of", "ECOLIGADA", 55.0, "2025-12-31"),
+        ("subsidiary_of", "EFILHA", 100.0, "2025-12-31"),
+    ]
