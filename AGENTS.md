@@ -191,7 +191,7 @@ O Tiago trabalha com mais de uma IA (decisão na pasta privada, ADR 0110). Para 
    diferentes erram em lugares diferentes (ver "Quando a tarefa é só auditar").
 7. **Ferramenta diferente, mesmo objetivo.** Quando uma regra cita uma ferramenta que você não tem (o
    Auto-fix ou as mensagens entre sessões do Claude, por exemplo), cumpra o objetivo dela pelo caminho que
-   você tem, e diga qual usou.
+   você tem, e diga qual usou. Aberta pelo Orca: veja `docs/orca.md`.
 
 ## Segurança e privacidade
 
