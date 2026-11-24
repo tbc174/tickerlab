@@ -12,6 +12,7 @@ tudo vira JSON sem esforço. Os nomes de hoje ficam (Diretoria, 24/11): quando a
 diferente, os dois estão aqui, lado a lado.
 """
 
+import json
 from dataclasses import dataclass, field
 
 # o conjunto do catálogo que só a organização com `pessoa_no_conector` vê (ADR 0128, Emenda 4); o mesmo valor de
@@ -19,6 +20,40 @@ from dataclasses import dataclass, field
 CONJUNTO_DAS_PESSOAS = "pessoa_no_conector"
 # as portas, como aparecem em `Consulta.fora_de_uma_porta`
 PORTAS = ("conector", "cli", "api")
+
+# As escolhas em português (as que a IA e o analista escrevem) -> o valor que a API recebe. O conector e a CLI
+# traduzem pelo mesmo mapa: a CLI lê a cópia em `cli/tickerlab/consultas.json` (`para_a_cli`).
+TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
+# os registros na Anvisa (linha 860); "todos" é a soma dos tipos que a API serve (cosméticos, saneantes e
+# produtos para saúde)
+TIPOS_DA_ANVISA = {
+    "cosmeticos": "cosmetics",
+    "produtos_saude": "health_products",
+    "saneantes": "sanitizers",
+    "todos": "products",
+}
+ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}  # mais registros primeiro (o "-" é decrescente)
+TIPOS_DE_VINCULO = {
+    "controlada": "subsidiary_of",
+    "coligada": "affiliate_of",
+    "participada": "investee_of",
+    "auditor": "audits",
+}
+# o porte como a Receita o escreve; por ora só a CLI o recebe em português (o conector, em inglês: plano da frente
+# 2, PR 5c)
+PORTES = {
+    "micro": "micro",
+    "pequena": "small",
+    "demais": "other",
+    "nao_informado": "not_informed",
+}
+TRADUCOES: dict[str, dict[str, str]] = {
+    "tipos_de_evento": TIPOS_DE_EVENTO,
+    "tipos_da_anvisa": TIPOS_DA_ANVISA,
+    "ordens_da_busca": ORDENS_DA_BUSCA,
+    "tipos_de_vinculo": TIPOS_DE_VINCULO,
+    "portes": PORTES,
+}
 
 
 @dataclass(frozen=True)
@@ -101,7 +136,7 @@ _BUSCAR_EMPRESAS = Ferramenta(
         Parametro(
             "anvisa_tipo",
             cli="--anvisa-tipo",
-            valores=("cosmeticos", "produtos_saude", "saneantes", "todos"),
+            valores=tuple(TIPOS_DA_ANVISA),
         ),
         Parametro(
             "anvisa_ativos_min", cli="--anvisa-ativos-min", minimo=1, maximo=10000000
@@ -109,7 +144,7 @@ _BUSCAR_EMPRESAS = Ferramenta(
         Parametro(
             "anvisa_total_min", cli="--anvisa-total-min", minimo=1, maximo=10000000
         ),
-        Parametro("ordenar_por", cli="--ordenar-por"),
+        Parametro("ordenar_por", cli="--ordenar-por"),  # escolhas em ORDENS_DA_BUSCA
         Parametro("limite", cli="--por-pagina", minimo=1, maximo=100),
         Parametro("cursor"),
         Parametro("como_era_em", cli="--como-era"),
@@ -244,7 +279,7 @@ _EVENTOS = Ferramenta(
     conjuntos=frozenset({"events"}),
     parametros=(
         Parametro("cnpj", cli="CNPJ"),
-        Parametro("tipos", cli="--tipo", valores=("documento", "auditor")),
+        Parametro("tipos", cli="--tipo", valores=tuple(TIPOS_DE_EVENTO)),
         Parametro("limite", minimo=1, maximo=100),
         Parametro("cursor"),
         Parametro("como_era_em", cli="--como-era"),
@@ -298,7 +333,7 @@ _VINCULOS = Ferramenta(
         Parametro(
             "tipos",
             cli="--tipo",
-            valores=("controlada", "coligada", "participada", "auditor"),
+            valores=tuple(TIPOS_DE_VINCULO),
         ),
         Parametro("como_era_em", cli="--como-era"),
     ),
@@ -706,3 +741,38 @@ def ferramenta(nome: str) -> Ferramenta:
         if item.nome == nome:
             return item
     raise KeyError(nome)
+
+
+def para_a_cli() -> dict[str, object]:
+    """O que a CLI lê do registro, gravado em `cli/tickerlab/consultas.json` por `scripts.exportar_conteudo`.
+
+    A CLI é um pacote à parte, instalado no PC do analista, e não importa este módulo. Leva os mapas de tradução e,
+    por comando e opção, a faixa e as escolhas do parâmetro da ferramenta que faz o mesmo."""
+    opcoes: dict[str, dict[str, dict[str, object]]] = {}
+    for consulta in CONSULTAS:
+        for item in consulta.ferramentas:
+            for parametro in item.parametros:
+                if parametro.cli is None or not _tem_limite(parametro):
+                    continue
+                for comando in consulta.comandos:
+                    opcoes.setdefault(comando, {})[parametro.cli] = {
+                        "minimo": parametro.minimo,
+                        "maximo": parametro.maximo,
+                        "minimo_aberto": parametro.minimo_aberto,
+                        "valores": list(parametro.valores),
+                    }
+    return {"traducoes": TRADUCOES, "opcoes": opcoes}
+
+
+def json_da_cli() -> str:
+    """O texto de `cli/tickerlab/consultas.json`, na ordem do registro: a ajuda da CLI mostra as escolhas
+    nessa ordem (por isso sem ordenar as chaves)."""
+    return json.dumps(para_a_cli(), ensure_ascii=False, indent=2) + "\n"
+
+
+def _tem_limite(parametro: Parametro) -> bool:
+    return (
+        parametro.minimo is not None
+        or parametro.maximo is not None
+        or bool(parametro.valores)
+    )

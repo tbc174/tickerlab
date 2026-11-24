@@ -22,7 +22,14 @@ from pydantic import Field
 
 from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDaApi
-from conector_remoto.consultas_das_portas import FERRAMENTAS, ferramenta
+from conector_remoto.consultas_das_portas import (
+    FERRAMENTAS,
+    ORDENS_DA_BUSCA,
+    TIPOS_DA_ANVISA,
+    TIPOS_DE_EVENTO,
+    TIPOS_DE_VINCULO,
+    ferramenta,
+)
 from conector_remoto.enxugar import (
     LIMITE_MAXIMO_DA_ANALISE,
     LIMITE_MAXIMO_DAS_ENTREGAS,
@@ -76,25 +83,9 @@ _CODIGO_DA_API = re.compile(r"[a-z_]{1,40}")
 LIMITE_MAXIMO_DA_BUSCA = 100
 LIMITE_PADRAO_DA_BUSCA = 50
 ESPERA_PADRAO_S = 60
-# o nome em português (o mesmo da CLI) -> o tipo de evento da API
-TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
-# os registros na Anvisa (linha 860): o nome em português (o mesmo da CLI) -> o tipo da API; "todos" é a soma dos
-# tipos que a API serve (cosméticos, saneantes e produtos para saúde)
-TIPOS_DA_ANVISA = {
-    "cosmeticos": "cosmetics",
-    "produtos_saude": "health_products",
-    "saneantes": "sanitizers",
-    "todos": "products",
-}
+# os mapas do português para a API (TIPOS_DE_EVENTO, TIPOS_DA_ANVISA...) vêm da lista única das portas, os mesmos
+# da CLI
 REGISTROS_MAXIMOS_DA_ANVISA = 10_000_000  # o teto da API para o mínimo de registros
-ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}  # mais registros primeiro
-# o nome em português (o mesmo da CLI, linha 773) -> o tipo de vínculo da API
-TIPOS_DE_VINCULO = {
-    "controlada": "subsidiary_of",
-    "coligada": "affiliate_of",
-    "participada": "investee_of",
-    "auditor": "audits",
-}
 PROFUNDIDADE_MAXIMA = 3  # a da API (`src/api_externa/conjuntos/vinculos.py`)
 # os da API (`src/api_externa/conjuntos/compradores.py`)
 ANOS_MAXIMO_DOS_COMPRADORES = 10
