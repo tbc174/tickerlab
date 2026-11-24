@@ -1,5 +1,5 @@
 """Quando cada informe apareceu na CVM (`visto_em`), além do prazo (relatórios de cruzamentos 5 e 7,
-16/10/2026; plano `projeto-acoes/planos/2026-10-16-fidc-cda-visto-em.md`).
+16/10/2026; plano `operacao/planos/2026-10-16-fidc-cda-visto-em.md`).
 
 O `disponivel_em` do CDA (competência + 90 dias ou fim do sigilo) e do informe de FIDC (competência +
 45 dias) é a regra do prazo, não a data em que o dado apareceu: para quem entrega atrasado, a base

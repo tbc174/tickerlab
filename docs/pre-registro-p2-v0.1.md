@@ -6,7 +6,7 @@ SHA-256 deste texto fica em `trader/p2/preregistro.py` e no histórico. Daqui em
 no registro (como na M2). Nenhum resultado de estratégia foi calculado até esta data.
 
 Base: `pesquisa-2-plano.md`, `pesquisa-2-literatura.md`, `pesquisa-2-inventario-de-dados.md` e as
-decisões 0006, 0007, 0012, 0013 e 0014 (pasta privada `projeto-acoes/`).
+decisões 0006, 0007, 0012, 0013 e 0014 (pasta privada `operacao/`).
 
 > **Aprovada aqui não significa rentável.** Passar só autoriza o teste em conta demo (M3). Nenhuma
 > ordem real sem decisão escrita do Tiago (decisão 0007). Reprovar é um resultado válido.

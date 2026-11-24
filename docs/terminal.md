@@ -38,7 +38,7 @@ A **linha de status** é a única parte que a pessoa liga à mão, porque `~\.cl
 permissões e modelo): o comando imprime a chave a acrescentar,
 `"statusLine": {"type": "command", "command": "node <repositório>/scripts/terminal/statusline.js", "padding": 0}`.
 Ela vale para o app e para o terminal. A fila só aparece com a variável de ambiente `TICKERLAB_PASTA_PRIVADA` (a
-pasta que tem `projeto-acoes/fila.md`): o repositório é público, e nenhum caminho do PC entra nele.
+pasta que tem `operacao/fila.md`): o repositório é público, e nenhum caminho do PC entra nele.
 
 Desfazer: `--desfazer` (e `--desfazer --fonte`) apaga o fragment, o estilo e os atalhos (estes só se ainda forem os
 nossos); a chave `statusLine` sai do `settings.json` à mão.
@@ -156,7 +156,7 @@ para o perfil acima; é um complemento.
 
 O instalador acrescenta uma linha `Import-Module` ao perfil do PowerShell 7 (o do usuário, para todas as janelas),
 importa o módulo já na janela em que rodou e, com `-PastaPrivada`, grava a variável de ambiente
-`TICKERLAB_PASTA_PRIVADA` (a pasta que tem `projeto-acoes/fila.md`; a linha de status usa a mesma). No Windows, ele
+`TICKERLAB_PASTA_PRIVADA` (a pasta que tem `operacao/fila.md`; a linha de status usa a mesma). No Windows, ele
 também deixa o `tl` no Windows PowerShell 5.1 (`powershell.exe`, o azul que o Windows abre por padrão e que no menu
 Iniciar se chama "Windows PowerShell"; o 7 é só "PowerShell"): o perfil do 5.1 passa a carregar
 `scripts/terminal/ponte-windows-powershell.ps1`, um `tl` que roda cada comando num `pwsh` sem perfil, com os mesmos

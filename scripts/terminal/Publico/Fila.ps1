@@ -1,4 +1,4 @@
-# `tl fila`: quem trabalha agora e as próximas da fila única (projeto-acoes/fila.md, na pasta privada).
+# `tl fila`: quem trabalha agora e as próximas da fila única (operacao/fila.md, na pasta privada).
 
 function Show-TlFila {
     <# Lista "Trabalhando agora" e as primeiras linhas da fila; -Tudo mostra a fila inteira. #>

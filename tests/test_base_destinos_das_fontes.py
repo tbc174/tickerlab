@@ -50,7 +50,7 @@ def test_onde_nao_vaza_caminho_da_pasta_privada():
     for id_, destino in DESTINOS.items():
         assert "/" in destino.onde or not destino.onde, id_
         assert "\\" not in destino.onde and ":" not in destino.onde, id_
-        assert "projeto-acoes" not in destino.onde, id_
+        assert "operacao" not in destino.onde, id_
 
 
 def test_so_liga_diz_por_que():

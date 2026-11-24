@@ -1,6 +1,6 @@
 """Catálogo do arquivista: cada fonte que só mostra o "agora" e como achar os seus arquivos.
 
-Endereços conferidos em 14/10/2026. Licenças e motivos em `projeto-acoes/licencas-por-fonte.md`
+Endereços conferidos em 14/10/2026. Licenças e motivos em `operacao/licencas-por-fonte.md`
 (fora do repositório) e em `src/banco/coletas.py` (`LICENCAS`, `REVENDA`). Grupos: **diaria**
 (2h), **semanal** (domingo) e **mensal** (dia 5: CNPJ; dia 6: PGFN).
 """

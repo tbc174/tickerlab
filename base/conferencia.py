@@ -13,7 +13,7 @@ com as regras tiradas do dicionário (`base/dicionario.py`), sem escrever nada d
   em ordem (aconteceu ≤ público ≤ coletado, comparadas pelo dia; o fato anunciado antes de acontecer,
   `anuncia_o_futuro` no dicionário, pode ter `aconteceu_em` depois de `publico_em`).
 
-Medimos o pandera antes (`projeto-acoes/relatorios/relatorio-pandera-comparacao.md`, 16/10/2026): mesmo tempo, três
+Medimos o pandera antes (`operacao/relatorios/relatorio-pandera-comparacao.md`, 16/10/2026): mesmo tempo, três
 dependências a mais e as regras são simples; ficou o pandas puro. O resultado vai para o manifesto
 (`conferencia_do_contrato`), escrito por `base/parquet.py::gravar_tabela` quando o destino fica numa
 pasta que o dicionário conhece. Por enquanto é **aviso**: a montagem não para (ADR 0078; bloquear

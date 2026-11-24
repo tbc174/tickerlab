@@ -62,7 +62,7 @@ if ($PerfilAntigo) {
 }
 
 if ($PastaPrivada) {
-    $fila = Join-Path $PastaPrivada 'projeto-acoes/fila.md'
+    $fila = Join-Path $PastaPrivada 'operacao/fila.md'
     if (-not (Test-Path -LiteralPath $fila)) {
         Write-Host "  ! não achei $fila; confira a pasta antes de seguir." -ForegroundColor Yellow
     }

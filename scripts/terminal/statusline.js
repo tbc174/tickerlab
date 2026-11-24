@@ -10,7 +10,7 @@
 //          única (conversas em "Trabalhando agora" / teto)
 //
 // O repositório é público: nenhum caminho do PC aqui. A fila chega pela variável TICKERLAB_PASTA_PRIVADA
-// (a pasta que tem projeto-acoes/fila.md); sem ela, a linha só não mostra a fila. O CI do PR vem do `gh`,
+// (a pasta que tem operacao/fila.md); sem ela, a linha só não mostra a fila. O CI do PR vem do `gh`,
 // que é lento (~1 s) demais para rodar a cada atualização: um processo filho desprendido grava um cache em
 // disco e a linha lê o cache.
 const { execFileSync, spawn } = require("child_process");
@@ -34,7 +34,7 @@ const SEP = pinta("cinza", " · ");
 // Teto da fila única (ADR 0101): o mesmo de scripts/terminal/Privado/Configuracao.ps1 e do hook de início.
 const TETO_DE_CONVERSAS = 15;
 const VAGAS_DE_AVISO = 2; // com 2 vagas ou menos a fila fica amarela
-const ARQUIVO_DA_FILA = path.join("projeto-acoes", "fila.md");
+const ARQUIVO_DA_FILA = path.join("operacao", "fila.md");
 const TITULO_DOS_TRABALHANDO = "Trabalhando agora";
 const LARGURA_DO_NOME = 48;
 const PREFIXO_DA_COPIA = "analise-acoes"; // as cópias se chamam analise-acoes-<mesa>-<tarefa>
