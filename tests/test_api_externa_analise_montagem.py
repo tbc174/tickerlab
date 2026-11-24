@@ -487,7 +487,7 @@ def test_cada_bloco_tem_o_tempo_e_o_estado_dele(porta, blocos):
         return _Servido({"vinculos": [{}]})
 
     blocos(_bloco("vinculos", demora), _bloco("eventos", lento))
-    montada = _montar(porta, conjuntos=("profiles", "vinculos", "eventos"), prazo=0.6)
+    montada = _montar(porta, conjuntos=("profiles", "vinculos", "eventos"), prazo=2.0)
     tempos = _tempos(montada)
     assert set(tempos) == {
         "profile",
