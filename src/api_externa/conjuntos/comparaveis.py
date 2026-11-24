@@ -76,6 +76,9 @@ CAMPOS_DO_CADASTRO = ("cnpj", "empresa", "setor")
 NUMEROS = ("receita", "ebitda", "lucro_liquido", "patrimonio_liquido", "divida_liquida")
 RAZOES = ("margem_ebitda", "margem_liquida", "roe", "divida_liquida_sobre_ebitda")
 CAMPOS_DOS_NUMEROS = ("exercicio", *NUMEROS, *RAZOES)
+# as razões saem com 4 casas (0,1234 = 12,34%): a divisão inteira dava 16 casas que não dizem nada a mais
+# (ensaio de 19/11/2026); a conta e as medianas usam a razão inteira, e só a saída é arredondada
+CASAS_DAS_RAZOES = 4
 # contas nossas sobre as linhas da CVM (somas e divisões), não o dado como a fonte publicou
 DERIVADOS = frozenset({"grupo_de_setores", "ebitda", "divida_liquida", *RAZOES})
 # de que colunas da tabela sai cada campo que não é coluna dela (o teste de linhagem confere que existem)
@@ -311,6 +314,13 @@ def _exercicios_recentes(
     return exercicios
 
 
+def _na_saida(nome: str, valor: float | str) -> float | str:
+    """O valor como sai na resposta: a razão com `CASAS_DAS_RAZOES` casas, o resto como está."""
+    if nome in RAZOES and isinstance(valor, float):
+        return round(valor, CASAS_DAS_RAZOES)
+    return valor
+
+
 class LeitorDeComparaveis:
     """Lê os comparáveis de uma companhia aberta de uma porta para um pedido."""
 
@@ -415,7 +425,7 @@ class LeitorDeComparaveis:
         valores = {"exercicio": companhia.exercicio.isoformat(), **companhia.numeros}
         numeros = {
             nome: campo(
-                valores[nome],
+                _na_saida(nome, valores[nome]),
                 fonte=FONTE_DOS_NUMEROS,
                 publico_em=companhia.numeros_publicos_em,
                 visto_em=None,
@@ -447,7 +457,10 @@ class LeitorDeComparaveis:
             )
             mediana = statistics.median(p.numeros[nome] for p in com)
             medianas[nome] = campo(
-                mediana, fonte=FONTE_DOS_NUMEROS, publico_em=publico_em, visto_em=None
+                _na_saida(nome, mediana),
+                fonte=FONTE_DOS_NUMEROS,
+                publico_em=publico_em,
+                visto_em=None,
             )
         return medianas
 
