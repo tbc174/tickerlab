@@ -183,26 +183,47 @@ def _numero(valor: object) -> float | None:
     return float(valor)  # type: ignore[arg-type]
 
 
-def _so_a_posicao_mais_nova(ligacoes: pd.DataFrame) -> pd.DataFrame:
+TIPOS_DO_FRE = tuple(nome for nome, tipo in TIPOS.items() if tipo.fonte == FRE)
+_PAR = ["de", "para"]
+
+
+def _referencias_mais_novas(ligacoes: pd.DataFrame) -> pd.DataFrame:
+    """Por par de pontas, a data de referência do FRE mais novo entre as ligações do FRE (colunas de, para e
+    `_mais_nova`)."""
+    do_fre = ligacoes[ligacoes["fonte"] == TIPOS[TIPOS_DO_FRE[0]].fonte_na_rede]
+    return (
+        do_fre.groupby(_PAR, as_index=False)["aconteceu_em"]
+        .max()
+        .rename(columns={"aconteceu_em": "_mais_nova"})
+    )
+
+
+def _so_a_posicao_mais_nova(
+    ligacoes: pd.DataFrame, referencias: pd.DataFrame | None = None
+) -> pd.DataFrame:
     """Cada sociedade do FRE uma vez só por par de pontas: a posição do FRE mais novo já público no dia.
 
     A rede guarda um período por posição (tipo e participação), que acaba na data de referência do FRE seguinte.
     Essa data é o fim do exercício do formulário e costuma ficar depois do dia em que ele foi entregue; a porta
     trata o período como ainda valendo até ela, e a mesma sociedade sairia duas vezes (ensaio de 19/11/2026). O
     FRE mais novo já público substitui o anterior. Desempate: o mais recente a ficar público, depois o vínculo
-    mais forte (a ordem de `TIPOS`). A auditoria (FCA) não passa por aqui."""
+    mais forte (a ordem de `TIPOS`). A auditoria (FCA) não passa por aqui.
+
+    `referencias` (de `_referencias_mais_novas`) vem de uma leitura com todos os tipos do FRE quando o pedido
+    filtra alguns: a posição que virou de outro tipo no FRE mais novo também foi substituída e não sai."""
     do_fre = ligacoes["tipo"].map(lambda t: TIPOS[t].fonte == FRE)
     if not do_fre.any():
         return ligacoes
-    mais_novas = (
-        ligacoes[do_fre]
-        .sort_values(
-            ["aconteceu_em", "publico_em", "_ordem"],
-            ascending=[False, False, True],
-            kind="stable",
-        )
-        .drop_duplicates(["de", "para"])
-    )
+    candidatas = ligacoes[do_fre]
+    if referencias is not None:
+        com_a_mais_nova = candidatas.merge(referencias, on=_PAR, how="left")
+        atual = ~(com_a_mais_nova["_mais_nova"] > com_a_mais_nova["aconteceu_em"])
+        candidatas = candidatas[atual.to_numpy()]
+    mais_novas = candidatas.sort_values(
+        ["aconteceu_em", "publico_em", "_ordem"],
+        ascending=[False, False, True],
+        kind="stable",
+    ).drop_duplicates(["de", "para"])
     return pd.concat([mais_novas, ligacoes[~do_fre]])
 
 
@@ -379,6 +400,27 @@ class LeitorDeVinculos:
         }
         return VinculosServidos(corpo=corpo, fontes=fontes, linhas=len(lista))
 
+    def _referencias_do_fre(
+        self,
+        cnpj: str,
+        como_era_em: date,
+        profundidade: int,
+        servidos: dict[str, tuple[str, ...]],
+    ) -> pd.DataFrame | None:
+        """Com só parte dos tipos do FRE pedida, a referência mais nova de cada par lida com todos eles (uma
+        leitura a mais da rede, só para comparar: nada dela sai); com todos ou nenhum, None (a própria lista
+        basta)."""
+        pedidos_do_fre = {t for t in servidos if t in TIPOS_DO_FRE}
+        if not pedidos_do_fre or pedidos_do_fre == set(TIPOS_DO_FRE):
+            return None
+        rede = self.porta.rede(
+            cnpj,
+            tipos=list(TIPOS_DO_FRE),
+            como_era_em=como_era_em,
+            profundidade=profundidade,
+        )
+        return _referencias_mais_novas(rede.ligacoes)
+
     def _da_rede(
         self,
         cnpj: str,
@@ -413,7 +455,8 @@ class LeitorDeVinculos:
         ]
         ordem = list(TIPOS)
         ligacoes = _so_a_posicao_mais_nova(
-            ligacoes.assign(_ordem=ligacoes["tipo"].map(ordem.index))
+            ligacoes.assign(_ordem=ligacoes["tipo"].map(ordem.index)),
+            self._referencias_do_fre(cnpj, como_era_em, profundidade, servidos),
         )
         # o desempate vai até as colunas servidas: a página cortada sai igual em toda execução
         chave = [

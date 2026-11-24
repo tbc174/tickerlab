@@ -730,3 +730,19 @@ def test_os_limites_do_fre_explicam_a_data_de_referencia():
     texto = vinculos.LIMITES_DA_FONTE[FRE]
     assert "data de referência" in texto
     assert "posição mais nova" in texto
+
+
+@pytest.mark.parametrize("tipo_pedido", ["coligada_de", "participada_de"])
+def test_o_filtro_de_tipo_nao_traz_de_volta_a_posicao_substituida(
+    pasta_de_dois_fres, tipo_pedido
+):
+    # a ECOLIGADA virou controlada no FRE mais novo: pedir só coligadas não pode devolver os 30% de antes
+    # (achado P1 da revisão cruzada)
+    assert _do_fre(_ler(pasta_de_dois_fres, tipos=(tipo_pedido,))) == []
+
+
+def test_o_filtro_de_tipo_devolve_a_posicao_mais_nova_do_tipo(pasta_de_dois_fres):
+    assert _do_fre(_ler(pasta_de_dois_fres, tipos=("controlada_de",))) == [
+        ("subsidiary_of", "ECOLIGADA", 55.0, "2025-12-31"),
+        ("subsidiary_of", "EFILHA", 100.0, "2025-12-31"),
+    ]
