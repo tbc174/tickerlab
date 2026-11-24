@@ -3,7 +3,8 @@
 Cada uma é um ou mais pedidos à API pelo `ClienteDaApi`, com a chave do analista, e passa pela mesma
 tranca de saída das outras (`Pedidos.entregar`: texto limpo, sem pessoa, dentro do teto). Nenhuma abre rota
 nem direito novo: o que a chave não vê a API já nega, e a ferramenta some da lista de quem não tem o
-conjunto (`CONJUNTOS_DA_FERRAMENTA`, em `ferramentas.py`, onde ficam também os títulos).
+conjunto. O título, a descrição e os conjuntos de cada uma ficam na lista única das portas
+(`conector_remoto/consultas_das_portas.py`).
 """
 
 import asyncio
@@ -22,13 +23,12 @@ from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import ParametroDaApi, RespostaDaApi
 from conector_remoto.enxugar import LIMITE_MAXIMO_DAS_MUDANCAS, enxugar_o_que_mudou
 from conector_remoto.ferramentas import (
-    SO_LEITURA,
     STATUS_NAO_DISPONIVEL,
     STATUS_OK,
-    TITULOS_DAS_FERRAMENTAS,
     Cnpj,
     ComoEraEm,
     Pedidos,
+    anunciar,
     cnpj_do_pedido,
     mensagem_do_erro,
 )
@@ -55,22 +55,8 @@ def registrar(servidor: MCPServer, pedidos: Pedidos) -> None:
 def _registrar_credito(servidor: MCPServer, pedidos: Pedidos) -> None:
     """Os fatos de crédito da rota `/credit` (conjunto `credit`)."""
 
-    @servidor.tool(
-        title=TITULOS_DAS_FERRAMENTAS["credito_da_empresa"],
-        annotations=SO_LEITURA,
-        structured_output=False,
-    )
+    @anunciar(servidor, "credito_da_empresa")
     async def credito_da_empresa(cnpj: Cnpj, como_era_em: ComoEraEm = None) -> str:
-        """Os fatos de crédito de uma empresa pelo CNPJ, como eram no dia: a situação cadastral e a situação
-        especial na Receita, os fatos relevantes dos últimos 12 meses entregues à CVM e, para quem cede
-        recebíveis a fundo de direitos creditórios (FIDC), os fundos em que cede, a maior participação como
-        cedente, a carteira desses fundos e a maior inadimplência deles. Cada fato traz a fonte e o dia em que
-        ficou público (`published_at`); fato não observado não aparece, e isso não quer dizer que o evento não
-        aconteceu (os `limits` explicam). Serve para ler, antes da reunião, os sinais objetivos de crédito de
-        uma empresa.
-        Fonte: cadastro CNPJ da Receita Federal; documentos e informes de FIDC entregues à CVM.
-        Não traz: rating, insolvência, elegibilidade como cedente ou sacado, nota ou opinião de crédito, o SCR
-        individual do Banco Central, pessoa física, contato nem endereço."""
         numeros = cnpj_do_pedido(cnpj)
         return await pedidos.pedir(
             "credito_da_empresa", f"/credit/{numeros}", {"known_at": _dia(como_era_em)}
@@ -525,30 +511,13 @@ def _blocos_do_pedido(
 def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A diferença do cadastro, dos vínculos e dos eventos entre um dia passado e hoje."""
 
-    @servidor.tool(
-        title=TITULOS_DAS_FERRAMENTAS["o_que_mudou"],
-        annotations=SO_LEITURA,
-        structured_output=False,
-    )
+    @anunciar(servidor, "o_que_mudou")
     async def o_que_mudou(
         cnpj: Cnpj,
         desde: Desde,
         blocos: BlocosPedidos = None,
         limite: LimiteDeMudancas = None,
     ) -> str:
-        """O que mudou numa empresa desde um dia: compara o que a base sabia em `desde` com o que sabe hoje e
-        lista só a diferença, nos blocos que a chave vê: o cadastro na Receita (com as entregas de DFP e ITR),
-        os vínculos e os eventos. Cada item traz o antes e o depois (ou só o que entrou ou saiu), com a fonte e o
-        dia em que ficou público; republicar o mesmo valor não conta como mudança, e o lado antigo nunca traz
-        nada publicado depois de `desde`. `not_consulted` lista o bloco que a chave não vê ou a base não serve,
-        `before_not_available` diz que a base ainda não conhecia a empresa em `desde` e `partial`, que a página
-        veio cheia. Companhia aberta pode ter mais mudanças do que cabem numa resposta: o que passa do teto
-        fica de fora, com `truncated`, `changes_shown` e a contagem em `limits` (`changes_found` é a inteira), e
-        `blocos` e `limite` pedem o resto por partes. Serve para retomar uma empresa já analisada e ler, antes da
-        reunião, o que é novo.
-        Fonte: as dos blocos: cadastro CNPJ da Receita Federal; FRE, FCA e IPE da CVM.
-        Não traz: mudança que ainda não foi publicada na base, sócio pessoa física, contato nem endereço,
-        faturamento de empresa fechada, o motivo de cada mudança nem opinião sobre ela."""
         numeros = cnpj_do_pedido(cnpj)
         if desde >= _hoje():
             raise ToolError(
@@ -717,11 +686,7 @@ def _montar_a_comparacao(respostas: dict[str, RespostaDaApi]) -> dict[str, objec
 def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A ficha de 2 a 5 empresas lado a lado."""
 
-    @servidor.tool(
-        title=TITULOS_DAS_FERRAMENTAS["comparar_empresas"],
-        annotations=SO_LEITURA,
-        structured_output=False,
-    )
+    @anunciar(servidor, "comparar_empresas")
     async def comparar_empresas(
         cnpjs: Annotated[
             list[Annotated[str, Field(max_length=40)]],
@@ -733,14 +698,6 @@ def _registrar_comparar_empresas(servidor: MCPServer, pedidos: Pedidos) -> None:
             ),
         ],
     ) -> str:
-        """A ficha de 2 a 5 empresas lado a lado: uma linha por campo do cadastro na Receita (razão social,
-        situação, abertura, CNAE, natureza jurídica, Simples) e uma coluna por empresa, mais as entregas
-        de DFP e ITR à CVM de cada uma, cada valor com a fonte e o dia em que ficou público. O que a base não
-        tem de uma empresa vem como `não disponível`, nunca como zero. Serve para pôr lado a lado empresas que
-        o analista já escolheu, antes de uma reunião ou de uma lista curta.
-        Fonte: cadastro CNPJ da Receita Federal; entregas de DFP e ITR à CVM.
-        Não traz: porte, sócio pessoa física, contato nem endereço, faturamento de empresa fechada, nota nem
-        ordenação das empresas nem opinião sobre elas."""
         numeros = _cnpjs_do_pedido(cnpjs)
         acesso = acesso_do_pedido()
         conjuntos = acesso.conjuntos if acesso else frozenset()
@@ -902,11 +859,7 @@ def _explicacao(corpo: object, pergunta: str) -> dict[str, object]:
 def _registrar_de_onde_vem(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A explicação de um conjunto ou de um campo, tirada do catálogo da chave."""
 
-    @servidor.tool(
-        title=TITULOS_DAS_FERRAMENTAS["de_onde_vem"],
-        annotations=SO_LEITURA,
-        structured_output=False,
-    )
+    @anunciar(servidor, "de_onde_vem")
     async def de_onde_vem(
         sobre: Annotated[
             str,
@@ -916,13 +869,6 @@ def _registrar_de_onde_vem(servidor: MCPServer, pedidos: Pedidos) -> None:
             ),
         ],
     ) -> str:
-        """De onde vem um conjunto ou um campo que a sua chave vê: a fonte de cada campo, a licença e a frase
-        de atribuição dessa fonte, a finalidade do conjunto e a marca de piloto, com o aviso uma vez só e a
-        lista dos campos de piloto. Serve para saber de onde veio um número antes de citá-lo e o que pode ser
-        dito dele.
-        Fonte: o catálogo da API do TickerLab para a sua chave.
-        Não traz: dado de empresa, o significado de cada campo, o dia do retrato nem conjunto ou campo que a
-        sua chave não vê."""
         pergunta = _pergunta(sobre)
         catalogo = await pedidos.resposta("/catalog")
         if not catalogo.ok:
