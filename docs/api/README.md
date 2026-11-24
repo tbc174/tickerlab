@@ -227,6 +227,7 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 |---|---|---|
 | 400 | `api_key_in_url` | chave na URL |
 | 400 | `invalid_cnpj`, `invalid_known_at`, `invalid_assumed_return`, `invalid_batch`, `invalid_cursor`, `invalid_event_type` | CNPJ que não é CNPJ, `known_at` no futuro, retorno fora do plausível, lote vazio ou com mais de 100, cursor que não veio da página anterior, tipo de evento que não existe |
+| 400 | `known_at_before_first_snapshot` | em `/buyers`, `known_at` anterior ao primeiro retrato da Receita da base; a resposta traz também `first_known_at`, o primeiro dia que funciona (só para quem o contrato e o portão já liberam: para os outros segue `not_available`) |
 | 401 | `invalid_api_key` | chave ausente, errada ou revogada, ou organização suspensa |
 | 404 | `not_available` | nada a servir: CNPJ fora da base, pessoa, contrato ou direito que não cobre, tabela sem prontidão (a resposta não diz qual); com `Not Found`, a API externa está desligada |
 | 429 | `rate_limited`, `monthly_quota_exceeded` | limite do minuto ou quota do mês |

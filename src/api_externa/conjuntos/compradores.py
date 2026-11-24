@@ -58,6 +58,9 @@ from src.api_externa.porta_compartilhada import lembrar
 CONJUNTO = "buyers"
 RECEITA, FRE, REGISTRO = "rfb-cnpj", "cvm-hist-fre", "cvm-fidc-base"
 ESTABELECIMENTOS, EMPRESAS = "cnpj_estabelecimentos_pj", "cnpj_empresas_pj"
+# o código do erro do pedido anterior ao primeiro retrato da Receita, que vem com a primeira data que funciona
+# (`first_known_at`); letras e sublinhado, como os outros códigos, para o conector poder repeti-lo
+ANTES_DO_PRIMEIRO_RETRATO = "known_at_before_first_snapshot"
 ENTRADAS, CONTROLADAS, FUNDOS = (
     "entradas_de_socio_pj",
     "controladas",
@@ -252,6 +255,26 @@ def mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
     )
 
 
+def primeiro_dia_do_retrato(porta: Porta) -> date | None:
+    """O primeiro dia em que as duas tabelas sem pessoa do CNPJ já tinham retrato público (None se alguma está
+    vazia): antes dele `mes_do_retrato` não acha mês. Lido uma vez por base."""
+    return lembrar(
+        porta,
+        ("primeiro_dia_do_retrato_compradores",),
+        lambda: _ler_o_primeiro_dia_do_retrato(porta),
+    )
+
+
+def _ler_o_primeiro_dia_do_retrato(porta: Porta) -> date | None:
+    primeiros = []
+    for tabela in (ESTABELECIMENTOS, EMPRESAS):
+        achado = porta.con.execute(
+            f"SELECT min({PUBLICADO_EM}) FROM {_view(tabela)}"
+        ).fetchone()
+        primeiros.append(None if achado is None else _dia(achado[0]))
+    return None if None in primeiros else max(d for d in primeiros if d is not None)
+
+
 def _ler_o_mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
     meses = []
     for tabela in (ESTABELECIMENTOS, EMPRESAS):
@@ -321,6 +344,9 @@ class LeitorDeCompradores:
             tabela: next((t for t in opcoes if t in self.tabelas), opcoes[0])
             for tabela, opcoes in LEITURAS.items()
         }
+        # o primeiro dia com retrato, quando o último pedido caiu antes dele (só depois de o portão liberar o
+        # setor e algum sinal): a rota o diz no erro, a tela segue com o None (linha 990)
+        self.primeira_data: date | None = None
 
     def _libera(self, campos: tuple[tuple[str, str], ...]) -> bool:
         return all(self.permitido(fonte, nome, False) for fonte, nome in campos)
@@ -342,7 +368,9 @@ class LeitorDeCompradores:
         self, pedido: PedidoDeCompradores, como_era_em: date
     ) -> CompradoresServidos | None:
         """Os compradores do setor como eram no dia; None se o portão não libera o setor nem algum sinal, ou
-        se a porta não tem o retrato da Receita do dia. Setor sem comprador sai com a lista vazia."""
+        se a porta não tem o retrato da Receita do dia. Setor sem comprador sai com a lista vazia. Quando o dia é
+        anterior ao primeiro retrato, `primeira_data` diz o primeiro dia que funciona."""
+        self.primeira_data = None
         if (
             not self._libera(CAMPOS_DO_SETOR)
             or not {ESTABELECIMENTOS, EMPRESAS} <= self.tabelas
@@ -395,6 +423,9 @@ class LeitorDeCompradores:
     ) -> CompradoresServidos | None:
         mes = mes_do_retrato(self.porta, como_era_em)
         if mes is None:
+            primeira = primeiro_dia_do_retrato(self.porta)
+            if primeira is not None and como_era_em < primeira:
+                self.primeira_data = primeira
             return None
         nao_disponiveis = [s for s in SINAIS if s not in sinais]
         desde = (

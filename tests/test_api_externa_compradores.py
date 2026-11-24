@@ -7,12 +7,14 @@ depois de públicos) e contar como compra o que não é (fundador, mesmo grupo, 
 """
 
 import dataclasses
+import re
 import shutil
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import duckdb
 import pandas as pd
 import pytest
+import sqlalchemy as sa
 
 from base import prontidao
 from base import recorte_dos_compradores as reduzidas
@@ -22,6 +24,7 @@ from base.prontidao import Prontidao, Prova
 from src import portao_externo as portao
 from src.api_externa import rotas
 from src.api_externa.conjuntos import compradores
+from src.banco.modelo import consumo_da_api
 from tests import ajudantes_da_api_externa as aj
 
 AGORA = datetime(2026, 11, 10, 12, tzinfo=UTC)
@@ -380,8 +383,88 @@ def test_versao_nova_do_fre_sem_a_controlada_tira_o_sinal(cliente, cenario, past
     assert ABERTA in _raizes(_get(cliente, cenario, known_at="2026-10-15"))
 
 
-def test_sem_retrato_publico_na_data_e_404(cliente, cenario):
-    assert _get(cliente, cenario, known_at="2026-01-01").status_code == 404
+# ---------------------------------------------------------------- antes do primeiro retrato (linha 990)
+# o retrato da Receita mais antigo da base de teste ficou público em 30/09/2026 (o de setembro)
+PRIMEIRO_RETRATO = "2026-09-30"
+
+
+def _consumo(banco, org) -> list[tuple]:
+    with banco.connect() as conexao:
+        return conexao.execute(
+            sa.select(
+                consumo_da_api.c.conjunto,
+                consumo_da_api.c.pedidos,
+                consumo_da_api.c.negados,
+            ).where(consumo_da_api.c.organizacao_id == org.id)
+        ).all()
+
+
+def test_antes_do_primeiro_retrato_o_erro_diz_a_primeira_data(cliente, cenario):
+    resposta = _get(cliente, cenario, known_at="2026-01-01")
+    assert resposta.status_code == 400
+    assert resposta.json() == {
+        "detail": compradores.ANTES_DO_PRIMEIRO_RETRATO,
+        "first_known_at": PRIMEIRO_RETRATO,
+    }
+
+
+def test_o_codigo_cabe_no_formato_que_o_conector_le():
+    # o conector só repete o código que é letra minúscula e sublinhado, até 40 (`conector_remoto/ferramentas.py`)
+    assert re.fullmatch(r"[a-z_]{1,40}", compradores.ANTES_DO_PRIMEIRO_RETRATO)
+
+
+def test_a_primeira_data_que_o_erro_diz_funciona(cliente, cenario):
+    resposta = _get(cliente, cenario, known_at=PRIMEIRO_RETRATO)
+    assert resposta.status_code == 200
+    assert resposta.json()["known_at"] == PRIMEIRO_RETRATO
+    anterior = date.fromisoformat(PRIMEIRO_RETRATO) - timedelta(days=1)
+    assert _get(cliente, cenario, known_at=anterior.isoformat()).status_code == 400
+
+
+def test_o_pedido_antes_do_primeiro_retrato_conta_como_negado(cliente, cenario, banco):
+    _get(cliente, cenario, known_at="2026-01-01")
+    _ator, org, _chave = cenario
+    # negado: 0 pedidos e 1 negado, como o 404
+    assert _consumo(banco, org) == [(compradores.CONJUNTO, 0, 1)]
+
+
+def test_sem_contrato_a_data_cedo_demais_segue_404_sem_a_data(
+    banco, monkeypatch, pasta
+):
+    # a primeira data só sai para quem pode ver os compradores: a recusa do contrato não muda de cara
+    ator = aj.admin(banco)
+    org = aj.organizacao(banco, ator)
+    chave = aj.chave(banco, ator, org)
+    aj.contrato(banco, ator, org, conjunto="prospecting")
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*TABELAS))
+    cliente = aj.cliente_da_api(monkeypatch, AGORA)
+    resposta = cliente.get(
+        ROTA,
+        params={"cnae": SETOR, "known_at": "2026-01-01"},
+        headers=aj.bearer(chave.valor),
+    )
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_sem_as_tabelas_prontas_a_data_cedo_demais_segue_404(
+    cliente, cenario, monkeypatch
+):
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras())
+    resposta = _get(cliente, cenario, known_at="2026-01-01")
+    assert resposta.status_code == 404
+    assert resposta.json() == {"detail": "not_available"}
+
+
+def test_o_leitor_segue_devolvendo_none_e_guarda_a_primeira_data(pasta):
+    # a tela do app (`src/analista/setor.py`) lê pelo mesmo leitor: ele não levanta erro, só anota a data
+    with Porta(pasta) as porta:
+        leitor = compradores.LeitorDeCompradores(porta, lambda *_: True, 20)
+        pedido = compradores.pedido_dos_parametros(SETOR, None, None, None)
+        assert leitor.compradores(pedido, date(2026, 1, 1)) is None
+        assert leitor.primeira_data == date.fromisoformat(PRIMEIRO_RETRATO)
+        assert leitor.compradores(pedido, date(2026, 11, 10)) is not None
+        assert leitor.primeira_data is None
 
 
 # ---------------------------------------------------------------- recusas
