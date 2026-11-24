@@ -28,6 +28,7 @@ from mcp.types import CallToolResult, TextContent
 
 from conector_remoto.acesso import AcessoDoAnalista, conjuntos_do_catalogo
 from conector_remoto.cliente_api import ClienteDaApi
+from conector_remoto.consultas_das_portas import FERRAMENTAS
 from conector_remoto.ferramentas import TITULOS_DAS_FERRAMENTAS, registrar_ferramentas
 from conector_remoto.servidor import ServidorDoConector
 from src.chat.fontes import FonteUsada, fontes_do_resultado
@@ -36,24 +37,9 @@ from src.planos import LimitesDoChat
 
 registro = logging.getLogger(__name__)
 
-# As 12 do conector, escritas aqui de propósito: ferramenta nova no conector não entra no chat sem passar
-# por este arquivo (há teste que confere que a lista bate com a do conector).
-NOMES_DAS_FERRAMENTAS = frozenset(
-    {
-        "buscar_empresas",
-        "ficha_da_empresa",
-        "comparaveis",
-        "demonstracoes",
-        "setores",
-        "setor",
-        "o_que_posso_ver",
-        "novidades",
-        "eventos",
-        "vinculos",
-        "compradores_do_setor",
-        "fundo",
-    }
-)
+# As 12 do conector marcadas `no_chat_do_app` na lista única das portas: ferramenta nova no conector não
+# entra no chat sem que alguém a marque lá (há teste que confere a lista).
+NOMES_DAS_FERRAMENTAS = frozenset(f.nome for f in FERRAMENTAS if f.no_chat_do_app)
 URL_INTERNA = "http://chat.interno"
 # nunca chega a uma porta de chave: no app interno a porta é trocada pelo contexto da organização
 CHAVE_INTERNA = "chat-interno"
