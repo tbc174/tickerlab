@@ -38,5 +38,8 @@ Regra 7 do `AGENTS.md`: ferramenta diferente, mesmo objetivo.
 Primeira tarefa inteira feita por uma conversa aberta pelo Orca (esta, que escreveu este documento).
 
 - **Funcionou:** a conversa abriu na cópia certa, no ramo `docs/trabalhar-pelo-orca`; `git`, `gh` e os testes
-  rodaram pela cópia; `orca orchestration check --all` respondeu ("No messages.").
-- **Não testado:** `orca orchestration reply` (não havia mensagem para responder) e `orca orchestration send`.
+  rodaram pela cópia; `gh pr checks <número> --watch` acompanhou o CI até o fim (verde).
+- **Mensagens:** `orca orchestration check --all` respondeu "No messages." no começo e trouxe uma mensagem de teste
+  depois de abrir o PR; `orca orchestration reply --id <id> --body "..."` foi aceito (com o aviso de que a caixa é de
+  um terminal e a entrega não dura se ele fechar).
+- **Não testado:** `orca orchestration send`.
