@@ -15,10 +15,13 @@ from pathlib import Path
 
 import click
 import pytest
+import tomllib
 from mcp.server.mcpserver import MCPServer
+from tickerlab import comandos, consultas
 from tickerlab.comandos import principal
 
 from conector_remoto import consultas_das_portas as registro
+from conector_remoto import ferramentas as do_conector
 from conector_remoto import socios_e_donos
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.ferramentas import registrar_ferramentas
@@ -27,6 +30,8 @@ from src.api_externa.rotas import router
 from src.chat import ferramentas as do_chat
 
 FOTO = Path(__file__).parent / "arquivos" / "portas_foto.json"
+RAIZ = Path(__file__).parent.parent
+JSON_DA_CLI = RAIZ / "cli" / "tickerlab" / "consultas.json"
 GRAVAR_FOTO = "TICKERLAB_GRAVAR_FOTO"
 # divergências entre as portas que já se sabem, com o PR que as resolve (plano da frente 2, PR 5)
 DIVERGENCIAS_DA_CLI = {
@@ -237,3 +242,65 @@ def test_o_chat_do_app_le_a_lista_do_registro():
 def test_ferramenta_fora_do_registro_da_erro_claro():
     with pytest.raises(KeyError):
         registro.ferramenta("nao_existe")
+
+
+# ---------------------------------------------------------------- a CLI lê a cópia em JSON (PR 2)
+
+
+def test_o_json_da_cli_esta_em_dia():
+    assert JSON_DA_CLI.read_text(encoding="utf-8") == registro.json_da_cli(), (
+        "a lista das portas mudou: rode python -m scripts.exportar_conteudo e faça o commit do consultas.json"
+    )
+
+
+def test_o_pacote_da_cli_leva_o_json():
+    pacote = tomllib.loads(
+        (RAIZ / "cli" / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    assert JSON_DA_CLI.name in pacote["tool"]["setuptools"]["package-data"]["tickerlab"]
+
+
+@pytest.mark.parametrize("nome", sorted(registro.TRADUCOES))
+def test_a_cli_traduz_pelo_mapa_do_registro(nome):
+    assert consultas.traducao(nome) == registro.TRADUCOES[nome]
+    # a ordem também: a ajuda da CLI mostra as escolhas nela
+    assert list(consultas.traducao(nome)) == list(registro.TRADUCOES[nome])
+
+
+def _parametro(nome_da_ferramenta: str, nome: str) -> registro.Parametro:
+    return next(
+        p for p in registro.ferramenta(nome_da_ferramenta).parametros if p.nome == nome
+    )
+
+
+def test_conector_e_cli_usam_os_mesmos_mapas():
+    for nome in (
+        "TIPOS_DE_EVENTO",
+        "TIPOS_DA_ANVISA",
+        "ORDENS_DA_BUSCA",
+        "TIPOS_DE_VINCULO",
+    ):
+        assert (
+            getattr(comandos, nome)
+            == getattr(do_conector, nome)
+            == getattr(registro, nome)
+        ), nome
+    assert comandos.PORTES == registro.PORTES
+    assert (
+        _parametro("buscar_empresas", "situacao_cadastral").valores
+        == comandos.SITUACOES
+    )
+
+
+def test_as_escolhas_de_cada_parametro_saem_do_mapa_da_traducao():
+    """O parâmetro com escolhas em português aceita exatamente as chaves do mapa que o traduz para a API."""
+    assert _parametro("eventos", "tipos").valores == tuple(registro.TIPOS_DE_EVENTO)
+    assert _parametro("vinculos", "tipos").valores == tuple(registro.TIPOS_DE_VINCULO)
+    assert _parametro("buscar_empresas", "anvisa_tipo").valores == tuple(
+        registro.TIPOS_DA_ANVISA
+    )
+
+
+def test_opcao_fora_da_lista_da_erro_claro():
+    with pytest.raises(KeyError):
+        consultas.faixa_inteira("prospectar", "--nao-existe")

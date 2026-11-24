@@ -1,10 +1,11 @@
-"""Exporta o conteúdo do Python para o site em React (web/conteudo/*.json).
+"""Exporta o conteúdo do Python para o site em React (web/conteudo/*.json) e a lista das portas para a CLI.
 
 O Python continua a fonte da verdade (ADR 0048, item 3): módulos (`src/modulos.py`), páginas do app
 (`src/paginas.py`), planos (`src/planos.py`), marca e cores do site (`src/marca.py`), estilos do
 Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
 (`src/metodologia_das_notas.py`). O React lê estes JSON no build;
-há teste que acusa quando um deles fica velho.
+há teste que acusa quando um deles fica velho. A CLI (`cli/`, pacote à parte) leva a cópia da lista única das
+portas (`conector_remoto/consultas_das_portas.py`) em `cli/tickerlab/consultas.json`.
 
 Uso: python -m scripts.exportar_conteudo
 
@@ -22,6 +23,7 @@ import numpy as np
 from base import contrato, receita_codigos, vitrine
 from base.arquivo import registro
 from base.dicionario import TABELAS
+from conector_remoto.consultas_das_portas import json_da_cli
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
@@ -57,6 +59,7 @@ from src.estrategias import ESTRATEGIAS
 
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
+DESTINO_DA_CLI = RAIZ / "cli" / "tickerlab" / "consultas.json"
 # pontos do desenho do painel da página inicial (cinco anos: um ponto a cada ~4 semanas)
 PONTOS_DO_PAINEL = 64
 
@@ -482,7 +485,8 @@ def main() -> None:
     DESTINO.mkdir(parents=True, exist_ok=True)
     for nome, dados in conteudo().items():
         (DESTINO / f"{nome}.json").write_text(em_json(dados), encoding="utf-8")
-    print(f"Conteúdo exportado para {DESTINO}")
+    DESTINO_DA_CLI.write_text(json_da_cli(), encoding="utf-8")
+    print(f"Conteúdo exportado para {DESTINO} e {DESTINO_DA_CLI}")
 
 
 if __name__ == "__main__":
