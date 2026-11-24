@@ -10,7 +10,7 @@
 # A sala de dados (B-20) guarda os arquivos cifrados em dados_sala e a chave-mestra fica em
 # .env.sala, lido SÓ pela API. O app Streamlit também monta dados_sala, só para apagar os
 # arquivos quando a pessoa apaga a conta (Meus dados); sem a chave, ele não decifra nada.
-# Os dois são criados pelo projeto-acoes/infra/configurar-chave-da-sala.ps1 antes do primeiro "up":
+# Os dois são criados pelo operacao/infra/configurar-chave-da-sala.ps1 antes do primeiro "up":
 #   dados_sala do usuário 1000, permissão 700; .env.sala permissão 600 (fora do Git)
 services:
   tickerlab:
@@ -49,7 +49,7 @@ services:
   # API do TickerLab (FastAPI): /saude, o webhook do Stripe e a API de leitura v1, que serve o app
   # (as rotas só são montadas com TICKERLAB_API_V1=1 no .env; sem a variável respondem 404 e a API
   # não carrega o pandas). Usa a mesma imagem do app.
-  # Acesso de fora (o Stripe precisa alcançar o webhook): veja projeto-acoes/infra/stripe.md.
+  # Acesso de fora (o Stripe precisa alcançar o webhook): veja operacao/infra/stripe.md.
   tickerlab-api:
     image: tickerlab:local
     container_name: tickerlab-api

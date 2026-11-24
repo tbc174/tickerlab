@@ -66,5 +66,5 @@ Pastas fora do Git (no PC): `dados_mt5/`, `dados_b3/`, `dados_juros/` e **`pesqu
 ## Ao terminar uma rodada
 
 1. Ler o veredito no relatório (`pesquisa_m2/relatorios/`) e no registro.
-2. Anotar no histórico do projeto e no relatório da M2 (pasta privada `projeto-acoes/`).
+2. Anotar no histórico do projeto e no relatório da M2 (pasta privada `operacao/`).
 3. Fazer uma cópia do registro se a rodada foi importante.

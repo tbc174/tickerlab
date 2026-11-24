@@ -17,7 +17,7 @@ O que muda é a ferramenta ("Ferramenta diferente, mesmo objetivo", regra 7 do `
   conversa, `Mesa · tarefa`, o mesmo do `--name` com que ela abriu.
 - **Plano e andamento em texto:** uma linha dizendo o que vai fazer antes de começar e avisos curtos no caminho; o
   terminal não tem a lista de tarefas pinada.
-- **Conversa nova não se abre daqui sozinha.** Trabalho novo vira linha no fim de `projeto-acoes/fila.md`. Quando o Tiago
+- **Conversa nova não se abre daqui sozinha.** Trabalho novo vira linha no fim de `operacao/fila.md`. Quando o Tiago
   pede para abrir uma conversa, o comando (na pasta principal, depois de criar a cópia com
   `git worktree add ../analise-acoes-<mesa>-<tarefa> -b <tipo>/<tarefa> origin/main`) é
   `pwsh -File scripts\terminal\claude-tickerlab.ps1 -NovaAba -Pasta <cópia> -Nome "Mesa · tarefa" [-Prompt <passagem.md>]`.

@@ -206,8 +206,8 @@ def test_fila_cheia_fica_vermelha_e_quase_cheia_amarela(tmp_path):
 
 def test_saida_ponta_a_ponta_com_json_de_amostra(tmp_path):
     pasta_privada = tmp_path / "privada"
-    (pasta_privada / "projeto-acoes").mkdir(parents=True)
-    shutil.copyfile(EXEMPLO_DA_FILA, pasta_privada / "projeto-acoes" / "fila.md")
+    (pasta_privada / "operacao").mkdir(parents=True)
+    shutil.copyfile(EXEMPLO_DA_FILA, pasta_privada / "operacao" / "fila.md")
     copia = (
         tmp_path / "analise-acoes-dados-sidra-392"
     )  # sem git: sem ramo, sem PR e sem processo filho

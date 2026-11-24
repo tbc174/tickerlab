@@ -1,7 +1,7 @@
 """Gatilhos das notas de dado: da base para `noticias_fatos` e `noticias_numeros` (ADR 0093).
 
 Cada gatilho roda **uma vez por dia** sobre o que ficou público até o dia anterior e devolve só fatos que
-valem uma nota. As regras são as do plano (`projeto-acoes/planos/2026-10-17-noticias-de-dado.md`, seção 2) e
+valem uma nota. As regras são as do plano (`operacao/planos/2026-10-17-noticias-de-dado.md`, seção 2) e
 ficam públicas na metodologia:
 
 - **G1, resultado trimestral** (`fatos_de_resultado`): entrou um ITR ou DFP de companhia do universo e as

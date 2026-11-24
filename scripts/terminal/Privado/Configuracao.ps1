@@ -2,7 +2,7 @@
 # ambiente, para o repositório (que é público) não guardar caminho nenhum do PC de ninguém.
 
 $script:VARIAVEL_DA_PASTA_PRIVADA = 'TICKERLAB_PASTA_PRIVADA'
-$script:ARQUIVO_DA_FILA = 'projeto-acoes/fila.md'        # dentro da pasta privada
+$script:ARQUIVO_DA_FILA = 'operacao/fila.md'        # dentro da pasta privada
 $script:PREFIXO_DA_COPIA = 'analise-acoes'               # cópias: analise-acoes-<mesa>-<tarefa> (CLAUDE.md)
 $script:JANELA_DO_TERMINAL = 'tickerlab'                 # todas as abas das conversas numa só janela do wt
 $script:TETO_DE_CONVERSAS = 15                           # fila.md: conversas trabalhando ao mesmo tempo

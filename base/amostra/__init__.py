@@ -1,4 +1,4 @@
-"""Amostra integrada (ADR 0058; plano `projeto-acoes/planos/2026-10-16-amostra-integrada-v1.md`): o painel
+"""Amostra integrada (ADR 0058; plano `operacao/planos/2026-10-16-amostra-integrada-v1.md`): o painel
 companhia × fim de mês em que cada linha tem só o que se sabia da companhia naquele dia, de todas as
 fontes da base.
 
