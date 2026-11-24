@@ -12,56 +12,24 @@ Instale a skill copiando este arquivo para `.claude/skills/tickerlab/SKILL.md` n
 
 1. Rode sempre com `--json` e leia o envelope: cada campo é `{"value", "source", "published_at", ...}` e
    `sources` traz a licença e a frase de atribuição de cada fonte.
-2. Comandos:
-   - `tickerlab empresa <cnpj> --json`: o perfil: cadastro na Receita (situação, razão social, natureza
-     jurídica, Simples) e, de companhia aberta, cada DFP e ITR com prazo da CVM, atraso e situação da entrega;
-     leia `limits`. `--so-cadastro` traz só o cadastro.
-   - `tickerlab analise <cnpj> [--como-era AAAA-MM-DD] --json`: a análise completa numa resposta, com cada bloco
-     que a chave vê em `blocks` (cadastro, sócios PJ, vínculos, eventos, crédito, ativos, comparáveis), a frase
-     do topo, a linha do tempo, as leituras (`inferences`, dedução), `not_found`, `timed_out` e `not_included`
-     (bases que a análise não consulta); cada bloco é um pedido na quota.
-   - `tickerlab comparaveis <cnpj> [--como-era AAAA-MM-DD] --json`: as companhias abertas do mesmo grupo de
-     setores, cada uma com o último DFP (receita, EBITDA, lucro, dívida líquida e razões), e a mediana de cada
-     razão em `peer_medians`; leia `limits` antes de comparar múltiplos.
-   - `tickerlab compradores --cnae <5 ou 7 dígitos> [--uf SP] [--anos 3] [--limite 20] --json`: candidatos a
-     comprador do setor (entrou como sócio, fundo sócio, controla empresa do setor), só pessoa jurídica, com
-     sinais e evidências. Movimento passado não é intenção de compra: leia `limits`.
-   - `tickerlab vinculos <cnpj> [--profundidade 1-3] [--tipo controlada|coligada|participada|auditor] --json`: de quem a
-     empresa era controlada, coligada ou participada, quem ela controlava (com a participação no capital) e quem a
-     auditava, como era no dia; sem pessoa física. Leia `limits` e `truncated`.
-   - `tickerlab ativos <cnpj> [--como-era AAAA-MM-DD] --json`: os ativos por bloco (hoje, contratos de E&P da ANP), com fonte e data;
-     bloco sem dado vem com `found` falso e o que a base não cobre, em `not_covered`
-   - `tickerlab dossie <cnpj> [--como-era AAAA-MM-DD] --json`: perfil, eventos, vínculos e comparáveis numa saída
-     só (4 pedidos da quota); leia `gaps` (seção que faltou e por quê) e `limits`.
-   - `tickerlab eventos <cnpj> [--tipo documento|auditor] [--como-era AAAA-MM-DD] --json`: documentos entregues à
-     CVM (fato relevante, comunicado, assembleia...) e trocas de auditor, do mais novo ao mais velho, com o
-     endereço de cada documento; `next_cursor` preenchido: há mais, `--todas` busca todas. Leia `limits`: sem
-     evento não quer dizer que nada aconteceu.
-   - `tickerlab deck <cnpj>` ou `tickerlab deck --setor <chave>` `[--saida arq.pptx]`: grava o deck (.pptx) da empresa ou do setor, com fonte e data em cada tabela; diga onde o arquivo ficou.
-   - `tickerlab demonstracoes <cnpj> [--periodo AAAA-MM-DD] --json`: DFP e ITR (CVM), uma linha por conta e
-     período, com documento, versão e data de entrega.
-   - `tickerlab fundo <cnpj> [--retorno-suposto 0.12] --json`: cadastro, taxas e carteira do fundo (CVM).
-   - `tickerlab prospectar --cnae 3511 --uf SP [--porte demais] [--aberta-antes AAAA-MM-DD] --json`: empresas do
-     cadastro da Receita por atividade, lugar, porte e idade (pelo menos um filtro além da situação; os filtros
-     repetem, até 50 valores; `--municipio` é o nome ou o código da Receita, não o do IBGE; só empresa, sem sócio
-     nem contato). `--anvisa-tipo cosmeticos --anvisa-ativos-min 200` filtra pelo número de registros na Anvisa, um sinal
-     de porte (não é faturamento) com fonte e dia do retrato; `--ordenar-por anvisa` põe quem tem mais registros
-     primeiro. `next_cursor` preenchido: há mais páginas; `--todas` busca todas (um pedido por página).
-   - `tickerlab setor --json`: os setores disponíveis (não gasta a quota); `tickerlab setor <chave> --json`:
-     mercado, CR4, HHI e faixa do CADE por ano, a fatia de cada companhia aberta e as `notes` de método (leia
-     antes de concluir sobre concentração).
-   - `tickerlab novidades [--dias 1-30] --json`: as fontes que a pesquisa provou na semana (órgão, data, trecho
-     literal de até 300 caracteres, `excerpt_cut` quando é só um pedaço do trecho do bot (vazio não prova que é o original completo), endereço e sha256 do
-     original). Lista vazia: diga "nenhuma fonte nova provada na semana"; não invente.
-   - `tickerlab catalogo --json`: o que a chave pode pedir hoje (não gasta a quota).
-   - `tickerlab consumo --json`: pedidos do mês e limites (não gasta a quota).
-   - `--como-era AAAA-MM-DD` em qualquer comando de dado: o dado como era público naquele dia.
-   - `--planilha ARQUIVO.xlsx` (ou `.csv`) em qualquer comando de dado, quando a pessoa quiser a planilha para
-     o Excel: uma aba por tabela, com `fonte` e `publicado_em` em cada linha, e a aba `fontes`.
+2. Escolha o comando na lista de "Comandos" abaixo (`tickerlab <comando> --help` dá o detalhe). Nos comandos
+   que leem a base por CNPJ, setor ou filtro:
+   - `--como-era AAAA-MM-DD`: o dado como era público naquele dia.
+   - `--planilha ARQUIVO.xlsx` (ou `.csv`), quando a pessoa quiser a planilha para o Excel: uma aba por
+     tabela, com `fonte` e `publicado_em` em cada linha, e a aba `fontes`.
 3. Código de saída: 0 ok; 2 comando errado; 3 sem chave ou chave recusada (peça `tickerlab login` à pessoa,
    nunca a chave no chat); 4 limite ou quota; 5 nada disponível (veja `tickerlab catalogo`, não insista);
    6 pedido recusado; 7 API fora do ar; 1 erro inesperado. A mensagem sai em stderr.
 4. `truncated: true`: a lista foi cortada no limite do plano. Diga isso; não trate como completa.
+5. Antes de concluir, leia `limits` (o que a leitura não cobre) e, no dossiê, `gaps`: não achado não quer dizer
+   que não existe. `next_cursor` preenchido: há mais páginas (`--todas` busca todas, um pedido da quota por
+   página). Código 5 nas demonstrações: empresa fechada não tem DFP nem ITR, e a base não estima faturamento;
+   diga isso, não invente o número. O dossiê gasta 4 pedidos; `setor` sem chave, `catalogo` e `consumo` não
+   gastam a quota.
+
+## Comandos
+
+<!-- comandos: montados pela CLI a partir da ajuda de cada comando -->
 
 ## Travas
 
