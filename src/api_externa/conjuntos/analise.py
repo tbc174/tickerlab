@@ -20,6 +20,11 @@ tem também o cadastro).
 passa do prazo tem a consulta interrompida e sai em `nao_respondeu_a_tempo`. A conexão do banco (o portão) é usada
 por um bloco de cada vez e fecha para todos quando o prazo acaba.
 
+**Tempo por bloco:** cada pedido deixa no log uma linha por bloco (quando começou, quanto durou, quanto ficou no
+portão e na fila da trava dele, e se respondeu, atrasou ou quebrou) e uma do total, com um id do pedido feito na
+hora: só nomes de bloco e números, nunca o CNPJ nem o que o bloco leu. É o que diz, em produção, por que um bloco
+foi para `nao_respondeu_a_tempo` (ensaio de 19/11/2026).
+
 **Sem pessoa:** o cadastro exige empresa (MEI, empresário individual e o que não é empresa não saem, e a análise
 inteira volta None); o bloco de sócios só tem pessoa jurídica. O lugar do bloco de pessoas (frente 4) está marcado
 em `BLOCOS`.
@@ -28,6 +33,9 @@ em `BLOCOS`.
 import contextlib
 import contextvars
 import copy
+import dataclasses
+import logging
+import secrets
 import threading
 import time
 from collections.abc import Callable, Iterable, Iterator
@@ -57,14 +65,20 @@ from src.portao_externo import Finalidade
 
 __all__ = [
     "AINDA_NAO_TRAZ",
+    "ATRASADO",
     "BLOCOS",
     "CADASTROS",
+    "ERRO",
+    "RESPONDEU",
     "Analise",
     "Bloco",
+    "TempoDoBloco",
     "ainda_nao_traz",
     "blocos_abertos",
     "montar_analise",
 ]
+
+log = logging.getLogger(__name__)
 
 ANALISE = Finalidade.ANALISE.value
 CREDITO = Finalidade.CREDITO.value
@@ -273,15 +287,42 @@ class _Lido:
     linhas: int
 
 
+# o estado de cada bloco no log do tempo
+RESPONDEU, ATRASADO, ERRO = "respondeu", "atrasado", "erro"
+MS = 1000
+
+
+@dataclass(frozen=True)
+class TempoDoBloco:
+    """O tempo de um bloco no pedido, em milissegundos: quando começou (desde o início do pedido), quanto durou
+    (None: não acabou no prazo), quanto ficou dentro do portão (as perguntas ao banco) e esperando a trava dele."""
+
+    bloco: str  # o nome de fora, o mesmo de `timed_out`
+    estado: str
+    comecou_ms: int | None
+    duracao_ms: int | None
+    portao_ms: int
+    fila_ms: int
+
+    def linha(self, pedido: str) -> str:
+        return (
+            f"análise: pedido={pedido} bloco={self.bloco} estado={self.estado} "
+            f"comecou_ms={self.comecou_ms} duracao_ms={self.duracao_ms} "
+            f"portao_ms={self.portao_ms} fila_portao_ms={self.fila_ms}"
+        )
+
+
 @dataclass(frozen=True)
 class Analise:
     """A análise montada: o corpo, as fontes usadas, as linhas e, por (conjunto, finalidade) de cada bloco
-    lido, as linhas servidas e se o bloco foi negado (não saiu: vazio ou fora do prazo), para o consumo."""
+    lido, as linhas servidas e se o bloco foi negado (não saiu: vazio ou fora do prazo), para o consumo; e o
+    tempo de cada bloco (o que foi ao log)."""
 
     corpo: dict
     fontes: set[str]
     linhas: int
     consumo: dict[tuple[str, str], tuple[int, bool]] = field(default_factory=dict)
+    tempos: tuple[TempoDoBloco, ...] = ()
 
 
 # as linhas das tabelas do registro: abrem só o bloco delas, nunca o bloco que abre com qualquer linha do conjunto
@@ -314,6 +355,14 @@ def blocos_abertos(
     return cadastro, tuple(bloco for bloco in BLOCOS if _aberto(bloco, linhas))
 
 
+@dataclass
+class _NoPortao:
+    """Os segundos de um bloco dentro do portão e na fila da trava dele (somados sob a trava)."""
+
+    dentro: float = 0.0
+    fila: float = 0.0
+
+
 class _PortaoDividido:
     """Os portões dos blocos com uma trava só: a conexão do banco atende um bloco de cada vez e, quando o prazo
     acaba, fecha para todos (o bloco atrasado não toca mais na conexão, que o pedido já devolveu)."""
@@ -324,13 +373,27 @@ class _PortaoDividido:
         self.encerrado = False
         # o bloco que perguntou depois do fim leu com o portão fechado: sai como atrasado, não como "sem dado"
         self.barrados: set[str] = set()
+        self.no_portao: dict[str, _NoPortao] = {}
+
+    @contextlib.contextmanager
+    def _na_trava(self, bloco: Bloco) -> Iterator[None]:
+        """A trava, contando quanto o bloco esperou por ela e quanto ficou com ela."""
+        pediu = time.monotonic()
+        with self.trava:
+            entrou = time.monotonic()
+            try:
+                yield
+            finally:
+                conta = self.no_portao.setdefault(bloco.nome, _NoPortao())
+                conta.fila += entrou - pediu
+                conta.dentro += time.monotonic() - entrou
 
     def de(self, bloco: Bloco) -> Permitido:
-        with self.trava:
+        with self._na_trava(bloco):
             permitido = self.fabrica(bloco.conjunto, bloco.finalidade)
 
         def dentro(fonte: str, nome: str, derivado: bool) -> bool:
-            with self.trava:
+            with self._na_trava(bloco):
                 if self.encerrado:
                     self.barrados.add(bloco.nome)
                     return False
@@ -341,6 +404,60 @@ class _PortaoDividido:
     def encerrar(self) -> None:
         with self.trava:
             self.encerrado = True
+
+    def conta(self, bloco: Bloco) -> _NoPortao:
+        """Uma cópia do que o bloco passou no portão até agora."""
+        with self.trava:
+            conta = self.no_portao.get(bloco.nome, _NoPortao())
+            return _NoPortao(conta.dentro, conta.fila)
+
+
+@dataclass
+class _Relogio:
+    """O tempo de cada bloco de um pedido, para o log: um id do pedido feito na hora, só para juntar as linhas."""
+
+    inicio: float
+    pedido: str = field(default_factory=lambda: secrets.token_hex(4))
+    tempos: list[TempoDoBloco] = field(default_factory=list)
+
+    def _ms(self, segundos: float) -> int:
+        return round(segundos * MS)
+
+    def anotar(
+        self,
+        bloco: Bloco,
+        estado: str,
+        comecou: float | None,
+        acabou: float | None,
+        no_portao: _NoPortao,
+    ) -> None:
+        # o atrasado não tem duração: a consulta dele foi interrompida, e o fim que ela marca não é o do bloco
+        duracao = None
+        if estado != ATRASADO and comecou is not None and acabou is not None:
+            duracao = self._ms(acabou - comecou)
+        self.tempos.append(
+            TempoDoBloco(
+                para_fora(bloco.nome),
+                estado,
+                None if comecou is None else self._ms(comecou - self.inicio),
+                duracao,
+                self._ms(no_portao.dentro),
+                self._ms(no_portao.fila),
+            )
+        )
+
+    def registrar(self, prazo: float) -> None:
+        for tempo in self.tempos:
+            log.info(tempo.linha(self.pedido))
+        atrasados = sum(t.estado == ATRASADO for t in self.tempos)
+        log.info(
+            "análise: pedido=%s total_ms=%d prazo_ms=%d blocos=%d atrasados=%d",
+            self.pedido,
+            self._ms(time.monotonic() - self.inicio),
+            self._ms(prazo),
+            len(self.tempos),
+            atrasados,
+        )
 
 
 def _cursor(porta: Porta) -> Porta:
@@ -358,14 +475,19 @@ class _Tarefa:
     bloco: Bloco
     porta: Porta
     futuro: Future | None = None
+    # time.monotonic() do começo e do fim da leitura, gravados pela linha de execução do bloco
+    comecou: float | None = None
+    acabou: float | None = None
 
 
 def _ler_no_cursor(
     tarefa: _Tarefa, permitido: Permitido, linhas: int, cnpj: str, dia: date
 ) -> Servido | None:
+    tarefa.comecou = time.monotonic()
     try:
         return tarefa.bloco.ler(tarefa.porta, permitido, linhas, cnpj, dia)
     finally:
+        tarefa.acabou = time.monotonic()
         tarefa.porta.fechar()
 
 
@@ -377,8 +499,10 @@ def _ler_ao_mesmo_tempo(
     cnpj: str,
     dia: date,
     prazo: float,
+    relogio: _Relogio,
 ) -> tuple[dict[str, Servido | None], list[str]]:
-    """Cada bloco no próprio cursor e na própria linha de execução; o que passa do prazo é interrompido."""
+    """Cada bloco no próprio cursor e na própria linha de execução; o que passa do prazo é interrompido. O tempo
+    de cada um vai para o `relogio`, também quando um bloco quebra."""
     tarefas = [_Tarefa(bloco, _cursor(porta)) for bloco in blocos]
     executor = ThreadPoolExecutor(
         max_workers=max(len(tarefas), 1), thread_name_prefix="analise"
@@ -398,6 +522,14 @@ def _ler_ao_mesmo_tempo(
     terminadas = [
         t for t in tarefas if _terminou(t)
     ]  # todas antes do erro: as atrasadas são interrompidas
+    for tarefa in tarefas:
+        relogio.anotar(
+            tarefa.bloco,
+            _estado(tarefa, tarefa in terminadas, portoes),
+            tarefa.comecou,
+            tarefa.acabou,
+            portoes.conta(tarefa.bloco),
+        )
     for tarefa in terminadas:
         erro = tarefa.futuro.exception()  # type: ignore[union-attr]
         if erro is not None:
@@ -410,6 +542,12 @@ def _ler_ao_mesmo_tempo(
         else:
             atrasados.append(tarefa.bloco.nome)
     return lidos, atrasados
+
+
+def _estado(tarefa: _Tarefa, terminou: bool, portoes: _PortaoDividido) -> str:
+    if not terminou or tarefa.bloco.nome in portoes.barrados:
+        return ATRASADO
+    return ERRO if tarefa.futuro.exception() is not None else RESPONDEU  # type: ignore[union-attr]
 
 
 def _terminou(tarefa: _Tarefa) -> bool:
@@ -439,13 +577,55 @@ def montar_analise(
     """A análise do CNPJ como era em `dia`, com os blocos abertos para a chave; None se nenhum cadastro está
     aberto ou se o CNPJ não é de empresa (o mesmo `not_available` das rotas do bloco). `portao(conjunto,
     finalidade)` dá o portão de cada bloco; `liberadas`, as linhas que o portão libera hoje (o catálogo)."""
-    inicio = time.monotonic()
+    relogio = _Relogio(time.monotonic())
     cadastro, outros = blocos_abertos(liberadas)
     if cadastro is None:
         return None
+    try:
+        return _montar(
+            cnpj, dia, porta, cadastro, outros, portao, linhas, prazo, relogio
+        )
+    finally:
+        relogio.registrar(prazo)
+
+
+def _ler_o_cadastro(
+    cadastro: Bloco,
+    porta: Porta,
+    portoes: _PortaoDividido,
+    linhas: int,
+    cnpj: str,
+    dia: date,
+    relogio: _Relogio,
+) -> Servido | None:
+    comecou = time.monotonic()
+    estado = ERRO
+    try:
+        lido = cadastro.ler(porta, portoes.de(cadastro), linhas, cnpj, dia)
+        estado = RESPONDEU
+        return lido
+    finally:
+        relogio.anotar(
+            cadastro, estado, comecou, time.monotonic(), portoes.conta(cadastro)
+        )
+
+
+def _montar(
+    cnpj: str,
+    dia: date,
+    porta: Porta,
+    cadastro: Bloco,
+    outros: tuple[Bloco, ...],
+    portao: Callable[[str, str], Permitido],
+    linhas: int,
+    prazo: float,
+    relogio: _Relogio,
+) -> Analise:
     portoes = _PortaoDividido(portao)
     linhas_do_bloco = max(min(linhas, LINHAS_POR_BLOCO), 1)
-    lido = cadastro.ler(porta, portoes.de(cadastro), linhas_do_bloco, cnpj, dia)
+    lido = _ler_o_cadastro(
+        cadastro, porta, portoes, linhas_do_bloco, cnpj, dia, relogio
+    )
     consumo = {
         (cadastro.conjunto, cadastro.finalidade): (
             0 if lido is None else lido.linhas,
@@ -453,10 +633,10 @@ def montar_analise(
         )
     }
     if lido is None:
-        return Analise({}, set(), 0, consumo)
-    restante = prazo - (time.monotonic() - inicio)
+        return Analise({}, set(), 0, consumo, tuple(relogio.tempos))
+    restante = prazo - (time.monotonic() - relogio.inicio)
     lidos, atrasados = _ler_ao_mesmo_tempo(
-        porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante
+        porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante, relogio
     )
     for bloco in outros:
         servido = lidos.get(bloco.nome)
@@ -469,7 +649,8 @@ def montar_analise(
             linhas_antes + (0 if servido is None else servido.linhas),
             negado_antes and servido is None,
         )
-    return _Montagem(cadastro, lido, outros, lidos, atrasados, dia).analise(consumo)
+    montada = _Montagem(cadastro, lido, outros, lidos, atrasados, dia).analise(consumo)
+    return dataclasses.replace(montada, tempos=tuple(relogio.tempos))
 
 
 def _valor(envelope: object) -> object:
