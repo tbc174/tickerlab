@@ -99,7 +99,11 @@ LIMITES_DA_FONTE = {
         "Controle, coligação e participação vêm do FRE (só de companhia aberta, uma vez por ano, e só as "
         "sociedades com CNPJ). O tipo (controlada, coligada) e a participação no capital são os que a "
         "companhia escreveu no FRE, sem correção nossa: um número estranho (uma controlada com 0,12% do "
-        "capital) vem da própria entrega."
+        "capital) vem da própria entrega. Cada sociedade sai uma vez, com a posição mais nova: a do FRE mais "
+        "novo já público no dia. Nessas ligações, valid_from é a data de referência do primeiro FRE que mostra "
+        "essa posição (o fim do exercício do formulário), não o dia em que o controle começou; ela pode ser "
+        "depois do dia da consulta, porque o FRE sai antes de o exercício acabar, e o documento já era público "
+        "no dia (published_at do campo)."
     ),
     FCA: "A auditoria vem do FCA.",
 }
@@ -177,6 +181,29 @@ def _numero(valor: object) -> float | None:
     if valor is None or pd.isna(valor):  # type: ignore[arg-type]
         return None
     return float(valor)  # type: ignore[arg-type]
+
+
+def _so_a_posicao_mais_nova(ligacoes: pd.DataFrame) -> pd.DataFrame:
+    """Cada sociedade do FRE uma vez só por par de pontas: a posição do FRE mais novo já público no dia.
+
+    A rede guarda um período por posição (tipo e participação), que acaba na data de referência do FRE seguinte.
+    Essa data é o fim do exercício do formulário e costuma ficar depois do dia em que ele foi entregue; a porta
+    trata o período como ainda valendo até ela, e a mesma sociedade sairia duas vezes (ensaio de 19/11/2026). O
+    FRE mais novo já público substitui o anterior. Desempate: o mais recente a ficar público, depois o vínculo
+    mais forte (a ordem de `TIPOS`). A auditoria (FCA) não passa por aqui."""
+    do_fre = ligacoes["tipo"].map(lambda t: TIPOS[t].fonte == FRE)
+    if not do_fre.any():
+        return ligacoes
+    mais_novas = (
+        ligacoes[do_fre]
+        .sort_values(
+            ["aconteceu_em", "publico_em", "_ordem"],
+            ascending=[False, False, True],
+            kind="stable",
+        )
+        .drop_duplicates(["de", "para"])
+    )
+    return pd.concat([mais_novas, ligacoes[~do_fre]])
 
 
 @dataclass(frozen=True)
@@ -385,7 +412,9 @@ class LeitorDeVinculos:
             & ligacoes["para"].isin(list(pontas))
         ]
         ordem = list(TIPOS)
-        ligacoes = ligacoes.assign(_ordem=ligacoes["tipo"].map(ordem.index))
+        ligacoes = _so_a_posicao_mais_nova(
+            ligacoes.assign(_ordem=ligacoes["tipo"].map(ordem.index))
+        )
         # o desempate vai até as colunas servidas: a página cortada sai igual em toda execução
         chave = [
             "salto",

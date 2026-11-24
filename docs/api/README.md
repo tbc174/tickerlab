@@ -334,7 +334,7 @@ Os vínculos de uma empresa como eram no dia (`conjuntos/vinculos.py`), lidos da
   `cvm-hist-fca`).
 
 Cada vínculo traz `hops` (o salto a partir da empresa pedida), `kind` (o tipo, no envelope, com a fonte e o
-dia em que ficou público), `valid_from` e, quando acabou, `valid_until`. Cada ponta sai com `entity_id` (o id
+dia em que ficou público), `valid_from` e, quando acabou, `valid_until`. Nos vínculos do FRE, cada sociedade sai uma vez, com a posição do FRE mais novo já público no dia, e `valid_from` é a **data de referência** do primeiro FRE que mostra essa posição (o fim do exercício do formulário), não o dia em que o controle começou: ela pode ser depois do dia da consulta, porque o FRE é entregue antes de o exercício acabar, e o documento já era público no dia (`published_at` do campo). Cada ponta sai com `entity_id` (o id
 na rede), `cnpj_root`, `legal_name` e `registry_snapshot_month`: a razão social do retrato mensal mais novo
 da lista sem pessoa da Receita já público em `known_at` (`rfb-cnpj`, o mesmo de `GET /companies/{cnpj}`) e o mês
 desse retrato. É o nome daquele retrato, não necessariamente o que valia no dia exato; antes do primeiro retrato,
