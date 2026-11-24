@@ -144,20 +144,22 @@ def _dfp(
     ]
 
 
-def _demonstracoes() -> pd.DataFrame:
-    linhas = _dfp(ALFA, 2024, NUMEROS_DA_ALFA, "2025-03-20")
+def _demonstracoes(
+    numeros_do_par=_numeros_do_par, numeros_da_alfa=NUMEROS_DA_ALFA
+) -> pd.DataFrame:
+    linhas = _dfp(ALFA, 2024, numeros_da_alfa, "2025-03-20")
     for i, par in enumerate(PARES, start=1):
         if i == 9:
             # o par 9 entregou o DFP de 2024 depois de DIA: em DIA vale o de 2023 (números do par 1)
-            linhas += _dfp(par, 2023, _numeros_do_par(1), "2024-03-20")
-            linhas += _dfp(par, 2024, _numeros_do_par(9), "2025-08-01")
+            linhas += _dfp(par, 2023, numeros_do_par(1), "2024-03-20")
+            linhas += _dfp(par, 2024, numeros_do_par(9), "2025-08-01")
         else:
-            linhas += _dfp(par, 2024, _numeros_do_par(i), "2025-03-20")
-    linhas += _dfp(BANCO, 2024, _numeros_do_par(3), "2025-03-20")
-    linhas += _dfp(FCA_DEPOIS, 2024, _numeros_do_par(3), "2025-03-20")
-    linhas += _dfp(SEM_DFP_RECENTE, 2021, _numeros_do_par(3), "2022-03-20")
-    linhas += _dfp(TRATADA_COMO_PESSOA, 2024, _numeros_do_par(3), "2025-03-20")
-    linhas += _dfp(FORA_DA_REDE, 2024, _numeros_do_par(3), "2025-03-20")
+            linhas += _dfp(par, 2024, numeros_do_par(i), "2025-03-20")
+    linhas += _dfp(BANCO, 2024, numeros_do_par(3), "2025-03-20")
+    linhas += _dfp(FCA_DEPOIS, 2024, numeros_do_par(3), "2025-03-20")
+    linhas += _dfp(SEM_DFP_RECENTE, 2021, numeros_do_par(3), "2022-03-20")
+    linhas += _dfp(TRATADA_COMO_PESSOA, 2024, numeros_do_par(3), "2025-03-20")
+    linhas += _dfp(FORA_DA_REDE, 2024, numeros_do_par(3), "2025-03-20")
     tabela = pd.DataFrame(linhas)[list(COLUNAS_DA_BASE)]
     for coluna in ("inicio", "fim", "referencia", "divulgado_em", "ate"):
         tabela[coluna] = pd.to_datetime(tabela[coluna])
@@ -519,3 +521,62 @@ def test_os_limites_avisam_que_o_grupo_junta_setores_e_apontam_o_setor_de_cada_p
     assert "`sector`" in aviso and "grupo inteiro" in aviso
     assert NOMES_DE_FORA["setor"] == "sector"  # o nome que o aviso cita é o de fora
     assert corpo["limites"].index(aviso) < comparaveis.GERAIS_ANTES_DOS_NUMEROS
+
+
+# --- as razões saem com 4 casas (ensaio de 19/11/2026, linha 998 da fila) ------------------------------------
+def _numeros_quebrados(i: int) -> dict[str, float]:
+    """Números do par i cujas razões são dízimas (1/3, 1/7...), como as que saíram com 16 casas no ensaio."""
+    return {**_numeros_do_par(i), "receita": 300.0 * i, "da": 13.0 * i, "pl": 70.0 * i}
+
+
+@pytest.fixture
+def pasta_quebrada(tmp_path):
+    numeros_da_alfa = {**NUMEROS_DA_ALFA, "receita": 3000.0, "pl": 700.0}
+    return gravar_base(
+        tmp_path / "base",
+        demonstracoes=_demonstracoes(_numeros_quebrados, numeros_da_alfa),
+    )
+
+
+def _razoes_servidas(corpo: dict) -> list[float]:
+    linhas = [corpo["empresa_pedida"], *corpo["pares"], corpo["medianas_dos_pares"]]
+    return [
+        linha[nome]["valor"]
+        for linha in linhas
+        for nome in comparaveis.RAZOES
+        if nome in linha
+    ]
+
+
+def test_as_razoes_saem_com_4_casas_decimais(pasta_quebrada):
+    corpo = _corpo(pasta_quebrada)
+    razoes = _razoes_servidas(corpo)
+    assert len(razoes) > 4 * len(comparaveis.RAZOES)
+    assert all(valor == round(valor, comparaveis.CASAS_DAS_RAZOES) for valor in razoes)
+    assert comparaveis.CASAS_DAS_RAZOES == 4
+    assert corpo["empresa_pedida"]["margem_liquida"]["valor"] == 0.0333  # 100 / 3000
+    assert corpo["empresa_pedida"]["roe"]["valor"] == 0.1429  # 100 / 700
+
+
+def test_os_numeros_em_reais_nao_sao_arredondados(pasta_quebrada):
+    pedida = _valores(_corpo(pasta_quebrada)["empresa_pedida"])
+    assert pedida["receita"] == 3000.0
+    assert pedida["patrimonio_liquido"] == 700.0
+
+
+def test_a_mediana_sai_da_razao_inteira_dos_pares_com_4_casas(pasta_quebrada):
+    corpo = _corpo(pasta_quebrada)
+    indices = [PARES.index(cnpj) + 1 for cnpj in _pares(corpo)]
+    # o par 9 vale pelo DFP de 2023, com os números do par 1
+    margens = [(1 if i == 9 else i) ** 2 / 300 for i in indices]
+    esperada = round(statistics.median(margens), 4)
+    assert corpo["medianas_dos_pares"]["margem_liquida"]["valor"] == esperada
+
+
+def test_o_numero_guardado_nao_muda():
+    # o arredondamento é só da saída: a conta de `numeros_do_exercicio` fica com a razão inteira
+    linhas = pd.DataFrame(
+        _dfp(ALFA, 2024, {**NUMEROS_DA_ALFA, "receita": 3000.0}, "2025-03-20")
+    )
+    numeros = comparaveis.numeros_do_exercicio(linhas, ebitda=250.0)
+    assert numeros["margem_liquida"] == 100.0 / 3000.0
