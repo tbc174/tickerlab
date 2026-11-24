@@ -23,4 +23,4 @@ tickerlab = "tickerlab.comandos:principal"
 packages = ["tickerlab"]
 
 [tool.setuptools.package-data]
-tickerlab = ["instrucoes/*.md"]
+tickerlab = ["instrucoes/*.md", "consultas.json"]

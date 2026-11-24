@@ -33,6 +33,7 @@ from tickerlab.configuracao import (
     endereco_da_api,
     gravar_chave,
 )
+from tickerlab.consultas import faixa_inteira, maximo, traducao, valores
 
 # pontuação que o CNPJ costuma trazer; o resto (letras do CNPJ alfanumérico, números) fica
 PONTUACAO_DO_CNPJ = re.compile(r"[.\-/\s]")
@@ -55,36 +56,23 @@ FORMATO_DA_NATUREZA = re.compile(
     r"\d{1,4}"
 )  # a natureza da Receita (2054) ou o começo dela (2)
 PONTUACAO_DE_CODIGO = re.compile(r"[.\-/\s]")
-SITUACOES = ("ativa", "baixada", "inapta", "suspensa", "nula")
+SITUACOES = valores("prospectar", "--situacao")
 VALORES_MAXIMOS = 50  # por filtro, o mesmo limite da API
-# o porte como a Receita o escreve, em português na CLI e em inglês na API
-PORTES = {
-    "micro": "micro",
-    "pequena": "small",
-    "demais": "other",
-    "nao_informado": "not_informed",
-}
-POR_PAGINA_MAXIMO = 100
-# os registros na Anvisa (linha 860): o tipo em português na CLI e em inglês na API; "todos" é a soma dos tipos
-# que a API serve (cosméticos, saneantes e produtos para saúde)
-TIPOS_DA_ANVISA = {
-    "cosmeticos": "cosmetics",
-    "produtos_saude": "health_products",
-    "saneantes": "sanitizers",
-    "todos": "products",
-}
-REGISTROS_MAXIMOS = 10_000_000  # o teto da API para o mínimo de registros
-# a ordem da busca: só a de registros na Anvisa, do que tem mais para o que tem menos (o "-" é decrescente)
-ORDENS_DA_BUSCA = {"anvisa": "-anvisa"}
-# os tipos de evento como a CLI os recebe e como a API os chama
-TIPOS_DE_EVENTO = {"documento": "ipe_filing", "auditor": "auditor_change"}
-# os tipos de vínculo como a CLI os recebe e como a API os chama
-TIPOS_DE_VINCULO = {
-    "controlada": "subsidiary_of",
-    "coligada": "affiliate_of",
-    "participada": "investee_of",
-    "auditor": "audits",
-}
+# Os mapas do português (o que o analista escreve) para a API e as faixas das opções vêm da lista única das
+# portas (`consultas.json`), os mesmos do conector.
+PORTES = traducao("portes")  # o porte como a Receita o escreve
+POR_PAGINA_MAXIMO = maximo("prospectar", "--por-pagina")
+TIPOS_DA_ANVISA = traducao(
+    "tipos_da_anvisa"
+)  # "todos" é a soma dos tipos que a API serve
+REGISTROS_MAXIMOS = maximo(
+    "prospectar", "--anvisa-ativos-min"
+)  # o teto da API para o mínimo de registros
+ORDENS_DA_BUSCA = traducao(
+    "ordens_da_busca"
+)  # só a de registros na Anvisa, do que tem mais para o que tem menos
+TIPOS_DE_EVENTO = traducao("tipos_de_evento")
+TIPOS_DE_VINCULO = traducao("tipos_de_vinculo")
 
 Formatar = Callable[[dict], str]
 
@@ -450,14 +438,14 @@ def _um_codigo(
 )
 @click.option(
     "--anos",
-    type=click.IntRange(1, 10),
+    type=faixa_inteira("compradores", "--anos"),
     default=3,
     show_default=True,
     help="Quantos anos para trás olhar os movimentos (1 a 10).",
 )
 @click.option(
     "--limite",
-    type=click.IntRange(1, 50),
+    type=faixa_inteira("compradores", "--limite"),
     default=20,
     show_default=True,
     help="Quantos compradores trazer (1 a 50; o plano pode cortar antes).",
@@ -489,7 +477,7 @@ def compradores(
 @principal.command()
 @click.option(
     "--dias",
-    type=click.IntRange(1, 30),
+    type=faixa_inteira("novidades", "--dias"),
     default=7,
     show_default=True,
     help="Quantos dias para trás olhar (1 a 30).",
@@ -511,7 +499,7 @@ def novidades(contexto: click.Context, dias: int, como_json: bool) -> None:
 @opcao_como_era
 @click.option(
     "--profundidade",
-    type=click.IntRange(1, 3),
+    type=faixa_inteira("vinculos", "--profundidade"),
     default=1,
     show_default=True,
     help="Quantos saltos a partir da empresa (1 a 3): os vínculos dos vínculos.",
@@ -828,12 +816,12 @@ def setor(
 )
 @click.option(
     "--anvisa-ativos-min",
-    type=click.IntRange(1, REGISTROS_MAXIMOS),
+    type=faixa_inteira("prospectar", "--anvisa-ativos-min"),
     help="Só empresas com pelo menos este número de registros ativos na Anvisa. É sinal de porte, não faturamento.",
 )
 @click.option(
     "--anvisa-total-min",
-    type=click.IntRange(1, REGISTROS_MAXIMOS),
+    type=faixa_inteira("prospectar", "--anvisa-total-min"),
     help="Só empresas com pelo menos este número de registros na Anvisa, ativos ou não.",
 )
 @click.option(
@@ -843,7 +831,7 @@ def setor(
 )
 @click.option(
     "--por-pagina",
-    type=click.IntRange(1, POR_PAGINA_MAXIMO),
+    type=faixa_inteira("prospectar", "--por-pagina"),
     help=f"Empresas por página (até {POR_PAGINA_MAXIMO}; sem ela, o padrão da API).",
 )
 @click.option(

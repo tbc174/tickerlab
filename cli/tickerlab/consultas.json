@@ -1,0 +1,145 @@
+{
+  "traducoes": {
+    "tipos_de_evento": {
+      "documento": "ipe_filing",
+      "auditor": "auditor_change"
+    },
+    "tipos_da_anvisa": {
+      "cosmeticos": "cosmetics",
+      "produtos_saude": "health_products",
+      "saneantes": "sanitizers",
+      "todos": "products"
+    },
+    "ordens_da_busca": {
+      "anvisa": "-anvisa"
+    },
+    "tipos_de_vinculo": {
+      "controlada": "subsidiary_of",
+      "coligada": "affiliate_of",
+      "participada": "investee_of",
+      "auditor": "audits"
+    },
+    "portes": {
+      "micro": "micro",
+      "pequena": "small",
+      "demais": "other",
+      "nao_informado": "not_informed"
+    }
+  },
+  "opcoes": {
+    "prospectar": {
+      "--porte": {
+        "minimo": null,
+        "maximo": null,
+        "minimo_aberto": false,
+        "valores": [
+          "micro",
+          "small",
+          "other",
+          "not_informed"
+        ]
+      },
+      "--situacao": {
+        "minimo": null,
+        "maximo": null,
+        "minimo_aberto": false,
+        "valores": [
+          "ativa",
+          "baixada",
+          "inapta",
+          "suspensa",
+          "nula"
+        ]
+      },
+      "--anvisa-tipo": {
+        "minimo": null,
+        "maximo": null,
+        "minimo_aberto": false,
+        "valores": [
+          "cosmeticos",
+          "produtos_saude",
+          "saneantes",
+          "todos"
+        ]
+      },
+      "--anvisa-ativos-min": {
+        "minimo": 1,
+        "maximo": 10000000,
+        "minimo_aberto": false,
+        "valores": []
+      },
+      "--anvisa-total-min": {
+        "minimo": 1,
+        "maximo": 10000000,
+        "minimo_aberto": false,
+        "valores": []
+      },
+      "--por-pagina": {
+        "minimo": 1,
+        "maximo": 100,
+        "minimo_aberto": false,
+        "valores": []
+      }
+    },
+    "eventos": {
+      "--tipo": {
+        "minimo": null,
+        "maximo": null,
+        "minimo_aberto": false,
+        "valores": [
+          "documento",
+          "auditor"
+        ]
+      }
+    },
+    "vinculos": {
+      "--profundidade": {
+        "minimo": 1,
+        "maximo": 3,
+        "minimo_aberto": false,
+        "valores": []
+      },
+      "--tipo": {
+        "minimo": null,
+        "maximo": null,
+        "minimo_aberto": false,
+        "valores": [
+          "controlada",
+          "coligada",
+          "participada",
+          "auditor"
+        ]
+      }
+    },
+    "compradores": {
+      "--anos": {
+        "minimo": 1,
+        "maximo": 10,
+        "minimo_aberto": false,
+        "valores": []
+      },
+      "--limite": {
+        "minimo": 1,
+        "maximo": 50,
+        "minimo_aberto": false,
+        "valores": []
+      }
+    },
+    "fundo": {
+      "--retorno-suposto": {
+        "minimo": -1,
+        "maximo": 1,
+        "minimo_aberto": true,
+        "valores": []
+      }
+    },
+    "novidades": {
+      "--dias": {
+        "minimo": 1,
+        "maximo": 30,
+        "minimo_aberto": false,
+        "valores": []
+      }
+    }
+  }
+}
