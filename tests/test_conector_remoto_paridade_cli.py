@@ -3,8 +3,8 @@ na IA deles ou na minha pra fazer pesquisas específicas e mais complexas com a 
 
 Todo comando de leitura da CLI tem uma ferramenta no conector, e a ferramenta faz à API externa os mesmos
 pedidos que o comando faz: mesma rota e mesmos parâmetros, portanto a mesma regra. Comando novo na CLI
-sem ferramenta faz este teste falhar, a menos que entre em `SEM_FERRAMENTA` com o motivo escrito; ferramenta
-sem comando, só em `SO_NO_CONECTOR`, também com o motivo.
+sem ferramenta faz este teste falhar, a menos que a lista única das portas (`conector_remoto/consultas_das_portas.py`) diga
+por que o conector não o oferece; ferramenta sem comando, só com o motivo da CLI escrito lá.
 """
 
 import httpx
@@ -13,41 +13,29 @@ from click.testing import CliRunner
 from tickerlab import comandos, configuracao
 
 from conector_remoto import ferramentas
+from conector_remoto.consultas_das_portas import CONSULTAS
 from tests import ajudantes_do_conector as aj
 
-# comando da CLI -> as ferramentas do conector que o cobrem
+# comando da CLI -> as ferramentas do conector que o cobrem; sem ferramenta ou sem comando, o motivo escrito.
+# Tudo sai da lista única das portas (`conector_remoto/consultas_das_portas.py`): é lá que se acrescenta.
 FERRAMENTAS_DO_COMANDO: dict[str, tuple[str, ...]] = {
-    "prospectar": ("buscar_empresas",),
-    "empresa": ("ficha_da_empresa",),
-    "analise": ("analise_completa",),
-    "comparaveis": ("comparaveis",),
-    "demonstracoes": ("demonstracoes",),
-    "eventos": ("eventos",),
-    "vinculos": ("vinculos",),
-    "ativos": ("ativos",),
-    "compradores": ("compradores_do_setor",),
-    "fundo": ("fundo",),
-    "novidades": ("novidades",),
-    "setor": ("setores", "setor"),  # sem chave, a lista; com chave, o setor
-    "catalogo": ("o_que_posso_ver",),
-    "consumo": ("o_que_posso_ver",),
+    comando: tuple(f.nome for f in consulta.ferramentas)
+    for consulta in CONSULTAS
+    if consulta.ferramentas
+    for comando in consulta.comandos
 }
-# comando sem ferramenta, com o motivo: nenhum lê a base
 SEM_FERRAMENTA: dict[str, str] = {
-    "login": "guarda a chave no PC; no conector a chave entra pela página /autorizar do OAuth",
-    "logout": "apaga a chave guardada no PC; no conector, quem corta o acesso é revogar a chave",
-    "dossie": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
-    "deck": "grava um arquivo .pptx no PC; o conector devolve texto, não arquivo (Diretoria 12/11, linha 782)",
-    "instrucoes": "ensina a IA do PC a chamar a CLI; no conector, a descrição de cada ferramenta faz isso",
+    comando: consulta.fora_de_uma_porta["conector"]
+    for consulta in CONSULTAS
+    if not consulta.ferramentas
+    for comando in consulta.comandos
 }
-
 # ferramenta sem comando na CLI, com o motivo: quando o comando entrar, vira caso de paridade
 SO_NO_CONECTOR: dict[str, str] = {
-    "socios_e_donos": "pessoa física fica fora da CLI (AGENTS.md, Exceção; ADR 0128, Emenda 4)",
-    "credito_da_empresa": "linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)",
-    "o_que_mudou": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
-    "comparar_empresas": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
-    "de_onde_vem": "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)",
+    f.nome: consulta.fora_de_uma_porta["cli"]
+    for consulta in CONSULTAS
+    if not consulta.comandos
+    for f in consulta.ferramentas
 }
 
 ENDERECO = "https://api.exemplo.test"
@@ -178,7 +166,7 @@ def test_todo_comando_da_cli_tem_ferramenta_ou_motivo_escrito():
     sem_par = da_cli - set(FERRAMENTAS_DO_COMANDO) - set(SEM_FERRAMENTA)
     assert not sem_par, (
         f"comando novo na CLI sem ferramenta no conector: {sorted(sem_par)}. Crie a ferramenta "
-        "(conector_remoto/ferramentas.py) ou ponha o comando em SEM_FERRAMENTA com o motivo."
+        "(conector_remoto/ferramentas.py) ou escreva no registro por que o conector não o oferece."
     )
     assert set(FERRAMENTAS_DO_COMANDO) | set(SEM_FERRAMENTA) == da_cli  # nada sobrando
     assert all(motivo.strip() for motivo in SEM_FERRAMENTA.values())
