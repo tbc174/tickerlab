@@ -72,6 +72,8 @@ DECORADORES_IGNORADOS = (
     # ferramentas e rotas do servidor MCP do conector remoto (linha 570)
     "@*.tool",
     "@*.custom_route",
+    # o `servidor.tool` com o título e a descrição da lista única das portas (conector_remoto/ferramentas.py)
+    "@anunciar",
 )
 
 # Saídas do vulture 2.16: 0 sem achado e 3 com achado são normais; 1 (arquivo ilegível) e 2

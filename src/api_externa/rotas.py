@@ -21,6 +21,7 @@ from typing import Annotated
 import duckdb
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from base.porta import Porta
@@ -40,6 +41,7 @@ from src.api_externa.catalogo import (
     linhas_liberadas,
 )
 from src.api_externa.conjuntos import (
+    AntesDaPrimeiraData,
     Permitido,
     Servido,
     analise,
@@ -113,6 +115,15 @@ def _porta(banco: sa.Connection) -> Iterator[Porta]:
 
 def _recusa(codigo: str) -> HTTPException:
     return HTTPException(status_code=400, detail=codigo)
+
+
+def _antes_da_primeira_data(erro: AntesDaPrimeiraData) -> JSONResponse:
+    """O 400 do dia anterior ao primeiro dado: o código em `detail`, como as outras recusas, e o primeiro dia
+    que funciona em `first_known_at`."""
+    return JSONResponse(
+        status_code=400,
+        content={"detail": erro.codigo, "first_known_at": erro.primeira.isoformat()},
+    )
 
 
 def _dia_pedido(known_at: date | None) -> date:
@@ -282,9 +293,13 @@ def _pedido_contado(
     ler: Callable[[sa.Connection], Servido | None],
     finalidade: str = FINALIDADE,
 ) -> object:
-    """Lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai."""
-    with piloto.anotar() as liberados:
-        servido = _servido_contado(contexto, conjunto, ler, finalidade)
+    """Lê, conta no consumo (a recusa conta como negada) e responde 404 se nada sai; 400 com a primeira data
+    que funciona se o dia é anterior ao primeiro dado da base (linha 990)."""
+    try:
+        with piloto.anotar() as liberados:
+            servido = _servido_contado(contexto, conjunto, ler, finalidade)
+    except AntesDaPrimeiraData as erro:
+        return _antes_da_primeira_data(erro)
     corpo = piloto.marcar(servido.corpo, liberados)
     return traduzir_chaves(corpo | {"fontes": fontes_da_resposta(servido.fontes)})
 
@@ -299,14 +314,20 @@ def _servido_contado(
     e o deck passam por aqui: o mesmo portão, a mesma quota e a mesma conta de linhas. O registro do piloto é
     de quem chama (D11): o JSON o abre e marca o corpo; o deck o abre e põe a frase em todo slide. Quem não o
     abre não recebe campo de piloto."""
+    cedo_demais: AntesDaPrimeiraData | None = None
     with obter_engine().begin() as conexao:
-        servido = ler(conexao)
-        # o 404 sai depois do `with` para o consumo não voltar atrás
+        try:
+            servido = ler(conexao)
+        except AntesDaPrimeiraData as erro:
+            servido, cedo_demais = None, erro
+        # o 404 (e o 400 do dia cedo demais) sai depois do `with` para o consumo não voltar atrás
         registrar_consumo(
             conexao, contexto, conjunto=conjunto, finalidade=finalidade,
             linhas=0 if servido is None else servido.linhas, negado=servido is None,
             agora=acesso.agora(),
         )  # fmt: skip
+    if cedo_demais is not None:
+        raise cedo_demais
     if servido is None:
         raise HTTPException(status_code=404, detail=NAO_DISPONIVEL)
     return servido
@@ -490,15 +511,21 @@ def compradores_do_setor(
         pedido = compradores.pedido_dos_parametros(cnae, state, years, limit)
     except compradores.PedidoInvalido as erro:
         raise _recusa(erro.codigo) from erro
-    return _um_pedido(
-        contexto,
-        compradores.CONJUNTO,
-        lambda conexao, porta: compradores.LeitorDeCompradores(
+
+    def ler(conexao: sa.Connection, porta: Porta) -> Servido | None:
+        leitor = compradores.LeitorDeCompradores(
             porta,
             _portao(conexao, contexto, compradores.CONJUNTO),
             acesso.linhas_por_resposta(contexto),
-        ).compradores(pedido, dia),
-    )
+        )
+        servido = leitor.compradores(pedido, dia)
+        if servido is None and leitor.primeira_data is not None:
+            raise AntesDaPrimeiraData(
+                compradores.ANTES_DO_PRIMEIRO_RETRATO, leitor.primeira_data
+            )
+        return servido
+
+    return _um_pedido(contexto, compradores.CONJUNTO, ler)
 
 
 def _novidades_do_contrato(
