@@ -10,7 +10,6 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from importlib import resources
 from pathlib import Path
 
 import click
@@ -34,6 +33,7 @@ from tickerlab.configuracao import (
     gravar_chave,
 )
 from tickerlab.consultas import faixa_inteira, maximo, traducao, valores
+from tickerlab.instrucoes_montadas import ARQUIVOS, montar
 
 # pontuação que o CNPJ costuma trazer; o resto (letras do CNPJ alfanumérico, números) fica
 PONTUACAO_DO_CNPJ = re.compile(r"[.\-/\s]")
@@ -44,7 +44,6 @@ FORMATO_DO_SETOR = re.compile(r"[a-z0-9_]{1,40}")
 NOME_DO_DECK = re.compile(
     r'filename="(tickerlab-(?:empresa-\d{14}|setor-[a-z0-9_]{1,40})\.pptx)"'
 )
-INSTRUCOES = {"agents": "AGENTS.md", "skill": "SKILL.md"}
 # os filtros da busca (`prospectar`): o formato de cada um, conferido antes de gastar um pedido
 # o CNAE: a subclasse inteira (7 dígitos) ou um prefixo (divisão, grupo, classe)
 FORMATO_DO_CNAE = re.compile(r"\d{2,7}")
@@ -312,11 +311,10 @@ def dossie(
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """O dossiê do CNPJ: perfil, eventos, vínculos e comparáveis numa saída só, com fonte e data.
+    """O dossiê do CNPJ numa saída só: perfil, eventos, vínculos e comparáveis, com fonte e data.
 
-    Gasta 4 pedidos da quota. O perfil é obrigatório; uma seção que a chave não cobre, ou sem dado, aparece
-    em `gaps` com o motivo (não achado não quer dizer que não existe). Só pessoa jurídica. Com
-    `--planilha`, vai para o Excel com uma aba por tabela e as fontes.
+    Gasta 4 pedidos da quota. O perfil é obrigatório; uma seção que a chave não cobre, ou sem dado, aparece em
+    `gaps` com o motivo (não achado não quer dizer que não existe). Só pessoa jurídica.
     """
     corpo = _api(contexto).dossie(cnpj, _dia(como_era))
     _mostrar(corpo, como_json, formato.dossie, destino)
@@ -342,11 +340,14 @@ def empresa(
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """O perfil da empresa: cadastro na Receita e, da companhia aberta, cada DFP e ITR com o prazo da CVM.
+    """O perfil da empresa: o cadastro na Receita e, da companhia aberta, cada DFP e ITR com o prazo da CVM.
 
-    O cadastro traz a situação (com data e motivo), matriz ou filial, razão social, natureza jurídica e
-    Simples. As entregas dizem, de cada DFP e ITR devida até o dia, o prazo, quando saiu a primeira
-    versão, os dias úteis de atraso e a situação (on_time, gray_zone, late, severely_late, not_filed).
+    Em `registration`, a situação cadastral na Receita Federal (com data e motivo), matriz ou filial, mês do
+    retrato, razão social, natureza jurídica e opção pelo Simples, cada um na versão que valia no dia. Em
+    `periodic_filings`, de companhia aberta, cada DFP e ITR devida até o dia, com o prazo da CVM, a primeira
+    entrega, os dias úteis de atraso e a situação (`on_time`, `gray_zone`, `late`, `severely_late`, `not_filed`).
+    Em `limits`, o que a leitura não cobre. --so-cadastro traz só o cadastro (para a chave sem o conjunto
+    `profiles`).
     """
     api = _api(contexto)
     dia = _dia(como_era)
@@ -369,11 +370,20 @@ def analise(
 ) -> None:
     """A análise completa da empresa numa resposta: cada bloco que a chave pode ver, com fonte e data.
 
-    Os blocos (`blocks`) são o cadastro, os sócios e as participadas pessoa jurídica, os vínculos, os eventos,
-    a ficha de crédito, os ativos e os comparáveis; bloco que a chave não vê não aparece. Traz também a frase do
-    topo (`summary`, fato), a linha do tempo (`timeline`), as leituras (`inferences`, dedução, com os blocos de
-    onde vieram), o que não foi achado (`not_found`), o bloco que não respondeu a tempo (`timed_out`) e as bases
-    que a análise ainda não consulta (`not_included`). Cada bloco conta um pedido na quota (`requests_used`).
+    Em `blocks`: o cadastro, os sócios e as participadas pessoa jurídica, os vínculos e o auditor, os eventos, a
+    ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das agências reguladoras
+    (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de fundo imobiliário na
+    CVM; com o conjunto de integridade no contrato, também as sanções da CGU (CEIS, CNEP, CEPIM e acordos de
+    leniência), os termos de embargo do IBAMA e o Cadastro de Empregadores do MTE, só da pessoa jurídica; com o
+    conjunto `extended_sources`, os registros adicionais (Anatel, títulos da ANM, tancagem da ANP e o PAT do MTE).
+    Bloco que a chave não vê não aparece.
+
+    `summary` é a frase do topo (fato), `timeline` os marcos datados, `inferences` as leituras (dedução, com os
+    blocos de onde vieram: diga que é dedução), `not_found` o que o bloco consultou e não achou, `timed_out` o
+    bloco que não respondeu a tempo (não é falta de dado: peça esse bloco pelo comando próprio) e `not_included`
+    as bases que a análise não consulta (a ausência delas não quer dizer nada sobre a empresa). Cada lista vem
+    cortada (`truncated`): o comando do bloco traz o resto. Cada bloco conta um pedido na quota
+    (`requests_used`).
     """
     corpo = _api(contexto).analise(cnpj, _dia(como_era))
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
@@ -394,10 +404,11 @@ def comparaveis(
 ) -> None:
     """Os comparáveis da companhia aberta: as do mesmo grupo de setores, com os números do último DFP.
 
-    Cada par traz receita, EBITDA, lucro, patrimônio, dívida líquida e as razões (margem EBITDA, margem
-    líquida, retorno sobre o patrimônio, dívida líquida/EBITDA); `peer_medians` é a mediana de cada razão
-    entre os pares. O setor é o do FCA entregue até o dia: com --como-era, os pares de então. Leia os
-    `limits` antes de usar o número.
+    O grupo de setores (`sector_group`) é o do FCA entregue até o dia: com --como-era, os pares de então. A
+    empresa pedida e cada par trazem receita, EBITDA, lucro, patrimônio, dívida líquida e as razões (margem
+    EBITDA, margem líquida, retorno sobre o patrimônio, dívida líquida/EBITDA); `peer_medians` é a mediana de
+    cada razão entre os pares. Leia os `limits` antes de usar o número. Pede o conjunto `comparables` no
+    contrato; empresa sem FCA no dia sai com o código 5.
     """
     corpo = _api(contexto).comparaveis(cnpj, _dia(como_era))
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
@@ -425,6 +436,7 @@ def _um_codigo(
 @click.option(
     "--cnae",
     required=True,
+    metavar="<5 ou 7 dígitos>",
     callback=_um_codigo(
         re.compile(r"\d{5}|\d{7}"),
         "o CNAE tem 5 dígitos (a classe) ou 7 (a subclasse), com ou sem pontuação.",
@@ -433,6 +445,7 @@ def _um_codigo(
 )
 @click.option(
     "--uf",
+    metavar="UF",
     callback=_um_codigo(FORMATO_DA_UF, "a UF tem 2 letras, como SP."),
     help="Estado do estabelecimento (2 letras). Sem ela, o país todo.",
 )
@@ -466,9 +479,9 @@ def compradores(
 ) -> None:
     """Quem comprou ou entrou como sócio no setor nos últimos anos: candidatos a comprador.
 
-    Só pessoa jurídica. Cada comprador traz os sinais (entrou como sócio, fundo sócio, controla empresa
-    do setor) e as evidências, com exemplos da empresa do setor, a UF e a data. Movimento passado não é
-    intenção de compra: leia os `limits`.
+    Só pessoa jurídica. Cada comprador traz os sinais (entrou como sócio, fundo sócio, controla empresa do setor)
+    e as evidências, com exemplos da empresa do setor, a UF e a data. Movimento passado não é intenção de compra:
+    leia os `limits`.
     """
     corpo = _api(contexto).compradores(cnae, uf, anos, limite, _dia(como_era))
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
@@ -487,8 +500,12 @@ def compradores(
 def novidades(contexto: click.Context, dias: int, como_json: bool) -> None:
     """As fontes que a pesquisa provou na semana: órgão, data, trecho literal e hash do original.
 
-    Só fonte pública de órgão e só o que tem prova gravada (o trecho está no original, conferido pelo hash).
-    Sem nada novo, diz que não há.
+    De cada uma, `agency` (o órgão público), `date`, `excerpt` (o trecho literal, até 300 caracteres),
+    `excerpt_cut` (vazio = sem corte em relação ao trecho que o bot guardou, não o original completo; `inicio`,
+    `fim` ou `ambos` quando é só um pedaço: cite como recorte, sem completar nem pôr reticências), `source_url`
+    e `original_sha256` (o hash do original, que prova que o trecho está lá). Só fonte pública de órgão e só o
+    que tem prova gravada; sem nada novo, a lista vem vazia: "nenhuma fonte nova provada na semana". Não é
+    opinião nem recomendação: é citação conferida.
     """
     corpo = _api(contexto).novidades(dias)
     _mostrar(corpo, como_json, formato.novidades)
@@ -526,9 +543,12 @@ def vinculos(
 ) -> None:
     """Os vínculos da empresa como eram no dia: controladas, coligadas, participadas e o auditor.
 
-    Cada vínculo traz as duas pontas (id na rede, raiz do CNPJ e a razão social que valia no dia), a
-    participação no capital como o FRE informou e as datas. Só companhia aberta informa controle e
-    coligação, uma vez por ano: leia os `limits`. Pessoa física não sai.
+    De 1 a 3 saltos: de quem era controlada (`subsidiary_of`), coligada (`affiliate_of`) ou participada
+    (`investee_of`) e quem ela controlava, com a participação no capital (`ownership_pct`, pelo FRE), e a firma
+    que a auditava (`audits`, pelo FCA). Cada ponta (`from`, `to`) traz o id na rede (`entity_id`), a raiz do
+    CNPJ (`cnpj_root`) e a razão social do dia. Pede o conjunto `links` no contrato; `truncated: true` é lista
+    cortada. Só companhia aberta informa controle e coligação, uma vez por ano: leia os `limits`. Pessoa física
+    não sai.
     """
     corpo = _api(contexto).vinculos(
         cnpj,
@@ -570,11 +590,14 @@ def eventos(
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """Os eventos da empresa, do mais novo ao mais velho: documentos à CVM e trocas de auditor.
+    """Os eventos da empresa, do mais novo ao mais velho: documentos entregues à CVM e trocas de auditor.
 
-    O documento traz o protocolo, a categoria e o tipo da CVM, a data de referência e o endereço dele (o
-    assunto escrito pela companhia não sai). A troca de auditor traz o dia, o anterior, o novo e os anos
-    com o anterior. Com --como-era, só o que já era público no dia. Leia os `limits`.
+    O documento (`ipe_filing`, pelo IPE) traz o protocolo, a categoria e o tipo da CVM, a data de referência e o
+    endereço dele (`document_url`); o assunto escrito pela companhia não sai. A troca de auditor
+    (`auditor_change`, pelo FCA) traz o dia (`effective_on`), o anterior (`previous`), o novo (`new`) e os anos
+    com o anterior (`years_with_previous`). --tipo pode repetir. Com --como-era, só o que já era público no dia.
+    `next_cursor` preenchido: há mais páginas; --todas junta todas (um pedido por página). Pede o conjunto `events` no contrato. Sem evento não quer dizer que nada aconteceu:
+    leia os `limits`.
     """
     corpo = _api(contexto).eventos(
         cnpj, _dia(como_era), [TIPOS_DE_EVENTO[tipo] for tipo in tipos], todas
@@ -595,10 +618,13 @@ def ativos(
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """Os ativos da empresa por bloco (hoje, contratos de E&P da ANP), cada um com fonte e data.
+    """Os ativos físicos da empresa como eram no dia, um bloco por base de agência, com fonte e data.
 
-    Bloco sem dado vem com `found` falso; o que a base ainda não cobre vem em `not_covered`. Não achado
-    não quer dizer que a empresa não tem o ativo: leia os `limits`. Só pessoa jurídica.
+    Os contratos de exploração e produção de petróleo e gás da ANP em que a empresa é sócia
+    (`oil_gas_contracts`: rodada, fase, campo ou bloco, bacia, terra ou mar, participação e se opera) e, quando a
+    chave os vê, as barragens (SIGBM) e os royalties de mineração (CFEM) da ANM. Bloco sem dado vem com `found`
+    falso e o que a base não cobre vem em `not_covered`: não achado não quer dizer que a empresa não tem o ativo
+    (leia os `limits`). Só pessoa jurídica.
     """
     corpo = _api(contexto).ativos(cnpj, _dia(como_era))
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
@@ -623,7 +649,12 @@ def demonstracoes(
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """DFP e ITR da companhia aberta (CVM): cada conta com o documento, a versão e a data de entrega."""
+    """DFP e ITR da companhia aberta (CVM): cada conta com o documento, a versão e a data de entrega.
+
+    Uma linha por conta e período, do mais novo ao mais velho, com o documento, a data de referência, a versão
+    (reapresentação) e a data de entrega. Empresa fechada não tem: a CLI sai com o código 5 e diz que a base não
+    tem faturamento de empresa fechada; ela não o estima, e o número não deve ser inventado.
+    """
     corpo = _api(contexto).demonstracoes(cnpj, _dia(como_era), _dia(periodo))
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
@@ -634,6 +665,7 @@ def demonstracoes(
 @click.option(
     "--retorno-suposto",
     type=float,
+    metavar="0.12",
     help="Retorno bruto ao ano que você supõe, em fração (0.12 = 12%), para a conta do custo da taxa.",
 )
 @opcao_planilha
@@ -647,7 +679,11 @@ def fundo(
     como_json: bool,
     destino: Path | None,
 ) -> None:
-    """Cadastro, taxas e carteira do fundo (CVM); com --retorno-suposto, o custo da taxa em prazos."""
+    """Cadastro, taxas e carteira do fundo (CVM); com --retorno-suposto, o custo da taxa em prazos.
+
+    A carteira é a declarada à CVM (CDA). Com --retorno-suposto, a conta de quanto a taxa de administração leva
+    em alguns prazos, sobre um capital de exemplo.
+    """
     corpo = _api(contexto).fundo(cnpj, _dia(como_era), retorno_suposto)
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
@@ -663,6 +699,7 @@ def _nome_do_deck(cabecalho: str | None, padrao: str) -> str:
 @click.option(
     "--setor",
     "chave_do_setor",
+    metavar="<chave>",
     callback=_setor,
     help="O deck do setor (a chave que `tickerlab setor` lista) em vez do de uma empresa.",
 )
@@ -671,6 +708,7 @@ def _nome_do_deck(cabecalho: str | None, padrao: str) -> str:
     "--saida",
     "saida",
     type=click.Path(path_type=Path, dir_okay=False),
+    metavar="arq.pptx",
     help="Onde gravar o .pptx. Sem isto, grava aqui mesmo com o nome que a API sugere.",
 )
 @click.option(
@@ -690,7 +728,8 @@ def deck(
     """Grava o deck (.pptx) da empresa (CNPJ) ou do setor (--setor), com a fonte e a data de cada tabela.
 
     Um dos dois: `tickerlab deck 11222333000181` ou `tickerlab deck --setor eletricas`. Gasta um pedido da
-    quota, como o JSON da mesma rota.
+    quota, como o JSON da mesma rota. Não imprime os dados: diz onde o arquivo ficou. Recusa trocar um arquivo
+    que já existe (--substituir troca; use só se a pessoa pediu).
     """
     if (cnpj is None) == (chave_do_setor is None):
         raise click.UsageError(
@@ -738,8 +777,10 @@ def setor(
 ) -> None:
     """O mercado do setor (tamanho, CR4 e HHI por ano), a fatia de cada companhia aberta e quem são.
 
-    Sem CHAVE, lista os setores disponíveis, sem gastar a quota. O setor sai como a ficha da última noite
-    o deixou: --como-era antes dela não tem resposta.
+    Sem a chave, a lista dos setores (`eletricas`, `bancos`...) com o dia da ficha, sem gastar a quota. Com a
+    chave, o mercado por série da agência (tamanho, CR4, HHI e a faixa de concentração do CADE, por ano), a
+    fatia de cada companhia aberta, quem são elas e as notas de método (`notes`): leia-as antes de concluir. O
+    setor sai como a ficha da última noite o deixou: --como-era antes dela dá o código 5.
     """
     api = _api(contexto)
     if chave is None:
@@ -754,6 +795,7 @@ def setor(
 @click.option(
     "--cnae",
     multiple=True,
+    metavar="<2 a 7 dígitos>",
     callback=_codigos(
         FORMATO_DO_CNAE,
         "o CNAE tem de 2 a 7 dígitos (com ou sem pontuação): 35 é a divisão, 3511501 a subclasse.",
@@ -763,12 +805,14 @@ def setor(
 @click.option(
     "--uf",
     multiple=True,
+    metavar="UF",
     callback=_codigos(FORMATO_DA_UF, "a UF tem 2 letras, como SP."),
     help="Estado do estabelecimento (2 letras). Pode repetir.",
 )
 @click.option(
     "--municipio",
     multiple=True,
+    metavar="<nome ou código da Receita>",
     callback=_municipios,
     help="Município: o nome (Campinas; junte --uf se o nome existe em mais de um estado) ou o código "
     "da Receita (até 4 dígitos; 7107 é São Paulo). Não é o código do IBGE. Pode repetir.",
@@ -782,6 +826,7 @@ def setor(
 @click.option(
     "--natureza",
     multiple=True,
+    metavar="<até 4 dígitos>",
     callback=_codigos(
         FORMATO_DA_NATUREZA,
         "a natureza jurídica tem até 4 dígitos, como 2054 (S.A. fechada) ou só o começo, como 2.",
@@ -854,13 +899,19 @@ def prospectar(
 ) -> None:
     """Empresas por atividade, lugar, porte e idade, do cadastro da Receita (só empresa, nunca pessoa).
 
-    Pelo menos um filtro além da situação. Os registros na Anvisa (cosméticos, saneantes e produtos para saúde)
-    entram como sinal de porte de empresa fechada: --anvisa-ativos-min 200 --anvisa-tipo cosmeticos, com a fonte
-    e o dia do retrato em cada empresa; não é faturamento. A resposta vem em páginas, por ordem de CNPJ (ou de
-    registros, com --ordenar-por anvisa): sem --todas, só a
-    primeira (e o aviso de que há mais). Com --planilha lista.xlsx, a lista vai para o Excel, com a fonte e
-    a data de cada linha. Não traz sócio, contato nem endereço: para a ficha de uma empresa,
-    `tickerlab empresa`.
+    Pelo menos um filtro além da situação; os de lista podem repetir (até 50 valores). Cada empresa traz o CNPJ
+    e, cada um com fonte e data, razão social, natureza, porte, situação, abertura, CNAE, UF, município e
+    matriz. O município é o nome ou o código da Receita (não o do IBGE). A lista é o que o cadastro diz (CNAE e
+    porte declarados pela própria empresa), não uma triagem. Pede o conjunto `prospecting` no contrato.
+
+    Os registros na Anvisa (cosméticos, saneantes e produtos para saúde) entram como sinal de porte de empresa
+    fechada: com --anvisa-ativos-min, --anvisa-total-min, --anvisa-tipo ou --ordenar-por anvisa, cada empresa
+    traz a contagem, com a fonte e o dia do retrato (o tipo e a ordem sozinhos não bastam como filtro). Não é
+    faturamento, e empresa sem registro vale 0.
+
+    A resposta vem em páginas, por ordem de CNPJ (ou de registros, com --ordenar-por anvisa): sem --todas, só a
+    primeira, e `next_cursor` preenchido quer dizer que há mais; --todas busca todas (cada página é um pedido da
+    quota). Não traz sócio, contato nem endereço: para a ficha de uma empresa, `tickerlab empresa`.
     """
     filtros = FiltrosDaBusca(**filtros_da_cli).para_a_api()  # type: ignore[arg-type]
     if por_pagina is not None:
@@ -930,12 +981,12 @@ def logout() -> None:
 
 @principal.command()
 @click.argument(
-    "qual", type=click.Choice(sorted(INSTRUCOES)), default="agents", required=False
+    "qual", type=click.Choice(sorted(ARQUIVOS)), default="agents", required=False
 )
 def instrucoes(qual: str) -> None:
     """Imprime as instruções para o agente de IA: `agents` (AGENTS.md) ou `skill` (SKILL.md do Claude Code).
 
-    Ex.: `tickerlab instrucoes > AGENTS.md` na pasta do seu projeto.
+    Ex.: `tickerlab instrucoes > AGENTS.md` na pasta do seu projeto. Os comandos saem da ajuda de cada um
+    (a mesma do --help), montada na hora.
     """
-    arquivo = resources.files("tickerlab") / "instrucoes" / INSTRUCOES[qual]
-    click.echo(arquivo.read_text(encoding="utf-8"), nl=False)
+    click.echo(montar(qual, principal), nl=False)

@@ -153,7 +153,11 @@ tickerlab instrucoes skill > .claude/skills/tickerlab/SKILL.md     # a skill do 
 
 As duas ensinam:
 
-- os comandos e o que cada um devolve;
+- os comandos e o que cada um devolve. Esse texto não é escrito duas vezes: sai da ajuda de cada comando (o
+  docstring em `cli/tickerlab/comandos.py`, o mesmo do `--help`), montada na hora por
+  `cli/tickerlab/instrucoes_montadas.py` no lugar da marca dos modelos de `cli/tickerlab/instrucoes/`. A linha de
+  uso sai das opções do click. Comando novo: escreva a ajuda (o 1º parágrafo, uma linha, é o resumo do SKILL.md) e
+  ponha o nome em `ORDEM`; um teste cobra;
 - usar `--json` para ler por programa;
 - o que fazer com cada código de saída.
 
