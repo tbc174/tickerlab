@@ -16,6 +16,7 @@ consultas seguidas, `with porta.abrir() as p:` usa uma conexão só. "Como era e
 **no** dia D passa D − 1.
 """
 
+import bisect
 import json
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from pathlib import Path
@@ -34,10 +35,14 @@ from base.porta.duckdb import (
     ARQUIVOS,
     FORA_DA_PORTA,
     arquivos_da_tabela,
+    colunas_da_fonte,
     condicao_como_era,
     conectar,
     dia_de,
+    faixas_dos_arquivos,
+    fonte_dos_arquivos,
     nome_da_view,
+    select_da_tabela,
     sem_o_fim_futuro,
 )
 from base.porta.rede import Rede, colunas, views
@@ -68,6 +73,17 @@ def _nome(coluna: str) -> str:
     return '"' + coluna.replace('"', '""') + '"'
 
 
+# até este tanto de valores, a lista vai em parâmetros soltos (`IN ($f0_0, $f0_1, ...)`): o DuckDB leva a lista ao
+# Parquet e pula os grupos de linhas cuja faixa não tem nenhum valor. Pela lista inteira num parâmetro
+# (`IN (SELECT unnest($f0))`) ele junta depois de ler tudo: 20 raízes espalhadas na lista de empresas da Receita
+# levavam 0,86-1,2 s num núcleo do PC, e 0,23-0,29 s soltas (linha 1015, item e). Lista maior segue inteira.
+LISTA_SOLTA = 1000
+
+# tabelas gravadas em vários arquivos, cada um com uma faixa de uma coluna (a lista de empresas da Receita, por
+# `cnpj_basico`): lendo por ela, só os arquivos cuja faixa cobre os valores pedidos (linha 1015, item e)
+POR_FAIXA_DE_ARQUIVO: Mapping[str, str] = {"cnpj_empresas_pj": "cnpj_basico"}
+
+
 def _igualdades(
     valores: Mapping[str, object], prefixo: str
 ) -> tuple[list[str], dict[str, object]]:
@@ -76,8 +92,18 @@ def _igualdades(
     for i, (coluna, valor) in enumerate(valores.items()):
         nome, parametro = _nome(coluna), f"{prefixo}{i}"
         if isinstance(valor, list | tuple | set | frozenset):
-            condicoes.append(f"{nome} IN (SELECT unnest(${parametro}))")
-            parametros[parametro] = [_valor(v) for v in valor]
+            lista = [_valor(v) for v in valor]
+            if not lista:
+                condicoes.append("false")
+            elif len(lista) <= LISTA_SOLTA and len({type(v) for v in lista}) == 1:
+                # um tipo só: cada parâmetro solto é tipado sozinho, e lista com vazio ou tipos misturados
+                # segue inteira pelo unnest, que acha o tipo comum (o mesmo resultado e o mesmo erro de antes)
+                soltos = {f"{parametro}_{j}": v for j, v in enumerate(lista)}
+                condicoes.append(f"{nome} IN ({', '.join('$' + p for p in soltos)})")
+                parametros.update(soltos)
+            else:
+                condicoes.append(f"{nome} IN (SELECT unnest(${parametro}))")
+                parametros[parametro] = lista
         elif _valor(valor) is None:
             condicoes.append(f"{nome} IS NULL")
         else:
@@ -240,14 +266,25 @@ class Porta:
         filtros: Mapping[str, object] | None,
         como_era_em: object,
         usadas: Sequence[str],
+        a_partir_de: Mapping[str, object] | None = None,
     ) -> tuple[str, dict[str, object]]:
-        """O `WHERE` (filtros de igualdade e "como era em") e os parâmetros dele; toda coluna usada
-        precisa existir (o nome nunca vira código: só os que a tabela tem passam)."""
+        """O `WHERE` (filtros de igualdade, `coluna >= valor` e "como era em") e os parâmetros dele; toda
+        coluna usada precisa existir (o nome nunca vira código: só os que a tabela tem passam)."""
         existentes = self.colunas(tabela, versao)
-        desconhecidas = [c for c in [*(filtros or {}), *usadas] if c not in existentes]
+        desconhecidas = [
+            c
+            for c in [*(filtros or {}), *(a_partir_de or {}), *usadas]
+            if c not in existentes
+        ]
         if desconhecidas:
             raise ValueError(f"{tabela}: coluna {desconhecidas[0]!r} não existe")
         condicoes, parametros = _igualdades(filtros or {}, "f")
+        for i, (coluna, valor) in enumerate((a_partir_de or {}).items()):
+            if valor is None:
+                # `coluna >= NULL` não deixa linha nenhuma, sem erro: melhor recusar
+                raise ValueError(f"{tabela}: a_partir_de de {coluna!r} sem valor")
+            condicoes.append(f"{_nome(coluna)} >= $d{i}")
+            parametros[f"d{i}"] = _valor(valor)
         if como_era_em is not None:
             condicoes.append(condicao_como_era(existentes, tabela))
             parametros["dia"] = dia_de(como_era_em)
@@ -260,21 +297,85 @@ class Porta:
         como_era_em: object = None,
         filtros: Mapping[str, object] | None = None,
         colunas: Sequence[str] | None = None,
+        a_partir_de: Mapping[str, object] | None = None,
     ) -> pd.DataFrame:
         """A tabela (na versão maior pedida), com filtros de igualdade (`{coluna: valor}` ou
         `{coluna: [valores]}`) e, com `como_era_em`, só o que era público no dia e ainda valia.
-        `colunas` traz só essas (tabela grande: menos memória); o filtro vale do mesmo jeito."""
+        `colunas` traz só essas (tabela grande: menos memória); o filtro vale do mesmo jeito.
+        `a_partir_de` (`{coluna: valor}`) deixa só as linhas com `coluna >= valor` (os comparáveis leem o
+        DFP só dos exercícios recentes: o histórico inteiro de um grupo passa de 900 mil linhas)."""
         view = self._view(tabela, versao)
         onde, parametros = self._onde(
-            tabela, versao, filtros, como_era_em, colunas or []
+            tabela, versao, filtros, como_era_em, colunas or [], a_partir_de
         )
         selecao = "*" if colunas is None else ", ".join(_nome(c) for c in colunas)
         # numa foto de D, a revisão vista depois não entra e, de cada chave, fica a mais nova já pública
         mais_nova = self._so_a_mais_nova(tabela) if como_era_em is not None else ""
+        pela_faixa = self._pela_faixa(tabela, versao, filtros)
+        de = _nome(view) if pela_faixa is None else f"({pela_faixa}) AS {_nome(view)}"
         resultado = self.con.execute(
-            f"SELECT {selecao} FROM {_nome(view)} WHERE {onde} {mais_nova}", parametros
+            f"SELECT {selecao} FROM {de} WHERE {onde} {mais_nova}", parametros
         ).df()
         return resultado if como_era_em is None else sem_o_fim_futuro(resultado)
+
+    def _faixas(
+        self, tabela: str, coluna: str
+    ) -> tuple[tuple[tuple[str, str], ...], dict[Path, tuple[str, str] | None], int]:
+        """As colunas (nome e tipo) dos arquivos da tabela, a faixa de `coluna` em cada arquivo e quantos arquivos há. Só depende
+        dos arquivos: fica na memória da porta dona enquanto a base é a mesma."""
+        metadados = self._metadados()
+        chave = ("faixas", tabela, coluna)
+        if metadados is not None and (lembradas := metadados.get(chave)) is not None:
+            return lembradas
+        arquivos = arquivos_da_tabela(self.pasta, self.arquivos[tabela])
+        faixas = (
+            tuple(colunas_da_fonte(self.con, fonte_dos_arquivos(arquivos))),
+            faixas_dos_arquivos(self.con, arquivos, coluna),
+            len(arquivos),
+        )
+        if metadados is not None:
+            metadados[chave] = faixas
+        return faixas
+
+    def _pela_faixa(
+        self, tabela: str, versao: str | None, filtros: Mapping[str, object] | None
+    ) -> str | None:
+        """O SELECT da view só sobre os arquivos cuja faixa cobre os valores pedidos, com as mesmas travas
+        (`select_da_tabela`); None para ler pela view: tabela fora de `POR_FAIXA_DE_ARQUIVO`, versão antiga, sem
+        filtro de texto na coluna, todos os arquivos (ou nenhum) na faixa, ou colunas diferentes das da view."""
+        coluna = POR_FAIXA_DE_ARQUIVO.get(tabela)
+        if coluna is None or versao is not None or coluna not in (filtros or {}):
+            return None
+        pedido = (filtros or {})[coluna]
+        valores = [
+            _valor(v)
+            for v in (
+                pedido
+                if isinstance(pedido, list | tuple | set | frozenset)
+                else [pedido]
+            )
+        ]
+        # só texto: com vazio ou outro tipo na lista, lê pela view (a faixa do rodapé é de texto)
+        if not valores or not all(isinstance(v, str) for v in valores):
+            return None
+        valores.sort()
+        colunas_dos_arquivos, faixas, quantos = self._faixas(tabela, coluna)
+        escolhidos = [
+            arquivo
+            for arquivo, faixa in faixas.items()
+            if faixa is None
+            or bisect.bisect_left(valores, faixa[0])
+            < bisect.bisect_right(valores, faixa[1])
+        ]
+        if not escolhidos or len(escolhidos) == quantos:
+            return None
+        fonte = fonte_dos_arquivos(sorted(escolhidos))
+        colunas = colunas_da_fonte(self.con, fonte)
+        if tuple(colunas) != colunas_dos_arquivos:
+            return None  # outra coluna ou outro tipo: o union_by_name do pedaço não daria o da view
+        return select_da_tabela(
+            tabela, self.tabelas[tabela], [nome for nome, _tipo in colunas], fonte
+        )
 
     def ler_pagina(
         self,
