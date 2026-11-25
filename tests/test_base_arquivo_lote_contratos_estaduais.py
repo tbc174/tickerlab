@@ -263,8 +263,14 @@ def test_ponto_e_virgula_so_no_fim_do_cabecalho_nao_derruba_as_linhas():
     def linha(item: str, fim: str = "") -> str:
         return f"SES;9001;Dispensa;10/03/2025;1.500,00;{CNPJ};{item};100;UN;15,00;NAO;Lei 14.133/2021;12{fim}\r\n"
 
+    # um ";" solto no meio do texto e o fim vazio: as colunas andariam uma casa, então a linha sai
+    deslocada = linha("558", ";").replace("Dispensa;", "Dispensa;SOLTO;")
     guardado = _filtrar(
-        cabecalho + linha("555") + linha("556", ";") + linha("557", ";SOBRA"),
+        cabecalho
+        + linha("555")
+        + linha("556", ";")
+        + linha("557", ";SOBRA")
+        + deslocada,
         lote.RJ_COMPRAS_DIRETAS,
     )
     lido = list(csv.reader(io.StringIO(guardado), delimiter=";"))
@@ -273,3 +279,11 @@ def test_ponto_e_virgula_so_no_fim_do_cabecalho_nao_derruba_as_linhas():
     ]
     assert len(lido[0]) == 13
     assert [r[lido[0].index("id item")] for r in lido[1:]] == ["555", "556"]
+    # cabeçalho sem ";" no fim: a linha com um campo vazio a mais continua saindo, como antes
+    sem_fim = _filtrar(
+        cabecalho.replace(";\r\n", "\r\n") + linha("555") + linha("556", ";"),
+        lote.RJ_COMPRAS_DIRETAS,
+    )
+    assert [
+        r[6] for r in list(csv.reader(io.StringIO(sem_fim), delimiter=";"))[1:]
+    ] == ["555"]
