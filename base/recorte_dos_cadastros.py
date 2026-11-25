@@ -20,6 +20,11 @@ estreita que a inteira:
 - **A chave da Lista Suja vira impressão digital:** o `id_na_fonte` do MTE junta CNPJ, ano e estabelecimento
   (texto livre); sai o `sha256` dele, que separa as linhas igual e não leva o texto.
 
+As compras públicas (linha 988: `comprasgov_sicaf` e `bps_compras`) seguem a mesma regra e mais as condições de
+`CONDICOES_A_MAIS`: do SICAF não sai a linha que o próprio SICAF chama de empresário individual ou de pessoa física
+(mesmo com a marca da Receita falsa), e do BPS o CNPJ do fabricante e o da instituição compradora têm de conferir, com a
+raiz do fabricante na lista sem pessoa. O número do processo de compra do BPS fica em casa.
+
 `conferir_cadastros` lê **a saída** e derruba o envio (`CadastroComPessoa`) em qualquer coisa fora disso, sem
 depender do filtro: coluna fora da lista ou faltando, linha marcada ou sem marca, CNPJ que não confere, raiz
 trocada ou fora da lista sem pessoa, valor inteiro com cara de CPF que confere numa coluna de texto, CPF ou e-mail
@@ -55,6 +60,12 @@ PADOS, HOMOLOGADOS, TANCAGEM, PAT = (
     "mte_pat",
 )
 AMPLIADAS = (PADOS, HOMOLOGADOS, TANCAGEM, PAT)
+# as compras públicas (conferência de 19/11; linha 988): o cadastro de fornecedores do SICAF e o Banco de Preços em
+# Saúde, CNPJ inteiro em toda linha e a marca `trata_como_pessoa` (MEI, empresário individual, grupo 4 ou raiz que a
+# Receita guardada não tem). Vão num degrau à parte (9), pelo mesmo filtro e pela mesma trava, com as condições a mais
+# de `CONDICOES_A_MAIS`
+SICAF, BPS = ("comprasgov_sicaf", "bps_compras")
+COMPRAS_PUBLICAS = (SICAF, BPS)
 # as colunas de controle que toda cópia leva (a chave, o CNPJ, a marca e a linhagem)
 CONTROLE = (
     "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em",
@@ -92,6 +103,19 @@ COLUNAS: dict[str, tuple[str, ...]] = {
         *CONTROLE, "matriz_ou_filial", "municipio", "uf", "registro_no_pat", "situacao", "data_do_cadastro",
         "trabalhadores_ate_5_salarios", "trabalhadores_acima_de_5_salarios", "trabalhadores_atendidos",
     ),
+    SICAF: (
+        *CONTROLE, "ativo", "habilitado_a_licitar", "cnae", "descricao_do_cnae", "natureza_juridica",
+        "descricao_da_natureza_juridica", "porte", "descricao_do_porte", "municipio", "uf",
+    ),
+    # sem `processo_de_compra`: na compra judicial o número pode ser o do processo de quem pediu o remédio na
+    # Justiça (a leitura mais estreita o deixa em casa)
+    BPS: (
+        *CONTROLE, "cnpj_do_fabricante", "cnpj_basico_do_fabricante", "cnpj_da_instituicao", "ano_da_compra",
+        "data_da_compra", "data_de_insercao", "instituicao", "uf", "municipio", "esfera", "validade_da_compra",
+        "catmat", "item", "pdm", "descricao_do_pdm", "classe", "descricao_da_classe", "generico",
+        "registro_na_anvisa", "tipo_de_compra", "modalidade", "ata", "unidade_de_medida", "unidade_de_fornecimento",
+        "unidade_da_capacidade", "capacidade", "quantidade", "preco_unitario", "preco_total",
+    ),
 }  # fmt: skip
 # as colunas de texto livre da cópia: CPF ou e-mail dentro delas derruba a linha (filtro) e o envio (trava)
 TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
@@ -109,7 +133,46 @@ TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
         "grupo_de_produtos",
     ),
     PAT: ("matriz_ou_filial", "municipio", "uf", "registro_no_pat", "situacao"),
+    SICAF: (
+        "descricao_do_cnae", "natureza_juridica", "descricao_da_natureza_juridica", "porte", "descricao_do_porte",
+        "municipio", "uf",
+    ),
+    BPS: (
+        "instituicao", "uf", "municipio", "esfera", "validade_da_compra", "catmat", "item", "pdm", "descricao_do_pdm",
+        "classe", "descricao_da_classe", "generico", "registro_na_anvisa", "tipo_de_compra", "modalidade", "ata",
+        "unidade_de_medida", "unidade_de_fornecimento", "unidade_da_capacidade",
+    ),
 }  # fmt: skip
+# as naturezas jurídicas de pessoa como o SICAF escreve: empresário individual (213-5) e o grupo 4 (pessoa física). A
+# marca vem da Receita guardada; na conferência de 25/11/2026, 5.084 linhas que o SICAF chama de empresário individual
+# estavam sem ela (a natureza na Receita já era outra). A leitura mais estreita: se uma das duas diz pessoa, não sai
+NATUREZA_DO_EMPRESARIO_INDIVIDUAL = "2135"
+GRUPO_DE_PESSOA_FISICA = "4"
+# condições a mais de cada tabela, `{pj}` é a lista sem pessoa: a linha só sai se todas valem (filtro), e a trava
+# conta a linha da saída em que alguma não vale (descrição -> condição)
+CONDICOES_A_MAIS: dict[str, dict[str, str]] = {
+    SICAF: {
+        "linha(s) que o SICAF diz ser de empresário individual, de pessoa física ou sem natureza": (
+            f"coalesce(natureza_juridica <> '{NATUREZA_DO_EMPRESARIO_INDIVIDUAL}' "
+            f"AND NOT starts_with(natureza_juridica, '{GRUPO_DE_PESSOA_FISICA}'), false)"
+        ),
+    },
+    BPS: {
+        "linha(s) com o CNPJ do fabricante que não confere": (
+            "(cnpj_do_fabricante IS NULL OR "
+            "coalesce({funcao}(CAST(cnpj_do_fabricante AS VARCHAR)), false))"
+        ),
+        "linha(s) com a raiz do fabricante diferente da do CNPJ dele ou fora da lista sem pessoa": (
+            "(cnpj_do_fabricante IS NULL AND cnpj_basico_do_fabricante IS NULL) OR ("
+            "cnpj_basico_do_fabricante IS NOT DISTINCT FROM {raiz_do_fabricante} "
+            "AND cnpj_basico_do_fabricante IN ({pj}))"
+        ),
+        "linha(s) com o CNPJ da instituição compradora que não confere": (
+            "(cnpj_da_instituicao IS NULL OR "
+            "coalesce({funcao}(CAST(cnpj_da_instituicao AS VARCHAR)), false))"
+        ),
+    },
+}
 # pedaços de nome de coluna que nunca saem (o teste confere que a lista acima não tem nenhum)
 PEDACOS_PROIBIDOS = (
     "nome",
@@ -191,8 +254,20 @@ def _registrar_funcoes(con: duckdb.DuckDBPyConnection) -> None:
         )
 
 
-def _raiz_do_cnpj() -> str:
-    return f"substr(regexp_replace(CAST(cnpj AS VARCHAR), '[^0-9A-Za-z]', '', 'g'), 1, {TAMANHO_DA_RAIZ})"
+def _raiz_do_cnpj(coluna: str = "cnpj") -> str:
+    return f"substr(regexp_replace(CAST({coluna} AS VARCHAR), '[^0-9A-Za-z]', '', 'g'), 1, {TAMANHO_DA_RAIZ})"
+
+
+def _condicoes_a_mais(nome: str, pj: str) -> dict[str, str]:
+    """As condições a mais da tabela (`CONDICOES_A_MAIS`), com a lista sem pessoa e as funções no lugar."""
+    return {
+        descricao: condicao.format(
+            pj=pj,
+            funcao=FUNCAO_CNPJ_DE_EMPRESA,
+            raiz_do_fabricante=_raiz_do_cnpj("cnpj_do_fabricante"),
+        )
+        for descricao, condicao in CONDICOES_A_MAIS.get(nome, {}).items()
+    }
 
 
 def _lista_pj(empresas_pj: Sequence[Path]) -> str:
@@ -217,7 +292,9 @@ def _so_pj(pj: str, nome: str) -> str:
         "trata_como_pessoa IS NOT DISTINCT FROM false "
         f"AND {FUNCAO_CNPJ_DE_EMPRESA}(CAST(cnpj AS VARCHAR)) "
         f"AND cnpj_basico IS NOT DISTINCT FROM {_raiz_do_cnpj()} "
-        f"AND cnpj_basico IN ({pj})" + _sem_pessoa_no_texto(nome)
+        f"AND cnpj_basico IN ({pj})"
+        + _sem_pessoa_no_texto(nome)
+        + "".join(f" AND ({c})" for c in _condicoes_a_mais(nome, pj).values())
     )
 
 
@@ -315,6 +392,10 @@ def _consultas_de_linha(
         )
         consultas["linha(s) com CPF ou e-mail dentro de texto livre"] = (
             f"SELECT * FROM {fonte} WHERE {com_pessoa}"
+        )
+    for descricao, condicao in _condicoes_a_mais(nome, pj).items():
+        consultas[descricao] = (
+            f"SELECT * FROM {fonte} WHERE NOT coalesce(({condicao}), false)"
         )
     if nome in CHAVE_COM_TEXTO:
         consultas["chave(s) que não são a impressão digital"] = (
