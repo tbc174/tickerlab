@@ -440,10 +440,12 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
     # linhas é de MEI, empresário individual, grupo 4 ou raiz que a Receita guardada não tem (`trata_como_pessoa`), e
     # 5.084 que o próprio SICAF chama de empresário individual estavam sem a marca (conferência de 25/11/2026): só passa
     # pela cópia reduzida só-PJ (`COMPRAS_PUBLICAS`, degrau 9), que tira também essas, conferida por `conferir_cadastros`.
-    # O `bps_compras` fica de fora até a queda de linhas de 2022 para 2023 ter a causa conferida (o placar a acusa)
+    # O `bps_compras` fica de fora até a queda de linhas de 2022 para 2023 ter a causa conferida (o placar a acusa).
+    # O placar do SICAF foi medido no ensaio de 25/11/2026 (contêiner descartável, acervo só leitura, a saída não
+    # gravada na VM): a tabela inteira, verde, sem achado
     "comprasgov_sicaf": ProntidaoDePiloto(
         versao_maior=1,
-        qualidade=Prova(date(2026, 11, 25), "placar-qualidade-2026-11-25"),
+        qualidade=Prova(date(2026, 11, 25), "placar-qualidade-ensaio-2026-11-25"),
         dicionario=Prova(date(2026, 11, 25), "dicionario-escrito-2026-11-25"),
     ),
     # lote 3 da linha 978: placar de 19/11/2026 sem vermelho e sem coluna de CNPJ (a marca de pessoa não se aplica);
