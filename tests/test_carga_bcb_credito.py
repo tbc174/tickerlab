@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import logging
+import time
 import zipfile
 from pathlib import Path
 
@@ -261,8 +262,21 @@ def _zip_com_a_primeira_carteira_mudada(
                 campos = primeira.split(";")
                 campos[coluna] = f'"{valor}"'
                 texto = "".join([cabecalho, ";".join(campos), *resto])
-            novo.writestr(nome, texto.encode("utf-8-sig"))
+            # o registro do original (com a hora de lá): com `writestr(nome, ...)` o zip leva a hora do
+            # relógio, e o mesmo arquivo montado duas vezes saía com outro SHA-256
+            novo.writestr(entrada.getinfo(nome), texto.encode("utf-8-sig"))
     return saida.getvalue()
+
+
+def test_zip_com_a_carteira_mudada_nao_depende_da_hora(monkeypatch):
+    """O teste da linha 1076 caía na main: o mesmo zip, montado duas vezes com o relógio em outros 2 s,
+    saía com outra hora dentro do arquivo e outro SHA-256."""
+    original = (PASTA / "scr" / "scrdata_2012.zip").read_bytes()
+    antes = _zip_com_a_primeira_carteira_mudada(original)
+    agora = time.time()
+    monkeypatch.setattr(zipfile.time, "time", lambda: agora + 10)
+
+    assert _zip_com_a_primeira_carteira_mudada(original) == antes
 
 
 def test_revisao_do_scr_so_vale_desde_o_dia_em_que_foi_vista(ambiente, monkeypatch):
@@ -295,7 +309,8 @@ def test_scr_le_as_versoes_guardadas_uma_de_cada_vez(ambiente, monkeypatch):
     original = respostas["scrdata_2012.zip"]
     _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
     antigo = pd.read_parquet(pasta / "scr" / "2012.parquet")
-    respostas["scrdata_2012.zip"] = _zip_com_a_primeira_carteira_mudada(original)
+    revisto = _zip_com_a_primeira_carteira_mudada(original)
+    respostas["scrdata_2012.zip"] = revisto
     _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
     respostas["scrdata_2012.zip"] = _zip_com_a_primeira_carteira_mudada(
         original, "888888,5"
@@ -323,11 +338,7 @@ def test_scr_le_as_versoes_guardadas_uma_de_cada_vez(ambiente, monkeypatch):
     assert set(tabela["carteira_ativa"]) >= {999999.5, 888888.5}
     assert [o["sha256"] for o in origens_gravadas(pasta / "scr" / "2012")] == [
         hashlib.sha256(c).hexdigest()
-        for c in (
-            original,
-            _zip_com_a_primeira_carteira_mudada(original),
-            respostas["scrdata_2012.zip"],
-        )
+        for c in (original, revisto, respostas["scrdata_2012.zip"])
     ]
 
 
