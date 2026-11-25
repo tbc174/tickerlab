@@ -23,6 +23,7 @@ import sqlalchemy as sa
 
 from base import cnpj as cnpjs
 from base import retratos as motor
+from base.cnpj_pela_ponte import ler_ponte
 from base.parquet import LINHAGEM, gravar_se_mudou, origens_gravadas
 from base.pgfn import pessoas_pela_receita
 from src.versao_do_codigo import versao_do_codigo
@@ -36,6 +37,10 @@ Juntador = Callable[
     [list[tuple[motor.Retrato, pd.DataFrame]]], tuple[pd.DataFrame, int]
 ]
 Achador = Callable[[sa.Connection], tuple[list[motor.Retrato], int]]
+# acrescenta o CNPJ à tabela já junta, pela ponte (o cadastro de outra tabela da base); devolve a contagem
+Ligador = Callable[
+    [pd.DataFrame, pd.DataFrame | None], tuple[pd.DataFrame, dict[str, int]]
+]
 
 
 @dataclass(frozen=True)
@@ -55,6 +60,10 @@ class Cadastro:
     )
     # as raízes que marcam a linha como de pessoa (os ativos dos FII: o fundo e o emissor)
     raizes_de_pessoa: tuple[str, ...] = ("cnpj_basico",)
+    # o arquivo só traz o código da fonte (os planos da ANS): `ponte` é a tabela da base que liga o código ao CNPJ
+    # (linha 770) e `ligar` põe o CNPJ nas linhas. A tabela se refaz quando a ponte muda
+    ponte: str = ""
+    ligar: Ligador | None = None
 
 
 def _do_endereco_mais_novo(
@@ -143,11 +152,14 @@ def montar(
     agora: datetime,
     pessoas: Collection[str] | np.ndarray | None = None,
     refazer: bool = False,
+    leitor: Callable[[Path], pd.DataFrame] | None = None,
 ) -> dict[str, dict[str, int]]:
     """`<pasta>/<tabela>/<cadastro>.parquet` para cada cadastro com arquivo guardado.
 
     Cadastro sem arquivo guardado fica de fora do resumo. `pessoas`: as raízes de pessoa já sabidas;
-    sem elas, pergunta à Receita guardada (`base/pgfn.py`).
+    sem elas, pergunta à Receita guardada (`base/pgfn.py`). `leitor`: como reler um Parquet da base, só para o
+    cadastro que tem `ponte` (quem monta é o único que pode reler o que gravou, ADR 0077, item 9); sem ele a
+    ponte vale como ausente.
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in cadastros:
@@ -161,11 +173,20 @@ def montar(
         if not achados:
             continue
         destino = pasta / cadastro.tabela / cadastro.nome
-        if not refazer and origens_gravadas(destino) == _origens(achados):
+        ponte, origens_da_ponte = (
+            ler_ponte(pasta / cadastro.ponte, pasta, leitor)
+            if cadastro.ponte and leitor
+            else (None, [])
+        )
+        origens = [*_origens(achados), *origens_da_ponte]
+        if not refazer and origens_gravadas(destino) == origens:
             resumo[cadastro.nome] = JA_MONTADO
             continue
         contagem: dict[str, int] = {}
         tabela, pulados = cadastro.juntar(_lidos(achados, cadastro, contagem))
+        if cadastro.ligar:
+            tabela, ligacao = cadastro.ligar(tabela, ponte)
+            contagem.update({f"ponte_{k}": v for k, v in ligacao.items()})
         if pessoas is None:
             sabidas = pessoas_pela_receita(
                 conexao,
@@ -178,7 +199,7 @@ def montar(
         gravar_se_mudou(
             _para_gravar(tabela, cadastro, sabidas, agora),
             destino,
-            _origens(achados),
+            origens,
             ORDEM,
             carimbos=LINHAGEM,
         )
