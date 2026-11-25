@@ -612,7 +612,10 @@ class _Consulta:
             # segue ativo (ela está atrás do retrato), a data de uma filial velha não é a baixa da empresa
             "c AS (SELECT * FROM v WHERE consta), "
             "inteiras AS (SELECT raiz FROM c GROUP BY raiz HAVING bool_and(situacao = $baixada)) "
-            "SELECT raiz, data_situacao_cadastral AS quando, motivo, publico_em FROM c "
+            # o dia público é o da última versão a ficar pública entre todos os estabelecimentos da raiz: baixa de
+            # data retroativa pode aparecer depois de outra de data mais nova
+            "SELECT raiz, data_situacao_cadastral AS quando, motivo, "
+            "max(publico_em) OVER (PARTITION BY raiz) AS publico_em FROM c "
             "WHERE raiz IN (SELECT raiz FROM inteiras) AND data_situacao_cadastral IS NOT NULL "
             "QUALIFY row_number() OVER (PARTITION BY raiz ORDER BY data_situacao_cadastral DESC, cnpj) = 1",
             {"dia": dia_de(self.dia), "baixada": BAIXADA},

@@ -235,3 +235,18 @@ def test_decisao_diferente_do_portao_sobre_a_baixa_nao_aproveita_o_cache(
     sem_a_situacao = tuple(t for t in TABELAS if t != compradores.SITUACAO)
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_a_situacao))
     assert "closed_on" not in exemplos()[BAIXADA]
+
+
+def test_o_dia_publico_e_o_da_ultima_versao_a_ficar_publica_entre_os_estabelecimentos(
+    pasta,
+):
+    """Baixa retroativa que só apareceu depois: os campos não podem dizer que eram públicos antes disso."""
+    versoes = [
+        (BAIXADA + "000100", "02", "2023-01-01", "00", "2023-05", "2023-05-21"),
+        (BAIXADA + "000100", "08", "2025-10-31", "01", "2026-02", "2026-02-21"),
+        (BAIXADA + "000200", "08", "2025-11-30", "02", "2025-12", "2025-12-21"),
+    ]
+    _gravar_a_situacao(pasta, versoes)
+    baixada = _exemplos(pasta)[BAIXADA]
+    assert baixada["baixada_em"]["publico_em"] == "2026-02-28"
+    assert baixada["situacao_da_empresa"]["publico_em"] == "2026-02-28"
