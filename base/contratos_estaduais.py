@@ -168,7 +168,79 @@ RJ_FORNECEDORES = Tabela(
     chave=("cnpj",),
     datas=("cadastrado_em",),
 )
-TABELAS = (RJ_CONTRATOS, RJ_SANCOES, RJ_FORNECEDORES)
+RJ_COMPRAS_DIRETAS = Tabela(
+    fonte="govrj-compras-diretas",
+    tabela="rj_compras_diretas",
+    como_chamar={
+        "cnpj": "cnpj_cpf",
+        "unidade": "unidade",
+        "id_processo": "id processo",
+        "afastamento": "afastamento",
+        "codigo_item": "id item",
+        "unidade_de_medida": "unidade de medida",
+        "pedido": "ped",
+        "regime_juridico": "regime",
+        "temporalidade": "temporalidade",
+        "aprovado_em": "data de aprovação",
+        "valor_do_processo": "valor do processo (r$)",
+        "quantidade": "qtd.",
+        "valor_unitario": "vl. unitário (r$)",
+    },
+    # no arquivo de 25/11/2026, processo, item e CNPJ repetem com quantidade e preço diferentes (164 casos);
+    # com os dois na chave, o que repete é cópia idêntica
+    chave=("id_processo", "codigo_item", "cnpj", "quantidade", "valor_unitario"),
+    datas=("aprovado_em",),
+    reais=("valor_do_processo", "quantidade", "valor_unitario"),
+)
+ES_CONTRATOS = Tabela(
+    fonte="esdados-contratos",
+    tabela="es_contratos",
+    como_chamar={
+        "cnpj": "cnpjfornecedor",
+        "id_contrato": "id",
+        "codigo_orgao": "idorgao",
+        "orgao": "nomeorgao",
+        "processo": "numeroprocesso",
+        "modalidade": "modalidadeprocesso",
+        "edital": "numeroedital",
+        "documento": "numerodocumento",
+        "tipo_de_documento": "tipodocumento",
+        "tipo_de_aquisicao": "tipoaquisicao",
+        "situacao": "situacao",
+        "registro_de_preco": "eregistropreco",
+        "celebrado_em": "datacelebracao",
+        "vigencia_inicio": "datainiciovigencia",
+        "vigencia_fim": "datafimvigencia",
+        "valor_inicial": "valorinicial",
+        "valor_final": "valorfinal",
+    },
+    chave=("id_contrato", "cnpj"),
+    datas=("celebrado_em", "vigencia_inicio", "vigencia_fim"),
+    reais=("valor_inicial", "valor_final"),
+)
+ES_EMPENHOS = Tabela(
+    fonte="esdados-empenhos",
+    tabela="es_empenhos",
+    como_chamar={
+        "cnpj": "cnpjfornecedor",
+        "id_empenho": "id",
+        "processo": "numeroprocesso",
+        "documento": "numerodocumento",
+        "tipo_de_documento": "tipodocumento",
+        "empenho": "numeroempenho",
+        "valor_global": "valorglobal",
+    },
+    chave=("id_empenho", "cnpj"),
+    reais=("valor_global",),
+)
+TABELAS = (
+    RJ_CONTRATOS,
+    RJ_SANCOES,
+    RJ_FORNECEDORES,
+    RJ_COMPRAS_DIRETAS,
+    ES_CONTRATOS,
+    ES_EMPENHOS,
+)
 
 
 # --- leitura de um arquivo guardado --------------------------------------------------------------------------

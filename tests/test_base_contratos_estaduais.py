@@ -96,6 +96,72 @@ def _guardar(
     _coletar(banco, spec.fonte, f"{SIGA}/{arquivo}", _csv(linhas, "utf-8"), dia)
 
 
+ES = "https://dados.es.gov.br/dataset/x/resource/{}/download/{}"
+
+
+def _contrato_es(
+    ident: str, documento: str = EMPRESA, final: str = "1200,00"
+) -> dict[str, str]:
+    """Uma linha como a coleta guarda: cabeçalho em minúsculas, sem fornecedor nem objeto."""
+    return {
+        "id": ident,
+        "idorgao": "12",
+        "nomeorgao": "SECRETARIA DE SAUDE",
+        "numeroprocesso": "2025-ABCDE",
+        "modalidadeprocesso": "Pregão Eletrônico",
+        "numeroedital": "",
+        "numerodocumento": "Contrato 001/2025",
+        "tipodocumento": "Contrato",
+        "cnpjfornecedor": documento,
+        "tipoaquisicao": "Serviço",
+        "situacao": "Celebrado",
+        "datacelebracao": "10/02/2025 00:00:00",
+        "datainiciovigencia": "",
+        "datafimvigencia": "31/12/2025 00:00:00",
+        "valorinicial": "1000,50",
+        "valorfinal": final,
+        "eregistropreco": "N",
+    }
+
+
+def _empenho_es(ident: str, documento: str = EMPRESA) -> dict[str, str]:
+    return {
+        "id": ident,
+        "numeroprocesso": "2025-ABCDE",
+        "numerodocumento": "Contrato 001/2025",
+        "tipodocumento": "Contrato",
+        "numeroempenho": "2025NE00001",
+        "valorglobal": "500,25",
+        "cnpjfornecedor": documento,
+    }
+
+
+def _compra_direta(
+    item: str, documento: str = EMPRESA, quantidade: str = "100"
+) -> dict[str, str]:
+    return {
+        "unidade": "SES - SECRETARIA DE SAUDE",
+        "id processo": "9001",
+        "afastamento": "Dispensa - Pequeno valor",
+        "data de aprovação": "10/03/2025",
+        "valor do processo (r$)": "1.500,00",
+        "cnpj_cpf": cnpjs.formatar(documento) if len(documento) == 14 else documento,
+        "id item": item,
+        "qtd.": quantidade,
+        "unidade de medida": "UN",
+        "vl. unitário (r$)": "15,00",
+        "ped": "NAO",
+        "regime": "Lei 14.133/2021",
+        "temporalidade": "12",
+    }
+
+
+def _guardar_em(
+    banco, spec: ce.Tabela, url: str, dia: date, linhas: list[dict[str, str]]
+) -> None:
+    _coletar(banco, spec.fonte, url, _csv(linhas, "utf-8"), dia)
+
+
 def _montar(banco, tmp_path, pessoas=frozenset(), **opcoes) -> dict:
     with banco.connect() as conexao:
         return ce.montar(
@@ -267,6 +333,101 @@ def test_fornecedores_um_por_cnpj_com_mei_marcado_como_pessoa(
     assert set(tabela["cidade"]) == {"Niterói"}
 
 
+def test_contratos_do_es_um_parquet_por_ano_com_datas_e_valores(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _guardar_em(
+        banco, ce.ES_CONTRATOS, ES.format("a", "contratos-2025.csv"), PRIMEIRO_DIA,
+        [_contrato_es("1"), _contrato_es("2", OUTRA), _contrato_es("3", INVALIDO), _contrato_es("4", CPF)],
+    )  # fmt: skip
+    _guardar_em(
+        banco, ce.ES_CONTRATOS, ES.format("b", "contratos-2024.csv"), PRIMEIRO_DIA,
+        [_contrato_es("9")],
+    )  # fmt: skip
+    resumo = _montar(banco, tmp_path)
+    assert {"es_contratos/contratos-2025", "es_contratos/contratos-2024"} <= set(resumo)
+    assert (
+        resumo["es_contratos/contratos-2025"]["cnpj_invalido"] == 2
+    )  # o DV errado e o CPF
+    tabela = _tabela(tmp_path, ce.ES_CONTRATOS, "contratos-2025").set_index(
+        "id_contrato"
+    )
+    assert sorted(tabela.index) == ["1", "2"]
+    linha = tabela.loc["1"]
+    assert linha["cnpj"] == cnpjs.formatar(EMPRESA)
+    assert linha["orgao"] == "SECRETARIA DE SAUDE"
+    assert linha["celebrado_em"] == date(2025, 2, 10)  # a hora "00:00:00" não atrapalha
+    assert pd.isna(linha["vigencia_inicio"])
+    assert linha["vigencia_fim"] == date(2025, 12, 31)
+    assert linha["valor_inicial"] == 1000.5 and linha["valor_final"] == 1200.0
+    assert pd.isna(linha["edital"])  # vazio na fonte fica nulo
+    assert (
+        linha["disponivel_em"] == PRIMEIRO_DIA
+    )  # celebrado em fevereiro; a base soube no dia do arquivo
+    assert _tabela(tmp_path, ce.ES_CONTRATOS, "contratos-2024")[
+        "id_contrato"
+    ].tolist() == ["9"]
+
+
+def test_aditivo_que_muda_o_valor_final_do_es_e_versao_nova(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    url = ES.format("a", "contratos-2025.csv")
+    outro = _contrato_es("2", OUTRA)
+    _guardar_em(banco, ce.ES_CONTRATOS, url, PRIMEIRO_DIA, [_contrato_es("1"), outro])
+    _guardar_em(
+        banco,
+        ce.ES_CONTRATOS,
+        url,
+        SEGUNDO_DIA,
+        [_contrato_es("1", final="1500,00"), outro],
+    )
+    _montar(banco, tmp_path)
+    tabela = _tabela(tmp_path, ce.ES_CONTRATOS, "contratos-2025")
+    primeiro = tabela[tabela["id_contrato"] == "1"].sort_values("visto_em")
+    assert primeiro["valor_final"].tolist() == [1200.0, 1500.0]
+    assert primeiro["disponivel_em"].tolist() == [PRIMEIRO_DIA, SEGUNDO_DIA]
+
+
+def test_empenhos_do_es_sem_data_mas_com_o_dia_do_arquivo(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _guardar_em(
+        banco, ce.ES_EMPENHOS, ES.format("c", "empenhos-2025.csv"), PRIMEIRO_DIA,
+        [_empenho_es("10"), _empenho_es("11", CPF)],
+    )  # fmt: skip
+    _montar(banco, tmp_path)
+    (linha,) = _tabela(tmp_path, ce.ES_EMPENHOS, "empenhos-2025").to_dict("records")
+    assert linha["empenho"] == "2025NE00001"
+    assert linha["valor_global"] == 500.25
+    assert linha["disponivel_em"] == PRIMEIRO_DIA
+
+
+def test_compras_diretas_do_rj_quantidade_e_preco_separam_os_itens(
+    banco, tmp_path, monkeypatch
+):
+    """No arquivo real, processo, item e CNPJ repetem com quantidade diferente: são compras diferentes."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _guardar(
+        banco, ce.RJ_COMPRAS_DIRETAS, "COMPRAS_DIRETAS.CSV", PRIMEIRO_DIA,
+        [
+            _compra_direta("555"),
+            _compra_direta("555", quantidade="40"),
+            _compra_direta("555"),  # cópia idêntica: fica uma
+            _compra_direta("556", "***.000.000-**"),
+        ],
+    )  # fmt: skip
+    resumo = _montar(banco, tmp_path)["rj_compras_diretas/compras_diretas"]
+    assert resumo["id_repetido"] == 1 and resumo["cnpj_invalido"] == 1
+    tabela = _tabela(tmp_path, ce.RJ_COMPRAS_DIRETAS, "compras_diretas")
+    assert sorted(tabela["quantidade"]) == [40.0, 100.0]
+    linha = tabela.iloc[0]
+    assert linha["valor_do_processo"] == 1500.0 and linha["valor_unitario"] == 15.0
+    assert linha["aprovado_em"] == date(2025, 3, 10)
+    assert linha["afastamento"] == "Dispensa - Pequeno valor"
+
+
 def test_nome_e_cpf_nunca_chegam_ao_parquet_e_as_colunas_batem_com_o_dicionario(
     banco, tmp_path, monkeypatch
 ):
@@ -290,6 +451,18 @@ def test_nome_e_cpf_nunca_chegam_ao_parquet_e_as_colunas_batem_com_o_dicionario(
         PRIMEIRO_DIA,
         [_fornecedor(CPF), _fornecedor()],
     )
+    _guardar(
+        banco, ce.RJ_COMPRAS_DIRETAS, "COMPRAS_DIRETAS.CSV", PRIMEIRO_DIA,
+        [_compra_direta("1", CPF), _compra_direta("2")],
+    )  # fmt: skip
+    _guardar_em(
+        banco, ce.ES_CONTRATOS, ES.format("a", "contratos-2025.csv"), PRIMEIRO_DIA,
+        [_contrato_es("1", CPF), _contrato_es("2")],
+    )  # fmt: skip
+    _guardar_em(
+        banco, ce.ES_EMPENHOS, ES.format("b", "empenhos-2025.csv"), PRIMEIRO_DIA,
+        [_empenho_es("1", CPF), _empenho_es("2")],
+    )  # fmt: skip
     _montar(banco, tmp_path)
     texto = _texto_gravado(tmp_path)
     assert CPF not in texto and CPF[:9] not in texto
@@ -297,6 +470,9 @@ def test_nome_e_cpf_nunca_chegam_ao_parquet_e_as_colunas_batem_com_o_dicionario(
         (ce.RJ_CONTRATOS, "contratos"),
         (ce.RJ_SANCOES, "fornecedor_sancoes"),
         (ce.RJ_FORNECEDORES, "fornecedores"),
+        (ce.RJ_COMPRAS_DIRETAS, "compras_diretas"),
+        (ce.ES_CONTRATOS, "contratos-2025"),
+        (ce.ES_EMPENHOS, "empenhos-2025"),
     )
     for spec, arquivo in arquivos:
         tabela = _tabela(tmp_path, spec, arquivo)
@@ -350,6 +526,7 @@ def test_coluna_que_a_fonte_tirou_e_erro_e_nao_coluna_vazia(
 def test_o_nome_do_parquet_e_o_do_arquivo_da_fonte():
     assert ce.nome_do_arquivo(f"{SIGA}/CONTRATOS.CSV") == "contratos"
     assert ce.nome_do_arquivo(f"{SIGA}/FORNECEDOR_SANCOES.CSV") == "fornecedor_sancoes"
+    assert ce.nome_do_arquivo(ES.format("a", "contratos-2025.csv")) == "contratos-2025"
 
 
 def test_comando_monta_as_tabelas_e_sai_com_1_sem_arquivo(banco, tmp_path, monkeypatch):
