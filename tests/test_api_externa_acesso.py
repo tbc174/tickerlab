@@ -417,6 +417,85 @@ def test_contrato_vale_so_para_o_proprio_conjunto_e_finalidade(
     assert decisao.motivo is Motivo.SEM_CONTRATO_DA_ORGANIZACAO
 
 
+def _contar_perguntas_ao_banco(monkeypatch) -> list[str]:
+    """As perguntas do portão ao banco (contrato e piloto), na ordem em que foram feitas."""
+    perguntas: list[str] = []
+    contrato, piloto = acesso.contrato_permite, acesso.e_organizacao_do_piloto
+
+    def contar(nome, funcao):
+        def contada(*args, **kwargs):
+            perguntas.append(nome)
+            return funcao(*args, **kwargs)
+
+        return contada
+
+    monkeypatch.setattr(acesso, "contrato_permite", contar("contrato", contrato))
+    monkeypatch.setattr(acesso, "e_organizacao_do_piloto", contar("piloto", piloto))
+    return perguntas
+
+
+CAMPOS = ("receita_liquida", "lucro_liquido", "ebitda")
+
+
+def test_autorizador_pergunta_ao_banco_uma_vez_e_decide_como_o_autorizar(
+    banco, admin, alfa, chave, monkeypatch
+):
+    """Na análise completa, cada pergunta ao banco esperava a trava única do portão (log de produção de
+    24/11): o contrato e o piloto são os mesmos para todos os campos do conjunto e se perguntam uma vez só."""
+    _conceder(banco, admin, alfa)
+    contexto, regras = _contexto(banco, chave), _portao_liberando()
+    esperadas = [_autorizar(banco, contexto, regras, campo=campo) for campo in CAMPOS]
+    perguntas = _contar_perguntas_ao_banco(monkeypatch)
+    with banco.connect() as conexao:
+        decidir = acesso.autorizador(
+            conexao, contexto, conjunto=CONJUNTO, finalidade="analise", hoje=HOJE,
+            regras=regras,
+        )  # fmt: skip
+        assert perguntas == [
+            "contrato",
+            "piloto",
+        ]  # já na hora, antes do primeiro campo
+        decisoes = [decidir("cvm-dfp", campo) for campo in CAMPOS]
+    assert perguntas == ["contrato", "piloto"]
+    assert decisoes == esperadas
+    assert decisoes[0].libera and not decisoes[1].libera
+
+
+def test_autorizador_sem_contrato_nega_todo_campo_sem_perguntar_o_piloto(
+    banco, alfa, chave, monkeypatch
+):
+    contexto = _contexto(banco, chave)
+    perguntas = _contar_perguntas_ao_banco(monkeypatch)
+    with banco.connect() as conexao:
+        decidir = acesso.autorizador(
+            conexao, contexto, conjunto=CONJUNTO, finalidade="analise", hoje=HOJE,
+            regras=_portao_liberando(),
+        )  # fmt: skip
+        decisoes = [decidir("cvm-dfp", campo) for campo in CAMPOS]
+    assert perguntas == ["contrato"]
+    assert {d.motivo for d in decisoes} == {Motivo.SEM_CONTRATO_DA_ORGANIZACAO}
+
+
+def test_portao_da_rota_nao_pergunta_ao_banco_depois_de_montado(
+    banco, admin, alfa, chave, monkeypatch
+):
+    """O portão de cada bloco da análise pergunta ao banco quando é montado, na linha do pedido: depois, os
+    blocos que correm ao mesmo tempo só consultam a memória e não disputam a conexão."""
+    from src.api_externa import rotas
+
+    _conceder(banco, admin, alfa)
+    monkeypatch.setattr(rotas, "regras_da_api", _portao_liberando)
+    contexto = _contexto(banco, chave)
+    perguntas = _contar_perguntas_ao_banco(monkeypatch)
+    with banco.connect() as conexao:
+        permitido = rotas._portao(conexao, contexto, CONJUNTO, "analise")
+        antes = list(perguntas)
+        for campo in CAMPOS:
+            permitido("cvm-dfp", campo, False)
+    assert antes == ["contrato", "piloto"]
+    assert perguntas == antes
+
+
 def test_direito_suspenso_nega(banco, admin, alfa, chave):
     direito = _conceder(banco, admin, alfa)
     with banco.begin() as conexao:

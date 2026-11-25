@@ -393,17 +393,32 @@ class _PortaoDividido:
             permitido = self.fabrica(bloco.conjunto, bloco.finalidade)
 
         def dentro(fonte: str, nome: str, derivado: bool) -> bool:
+            if (
+                self.encerrado
+            ):  # depois do fim, "não" na hora, sem entrar na fila da trava
+                return self._barrar(bloco)
             with self._na_trava(bloco):
                 if self.encerrado:
-                    self.barrados.add(bloco.nome)
-                    return False
+                    return self._barrar(bloco)
                 return permitido(fonte, nome, derivado)
 
         return dentro
 
+    def _barrar(self, bloco: Bloco) -> bool:
+        self.barrados.add(bloco.nome)
+        return False
+
     def encerrar(self) -> None:
-        with self.trava:
-            self.encerrado = True
+        """Fecha o portão para todos e espera só quem já está dentro dele.
+
+        A marca vem antes da trava: quem pergunta depois dela volta "não" sem disputar a trava com o fim do
+        prazo (em produção, o fim esperava a fila inteira e o pedido passava de 20 s para 28 a 32 s).
+        """
+        self.encerrado = True
+        with (
+            self.trava
+        ):  # o bloco que está dentro termina antes de a conexão voltar para o pedido
+            pass
 
     def conta(self, bloco: Bloco) -> _NoPortao:
         """Uma cópia do que o bloco passou no portão até agora."""
@@ -503,19 +518,25 @@ def _ler_ao_mesmo_tempo(
 ) -> tuple[dict[str, Servido | None], list[str]]:
     """Cada bloco no próprio cursor e na própria linha de execução; o que passa do prazo é interrompido. O tempo
     de cada um vai para o `relogio`, também quando um bloco quebra."""
+    limite = time.monotonic() + prazo
     tarefas = [_Tarefa(bloco, _cursor(porta)) for bloco in blocos]
+    # os portões de todos antes do primeiro bloco: montar um pergunta ao banco, e com blocos já correndo cada
+    # montagem esperava a trava (em produção, o último bloco começava 15 s depois do primeiro)
+    permitidos = [portoes.de(tarefa.bloco) for tarefa in tarefas]
     executor = ThreadPoolExecutor(
         max_workers=max(len(tarefas), 1), thread_name_prefix="analise"
     )
     try:
-        for tarefa in tarefas:
+        for tarefa, permitido in zip(tarefas, permitidos, strict=True):
             # o contexto do pedido vai junto: o registro do piloto (D11) é o mesmo para todos os blocos
             contexto = contextvars.copy_context()
-            permitido = portoes.de(tarefa.bloco)
             tarefa.futuro = executor.submit(
                 contexto.run, _ler_no_cursor, tarefa, permitido, linhas, cnpj, dia
             )
-        wait([t.futuro for t in tarefas if t.futuro], timeout=max(prazo, 0.0))
+        wait(
+            [t.futuro for t in tarefas if t.futuro],
+            timeout=max(limite - time.monotonic(), 0.0),
+        )
     finally:
         portoes.encerrar()
         executor.shutdown(wait=False, cancel_futures=True)

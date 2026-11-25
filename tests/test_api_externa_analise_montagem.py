@@ -565,3 +565,78 @@ def test_sem_cadastro_aberto_nao_ha_tempo_nem_log(porta, blocos, caplog):
     caplog.set_level("INFO", logger=analise.__name__)
     assert _montar(porta, conjuntos=()) is None
     assert _linhas_do_log(caplog) == []
+
+
+# --- o prazo com o portão disputado (log de produção de 24/11) -------------------------------------
+
+
+def test_o_prazo_vale_mesmo_com_os_blocos_disputando_o_portao(porta, blocos):
+    """Em produção o pedido passou de 20 s para 28 a 32 s porque o fim do prazo esperava a trava do portão,
+    disputada por todos os blocos. Fechar o portão não espera a fila: o pedido volta perto do prazo."""
+    prazo = 0.6
+
+    def insiste(_porta, permitido, *_):
+        for _ in range(100):  # pergunta até o portão fechar (no máximo uns 10 s)
+            if not permitido("rfb-cnpj", "campo", False):
+                break
+        return _Servido({"x": [{}]})
+
+    def portao_lento(_conjunto, _finalidade):
+        def permitido(*_):
+            time.sleep(0.1)
+            return True
+
+        return permitido
+
+    nomes = ("vinculos", "eventos", "ativos", "socios_pj", "comparaveis")
+    blocos(*(_bloco(nome, insiste) for nome in nomes))
+    comeco = time.monotonic()
+    montada = _montar(
+        porta, conjuntos=("profiles", *nomes), prazo=prazo, portao=portao_lento
+    )
+    assert time.monotonic() - comeco < prazo + 0.5
+    tempos = _tempos(montada)
+    assert [t.estado for b, t in tempos.items() if b != "profile"] == [
+        analise.ATRASADO
+    ] * len(nomes)
+    # todos começam juntos: montar o portão de um bloco não espera os que já correm (antes, o último começava
+    # depois de 900 ms)
+    assert max(t.comecou_ms for t in tempos.values()) < 400
+
+
+def test_bloco_que_pergunta_depois_do_fim_nao_espera_a_trava(porta, blocos):
+    """Depois do fim do prazo, a pergunta ao portão volta "não" sem entrar na fila da trava, mesmo com outro
+    bloco ainda dentro dela."""
+    prazo = 0.3
+    depois = {}
+
+    def pergunta_depois(_porta, permitido, *_):
+        time.sleep(
+            prazo + 0.15
+        )  # o prazo já acabou e o outro bloco ainda está no portão
+        comeco = time.monotonic()
+        depois["resposta"] = permitido("rfb-cnpj", "campo", False)
+        depois["ms"] = (time.monotonic() - comeco) * 1000
+        return _Servido({"x": [{}]})
+
+    def segura_a_trava(_porta, permitido, *_):
+        permitido("rfb-cnpj", "campo", False)
+        return _Servido({"y": [{}]})
+
+    def portao(conjunto, _finalidade):
+        def permitido(*_):
+            if conjunto == "eventos":
+                time.sleep(1.0)  # fica dentro da trava além do prazo
+            return True
+
+        return permitido
+
+    blocos(_bloco("vinculos", pergunta_depois), _bloco("eventos", segura_a_trava))
+    _montar(
+        porta, conjuntos=("profiles", "vinculos", "eventos"), prazo=prazo, portao=portao
+    )
+    limite = time.monotonic() + 5
+    while "ms" not in depois and time.monotonic() < limite:
+        time.sleep(0.01)
+    assert depois["resposta"] is False
+    assert depois["ms"] < 200

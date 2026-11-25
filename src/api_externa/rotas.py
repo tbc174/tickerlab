@@ -153,16 +153,17 @@ def _portao(
     conjunto: str,
     finalidade: str = FINALIDADE,
 ) -> Permitido:
-    """O contrato da organização e o portão, uma pergunta por fonte e campo dentro do pedido."""
-    hoje = acesso.agora().date()
-    regras = regras_da_api()
+    """O contrato da organização e o portão: o banco responde aqui, uma vez, na linha do pedido; depois, uma
+    decisão por fonte e campo, só com a memória (os blocos da análise correm ao mesmo tempo sem disputar a
+    conexão)."""
+    decidir_campo = acesso.autorizador(
+        conexao, contexto, conjunto=conjunto, finalidade=finalidade,
+        hoje=acesso.agora().date(), regras=regras_da_api(),
+    )  # fmt: skip
 
     @cache
     def permitido(fonte: str, campo: str, derivado: bool) -> bool:
-        decisao = acesso.autorizar(
-            conexao, contexto, fonte=fonte, conjunto=conjunto, campo=campo,
-            finalidade=finalidade, hoje=hoje, derivado=derivado, regras=regras,
-        )  # fmt: skip
+        decisao = decidir_campo(fonte, campo, derivado)
         # D11: o campo de piloto só sai com o registro do pedido aberto, para o bloco levar o aviso
         return piloto.registrar(fonte, campo, decisao)
 
