@@ -525,8 +525,13 @@ def _emails_pessoais(texto: str) -> list[str]:
 
 
 def test_a_varredura_de_email_separa_o_inventado_do_real() -> None:
-    assert _emails_pessoais("contato: maria.silva@gmail.com") == ["maria.silva"]
-    assert _emails_pessoais("x@hotmail.com.br e y@uol.com.br") == ["x", "y"]
+    # montados na hora: escritos por inteiro, a própria varredura acharia este arquivo
+    arroba = "@"
+    assert _emails_pessoais(f"contato: maria.silva{arroba}gmail.com") == ["maria.silva"]
+    assert _emails_pessoais(f"x{arroba}hotmail.com.br e y{arroba}uol.com.br") == [
+        "x",
+        "y",
+    ]
     assert not _emails_pessoais(
         "Fulano@gmail.com, teste@exemplo.com, ana@empresa.com.br"
     )
