@@ -6,7 +6,8 @@ e `base/conselhos.py`).
 
 Lê os originais que o arquivista já guardou (não baixa nada) e grava, com manifesto e versões
 (`gravar_com_versoes`: com as mesmas origens, nada é lido de novo):
-- `<base>/ofertas/antigas.parquet` e `<base>/ofertas/resolucao_160.parquet` (a baixada mais nova);
+- `<base>/ofertas/antigas.parquet`, `<base>/ofertas/resolucao_160.parquet` e `<base>/ofertas/cnpj_dos_devedores.parquet`
+  (o CNPJ de empresa citado como devedor em cada requerimento da 160, sem o texto; a baixada mais nova);
 - do FRE de cada ano, `<base>/fre_<tabela>/<ano>.parquet` para conselho, comitês, remuneração,
   extremos da remuneração, diversidade, capital social, empregados, acionistas (e por classe), distribuição do capital (e por classe) e partes
   relacionadas (`base/fre_governanca.py`), juntando todas as baixadas guardadas do ano (as versões
@@ -30,6 +31,7 @@ import sqlalchemy as sa
 
 from base import conselhos, fre_governanca, ofertas
 from base.parquet import gravar_com_versoes
+from base.raizes_de_empresa import RaizesDeEmpresa, raizes_de_empresa
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
@@ -89,10 +91,18 @@ TABELAS_DAS_OFERTAS: dict[str, tuple[Callable[[bytes], pd.DataFrame], list[str]]
         ofertas.ler_resolucao_160,
         ["numero_requerimento", "cnpj_emissor"],
     ),
+    "cnpj_dos_devedores": (
+        ofertas.ler_cnpj_dos_devedores,
+        ["numero_requerimento", "cnpj_emissor", "cnpj"],
+    ),
 }
+# o que só se grava com a lista de empresas da Receita: empresário individual e MEI são pessoa (ADR 0075)
+SO_DE_EMPRESA = ("cnpj_dos_devedores",)
 
 
-def carregar_ofertas(conexao: sa.Connection, base: Path) -> None:
+def carregar_ofertas(conexao: sa.Connection, base: Path) -> int:
+    """Grava as tabelas das ofertas; devolve quantas ficaram sem gravar (hoje: só a de devedores, sem a
+    lista de empresas da Receita na base)."""
     linhas = [
         lin
         for lin in originais_mais_recentes(conexao, ofertas.FONTE)
@@ -100,17 +110,43 @@ def carregar_ofertas(conexao: sa.Connection, base: Path) -> None:
     ]
     if not linhas:
         log.warning("ofertas: nenhum original guardado de %s", ofertas.URL)
-        return
+        return 0
     linha = linhas[0]
     conteudo = acervo.ler_original(linha.caminho_do_original)
     if conteudo is None:
         raise FileNotFoundError(f"original fora do acervo: {linha.url}")
     origens = [{"url": linha.url, "sha256": linha.sha256}]
+    empresas = _lista_de_empresas(base)
+    sem_gravar = 0
     for nome, (ler, ordem) in TABELAS_DAS_OFERTAS.items():
+        de_origem = origens
+        if nome in SO_DE_EMPRESA:
+            if empresas is None:
+                sem_gravar += 1
+                continue
+            ler = _so_de_empresa(ler, empresas)
+            # a lista nova refaz a tabela: o hash dela entra nas origens
+            de_origem = [{**origens[0], "raizes_sha256": empresas.impressao}]
         resultado = gravar_com_versoes(
-            lambda ler=ler: ler(conteudo), base / "ofertas" / nome, origens, ordem
+            lambda ler=ler: ler(conteudo), base / "ofertas" / nome, de_origem, ordem
         )
         log.info("ofertas %s: %s", nome, resultado)
+    return sem_gravar
+
+
+def _lista_de_empresas(base: Path) -> RaizesDeEmpresa | None:
+    """As raízes que são empresa (`base/raizes_de_empresa.py`); sem as tabelas da Receita, None e um erro no log."""
+    try:
+        return raizes_de_empresa(base)
+    except (OSError, KeyError, ValueError) as erro:
+        log.error("sem a lista de empresas, os devedores não são gravados: %s", erro)
+        return None
+
+
+def _so_de_empresa(
+    ler: Callable[[bytes], pd.DataFrame], empresas: RaizesDeEmpresa
+) -> Callable[[bytes], pd.DataFrame]:
+    return lambda conteudo: ofertas.so_devedor_de_empresa(ler(conteudo), empresas)
 
 
 def _anos_do_fre(conexao: sa.Connection) -> dict[str, str]:
@@ -154,11 +190,11 @@ def main(argv: list[str] | None = None) -> int:
     motor = criar_engine(url)
     try:
         with motor.connect() as conexao:
-            carregar_ofertas(conexao, base)
+            sem_gravar = carregar_ofertas(conexao, base)
             carregar_fre(conexao, base)
     finally:
         motor.dispose()
-    return 0
+    return 1 if sem_gravar else 0
 
 
 if __name__ == "__main__":

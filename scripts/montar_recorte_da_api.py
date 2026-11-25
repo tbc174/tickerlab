@@ -140,6 +140,7 @@ FICAM_EM_CASA = (
     "ofertas_antigas",
     "trocas_de_auditor",
     "ofertas_resolucao_160",
+    "ofertas_cnpj_dos_devedores",
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",

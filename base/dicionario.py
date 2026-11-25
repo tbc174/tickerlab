@@ -8342,6 +8342,50 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ofertas_cnpj_dos_devedores": Tabela(
+        descricao=(
+            "O CNPJ de empresa citado como devedor ou coobrigado em cada requerimento de oferta pela Resolução CVM 160 "
+            "(CRI, CRA e outros certificados de recebíveis; 2023 em diante), uma linha por requerimento e CNPJ. "
+            "Vem do texto livre `Identificacao_devedores_coobrigados`, que **nunca entra**: só o CNPJ com pontuação e "
+            "dígito verificador certo é guardado; CPF, nome e o resto do texto ficam de fora. Existe porque o informe "
+            "mensal do certificado (`securitizacao_cedente_devedor`) não traz cedente nem devedor de todo CRA (em 2024, "
+            "249 dos 755 certificados não têm nenhuma linha), e o devedor só aparece aqui, na oferta. É a ligação da "
+            "empresa à emissão pela raiz do CNPJ, **não** prova de que ela é a devedora do certificado de hoje: o "
+            "requerimento cita quem a securitizadora disse que seria. Sem juízo de qualidade sobre o devedor"
+        ),
+        fonte="CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)",
+        familia_da_fonte="cvm",
+        frequencia="Diária (o ZIP é regerado todo dia)",
+        atraso="Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)",
+        onde="Parquet em `<acervo>/base/ofertas/cnpj_dos_devedores.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.",
+        colunas={
+            "numero_requerimento": (
+                "Como a CVM publica (`Numero_Requerimento`)",
+                TEXTO,
+            ),
+            "numero_processo": ("Como a CVM publica (`Numero_Processo`)", TEXTO),
+            "cnpj_emissor": (
+                "CNPJ do emissor da oferta (a securitizadora), como a CVM publica",
+                TEXTO,
+            ),
+            "nome_emissor": ("Como a CVM publica (`Nome_Emissor`)", TEXTO),
+            "valor_mobiliario": ("Como a CVM publica (`Valor_Mobiliario`)", TEXTO),
+            "emissao": ("Como a CVM publica (`Emissao`)", TEXTO),
+            "cnpj": (
+                "CNPJ de empresa citado como devedor ou coobrigado, no formato 00.000.000/0000-00",
+                TEXTO,
+            ),
+            "anunciada_em": (
+                "Quando a oferta ficou pública na CVM (data do registro)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+                DATA,
+            ),
+        },
+    ),
     "susep_seguros": Tabela(
         descricao=(
             "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, "
@@ -11660,6 +11704,7 @@ _CONTRATO = {
     "fre_partes_relacionadas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'linha'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),  # 1.1.0 (25/11/2026): coluna nova `natureza` (categoria da natureza e razão da operação; linha 714)
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "ofertas_cnpj_dos_devedores": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor', 'cnpj'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO, versao_do_contrato="1.1.0"),
     "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),

@@ -6,7 +6,10 @@ tipos simples e com as chaves em português (a rota traduz na saída), as empres
 
 - `took_stake`: entrou como sócia PJ de uma empresa do setor na janela de `anos` (a tabela
   `entradas_de_socio_pj`, fonte `rfb-cnpj`). Não conta quem entrou até a abertura da empresa (fundador) nem a
-  entrada dentro do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum no dia);
+  entrada dentro do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum no dia). Conta
+  também a entrada em empresa do setor que hoje está baixada (linha 1042): consolidador que incorpora o que compra
+  faz a empresa sumir do retrato ativo, e era o histórico dele que sumia junto. A empresa baixada só entra na
+  conta como lugar onde alguém entrou: `empresas_ativas` segue contando só as ativas;
 - `fund_stake`: um FIP (registro de fundos da CVM, fonte `cvm-fidc-base`) que era sócio de uma empresa do
   setor no dia;
 - `controls_in_sector`: a companhia aberta que, no FRE mais recente já entregue no dia, tinha uma controlada ou
@@ -77,7 +80,7 @@ LEITURAS = {
     FUNDOS: (FIPS_REGISTRADOS,),
 }
 PUBLICADO_EM, MES = "publico_em", "mes_do_retrato"
-ATIVA, FIP = "02", "FIP"
+ATIVA, BAIXADA, FIP = "02", "08", "FIP"
 ANOS_PADRAO, ANOS_MAXIMO = 3, 10
 LIMITE_PADRAO, LIMITE_MAXIMO = 20, 50
 EXEMPLOS_POR_SINAL = 5
@@ -129,7 +132,8 @@ LIMITES_GERAIS = (
 LIMITES_DO_SINAL = {
     ENTROU: (
         "Entradas como sócio: do quadro de sócios da Receita, que a base acompanha desde 05/2023 (antes disso, "
-        "só quem ainda era sócio naquele mês). Não contam quem entrou até a abertura da empresa nem a entrada "
+        "só quem ainda era sócio naquele mês). Contam também as entradas em empresa do setor que depois foi "
+        "baixada (uma incorporação, por exemplo). Não contam quem entrou até a abertura da empresa nem a entrada "
         "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum)."
     ),
     FUNDO: (
@@ -433,13 +437,16 @@ class LeitorDeCompradores:
             - pd.Timedelta(days=round(pedido.anos * DIAS_POR_ANO))
         ).date()
         consulta = _Consulta(self.porta, mes, como_era_em, desde, self.lida)
-        setor = consulta.setor(pedido.cnae, pedido.uf)
-        lista = _Lista(setor)
+        # as empresas onde se entra: as ativas do setor e, para o sinal de entrada, as baixadas onde alguém entrou
+        # na janela (consolidador que incorpora o que compra faz a empresa sumir da lista de ativas, linha 1042)
+        alvos = consulta.alvos(pedido.cnae, pedido.uf, ENTROU in sinais)
+        setor = alvos[~alvos["baixada"]]
+        lista = _Lista(alvos)
         fontes = {RECEITA}
         if ENTROU in sinais or FUNDO in sinais:
-            entradas = consulta.entradas(setor) if ENTROU in sinais else None
+            entradas = consulta.entradas(alvos) if ENTROU in sinais else None
             # só o quadro de sócios de quem pesa na conta: as empresas do setor e quem entrou nelas
-            relevantes = set(setor["raiz"].astype(str))
+            relevantes = set(alvos["raiz"].astype(str))
             if entradas is not None:
                 relevantes |= set(entradas["comprador"].astype(str))
             socias = consulta.socias_no_dia(relevantes)
@@ -503,12 +510,53 @@ class _Consulta:
             cursor.close()
 
     def setor(self, cnae: str, uf: str | None) -> pd.DataFrame:
-        """As raízes com estabelecimento ativo do CNAE (na UF) no retrato, com a abertura mais antiga e a UF."""
+        """As raízes com estabelecimento ativo do CNAE (na UF) no retrato: o `empresas_ativas` da lista, com a
+        abertura mais antiga e a UF (`perfil_do_setor` confere o seu número contra esta conta)."""
+        return self.alvos(cnae, uf, com_baixadas=False)[["raiz", "abertura", "uf"]]
+
+    def alvos(self, cnae: str, uf: str | None, com_baixadas: bool) -> pd.DataFrame:
+        """As raízes do setor no retrato, com a abertura mais antiga, a UF e se estão `baixada`.
+
+        As ativas são as que têm estabelecimento ativo do CNAE (na UF), com a UF e a abertura só dos
+        estabelecimentos ativos. As baixadas só vêm com `com_baixadas` e são as que têm estabelecimento baixado do
+        CNAE (na UF) e **nenhum estabelecimento ativo no retrato**, em nenhum CNAE nem UF (empresa que fechou a
+        filial daquele CNAE ou daquela UF segue funcionando e não é baixada do setor). Só as que tiveram alguém
+        entrando na janela: o retrato tem centenas de milhares delas, e só estas pesam na lista."""
+        ativas = "SELECT raiz, abertura_ativa AS abertura, uf_ativa AS uf, false AS baixada FROM recorte WHERE ativa"
+        baixadas = (
+            " UNION ALL "
+            "SELECT raiz, abertura_todas, uf_todas, true FROM recorte WHERE so_baixadas AND EXISTS "
+            f"(SELECT 1 FROM {_view(ENTRADAS)} e WHERE e.cnpj_basico = recorte.raiz "
+            f"AND e.movimento = 'entrou' AND e.{PUBLICADO_EM} <= CAST($dia AS DATE) "
+            "AND e.data_entrada >= CAST($desde AS DATE) AND e.data_entrada <= CAST($dia AS DATE)) "
+            f"AND NOT EXISTS (SELECT 1 FROM {_view(ESTABELECIMENTOS)} a WHERE a.cnpj_basico = recorte.raiz "
+            f"AND a.{MES} = $mes AND a.situacao_cadastral = $ativa)"
+            if com_baixadas
+            else ""
+        )
         return self._df(
-            f"SELECT cnpj_basico AS raiz, min(data_inicio_atividade) AS abertura, min(uf) AS uf "
-            f"FROM {_view(ESTABELECIMENTOS)} WHERE {MES} = $mes AND situacao_cadastral = $ativa "
-            "AND starts_with(cnae_principal, $cnae) AND ($uf IS NULL OR uf = $uf) GROUP BY cnpj_basico",
-            {"mes": self.mes, "ativa": ATIVA, "cnae": cnae, "uf": uf},
+            "WITH recorte AS (SELECT cnpj_basico AS raiz, "
+            "min(data_inicio_atividade) FILTER (WHERE situacao_cadastral = $ativa) AS abertura_ativa, "
+            "min(uf) FILTER (WHERE situacao_cadastral = $ativa) AS uf_ativa, "
+            "min(data_inicio_atividade) AS abertura_todas, min(uf) AS uf_todas, "
+            "coalesce(bool_or(situacao_cadastral = $ativa), false) AS ativa, "
+            "coalesce(bool_and(situacao_cadastral = $baixada), false) AS so_baixadas "
+            f"FROM {_view(ESTABELECIMENTOS)} WHERE {MES} = $mes "
+            "AND starts_with(cnae_principal, $cnae) AND ($uf IS NULL OR uf = $uf) GROUP BY cnpj_basico) "
+            f"{ativas}{baixadas}",
+            {
+                "mes": self.mes,
+                "ativa": ATIVA,
+                "baixada": BAIXADA,
+                "cnae": cnae,
+                "uf": uf,
+                # o DuckDB recusa parâmetro que a consulta não usa
+                **(
+                    {"dia": dia_de(self.dia), "desde": dia_de(self.desde)}
+                    if com_baixadas
+                    else {}
+                ),
+            },
         )
 
     def socias_no_dia(self, raizes: set[str]) -> pd.DataFrame:
@@ -528,8 +576,8 @@ class _Consulta:
             ),
         )
 
-    def entradas(self, setor: pd.DataFrame) -> pd.DataFrame:
-        """Quem entrou como sócio PJ de empresa do setor na janela, depois da abertura; a mais nova por par."""
+    def entradas(self, alvos: pd.DataFrame) -> pd.DataFrame:
+        """Quem entrou como sócio PJ de empresa do setor (ativa ou baixada) na janela, depois da abertura; a mais nova por par."""
         return self._df(
             f"SELECT e.cnpj_basico AS alvo, e.raiz_socio_pj AS comprador, e.data_entrada, e.{PUBLICADO_EM} "
             f"FROM {_view(ENTRADAS)} e JOIN setor s ON s.raiz = e.cnpj_basico "
@@ -539,7 +587,7 @@ class _Consulta:
             "QUALIFY row_number() OVER (PARTITION BY e.cnpj_basico, e.raiz_socio_pj "
             f"ORDER BY e.data_entrada DESC, e.{MES} DESC) = 1",
             {"dia": dia_de(self.dia), "desde": dia_de(self.desde)},
-            setor=setor[["raiz", "abertura"]],
+            setor=alvos[["raiz", "abertura"]],
         )
 
     def fundos_socios(self, setor: pd.DataFrame, socias: pd.DataFrame) -> pd.DataFrame:

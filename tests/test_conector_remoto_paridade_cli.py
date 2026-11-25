@@ -122,6 +122,12 @@ CASOS = [
         {"chave": "combustiveis", "como_era_em": UM_DIA},
         id="setor",
     ),
+    pytest.param(
+        ["credito", CNPJ, "--como-era", UM_DIA],
+        "credito_da_empresa",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA},
+        id="credito",
+    ),
     pytest.param(["catalogo"], "o_que_posso_ver", {}, id="catalogo"),
     pytest.param(["consumo"], "o_que_posso_ver", {}, id="consumo"),
 ]  # fmt: skip

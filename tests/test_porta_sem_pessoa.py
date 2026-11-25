@@ -168,6 +168,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "fre_empregados",
         "fre_remuneracao_extremos",
         "ifdata_valores",
+        "ofertas_cnpj_dos_devedores",
         "pareceres_dfp",
         "pareceres_itr",
         "processos_nas_notas",

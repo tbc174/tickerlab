@@ -415,6 +415,11 @@ COLUNAS_DOS_AGENTES_DA_ANCINE = (
 
 # Ficha Clara, incentivos (etapa 4, 29/10/2026). Lei do Bem (MCTI) e Lei 8.387 (SUFRAMA) ficam de
 # fora: a primeira só publica totais por região e CNAE, sem CNPJ; o arquivo da segunda dá 404 (fila).
+# SUFRAMA, projetos aprovados (linha 770, item 2, conferido em 25/11/2026): NÃO está aqui nem vira tabela, porque
+# nenhum arquivo de projetos da seção SAP traz CNPJ (o das reuniões do CAS é só totais de 2020 e 2021; o dos
+# projetos agropecuários é uma lista por nome, que pode ser pessoa física): não conferido, sem CNPJ inteiro. Os
+# dois conjuntos do mesmo portal que têm CNPJ (cadastro e credenciamento de PJ; PD&I da Lei 8.387) esperam a
+# decisão de licença da Diretoria (linha 1050 da fila).
 # REIDI (MME): atos de enquadramento de projetos de geração e transmissão de energia; licença
 # "Outra (Aberta)" no portal do MME, sem nome (a confirmar). Sai a razão social e a descrição longa
 REIDI_DO_MME = "https://dadosabertos.mme.gov.br/dataset/43dbd18d-10b3-4c01-be9a-7a653e986bec/resource/97d455b6-78ca-4356-88a1-f9edf416244f/download/processos_deferidos.csv"
