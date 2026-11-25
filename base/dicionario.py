@@ -2498,6 +2498,7 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
         colunas: dict[str, tuple[str, str]],
         modulo: str,
         atraso_proprio: str | None = None,
+        ajustes: dict[str, tuple[str, str]] | None = None,
     ) -> Tabela:
         return Tabela(
             descricao=descricao + " " + comum,
@@ -2510,10 +2511,140 @@ def _tabelas_dos_cadastros_em_retrato() -> dict[str, Tabela]:
                 "`base/cadastros_em_retrato.py`)"
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
-            colunas={**identificacao, **colunas, **controle},
+            colunas={**identificacao, **colunas, **controle, **(ajustes or {})},
         )
 
     return {
+        "ans_produtos": tabela(
+            "ans_produtos",
+            "planos",
+            (
+                "Planos de saúde registrados na ANS, um por `ID_PLANO`: segmentação, cobertura, abrangência, "
+                "contratação, financiamento, fator moderador, acomodação e situação, ligados ao CNPJ da "
+                "operadora pelo registro dela em `ans_operadoras` (nunca pelo nome). O nome da operadora não "
+                "é repetido aqui, e a data de atualização do arquivo, igual em todas as linhas, também não. "
+                "Operadora sem linha na ponte, que seja pessoa ou que já tenha saído do cadastro deixa o "
+                "`cnpj` vazio."
+            ),
+            "ANS: dados abertos, características dos produtos de saúde suplementar (PDA 008)",
+            "ans",
+            "Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+            {
+                "codigo_do_plano": (
+                    "Código do plano (`CD_PLANO`), como a ANS escreve",
+                    TEXTO,
+                ),
+                "nome_do_plano": ("Nome comercial do plano, como a ANS escreve", TEXTO),
+                "registro_da_operadora": (
+                    (
+                        "Registro da operadora na ANS (`REGISTRO_OPERADORA`): a chave que liga o plano ao CNPJ pela "
+                        "ponte `ans_operadoras`"
+                    ),
+                    TEXTO,
+                ),
+                "modalidade_da_operadora": (
+                    "Modalidade da operadora (Medicina de Grupo, Cooperativa Médica...)",
+                    TEXTO,
+                ),
+                "porte_da_operadora": (
+                    "Porte da operadora pelo número de beneficiários, como a ANS escreve",
+                    TEXTO,
+                ),
+                "vigencia_do_plano": (
+                    "Vigência do plano, como a ANS escreve (`P` ou `A`); todo `A` vem sem data de registro",
+                    TEXTO,
+                ),
+                "contratacao": ("Tipo de contratação, como a ANS escreve", TEXTO),
+                "grupo_de_contratacao": (
+                    "Contratação agrupada (individual, coletivo empresarial, coletivo por adesão)",
+                    TEXTO,
+                ),
+                "segmentacao_assistencial": (
+                    "Segmentação assistencial do plano",
+                    TEXTO,
+                ),
+                "grupo_de_segmentacao": (
+                    "Segmentação agrupada (ambulatorial, hospitalar, ambos, odontológico)",
+                    TEXTO,
+                ),
+                "odontologico": (
+                    "Verdadeiro quando o plano é odontológico (`LG_ODONTOLOGICO`)",
+                    SIM_OU_NAO,
+                ),
+                "obstetricia": ("Se o plano cobre obstetrícia", TEXTO),
+                "cobertura": (
+                    "Tipo de cobertura (médico-hospitalar, odontológica)",
+                    TEXTO,
+                ),
+                "tipo_de_financiamento": (
+                    "Financiamento (preestabelecido, pós-estabelecido, misto)",
+                    TEXTO,
+                ),
+                "abrangencia": (
+                    "Abrangência geográfica da cobertura (municipal, grupo de municípios, estadual...)",
+                    TEXTO,
+                ),
+                "id_da_cobertura_geografica": (
+                    (
+                        "Código (hash) da lista de municípios da cobertura, que a ANS publica em outro arquivo; vazio "
+                        "em parte dos planos"
+                    ),
+                    TEXTO,
+                ),
+                "fator_moderador": (
+                    "Fator moderador (ausente, coparticipação, franquia)",
+                    TEXTO,
+                ),
+                "acomodacao_hospitalar": (
+                    "Acomodação hospitalar (individual, coletiva)",
+                    TEXTO,
+                ),
+                "livre_escolha": (
+                    "Livre escolha de prestadores (ausente, total, parcial)",
+                    TEXTO,
+                ),
+                "situacao_do_plano": (
+                    "Situação do plano (ativo, suspenso, cancelado, transferido)",
+                    TEXTO,
+                ),
+                "situacao_desde": (
+                    "Data em que o plano ficou na situação atual, como a ANS informa",
+                    DATA,
+                ),
+                "registrado_em": (
+                    "Data do registro do plano na ANS; vazia nos planos de vigência `A`",
+                    DATA,
+                ),
+            },
+            "ans_produtos",
+            (
+                "A fonte publica o estado de hoje e não diz desde quando publica cada plano: a linha vale desde o "
+                "dia do arquivo em que o arquivista a viu pela primeira vez, mesmo com `registrado_em` mais antigo "
+                "(o conservador; a história guardada começa em 25/10/2026, no 1º arquivo guardado). Uma "
+                "mudança vale desde o dia do arquivo em que apareceu."
+            ),
+            {
+                "id_na_fonte": ("O `ID_PLANO` da ANS, único no arquivo", TEXTO),
+                "cnpj": (
+                    (
+                        "CNPJ da operadora do plano, pelo registro dela em `ans_operadoras` (a linha da ponte que já "
+                        "era pública no dia em que o plano ficou público); vazio quando a ponte não tem o registro"
+                    ),
+                    TEXTO,
+                ),
+                "cnpj_basico": (
+                    "Raiz do CNPJ da operadora (8 caracteres); vazia quando o `cnpj` é",
+                    TEXTO,
+                ),
+                "disponivel_em": (
+                    (
+                        "Desde quando a linha vale para a base: o dia do arquivo em que o plano apareceu, ou em que a "
+                        "mudança apareceu (nunca a data do registro do plano)"
+                    ),
+                    DATA,
+                ),
+            },
+        ),
         "ans_operadoras": tabela(
             "ans_operadoras",
             "<situacao>",
@@ -11675,6 +11806,8 @@ _CONTRATO = {
         historico_desde=_CMED,
         granularidade_do_publico_em="mes",
     ),
+    # linha 770: planos de saúde da ANS pelo CNPJ da operadora (ponte `ans_operadoras`)
+    "ans_produtos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "registrado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-10-25", granularidade_do_publico_em="dia"),
     "ans_operadoras": _contrato(
         modulo="governo_e_sancoes",
         pessoa=True,
@@ -12058,6 +12191,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "cmed_precos",
         "nao_nulas": ("lista", "id_na_fonte", "cnpj", "cnpj_basico", "ggrem", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "faixas": {c: _SEM_NEGATIVO for c in _colunas_de_preco_da_cmed()},
+    },
+    "ans_produtos": {
+        "pasta": "ans_produtos",
+        "nao_nulas": ("id_na_fonte", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "ans_operadoras": {
         "pasta": "ans_operadoras",

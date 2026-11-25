@@ -146,6 +146,8 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "anp_tancagem",
     # conferência de 19/11: SICAF e Banco de Preços em Saúde; em casa até o pode do envio
     "comprasgov_sicaf", "bps_compras",
+    # linha 770: planos de saúde da ANS pelo CNPJ da operadora; em casa até o pode do envio
+    "ans_produtos",
 })  # fmt: skip
 
 

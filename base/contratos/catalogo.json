@@ -11987,6 +11987,171 @@
       "frequencia": "Mensal (a CMED republica as listas inteiras)",
       "atraso": "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`"
     },
+    "ans_produtos": {
+      "tabela": "ans_produtos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O `ID_PLANO` da ANS, único no arquivo",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da operadora do plano, pelo registro dela em `ans_operadoras` (a linha da ponte que já era pública no dia em que o plano ficou público); vazio quando a ponte não tem o registro",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ da operadora (8 caracteres); vazia quando o `cnpj` é",
+          "unidade": "texto"
+        },
+        "codigo_do_plano": {
+          "descricao": "Código do plano (`CD_PLANO`), como a ANS escreve",
+          "unidade": "texto"
+        },
+        "nome_do_plano": {
+          "descricao": "Nome comercial do plano, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "registro_da_operadora": {
+          "descricao": "Registro da operadora na ANS (`REGISTRO_OPERADORA`): a chave que liga o plano ao CNPJ pela ponte `ans_operadoras`",
+          "unidade": "texto"
+        },
+        "modalidade_da_operadora": {
+          "descricao": "Modalidade da operadora (Medicina de Grupo, Cooperativa Médica...)",
+          "unidade": "texto"
+        },
+        "porte_da_operadora": {
+          "descricao": "Porte da operadora pelo número de beneficiários, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "vigencia_do_plano": {
+          "descricao": "Vigência do plano, como a ANS escreve (`P` ou `A`); todo `A` vem sem data de registro",
+          "unidade": "texto"
+        },
+        "contratacao": {
+          "descricao": "Tipo de contratação, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "grupo_de_contratacao": {
+          "descricao": "Contratação agrupada (individual, coletivo empresarial, coletivo por adesão)",
+          "unidade": "texto"
+        },
+        "segmentacao_assistencial": {
+          "descricao": "Segmentação assistencial do plano",
+          "unidade": "texto"
+        },
+        "grupo_de_segmentacao": {
+          "descricao": "Segmentação agrupada (ambulatorial, hospitalar, ambos, odontológico)",
+          "unidade": "texto"
+        },
+        "odontologico": {
+          "descricao": "Verdadeiro quando o plano é odontológico (`LG_ODONTOLOGICO`)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "obstetricia": {
+          "descricao": "Se o plano cobre obstetrícia",
+          "unidade": "texto"
+        },
+        "cobertura": {
+          "descricao": "Tipo de cobertura (médico-hospitalar, odontológica)",
+          "unidade": "texto"
+        },
+        "tipo_de_financiamento": {
+          "descricao": "Financiamento (preestabelecido, pós-estabelecido, misto)",
+          "unidade": "texto"
+        },
+        "abrangencia": {
+          "descricao": "Abrangência geográfica da cobertura (municipal, grupo de municípios, estadual...)",
+          "unidade": "texto"
+        },
+        "id_da_cobertura_geografica": {
+          "descricao": "Código (hash) da lista de municípios da cobertura, que a ANS publica em outro arquivo; vazio em parte dos planos",
+          "unidade": "texto"
+        },
+        "fator_moderador": {
+          "descricao": "Fator moderador (ausente, coparticipação, franquia)",
+          "unidade": "texto"
+        },
+        "acomodacao_hospitalar": {
+          "descricao": "Acomodação hospitalar (individual, coletiva)",
+          "unidade": "texto"
+        },
+        "livre_escolha": {
+          "descricao": "Livre escolha de prestadores (ausente, total, parcial)",
+          "unidade": "texto"
+        },
+        "situacao_do_plano": {
+          "descricao": "Situação do plano (ativo, suspenso, cancelado, transferido)",
+          "unidade": "texto"
+        },
+        "situacao_desde": {
+          "descricao": "Data em que o plano ficou na situação atual, como a ANS informa",
+          "unidade": "data (dia)"
+        },
+        "registrado_em": {
+          "descricao": "Data do registro do plano na ANS; vazia nos planos de vigência `A`",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que o plano apareceu, ou em que a mudança apareceu (nunca a data do registro do plano)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "registrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "situacao_desde": "aconteceu_em",
+        "registrado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+      "atraso": "A fonte publica o estado de hoje e não diz desde quando publica cada plano: a linha vale desde o dia do arquivo em que o arquivista a viu pela primeira vez, mesmo com `registrado_em` mais antigo (o conservador; a história guardada começa em 25/10/2026, no 1º arquivo guardado). Uma mudança vale desde o dia do arquivo em que apareceu.",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
     "ans_operadoras": {
       "tabela": "ans_operadoras",
       "modulo": "governo_e_sancoes",
