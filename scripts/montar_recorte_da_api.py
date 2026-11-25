@@ -48,6 +48,9 @@ só a linha sem a marca, só raiz da `cnpj_empresas_pj` da mesma saída, sem nom
 o nome comercial do produto da Anatel fica em casa. Como o recebedor troca a `base/` inteira, quem envia o degrau 8
 leva junto o 7 e o 6; o envio pede o pode da Diretoria com as contagens.
 
+`--enviar` (envio à mão) pede a variável de ambiente `TICKERLAB_DESTINO_DO_ENVIO_DA_BASE` com o destino do ssh;
+sem ela o script para. O envio diário de casa tem roteiro próprio e não usa `--enviar`.
+
 
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
