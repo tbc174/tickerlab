@@ -1779,6 +1779,23 @@
     },
     {
       "coletas": [
+        "govrj-contratos",
+        "govrj-sancoes",
+        "govrj-fornecedores"
+      ],
+      "familia": "govrj",
+      "licencas": [
+        "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto"
+      ],
+      "link": "https://www.compras.rj.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo do Rio de Janeiro (SIGA, SEPLAG)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-25",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "wikidata-lei",
         "wikidata-isin",
         "wikidata-cnpj",
@@ -3037,7 +3054,7 @@
           "CVM"
         ],
         "tabelas": 12,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 12 de 15 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU e pelo governo do Rio de Janeiro, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 12 de 16 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -3089,7 +3106,7 @@
           "Ministério da Saúde (BPS)"
         ],
         "tabelas": 12,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 20 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos e o cadastro de fornecedores do governo do Rio de Janeiro, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 22 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -6562,6 +6579,27 @@
       "termos_lidos_em": "2026-11-06"
     },
     {
+      "id": "govrj-contratos",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
+      "id": "govrj-sancoes",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
+      "id": "govrj-fornecedores",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
@@ -9270,7 +9308,7 @@
     }
   ],
   "totais": {
-    "familias": 134,
+    "familias": 135,
     "familias_em_uso": 48,
     "fontes": 48,
     "fontes_em_consulta": 12,
