@@ -7107,7 +7107,7 @@ Desde quando cada controlada ou coligada aparece no FRE da companhia (linha 1045
 - **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; o par vale a partir de `conhecido_em`
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
 - **Chaves:** `cnpj_companhia`, `raiz_da_controlada`
-- **Três datas:** aconteceu_em = `primeira_referencia`; publico_em = `conhecido_em`; coletado_em = `montado_em`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`; coletado_em = `montado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/controladas_primeiro_fre/controladas_primeiro_fre.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
@@ -7119,7 +7119,7 @@ Desde quando cada controlada ou coligada aparece no FRE da companhia (linha 1045
 | `raiz_da_controlada` | Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais | texto |
 | `cnpj` | CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos) | texto |
 | `primeiro_ano_no_fre` | Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano) | ano |
-| `primeira_referencia` | Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura | data (dia) |
+| `referencia` | Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura | data (dia) |
 | `conhecido_em` | Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público | data (dia) |
 | `tipo_no_primeiro_fre` | controlada, coligada ou vazio (o FRE novo deixa em branco) | texto |
 | `fre_anterior_sem_o_par` | Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela | verdadeiro ou falso |

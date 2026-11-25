@@ -10175,7 +10175,7 @@ TABELAS: dict[str, Tabela] = {
                 "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
                 "ano",
             ),
-            "primeira_referencia": (
+            "referencia": (
                 "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
                 DATA,
             ),
@@ -11961,7 +11961,7 @@ _CONTRATO = {
     "noticias_fatos": _contrato(modulo=_ME, chaves=("id_fato",), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
-    "controladas_primeiro_fre": _contrato(modulo=_ME, chaves=("cnpj_companhia", "raiz_da_controlada"), datas={"aconteceu_em": "primeira_referencia", "publico_em": "conhecido_em", "coletado_em": "montado_em"}, historico_desde=_CVM),  # linha 1045: derivada de `controladas`
+    "controladas_primeiro_fre": _contrato(modulo=_ME, chaves=("cnpj_companhia", "raiz_da_controlada"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "montado_em"}, historico_desde=_CVM),  # linha 1045: derivada de `controladas`
     "controladas_pj": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em"}, historico_desde=_CVM),  # linha 844: cópia reduzida de `controladas`, só no VPS
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "colunas_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "data_da_previsao", "coletado_em": "montado_em"}, historico_desde=_CVM),

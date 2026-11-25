@@ -19348,7 +19348,7 @@
           "descricao": "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
           "unidade": "ano"
         },
-        "primeira_referencia": {
+        "referencia": {
           "descricao": "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
           "unidade": "data (dia)"
         },
@@ -19378,12 +19378,12 @@
         "raiz_da_controlada"
       ],
       "datas": {
-        "aconteceu_em": "primeira_referencia",
+        "aconteceu_em": "referencia",
         "publico_em": "conhecido_em",
         "coletado_em": "montado_em"
       },
       "sinonimos_de_tempo": {
-        "primeira_referencia": "a_conferir",
+        "referencia": "referencia",
         "conhecido_em": "publico_em",
         "montado_em": "coletado_em"
       },

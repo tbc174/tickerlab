@@ -13,6 +13,8 @@ import pytest
 from base import controladas_primeiro_fre as primeiro
 from base.cnpj import digitos_verificadores
 from base.parquet import arquivos_atuais
+from scripts import montar_controladas_primeiro_fre
+from tests.ajudantes_de_cpf import cpf_que_confere
 
 AGORA = datetime(2026, 11, 25, 5, tzinfo=UTC)
 EXEMPLO = (
@@ -121,7 +123,7 @@ def test_a_data_de_referencia_futura_nao_vira_a_data_do_primeiro_fre():
     )
     par = primeiro.primeiro_fre_de_cada_par(tabela).tabela.iloc[0]
     assert par["conhecido_em"] == date(2026, 6, 1)
-    assert par["primeira_referencia"] == date(2026, 12, 31)
+    assert par["referencia"] == date(2026, 12, 31)
     assert par["primeiro_ano_no_fre"] == 2026
 
 
@@ -147,16 +149,15 @@ def test_entrega_atrasada_de_fre_velho_nao_adianta_o_primeiro_fre():
     )
     par = primeiro.primeiro_fre_de_cada_par(tabela).tabela.iloc[0]
     assert par["conhecido_em"] == date(2024, 5, 8)
-    assert par["primeira_referencia"] == date(
+    assert par["referencia"] == date(
         2023, 12, 31
     )  # a referência da entrega que a tornou pública
 
 
 def test_sociedade_sem_cnpj_ou_com_cpf_completado_fica_de_fora_e_e_contada():
     companhia, alvo = _cnpj("11111111"), _cnpj("22222222")
-    cpf_completado = (
-        "000" + "52998224725"
-    )  # o `cnpj14` do FRE completa um CPF com zeros
+    # o `cnpj14` do FRE completa um CPF com zeros
+    cpf_completado = "000" + cpf_que_confere("888777666")
     tabela = _tabela(
         _linha(companhia, "2024-12-31", "2025-04-01", alvo),
         _linha(
@@ -171,7 +172,7 @@ def test_sociedade_sem_cnpj_ou_com_cpf_completado_fica_de_fora_e_e_contada():
     assert resultado.tabela["raiz_da_controlada"].tolist() == [alvo[:8]]
     assert resultado.sem_cnpj == 1
     assert resultado.nao_confere == 2
-    assert "52998224" not in resultado.tabela.to_csv()
+    assert cpf_completado[3:] not in resultado.tabela.to_csv()
 
 
 def test_sem_olhar_o_futuro_cortar_o_futuro_nao_muda_o_passado():
@@ -194,7 +195,7 @@ def test_sem_olhar_o_futuro_cortar_o_futuro_nao_muda_o_passado():
         )
         assert len(juntas) == len(da_completa) == len(recortada)
         for coluna in (
-            "cnpj", "primeiro_ano_no_fre", "primeira_referencia", "conhecido_em",
+            "cnpj", "primeiro_ano_no_fre", "referencia", "conhecido_em",
             "tipo_no_primeiro_fre", "fre_anterior_sem_o_par",
         ):  # fmt: skip
             # vazio (None ou NaN) vale como igual a vazio
@@ -238,7 +239,7 @@ def test_montagem_le_as_controladas_do_acervo_e_grava_com_manifesto(
     exemplo = _exemplo()
     for ano, parte in exemplo.groupby(exemplo["referencia"].map(lambda d: d.year)):
         parte.to_parquet(pasta / "controladas" / f"{ano}.parquet", index=False)
-    linhas = primeiro.montar(pasta, AGORA)
+    linhas = montar_controladas_primeiro_fre.montar(pasta, AGORA)
     gravada = pd.read_parquet(
         pasta / "controladas_primeiro_fre" / "controladas_primeiro_fre.parquet"
     )
@@ -255,7 +256,7 @@ def test_montagem_le_as_controladas_do_acervo_e_grava_com_manifesto(
 
 
 def test_sem_controladas_nada_e_gravado(tmp_path):
-    assert primeiro.montar(tmp_path, AGORA) == 0
+    assert montar_controladas_primeiro_fre.montar(tmp_path, AGORA) == 0
     assert not (tmp_path / "controladas_primeiro_fre").exists()
 
 
@@ -264,10 +265,10 @@ def test_montagem_repetida_nao_regrava_o_que_nao_mudou(tmp_path, monkeypatch):
     pasta = tmp_path / "base"
     (pasta / "controladas").mkdir(parents=True)
     _exemplo().to_parquet(pasta / "controladas" / "2026.parquet", index=False)
-    primeiro.montar(pasta, AGORA)
+    montar_controladas_primeiro_fre.montar(pasta, AGORA)
     destino = pasta / "controladas_primeiro_fre" / "controladas_primeiro_fre.parquet"
     antes = destino.stat().st_mtime_ns
-    primeiro.montar(pasta, datetime(2026, 11, 26, tzinfo=UTC))
+    montar_controladas_primeiro_fre.montar(pasta, datetime(2026, 11, 26, tzinfo=UTC))
     assert destino.stat().st_mtime_ns == antes
 
 

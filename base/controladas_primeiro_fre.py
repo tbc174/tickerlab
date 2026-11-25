@@ -9,7 +9,7 @@ ela é o fim do exercício e, no FRE de 2026 entregue em junho, é 2026-12-31 (f
   um CNPJ de filial em 2023 e 2024 e com outro em 2025 (mesma raiz). Pelo CNPJ inteiro seriam dois pares, e o
   segundo pareceria um par novo em 2025. `cnpj` é o CNPJ informado no primeiro FRE em que o par aparece.
 - **`conhecido_em` é o recebimento do documento na CVM** (`DT_RECEB`), o dia em que o par ficou público; é a data
-  que serve a "sem olhar o futuro". `primeira_referencia` e `primeiro_ano_no_fre` saem da mesma entrega (a que
+  que serve a "sem olhar o futuro". `referencia` e `primeiro_ano_no_fre` saem da mesma entrega (a que
   tornou o par público primeiro), nunca de uma reentrega posterior de um FRE mais velho.
 - **`fre_anterior_sem_o_par`**: verdadeiro quando a companhia já tinha entregado, antes dessa data, um FRE de referência
   mais antiga **sem** o par. Falso quer dizer que o par já estava no primeiro FRE que a base vê da companhia: a
@@ -21,31 +21,23 @@ ela é o fim do exercício e, no FRE de 2026 entregue em junho, é 2026-12-31 (f
   pelo nome; CNPJ que não confere e CPF completado com zeros também (`base/recorte_dos_compradores.py`). A tabela
   não leva razão social, nome nem CPF.
 
-Sem Streamlit; pandas só. Roda no servidor de casa, depois de `controladas` (`scripts/montar_base_historica.py`).
+Sem Streamlit; pandas só. A montagem, que lê o acervo, é `scripts/montar_controladas_primeiro_fre.py`.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime
-from pathlib import Path
+from datetime import date
 
 import pandas as pd
 
 from base.cnpj import normalizar_cnpj
-from base.parquet import (
-    LINHAGEM,
-    arquivos_atuais,
-    gravar_se_mudou,
-    origem_de_tabela,
-)
 from base.recorte_dos_compradores import cnpj_de_empresa, cnpj_que_confere
-from src.versao_do_codigo import versao_do_codigo
 
 TABELA = "controladas_primeiro_fre"
 TABELA_DE_ORIGEM = "controladas"
 CHAVE = ("cnpj_companhia", "raiz_da_controlada")
 COLUNAS = (
     "cnpj_companhia", "raiz_da_controlada", "cnpj", "primeiro_ano_no_fre",
-    "primeira_referencia", "conhecido_em", "tipo_no_primeiro_fre", "fre_anterior_sem_o_par",
+    "referencia", "conhecido_em", "tipo_no_primeiro_fre", "fre_anterior_sem_o_par",
 )  # fmt: skip
 LEITURA = ("cnpj_companhia", "referencia", "conhecido_em", "cnpj", "tipo")
 TAMANHO_DA_RAIZ = 8
@@ -139,7 +131,7 @@ def primeiro_fre_de_cada_par(controladas: pd.DataFrame) -> Resultado:
             "raiz_da_controlada": primeiras["raiz_da_controlada"],
             "cnpj": primeiras["cnpj"],
             "primeiro_ano_no_fre": primeiras["primeira"].dt.year.astype("int64"),
-            "primeira_referencia": primeiras["primeira"].dt.date,
+            "referencia": primeiras["primeira"].dt.date,
             "conhecido_em": primeiras["recebido"].dt.date,
             "tipo_no_primeiro_fre": primeiras["tipo"],
             "fre_anterior_sem_o_par": _fre_anterior_sem_o_par(
@@ -202,7 +194,7 @@ def primeiros_fres_ate(
             "raiz_da_controlada": str(linha["raiz_da_controlada"]),
             "cnpj": str(linha["cnpj"]),
             "primeiro_ano_no_fre": int(linha["primeiro_ano_no_fre"]),
-            "primeira_referencia": _dia(linha["primeira_referencia"]),
+            "referencia": _dia(linha["referencia"]),
             "conhecido_em": _dia(linha["conhecido_em"]),
             "tipo_no_primeiro_fre": None
             if pd.isna(linha["tipo_no_primeiro_fre"])
@@ -211,29 +203,3 @@ def primeiros_fres_ate(
         }
         for _, linha in achadas.iterrows()
     ]
-
-
-def montar(pasta: Path, agora: datetime) -> int:
-    """`<pasta>/controladas_primeiro_fre/controladas_primeiro_fre.parquet`, a partir de `<pasta>/controladas/*.parquet`.
-
-    Devolve quantos pares gravou (0, e nada gravado, sem `controladas`). Não regrava o que não mudou.
-    """
-    anos = arquivos_atuais(pasta / TABELA_DE_ORIGEM)
-    if not anos:
-        return 0
-    lidas = pd.concat(
-        [pd.read_parquet(ano, columns=list(LEITURA)) for ano in anos],
-        ignore_index=True,
-    )
-    resultado = primeiro_fre_de_cada_par(lidas)
-    tabela = resultado.tabela.assign(
-        montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
-    )
-    gravar_se_mudou(
-        tabela,
-        pasta / TABELA / f"{TABELA}.parquet",
-        [origem_de_tabela(ano, pasta) for ano in anos],
-        list(CHAVE),
-        carimbos=LINHAGEM,
-    )
-    return len(tabela)

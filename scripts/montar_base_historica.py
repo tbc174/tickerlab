@@ -8,7 +8,7 @@
     python -m scripts.montar_base_historica securitizacao_certificados securitizacao_cedente_devedor (B-16; informe mensal de CRI, CRA e OTS)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
     python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
-    python -m scripts.montar_base_historica controladas_primeiro_fre   (linha 1045; a 1ª entrega de cada controlada, lê as controladas)
+    python -m scripts.montar_base_historica controladas_primeiro_fre   (linha 1045; o primeiro FRE de cada controlada, lê as controladas)
     python -m scripts.montar_base_historica notas_dfp              (texto das notas da DFP, do ENET; linha 135)
     python -m scripts.montar_base_historica rotulos_atraso         (rótulo do modelo 8, de DFP, ITR e cadastro)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
@@ -29,7 +29,6 @@ from pathlib import Path
 
 from base import (
     auditores,
-    controladas_primeiro_fre,
     curva,
     empresa_serie,
     enet_notas,
@@ -37,6 +36,7 @@ from base import (
     rotulos,
 )
 from base.modelos.atraso import rotulo as rotulo_de_atraso
+from scripts import montar_controladas_primeiro_fre
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -51,8 +51,8 @@ TROCAS = "trocas_de_auditor"
 CURVA = curva.TABELA
 # empresa ↔ série da prévia do balanço (B13): sai das controladas de todos os anos, por isso vem depois
 EMPRESA_SERIE = empresa_serie.TABELA
-# a primeira entrega do FRE em que cada controlada aparece (linha 1045): sai das controladas de todos os anos
-CONTROLADAS_ENTRADA = controladas_primeiro_fre.TABELA
+# o primeiro FRE em que cada controlada aparece (linha 1045): sai das controladas de todos os anos
+CONTROLADAS_PRIMEIRO_FRE = montar_controladas_primeiro_fre.TABELA
 # rótulo do modelo de atraso (modelo 8): lê o índice de todos os anos da DFP e do ITR e o cadastro
 ATRASO = rotulo_de_atraso.TABELA
 # texto das notas da DFP (linha 135): vem do ENET (`scripts/carga_enet_notas.py`), não dos arquivos anuais
@@ -63,7 +63,7 @@ TODAS = [
     TROCAS,
     CURVA,
     EMPRESA_SERIE,
-    CONTROLADAS_ENTRADA,
+    CONTROLADAS_PRIMEIRO_FRE,
     ATRASO,
     NOTAS,
 ]
@@ -96,10 +96,10 @@ def main(argv: list[str] | None = None) -> int:
                 ligadas = empresa_serie.montar(conexao, pasta, agora)
                 log.info("%s: %d ligações a companhias", EMPRESA_SERIE, ligadas)
                 continue
-            if nome == CONTROLADAS_ENTRADA:
-                pares = controladas_primeiro_fre.montar(pasta, agora)
+            if nome == CONTROLADAS_PRIMEIRO_FRE:
+                pares = montar_controladas_primeiro_fre.montar(pasta, agora)
                 log.info(
-                    "%s: %d pares companhia-controlada", CONTROLADAS_ENTRADA, pares
+                    "%s: %d pares companhia-controlada", CONTROLADAS_PRIMEIRO_FRE, pares
                 )
                 continue
             if nome == CURVA:
