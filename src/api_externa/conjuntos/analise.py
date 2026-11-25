@@ -483,26 +483,57 @@ class _Relogio:
         )
 
 
+# o que lê as linhas de uma consulta do DuckDB (o `execute` devolve a própria conexão): a leitura é a parte cara
+_LEITURAS = frozenset(
+    {
+        "df",
+        "fetchdf",
+        "fetch_df",
+        "fetch_df_chunk",
+        "fetchall",
+        "fetchone",
+        "fetchmany",
+        "arrow",
+        "fetchnumpy",
+    }
+)
+
+
 class _Consultas:
     """A conexão de um bloco, contando as consultas e o tempo delas para o log (só os números, nada do que se
-    pergunta); o resto passa direto para a conexão de verdade. O tempo é o do `execute`: o que se busca depois
-    (`fetchall`, `df`) fica de fora."""
+    pergunta); o resto passa direto para a conexão de verdade. O tempo soma o `execute` e a leitura das linhas
+    (`df`, `fetchall` e as outras de `_LEITURAS`): no DuckDB a consulta grande gasta o tempo ao ler o resultado,
+    e contar só o `execute` fazia leitura parecer Python (log de 25/11, linha 1015, item d)."""
 
     def __init__(self, con: duckdb.DuckDBPyConnection) -> None:
         self._con = con
         self.vezes = 0
         self.segundos = 0.0
 
-    def execute(self, sql: str, parametros: object = None) -> duckdb.DuckDBPyConnection:
+    def _cronometrado[T](self, fazer: Callable[[], T]) -> T:
         inicio = time.monotonic()
         try:
-            return self._con.execute(sql, parametros)
+            return fazer()
         finally:
-            self.vezes += 1
             self.segundos += time.monotonic() - inicio
 
+    def execute(self, sql: str, parametros: object = None) -> "_Consultas":
+        # devolve o contador, não a conexão: o `df` ou o `fetchall` de quem pede passam por ele
+        try:
+            self._cronometrado(lambda: self._con.execute(sql, parametros))
+        finally:
+            self.vezes += 1  # a interrompida pelo prazo também conta
+        return self
+
     def __getattr__(self, nome: str) -> object:
-        return getattr(self._con, nome)
+        atributo = getattr(self._con, nome)
+        if nome not in _LEITURAS:
+            return atributo
+
+        def lendo(*args: object, **kwargs: object) -> object:
+            return self._cronometrado(lambda: atributo(*args, **kwargs))
+
+        return lendo
 
 
 def _contada(porta: Porta) -> Porta:

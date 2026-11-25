@@ -500,6 +500,59 @@ def fonte_dos_arquivos(arquivos: Sequence[Path]) -> str:
     return f"read_parquet([{lista}], union_by_name = true)"
 
 
+def select_da_tabela(
+    nome: str,
+    tabela: Tabela,
+    colunas: list[str],
+    fonte: str,
+    empresas: str = SEM_EMPRESAS,
+) -> str:
+    """O SELECT da view de uma tabela sobre `fonte` (com `colunas`, as da fonte): as datas pelos apelidos, sem as
+    linhas de pessoa e, na rede, sem nada que seja pessoa. A porta lê com ele só parte dos arquivos de uma tabela
+    (`Porta.ler` pela faixa), com as mesmas travas da view."""
+    return _rede_sem_pessoa(
+        nome,
+        _sem_as_linhas_de_pessoa(
+            _select_com_apelidos(nome, tabela, colunas, fonte), tabela, colunas
+        ),
+        colunas,
+        empresas,
+    )
+
+
+def colunas_da_fonte(
+    con: duckdb.DuckDBPyConnection, fonte: str
+) -> list[tuple[str, str]]:
+    """O nome e o tipo de cada coluna da fonte, sem ler as linhas."""
+    return [
+        (nome, tipo)
+        for nome, tipo, *_ in con.execute(f"DESCRIBE SELECT * FROM {fonte}").fetchall()
+    ]
+
+
+def faixas_dos_arquivos(
+    con: duckdb.DuckDBPyConnection, arquivos: Sequence[Path], coluna: str
+) -> dict[Path, tuple[str, str] | None]:
+    """Por arquivo, o menor e o maior valor de texto de `coluna`, pelo rodapé do Parquet (sem ler as linhas).
+    None quando algum grupo de linhas não traz a faixa (ou a coluna não é texto): esse arquivo é sempre lido.
+    O arquivo sem a coluna ou sem linha nenhuma fica de fora do dicionário: nenhuma linha dele tem valor ali."""
+    if not arquivos:
+        return {}
+    lista = ", ".join(_texto(a.as_posix()) for a in arquivos)
+    linhas = con.execute(
+        "SELECT file_name, min(stats_min_value), max(stats_max_value), "
+        "bool_or(stats_min_value IS NULL OR stats_max_value IS NULL OR type <> 'BYTE_ARRAY') "
+        f"FROM parquet_metadata([{lista}]) WHERE lower(path_in_schema) = lower($coluna) GROUP BY file_name",
+        {"coluna": coluna},
+    ).fetchall()
+    por_nome = {a.as_posix(): a for a in arquivos}
+    return {
+        por_nome[nome]: None if sem_faixa else (str(menor), str(maior))
+        for nome, menor, maior, sem_faixa in linhas
+        if nome in por_nome
+    }
+
+
 def _fonte_da_conferida(caminho: Path) -> str:
     return (
         f"read_csv({_texto(caminho.as_posix())}, delim = ';', header = true, quote = '\"', "
@@ -592,16 +645,7 @@ def conectar(
             if nome not in tabelas:
                 continue
             colunas = _colunas(con, fonte)
-            select = _rede_sem_pessoa(
-                nome,
-                _sem_as_linhas_de_pessoa(
-                    _select_com_apelidos(nome, tabelas[nome], colunas, fonte),
-                    tabelas[nome],
-                    colunas,
-                ),
-                colunas,
-                empresas,
-            )
+            select = select_da_tabela(nome, tabelas[nome], colunas, fonte, empresas)
             con.execute(f"CREATE VIEW {_nome(nome)} AS {select}")
             _views_das_versoes(con, nome, tabelas[nome], contratos)
         _view_de_eventos(con, tabelas, {n for n in fontes if n in tabelas})
