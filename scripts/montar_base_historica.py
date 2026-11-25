@@ -8,7 +8,7 @@
     python -m scripts.montar_base_historica securitizacao_certificados securitizacao_cedente_devedor (B-16; informe mensal de CRI, CRA e OTS)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
     python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
-    python -m scripts.montar_base_historica controladas_entrada   (linha 1045; a 1ª entrega de cada controlada, lê as controladas)
+    python -m scripts.montar_base_historica controladas_primeiro_fre   (linha 1045; a 1ª entrega de cada controlada, lê as controladas)
     python -m scripts.montar_base_historica notas_dfp              (texto das notas da DFP, do ENET; linha 135)
     python -m scripts.montar_base_historica rotulos_atraso         (rótulo do modelo 8, de DFP, ITR e cadastro)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
@@ -29,7 +29,7 @@ from pathlib import Path
 
 from base import (
     auditores,
-    controladas_entrada,
+    controladas_primeiro_fre,
     curva,
     empresa_serie,
     enet_notas,
@@ -52,7 +52,7 @@ CURVA = curva.TABELA
 # empresa ↔ série da prévia do balanço (B13): sai das controladas de todos os anos, por isso vem depois
 EMPRESA_SERIE = empresa_serie.TABELA
 # a primeira entrega do FRE em que cada controlada aparece (linha 1045): sai das controladas de todos os anos
-CONTROLADAS_ENTRADA = controladas_entrada.TABELA
+CONTROLADAS_ENTRADA = controladas_primeiro_fre.TABELA
 # rótulo do modelo de atraso (modelo 8): lê o índice de todos os anos da DFP e do ITR e o cadastro
 ATRASO = rotulo_de_atraso.TABELA
 # texto das notas da DFP (linha 135): vem do ENET (`scripts/carga_enet_notas.py`), não dos arquivos anuais
@@ -97,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
                 log.info("%s: %d ligações a companhias", EMPRESA_SERIE, ligadas)
                 continue
             if nome == CONTROLADAS_ENTRADA:
-                pares = controladas_entrada.montar(pasta, agora)
+                pares = controladas_primeiro_fre.montar(pasta, agora)
                 log.info(
                     "%s: %d pares companhia-controlada", CONTROLADAS_ENTRADA, pares
                 )

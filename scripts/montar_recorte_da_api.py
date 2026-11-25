@@ -135,7 +135,7 @@ FICAM_EM_CASA = (
     "controladas",
     # linha 1045: derivada de `controladas`, só PJ e sem nome; o envio ao VPS (cópia pela raiz da `cnpj_empresas_pj`, como a
     # `controladas_pj`) pede o "pode" da Diretoria
-    "controladas_entrada",
+    "controladas_primeiro_fre",
     "auditores",
     "ofertas_antigas",
     "trocas_de_auditor",

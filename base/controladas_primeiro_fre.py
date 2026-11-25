@@ -1,20 +1,20 @@
-"""Quando cada controlada entrou no FRE da companhia: a primeira vez que o par aparece (linha 1045).
+"""Desde quando cada controlada aparece no FRE da companhia: o primeiro FRE em que o par aparece (linha 1045).
 
 `controladas` (`base/controladas.py`) guarda uma linha por companhia, FRE e sociedade, de 2010 em diante. Quem
 pergunta "essa companhia já tinha essa controlada antes do negócio?" não pode usar a `referencia` dessa tabela:
 ela é o fim do exercício e, no FRE de 2026 entregue em junho, é 2026-12-31 (futura). Esta tabela guarda, por par
-**companhia ↔ controlada**, a primeira entrega em que o par apareceu:
+**companhia ↔ controlada**, a primeira entrega do FRE em que o par aparece:
 
 - **A chave do par é a raiz de 8 dígitos do CNPJ da controlada**, não o CNPJ inteiro: a Dasa informou a Ímpar com
   um CNPJ de filial em 2023 e 2024 e com outro em 2025 (mesma raiz). Pelo CNPJ inteiro seriam dois pares, e o
-  segundo pareceria uma entrada nova em 2025. `cnpj` é o CNPJ informado na primeira entrega.
+  segundo pareceria um par novo em 2025. `cnpj` é o CNPJ informado no primeiro FRE em que o par aparece.
 - **`conhecido_em` é o recebimento do documento na CVM** (`DT_RECEB`), o dia em que o par ficou público; é a data
   que serve a "sem olhar o futuro". `primeira_referencia` e `primeiro_ano_no_fre` saem da mesma entrega (a que
   tornou o par público primeiro), nunca de uma reentrega posterior de um FRE mais velho.
-- **`entrada_observada`**: verdadeiro quando a companhia já tinha entregado, antes dessa data, um FRE de referência
+- **`fre_anterior_sem_o_par`**: verdadeiro quando a companhia já tinha entregado, antes dessa data, um FRE de referência
   mais antiga **sem** o par. Falso quer dizer que o par já estava no primeiro FRE que a base vê da companhia: a
-  ligação existe "não depois de" `primeiro_ano_no_fre`, e a entrada de fato pode ser anterior (a Cantu entrou na
-  CVM em 2022; a CPX estava no primeiro FRE dela). Isto não é a data do negócio nem a da compra: é o FRE.
+  ligação "aparece no FRE desde" `primeiro_ano_no_fre`, mas existe "não depois de" essa data (a CPX já estava no primeiro
+  FRE da Cantu, de 2022). Isto não é a data em que a controlada entrou no grupo, do negócio nem da compra: é o FRE.
 - **A CVM só publica a versão mais nova de cada FRE**, então uma ligação informada na versão 1 e mantida na 3 só
   aparece na 3: `conhecido_em` pode ser **depois** da data real em que a companhia a informou, nunca antes.
 - Só pessoa jurídica com CNPJ: sociedade sem CNPJ (de fora do país) fica de fora, "não conferido", e nunca se liga
@@ -40,12 +40,12 @@ from base.parquet import (
 from base.recorte_dos_compradores import cnpj_de_empresa, cnpj_que_confere
 from src.versao_do_codigo import versao_do_codigo
 
-TABELA = "controladas_entrada"
+TABELA = "controladas_primeiro_fre"
 TABELA_DE_ORIGEM = "controladas"
 CHAVE = ("cnpj_companhia", "raiz_da_controlada")
 COLUNAS = (
     "cnpj_companhia", "raiz_da_controlada", "cnpj", "primeiro_ano_no_fre",
-    "primeira_referencia", "conhecido_em", "tipo_na_entrada", "entrada_observada",
+    "primeira_referencia", "conhecido_em", "tipo_no_primeiro_fre", "fre_anterior_sem_o_par",
 )  # fmt: skip
 LEITURA = ("cnpj_companhia", "referencia", "conhecido_em", "cnpj", "tipo")
 TAMANHO_DA_RAIZ = 8
@@ -76,8 +76,10 @@ def _entregas_da_companhia(controladas: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _entrada_observada(primeiras: pd.DataFrame, entregas: pd.DataFrame) -> pd.Series:
-    """A companhia já tinha entregue, antes do dia da entrada, um FRE mais velho sem o par."""
+def _fre_anterior_sem_o_par(
+    primeiras: pd.DataFrame, entregas: pd.DataFrame
+) -> pd.Series:
+    """A companhia já tinha entregue, antes do dia desse primeiro FRE, um FRE mais velho sem o par."""
     antes = primeiras[
         ["cnpj_companhia", "raiz_da_controlada", "primeira", "recebido"]
     ].merge(entregas, on="cnpj_companhia")
@@ -101,7 +103,7 @@ def _entrada_observada(primeiras: pd.DataFrame, entregas: pd.DataFrame) -> pd.Se
     )
 
 
-def primeira_entrada(controladas: pd.DataFrame) -> Resultado:
+def primeiro_fre_de_cada_par(controladas: pd.DataFrame) -> Resultado:
     """A primeira entrega do FRE em que cada par companhia ↔ controlada aparece.
 
     `controladas` é a tabela da base (precisa de `LEITURA`); cada linha é uma sociedade de um FRE entregue.
@@ -139,8 +141,10 @@ def primeira_entrada(controladas: pd.DataFrame) -> Resultado:
             "primeiro_ano_no_fre": primeiras["primeira"].dt.year.astype("int64"),
             "primeira_referencia": primeiras["primeira"].dt.date,
             "conhecido_em": primeiras["recebido"].dt.date,
-            "tipo_na_entrada": primeiras["tipo"],
-            "entrada_observada": _entrada_observada(primeiras, entregas).astype(bool)
+            "tipo_no_primeiro_fre": primeiras["tipo"],
+            "fre_anterior_sem_o_par": _fre_anterior_sem_o_par(
+                primeiras, entregas
+            ).astype(bool)
             if len(primeiras)
             else pd.Series([], dtype=bool),
         }
@@ -170,14 +174,14 @@ def _raizes(cnpjs: list[str]) -> set[str]:
     return raizes
 
 
-def entradas_ate(
+def primeiros_fres_ate(
     tabela: pd.DataFrame,
     dia: date,
     *,
     companhias: list[str] | None = None,
     controladas: list[str] | None = None,
 ) -> list[dict[str, object]]:
-    """As entradas já públicas em `dia` (`conhecido_em <= dia`), em tipos simples (texto, inteiro, booleano).
+    """Os primeiros FREs já públicos em `dia` (`conhecido_em <= dia`), em tipos simples (texto, inteiro, booleano).
 
     `companhias`: CNPJs de quem informou o FRE; `controladas`: CNPJs (inteiros ou só a raiz) das sociedades.
     Sem filtro, tudo o que já era público. Cada item tem as colunas de `COLUNAS`, com as datas em ISO.
@@ -200,17 +204,17 @@ def entradas_ate(
             "primeiro_ano_no_fre": int(linha["primeiro_ano_no_fre"]),
             "primeira_referencia": _dia(linha["primeira_referencia"]),
             "conhecido_em": _dia(linha["conhecido_em"]),
-            "tipo_na_entrada": None
-            if pd.isna(linha["tipo_na_entrada"])
-            else str(linha["tipo_na_entrada"]),
-            "entrada_observada": bool(linha["entrada_observada"]),
+            "tipo_no_primeiro_fre": None
+            if pd.isna(linha["tipo_no_primeiro_fre"])
+            else str(linha["tipo_no_primeiro_fre"]),
+            "fre_anterior_sem_o_par": bool(linha["fre_anterior_sem_o_par"]),
         }
         for _, linha in achadas.iterrows()
     ]
 
 
 def montar(pasta: Path, agora: datetime) -> int:
-    """`<pasta>/controladas_entrada/controladas_entrada.parquet`, a partir de `<pasta>/controladas/*.parquet`.
+    """`<pasta>/controladas_primeiro_fre/controladas_primeiro_fre.parquet`, a partir de `<pasta>/controladas/*.parquet`.
 
     Devolve quantos pares gravou (0, e nada gravado, sem `controladas`). Não regrava o que não mudou.
     """
@@ -221,7 +225,7 @@ def montar(pasta: Path, agora: datetime) -> int:
         [pd.read_parquet(ano, columns=list(LEITURA)) for ano in anos],
         ignore_index=True,
     )
-    resultado = primeira_entrada(lidas)
+    resultado = primeiro_fre_de_cada_par(lidas)
     tabela = resultado.tabela.assign(
         montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
     )

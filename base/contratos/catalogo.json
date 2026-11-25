@@ -19326,8 +19326,8 @@
       "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`"
     },
-    "controladas_entrada": {
-      "tabela": "controladas_entrada",
+    "controladas_primeiro_fre": {
+      "tabela": "controladas_primeiro_fre",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
       "versao": "1.0.0",
@@ -19341,26 +19341,26 @@
           "unidade": "texto"
         },
         "cnpj": {
-          "descricao": "CNPJ da sociedade como veio na primeira entrega (14 dígitos)",
+          "descricao": "CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos)",
           "unidade": "texto"
         },
         "primeiro_ano_no_fre": {
-          "descricao": "Ano da referência do FRE que trouxe o par pela primeira vez",
+          "descricao": "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
           "unidade": "ano"
         },
         "primeira_referencia": {
-          "descricao": "Referência (fim do exercício) desse FRE; pode ser futura",
+          "descricao": "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
           "unidade": "data (dia)"
         },
         "conhecido_em": {
-          "descricao": "Data em que a CVM recebeu esse FRE: quando o par ficou público",
+          "descricao": "Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público",
           "unidade": "data (dia)"
         },
-        "tipo_na_entrada": {
+        "tipo_no_primeiro_fre": {
           "descricao": "controlada, coligada ou vazio (o FRE novo deixa em branco)",
           "unidade": "texto"
         },
-        "entrada_observada": {
+        "fre_anterior_sem_o_par": {
           "descricao": "Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela",
           "unidade": "verdadeiro ou falso"
         },
