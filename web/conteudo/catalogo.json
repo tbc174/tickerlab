@@ -1801,7 +1801,7 @@
       "orgao": "Governo do Rio de Janeiro (SIGA, SEPLAG)",
       "ritmo": null,
       "termos_lidos_em": "2026-11-25",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2579,6 +2579,28 @@
       "tabelas": 3
     },
     {
+      "historico_desde": "2026-11-06",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Governo do ES",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-11-25",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Governo do RJ",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
       "historico_desde": "2026-10-29",
       "licenca": "CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)",
       "modulos": [
@@ -2834,17 +2856,6 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-11-06",
-      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Governo do ES",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "2026-10-14",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "modulos": [
@@ -2989,8 +3000,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 26,
-    "tabelas": 141,
+    "orgaos": 27,
+    "tabelas": 146,
     "temas": [
       {
         "chave": "cvm",
@@ -3054,6 +3065,7 @@
           "PGFN",
           "Sefa-PR",
           "CGU",
+          "Governo do RJ",
           "ANS",
           "ANEEL",
           "Anatel (PADOs)",
@@ -3062,8 +3074,8 @@
           "IBAMA",
           "CVM"
         ],
-        "tabelas": 12,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU e pelo governo do Rio de Janeiro, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 12 de 16 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 13,
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU e pelo governo do Rio de Janeiro, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 13 de 16 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -3110,12 +3122,13 @@
           "Banco Central",
           "SEFAZ-PE",
           "Governo do ES",
+          "Governo do RJ",
           "Receita Federal (transações)",
           "Compras.gov.br",
           "Ministério da Saúde (BPS)"
         ],
-        "tabelas": 12,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos, as compras diretas e o cadastro de fornecedores do governo do Rio de Janeiro, os contratos e os empenhos do governo do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 25 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 16,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos, as compras diretas e o cadastro de fornecedores do governo do Rio de Janeiro, os contratos e os empenhos do governo do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 16 de 25 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -3189,7 +3202,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 47
+      "tabelas": 52
     },
     {
       "chave": "credito_e_fidc",
@@ -8567,6 +8580,61 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Contratos dos órgãos do governo do Rio de Janeiro com cada fornecedor, por CNPJ: a unidade que contratou, o tipo de aquisição, a situação, as datas.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do RJ",
+      "situacao": "licenciada",
+      "tabela": "rj_contratos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Penalidades que os órgãos do governo do Rio de Janeiro aplicaram a fornecedores, por CNPJ: o órgão que puniu, o enquadramento legal, o motivo, o contrato.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-11-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do RJ",
+      "situacao": "licenciada",
+      "tabela": "rj_sancoes_fornecedores"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Cadastro de fornecedores do governo do Rio de Janeiro, por CNPJ: se tem certificado de registro cadastral (CRC), se é ME ou EPP, o tipo empresarial, a situação no cadastro.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do RJ",
+      "situacao": "licenciada",
+      "tabela": "rj_fornecedores"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Contratos dos órgãos do governo do Espírito Santo com cada fornecedor, por CNPJ: o órgão, a modalidade, o tipo de aquisição, a situação, o dia da celebração, a vigência e os valores inicial e final.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do ES",
+      "situacao": "licenciada",
+      "tabela": "es_contratos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Notas de empenho do governo do Espírito Santo ligadas a contratos, por CNPJ do fornecedor: o processo, o contrato, o número do empenho e o valor global.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do ES",
+      "situacao": "licenciada",
+      "tabela": "es_empenhos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas).",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-04",
@@ -9436,11 +9504,11 @@
   ],
   "totais": {
     "familias": 135,
-    "familias_em_uso": 48,
-    "fontes": 48,
+    "familias_em_uso": 49,
+    "fontes": 49,
     "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 172,
+    "tabelas": 177,
     "tabelas_conferidas_em_curto": "25/11"
   }
 }
