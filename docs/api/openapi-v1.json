@@ -3449,7 +3449,7 @@
             "type": "object"
           },
           "empresa_do_setor": {
-            "$ref": "#/components/schemas/PontaDoVinculoV1"
+            "$ref": "#/components/schemas/PontaDoSetorV1"
           },
           "uf": {
             "anyOf": [
@@ -6456,6 +6456,68 @@
           "data_recuperacao"
         ],
         "title": "PiorQuedaV1",
+        "type": "object"
+      },
+      "PontaDoSetorV1": {
+        "description": "A empresa do setor onde o movimento aconteceu. Quando ela está baixada e a base diz quando e por que, vêm\ntambém a situação, o dia da baixa e o código do motivo (como a Receita publica), cada um com fonte e dia.",
+        "properties": {
+          "baixada_em": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo_da_baixa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raiz_do_cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raiz Do Cnpj"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "situacao_da_empresa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampoComFonteV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "raiz_do_cnpj",
+          "razao_social"
+        ],
+        "title": "PontaDoSetorV1",
         "type": "object"
       },
       "PontaDoVinculoV1": {

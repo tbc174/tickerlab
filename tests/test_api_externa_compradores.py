@@ -209,6 +209,7 @@ TABELAS = (
     compradores.ENTRADAS,
     compradores.FIPS_REGISTRADOS,
     compradores.CONTROLADAS,
+    compradores.SITUACAO,
 )
 
 

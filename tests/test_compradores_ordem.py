@@ -25,7 +25,9 @@ ALVOS = [f"50{n:06d}" for n in range(6)]
 
 
 def _lista() -> compradores._Lista:
-    setor = pd.DataFrame({"raiz": ALVOS, "uf": ["SP"] * len(ALVOS)})
+    setor = pd.DataFrame(
+        {"raiz": ALVOS, "uf": ["SP"] * len(ALVOS), "baixada": [False] * len(ALVOS)}
+    )
     lista = compradores._Lista(setor)
     linhas = [
         # comprador, alvo, data da entrada

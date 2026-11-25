@@ -669,6 +669,15 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("cnae_principal", "uf", "data_inicio_atividade"),
         _PROVA_RECEITA,
     ),
+    # a baixa da empresa onde a entrada aconteceu (linha 1042): a situação, o dia e o código do motivo da versão
+    # mais nova já pública, da tabela de situação cadastral (só PJ); só das baixadas que a lista mostra
+    *_campos(
+        ("rfb-cnpj",),
+        "buyers",
+        ("cnpj_situacao_cadastral",),
+        ("situacao_cadastral", "data_situacao_cadastral", "motivo_situacao"),
+        _PROVA_RECEITA,
+    ),
     *_campos(
         ("rfb-cnpj",),
         "buyers",

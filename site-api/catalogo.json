@@ -25,9 +25,12 @@
       "cnae_principal",
       "data_entrada",
       "data_inicio_atividade",
+      "data_situacao_cadastral",
+      "motivo_situacao",
       "participacao",
       "razao_social",
       "referencia",
+      "situacao_cadastral",
       "tipo",
       "uf"
     ]
