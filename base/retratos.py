@@ -201,6 +201,12 @@ class CadastroDeRetratos(Protocol):
     url_termina_em: str | None
 
 
+# quem responde, para as raízes de um cadastro (números ordenados), quais são de pessoa: tem de responder
+# por todas as pedidas (`base/contratos_estaduais.py` faz uma pergunta só à Receita para várias séries)
+PerguntaDePessoas = Callable[[np.ndarray], np.ndarray]
+Pessoas = Collection[str] | np.ndarray | PerguntaDePessoas
+
+
 def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
     if isinstance(pessoas, np.ndarray):
         return pessoas
@@ -234,14 +240,15 @@ def montar_cadastros[C: CadastroDeRetratos](
     juntar: Callable[[list[tuple[Retrato, pd.DataFrame]]], tuple[pd.DataFrame, int]],
     para_gravar: Callable[[pd.DataFrame, np.ndarray, datetime], pd.DataFrame],
     ordem: Sequence[str],
-    pessoas: Collection[str] | np.ndarray | None = None,
+    pessoas: Pessoas | None = None,
     refazer: bool = False,
 ) -> dict[str, dict[str, int]]:
     """`<pasta>/<tabela>/<cadastro>.parquet` para cada cadastro com arquivo guardado.
 
     Cadastro sem arquivo guardado fica de fora do resumo; sem retrato novo desde a última montagem, é
-    pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas;
-    sem elas, pergunta à Receita guardada (`base/pgfn.py`).
+    pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas, ou
+    a função que, com as raízes do cadastro montado, diz quais são de pessoa; sem elas, pergunta à Receita
+    guardada (`base/pgfn.py`) para cada cadastro.
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in cadastros:
@@ -254,13 +261,17 @@ def montar_cadastros[C: CadastroDeRetratos](
             continue
         contagem: dict[str, int] = {}
         tabela, pulados = juntar(list(_lidos(achados, cadastro, ler, contagem)))
-        if pessoas is None:
+        if pessoas is None or callable(pessoas):
             raizes = cnpjs.ordenados(
                 cnpjs.raizes_em_numeros(
                     tabela["cnpj_basico"].drop_duplicates().astype(str)
                 )
             )
-            de_pessoa = pessoas_pela_receita(conexao, raizes)
+            de_pessoa = (
+                pessoas(raizes)
+                if callable(pessoas)
+                else pessoas_pela_receita(conexao, raizes)
+            )
         else:
             de_pessoa = _como_numeros(pessoas)
         gravar_se_mudou(

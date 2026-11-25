@@ -41,6 +41,7 @@ import sqlalchemy as sa
 from base import cnpj as cnpjs
 from base import retratos as motor
 from base.parquet import LINHAGEM
+from base.pgfn import pessoas_pela_receita
 from src.versao_do_codigo import versao_do_codigo
 
 SEPARADOR = ";"  # a coleta grava todo CSV com ";"
@@ -396,6 +397,52 @@ def _para_gravar(
     )
 
 
+class UmaPerguntaSo:
+    """Quais raízes de uma série são de pessoa, perguntando à Receita uma vez para todas as séries da carga.
+
+    Cada pergunta relê os ZIPs da Receita do mês (uns 11, de 2 a 3 GB cada descompactados). Perguntar por série
+    os relia uma vez por arquivo do ES (28 de contratos e 24 de empenhos): horas a 100% de um núcleo na carga
+    de 25/11/2026. Na primeira série, pergunta pelos CNPJs de todos os arquivos guardados; a Receita responde
+    raiz por raiz, então a resposta marca cada série igual. Raiz que não estava naquela pergunta (um arquivo que
+    o arquivista guardou durante a carga) ganha uma pergunta só dela: nenhuma raiz fica sem resposta, que
+    deixaria a pessoa sem a marca que a esconde (revisões do #1323)."""
+
+    def __init__(self, conexao: sa.Connection, tabelas: Collection[Tabela]) -> None:
+        self._conexao = conexao
+        self._tabelas = tuple(tabelas)
+        self._perguntadas: np.ndarray | None = None
+        self._de_pessoa = np.array([], dtype=np.int64)
+
+    def _de_todos_os_arquivos(self) -> np.ndarray:
+        raizes = pd.concat(
+            [
+                ler(retrato.caminho, spec)[0]["cnpj_basico"]
+                for spec in self._tabelas
+                for retrato in motor.retratos(self._conexao, spec.fonte)
+            ],
+            ignore_index=True,
+        )
+        return cnpjs.raizes_em_numeros(raizes.astype(str))
+
+    def __call__(self, raizes: np.ndarray) -> np.ndarray:
+        if self._perguntadas is None:
+            novas = cnpjs.ordenados(
+                np.concatenate([self._de_todos_os_arquivos(), raizes])
+            )
+            self._perguntadas = np.array([], dtype=np.int64)
+        else:
+            novas = raizes[~cnpjs.contem(self._perguntadas, raizes)]
+        if len(novas):
+            respostas = pessoas_pela_receita(self._conexao, novas)
+            self._perguntadas = cnpjs.ordenados(
+                np.concatenate([self._perguntadas, novas])
+            )
+            self._de_pessoa = cnpjs.ordenados(
+                np.concatenate([self._de_pessoa, respostas])
+            )
+        return self._de_pessoa
+
+
 def montar(
     conexao: sa.Connection,
     pasta: Path,
@@ -407,7 +454,11 @@ def montar(
     """`<pasta>/<tabela>/<arquivo>.parquet` de cada arquivo guardado de cada tabela, e o resumo da montagem.
 
     Sem retrato novo desde a última montagem, o arquivo é pulado (`refazer` relê mesmo assim, para código
-    novo). `pessoas`: as raízes de pessoa já sabidas; sem elas, pergunta à Receita guardada."""
+    novo). `pessoas`: as raízes de pessoa já sabidas; sem elas, pergunta à Receita guardada uma vez só, com os
+    CNPJs de todos os arquivos, e só se algum arquivo tiver o que montar (`UmaPerguntaSo`)."""
+    quem_e_pessoa: motor.Pessoas = (
+        UmaPerguntaSo(conexao, tabelas) if pessoas is None else pessoas
+    )
     resumo: dict[str, dict[str, int]] = {}
     for spec in tabelas:
         for serie in series(conexao, spec):
@@ -424,7 +475,7 @@ def montar(
                 ),
                 para_gravar=partial(_para_gravar, spec=spec, arquivo=serie.nome),
                 ordem=ORDEM,
-                pessoas=pessoas,
+                pessoas=quem_e_pessoa,
                 refazer=refazer,
             )
             resumo |= {
