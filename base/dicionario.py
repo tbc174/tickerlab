@@ -1830,6 +1830,36 @@ def _tabelas_do_datajud() -> dict[str, Tabela]:
     }
 
 
+def _colunas_do_sipeagro(
+    comuns: dict[str, tuple[str, str]],
+) -> dict[str, tuple[str, str]]:
+    """As colunas das licenças com o que é só do SIPEAGRO: os cadastros que mascaram o CNPJ e a coluna
+    `cnpj_ligado_por` (linha 1021), logo depois da raiz."""
+    colunas: dict[str, tuple[str, str]] = {}
+    for nome, coluna in comuns.items():
+        if nome == "cadastro":
+            coluna = (
+                (
+                    "De que arquivo veio: produto_veterinario, aviacao_agricola (CNPJ inteiro no "
+                    "arquivo); fertilizante, qualidade_vegetal, vinhos_e_bebidas, alimentacao_animal, "
+                    "multiplicacao_animal (CNPJ ligado pelo número do registro)"
+                ),
+                TEXTO,
+            )
+        colunas[nome] = coluna
+        if nome == "cnpj_basico":
+            colunas["cnpj_ligado_por"] = (
+                (
+                    "Como o CNPJ da linha foi obtido: `arquivo` (o arquivo trazia o CNPJ inteiro) ou "
+                    "`registro_mapa` (o arquivo mascara o documento: o CNPJ é o do estabelecimento de "
+                    "mesmo número de registro, e os 3 dígitos à vista batem, ou, sem documento, a UF e "
+                    "o município). Nunca pelo nome"
+                ),
+                TEXTO,
+            )
+    return colunas
+
+
 def _tabelas_das_licencas() -> dict[str, Tabela]:
     """As licenças e registros por CNPJ (`base/licencas.py`, Ficha Clara): uma tabela por órgão, com
     as mesmas colunas, para a ficha da empresa ler todas do mesmo jeito."""
@@ -1960,9 +1990,11 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
         fonte: str,
         familia: str,
         frequencia: str = frequencia,
+        colunas_da_tabela: dict[str, tuple[str, str]] = colunas,
+        comum_da_tabela: str = comum,
     ) -> Tabela:
         return Tabela(
-            descricao=descricao + " " + comum,
+            descricao=descricao + " " + comum_da_tabela,
             fonte=fonte + " (`base/licencas.py`)",
             familia_da_fonte=familia,
             frequencia=frequencia,
@@ -1972,7 +2004,7 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
                 "`scripts/carga_licencas.py`)"
             ),
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
-            colunas=colunas,
+            colunas=colunas_da_tabela,
         )
 
     return {
@@ -1996,11 +2028,21 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
             "mapa_sipeagro",
             (
                 "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e "
-                "aviação agrícola. Os outros arquivos do SIPEAGRO mascaram o CNPJ e ficam de fora "
-                "(nunca se cruza pelo nome)."
+                "aviação agrícola, que trazem o CNPJ inteiro. Fertilizantes, qualidade vegetal, vinhos e "
+                "bebidas e alimentação animal mascaram o documento (só 3 dígitos da raiz à vista) e a "
+                "multiplicação animal nem o traz: essas linhas só entram quando o número do registro "
+                "casa com um registro de CNPJ inteiro e os 3 dígitos à vista batem com ele (sem "
+                "documento, a UF e o município); `cnpj_ligado_por` diz como o CNPJ foi obtido. Nunca "
+                "se liga pelo nome, e o registro sem par fica de fora (pode ser pessoa física)."
             ),
             "MAPA: dados abertos do SIPEAGRO",
             "mapa",
+            colunas_da_tabela=_colunas_do_sipeagro(colunas),
+            comum_da_tabela=comum.replace(
+                "CPF e CNPJ mascarado saem na coleta",
+                "CPF e documento sem dígito à vista saem na coleta, e o CNPJ mascarado só vira linha "
+                "ligado pelo registro",
+            ),
         ),
         "anatel_outorgas": tabela(
             "anatel_outorgas",
@@ -11524,7 +11566,7 @@ _CONTRATO = {
     "receita_transacoes_individual": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "processo"), datas={"aconteceu_em": "data_acordo", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-07-28", granularidade_do_publico_em="dia"),  # linha 904: só PJ, sem contribuinte
     "receita_transacoes_adesao": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("hash_linha",), datas={"aconteceu_em": "data_requerimento", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-11", granularidade_do_publico_em="dia"),  # linha 904: só PJ
     "antt_rntrc": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
-    "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
+    "mapa_sipeagro": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes", versao_do_contrato="1.1.0"),  # 1.1.0 (25/11/2026, linha 1021): coluna nova `cnpj_ligado_por` e cinco cadastros novos, ligados pelo número do registro
     "anatel_outorgas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "anm_titulos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
     "ancine_agentes": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "concedido_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_LICENCAS, granularidade_do_publico_em="mes"),
