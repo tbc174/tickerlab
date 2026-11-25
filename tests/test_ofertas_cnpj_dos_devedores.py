@@ -16,11 +16,14 @@ import pytest
 from base import ofertas
 from base.porta import Porta
 from base.raizes_de_empresa import RaizesDeEmpresa
+from tests.ajudantes_de_cpf import cpf_que_confere, no_formato
 
 ATLAS = "22.875.049/0001-20"
 OUTRA = "11.222.333/0001-81"
 SECURITIZADORA = "26.609.050/0001-64"
 CPF = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
+# CPF que confere, montado na hora (nenhum arquivo do repositório guarda um: tests/ajudantes_de_cpf.py)
+UM_CPF = no_formato(cpf_que_confere("888777666"), "ddd.ddd.ddd-dd")
 CABECALHO = (
     "Numero_Requerimento;Numero_Processo;Data_requerimento;Data_Registro;Data_Encerramento;"
     "Valor_Mobiliario;CNPJ_Emissor;Nome_Emissor;Emissao;Identificacao_devedores_coobrigados"
@@ -60,7 +63,7 @@ def test_o_cnpj_do_devedor_sai_do_texto_do_requerimento():
 
 
 def test_nenhum_texto_do_requerimento_e_nenhum_cpf_vai_para_a_tabela():
-    texto = f"Produtor FICTICIO DA SILVA CPF 123.456.789-09 e a empresa {ATLAS}"
+    texto = f"Produtor FICTICIO DA SILVA CPF {UM_CPF} e a empresa {ATLAS}"
     tabela = ofertas.ler_cnpj_dos_devedores(_zip(("1", "2024-07-01", texto)))
     assert _cnpjs(tabela) == [ATLAS]
     assert "identificacao_devedores_coobrigados" not in tabela.columns
@@ -72,7 +75,7 @@ def test_nenhum_texto_do_requerimento_e_nenhum_cpf_vai_para_a_tabela():
 
 def test_requerimento_so_com_cpf_ou_sem_texto_nao_gera_linha():
     zip_da_cvm = _zip(
-        ("1", "2024-07-01", "Produtor rural CPF 123.456.789-09"),
+        ("1", "2024-07-01", f"Produtor rural CPF {UM_CPF}"),
         ("2", "2024-07-01", ""),
     )
     assert ofertas.ler_cnpj_dos_devedores(zip_da_cvm).empty
