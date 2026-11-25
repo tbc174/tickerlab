@@ -25,7 +25,7 @@ import pytest
 from base.porta import Porta
 from src.api_externa import porta_compartilhada as compartilhada
 from src.api_externa import rotas
-from src.api_externa.conjuntos import empresas, ficha
+from src.api_externa.conjuntos import compradores, empresas, ficha, prospeccao
 from tests import test_api_externa_analise as rota_da_analise
 from tests import test_api_externa_e_empresa as listas_de_mentira
 from tests import test_api_externa_empresas as empresas_de_mentira
@@ -306,14 +306,18 @@ def test_pedidos_juntos_calculam_a_mesma_chave_uma_vez():
     respostas: list[str] = []
     primeiro = threading.Thread(
         target=lambda: respostas.append(
-            compartilhada.lembrar(_porta_com_memoria(memoria), "mes", demorado)
+            compartilhada.lembrar(
+                _porta_com_memoria(memoria), "mes", demorado, tabelas=()
+            )
         )
     )
     primeiro.start()
     assert calculando.wait(5)
     segundo = threading.Thread(
         target=lambda: respostas.append(
-            compartilhada.lembrar(_porta_com_memoria(memoria), "mes", demorado)
+            compartilhada.lembrar(
+                _porta_com_memoria(memoria), "mes", demorado, tabelas=()
+            )
         )
     )
     segundo.start()
@@ -337,7 +341,7 @@ def test_a_espera_de_uma_chave_nao_prende_outra():
 
     linha = threading.Thread(
         target=lambda: compartilhada.lembrar(
-            _porta_com_memoria(memoria), "uma", demorado
+            _porta_com_memoria(memoria), "uma", demorado, tabelas=()
         )
     )
     linha.start()
@@ -345,7 +349,7 @@ def test_a_espera_de_uma_chave_nao_prende_outra():
     try:
         assert (
             compartilhada.lembrar(
-                _porta_com_memoria(memoria), "outra", lambda: "rápido"
+                _porta_com_memoria(memoria), "outra", lambda: "rápido", tabelas=()
             )
             == "rápido"
         )
@@ -369,7 +373,7 @@ def test_se_o_calculo_falha_quem_esperava_calcula_e_nada_fica_guardado():
 
     def primeiro() -> None:
         try:
-            compartilhada.lembrar(_porta_com_memoria(memoria), "mes", falha)
+            compartilhada.lembrar(_porta_com_memoria(memoria), "mes", falha, tabelas=())
         except RuntimeError as erro:
             erros.append(erro)
 
@@ -379,7 +383,9 @@ def test_se_o_calculo_falha_quem_esperava_calcula_e_nada_fica_guardado():
     respostas: list[str] = []
     segundo = threading.Thread(
         target=lambda: respostas.append(
-            compartilhada.lembrar(_porta_com_memoria(memoria), "mes", lambda: "2026-10")
+            compartilhada.lembrar(
+                _porta_com_memoria(memoria), "mes", lambda: "2026-10", tabelas=()
+            )
         )
     )
     segundo.start()
@@ -392,7 +398,10 @@ def test_se_o_calculo_falha_quem_esperava_calcula_e_nada_fica_guardado():
     assert respostas == ["2026-10"]
     # o erro não ficou guardado; o valor de quem esperou, sim
     nunca = lambda: pytest.fail("calculou de novo")
-    assert compartilhada.lembrar(_porta_com_memoria(memoria), "mes", nunca) == "2026-10"
+    assert (
+        compartilhada.lembrar(_porta_com_memoria(memoria), "mes", nunca, tabelas=())
+        == "2026-10"
+    )
 
 
 def test_as_travas_tem_limite_como_a_memoria():
@@ -401,7 +410,7 @@ def test_as_travas_tem_limite_como_a_memoria():
     for i in range(compartilhada.MEMORIA_MAXIMA * 2 + 3):
         assert (
             compartilhada.lembrar(
-                _porta_com_memoria(memoria), ("dia", i), lambda i=i: i
+                _porta_com_memoria(memoria), ("dia", i), lambda i=i: i, tabelas=()
             )
             == i
         )
@@ -506,5 +515,91 @@ def test_sem_troca_a_memoria_continua_valendo(base, contadas):
         for _ in range(3):
             assert empresas._retrato_das_duas_listas(porta) == NOVO
         assert len(contadas) == 1
+    finally:
+        porta.fechar()
+
+
+# o mesmo `max` das listas guardado pelos compradores e pela busca (P1 da revisão cruzada da linha 1098): nos
+# compradores, o mês velho ainda iria para o cache global da resposta e serviria até a próxima troca
+def test_porta_aberta_durante_a_troca_ve_o_mes_novo_dos_compradores(base):
+    dia = date(2026, 12, 15)
+    porta = compartilhada.porta_do_pedido()
+    try:
+        assert compradores.mes_do_retrato(porta, dia) == NOVO
+        _retrato_novissimo_no_mesmo_caminho(base.pasta)
+        depois = _depois_da_troca(
+            base.pasta, lambda p: compradores.mes_do_retrato(p, dia)
+        )
+        assert depois == NOVISSIMO
+        assert compradores.mes_do_retrato(porta, dia) == depois
+    finally:
+        porta.fechar()
+
+
+def test_porta_aberta_durante_a_troca_ve_o_primeiro_dia_novo_dos_compradores(base):
+    porta = compartilhada.porta_do_pedido()
+    try:
+        assert compradores.primeiro_dia_do_retrato(porta) == PUBLICO[VELHO]
+        # a carga regrava os arquivos com um retrato mais antigo, de 2026-08, público em 31/08
+        antigo = "2026-08"
+        PUBLICO[antigo] = date(2026, 8, 31)
+        try:
+            for tabela, linhas in (
+                (
+                    empresas.LISTA_DE_EMPRESAS,
+                    listas_de_mentira._empresas([(EMPRESA[:8], "2062", antigo)]),
+                ),
+                (
+                    empresas.LISTA_DE_ESTABELECIMENTOS,
+                    listas_de_mentira._estabelecimentos([(EMPRESA, antigo)]),
+                ),
+            ):
+                _acrescentar_no_mesmo_arquivo(base.pasta, tabela, _no_mes(linhas))
+        finally:
+            del PUBLICO[antigo]
+        depois = _depois_da_troca(base.pasta, compradores.primeiro_dia_do_retrato)
+        assert depois == date(2026, 8, 31)
+        assert compradores.primeiro_dia_do_retrato(porta) == depois
+    finally:
+        porta.fechar()
+
+
+def test_porta_aberta_durante_a_troca_ve_o_mes_novo_da_busca(base):
+    dia = date(2026, 12, 15)
+
+    def ler(p):
+        return prospeccao.LeitorDeProspeccao(p, lambda *_: True, 10)._mes_do_retrato(
+            dia
+        )
+
+    porta = compartilhada.porta_do_pedido()
+    try:
+        assert ler(porta) == NOVO
+        _retrato_novissimo_no_mesmo_caminho(base.pasta)
+        depois = _depois_da_troca(base.pasta, ler)
+        assert depois == NOVISSIMO
+        assert ler(porta) == depois
+    finally:
+        porta.fechar()
+
+
+def test_lembrar_pede_as_tabelas_que_o_calculo_le():
+    """Sem as tabelas, uma chave nova nasceria sem conferir os arquivos: quem chama diz quais lê (ou nenhuma)."""
+    with pytest.raises(TypeError):
+        compartilhada.lembrar(_porta_com_memoria({}), "mes", lambda: "2026-10")  # type: ignore[call-arg]
+
+
+def test_arquivo_apagado_no_meio_da_impressao_nao_derruba_o_pedido(base, monkeypatch):
+    """A carga pode apagar um arquivo entre o glob e a leitura da data: a impressão o conta como mudado, sem erro."""
+    porta = compartilhada.porta_do_pedido()
+    try:
+        assert empresas._retrato_das_duas_listas(porta) == NOVO
+        listar = compartilhada.arquivos_da_tabela
+        monkeypatch.setattr(
+            compartilhada,
+            "arquivos_da_tabela",
+            lambda pasta, padrao: [*listar(pasta, padrao), pasta / "sumiu.parquet"],
+        )
+        assert empresas._retrato_das_duas_listas(porta) == NOVO
     finally:
         porta.fechar()

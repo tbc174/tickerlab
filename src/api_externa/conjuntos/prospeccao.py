@@ -547,6 +547,7 @@ class LeitorDeProspeccao:
             self.porta,
             ("mes_do_retrato_busca", como_era_em),
             lambda: self._ler_o_mes_do_retrato(como_era_em),
+            tabelas=(ESTABELECIMENTOS, EMPRESAS),
         )
 
     def _ler_o_mes_do_retrato(self, como_era_em: date) -> str | None:
