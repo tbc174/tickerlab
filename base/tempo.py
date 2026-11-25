@@ -47,6 +47,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "assinado_em", "efetivada_em", "cadastrado_em",  # contratos, sanções e fornecedores do RJ (linha 1075)
+        "aprovado_em", "celebrado_em",  # compras diretas do RJ e contratos do ES (linha 1075, PR 2)
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
         "registrado_em", "funciona_desde",  # linha 904: registro do administrador de FII; início do FII
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud

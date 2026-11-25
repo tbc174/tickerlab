@@ -181,6 +181,10 @@ FICAM_EM_CASA = (
     "rj_contratos",
     "rj_sancoes_fornecedores",
     "rj_fornecedores",
+    # linha 1075, PR 2: compras diretas do RJ (PDDL) e contratos e empenhos do ES (CC BY), só com CNPJ; mesmo pode
+    "rj_compras_diretas",
+    "es_contratos",
+    "es_empenhos",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
