@@ -168,6 +168,20 @@ def test_com_o_guardado_quente_quem_nao_e_empresa_continua_nao(base, contadas, o
     assert len(contadas) == 1
 
 
+@pytest.mark.parametrize("ordem", [(EMPRESA, MEI), (MEI, EMPRESA)])
+def test_o_lote_com_o_guardado_quente_da_o_mesmo_que_um_a_um(base, contadas, ordem):
+    assert _e_empresa(ordem[0]) == (ordem[0] == EMPRESA)  # esquenta a memória
+    with compartilhada.porta_do_pedido() as porta:
+        lote = empresas.e_empresas(porta, [*ordem, listas_de_mentira.FILIAL, NOVA])
+    assert lote == {
+        EMPRESA: True,
+        MEI: False,
+        listas_de_mentira.FILIAL: True,
+        NOVA: False,
+    }
+    assert len(contadas) == 1
+
+
 @pytest.fixture
 def analise_com_memoria(tmp_path, monkeypatch):
     """A rota da análise com a porta de produção: um cursor da porta dona e a memória dela, a mesma em todos
@@ -369,6 +383,8 @@ def test_se_o_calculo_falha_quem_esperava_calcula_e_nada_fica_guardado():
         )
     )
     segundo.start()
+    segundo.join(0.2)
+    assert segundo.is_alive()  # parado na trava, esperando o primeiro
     pode_falhar.set()
     linha.join(5)
     segundo.join(5)
