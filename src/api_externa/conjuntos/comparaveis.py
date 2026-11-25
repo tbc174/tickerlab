@@ -20,12 +20,22 @@ portão some da resposta, sem `null`; sem o setor, nada sai. O número ou a raz�
 some em silêncio (linha 881, `src/api_externa/nao_disponivel.py`): ele vai em `numeros_nao_disponiveis` (com o
 nome de fora) e os limites avisam que os pares e as medianas não dizem nada sobre ele, para a mediana que falta
 não ler como "menos de 8 pares".
+
+**A memória por (grupo, dia)** (linha 1015, item c, PR 3): pelo log de produção de 25/11 o bloco atrasou em 6 de
+6 pedidos da análise completa, porque cada pedido relia os FCA do dia e os DFP do grupo inteiro e refazia as
+contas. Na porta do pedido da API (`porta_compartilhada`), os cadastros do dia e as companhias do grupo no dia
+(com os números) ficam guardados na porta dona, que morre quando a base é trocada. O dia entra na chave. O que
+fica guardado só depende da base e do dia: a trava de pessoa em lote (`e_empresas`) e o portão (`permitido`)
+rodam a cada pedido, depois da memória, e nada do que é de quem pede entra nela. Há um teto de entradas
+(`ENTRADAS_GUARDADAS`), e a mais velha sai primeiro.
 """
 
 import math
 import statistics
+import threading
 import unicodedata
-from collections.abc import Iterable, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Hashable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
 
@@ -146,6 +156,56 @@ def limites(
 
 # os limites com todos os números consultados
 LIMITES = tuple(limites((*NUMEROS, *RAZOES)))
+
+
+# entradas guardadas por porta dona: os cadastros de um dia e as companhias de um grupo num dia (cada uma com os
+# números de algumas centenas de companhias, no máximo); o dia da pergunta (`known_at`) varia de pedido para pedido
+ENTRADAS_GUARDADAS = 32
+_NA_MEMORIA_DA_PORTA = ("comparaveis", "por_grupo_e_dia")
+
+
+class _Guardados:
+    """As entradas dos comparáveis de uma porta dona, com teto: a mais velha (a menos usada) sai primeiro.
+
+    Dividida entre os pedidos e as linhas dos blocos: a trava protege só a lista; o cálculo roda fora dela (dois
+    pedidos podem calcular a mesma entrada ao mesmo tempo, com o mesmo resultado)."""
+
+    def __init__(self) -> None:
+        self._entradas: OrderedDict[Hashable, object] = OrderedDict()
+        self._trava = threading.Lock()
+
+    def __len__(self) -> int:
+        with self._trava:
+            return len(self._entradas)
+
+    def chaves(self) -> list[Hashable]:
+        with self._trava:
+            return list(self._entradas)
+
+    def valor(self, chave: Hashable) -> object:
+        with self._trava:
+            return self._entradas[chave]
+
+    def lembrar[T](self, chave: Hashable, calcular: Callable[[], T]) -> T:
+        with self._trava:
+            if chave in self._entradas:
+                self._entradas.move_to_end(chave)
+                return self._entradas[chave]  # type: ignore[return-value]
+        valor = calcular()
+        with self._trava:
+            self._entradas[chave] = valor
+            self._entradas.move_to_end(chave)
+            while len(self._entradas) > ENTRADAS_GUARDADAS:
+                self._entradas.popitem(last=False)
+        return valor
+
+
+def _guardados(porta: Porta) -> _Guardados | None:
+    """As entradas dos comparáveis na memória da porta dona; None na porta que não é de pedido (calcula sempre)."""
+    memoria = getattr(porta, "memoria_da_base", None)
+    if memoria is None:
+        return None
+    return memoria.setdefault(_NA_MEMORIA_DA_PORTA, _Guardados())
 
 
 @dataclass(frozen=True)
@@ -400,6 +460,26 @@ class LeitorDeComparaveis:
             companhias[companhia.cnpj] = companhia
         return companhias
 
+    def _lembrado[T](self, chave: Hashable, calcular: Callable[[], T]) -> T:
+        guardados = _guardados(self.porta)
+        return calcular() if guardados is None else guardados.lembrar(chave, calcular)
+
+    def _cadastros_do_dia(self, dia: date) -> pd.DataFrame:
+        """Os cadastros do dia (`_cadastros`), lembrados por dia; sai uma cópia, que quem pede pode mexer."""
+        return self._lembrado(("cadastros", dia), lambda: self._cadastros(dia)).copy()
+
+    def _companhias_do_grupo(
+        self, cadastros: pd.DataFrame, grupo: str, dia: date
+    ) -> dict[str, _Companhia]:
+        """Todas as companhias do grupo no dia, com os números (`_companhias`), lembradas por (grupo, dia): ainda
+        sem a trava de pessoa e sem o portão, que são de cada pedido."""
+        do_grupo = cadastros[cadastros["grupo"] == grupo]
+        return dict(
+            self._lembrado(
+                ("companhias", grupo, dia), lambda: self._companhias(do_grupo, dia)
+            )
+        )
+
     # ------------------------------------------------------------ saída
 
     def _servida(self, companhia: _Companhia) -> tuple[dict, set[str]]:
@@ -476,18 +556,19 @@ class LeitorDeComparaveis:
             return None
         if not e_empresa(self.porta, normal):
             return None
-        cadastros = self._cadastros(como_era_em)
+        cadastros = self._cadastros_do_dia(como_era_em)
         dela = cadastros[cadastros["cnpj"] == normal]
         if dela.empty or dela["grupo"].iloc[0] == setores.SEM_GRUPO:
             return None
         grupo = str(dela["grupo"].iloc[0])
-        candidatas = cadastros[(cadastros["grupo"] == grupo)]
-        # a trava de pessoa em lote: uma pergunta à rede pelo grupo inteiro, não uma por candidata
-        e_empresa_cada_uma = e_empresas(self.porta, candidatas["cnpj"])
-        candidatas = candidatas[
-            (candidatas["cnpj"] == normal) | candidatas["cnpj"].map(e_empresa_cada_uma)
-        ]
-        companhias = self._companhias(candidatas, como_era_em)
+        do_grupo = self._companhias_do_grupo(cadastros, grupo, como_era_em)
+        # a trava de pessoa em lote, a cada pedido e depois da memória: uma pergunta à rede pelo grupo inteiro
+        e_empresa_cada_uma = e_empresas(self.porta, list(do_grupo))
+        companhias = {
+            cnpj: companhia
+            for cnpj, companhia in do_grupo.items()
+            if cnpj == normal or e_empresa_cada_uma.get(cnpj, False)
+        }
         pedida = companhias[normal]
         # sem direito à receita, a ordem não pode entregá-la: os pares vão pela ordem do CNPJ
         pela_receita = self.permitido(FONTE_DOS_NUMEROS, "receita", False)
