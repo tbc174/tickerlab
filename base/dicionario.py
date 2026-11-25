@@ -10178,6 +10178,67 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_DA_LINHA,
         },
     ),
+    "controladas_primeiro_fre": Tabela(
+        descricao=(
+            "Desde quando cada controlada ou coligada aparece no FRE da companhia (linha 1045): uma linha por par "
+            "companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade, com o **primeiro** FRE em que "
+            "o par aparece. `conhecido_em` é o recebimento na CVM, o dia em que o par ficou público; a `referencia` "
+            "de `controladas` é o fim do exercício e pode ser futura (2026-12-31 num FRE entregue em junho de 2026). "
+            "`fre_anterior_sem_o_par` é falso quando o par já estava no primeiro FRE que a base vê da companhia: a "
+            "ligação 'aparece no FRE desde' `primeiro_ano_no_fre` e existe 'não depois de' essa data. **Limites:** a CVM só publica a versão mais nova de "
+            "cada FRE, então `conhecido_em` pode ser depois da data em que a companhia de fato informou o par, nunca "
+            "antes; o FRE de 2023 informa muito mais sociedades que o de 2022 (4.222 para 5.263 pares medidos "
+            "em 25/11/2026), então o pico de 'primeiros FREs' em 2023 não é de aquisições; a data é a do FRE, não a em que a controlada entrou "
+            "no grupo nem a do negócio. Só pessoa jurídica com CNPJ que confere: sociedade sem CNPJ fica de fora (não conferido) e "
+            "nunca se liga pelo nome. Sem razão social, nome nem CPF."
+        ),
+        fonte="CVM: dados abertos do FRE, tabela de participação em sociedades (derivada de `controladas`)",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA,
+        atraso=ATRASO_DO_FRE + "; o par vale a partir de `conhecido_em`",
+        onde="Parquet em `<acervo>/base/controladas_primeiro_fre/controladas_primeiro_fre.parquet` (servidor de casa, `scripts/montar_base_historica.py`)",
+        linhagem=(
+            "Sai de `controladas`, que guarda o SHA-256 de cada FRE; o manifesto leva o hash das tabelas de "
+            "entrada; `montado_em` diz quando a tabela foi montada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj_companhia": (
+                "CNPJ da companhia que informou o FRE (14 dígitos)",
+                TEXTO,
+            ),
+            "raiz_da_controlada": (
+                "Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais",
+                TEXTO,
+            ),
+            "cnpj": (
+                "CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos)",
+                TEXTO,
+            ),
+            "primeiro_ano_no_fre": (
+                "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
+                "ano",
+            ),
+            "referencia": (
+                "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
+                DATA,
+            ),
+            "conhecido_em": (
+                "Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público",
+                DATA,
+            ),
+            "tipo_no_primeiro_fre": (
+                "controlada, coligada ou vazio (o FRE novo deixa em branco)",
+                TEXTO,
+            ),
+            "fre_anterior_sem_o_par": (
+                "Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela",
+                SIM_OU_NAO,
+            ),
+            "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+            "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+        },
+    ),
     "controladas_pj": Tabela(
         descricao=(
             "Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores por setor da API "
@@ -11945,6 +12006,7 @@ _CONTRATO = {
     "noticias_fatos": _contrato(modulo=_ME, chaves=("id_fato",), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "controladas_primeiro_fre": _contrato(modulo=_ME, chaves=("cnpj_companhia", "raiz_da_controlada"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "montado_em"}, historico_desde=_CVM),  # linha 1045: derivada de `controladas`
     "controladas_pj": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em"}, historico_desde=_CVM),  # linha 844: cópia reduzida de `controladas`, só no VPS
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "colunas_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "data_da_previsao", "coletado_em": "montado_em"}, historico_desde=_CVM),
