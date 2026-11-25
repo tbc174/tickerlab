@@ -677,9 +677,10 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "ambiente",
         "O que a empresa declara ao IBAMA",
         "O relatório anual que cada estabelecimento de atividade poluidora entrega ao IBAMA: as emissões "
-        "de poluentes no ar, os efluentes líquidos e onde são lançados, as fontes de energia que consome e "
-        "a cadeia dos resíduos sólidos, de quem gera a quem transporta, armazena e dá o destino. É o que a "
-        "empresa declara, não uma fiscalização.",
+        "de poluentes no ar, os efluentes líquidos e onde são lançados, as fontes de energia que consome, "
+        "a cadeia dos resíduos sólidos, de quem gera a quem transporta, armazena e dá o destino, e a parte "
+        "florestal e mineral: madeira e lenha exploradas, produtos de origem florestal, florestas plantadas, "
+        "minérios extraídos e certificados ambientais. É o que a empresa declara, não uma fiscalização.",
         (
             "ibama_rapp_emissoes_atmosfericas",
             "ibama_rapp_efluentes_liquidos",
@@ -687,6 +688,11 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "ibama_rapp_residuos_destinados",
             "ibama_rapp_residuos_transportados",
             "ibama_rapp_residuos_armazenados",
+            "ibama_rapp_certificados_ambientais",
+            "ibama_rapp_madeira_e_lenha",
+            "ibama_rapp_extracao_mineral",
+            "ibama_rapp_produtos_florestais",
+            "ibama_rapp_silvicultura",
         ),
     ),
     TemaDoCnpj(

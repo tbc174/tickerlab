@@ -495,6 +495,11 @@ DESTINOS: dict[str, Destino] = {
     "ibama-rapp-residuos-destinador": _tabela("ibama_rapp_residuos_destinados"),
     "ibama-rapp-residuos-transportador": _tabela("ibama_rapp_residuos_transportados"),
     "ibama-rapp-residuos-armazenador": _tabela("ibama_rapp_residuos_armazenados"),
+    "ibama-rapp-certificados-ambientais": _tabela("ibama_rapp_certificados_ambientais"),
+    "ibama-rapp-madeira-lenha": _tabela("ibama_rapp_madeira_e_lenha"),
+    "ibama-rapp-extracao-mineral": _tabela("ibama_rapp_extracao_mineral"),
+    "ibama-rapp-produtos-florestais": _tabela("ibama_rapp_produtos_florestais"),
+    "ibama-rapp-silvicultura": _tabela("ibama_rapp_silvicultura"),
     "mte-lista-suja": _tabela("mte_lista_suja"),
     "gleif-br": _tabela("gleif_ponte"),
     # M&A e intradiários

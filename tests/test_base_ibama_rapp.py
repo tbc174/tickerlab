@@ -1,7 +1,8 @@
-"""RAPP do IBAMA em retrato (linha 1074): emissões, efluentes, energia e a cadeia dos resíduos sólidos. Só pessoa
-jurídica (o CPF de quem declara sai; o da outra ponta vira vazio), os dois formatos de número, a célula ilegível,
-a linha quebrada e sem olhar o futuro (a linha vale desde o dia do arquivo, nunca desde o ano declarado). Arquivos
-de mentira, no formato conferido em 25/11/2026; nenhum documento real."""
+"""RAPP do IBAMA em retrato (linha 1074): emissões, efluentes, energia, a cadeia dos resíduos sólidos e (PR 2)
+certificados, madeira, minerais, produtos florestais e silvicultura. Só pessoa jurídica (o CPF de quem declara sai; o
+da outra ponta vira vazio), os dois formatos de número, a célula ilegível, o ano ou a data fora da faixa, a linha
+quebrada e sem olhar o futuro (a linha vale desde o dia do arquivo, nunca desde o ano declarado). Arquivos de mentira,
+no formato conferido em 25/11/2026; nenhum documento real."""
 
 import hashlib
 from datetime import UTC, date, datetime
@@ -41,6 +42,8 @@ PROIBIDAS = (
     "observ",
     "cpf",
 )
+# o nome da espécie plantada (silvicultura) é de árvore, não de pessoa
+NOMES_DE_ESPECIE = {"nome_cientifico", "nome_popular"}
 
 
 def _cnpj(raiz: str, filial: str = "0001") -> str:
@@ -67,7 +70,16 @@ def _arquivo(relatorio: rapp.Relatorio, *linhas: dict[str, str]) -> bytes:
         **{c: "TEXTO" for c in relatorio.colunas_da_fonte},
         relatorio.cnpj: _formatado(EMPRESA),
         relatorio.ano: "2024",
-        **{c: "10" for c in [*relatorio.numeros, *relatorio.percentuais]},
+        **dict.fromkeys(relatorio.anos, "2020"),
+        **dict.fromkeys(relatorio.datas, "01/02/2020"),
+        **{
+            c: "10"
+            for c in [
+                *relatorio.numeros,
+                *relatorio.numeros_com_ponto,
+                *relatorio.percentuais,
+            ]
+        },
         **{c: _formatado(OUTRA) for c in relatorio.outras_pontas},
         **DA_FONTE_QUE_SAI,
     }
@@ -76,7 +88,11 @@ def _arquivo(relatorio: rapp.Relatorio, *linhas: dict[str, str]) -> bytes:
 
 
 def _sem_nada_de_pessoa_nem_do_que_sai(tabela: pd.DataFrame) -> None:
-    assert not [c for c in tabela.columns if any(p in c.lower() for p in PROIBIDAS)]
+    assert not [
+        c
+        for c in tabela.columns
+        if c not in NOMES_DE_ESPECIE and any(p in c.lower() for p in PROIBIDAS)
+    ]
     texto = set(tabela.astype(str).to_numpy().ravel())
     assert not {NOME_INVENTADO, LUGAR_INVENTADO, CPF_DE_TESTE} & texto
 
@@ -231,6 +247,68 @@ def test_duas_declaracoes_iguais_continuam_duas_com_chaves_diferentes_e_estaveis
     assert tabela["id_na_fonte"].tolist() == de_novo["id_na_fonte"].tolist()
 
 
+def test_ano_fora_de_1900_a_2100_vira_vazio_e_e_contado_em_todas_as_colunas_de_ano():
+    tabela, contagem = rapp.ler(
+        rapp.EXTRACAO_MINERAL,
+        _arquivo(
+            rapp.EXTRACAO_MINERAL,
+            {
+                "Ano": "9999",
+                "Ano de início da exploração": "1985",
+                "Ano de término da exploração": "0",
+            },
+            {"Ano de início da exploração": ""},
+        ),
+    )
+    assert tabela["ano"].tolist() == [pd.NA, 2024]
+    assert tabela["inicio_da_exploracao"].tolist() == [1985, pd.NA]
+    assert tabela["fim_da_exploracao"].tolist() == [pd.NA, 2020]
+    # o vazio não conta: só o preenchido fora da faixa
+    assert contagem["ano_fora_da_faixa"] == 2
+
+
+def test_data_perde_a_hora_e_a_que_nao_e_data_vira_vazio_contado():
+    tabela, contagem = rapp.ler(
+        rapp.EXTRACAO_MINERAL,
+        _arquivo(
+            rapp.EXTRACAO_MINERAL,
+            {"Data do Decreto": "15/03/2019 00:00:00", "Data de Aprovação do PRA": ""},
+            {"Data do Decreto": "31/02/2019", "Data de Aprovação do PRA": "01/01/0001"},
+        ),
+    )
+    assert tabela["data_do_decreto"].tolist() == [pd.Timestamp("2019-03-15"), pd.NaT]
+    assert tabela["pra_aprovado_em"].isna().all()
+    assert contagem["data_invalida"] == 2
+    certificados, _ = rapp.ler(
+        rapp.CERTIFICADOS, _arquivo(rapp.CERTIFICADOS, {"Validade": "30/06/2027"})
+    )
+    assert certificados["valido_ate"].tolist() == [pd.Timestamp("2027-06-30")]
+
+
+def test_silvicultura_le_a_area_no_formato_brasileiro_e_as_arvores_com_virgula_de_milhar():
+    tabela, contagem = rapp.ler(
+        rapp.SILVICULTURA,
+        _arquivo(
+            rapp.SILVICULTURA,
+            {"Área efetivo plantio (ha)": "1.234,5", "Nº de árvores total": "1,400"},
+            {"Nº de árvores total": "-1400"},
+        ),
+    )
+    assert tabela["area_plantada_ha"].tolist()[0] == 1234.5
+    # o negativo vem como veio: a fonte traz, e a tabela não inventa a correção
+    assert tabela["arvores"].tolist() == [1400.0, -1400.0]
+    assert contagem["numero_ilegivel"] == 0
+    _sem_nada_de_pessoa_nem_do_que_sai(tabela)
+
+
+def test_madeira_com_cerquilhas_vira_vazio_contado():
+    tabela, contagem = rapp.ler(
+        rapp.MADEIRA_E_LENHA, _arquivo(rapp.MADEIRA_E_LENHA, {"Tora (m³)": "####"})
+    )
+    assert tabela["tora_m3"].isna().all()
+    assert contagem["numero_ilegivel"] == 1
+
+
 def _coletar(banco, relatorio: rapp.Relatorio, conteudo: bytes, dia: date) -> None:
     com_registro(relatorio.fonte, lambda _url: conteudo)(relatorio.url)
     with banco.begin() as conexao:
@@ -244,7 +322,7 @@ def _coletar(banco, relatorio: rapp.Relatorio, conteudo: bytes, dia: date) -> No
         )
 
 
-def _coletar_os_seis(banco, dia: date) -> None:
+def _coletar_todos(banco, dia: date) -> None:
     """Em cada relatório, uma linha da empresa e uma do MEI; nos de resíduos, uma da empresa com o MEI na outra
     ponta."""
     for relatorio in rapp.RELATORIOS:
@@ -253,10 +331,10 @@ def _coletar_os_seis(banco, dia: date) -> None:
         _coletar(banco, relatorio, _arquivo(relatorio, *linhas), dia)
 
 
-def test_montar_grava_as_seis_tabelas_marca_o_mei_tambem_na_outra_ponta_e_vale_desde_o_dia_do_arquivo(
+def test_montar_grava_todas_as_tabelas_marca_o_mei_tambem_na_outra_ponta_e_vale_desde_o_dia_do_arquivo(
     banco, tmp_path
 ):
-    _coletar_os_seis(banco, DIA)
+    _coletar_todos(banco, DIA)
     with banco.connect() as conexao:
         resumo = rapp.montar(conexao, tmp_path, AGORA, pessoas={MEI[:8]})
     assert set(resumo) == {r.nome for r in rapp.RELATORIOS}
@@ -285,7 +363,7 @@ def test_montar_grava_as_seis_tabelas_marca_o_mei_tambem_na_outra_ponta_e_vale_d
 
 
 def test_segundo_montar_sem_arquivo_novo_e_ja_montado(banco, tmp_path):
-    _coletar_os_seis(banco, DIA)
+    _coletar_todos(banco, DIA)
     with banco.connect() as conexao:
         rapp.montar(conexao, tmp_path, AGORA, pessoas=set())
         assert rapp.montar(conexao, tmp_path, AGORA, pessoas=set()) == {

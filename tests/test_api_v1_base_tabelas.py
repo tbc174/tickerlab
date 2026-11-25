@@ -901,10 +901,10 @@ LOTE_1_DA_904 = {
 def test_as_15_da_linha_842_estao_no_dicionario():
     assert FECHADAS_ATE_A_PRONTIDAO >= LOTE_1_DA_904
     assert (
-        len(FECHADAS_ATE_A_PRONTIDAO - LOTE_1_DA_904) == 45
+        len(FECHADAS_ATE_A_PRONTIDAO - LOTE_1_DA_904) == 50
     )  # 15 + 4 do INPI + 3 da ANEEL (lote 2) + 7 do BCB e da ANTT (lote 3) + 6 da conferência de 14/11, linha 904
     # + 2 da conferência de 19/11 (SICAF e BPS) + 1 da linha 1034 (CNPJ dos devedores da oferta) + 1 da linha 1045 (controladas_primeiro_fre)
-    # + 6 da linha 1074 (RAPP do IBAMA)
+    # + 11 da linha 1074 (RAPP do IBAMA: 6 do PR 1 e 5 do PR 2)
     assert set(TABELAS) >= FECHADAS_ATE_A_PRONTIDAO
 
 

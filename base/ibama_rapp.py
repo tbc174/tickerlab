@@ -54,7 +54,13 @@ CODIFICACAO = "utf-8-sig"  # sem BOM em 25/11/2026; com BOM também lê
 PORTAL = "https://dadosabertos.ibama.gov.br/dados/RAPP"
 ILEGIVEL = "#"  # o Excel escreve `#####` quando o número não cabe na célula
 MILHAR_COM_VIRGULA = "1,234.5"  # emissões e energia
-MILHAR_COM_PONTO = "1.234,5"  # efluentes e resíduos
+MILHAR_COM_PONTO = (
+    "1.234,5"  # efluentes, resíduos e os relatórios florestais e minerais
+)
+FORMATO_DA_DATA = "%d/%m/%Y"  # `31/12/2018`; a hora, quando vem, fica de fora
+TAMANHO_DA_DATA = len("31/12/2018")
+# ano declarado fora desta faixa (há `5279` e `0002` nos arquivos de 25/11/2026) é erro de digitação: vira nulo contado
+ANO_MINIMO, ANO_MAXIMO = 1900, 2100
 CARIMBO = ("id_na_fonte", "cnpj", "cnpj_basico")
 OCORRENCIA = "ocorrencia"
 
@@ -77,6 +83,10 @@ class Relatorio:
     formato_do_numero: str = MILHAR_COM_PONTO
     percentuais: dict[str, str] = field(default_factory=dict)
     outras_pontas: dict[str, str] = field(default_factory=dict)
+    anos: dict[str, str] = field(default_factory=dict)
+    datas: dict[str, str] = field(default_factory=dict)
+    # números com ponto decimal num relatório escrito em `1.234,5` (o número de árvores da silvicultura)
+    numeros_com_ponto: dict[str, str] = field(default_factory=dict)
 
     @property
     def url(self) -> str:
@@ -88,7 +98,10 @@ class Relatorio:
             self.cnpj,
             self.ano,
             *self.textos,
+            *self.anos,
+            *self.datas,
             *self.numeros,
+            *self.numeros_com_ponto,
             *self.percentuais,
             *self.outras_pontas,
         ]
@@ -105,7 +118,18 @@ class Relatorio:
             *pontas,
             "ano",
             *self.textos.values(),
+            *self.anos.values(),
+            *self.datas.values(),
             *self.numeros.values(),
+            *self.numeros_com_ponto.values(),
+            *self.percentuais.values(),
+        )
+
+    @property
+    def colunas_de_numero(self) -> tuple[str, ...]:
+        return (
+            *self.numeros.values(),
+            *self.numeros_com_ponto.values(),
             *self.percentuais.values(),
         )
 
@@ -178,6 +202,78 @@ def _outra_ponta(texto: pd.Series) -> tuple[pd.Series, int, int]:
     return cnpj14, int(de_cpf.sum()), int(invalido.sum())
 
 
+def _ano(texto: pd.Series) -> tuple[pd.Series, int]:
+    """O ano como inteiro; fora de `ANO_MINIMO`..`ANO_MAXIMO` vira nulo, e devolve quantos eram assim."""
+    ano = pd.to_numeric(texto, errors="coerce").astype("Int64")
+    fora = ano.notna() & ~ano.between(ANO_MINIMO, ANO_MAXIMO)
+    return ano.mask(fora), int(fora.sum())
+
+
+def _data(texto: pd.Series) -> tuple[pd.Series, int]:
+    """O dia em `dd/mm/aaaa` (a hora sai); vazio fica nulo, e o preenchido que não é data (ou cai fora da faixa
+    de anos) vira nulo contado."""
+    dia = base.dia_br(texto.str[:TAMANHO_DA_DATA], FORMATO_DA_DATA)
+    dia = dia.mask(dia.notna() & ~dia.dt.year.between(ANO_MINIMO, ANO_MAXIMO))
+    invalida = dia.isna() & texto.fillna("").ne("")
+    return dia, int(invalida.sum())
+
+
+def _pontas(
+    tabela: pd.DataFrame, relatorio: Relatorio, contagem: dict[str, int]
+) -> dict[str, pd.Series]:
+    """O CNPJ e a raiz de cada outra ponta, contando o CPF e o documento inválido que ficaram de fora."""
+    colunas: dict[str, pd.Series] = {}
+    contagem["outra_ponta_pessoa_fisica"] = 0
+    contagem["outra_ponta_invalida"] = 0
+    for da_fonte, sufixo in relatorio.outras_pontas.items():
+        cnpj14, de_cpf, invalidos = _outra_ponta(tabela[da_fonte])
+        contagem["outra_ponta_pessoa_fisica"] += de_cpf
+        contagem["outra_ponta_invalida"] += invalidos
+        colunas[f"cnpj_{sufixo}"] = cnpj14.map(cnpjs.formatar, na_action="ignore")
+        colunas[f"cnpj_basico_{sufixo}"] = cnpj14.str[: cnpjs.TAMANHO_DA_RAIZ]
+    return colunas
+
+
+def _valores(
+    tabela: pd.DataFrame, relatorio: Relatorio, contagem: dict[str, int]
+) -> dict[str, pd.Series]:
+    """O ano, os textos, os anos e as datas, e os números de cada formato, já com o nome da tabela."""
+    anos = {relatorio.ano: "ano", **relatorio.anos}
+    colunas: dict[str, pd.Series] = {}
+    contagem["ano_fora_da_faixa"] = 0
+    for da_fonte, nosso in anos.items():
+        colunas[nosso], fora = _ano(tabela[da_fonte])
+        contagem["ano_fora_da_faixa"] += fora
+    colunas |= base.renomeadas(tabela, relatorio.textos)
+    contagem["data_invalida"] = 0
+    for da_fonte, nosso in relatorio.datas.items():
+        colunas[nosso], invalidas = _data(tabela[da_fonte])
+        contagem["data_invalida"] += invalidas
+    formatos = (
+        (relatorio.numeros, relatorio.formato_do_numero),
+        (relatorio.numeros_com_ponto, MILHAR_COM_VIRGULA),
+        (relatorio.percentuais, MILHAR_COM_PONTO),
+    )
+    for colunas_da_fonte, formato in formatos:
+        colunas |= {
+            nosso: numero(tabela[da_fonte], formato)
+            for da_fonte, nosso in colunas_da_fonte.items()
+        }
+    return colunas
+
+
+def _com_chave(pronta: pd.DataFrame, relatorio: Relatorio) -> pd.DataFrame:
+    """A tabela com `id_na_fonte` na frente: as colunas guardadas mais a ocorrência delas no arquivo."""
+    guardadas = [c for c in relatorio.colunas if c != "id_na_fonte"]
+    chave = motor.chave(pronta.astype("string").fillna(""), guardadas)
+    ocorrencia = chave.groupby(chave).cumcount().astype(str)
+    return pronta.assign(
+        id_na_fonte=motor.chave(
+            pd.DataFrame({"c": chave, OCORRENCIA: ocorrencia}), ["c", OCORRENCIA]
+        )
+    )[list(relatorio.colunas)]
+
+
 def ler(relatorio: Relatorio, conteudo: bytes) -> tuple[pd.DataFrame, dict[str, int]]:
     """As linhas de pessoa jurídica de um retrato do relatório e a contagem do que saiu ou ficou nulo.
 
@@ -191,50 +287,20 @@ def ler(relatorio: Relatorio, conteudo: bytes) -> tuple[pd.DataFrame, dict[str, 
     )
     contagem["linha_quebrada"] = quebradas
     contagem["numero_ilegivel"] = _ilegiveis(
-        tabela, [*relatorio.numeros, *relatorio.percentuais]
+        tabela,
+        [*relatorio.numeros, *relatorio.numeros_com_ponto, *relatorio.percentuais],
     )
-    colunas: dict[str, pd.Series] = {**comum.com_cnpj(tabela["cnpj14"])}
-    contagem["outra_ponta_pessoa_fisica"] = 0
-    contagem["outra_ponta_invalida"] = 0
-    for da_fonte, sufixo in relatorio.outras_pontas.items():
-        cnpj14, de_cpf, invalidos = _outra_ponta(tabela[da_fonte])
-        contagem["outra_ponta_pessoa_fisica"] += de_cpf
-        contagem["outra_ponta_invalida"] += invalidos
-        colunas[f"cnpj_{sufixo}"] = cnpj14.map(cnpjs.formatar, na_action="ignore")
-        colunas[f"cnpj_basico_{sufixo}"] = cnpj14.str[: cnpjs.TAMANHO_DA_RAIZ]
-    colunas["ano"] = pd.to_numeric(tabela[relatorio.ano], errors="coerce").astype(
-        "Int64"
-    )
-    colunas |= base.renomeadas(tabela, relatorio.textos)
-    colunas |= {
-        nosso: numero(tabela[da_fonte], relatorio.formato_do_numero)
-        for da_fonte, nosso in relatorio.numeros.items()
+    colunas = {
+        **comum.com_cnpj(tabela["cnpj14"]),
+        **_pontas(tabela, relatorio, contagem),
+        **_valores(tabela, relatorio, contagem),
     }
-    colunas |= {
-        nosso: numero(tabela[da_fonte], MILHAR_COM_PONTO)
-        for da_fonte, nosso in relatorio.percentuais.items()
-    }
-    pronta = pd.DataFrame(colunas, index=tabela.index)
-    guardadas = [c for c in relatorio.colunas if c != "id_na_fonte"]
-    chave = motor.chave(pronta.astype("string").fillna(""), guardadas)
-    pronta.insert(
-        0,
-        "id_na_fonte",
-        motor.chave(
-            pd.DataFrame(
-                {"c": chave, OCORRENCIA: chave.groupby(chave).cumcount().astype(str)}
-            ),
-            ["c", OCORRENCIA],
-        ),
-    )
+    pronta = _com_chave(pd.DataFrame(colunas, index=tabela.index), relatorio)
     tipos = {
-        "ano": "Int64",
-        **{
-            c: "Float64"
-            for c in [*relatorio.numeros.values(), *relatorio.percentuais.values()]
-        },
+        **dict.fromkeys(("ano", *relatorio.anos.values()), "Int64"),
+        **dict.fromkeys(relatorio.colunas_de_numero, "Float64"),
     }
-    return base.pronta(pronta[list(relatorio.colunas)], contagem, tipos)
+    return base.pronta(pronta, contagem, tipos)
 
 
 # --- os relatórios do PR 1 -------------------------------------------------------------------------------
@@ -347,6 +413,99 @@ RESIDUOS_ARMAZENADOS = Relatorio(
         "CNPJ Armazenamento/Destinação": "destino",
     },
 )
+# --- os relatórios do PR 2: florestais, minerais e certificados -----------------------------------------
+CERTIFICADOS = Relatorio(
+    tabela="ibama_rapp_certificados_ambientais",
+    nome="certificados",
+    fonte="ibama-rapp-certificados-ambientais",
+    pasta_no_portal="certificadosAmbientais",
+    cnpj="CNPJ",
+    ano="Ano",
+    textos={
+        "Certificado": "certificado",
+        "Tipo Certificado": "tipo_de_certificado",
+        "Certificador": "certificador",
+        **_SITUACAO,
+    },
+    datas={"Validade": "valido_ate"},
+)
+MADEIRA_E_LENHA = Relatorio(
+    tabela="ibama_rapp_madeira_e_lenha",
+    nome="madeira",
+    fonte="ibama-rapp-madeira-lenha",
+    pasta_no_portal="expEcoMadProdSubprodFl",
+    cnpj="CNPJ",
+    ano="Ano",
+    textos=_SITUACAO,
+    numeros={
+        "Lenha (estéreo ou m³)": "lenha",
+        "Tora (m³)": "tora_m3",
+        "Área Total Explorada (ha)": "area_explorada_ha",
+    },
+)
+EXTRACAO_MINERAL = Relatorio(
+    tabela="ibama_rapp_extracao_mineral",
+    nome="minerais",
+    fonte="ibama-rapp-extracao-mineral",
+    pasta_no_portal="extTratProdMinerais",
+    cnpj="CNPJ",
+    ano="Ano",
+    textos={
+        "Nome do Produto": "produto",
+        "Unidade de Medida": "unidade",
+        "Nº Decreto da Lavra": "decreto_de_lavra",
+        **_SITUACAO,
+    },
+    anos={
+        "Ano de início da exploração": "inicio_da_exploracao",
+        "Ano de término da exploração": "fim_da_exploracao",
+    },
+    datas={
+        "Data do Decreto": "data_do_decreto",
+        "Data de Aprovação do PRA": "pra_aprovado_em",
+    },
+    numeros={"Quantidade Explorada": "quantidade", "Tamanho da Área": "area"},
+)
+PRODUTOS_FLORESTAIS = Relatorio(
+    tabela="ibama_rapp_produtos_florestais",
+    nome="florestais",
+    fonte="ibama-rapp-produtos-florestais",
+    pasta_no_portal="utilMatPrimaOriFlorestal",
+    cnpj="CNPJ",
+    ano="Ano",
+    textos={"Nome do Produto": "produto", "Unidade de Medida": "unidade", **_SITUACAO},
+    numeros={
+        "Quantidade recebida": "recebida",
+        "Quantidade comercializada": "comercializada",
+        "Quantidade processada": "processada",
+        "Quantidade estocada": "estocada",
+        "Capacidade de Processamento": "capacidade_de_processamento",
+        "Qtd. de Doc. Estad. recebidos": "documentos_estaduais_recebidos",
+        "Qtd. de Doc. Estad. utilizados": "documentos_estaduais_utilizados",
+        "Quantidade Transportada": "transportada",
+    },
+)
+SILVICULTURA = Relatorio(
+    tabela="ibama_rapp_silvicultura",
+    nome="silvicultura",
+    fonte="ibama-rapp-silvicultura",
+    pasta_no_portal="silvicultura",
+    cnpj="CNPJ",
+    ano="Ano",
+    textos={
+        "Nome Científico": "nome_cientifico",
+        "Nome Popular": "nome_popular",
+        "Espaçamento": "espacamento",
+        "Unidade de medida": "unidade",
+        **_SITUACAO,
+    },
+    anos={"Ano do plantio": "ano_do_plantio", "Ano de corte": "ano_de_corte"},
+    numeros={
+        "Área efetivo plantio (ha)": "area_plantada_ha",
+        "Volume/Quantidade explorado": "volume_explorado",
+    },
+    numeros_com_ponto={"Nº de árvores total": "arvores"},
+)
 RELATORIOS = (
     EMISSOES,
     EFLUENTES,
@@ -354,6 +513,11 @@ RELATORIOS = (
     RESIDUOS_DESTINADOS,
     RESIDUOS_TRANSPORTADOS,
     RESIDUOS_ARMAZENADOS,
+    CERTIFICADOS,
+    MADEIRA_E_LENHA,
+    EXTRACAO_MINERAL,
+    PRODUTOS_FLORESTAIS,
+    SILVICULTURA,
 )
 
 
@@ -364,6 +528,7 @@ def _cadastro(relatorio: Relatorio) -> cadastros_em_retrato.Cadastro:
         relatorio.fonte,
         lambda conteudo: ler(relatorio, conteudo),
         relatorio.colunas,
+        datas=tuple(relatorio.datas.values()),
         raizes_de_pessoa=relatorio.raizes_de_pessoa,
     )
 

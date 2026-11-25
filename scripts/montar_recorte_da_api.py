@@ -182,6 +182,11 @@ FICAM_EM_CASA = (
     "ibama_rapp_residuos_destinados",
     "ibama_rapp_residuos_transportados",
     "ibama_rapp_residuos_armazenados",
+    "ibama_rapp_certificados_ambientais",
+    "ibama_rapp_madeira_e_lenha",
+    "ibama_rapp_extracao_mineral",
+    "ibama_rapp_produtos_florestais",
+    "ibama_rapp_silvicultura",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

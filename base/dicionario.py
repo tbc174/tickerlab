@@ -3663,35 +3663,43 @@ def _outra_ponta_do_rapp(sufixo: str, quem: str) -> dict[str, tuple[str, str]]:
     }
 
 
+_COMUM_DO_RAPP = {
+    "familia_da_fonte": "ibama",
+    "frequencia": (
+        "Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista "
+        "olha todo mês e guarda só o que mudou"
+    ),
+    "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+}
+_ATRASO_DO_RAPP = (
+    "O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a "
+    "linha vale desde o dia do arquivo, nunca desde o ano declarado"
+)
+_CARIMBOS_DO_RAPP = _carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO)
+_DA_EMPRESA_NO_RAPP = {
+    "id_na_fonte": _CARIMBOS_DO_RAPP["id_na_fonte"],  # primeiro, como no leitor
+    "cnpj": ("CNPJ do estabelecimento que declara (14 dígitos com máscara)", TEXTO),
+    "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+}
+_ANO_DO_RAPP = {"ano": ("Ano a que a declaração se refere", NUMERO)}
+_SITUACAO_NO_CTF = {
+    "situacao_cadastral": (
+        "Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve",
+        TEXTO,
+    )
+}
+
+
 def _tabelas_do_rapp_do_ibama() -> dict[str, Tabela]:
     """Emissões, efluentes, fontes de energia e a cadeia dos resíduos sólidos no RAPP do IBAMA
     (`base/ibama_rapp.py`: linha 1074, meta das 300 tabelas pelo CNPJ). Domínio público no portal; no código, a
     família `ibama` (integridade sob contrato, ADR 0122 Emenda 1)."""
-    comum = {
-        "familia_da_fonte": "ibama",
-        "frequencia": (
-            "Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista "
-            "olha todo mês e guarda só o que mudou"
-        ),
-        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
-    }
-    atraso = (
-        "O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a "
-        "linha vale desde o dia do arquivo, nunca desde o ano declarado"
-    )
-    carimbos = _carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO)
-    da_empresa = {
-        "id_na_fonte": carimbos["id_na_fonte"],  # primeiro, como no leitor
-        "cnpj": ("CNPJ do estabelecimento que declara (14 dígitos com máscara)", TEXTO),
-        "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
-    }
-    ano = {"ano": ("Ano a que a declaração se refere", NUMERO)}
-    situacao = {
-        "situacao_cadastral": (
-            "Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve",
-            TEXTO,
-        )
-    }
+    comum = _COMUM_DO_RAPP
+    atraso = _ATRASO_DO_RAPP
+    carimbos = _CARIMBOS_DO_RAPP
+    da_empresa = _DA_EMPRESA_NO_RAPP
+    ano = _ANO_DO_RAPP
+    situacao = _SITUACAO_NO_CTF
     residuo = {
         "residuo_codigo": ("Código do resíduo na lista do IBAMA", TEXTO),
         "residuo": ("Resíduo, como o IBAMA escreve", TEXTO),
@@ -3919,6 +3927,200 @@ def _tabelas_do_rapp_do_ibama() -> dict[str, Tabela]:
                 **carimbos,
             },
             **comum,
+        ),
+    }
+
+
+_PARADO_DESDE_2018 = (
+    "O IBAMA deixou de pôr declarações novas neste arquivo depois de 2018 (o arquivo de 25/11/2026 vai até 2018): "
+    "serve ao histórico, não ao retrato de hoje"
+)
+
+
+def _tabelas_do_rapp_florestal_e_mineral() -> dict[str, Tabela]:
+    """Certificados, madeira e lenha, extração mineral, produtos florestais e silvicultura no RAPP do IBAMA
+    (`base/ibama_rapp.py`: linha 1074, PR 2). Mesma família e mesmas regras do PR 1."""
+
+    def tabela(
+        nome: str, arquivo: str, descricao: str, fonte: str, colunas: dict
+    ) -> Tabela:
+        return Tabela(
+            descricao=f"{descricao} {_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}",
+            fonte=f"IBAMA: dados abertos, RAPP, {fonte} (`base/ibama_rapp.py`)",
+            atraso=_ATRASO_DO_RAPP,
+            onde=_ONDE_DO_RAPP.format(pasta=nome, arquivo=arquivo),
+            colunas={
+                **_DA_EMPRESA_NO_RAPP,
+                **_ANO_DO_RAPP,
+                **colunas,
+                **_CARIMBOS_DO_RAPP,
+            },
+            **_COMUM_DO_RAPP,
+        )
+
+    como_veio = "como o IBAMA escreve"
+    return {
+        "ibama_rapp_certificados_ambientais": tabela(
+            "ibama_rapp_certificados_ambientais",
+            "certificados",
+            "Certificados ambientais (ISO 14000 e outros) que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 "
+            "(o último ano no arquivo de 25/11/2026): o certificado, o tipo, quem certificou e a validade. "
+            f"{_PARADO_DESDE_2018}; o ano vem vazio em parte das linhas da fonte.",
+            "certificados ambientais",
+            {
+                "certificado": (
+                    f"O certificado declarado (número ou nome), {como_veio}",
+                    TEXTO,
+                ),
+                "tipo_de_certificado": (f"ISO 14000 ou outros, {como_veio}", TEXTO),
+                "certificador": (f"Quem emitiu o certificado, {como_veio}", TEXTO),
+                **_SITUACAO_NO_CTF,
+                "valido_ate": (
+                    "Validade declarada do certificado; vazia quando a fonte não traz ou traz data fora de 1900 a 2100",
+                    DATA,
+                ),
+            },
+        ),
+        "ibama_rapp_madeira_e_lenha": tabela(
+            "ibama_rapp_madeira_e_lenha",
+            "madeira",
+            "Exploração de madeira, lenha e subprodutos florestais que cada estabelecimento declarou ao IBAMA, de 2013 "
+            "a 2025 (o último ano no arquivo de 25/11/2026): a lenha, a tora e a área explorada, por ano. 0 quer dizer "
+            "que declarou zero.",
+            "exploração econômica de madeira, lenha e subprodutos florestais",
+            {
+                **_SITUACAO_NO_CTF,
+                "lenha": (
+                    (
+                        "Lenha explorada, em estéreo ou m³ (a fonte não separa a unidade); vazia quando a célula "
+                        "veio ilegível (só cerquilhas)"
+                    ),
+                    NUMERO_DECIMAL,
+                ),
+                "tora_m3": (
+                    "Tora explorada, em m³; vazia quando a célula veio ilegível",
+                    NUMERO_DECIMAL,
+                ),
+                "area_explorada_ha": (
+                    "Área total explorada, em hectares",
+                    NUMERO_DECIMAL,
+                ),
+            },
+        ),
+        "ibama_rapp_extracao_mineral": tabela(
+            "ibama_rapp_extracao_mineral",
+            "minerais",
+            "Extração e tratamento de minerais que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 (o último "
+            "ano no arquivo de 25/11/2026): o produto, a quantidade, a área, o decreto de lavra e o plano de "
+            f"recuperação da área degradada. {_PARADO_DESDE_2018}. A fonte traz números negativos e anos impossíveis: "
+            "o número vem como veio, e o ano ou a data fora de 1900 a 2100 fica vazio.",
+            "extração e tratamento de produtos minerais",
+            {
+                "produto": (f"Produto mineral, {como_veio}", TEXTO),
+                "unidade": (f"Unidade da quantidade, {como_veio}", TEXTO),
+                "decreto_de_lavra": (f"Número do decreto de lavra, {como_veio}", TEXTO),
+                **_SITUACAO_NO_CTF,
+                "inicio_da_exploracao": (
+                    "Ano de início da exploração declarado (vazio fora de 1900 a 2100)",
+                    NUMERO,
+                ),
+                "fim_da_exploracao": (
+                    "Ano de término da exploração declarado (vazio fora de 1900 a 2100)",
+                    NUMERO,
+                ),
+                "data_do_decreto": ("Data do decreto de lavra declarada", DATA),
+                "pra_aprovado_em": (
+                    (
+                        "Data de aprovação do plano de recuperação de área degradada (PRA); vazia quando não "
+                        "declarada. Quem aprovou fica de fora (texto livre)"
+                    ),
+                    DATA,
+                ),
+                "quantidade": (
+                    "Quantidade explorada, na unidade da coluna `unidade`, como veio",
+                    NUMERO_DECIMAL,
+                ),
+                "area": (
+                    "Tamanho da área, como veio (a fonte não diz a unidade)",
+                    NUMERO_DECIMAL,
+                ),
+            },
+        ),
+        "ibama_rapp_produtos_florestais": tabela(
+            "ibama_rapp_produtos_florestais",
+            "florestais",
+            "Produtos de matéria-prima florestal que cada fabricante declarou ao IBAMA, de 1999 a 2018 (o último ano no "
+            "arquivo de 25/11/2026): o que recebeu, processou, vendeu, estocou e transportou, e a capacidade, por "
+            f"produto e ano. {_PARADO_DESDE_2018}. A fonte traz negativos e o teto 999.999,99: o número vem como veio.",
+            "fabricante de produtos que utilizam matéria-prima de origem florestal",
+            {
+                "produto": (f"Produto, {como_veio}", TEXTO),
+                "unidade": (f"Unidade das quantidades, {como_veio}", TEXTO),
+                **_SITUACAO_NO_CTF,
+                **{
+                    coluna: (
+                        f"Quantidade {texto}, na unidade da coluna `unidade`, como veio",
+                        NUMERO_DECIMAL,
+                    )
+                    for coluna, texto in (
+                        ("recebida", "recebida"),
+                        ("comercializada", "comercializada"),
+                        ("processada", "processada"),
+                        ("estocada", "estocada"),
+                    )
+                },
+                "capacidade_de_processamento": (
+                    "Capacidade de processamento declarada, como veio",
+                    NUMERO_DECIMAL,
+                ),
+                "documentos_estaduais_recebidos": (
+                    "Quantidade de documentos estaduais (de origem florestal) recebidos",
+                    NUMERO_DECIMAL,
+                ),
+                "documentos_estaduais_utilizados": (
+                    "Quantidade de documentos estaduais (de origem florestal) utilizados",
+                    NUMERO_DECIMAL,
+                ),
+                "transportada": (
+                    "Quantidade transportada, na unidade da coluna `unidade`",
+                    NUMERO_DECIMAL,
+                ),
+            },
+        ),
+        "ibama_rapp_silvicultura": tabela(
+            "ibama_rapp_silvicultura",
+            "silvicultura",
+            "Florestas plantadas que cada estabelecimento declarou ao IBAMA, de 2013 a 2025 (o último ano no arquivo de "
+            "25/11/2026): a espécie, a área plantada, o ano do plantio e do corte, as árvores e o volume explorado. "
+            "As observações (texto livre) ficam de fora.",
+            "silvicultura",
+            {
+                "nome_cientifico": (
+                    "Espécie plantada, nome científico, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "nome_popular": (
+                    "Nome popular da espécie; vazio em boa parte das linhas",
+                    TEXTO,
+                ),
+                "espacamento": (f"Espaçamento do plantio, {como_veio}", TEXTO),
+                "unidade": (f"Unidade do volume explorado, {como_veio}", TEXTO),
+                **_SITUACAO_NO_CTF,
+                "ano_do_plantio": ("Ano do plantio declarado", NUMERO),
+                "ano_de_corte": ("Ano de corte declarado", NUMERO),
+                "area_plantada_ha": (
+                    "Área de efetivo plantio, em hectares",
+                    NUMERO_DECIMAL,
+                ),
+                "volume_explorado": (
+                    "Volume ou quantidade explorada, na unidade da coluna `unidade`",
+                    NUMERO_DECIMAL,
+                ),
+                "arvores": (
+                    "Número total de árvores declarado, como veio",
+                    NUMERO_DECIMAL,
+                ),
+            },
         ),
     }
 
@@ -9620,6 +9822,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_dos_cadastros_do_bcb(),
     **_tabelas_dos_cadastros_da_antt(),
     **_tabelas_do_rapp_do_ibama(),
+    **_tabelas_do_rapp_florestal_e_mineral(),
     **_tabelas_dos_cadastros_conferidos(),
     **_tabelas_dos_conferidos_19_11(),
     **_tabelas_do_cnes(),
@@ -12195,6 +12398,12 @@ _CONTRATO = {
     "ibama_rapp_residuos_destinados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
     "ibama_rapp_residuos_transportados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
     "ibama_rapp_residuos_armazenados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    # linha 1074 (PR 2): RAPP do IBAMA, florestais, minerais e certificados
+    "ibama_rapp_certificados_ambientais": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_madeira_e_lenha": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_extracao_mineral": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_produtos_florestais": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_silvicultura": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
     # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem (licenças em src/banco/coletas.py)
     "receita_regime_tributario": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "mte_pat": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_do_cadastro", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
@@ -12607,6 +12816,30 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "ibama_rapp_residuos_armazenados",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "residuo", "unidade", "quantidade"),
         "faixas": {c: _SEM_NEGATIVO for c in ("quantidade", )},
+    },
+    # linha 1074 (PR 2): medido nos arquivos de 25/11/2026 (negativos na fonte: sem faixa nessas colunas)
+    "ibama_rapp_certificados_ambientais": {
+        "pasta": "ibama_rapp_certificados_ambientais",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "certificador"),
+    },
+    "ibama_rapp_madeira_e_lenha": {
+        "pasta": "ibama_rapp_madeira_e_lenha",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("lenha", "tora_m3", "area_explorada_ha", )},
+    },
+    "ibama_rapp_extracao_mineral": {
+        "pasta": "ibama_rapp_extracao_mineral",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "produto"),
+    },
+    "ibama_rapp_produtos_florestais": {
+        "pasta": "ibama_rapp_produtos_florestais",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "unidade"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("comercializada", "documentos_estaduais_recebidos", "documentos_estaduais_utilizados", "transportada", )},
+    },
+    "ibama_rapp_silvicultura": {
+        "pasta": "ibama_rapp_silvicultura",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "nome_cientifico"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("area_plantada_ha", "volume_explorado", )},
     },
     "receita_regime_tributario": {
         "pasta": "receita_regime_tributario",
