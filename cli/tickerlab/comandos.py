@@ -50,7 +50,7 @@ FORMATO_DO_CNPJ = re.compile(r"[0-9A-Z]{14}")
 FORMATO_DO_SETOR = compilado("chave_do_setor")
 # o nome que a API sugere para o deck; qualquer outro (ou com pasta dentro) é ignorado
 NOME_DO_DECK = re.compile(
-    r'filename="(tickerlab-(?:empresa-\d{14}|setor-[a-z0-9_]{1,40})\.pptx)"'
+    rf'filename="(tickerlab-(?:empresa-\d{{14}}|setor-{FORMATO_DO_SETOR.pattern})\.pptx)"'
 )
 # os filtros da busca (`prospectar`): o formato de cada um, conferido antes de gastar um pedido
 # o CNAE: a subclasse inteira (7 dígitos) ou um prefixo (divisão, grupo, classe)

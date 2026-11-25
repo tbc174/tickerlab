@@ -431,7 +431,7 @@ def test_fundo_sem_retorno_suposto_nao_manda_o_parametro(rodar, chave):
 @pytest.mark.usefixtures("leituras_prontas")
 def test_retorno_suposto_fora_da_faixa_para_antes_da_api(rodar, chave):
     """PR 5b: a CLI confere a faixa do conector (acima de -1 e até 1) e não gasta um pedido."""
-    for valor in ("5", "-1", "1.01"):
+    for valor in ("5", "-1", "1.01", "nan", "inf", "-inf"):
         resultado = rodar(
             "fundo", "11111111000191", "--retorno-suposto", valor, **_com_chave(chave)
         )
@@ -549,7 +549,7 @@ def test_setor_desconhecido_e_sem_dado_e_chave_mal_escrita_nem_chega_a_api(
         "../catalog",
         "Elétricas",
         "bancos?known_at=2020-01-01",
-        "x" * 41,
+        "x" * 81,
     ):
         resultado = rodar("setor", mal_escrita, **_com_chave(chave))
         assert resultado.exit_code == Saida.USO, mal_escrita
@@ -2473,6 +2473,18 @@ def test_deck_do_setor_com_saida_e_como_era(rodar, chave, tmp_path):
     assert vistos[0].url.path == "/data/v1/sectors/eletricas/deck"
     assert vistos[0].url.params["known_at"] == "2026-03-31"
     assert alvo.read_bytes() == _pptx_falso()
+
+
+def test_deck_do_setor_com_chave_longa_grava_com_o_nome_da_api(
+    rodar, chave, tmp_path, monkeypatch
+):
+    """PR 5a: a chave do setor vai até 80 letras; o nome que a API sugere para o deck também vale até lá."""
+    monkeypatch.chdir(tmp_path)
+    sugerido = f"tickerlab-setor-{'t' * 80}.pptx"  # diferente do padrão, que usa a chave pedida
+    http = _deck_que_responde([], sugerido)
+    resultado = rodar("deck", "--setor", "s" * 80, http=http, **_com_chave(chave))
+    assert resultado.exit_code == 0, resultado.output
+    assert (tmp_path / sugerido).exists()
 
 
 def test_deck_nome_estranho_da_api_nao_vira_caminho(

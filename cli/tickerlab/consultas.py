@@ -7,6 +7,7 @@ português para a API e a faixa de cada opção, os mesmos do conector.
 """
 
 import json
+import math
 import re
 from importlib import resources
 
@@ -33,10 +34,23 @@ def maximo(comando: str, opcao: str) -> int:
     return int(_DADOS["opcoes"][comando][opcao]["maximo"])
 
 
+class _FaixaReal(click.FloatRange):
+    """A faixa com casas decimais que recusa `nan` e o infinito, como o conector (o `FloatRange` deixa o `nan`
+    passar, porque toda comparação com ele dá falso)."""
+
+    def convert(
+        self, value: object, param: click.Parameter | None, ctx: click.Context | None
+    ) -> float:
+        numero = super().convert(value, param, ctx)
+        if not math.isfinite(numero):
+            self.fail(f"{value} não é um número.", param, ctx)
+        return numero
+
+
 def faixa_real(comando: str, opcao: str) -> click.FloatRange:
     """A faixa de uma opção com casas decimais, a mesma do parâmetro da ferramenta do conector."""
     opcao_da_lista = _DADOS["opcoes"][comando][opcao]
-    return click.FloatRange(
+    return _FaixaReal(
         float(opcao_da_lista["minimo"]),
         float(opcao_da_lista["maximo"]),
         min_open=bool(opcao_da_lista["minimo_aberto"]),
