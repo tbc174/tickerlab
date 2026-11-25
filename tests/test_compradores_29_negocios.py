@@ -358,11 +358,15 @@ def total(acertos: dict[str, list[str]]) -> int:
 # ------------------------------------------------------------------ o placar
 
 
-def test_o_placar_de_partida_e_5_de_29(pasta):
-    """A trava: com a regra de hoje o placar é o da simulação (5 de 29), todos do grupo que já aparece sem ajuda."""
+PLACAR_DE_PARTIDA = 5  # a simulação 1, antes de qualquer conserto
+
+
+def test_o_placar_conta_as_empresas_baixadas_e_sobe_de_5_para_10(pasta):
+    """Linha 1042: o comprador que entrou em empresa depois baixada passa a aparecer; os 5 de partida seguem."""
     acertos = placar(pasta)
-    assert total(acertos) == 5
     assert len(acertos[ACERTA_COM_UF]) == 2 and len(acertos[ACERTA_SEM_UF]) == 3
+    assert len(acertos[EMPRESA_BAIXADA]) == 5
+    assert total(acertos) == PLACAR_DE_PARTIDA + 5
 
 
 def test_o_teste_tem_29_negocios_nas_proporcoes_do_pedido():
