@@ -21,6 +21,10 @@ COMPRAS = Avulsos(
             "publicaram, sem nota, soma nem ordenação nossa; bloco que não aparece não foi consultado."
         ),
         (
+            "Uma lista que não aparece dentro do bloco não foi lida para a sua chave (a do BPS só sai quando a "
+            "chave a vê): a falta dela não quer dizer que a empresa não tem compras ali."
+        ),
+        (
             "Bloco em `not_found` foi consultado e não achou a empresa: a ausência não quer dizer que ela não vende "
             "ao governo (o SICAF é o cadastro federal e o BPS cobre só compras de saúde que o Ministério recebe; a "
             "`coverage` de cada lista diz o que ela cobre)."
@@ -36,7 +40,7 @@ def compras_da_empresa(
 ) -> object:
     """As compras públicas da empresa como eram em `known_at`, só com o conjunto `public_procurement` no contrato
     da organização: `public_procurement`, com o cadastro de fornecedor no SICAF e as compras de saúde do BPS em
-    que ela é a fornecedora. Cada lista traz a fonte e o dia em que cada valor ficou público; `not_found` diz que o
-    bloco foi consultado e não achou a empresa. Conta um pedido (`requests_used`). Não abre o resto da análise.
+    que ela é a fornecedora, quando a chave os vê. Cada lista traz a fonte e o dia em que cada valor ficou público;
+    `not_found` diz que o bloco foi consultado e não achou a empresa, e a lista que não aparece não foi lida. Conta um pedido (`requests_used`). Não abre o resto da análise.
     MEI, empresário individual e o que não é empresa saem `not_available`."""
     return servir(COMPRAS, contexto, _cnpj_pedido(cnpj), _dia_pedido(known_at))

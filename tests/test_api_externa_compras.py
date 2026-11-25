@@ -140,6 +140,9 @@ def test_como_hoje_so_o_piloto_com_o_conjunto_ve_o_sicaf_e_o_bps_nunca_sai(
     bloco = resposta.json()["blocks"]["public_procurement"]
     assert bloco["sicaf_supplier_registration"]["found"] is True
     assert "bps_health_purchases" not in resposta.text
+    # a lista que falta não pode ser lida como "sem compras" (revisão cruzada do PR 6)
+    limites = " ".join(resposta.json()["limits"])
+    assert "lista que não aparece dentro do bloco não foi lida" in limites
     resposta = _pedir(monkeypatch, sem_piloto.valor, compras._como_hoje)
     assert resposta.status_code == 404
     _sem_nada_de_compras(resposta.text)

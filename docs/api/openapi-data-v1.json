@@ -2947,7 +2947,7 @@
     },
     "/data/v1/companies/{cnpj}/public-procurement": {
       "get": {
-        "description": "As compras públicas da empresa como eram em `known_at`, só com o conjunto `public_procurement` no contrato\nda organização: `public_procurement`, com o cadastro de fornecedor no SICAF e as compras de saúde do BPS em\nque ela é a fornecedora. Cada lista traz a fonte e o dia em que cada valor ficou público; `not_found` diz que o\nbloco foi consultado e não achou a empresa. Conta um pedido (`requests_used`). Não abre o resto da análise.\nMEI, empresário individual e o que não é empresa saem `not_available`.",
+        "description": "As compras públicas da empresa como eram em `known_at`, só com o conjunto `public_procurement` no contrato\nda organização: `public_procurement`, com o cadastro de fornecedor no SICAF e as compras de saúde do BPS em\nque ela é a fornecedora, quando a chave os vê. Cada lista traz a fonte e o dia em que cada valor ficou público;\n`not_found` diz que o bloco foi consultado e não achou a empresa, e a lista que não aparece não foi lida. Conta um pedido (`requests_used`). Não abre o resto da análise.\nMEI, empresário individual e o que não é empresa saem `not_available`.",
         "operationId": "compras_da_empresa_data_v1_companies__cnpj__public_procurement_get",
         "parameters": [
           {

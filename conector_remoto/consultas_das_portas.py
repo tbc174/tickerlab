@@ -404,11 +404,12 @@ _COMPRAS_PUBLICAS = Ferramenta(
     descricao=(
         "As compras públicas da empresa como eram no dia, só com o conjunto de compras públicas no contrato\n"
         "(`public_procurement`): o cadastro de fornecedor no SICAF (se está ativo e habilitado a licitar, com a\n"
-        "atividade, a natureza jurídica, o porte e o município) e as compras de medicamentos e produtos de saúde do BPS\n"
-        "em que ela é a fornecedora (a instituição compradora, o item, a quantidade e o valor unitário). Cada valor traz\n"
-        "a fonte e o dia em que ficou público (`published_at`); o bloco consultado que não achou a empresa vai em\n"
-        "`not_found`, e não achar não quer dizer que ela não vende ao governo. Não abre o resto da análise: conta um\n"
-        "pedido. Serve para saber se a empresa é fornecedora do governo e o que ela vendeu na saúde.\n"
+        "atividade, a natureza jurídica, o porte e o município) e, quando a chave as vê, as compras de medicamentos e\n"
+        "produtos de saúde do BPS em que ela é a fornecedora (a instituição compradora, o item, a quantidade e o valor\n"
+        "unitário). Cada valor traz a fonte e o dia em que ficou público (`published_at`); o bloco consultado que não\n"
+        "achou a empresa vai em `not_found`, a lista que não aparece não foi lida, e nenhum dos dois quer dizer que ela\n"
+        "não vende ao governo. Não abre o resto da análise: conta um pedido.\n"
+        "Serve para saber se a empresa está no cadastro de fornecedores do governo federal e o que ela vendeu na saúde.\n"
         "Fonte: SICAF (Compras.gov.br) e BPS (Ministério da Saúde), como publicados.\n"
         "Não traz: o resto da análise (cadastro, vínculos e eventos estão em `analise_completa`), nota, soma, ranking\n"
         "nem pessoa física."
@@ -765,7 +766,7 @@ CONSULTAS: tuple[Consulta, ...] = (
         "compras",
         nome="Compras públicas",
         resumo=(
-            "com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
+            "com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
         ),
         rotas=("GET /companies/{cnpj}/public-procurement",),
         ferramentas=(_COMPRAS_PUBLICAS,),

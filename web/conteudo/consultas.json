@@ -197,7 +197,7 @@
       ]
     },
     "nome": "Compras públicas",
-    "resumo": "com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
+    "resumo": "com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
   },
   {
     "api": {

@@ -171,3 +171,14 @@ def test_resposta_com_pessoa_e_recusada_inteira_sem_repetir_o_valor():
     erro, texto, _ = _chamar(_compras(texto=f"HOSPITAL {cpf}"), cnpj=CNPJ)
     assert erro and ferramentas.MENSAGEM_DE_PESSOA in texto
     assert cpf not in texto and "888654321" not in texto
+
+
+def test_a_tranca_de_pessoa_le_tambem_o_item_que_o_limite_corta():
+    # a trava roda antes do corte: o CPF só no último item, que `limite=1` tiraria, ainda recusa a resposta
+    cpf = formatado(cpf_que_confere("888654321"))
+    corpo = _compras(itens_do_bps=3)
+    itens = corpo["blocks"]["public_procurement"]["bps_health_purchases"]["items"]
+    itens[-1]["institution"] = _campo(f"HOSPITAL {cpf}")
+    erro, texto, _ = _chamar(corpo, cnpj=CNPJ, limite=1)
+    assert erro and ferramentas.MENSAGEM_DE_PESSOA in texto
+    assert cpf not in texto and "888654321" not in texto
