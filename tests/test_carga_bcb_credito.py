@@ -394,3 +394,71 @@ def test_refazer_sem_uma_resposta_guardada_para_e_diz_qual(
         assert _rodar(pasta, "--data-base", "202506", "--forcar") == 1
     assert _arquivos(pasta) == antes
     assert faltando in caplog.text
+
+
+def _resposta_do_bc(status: int, corpo: bytes = b""):
+    class Resposta:
+        status_code = status
+        content = corpo
+
+        def raise_for_status(self):
+            import requests
+
+            if status >= 400:
+                raise requests.HTTPError(f"HTTP {status}")
+
+    return Resposta()
+
+
+def test_bc_que_nao_responde_tenta_ate_tres_vezes_com_espera_crescente(monkeypatch):
+    import requests
+
+    esperas: list[float] = []
+    monkeypatch.setattr(carga.time, "sleep", esperas.append)
+    respostas = [
+        requests.Timeout("lento"),
+        _resposta_do_bc(403),
+        _resposta_do_bc(200, b"dados"),
+    ]
+
+    def pedir(_url, **_kwargs):
+        item = respostas.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    monkeypatch.setattr(carga.rede, "get_com_agente", pedir)
+
+    assert carga._baixar_da_fonte("https://exemplo.test/x") == b"dados"
+    assert esperas == list(carga.ESPERAS_DEPOIS_DA_FALHA)
+    assert esperas == sorted(esperas) and esperas[0] < esperas[1]
+
+
+def test_bc_que_continua_sem_responder_levanta_na_terceira_sem_laco(monkeypatch):
+    import requests
+
+    esperas: list[float] = []
+    chamadas: list[str] = []
+    monkeypatch.setattr(carga.time, "sleep", esperas.append)
+
+    def pedir(url, **_kwargs):
+        chamadas.append(url)
+        raise requests.Timeout("lento")
+
+    monkeypatch.setattr(carga.rede, "get_com_agente", pedir)
+
+    with pytest.raises(requests.Timeout):
+        carga._baixar_da_fonte("https://exemplo.test/x")
+    assert len(chamadas) == 3
+    assert len(esperas) == 2
+
+
+def test_bc_404_volta_na_hora_sem_esperar(monkeypatch):
+    esperas: list[float] = []
+    monkeypatch.setattr(carga.time, "sleep", esperas.append)
+    monkeypatch.setattr(
+        carga.rede, "get_com_agente", lambda *_a, **_k: _resposta_do_bc(404)
+    )
+
+    assert carga._baixar_da_fonte("https://exemplo.test/x") is None
+    assert esperas == []
