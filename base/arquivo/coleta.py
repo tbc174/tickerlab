@@ -278,6 +278,16 @@ def _ultima(url: str):  # noqa: ANN202 (linha do banco ou None)
         return ultima_coleta_ok(conexao, url)
 
 
+def ultima_ok_em(url: str) -> datetime | None:
+    """Quando o endereço respondeu "ok" pela última vez (None se nunca): para dizer desde quando
+    uma página vigiada não responde."""
+    linha = _ultima(url)
+    if linha is None:
+        return None
+    momento = linha.baixado_em
+    return datetime.fromisoformat(momento) if isinstance(momento, str) else momento
+
+
 def _assinatura_registrada(detalhe: str | None) -> str:
     return (detalhe or "").split(SEPARADOR_DO_DETALHE)[0]
 

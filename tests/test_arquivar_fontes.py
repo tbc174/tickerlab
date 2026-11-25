@@ -94,10 +94,10 @@ def test_sem_falha_nao_imprime_resumo(monkeypatch, capsys):
     assert "FALHAS" not in capsys.readouterr().out
 
 
-def test_resumo_longo_e_cortado():
-    linha = arquivar_fontes.resumo_das_falhas(["x" * 1000])
-    assert len(linha) == arquivar_fontes.TAMANHO_MAXIMO_DO_RESUMO
-    assert linha.endswith("...")
+def test_resumo_nao_e_cortado_a_lista_completa_vai_para_o_log():
+    # a linha cortada em 300 caracteres escondia as outras falhas (rodada de 17/11/2026)
+    linha = arquivar_fontes.resumo_das_falhas(["x" * 1000, "y"])
+    assert linha == "FALHAS: " + "x" * 1000 + "; y"
 
 
 class _RespostaFalsa:
@@ -258,3 +258,147 @@ def test_vigia_bloqueada_sai_com_2_sem_tentar_de_novo(monkeypatch, capsys):
     assert arquivar_fontes.main(["termos-ibge"]) == 2
     assert chamadas == ["termos-ibge"]
     assert "FALHAS" not in capsys.readouterr().out
+
+
+# --- páginas de termos (licença) que não abrem: aviso próprio, ficha só depois de 7 dias (25/11/2026)
+def _rodar_termos(monkeypatch, capsys, ultima_ok, ids=("termos-senado",), dado=False):
+    """Roda `main` nas fontes dadas; a de termos falha sempre, a de dado falha se `dado`."""
+    from datetime import UTC, datetime
+
+    from base.arquivo.coleta import Fonte, Resultado
+
+    esperas = []
+
+    def arquivar_falso(fonte, cliente, agora, pasta):
+        quebra = fonte.id.startswith("termos-") or dado
+        return Resultado(fonte.id, falhas=[f"https://x/{fonte.id}"] if quebra else [])
+
+    fontes = [Fonte(i, "diaria", lambda c, a: []) for i in ids]
+    monkeypatch.setattr(arquivar_fontes, "arquivar", arquivar_falso)
+    monkeypatch.setattr(arquivar_fontes, "esperar", esperas.append)
+    monkeypatch.setattr(arquivar_fontes, "escolher", lambda alvo: fontes)
+    monkeypatch.setattr(arquivar_fontes, "ultima_ok_em", lambda url: ultima_ok)
+    monkeypatch.setattr(
+        arquivar_fontes, "agora", lambda: datetime(2026, 11, 25, 3, tzinfo=UTC)
+    )
+    saida = arquivar_fontes.main(["diaria"])
+    return saida, capsys.readouterr().out, esperas
+
+
+def test_termo_fora_ha_menos_de_7_dias_e_so_aviso_com_a_data(monkeypatch, capsys):
+    from datetime import UTC, datetime
+
+    saida, texto, _ = _rodar_termos(
+        monkeypatch, capsys, datetime(2026, 11, 20, tzinfo=UTC)
+    )
+    assert saida == 0
+    assert "FALHAS" not in texto and "FICHA" not in texto
+    assert "AVISO: termos-senado sem resposta desde 2026-11-20" in texto
+
+
+def test_termo_fora_ha_7_dias_ou_mais_vira_ficha_com_saida_2(monkeypatch, capsys):
+    from datetime import UTC, datetime
+
+    saida, texto, _ = _rodar_termos(
+        monkeypatch, capsys, datetime(2026, 11, 18, tzinfo=UTC)
+    )
+    assert saida == 2
+    assert "FICHA: termos-senado sem resposta desde 2026-11-18" in texto
+    assert "FALHAS" not in texto
+
+
+def test_termo_que_nunca_respondeu_vira_ficha(monkeypatch, capsys):
+    saida, texto, _ = _rodar_termos(monkeypatch, capsys, None)
+    assert saida == 2
+    assert "FICHA: termos-senado nunca respondeu" in texto
+
+
+def test_falha_de_dado_sai_com_1_e_a_linha_de_falhas_nao_traz_os_termos(
+    monkeypatch, capsys
+):
+    saida, texto, _ = _rodar_termos(
+        monkeypatch, capsys, None, ids=("termos-senado", "cvm-fiagro"), dado=True
+    )
+    assert saida == 1
+    ultima = texto.strip().splitlines()[-1]
+    assert ultima.startswith("FALHAS: cvm-fiagro")
+    assert "termos-senado" not in ultima
+    assert "FICHA: termos-senado nunca respondeu" in texto
+
+
+def test_termo_cuja_rodada_inteira_cai_na_rede_e_so_aviso_sem_ficha(
+    monkeypatch, capsys
+):
+    """Sem o endereço que falhou (a descoberta ou a rede caiu), não dá para dizer "nunca respondeu":
+    a página pode ter respondido ontem. Fica o aviso da rodada, sem ficha."""
+    import requests
+
+    from base.arquivo.coleta import Fonte
+
+    def arquivar_falso(fonte, cliente, agora, pasta):
+        raise requests.ConnectionError("sem rede")
+
+    monkeypatch.setattr(arquivar_fontes, "arquivar", arquivar_falso)
+    monkeypatch.setattr(arquivar_fontes, "esperar", lambda s: None)
+    monkeypatch.setattr(
+        arquivar_fontes,
+        "escolher",
+        lambda alvo: [Fonte("termos-senado", "diaria", lambda c, a: [])],
+    )
+    monkeypatch.setattr(arquivar_fontes, "ultima_ok_em", lambda url: None)
+    saida = arquivar_fontes.main(["diaria"])
+    texto = capsys.readouterr().out
+    assert saida == 0
+    assert "FICHA" not in texto and "FALHAS" not in texto
+    assert "AVISO: termos-senado sem resposta nesta rodada" in texto
+
+
+def test_pagina_de_termos_que_falha_espera_30_s_e_nao_300(monkeypatch, capsys):
+    _, _, esperas = _rodar_termos(monkeypatch, capsys, None)
+    assert esperas == [arquivar_fontes.ESPERA_DOS_TERMOS] == [30]
+
+
+def test_a_rodada_tem_um_orcamento_de_espera_e_depois_nao_tenta_de_novo(
+    monkeypatch, capsys
+):
+    ids = tuple(f"cvm-fonte{n}" for n in range(20))
+    _, _, esperas = _rodar_termos(monkeypatch, capsys, None, ids=ids, dado=True)
+    assert sum(esperas) <= arquivar_fontes.ORCAMENTO_DE_ESPERA
+    assert len(esperas) == 6  # 6 x 300 s = 30 min; as outras 14 não esperam
+
+
+def test_termos_fora_do_ar_nao_gastam_a_espera_das_fontes_de_dado(monkeypatch, capsys):
+    """58 páginas de termos caindo juntas (rede fora) não podem comer a segunda tentativa do dado."""
+    ids = tuple(f"termos-p{n}" for n in range(58)) + ("catalogo-bc",)
+    _, _, esperas = _rodar_termos(monkeypatch, capsys, None, ids=ids, dado=True)
+    assert esperas.count(arquivar_fontes.ESPERA_PARA_TENTAR_DE_NOVO) == 1
+    assert sum(esperas) <= (
+        arquivar_fontes.ORCAMENTO_DE_ESPERA + arquivar_fontes.ORCAMENTO_DOS_TERMOS
+    )
+
+
+def test_ultima_ok_em_diz_quando_o_endereco_respondeu_pela_ultima_vez(
+    tmp_path, monkeypatch
+):
+    from datetime import UTC, datetime
+
+    from base.arquivo.coleta import ultima_ok_em
+    from src.banco.coletas import registrar_arquivo
+    from src.banco.conexao import criar_engine, migrar_para
+
+    url = f"sqlite:///{(tmp_path / 'b.sqlite').as_posix()}"
+    monkeypatch.setenv("TICKERLAB_DATABASE_URL", url)
+    migrar_para("head", url=url)
+    motor = criar_engine(url)
+    endereco = "https://x/termos"
+    assert ultima_ok_em(endereco) is None
+    with motor.begin() as c:
+        for dia, situacao in ((10, "ok"), (18, "falhou")):
+            registrar_arquivo(
+                c, "termos-x", endereco, "a" * 64 if situacao == "ok" else None,
+                1 if situacao == "ok" else None, situacao, None,
+                datetime(2026, 11, dia, 6, tzinfo=UTC), None,
+            )  # fmt: skip
+    motor.dispose()
+    ultima = ultima_ok_em(endereco)
+    assert ultima is not None and ultima.date().isoformat() == "2026-11-10"

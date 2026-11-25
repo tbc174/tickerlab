@@ -240,6 +240,8 @@ def test_tabela_sem_leitor_existe_no_catalogo_e_nenhuma_tela_a_le(catalogo):
         arquivo: arquivo.read_text(encoding="utf-8", errors="ignore")
         for pasta, padrao in (("src", "*.py"), ("telas", "*.py"), ("web/src", "*.ts*"))
         for arquivo in (RAIZ / pasta).rglob(padrao)
+        # o mapa tabela -> fonte de coleta cita o nome da tabela, mas não é tela que a leia
+        if arquivo.name != "fontes_das_tabelas.py"
     }
     for tabela in registro.TABELAS_SEM_LEITOR:
         leitores = [
