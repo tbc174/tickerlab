@@ -379,3 +379,14 @@ def test_base_trocada_tabela_que_passou_a_existir_aparece(tmp_path, monkeypatch)
         assert len(falsa.aberturas) == 2
     finally:
         compartilhada.zerar()
+
+
+def test_a_porta_dona_nasce_com_uma_linha_de_execucao_do_duckdb(monkeypatch):
+    """O contêiner da API tem meia CPU e o DuckDB vê os núcleos da máquina: com as threads padrão a análise
+    completa levava 13,7 a 16,0 s no PC com teto de meio núcleo; com uma, 7,3 a 7,9 s (linha 1015, item e).
+    Os pedidos ao mesmo tempo continuam em paralelo: cada cursor roda na linha de execução de quem pede."""
+    pedidos = []
+    monkeypatch.setattr(porta_da_base, "abrir", lambda **opcoes: pedidos.append(opcoes))
+    compartilhada.abrir_a_base()
+    assert pedidos == [{"threads": compartilhada.THREADS_DA_PORTA}]
+    assert compartilhada.THREADS_DA_PORTA == 1
