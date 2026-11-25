@@ -44,6 +44,7 @@ from base.arquivo import (
     lote_documentais,
     lote_eua,
     lote_europa_rba,
+    lote_ibama_rapp,
     lote_licitacoes,
     lote_nordicos,
     lote_ordem_cronologica,
@@ -1672,6 +1673,8 @@ FONTES: list[Fonte] = [
     *lote_bcb.fontes(),
     # lote 3 das 300 tabelas pelo CNPJ (linha 904): cadastros do Banco Central e da ANTT
     *lote_cadastros_bcb_antt.fontes(),
+    # linha 1074 (PR 1): relatórios do RAPP do IBAMA (emissões, efluentes, energia e resíduos)
+    *lote_ibama_rapp.fontes(),
     # conferência de 14/11 (linha 904): ECF por forma de tributação, PAT, TAH, PADOs, homologados e tancagem
     *lote_conferidas_14_11.fontes(),
     # conferência de 19/11: SICAF (compras.gov.br) e Banco de Preços em Saúde, só pessoa jurídica

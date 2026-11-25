@@ -420,7 +420,11 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
     for nome, tabela in TABELAS.items():
         pd.Timestamp(tabela.historico_desde)  # é uma data
         assert tabela.granularidade_do_publico_em in {"dia", "mes", "ano"}, nome
-        if tabela.familia_da_fonte in FAMILIAS_DE_GOVERNO:
+        # o lote de governo guardado desde 14/10 (mensal); o RAPP do IBAMA (linha 1074) só entrou no arquivista
+        # em 25/11 e vale pelo dia do arquivo
+        if tabela.familia_da_fonte in FAMILIAS_DE_GOVERNO and not nome.startswith(
+            "ibama_rapp_"
+        ):
             assert tabela.historico_desde == "2026-10-14", nome
             assert tabela.granularidade_do_publico_em == "mes", nome
 

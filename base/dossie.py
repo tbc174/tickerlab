@@ -153,6 +153,9 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "rj_contratos", "rj_sancoes_fornecedores", "rj_fornecedores",
     # linha 1075, PR 2: compras diretas do RJ e contratos e empenhos do ES
     "rj_compras_diretas", "es_contratos", "es_empenhos",
+    # linha 1074 (PR 1): RAPP do IBAMA, só CNPJ; em casa até o pode do envio
+    "ibama_rapp_emissoes_atmosfericas", "ibama_rapp_efluentes_liquidos", "ibama_rapp_fontes_de_energia",
+    "ibama_rapp_residuos_destinados", "ibama_rapp_residuos_transportados", "ibama_rapp_residuos_armazenados",
 })  # fmt: skip
 
 
