@@ -46,6 +46,59 @@ def juntar_coletas(
     return unicas.reset_index(drop=True)
 
 
+def ordem_da_coleta(coleta: tuple[pd.Timestamp, object]) -> tuple[bool, pd.Timestamp]:
+    """A ordem em que `juntar_coletas` põe as coletas (`sort_values(VISTO_EM, kind="stable")`): por dia, a sem
+    dia por último e as do mesmo dia na ordem recebida. Para `sorted`, que é estável."""
+    dia = coleta[0]
+    return (True, pd.Timestamp.min) if pd.isna(dia) else (False, pd.Timestamp(dia))
+
+
+def acrescentar_coleta(
+    juntas: pd.DataFrame | None,
+    dia: pd.Timestamp,
+    tabela: pd.DataFrame,
+    chave: list[str],
+    carimbos: Sequence[str] = (),
+) -> pd.DataFrame:
+    """A tabela junta com mais uma coleta: `juntar_coletas` feito uma coleta de cada vez (linha 1076).
+
+    Chamada coleta a coleta, na `ordem_da_coleta`, dá o mesmo que `juntar_coletas`, linha por linha: a linha
+    repetida some contra a primeira igual, que já está na junta, e a marca de revisão (`disponivel_em` não
+    antes de `visto_em`) refeita numa linha que já a tinha não muda nada. Só a junta e a coleta da vez ficam na
+    memória. `tabela` passa a ser desta função (ganha `visto_em`); `juntas` é a devolvida da vez anterior."""
+    tabela[VISTO_EM] = pd.Timestamp(dia)
+    todas = tabela if juntas is None else concatenar([juntas, tabela])
+    del tabela, juntas
+    valores = [
+        c for c in todas.columns if c not in ("disponivel_em", VISTO_EM, *carimbos)
+    ]
+    unicas = todas.drop_duplicates(valores, keep="first")
+    del todas
+    revisao = unicas.duplicated(chave, keep="first")
+    unicas.loc[revisao, "disponivel_em"] = unicas.loc[
+        revisao, ["disponivel_em", VISTO_EM]
+    ].max(axis=1)
+    return unicas.reset_index(drop=True)
+
+
+def concatenar(partes: Sequence[pd.DataFrame]) -> pd.DataFrame:
+    """Uma embaixo da outra. A coluna que é de categoria em todas segue de categoria, com as categorias de todas:
+    o `concat` comum a passaria a texto do Python, várias vezes maior na memória. Os valores não mudam; as
+    partes ficam com as categorias de todas (quem chama não as usa mais)."""
+    categoricas = [
+        coluna
+        for coluna in partes[0].columns
+        if all(isinstance(p[coluna].dtype, pd.CategoricalDtype) for p in partes)
+    ]
+    for coluna in categoricas:
+        categorias = partes[0][coluna].cat.categories
+        for parte in partes[1:]:
+            categorias = categorias.union(parte[coluna].cat.categories)
+        for parte in partes:
+            parte[coluna] = parte[coluna].cat.set_categories(categorias)
+    return pd.concat(partes, ignore_index=True)
+
+
 def como_era_em(tabela: pd.DataFrame, data: object, chave: list[str]) -> pd.DataFrame:
     """Um valor por chave: o mais novo já público no dia `data` (a revisão vista depois não entra)."""
     dia = pd.Timestamp(data)  # type: ignore[arg-type]

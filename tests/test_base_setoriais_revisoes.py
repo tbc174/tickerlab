@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from base.arquivo import fontes
 from base.setoriais import anatel, aneel, ans, prazos, revisoes, susep
@@ -207,3 +209,59 @@ def test_revisao_vista_antes_do_prazo_vale_desde_o_prazo():
 def test_sem_coleta_nao_junta_nada():
     with pytest.raises(ValueError, match="nenhuma coleta"):
         revisoes.juntar_coletas([], ["competencia"])
+
+
+# --- uma coleta por vez (linha 1076: o SCR do ano corrente junta uma versão por mês) ----------------
+_DIAS = [
+    pd.Timestamp("2026-10-10"),
+    pd.Timestamp("2026-11-20"),
+    pd.Timestamp("2026-12-05"),
+    pd.NaT,
+]
+
+
+@st.composite
+def _coletas_pequenas(desenho):
+    """De 1 a 5 coletas de linhas (chave, valor, carimbo), com chave e valor repetidos, ida e volta de
+    valor (A, B, A), carimbo que muda sozinho e dias iguais, fora de ordem ou vazios."""
+    coletas = []
+    for _ in range(desenho(st.integers(1, 5))):
+        linhas = desenho(
+            st.lists(
+                st.tuples(st.integers(0, 3), st.integers(0, 2), st.integers(0, 1)),
+                min_size=1,
+                max_size=8,
+            )
+        )
+        tabela = pd.DataFrame(linhas, columns=["chave", "valor", "carimbo"]).assign(
+            disponivel_em=lambda t: (
+                pd.Timestamp("2026-11-01") + pd.to_timedelta(t["chave"] * 10, unit="D")
+            )
+        )
+        coletas.append((desenho(st.sampled_from(_DIAS)), tabela))
+    return coletas
+
+
+@settings(deadline=None, max_examples=300)
+@given(_coletas_pequenas())
+def test_acrescentar_uma_coleta_por_vez_da_o_mesmo_que_juntar_todas(coletas):
+    """A tabela é a mesma, linha por linha e na mesma ordem, juntando uma coleta de cada vez (linha 1076)."""
+    de_uma_vez = revisoes.juntar_coletas(coletas, ["chave"], carimbos=["carimbo"])
+    juntas = None
+    for dia, tabela in sorted(coletas, key=revisoes.ordem_da_coleta):
+        juntas = revisoes.acrescentar_coleta(
+            juntas, dia, tabela.copy(), ["chave"], carimbos=["carimbo"]
+        )
+
+    pd.testing.assert_frame_equal(juntas, de_uma_vez)
+
+
+def test_concatenar_mantem_a_categoria_com_as_categorias_das_duas():
+    um = pd.DataFrame({"uf": pd.Categorical(["SP", "RJ"]), "n": [1, 2]})
+    dois = pd.DataFrame({"uf": pd.Categorical(["MG", "SP"]), "n": [3, 4]})
+
+    junta = revisoes.concatenar([um, dois])
+
+    assert isinstance(junta["uf"].dtype, pd.CategoricalDtype)
+    assert junta["uf"].tolist() == ["SP", "RJ", "MG", "SP"]
+    assert junta["n"].tolist() == [1, 2, 3, 4]

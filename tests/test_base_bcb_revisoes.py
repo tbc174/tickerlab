@@ -1,11 +1,16 @@
 """Revisões do BC no cadastro do IF.data e no SCR.data: a revisão é linha nova da mesma chave e só vale
 desde o dia em que foi vista (`visto_em`), como nos valores do IF.data (#554, `base/setoriais/revisoes.py`)."""
 
+import io
+import zipfile
+
 import pandas as pd
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from base import bcb_ifdata, bcb_scr
+from base.parquet import como_no_disco, hash_da_tabela, so_acrescentou
 from base.setoriais import revisoes
 from tests.test_base_bcb import _ifdata, _scr
 
@@ -120,6 +125,172 @@ def test_scr_cortar_o_futuro_nao_muda_o_passado(dias_ate_a_revisao, acrescimo):
         check_dtype=False,
         check_categorical=False,
     )
+
+
+# --- o SCR lido uma versão por vez e mês a mês (linha 1076) ---------------------------------------
+DIA3, DIA4 = pd.Timestamp("2026-12-15"), pd.Timestamp("2027-01-12")
+
+
+def _como_era_ate_a_linha_1076(
+    coletas: list[tuple[pd.Timestamp, bytes]],
+) -> pd.DataFrame:
+    """O resultado de antes da linha 1076: todas as versões lidas por `ler_ano` e `juntar_coletas` de uma vez."""
+    com_prazo = []
+    for dia, conteudo in coletas:
+        tabela = bcb_scr.ler_ano(conteudo)
+        com_prazo.append(
+            (
+                dia,
+                bcb_scr._com_a_ordem_na_chave(tabela).assign(
+                    disponivel_em=bcb_scr.disponivel_em(tabela)
+                ),
+            )
+        )
+    juntas = revisoes.juntar_coletas(com_prazo, CHAVE_DO_SCR)
+    for coluna in bcb_scr.COLUNAS_DE_TEXTO[1:]:
+        juntas[coluna] = juntas[coluna].astype("category")
+    return juntas
+
+
+def _zip(meses: dict[str, str]) -> bytes:
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as arquivo:
+        for nome, texto in meses.items():
+            arquivo.writestr(nome, texto.encode("utf-8-sig"))
+    return saida.getvalue()
+
+
+def _meses_da_amostra() -> dict[str, str]:
+    with zipfile.ZipFile(io.BytesIO(_scr("scrdata_2012.zip"))) as arquivo:
+        return {
+            n: arquivo.read(n).decode("utf-8-sig") for n in sorted(arquivo.namelist())
+        }
+
+
+def _com_carteira(texto: str, linha: int, valor: str) -> str:
+    """O CSV com o `carteira_ativa` da linha `linha` (1 = a primeira depois do cabeçalho) trocado."""
+    linhas = texto.splitlines(keepends=True)
+    coluna = linhas[0].split(";").index("carteira_ativa")
+    campos = linhas[linha].split(";")
+    campos[coluna] = f'"{valor}"'
+    linhas[linha] = ";".join(campos)
+    return "".join(linhas)
+
+
+def _quatro_versoes() -> list[tuple[pd.Timestamp, bytes]]:
+    """Quatro arquivos do ano, como o ano corrente cresce: só novembro; novembro revisto; novembro de volta ao
+    valor da 1ª e dezembro (com um número que muda depois); e dezembro revisto."""
+    novembro, dezembro = _meses_da_amostra().values()
+    nomes = ("scrdata_201211.csv", "scrdata_201212.csv")
+    return [
+        (DIA1, _zip({nomes[0]: novembro})),
+        (DIA2, _zip({nomes[0]: _com_carteira(novembro, 1, "999999,5")})),
+        (DIA3, _zip({nomes[0]: novembro, nomes[1]: dezembro})),
+        (
+            DIA4,
+            _zip(
+                {nomes[0]: novembro, nomes[1]: _com_carteira(dezembro, 5, "777777,5")}
+            ),
+        ),
+    ]
+
+
+@pytest.mark.parametrize("ordem", ["na ordem", "fora de ordem"])
+def test_scr_mes_a_mes_da_o_mesmo_de_antes_linha_por_linha(ordem):
+    coletas = _quatro_versoes()
+    if ordem == "fora de ordem":
+        coletas = coletas[::-1]
+
+    mes_a_mes = bcb_scr.ano_com_revisoes_dos_arquivos(
+        [(dia, lambda c=conteudo: c) for dia, conteudo in coletas]
+    )
+    antes = _como_era_ate_a_linha_1076(coletas)
+
+    pd.testing.assert_frame_equal(mes_a_mes, antes, check_categorical=False)
+    ordem_do_hash = list(bcb_scr.COLUNAS_DE_TEXTO)
+    assert hash_da_tabela(como_no_disco(mes_a_mes), ordem_do_hash) == hash_da_tabela(
+        como_no_disco(antes), ordem_do_hash
+    )
+
+
+def test_scr_com_as_tabelas_ja_lidas_da_o_mesmo_que_com_os_arquivos():
+    coletas = _quatro_versoes()
+
+    das_tabelas = bcb_scr.ano_com_revisoes(
+        [(dia, bcb_scr.ler_ano(conteudo)) for dia, conteudo in coletas]
+    )
+    dos_arquivos = bcb_scr.ano_com_revisoes_dos_arquivos(
+        [(dia, lambda c=conteudo: c) for dia, conteudo in coletas]
+    )
+
+    pd.testing.assert_frame_equal(das_tabelas, dos_arquivos)
+
+
+def test_scr_le_um_arquivo_de_cada_vez_e_em_ordem():
+    lidos: list[pd.Timestamp] = []
+
+    def leitor(dia: pd.Timestamp, conteudo: bytes):
+        def ler() -> bytes:
+            lidos.append(dia)
+            return conteudo
+
+        return ler
+
+    coletas = _quatro_versoes()[::-1]
+    bcb_scr.ano_com_revisoes_dos_arquivos([(d, leitor(d, c)) for d, c in coletas])
+
+    assert lidos == [DIA1, DIA2, DIA3, DIA4]
+
+
+def test_scr_versao_nova_so_acrescenta_o_que_mudou():
+    leitores = [(dia, lambda c=conteudo: c) for dia, conteudo in _quatro_versoes()]
+
+    for quantas in range(1, len(leitores)):
+        anterior = bcb_scr.ano_com_revisoes_dos_arquivos(leitores[:quantas])
+        nova = bcb_scr.ano_com_revisoes_dos_arquivos(leitores[: quantas + 1])
+        assert so_acrescentou(anterior, nova)
+    # novembro (240) e a revisão dele (+1); dezembro (240) e a revisão dele (+1); a volta não é linha nova
+    assert len(nova) == 240 + 1 + 240 + 1
+
+
+def test_scr_csv_com_mes_repetido_para_a_leitura():
+    novembro = _meses_da_amostra()["scrdata_201211.csv"]
+    repetido = _zip({"a.csv": novembro, "b.csv": novembro})
+
+    with pytest.raises(bcb_scr.MesForaDoFormatoError, match="b.csv"):
+        bcb_scr.ano_com_revisoes_dos_arquivos([(DIA1, lambda: repetido)])
+
+
+@settings(deadline=None, max_examples=20)
+@given(st.integers(0, 60), st.integers(1, 10**6))
+def test_scr_mes_a_mes_cortar_o_futuro_nao_muda_o_passado(
+    dias_ate_a_revisao, acrescimo
+):
+    """Cada revisão só vale a partir do dia em que foi coletada, também lendo um arquivo por vez."""
+    meses = _meses_da_amostra()
+    antes = _zip(meses)
+    primeiro = next(iter(meses))
+    depois = _zip(
+        {**meses, primeiro: _com_carteira(meses[primeiro], 1, f"{acrescimo},5")}
+    )
+    dia_da_revisao = DIA1 + pd.Timedelta(days=200 + dias_ate_a_revisao)
+    com = bcb_scr.ano_com_revisoes_dos_arquivos(
+        [(DIA1, lambda: antes), (dia_da_revisao, lambda: depois)]
+    )
+    sem = bcb_scr.ano_com_revisoes_dos_arquivos([(DIA1, lambda: antes)])
+    vespera = dia_da_revisao - pd.Timedelta(days=1)
+    foto_com = revisoes.como_era_em(com, vespera, CHAVE_DO_SCR)
+    foto_sem = revisoes.como_era_em(sem, vespera, CHAVE_DO_SCR)
+    ordem = ["data_base", *CHAVE_DO_SCR[1:]]
+    pd.testing.assert_frame_equal(
+        foto_com.sort_values(ordem).reset_index(drop=True)[sem.columns],
+        foto_sem.sort_values(ordem).reset_index(drop=True)[sem.columns],
+        check_dtype=False,
+        check_categorical=False,
+    )
+    revistas = com[com["visto_em"] == dia_da_revisao]
+    assert len(revistas) == 1
+    assert (revistas["disponivel_em"] >= dia_da_revisao).all()
 
 
 _SCR_BASE = bcb_scr.ler_ano(_scr("scrdata_2012.zip"))

@@ -1,5 +1,6 @@
 """Carga do IF.data e do SCR.data para a base (série 3 da base de ML, PR 7). Sem internet."""
 
+import hashlib
 import io
 import json
 import logging
@@ -243,8 +244,10 @@ def test_revisao_do_cadastro_do_bc_so_vale_desde_o_dia_em_que_foi_vista(ambiente
     assert "NOME REVISADO" in set(ligacao["instituicao"])
 
 
-def _zip_com_a_primeira_carteira_mudada(conteudo: bytes) -> bytes:
-    """O mesmo arquivo do BC com o `carteira_ativa` da 1ª linha do 1º mês trocado por 999999,5."""
+def _zip_com_a_primeira_carteira_mudada(
+    conteudo: bytes, valor: str = "999999,5"
+) -> bytes:
+    """O mesmo arquivo do BC com o `carteira_ativa` da 1ª linha do 1º mês trocado por `valor`."""
     saida = io.BytesIO()
     with (
         zipfile.ZipFile(io.BytesIO(conteudo)) as entrada,
@@ -256,7 +259,7 @@ def _zip_com_a_primeira_carteira_mudada(conteudo: bytes) -> bytes:
                 cabecalho, primeira, *resto = texto.splitlines(keepends=True)
                 coluna = cabecalho.split(";").index("carteira_ativa")
                 campos = primeira.split(";")
-                campos[coluna] = '"999999,5"'
+                campos[coluna] = f'"{valor}"'
                 texto = "".join([cabecalho, ";".join(campos), *resto])
             novo.writestr(nome, texto.encode("utf-8-sig"))
     return saida.getvalue()
@@ -280,6 +283,52 @@ def test_revisao_do_scr_so_vale_desde_o_dia_em_que_foi_vista(ambiente, monkeypat
     assert (pasta / "scr" / "2012.v1.parquet").exists()
     (nova,) = tabela[tabela["carteira_ativa"] == 999999.5].to_dict("records")
     assert nova["disponivel_em"] == nova["visto_em"] > nova["data_base"]
+
+
+def test_scr_le_as_versoes_guardadas_uma_de_cada_vez(ambiente, monkeypatch):
+    """Linha 1076: o ano corrente guarda uma versão por mês e a carga caía sem memória ao abrir todas.
+    Cada versão guardada é lida do acervo e montada antes da seguinte ser lida."""
+    pasta, respostas, _ = ambiente
+    monkeypatch.setattr(
+        carga, "ANOS_RECENTES", 100
+    )  # 2012 é baixado de novo a cada carga
+    original = respostas["scrdata_2012.zip"]
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+    antigo = pd.read_parquet(pasta / "scr" / "2012.parquet")
+    respostas["scrdata_2012.zip"] = _zip_com_a_primeira_carteira_mudada(original)
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+    respostas["scrdata_2012.zip"] = _zip_com_a_primeira_carteira_mudada(
+        original, "888888,5"
+    )
+    eventos: list[str] = []
+    ler_original = carga.acervo.ler_original
+    acrescentar = carga.bcb_scr.revisoes.acrescentar_coleta
+
+    def lendo_o_original(relativo: str) -> bytes | None:
+        eventos.append("lê o original")
+        return ler_original(relativo)
+
+    def juntando(*argumentos, **nomeados) -> pd.DataFrame:
+        eventos.append("junta um mês")
+        return acrescentar(*argumentos, **nomeados)
+
+    monkeypatch.setattr(carga.acervo, "ler_original", lendo_o_original)
+    monkeypatch.setattr(carga.bcb_scr.revisoes, "acrescentar_coleta", juntando)
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+
+    # cada versão guardada (3) é lida e os seus 2 meses juntados antes de a seguinte ser lida
+    assert eventos == ["lê o original", "junta um mês", "junta um mês"] * 3
+    tabela = pd.read_parquet(pasta / "scr" / "2012.parquet")
+    assert len(tabela) == len(antigo) + 2  # duas revisões da mesma linha
+    assert set(tabela["carteira_ativa"]) >= {999999.5, 888888.5}
+    assert [o["sha256"] for o in origens_gravadas(pasta / "scr" / "2012")] == [
+        hashlib.sha256(c).hexdigest()
+        for c in (
+            original,
+            _zip_com_a_primeira_carteira_mudada(original),
+            respostas["scrdata_2012.zip"],
+        )
+    ]
 
 
 VALORES_202506 = "@AnoMes=202506&@TipoInstituicao=1&@Relatorio='1'"
