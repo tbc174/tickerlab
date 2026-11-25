@@ -11,6 +11,7 @@ mesmo 401, com o mesmo corpo e os mesmos cabeçalhos; o motivo fica no log (`con
 das respostas são em inglês, como os nomes externos do portão (ADR 0108, D7).
 """
 
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from typing import Annotated
 
@@ -209,24 +210,56 @@ def autorizar(
     (a API externa): não há como pedir pelo canal do app com uma chave. Para fora, toda negação é o
     mesmo `codigo_publico` do portão.
     """
-    if not contrato_permite(
+    decidir_campo = autorizador(
+        conexao,
+        contexto,
+        conjunto=conjunto,
+        finalidade=finalidade,
+        hoje=hoje,
+        regras=regras,
+    )
+    return decidir_campo(fonte, campo, derivado)
+
+
+def autorizador(
+    conexao: sa.Connection,
+    contexto: ContextoDaChave,
+    *,
+    conjunto: str,
+    finalidade: str,
+    hoje: date,
+    regras: Regras | None = None,
+) -> Callable[..., Decisao]:
+    """O `autorizar` de um conjunto e uma finalidade, com as perguntas ao banco feitas já, uma vez só.
+
+    O contrato da organização e a marca de piloto não dependem da fonte nem do campo: perguntá-los a cada campo
+    punha os blocos da análise completa em fila na conexão do pedido (log de produção de 24/11/2026). Depois de
+    montado, decidir um campo só consulta a memória e as regras do portão.
+    """
+    contrato = contrato_permite(
         conexao,
         contexto.organizacao_id,
         conjunto=conjunto,
         finalidade=finalidade,
         dia=hoje,
-    ):
-        return Decisao(False, Motivo.SEM_CONTRATO_DA_ORGANIZACAO)
-    pedido = Pedido(
-        fonte=fonte,
-        conjunto=conjunto,
-        campo=campo,
-        canal=contexto.canal,
-        finalidade=finalidade,
-        derivado=derivado,
-        # D11: a marca de piloto se confere aqui, no servidor, a cada pedido (desligada por padrão)
-        piloto=e_organizacao_do_piloto(
-            conexao, contexto.organizacao_id, finalidade=finalidade, dia=hoje
-        ),
     )
-    return decidir(pedido, hoje, regras)
+    # D11: a marca de piloto se confere aqui, no servidor, a cada pedido (desligada por padrão)
+    do_piloto = contrato and e_organizacao_do_piloto(
+        conexao, contexto.organizacao_id, finalidade=finalidade, dia=hoje
+    )
+
+    def decidir_campo(fonte: str, campo: str, derivado: bool = False) -> Decisao:
+        if not contrato:
+            return Decisao(False, Motivo.SEM_CONTRATO_DA_ORGANIZACAO)
+        pedido = Pedido(
+            fonte=fonte,
+            conjunto=conjunto,
+            campo=campo,
+            canal=contexto.canal,
+            finalidade=finalidade,
+            derivado=derivado,
+            piloto=do_piloto,
+        )
+        return decidir(pedido, hoje, regras)
+
+    return decidir_campo
