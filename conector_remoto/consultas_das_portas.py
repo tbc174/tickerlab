@@ -773,12 +773,7 @@ CONSULTAS: tuple[Consulta, ...] = (
         ),
         rotas=("GET /credit/{cnpj}",),
         ferramentas=(_CREDITO_DA_EMPRESA,),
-        fora_de_uma_porta={
-            "cli": "linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)"
-        },
-        na_pagina={
-            "cli": "(ainda não)",
-        },
+        comandos=("credito",),
     ),
     Consulta(
         "o_que_mudou",

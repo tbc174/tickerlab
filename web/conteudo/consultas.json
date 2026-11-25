@@ -284,7 +284,9 @@
     },
     "chave": "credito",
     "cli": {
-      "frase": "(ainda não)"
+      "nomes": [
+        "tickerlab credito"
+      ]
     },
     "conector": {
       "nomes": [
