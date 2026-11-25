@@ -35,9 +35,10 @@ import statistics
 import threading
 import unicodedata
 from collections import OrderedDict
-from collections.abc import Callable, Hashable, Iterable, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
+from types import MappingProxyType
 
 import pandas as pd
 
@@ -159,7 +160,9 @@ LIMITES = tuple(limites((*NUMEROS, *RAZOES)))
 
 
 # entradas guardadas por porta dona: os cadastros de um dia e as companhias de um grupo num dia (cada uma com os
-# números de algumas centenas de companhias, no máximo); o dia da pergunta (`known_at`) varia de pedido para pedido
+# números de algumas centenas de companhias, no máximo); o dia da pergunta (`known_at`) varia de pedido para pedido.
+# Cada dia ocupa duas (os cadastros e o grupo): 32 entradas são ~16 dias. A memória da porta dona também esvazia
+# inteira quando enche (`porta_compartilhada.lembrar`), e aí estas entradas são calculadas de novo.
 ENTRADAS_GUARDADAS = 32
 _NA_MEMORIA_DA_PORTA = ("comparaveis", "por_grupo_e_dia")
 
@@ -226,7 +229,8 @@ class _Companhia:
     setor: str
     cadastro_publico_em: date
     exercicio: date | None = None
-    numeros: dict[str, float] = field(default_factory=dict)
+    # só leitura: a companhia fica guardada e é dividida entre os pedidos (a memória por grupo e dia)
+    numeros: Mapping[str, float] = field(default_factory=dict)
     numeros_publicos_em: date | None = None
 
 
@@ -450,8 +454,10 @@ class LeitorDeComparaveis:
                 companhia = replace(
                     companhia,
                     exercicio=fim.date(),
-                    numeros=numeros_do_exercicio(
-                        do_exercicio, ebitdas.get((formatado, fim))
+                    numeros=MappingProxyType(
+                        numeros_do_exercicio(
+                            do_exercicio, ebitdas.get((formatado, fim))
+                        )
                     ),
                     numeros_publicos_em=pd.Timestamp(
                         do_exercicio["divulgado_em"].max()

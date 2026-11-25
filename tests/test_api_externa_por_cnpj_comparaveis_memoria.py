@@ -326,3 +326,46 @@ def test_com_a_memoria_cheia_o_portao_continua_por_organizacao(tres_na_mesma_por
     assert so_companies.status_code == 404
     assert so_companies.json() == {"detail": "not_available"}
     assert _get(cliente, None).status_code == 401
+
+
+# ---------------------------------------------------------------- achados da revisão cruzada (P2)
+
+
+def test_a_memoria_guarda_o_grupo_inteiro_antes_da_trava(compartilhada):
+    """A entrada é a mesma para todo pedido: guarda até quem a trava tira, que só sai depois, a cada pedido."""
+    servida = _pede()
+    assert servida is not None and PESSOA not in _pares(servida)
+    grupo = _guardados().valor(("companhias", "energia", DIA))
+    assert PESSOA in grupo and ALFA in grupo
+
+
+def test_o_pedido_restrito_primeiro_nao_envenena_a_entrada(compartilhada):
+    pasta, _aberturas = compartilhada
+    sem_dfp = _pede(permitido=_sem_dfp)
+    assert sem_dfp is not None
+    assert all(
+        set(linha) == {"cnpj", "empresa", "setor"} for linha in sem_dfp.corpo["pares"]
+    )
+    assert _pede() == _sem_memoria(pasta)
+
+
+def test_os_numeros_guardados_sao_so_de_leitura(compartilhada):
+    _pede()
+    alfa = _guardados().valor(("companhias", "energia", DIA))[ALFA]
+    with pytest.raises(TypeError):
+        alfa.numeros["receita"] = 0.0
+
+
+def test_pedidos_ao_mesmo_tempo_dao_a_mesma_resposta_e_respeitam_o_teto(
+    compartilhada, monkeypatch
+):
+    from concurrent.futures import ThreadPoolExecutor
+
+    pasta, _aberturas = compartilhada
+    monkeypatch.setattr(comparaveis, "ENTRADAS_GUARDADAS", 3)
+    pedidos = [(cnpj, dia) for dia in DIAS for cnpj in (ALFA, PARES[0], PARES[4])] * 2
+    esperado = {pedido: _sem_memoria(pasta, *pedido) for pedido in set(pedidos)}
+    with ThreadPoolExecutor(max_workers=6) as linhas:
+        respostas = list(linhas.map(lambda pedido: _pede(*pedido), pedidos))
+    assert respostas == [esperado[pedido] for pedido in pedidos]
+    assert len(_guardados()) <= 3
