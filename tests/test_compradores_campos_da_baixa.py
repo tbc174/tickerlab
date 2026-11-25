@@ -21,7 +21,11 @@ from tests.test_api_externa_compradores import (
     COMPRADORA,
     NOMES,
     SETOR,
+    _comprador,
+    _get,
     _gravar,
+    cenario,  # noqa: F401  (fixture reaproveitada)
+    cliente,  # noqa: F401  (fixture reaproveitada)
     pasta,  # noqa: F401  (fixture reaproveitada)
 )
 
@@ -151,3 +155,31 @@ def test_sem_a_liberacao_do_portao_os_campos_nao_saem_e_a_lista_segue(pasta):
         for e in comprador["provas"][compradores.ENTROU]["exemplos"]
     }
     assert set(alvos[BAIXADA]) == {"raiz_do_cnpj", "razao_social"}
+
+
+def test_pela_rota_a_baixada_sai_com_os_tres_campos_e_a_ativa_sem_nada(
+    cliente, cenario, pasta
+):
+    _gravar_a_situacao(pasta)
+    resposta = _get(cliente, cenario)
+    exemplos = {
+        e["sector_company"]["cnpj_root"]: e["sector_company"]
+        for e in _comprador(resposta, COMPRADORA)["evidence"]["took_stake"]["examples"]
+    }
+    baixada = exemplos[BAIXADA]
+    assert baixada["company_status"]["value"] == "baixada"
+    assert baixada["closed_on"]["value"] == "2025-11-30"
+    assert baixada["closure_reason_code"]["value"] == "02"
+    assert baixada["closed_on"]["source"] == "rfb-cnpj"
+    assert set(exemplos[ALVO_SP]) == {"cnpj_root", "legal_name"}
+
+
+def test_baixada_fora_da_lista_sem_pessoa_nao_ganha_campo(pasta):
+    """Empresa sem razão social servida (fora da lista sem pessoa) segue a mesma trava: sem os campos da baixa."""
+    _gravar_a_situacao(pasta)
+    empresas = pd.read_parquet(pasta / compradores.EMPRESAS / "11.parquet")
+    _gravar(
+        pasta / compradores.EMPRESAS / "11.parquet",
+        empresas[empresas["cnpj_basico"] != BAIXADA],
+    )
+    assert set(_exemplos(pasta)[BAIXADA]) == {"raiz_do_cnpj"}

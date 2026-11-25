@@ -144,7 +144,11 @@ LIMITES_DO_SINAL = {
         "Entradas como sócio: do quadro de sócios da Receita, que a base acompanha desde 05/2023 (antes disso, "
         "só quem ainda era sócio naquele mês). Contam também as entradas em empresa do setor que depois foi "
         "baixada (uma incorporação, por exemplo). Não contam quem entrou até a abertura da empresa nem a entrada "
-        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum)."
+        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum). "
+        "Quando a empresa onde se entrou está baixada (sem nenhum estabelecimento ativo), o exemplo traz "
+        'company_status "baixada", closed_on (o dia da baixa do último estabelecimento a baixar, só de versão já '
+        "pública em known_at) e closure_reason_code (o código da tabela de motivos da situação cadastral da "
+        "Receita, como ela publica, sem tradução nossa)."
     ),
     FUNDO: (
         "Fundo sócio: FIP registrado na CVM e não cancelado no dia, sócio de uma empresa do setor no quadro de "
@@ -196,6 +200,7 @@ _EM_CURSO: dict[
 TABELAS_LIDAS = (
     ESTABELECIMENTOS,
     EMPRESAS,
+    SITUACAO,
     ENTRADAS,
     FUNDOS,
     FIPS_REGISTRADOS,
@@ -825,7 +830,8 @@ class _Lista:
             empresa["razao_social"] = campo(
                 nome, fonte=RECEITA, publico_em=publico_em, visto_em=None
             )
-        if baixas and raiz in baixas:
+        # só onde a razão social já pode sair: empresa fora da lista sem pessoa não ganha campo
+        if baixas and raiz in baixas and raiz in nomes:
             quando, motivo, publico_em = baixas[raiz]
             for nome_do_campo, valor in (
                 ("situacao_da_empresa", "baixada"),
