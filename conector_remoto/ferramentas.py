@@ -25,9 +25,11 @@ from conector_remoto.cliente_api import ClienteDaApi, ParametroDaApi, RespostaDa
 from conector_remoto.consultas_das_portas import (
     FERRAMENTAS,
     ORDENS_DA_BUSCA,
+    PORTES,
     TIPOS_DA_ANVISA,
     TIPOS_DE_EVENTO,
     TIPOS_DE_VINCULO,
+    chave_do_setor,
     ferramenta,
 )
 from conector_remoto.enxugar import (
@@ -77,8 +79,6 @@ TITULOS_DAS_FERRAMENTAS: dict[str, str] = {f.nome: f.titulo for f in FERRAMENTAS
 # 12 caracteres (letras na raiz desde o CNPJ alfanumérico) e 2 dígitos verificadores; a API confere os DV
 _CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
 _PONTUACAO_DO_CNPJ = re.compile(r"[\s./-]")
-# como as chaves de `setores` (minúsculas e `_`): sem ponto, nada de `..` virar outra rota
-_CHAVE_DO_SETOR = re.compile(r"[a-z0-9][a-z0-9_-]{0,79}")
 _CODIGO_DA_API = re.compile(r"[a-z_]{1,40}")
 LIMITE_MAXIMO_DA_BUSCA = 100
 LIMITE_PADRAO_DA_BUSCA = 50
@@ -147,6 +147,11 @@ ComoEraEm = Annotated[
         )
     ),
 ]
+
+
+def _portes_da_api(portes: list[str] | None) -> list[str] | None:
+    """O porte como a API o recebe: o nome em português passa pelo mapa do registro; o da API segue igual."""
+    return None if portes is None else [PORTES.get(porte, porte) for porte in portes]
 
 
 def ferramenta_liberada(nome: str, conjuntos: frozenset[str]) -> bool:
@@ -414,11 +419,22 @@ def registrar_ferramentas(
             ),
         ] = None,
         porte: Annotated[
-            list[Literal["micro", "small", "other", "not_informed"]] | None,
+            list[
+                Literal[
+                    "micro",
+                    "pequena",
+                    "demais",
+                    "nao_informado",
+                    "small",
+                    "other",
+                    "not_informed",
+                ]
+            ]
+            | None,
             Field(
                 description=(
-                    "Porte na Receita: micro, small (pequeno), other (os demais; a Receita não tem "
-                    "'médio' nem 'grande'), not_informed."
+                    "Porte na Receita: micro, pequena, demais (os demais; a Receita não tem 'médio' nem "
+                    "'grande') ou nao_informado. Os nomes da API (small, other, not_informed) também valem."
                 )
             ),
         ] = None,
@@ -498,7 +514,7 @@ def registrar_ferramentas(
             "buscar_empresas",
             "/companies",
             {
-                "cnae": cnae, "state": uf, "municipality": municipio, "size": porte,
+                "cnae": cnae, "state": uf, "municipality": municipio, "size": _portes_da_api(porte),
                 "legal_nature": natureza_juridica, "registration_status": situacao_cadastral,
                 "opened_before": _dia(aberta_antes_de), "opened_after": _dia(aberta_depois_de),
                 "head_office": so_matriz, "limit": limite, "cursor": cursor,
@@ -627,12 +643,13 @@ def registrar_ferramentas(
         ],
         como_era_em: ComoEraEm = None,
     ) -> str:
-        if not _CHAVE_DO_SETOR.fullmatch(chave):
+        da_api = chave_do_setor(chave)
+        if da_api is None:
             raise ToolError(
                 "Chave de setor inválida; use uma chave da lista de `setores`."
             )
         return await pedidos.pedir(
-            "setor", f"/sectors/{chave}", {"known_at": _dia(como_era_em)}
+            "setor", f"/sectors/{da_api}", {"known_at": _dia(como_era_em)}
         )
 
     @anunciar(servidor, "o_que_posso_ver")

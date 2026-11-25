@@ -15,6 +15,7 @@ from tickerlab import comandos
 
 from conector_remoto import acesso, ferramentas, servidor
 from conector_remoto.cliente_api import ClienteDaApi
+from conector_remoto.consultas_das_portas import PORTES, chave_do_setor
 from conector_remoto.saida import TETO_DE_CARACTERES
 from src.api_externa import pessoas
 from src.api_externa.conjuntos import (
@@ -321,7 +322,8 @@ def test_vocabulario_da_busca_e_o_da_api():
         (lista_,) = [v for v in propriedades[nome]["anyOf"] if v.get("type") == "array"]
         return set(lista_["items"]["enum"])
 
-    assert opcoes("porte") == set(prospeccao.PORTES_DE_FORA.values())
+    # o nome da API e, desde o PR 5c da frente 2, o da Receita em português (o mesmo da CLI)
+    assert opcoes("porte") == set(prospeccao.PORTES_DE_FORA.values()) | set(PORTES)
     assert opcoes("situacao_cadastral") == set(prospeccao.SITUACOES)
     assert propriedades["limite"]["maximum"] == prospeccao.LIMITE_MAXIMO
 
@@ -345,6 +347,26 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
         ("opened_before", "2020-01-01"), ("head_office", "true"), ("limit", "10"),
     ]  # fmt: skip
     assert "tld_" not in str(busca.url)
+
+
+def test_busca_aceita_o_porte_em_portugues_e_o_traduz():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/companies": httpx.Response(200, json={"companies": [EMPRESA]})}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "buscar_empresas",
+            cnae=["62"], porte=["pequena", "demais", "not_informed"],
+        )  # fmt: skip
+    (busca,) = [p for p in pedidos if p.url.path == "/data/v1/companies"]
+    assert busca.url.params.get_list("size") == ["small", "other", "not_informed"]
+
+
+def test_setor_com_hifen_vai_a_api_com_sublinhado():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/sectors/saude_suplementar": httpx.Response(200, json={"sector": {}})}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        aj.chamar_ok(cliente, aj.CHAVE_DE_MENTIRA, "setor", chave="saude-suplementar")
+    assert "/data/v1/sectors/saude_suplementar" in [p.url.path for p in pedidos]
 
 
 @pytest.mark.parametrize(
@@ -378,7 +400,7 @@ def test_cnpj_com_pontuacao_e_letras_vai_limpo():
 
 
 @pytest.mark.parametrize(
-    "chave", ["..", ".", "../catalog", "bancos/..", "Bancos", "_x"]
+    "chave", ["..", ".", "../catalog", "bancos/..", "Bancos", "a.b", "x" * 81]
 )
 def test_setor_com_caminho_montado_e_recusado(chave):
     pedidos: list[httpx.Request] = []
@@ -505,7 +527,7 @@ def test_conjuntos_do_catalogo_ignora_o_que_nao_e_conjunto():
 
 
 def test_toda_chave_de_setor_da_api_e_aceita():
-    assert all(ferramentas._CHAVE_DO_SETOR.fullmatch(c) for c in setores.POR_CHAVE)
+    assert all(chave_do_setor(c) == c for c in setores.POR_CHAVE)
 
 
 def test_api_fora_do_ar_vira_frase_sem_o_endereco_interno(caplog):

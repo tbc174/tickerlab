@@ -43,8 +43,7 @@ DIVERGENCIAS_DA_CLI = {
     (
         "buscar_empresas",
         "porte",
-    ): "a CLI usa os nomes em português (micro, pequena, demais, nao_informado); PR 5c",
-    ("fundo", "retorno_suposto"): "a CLI ainda não confere a faixa; PR 5b",
+    ): "o conector aceita também os nomes da API (small, other, not_informed), que ele recebia antes do PR 5c; a CLI, só os em português",
 }
 
 
@@ -512,3 +511,42 @@ def test_o_texto_da_lista_da_pagina_e_o_aprovado():
         "o texto da lista da página inicial mudou (um nome, resumo ou frase do registro): é texto público, passa "
         "pela revisão de segurança e pela cruzada; depois regrave IMPRESSAO_DA_LISTA_DA_PAGINA"
     )
+
+
+# PR 5a: a chave do setor no formato da API, a mesma nas duas portas; o que cada porta aceitava antes continua
+CHAVES_DE_SETOR = [
+    ("eletricas", "eletricas"),
+    ("saude_suplementar", "saude_suplementar"),
+    ("saude-suplementar", "saude_suplementar"),  # o conector aceitava o hífen
+    ("_x", "_x"),  # a CLI aceitava começar com `_`
+    ("a" * 80, "a" * 80),  # o conector aceitava até 80
+    ("a" * 81, None),
+    ("Bancos", None),
+    ("..", None),
+    ("../catalog", None),
+    ("bancos/..", None),
+    ("a.b", None),
+    ("", None),
+]
+
+
+@pytest.mark.parametrize(("digitada", "enviada"), CHAVES_DE_SETOR)
+def test_a_chave_do_setor_e_a_mesma_nas_duas_portas(digitada, enviada):
+    assert registro.chave_do_setor(digitada) == enviada
+    try:
+        da_cli = comandos._setor(None, None, digitada)  # type: ignore[arg-type]
+    except click.BadParameter:
+        da_cli = None
+    assert da_cli == enviada
+
+
+def test_a_cli_le_o_formato_da_chave_do_registro():
+    assert consultas.formato("chave_do_setor") == registro.FORMATO_DA_CHAVE_DO_SETOR
+
+
+# PR 5c: o conector aceita o porte em português, como a CLI, sem deixar de aceitar os nomes da API
+def test_o_conector_aceita_o_porte_nas_duas_grafias():
+    valores = _parametro("buscar_empresas", "porte").valores
+    assert set(registro.PORTES) <= set(valores)
+    assert set(registro.PORTES.values()) <= set(valores)
+    assert valores[: len(registro.PORTES)] == tuple(registro.PORTES)

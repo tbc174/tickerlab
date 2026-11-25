@@ -13,6 +13,7 @@ diferente, os dois estão aqui, lado a lado.
 """
 
 import json
+import re
 from dataclasses import dataclass, field
 
 # o conjunto do catálogo que só a organização com `pessoa_no_conector` vê (ADR 0128, Emenda 4); o mesmo valor de
@@ -39,8 +40,8 @@ TIPOS_DE_VINCULO = {
     "participada": "investee_of",
     "auditor": "audits",
 }
-# o porte como a Receita o escreve; por ora só a CLI o recebe em português (o conector, em inglês: plano da frente
-# 2, PR 5c)
+# o porte como a Receita o escreve; as duas portas o recebem em português (o conector aceita também o nome da API,
+# que recebia antes do PR 5c da frente 2)
 PORTES = {
     "micro": "micro",
     "pequena": "small",
@@ -130,7 +131,17 @@ _BUSCAR_EMPRESAS = Ferramenta(
         Parametro("uf", cli="--uf"),
         Parametro("municipio", cli="--municipio"),
         Parametro(
-            "porte", cli="--porte", valores=("micro", "small", "other", "not_informed")
+            "porte",
+            cli="--porte",
+            valores=(
+                "micro",
+                "pequena",
+                "demais",
+                "nao_informado",
+                "small",
+                "other",
+                "not_informed",
+            ),
         ),
         Parametro("natureza_juridica", cli="--natureza"),
         Parametro(
@@ -854,6 +865,18 @@ CONSULTAS: tuple[Consulta, ...] = (
 )
 
 
+# a chave do setor como a API a dá (`setores` lista): letras minúsculas, números e `_`, até 80. É a mesma nas duas
+# portas (PR 5a da frente 2); o hífen que o conector aceitava antes vira `_`. Nada além disso chega ao endereço.
+FORMATO_DA_CHAVE_DO_SETOR = r"[a-z0-9_]{1,80}"
+_CHAVE_DO_SETOR = re.compile(FORMATO_DA_CHAVE_DO_SETOR)
+
+
+def chave_do_setor(digitada: str) -> str | None:
+    """A chave do setor como vai à API, ou `None` se não tem o formato (a CLI faz a mesma conta)."""
+    chave = digitada.replace("-", "_")
+    return chave if _CHAVE_DO_SETOR.fullmatch(chave) else None
+
+
 def ferramenta(nome: str) -> Ferramenta:
     """A ferramenta do conector pelo nome (`KeyError` se não estiver no registro)."""
     for item in FERRAMENTAS:
@@ -880,7 +903,11 @@ def para_a_cli() -> dict[str, object]:
                         "minimo_aberto": parametro.minimo_aberto,
                         "valores": list(parametro.valores),
                     }
-    return {"traducoes": TRADUCOES, "opcoes": opcoes}
+    return {
+        "traducoes": TRADUCOES,
+        "opcoes": opcoes,
+        "formatos": {"chave_do_setor": FORMATO_DA_CHAVE_DO_SETOR},
+    }
 
 
 def json_da_cli() -> str:
