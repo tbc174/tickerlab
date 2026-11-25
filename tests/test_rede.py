@@ -148,3 +148,27 @@ def test_fecha_a_resposta_descartada(monkeypatch, esperas):
     _fonte(monkeypatch, descartada, _resposta(200))
     rede.obter("https://x", stream=True)
     assert descartada.raw.closed
+
+
+def test_status_a_repetir_tenta_de_novo_so_o_que_o_chamador_pediu(monkeypatch, esperas):
+    # o 403 do firewall do Mercado Bitcoin às vezes passa na segunda tentativa; sem o pedido, volta na hora
+    chamadas = _fonte(monkeypatch, _resposta(403), _resposta(403), _resposta(200))
+    resposta = rede.obter("https://x", status_a_repetir=[403])
+    assert resposta.status_code == 200
+    assert len(chamadas) == 3
+    assert len(esperas) == 2
+    assert "status_a_repetir" not in chamadas[0][2]  # não vai para o requests.get
+
+
+def test_403_sem_o_pedido_nao_repete(monkeypatch, esperas):
+    chamadas = _fonte(monkeypatch, _resposta(403))
+    assert rede.obter("https://x").status_code == 403
+    assert len(chamadas) == 1
+
+
+def test_403_que_nao_passa_esgota_as_tentativas_e_devolve_a_ultima(
+    monkeypatch, esperas
+):
+    chamadas = _fonte(monkeypatch, *[_resposta(403) for _ in range(rede.TENTATIVAS)])
+    assert rede.obter("https://x", status_a_repetir=[403]).status_code == 403
+    assert len(chamadas) == rede.TENTATIVAS  # sem laço: para na última

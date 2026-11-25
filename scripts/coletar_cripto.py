@@ -49,6 +49,7 @@ from src.bcb import baixar_ptax
 log = logging.getLogger("coletar_cripto")
 
 TEMPO_LIMITE_EM_SEGUNDOS = 120
+STATUS_DO_FIREWALL = (403,)
 VARIAVEL_DO_COOKIE = "BITCOIN_COOKIE"
 # fonte da linha de comando: (nome no registro de coletas, função de coleta)
 COLETAS: dict[str, tuple[str, Callable[[Path, datetime, coleta.Baixar], int]]] = {
@@ -88,7 +89,10 @@ def pasta_da_base() -> Path:
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = rede.obter(url, timeout=TEMPO_LIMITE_EM_SEGUNDOS)
+    # 403: o firewall da fonte às vezes solta o pedido na tentativa seguinte (Mercado Bitcoin, 02/11/2026)
+    resposta = rede.obter(
+        url, timeout=TEMPO_LIMITE_EM_SEGUNDOS, status_a_repetir=STATUS_DO_FIREWALL
+    )
     resposta.raise_for_status()
     return resposta.content
 

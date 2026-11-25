@@ -171,3 +171,22 @@ def test_baixar_da_fonte_manda_o_agente_do_tickerlab(monkeypatch):
 
     assert coletar_cripto._baixar_da_fonte("https://exemplo.test/x") == b"ok"
     assert enviados["User-Agent"] == AGENTE
+
+
+def test_baixar_da_fonte_tenta_de_novo_o_403_do_firewall(monkeypatch):
+    import io
+
+    import requests
+
+    esperas: list[float] = []
+    monkeypatch.setattr("src.rede.esperar", esperas.append)
+    respostas = []
+    for status in (403, 200):
+        resposta = requests.Response()
+        resposta.status_code = status
+        resposta.raw = io.BytesIO(b"candles")
+        respostas.append(resposta)
+    monkeypatch.setattr("requests.get", lambda *_a, **_k: respostas.pop(0))
+
+    assert coletar_cripto._baixar_da_fonte("https://exemplo.test/x") == b"candles"
+    assert len(esperas) == 1

@@ -15,7 +15,7 @@ Grava, com manifesto e versões (`base/parquet.py::gravar_com_versoes`):
 
 As 8 datas-base mais novas do IF.data e os 2 anos mais novos do SCR são baixados de novo a cada carga
 (o BC revisa os números; cada revisão vira versão). O resto vem do acervo se já estiver lá. Um pedido
-por vez, com pausa; se o firewall do BC bloquear, espera 5 minutos e tenta mais uma vez. Recusa rodar
+por vez, com pausa; se o firewall do BC bloquear, espera 1 minuto e tenta de novo, depois mais 5 minutos e a última vez (3 pedidos no máximo). Recusa rodar
 sem a versão do código (exigência 13 da ADR 0055).
 
 `--data-base AAAAMM` refaz só os valores dessa data-base pelas respostas já guardadas no acervo, sem
@@ -65,7 +65,8 @@ SUBPASTA_DO_FCA = Path("base") / "fca"
 DATAS_RECENTES = 8  # do IF.data: dois anos de trimestres
 ANOS_RECENTES = 2  # do SCR
 PAUSA_IFDATA, PAUSA_SCR = 1.0, 30.0  # segundos entre pedidos
-ESPERA_DEPOIS_DO_BLOQUEIO = 300.0
+# o BC não respondeu (timeout, firewall): até 3 pedidos, com 1 e depois 5 minutos de espera
+ESPERAS_DEPOIS_DA_FALHA = (60.0, 300.0)
 NAO_ENCONTRADO = 404
 ORDEM_DOS_VALORES = ["cod_inst", "relatorio", "conta", "grupo", "coluna"]
 ORDEM_DO_CADASTRO = ["cod_inst"]
@@ -81,7 +82,8 @@ class RespostaGuardadaFaltandoError(LookupError):
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    for tentativa in (1, 2):
+    esperas = iter(ESPERAS_DEPOIS_DA_FALHA)
+    while True:
         try:
             resposta = rede.get_com_agente(url, timeout=900)
             if resposta.status_code == NAO_ENCONTRADO:
@@ -89,11 +91,11 @@ def _baixar_da_fonte(url: str) -> bytes | None:
             resposta.raise_for_status()
             return resposta.content
         except requests.RequestException:
-            if tentativa == 2:
+            espera = next(esperas, None)
+            if espera is None:
                 raise
-            log.warning("o BC não respondeu %s: tento de novo em 5 minutos", url)
-            time.sleep(ESPERA_DEPOIS_DO_BLOQUEIO)
-    return None
+            log.warning("o BC não respondeu %s: tento de novo em %.0f s", url, espera)
+            time.sleep(espera)
 
 
 baixar_ifdata = com_registro(FONTE_IFDATA, _baixar_da_fonte)
