@@ -46,7 +46,11 @@ class PortaEmprestada(Porta):
     """Uma `Porta` cuja conexão é um cursor da porta dona: as mesmas views, fechar não fecha a dona."""
 
     def __init__(
-        self, dona: Porta, banco: sa.Connection | None, memoria: dict[Any, Any]
+        self,
+        dona: Porta,
+        banco: sa.Connection | None,
+        memoria: dict[Any, Any],
+        impressao: tuple | None = None,
     ) -> None:
         # não chama `Porta.__init__`: ele abriria outra conexão (e refaria as views), que é o que se evita
         self.pasta = dona.pasta
@@ -58,6 +62,8 @@ class PortaEmprestada(Porta):
         self.con.execute("SET TimeZone = 'UTC'")
         # o que só depende dos arquivos (o mês do retrato de um dia, por exemplo) vale para a vida da porta dona
         self.memoria_da_base = memoria
+        # a impressão da base com que a porta dona foi aberta: `conferir_no_fim` compara a de agora com ela
+        self.impressao_da_abertura = impressao
 
     memoria_da_base: dict[Any, Any]
 
@@ -199,4 +205,25 @@ def porta_do_pedido(banco: sa.Connection | None = None) -> Porta:
             nova = abrir_a_base()
             dona = _Dona(nova, pasta, antes)
             _DONA = dona
-        return PortaEmprestada(dona.porta, banco, dona.memoria)
+        return PortaEmprestada(dona.porta, banco, dona.memoria, dona.impressao)
+
+
+class BaseEmAtualizacao(Exception):
+    """A base mudou enquanto o pedido lia: a resposta podia juntar arquivos de antes e de depois da troca."""
+
+
+def conferir_no_fim(porta: Porta) -> None:
+    """No fim do pedido, a mesma conferência de `porta_do_pedido`: se os arquivos que as views leem mudaram desde a
+    abertura da porta dona, levanta `BaseEmAtualizacao` e a resposta não sai (linha 1099, parte b, trava
+    provisória). Só vê troca que muda o caminho, a data ou o tamanho de algum arquivo: a que preserva os três passa
+    (o conserto de raiz é a pasta versionada, parte a). Porta sem impressão da abertura (os testes) não confere."""
+    abertura = getattr(porta, "impressao_da_abertura", None)
+    if abertura is None:
+        return
+    try:
+        agora = impressao_da_base(porta)
+    except OSError as erro:
+        # sem ler a pasta não há como dizer que a base é a mesma: não serve
+        raise BaseEmAtualizacao from erro
+    if agora != abertura:
+        raise BaseEmAtualizacao

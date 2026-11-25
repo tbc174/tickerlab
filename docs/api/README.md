@@ -232,6 +232,7 @@ ele não couber, e diz a situação de cada item (`ok`, `not_available` ou `inva
 | 404 | `not_available` | nada a servir: CNPJ fora da base, pessoa, contrato ou direito que não cobre, tabela sem prontidão (a resposta não diz qual); com `Not Found`, a API externa está desligada |
 | 429 | `rate_limited`, `monthly_quota_exceeded` | limite do minuto ou quota do mês |
 | 503 | `service_unavailable` | a base não está disponível neste servidor agora |
+| 503 | `base_updating` | a base foi atualizada durante o pedido: a resposta não sai, para não juntar dado de antes e de depois da atualização; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês) |
 
 O contrato traz, rota a rota, os códigos que cada uma pode dar.
 
