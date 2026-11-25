@@ -1111,6 +1111,7 @@ def test_instrucoes_do_agente(rodar):
         "catalogo",
         "consumo",
         "deck",
+        "credito",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
         assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
@@ -2728,3 +2729,62 @@ def test_rotulos_dos_campos_nao_disponiveis(
     resultado = rodar(comando, *args, http=_resposta_fixa(corpo), **_com_chave(chave))
     assert resultado.exit_code == 0, resultado.output
     assert f"{rotulo}: {valor}" in resultado.stdout
+
+
+# ---------------------------------------------------------------- credito (linha 980, onda 2, PR 2)
+
+
+def _credito_de_mentira() -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "known_at": "2025-07-01",
+        "registration_status": _env("ativa"),
+        "material_facts_12m": [],
+        "receivables_assignment": {"found": False},
+        "limits": ["Não é rating, nota nem elegibilidade."],
+        "sources": [{"source": "rfb-cnpj"}],
+    }
+
+
+def test_credito_pede_a_rota_do_credito_com_o_dia(rodar, chave):
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido):
+        pedidos.append(pedido)
+        return httpx.Response(200, json=_credito_de_mentira())
+
+    resultado = rodar(
+        "credito", "11.111.111/0001-91", "--como-era", "2025-07-01",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    assert pedido.url.path == "/data/v1/credit/11111111000191"
+    assert pedido.url.params["known_at"] == "2025-07-01"
+    assert "Não é rating" in resultado.stdout
+
+
+def test_credito_em_json_passa_inteiro(rodar, chave):
+    resultado = rodar(
+        "credito", "11111111000191", "--json",
+        http=_resposta_fixa(_credito_de_mentira()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == _credito_de_mentira()
+
+
+def test_credito_sem_o_conjunto_sai_com_o_codigo_de_nada_disponivel(rodar, chave):
+    def responder(_pedido):
+        return httpx.Response(404, json={"detail": "not_available"})
+
+    resultado = rodar(
+        "credito", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 5
+
+
+def test_a_ajuda_do_credito_diz_o_que_nao_e(rodar):
+    ajuda = rodar("credito", "--help").stdout.lower()
+    assert "não é rating" in ajuda and "scr" in ajuda
+    for palavra in ("recomend", "oportunidade", "r$", "garant"):
+        assert palavra not in ajuda, palavra

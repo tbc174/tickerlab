@@ -105,6 +105,7 @@ def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
         "fre_partes_relacionadas": list(fre_governanca.COLUNAS_DAS_PARTES),
         "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
         "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
+        "ofertas_cnpj_dos_devedores": list(ofertas.COLUNAS_DOS_DEVEDORES),
     }
 
 
