@@ -2454,7 +2454,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 67
+      "tabelas": 71
     },
     {
       "historico_desde": "2010-01-01",
@@ -2495,17 +2495,6 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Receita Federal",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 5
-    },
-    {
-      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "modulos": [
         "governo_e_sancoes",
@@ -2514,7 +2503,18 @@
       "orgao": "ANS",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
-      "tabelas": 4
+      "tabelas": 5
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Receita Federal",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 5
     },
     {
       "historico_desde": "2026-10-14",
@@ -2984,7 +2984,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 26,
-    "tabelas": 136,
+    "tabelas": 141,
     "temas": [
       {
         "chave": "cvm",
@@ -3019,8 +3019,8 @@
           "Receita Federal",
           "CVM"
         ],
-        "tabelas": 7,
-        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 7 de 11 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 10,
+        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 10 de 12 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Quem é dono e quem controla"
       },
       {
@@ -3081,8 +3081,8 @@
           "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 30,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 30 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 31,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 31 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3130,8 +3130,8 @@
         "orgaos": [
           "CVM"
         ],
-        "tabelas": 4,
-        "texto": "Assembleias e avisos de debenturistas, os ratings de crédito que os documentos da companhia citam e os certificados de recebíveis de cada securitizadora, mês a mês, nos documentos que as companhias entregam à CVM. Hoje estão montadas 4 de 5 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 5,
+        "texto": "Assembleias e avisos de debenturistas, os ratings de crédito que os documentos da companhia citam e os certificados de recebíveis de cada securitizadora, mês a mês, nos documentos que as companhias entregam à CVM.",
         "titulo": "Debêntures, ratings e recebíveis"
       },
       {
@@ -3178,12 +3178,12 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 83
+      "tabelas": 87
     },
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 46
+      "tabelas": 47
     },
     {
       "chave": "credito_e_fidc",
@@ -7991,6 +7991,17 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Ações de cada acionista do FRE por classe (item 15.1): para quem a posição acionária (fre_acionistas) mostra preferenciais, a quantidade e o percentual de cada classe (Preferencial Classe A, B...).",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_acionistas_por_classe"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
@@ -7998,6 +8009,17 @@
       "orgao": "CVM",
       "situacao": "licenciada",
       "tabela": "fre_acionistas"
+    },
+    {
+      "atraso": null,
+      "consultavel": true,
+      "frase": "Ações preferenciais em circulação de cada FRE por classe (item 15.7): a quantidade e o percentual de cada classe (PNA, PNB...) fora o controlador, os administradores e a tesouraria.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_distribuicao_capital_por_classe"
     },
     {
       "atraso": null,
@@ -8031,6 +8053,17 @@
       "orgao": "CVM",
       "situacao": "licenciada",
       "tabela": "ofertas_resolucao_160"
+    },
+    {
+      "atraso": "Nenhum além das datas da própria oferta",
+      "consultavel": false,
+      "frase": "O CNPJ de empresa citado como devedor ou coobrigado em cada requerimento de oferta pela Resolução CVM 160 (CRI, CRA e outros certificados de recebíveis; 2023 em diante).",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "ofertas_cnpj_dos_devedores"
     },
     {
       "atraso": "Agosto/2026 estava publicado em 16/10/2026",
@@ -8515,6 +8548,17 @@
       "orgao": "CMED (Anvisa)",
       "situacao": "licenciada",
       "tabela": "cmed_precos"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
+      "frase": "Planos de saúde registrados na ANS, um por ID_PLANO: segmentação, cobertura, abrangência, contratação, financiamento, fator moderador, acomodação e situação.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_produtos"
     },
     {
       "atraso": null,
@@ -9122,6 +9166,17 @@
       "tabela": "controladas"
     },
     {
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "consultavel": false,
+      "frase": "Desde quando cada controlada ou coligada aparece no FRE da companhia: uma linha por par companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade, com o primeiro FRE em que o par aparece.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "controladas_primeiro_fre"
+    },
+    {
       "atraso": "O rótulo de um documento existe a partir do prazo",
       "consultavel": true,
       "frase": "Rótulo do modelo de atraso na entrega: uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou.",
@@ -9337,7 +9392,7 @@
     "fontes": 48,
     "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 167,
-    "tabelas_conferidas_em_curto": "20/11"
+    "tabelas": 172,
+    "tabelas_conferidas_em_curto": "25/11"
   }
 }
