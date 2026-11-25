@@ -387,6 +387,41 @@
       "uf"
     ]
   },
+  "public_procurement": {
+    "fontes": {
+      "bps": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
+      "comprasgov-sicaf": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)"
+    },
+    "campos": [
+      "ano_da_compra",
+      "ativo",
+      "catmat",
+      "cnae",
+      "cnpj_da_instituicao",
+      "cnpj_do_fabricante",
+      "data_da_compra",
+      "descricao_da_classe",
+      "descricao_da_natureza_juridica",
+      "descricao_do_cnae",
+      "descricao_do_pdm",
+      "descricao_do_porte",
+      "esfera",
+      "generico",
+      "habilitado_a_licitar",
+      "instituicao",
+      "item",
+      "municipio",
+      "natureza_juridica",
+      "porte",
+      "preco_total",
+      "preco_unitario",
+      "quantidade",
+      "registro_na_anvisa",
+      "tipo_de_compra",
+      "uf",
+      "unidade_de_fornecimento"
+    ]
+  },
   "sectors": {
     "fontes": {
       "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",

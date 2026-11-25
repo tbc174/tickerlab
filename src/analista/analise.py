@@ -45,7 +45,11 @@ LINHAS_POR_BLOCO = analise_.LINHAS_POR_BLOCO
 NAO_DISPONIVEL_NA_TELA = "não disponível nesta tela"
 # conjuntos que dependem do contrato da organização, que a tela não tem: nunca abrem aqui
 CONJUNTOS_FORA_DA_TELA = frozenset(
-    {tabelas_por_cnpj.INTEGRIDADE, tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA}
+    {
+        tabelas_por_cnpj.INTEGRIDADE,
+        tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA,
+        tabelas_por_cnpj.CONJUNTO_DE_COMPRAS_PUBLICAS,
+    }
 )
 CREDITO_NAO_DISPONIVEL = (
     "Fatos de crédito (dívida e pagamentos ao poder público): não disponível nesta tela"
@@ -107,6 +111,11 @@ TITULOS: dict[str, tuple[str, str]] = {
     tabelas_por_cnpj.REGISTROS_ADICIONAIS: (
         "Registros adicionais",
         "Anatel, ANM, ANP e MTE: processos, homologações, taxa por hectare, tancagem e PAT, como publicados.",
+    ),
+    # as compras públicas (linha 988) também são por contrato e não abrem na tela
+    tabelas_por_cnpj.COMPRAS_PUBLICAS: (
+        "Compras públicas",
+        "Compras.gov.br e Ministério da Saúde: o cadastro no SICAF e as compras no Banco de Preços em Saúde.",
     ),
 }
 

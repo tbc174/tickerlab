@@ -30,6 +30,7 @@ from src.api_externa.tabelas_por_cnpj import REGISTRO, TRATA_COMO_PESSOA
 from src.banco.coletas import (
     Marca,
     marca_da_fonte,
+    sai_no_conjunto_de_compras_publicas,
     sai_no_conjunto_de_integridade,
     sai_sem_trava_de_licenca,
 )
@@ -73,6 +74,7 @@ FINALIDADE_DO_CONJUNTO = {credito.CONJUNTO: Finalidade.CREDITO}
 ABRE_SO_NO_CONJUNTO = {
     "integrity": sai_no_conjunto_de_integridade,
     "extended_sources": sai_sem_trava_de_licenca,
+    "public_procurement": sai_no_conjunto_de_compras_publicas,
 }
 CONJUNTOS_SOB_CONTRATO = set(ABRE_SO_NO_CONJUNTO)
 SOB_CONTRATO = {

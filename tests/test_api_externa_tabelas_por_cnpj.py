@@ -320,7 +320,11 @@ def _regras(cheias=analise_de_mentira.DO_PERFIL) -> portao.Regras:
         e.tabela
         for e in tabelas_por_cnpj.REGISTRO
         if e.conjunto
-        not in (tabelas_por_cnpj.INTEGRIDADE, tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA)
+        not in (
+            tabelas_por_cnpj.INTEGRIDADE,
+            tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA,
+            tabelas_por_cnpj.CONJUNTO_DE_COMPRAS_PUBLICAS,
+        )
     }
     assert do_lote <= set(vigentes.prontidao_de_piloto)  # hoje as seis estão no piloto
     return dataclasses.replace(

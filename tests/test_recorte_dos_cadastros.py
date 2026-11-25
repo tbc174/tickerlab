@@ -44,6 +44,7 @@ NOMES_DE_MENTIRA = {
     "situacao_do_termo": "'ATIVO'",
     "processo": "'00000.000000/2020-00'",
     "nome_comercial": "'PRODUTO DE MENTIRA'",
+    "processo_de_compra": "'00000.000000/2025-00'",
 }
 VALORES_DE_MENTIRA = {
     "modalidade": "'Cooperativa médica'", "uf": "'SP'", "registrada_em": "DATE '2001-01-01'",

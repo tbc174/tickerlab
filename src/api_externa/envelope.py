@@ -50,6 +50,9 @@ ATRIBUICOES_DA_API = {
         "Fonte: Ministério do Trabalho e Emprego, Programa de Alimentação do Trabalhador (gov.br, CC BY-ND 3.0); "
         "registro como publicado, sem alteração"
     ),
+    # o conjunto das compras públicas (linha 988): a fonte citada em cada campo
+    "comprasgov-sicaf": "Fonte: Compras.gov.br, Dados Abertos (SEGES), cadastro de fornecedores do SICAF",
+    "bps": "Fonte: Ministério da Saúde, Banco de Preços em Saúde (BPS); compra como publicada, sem alteração",
 }
 
 

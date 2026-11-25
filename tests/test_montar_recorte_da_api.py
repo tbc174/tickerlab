@@ -60,7 +60,7 @@ def test_tabela_nova_que_a_porta_libera_nao_entra_sozinha():
     """Se a porta passar a mostrar uma tabela, alguém decide: degrau 2 ou fica em casa."""
     decididas = {
         *envio.DEGRAU_1, *envio.DEGRAU_2_ACRESCENTA, *envio.REDE_SO_PJ, *envio.FICAM_EM_CASA,
-        *envio.LOTE_1_DAS_300, *envio.AMPLIADAS,
+        *envio.LOTE_1_DAS_300, *envio.AMPLIADAS, *envio.COMPRAS_PUBLICAS,
     }  # fmt: skip
     novas = sorted(n for n in TABELAS if pode_consultar(n) and n not in decididas)
     assert novas == []

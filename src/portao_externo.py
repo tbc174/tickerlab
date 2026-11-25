@@ -42,6 +42,7 @@ from base.prontidao import (
 from src.api_externa.tabelas_por_cnpj import (
     LICENCA_DA_CVM,
     LICENCA_DAS_AGENCIAS,
+    LICENCA_DE_COMPRAS_PUBLICAS,
     LICENCA_DE_INTEGRIDADE,
     LICENCA_SEM_TRAVA,
     REGISTRO,
@@ -55,6 +56,7 @@ from src.banco.coletas import (
     Marca,
     marca_da_fonte,
     pode_usar,
+    sai_no_conjunto_de_compras_publicas,
     sai_no_conjunto_de_integridade,
     sai_sem_trava_de_licenca,
 )
@@ -251,6 +253,11 @@ _PROVA_SEM_TRAVA = (
     "ADR 0122, Emenda 2 (19-11-2026, risco de licença assumido): a licença da fonte não trava só no conjunto "
     "sem trava de licença, concedido por linha do contrato da organização; só a linha de pessoa jurídica, citando "
     "a fonte"
+)
+_PROVA_DE_COMPRAS_PUBLICAS = (
+    "ADR 0122, Emenda 2 (cada lote num conjunto próprio, desligado por padrão; linha 988, 25-11-2026): o SICAF e o "
+    "Banco de Preços em Saúde só no conjunto de compras públicas, concedido por linha do contrato da organização; só "
+    "a linha de pessoa jurídica, citando a fonte"
 )
 _PROVA_DA_ANP = (
     "ADR 0108 D2.2 e D3: dados abertos da ANP, CC BY, revenda com atribuição"
@@ -720,6 +727,7 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
                 LICENCA_DAS_AGENCIAS: _PROVA_DAS_AGENCIAS,
                 LICENCA_DE_INTEGRIDADE: _PROVA_DE_INTEGRIDADE,
                 LICENCA_SEM_TRAVA: _PROVA_SEM_TRAVA,
+                LICENCA_DE_COMPRAS_PUBLICAS: _PROVA_DE_COMPRAS_PUBLICAS,
             }[entrada.licenca],
         )
     ),
@@ -893,6 +901,10 @@ def _negacao_das_marcas(
     conjunto sem trava de licença (ADR 0122, Emenda 2), a fonte do lote dele não passa pelas marcas: marca, coleta e
     guarda e leitura dos termos são a licença da fonte, que lá não trava; a linha, a prontidão e a pessoa valem."""
     if sai_sem_trava_de_licenca(fonte, conjunto):
+        return None
+    if sai_no_conjunto_de_compras_publicas(
+        fonte, conjunto
+    ):  # o mesmo, no lote das compras públicas (linha 988)
         return None
     if marca_da_fonte(
         fonte

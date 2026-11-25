@@ -156,6 +156,8 @@ def test_cada_rota_por_cnpj_da_analise_tem_um_bloco_com_o_conjunto_dela():
         "integrity",
         # Anatel, ANM, ANP e o PAT do MTE, só com o conjunto no contrato (ADR 0122, Emenda 2)
         "extended_sources",
+        # o SICAF e o BPS, só com o conjunto de compras públicas no contrato (linha 988)
+        "public_procurement",
     }
 
 
