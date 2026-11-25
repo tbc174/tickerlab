@@ -240,14 +240,22 @@ class Porta:
         filtros: Mapping[str, object] | None,
         como_era_em: object,
         usadas: Sequence[str],
+        a_partir_de: Mapping[str, object] | None = None,
     ) -> tuple[str, dict[str, object]]:
-        """O `WHERE` (filtros de igualdade e "como era em") e os parâmetros dele; toda coluna usada
-        precisa existir (o nome nunca vira código: só os que a tabela tem passam)."""
+        """O `WHERE` (filtros de igualdade, `coluna >= valor` e "como era em") e os parâmetros dele; toda
+        coluna usada precisa existir (o nome nunca vira código: só os que a tabela tem passam)."""
         existentes = self.colunas(tabela, versao)
-        desconhecidas = [c for c in [*(filtros or {}), *usadas] if c not in existentes]
+        desconhecidas = [
+            c
+            for c in [*(filtros or {}), *(a_partir_de or {}), *usadas]
+            if c not in existentes
+        ]
         if desconhecidas:
             raise ValueError(f"{tabela}: coluna {desconhecidas[0]!r} não existe")
         condicoes, parametros = _igualdades(filtros or {}, "f")
+        for i, (coluna, valor) in enumerate((a_partir_de or {}).items()):
+            condicoes.append(f"{_nome(coluna)} >= $d{i}")
+            parametros[f"d{i}"] = _valor(valor)
         if como_era_em is not None:
             condicoes.append(condicao_como_era(existentes, tabela))
             parametros["dia"] = dia_de(como_era_em)
@@ -260,13 +268,16 @@ class Porta:
         como_era_em: object = None,
         filtros: Mapping[str, object] | None = None,
         colunas: Sequence[str] | None = None,
+        a_partir_de: Mapping[str, object] | None = None,
     ) -> pd.DataFrame:
         """A tabela (na versão maior pedida), com filtros de igualdade (`{coluna: valor}` ou
         `{coluna: [valores]}`) e, com `como_era_em`, só o que era público no dia e ainda valia.
-        `colunas` traz só essas (tabela grande: menos memória); o filtro vale do mesmo jeito."""
+        `colunas` traz só essas (tabela grande: menos memória); o filtro vale do mesmo jeito.
+        `a_partir_de` (`{coluna: valor}`) deixa só as linhas com `coluna >= valor` (os comparáveis leem o
+        DFP só dos exercícios recentes: o histórico inteiro de um grupo passa de 900 mil linhas)."""
         view = self._view(tabela, versao)
         onde, parametros = self._onde(
-            tabela, versao, filtros, como_era_em, colunas or []
+            tabela, versao, filtros, como_era_em, colunas or [], a_partir_de
         )
         selecao = "*" if colunas is None else ", ".join(_nome(c) for c in colunas)
         # numa foto de D, a revisão vista depois não entra e, de cada chave, fica a mais nova já pública
