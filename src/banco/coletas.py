@@ -325,6 +325,12 @@ CONJUNTO_SEM_TRAVA_DE_LICENCA = "extended_sources"
 FONTES_SEM_TRAVA_DE_LICENCA = frozenset(
     {"anatel-pados", "anatel-homologados", "anm-tah", "anp-tancagem", "mte-pat"}
 )
+# o conjunto das compras públicas (ADR 0122, Emenda 2: cada lote num conjunto próprio, desligado por padrão; linha
+# 988, 25/11/2026): o cadastro de fornecedores do SICAF ("comprasgov-sicaf-ativos" e "-inativos") e o Banco de Preços
+# em Saúde. Como no conjunto sem trava, a licença da fonte não barra só nele, só na API por chave e só para a
+# organização com o conjunto no contrato; fora dele, tudo como hoje
+CONJUNTO_DE_COMPRAS_PUBLICAS = "public_procurement"
+FONTES_DE_COMPRAS_PUBLICAS = frozenset({"comprasgov-sicaf", "bps"})
 A_CONFIRMAR = (
     "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
     "comercial até a resposta)"
@@ -1167,6 +1173,17 @@ def sai_sem_trava_de_licenca(fonte: str, conjunto: str) -> bool:
     prefixos = {"-".join(partes[:corte]) for corte in range(1, len(partes) + 1)}
     return conjunto == CONJUNTO_SEM_TRAVA_DE_LICENCA and bool(
         prefixos & FONTES_SEM_TRAVA_DE_LICENCA
+    )
+
+
+def sai_no_conjunto_de_compras_publicas(fonte: str, conjunto: str) -> bool:
+    """O pedido é do conjunto de compras públicas e a fonte (ou um prefixo dela: "comprasgov-sicaf-ativos" →
+    "comprasgov-sicaf") está no lote dele (ADR 0122, Emenda 2; linha 988): lá a licença da fonte não barra. Fora
+    disso, nada muda."""
+    partes = fonte.split("-")
+    prefixos = {"-".join(partes[:corte]) for corte in range(1, len(partes) + 1)}
+    return conjunto == CONJUNTO_DE_COMPRAS_PUBLICAS and bool(
+        prefixos & FONTES_DE_COMPRAS_PUBLICAS
     )
 
 

@@ -38,6 +38,7 @@ LICENCA_DA_CVM = "cvm"
 LICENCA_DAS_AGENCIAS = "agencias"
 LICENCA_DE_INTEGRIDADE = "integridade"
 LICENCA_SEM_TRAVA = "sem_trava"
+LICENCA_DE_COMPRAS_PUBLICAS = "compras_publicas"
 # a coluna que liga a tabela à empresa: a raiz do CNPJ (o fundo se confere depois pelo CNPJ inteiro)
 RAIZ = "cnpj_basico"
 CNPJ = "cnpj"
@@ -50,12 +51,17 @@ SANCOES = "sancoes"
 EMBARGOS_AMBIENTAIS = "embargos_ambientais"
 LISTA_SUJA = "lista_suja"
 REGISTROS_ADICIONAIS = "registros_adicionais"
+COMPRAS_PUBLICAS = "compras_publicas"
 # o conjunto do contrato das três (o mesmo nome de `src/banco/coletas.py::CONJUNTO_DE_INTEGRIDADE`; este módulo
 # só tem dados e não importa o banco)
 INTEGRIDADE = "integrity"
 # o conjunto sem trava de licença (o mesmo nome de `src/banco/coletas.py::CONJUNTO_SEM_TRAVA_DE_LICENCA`; ADR 0122,
 # Emenda 2): Anatel, ANM (TAH), ANP (tancagem) e o PAT do MTE, só para a organização com ele no contrato
 SEM_TRAVA_DE_LICENCA = "extended_sources"
+# o conjunto das compras públicas (o mesmo nome de `src/banco/coletas.py::CONJUNTO_DE_COMPRAS_PUBLICAS`; ADR 0122,
+# Emenda 2; linha 988): o cadastro de fornecedores do SICAF e o Banco de Preços em Saúde, só para a organização com
+# ele no contrato
+CONJUNTO_DE_COMPRAS_PUBLICAS = "public_procurement"
 # a marca de pessoa das tabelas de integridade (`base/sancoes.py`, `base/ibama_embargos.py`, `base/mte_lista_suja.py`)
 TRATA_COMO_PESSOA = "trata_como_pessoa"
 
@@ -508,6 +514,75 @@ REGISTRO: tuple[TabelaPorCnpj, ...] = (
             "Programa de Alimentação do Trabalhador (PAT) do Ministério do Trabalho e Emprego: o registro da empresa como beneficiária, facilitadora ou fornecedora, com a situação e os trabalhadores atendidos; cada registro como o MTE publicou."
         ),
         ordem=("registro_no_pat",),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    # as compras públicas (linha 988): a cópia reduzida já tira o empresário individual e a pessoa física que o
+    # próprio SICAF aponta e, do BPS, o número do processo de compra (`base/recorte_dos_cadastros.py`)
+    TabelaPorCnpj(
+        tabela="comprasgov_sicaf",
+        fontes=("comprasgov-sicaf",),
+        conjunto=CONJUNTO_DE_COMPRAS_PUBLICAS,
+        onde_sai=ANALISE,
+        bloco=COMPRAS_PUBLICAS,
+        chave="cadastro_no_sicaf",
+        campos=(
+            "ativo",
+            "habilitado_a_licitar",
+            "cnae",
+            "descricao_do_cnae",
+            "natureza_juridica",
+            "descricao_da_natureza_juridica",
+            "porte",
+            "descricao_do_porte",
+            "municipio",
+            "uf",
+        ),
+        data_do_fato="disponivel_em",
+        licenca=LICENCA_DE_COMPRAS_PUBLICAS,
+        cobertura=(
+            "Cadastro de fornecedores do governo federal (SICAF) nos dados abertos do Compras.gov.br: se o "
+            "fornecedor está ativo e habilitado a licitar, com a atividade, a natureza jurídica, o porte e o "
+            "município; cada registro como o Compras.gov.br publicou."
+        ),
+        ordem=("uf", "municipio"),
+        marca_de_pessoa=TRATA_COMO_PESSOA,
+    ),
+    TabelaPorCnpj(
+        tabela="bps_compras",
+        fontes=("bps",),
+        conjunto=CONJUNTO_DE_COMPRAS_PUBLICAS,
+        onde_sai=ANALISE,
+        bloco=COMPRAS_PUBLICAS,
+        chave="compras_no_bps",
+        campos=(
+            "data_da_compra",
+            "ano_da_compra",
+            "instituicao",
+            "cnpj_da_instituicao",
+            "esfera",
+            "uf",
+            "municipio",
+            "catmat",
+            "item",
+            "descricao_do_pdm",
+            "descricao_da_classe",
+            "generico",
+            "registro_na_anvisa",
+            "cnpj_do_fabricante",
+            "tipo_de_compra",
+            "unidade_de_fornecimento",
+            "quantidade",
+            "preco_unitario",
+            "preco_total",
+        ),
+        data_do_fato="data_da_compra",
+        licenca=LICENCA_DE_COMPRAS_PUBLICAS,
+        cobertura=(
+            "Banco de Preços em Saúde (BPS) do Ministério da Saúde: as compras de medicamentos e produtos de saúde "
+            "em que a empresa é a fornecedora, com a instituição compradora, o item, a quantidade e o preço; cada "
+            "compra como o Ministério da Saúde publicou."
+        ),
+        ordem=("item",),
         marca_de_pessoa=TRATA_COMO_PESSOA,
     ),
 )
