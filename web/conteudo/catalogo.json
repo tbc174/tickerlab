@@ -2475,18 +2475,6 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 5
-    },
-    {
-      "historico_desde": "2026-10-14",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "modulos": [
         "governo_e_sancoes"
@@ -2495,6 +2483,18 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 5
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
     },
     {
       "historico_desde": "2026-10-14",
@@ -2964,7 +2964,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 26,
-    "tabelas": 137,
+    "tabelas": 136,
     "temas": [
       {
         "chave": "cvm",
@@ -3061,8 +3061,8 @@
           "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 31,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 31 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 30,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 30 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3163,7 +3163,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 47
+      "tabelas": 46
     },
     {
       "chave": "credito_e_fidc",
@@ -8457,17 +8457,6 @@
     {
       "atraso": null,
       "consultavel": false,
-      "frase": "Planos de saúde registrados na ANS, um por ID_PLANO: segmentação, cobertura, abrangência, contratação, financiamento, fator moderador, acomodação e situação.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-25",
-      "modulo": "governo_e_sancoes",
-      "orgao": "ANS",
-      "situacao": "licenciada",
-      "tabela": "ans_produtos"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
       "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-16",
@@ -9286,7 +9275,7 @@
     "fontes": 48,
     "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 168,
+    "tabelas": 167,
     "tabelas_conferidas_em_curto": "20/11"
   }
 }
