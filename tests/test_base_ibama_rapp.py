@@ -197,6 +197,31 @@ def test_a_outra_ponta_com_digito_errado_fica_vazia_e_e_contada_a_parte_do_cpf()
     assert contagem["outra_ponta_pessoa_fisica"] == 0
 
 
+@pytest.mark.parametrize(
+    "forma",
+    [
+        lambda c: f"{c[:3]}.{c[3:6]}.{c[6:9]}-{c[9:]}",
+        lambda c: f" {c[:3]} {c[3:6]} {c[6:]} ",
+        lambda c: f"{c[:5]}x{c[5:]}",
+    ],
+    ids=["pontuado", "com_espacos", "com_letra"],
+)
+def test_cpf_em_qualquer_forma_nunca_entra_em_nenhuma_ponta(forma):
+    cpf = forma(CPF_DE_TESTE)
+    tabela, contagem = rapp.ler(
+        rapp.RESIDUOS_DESTINADOS,
+        _arquivo(
+            rapp.RESIDUOS_DESTINADOS,
+            {"CNPJ do destinador": cpf},
+            {"CNPJ do gerador do resíduo": cpf},
+        ),
+    )
+    assert contagem["pessoa_fisica"] == 1
+    assert contagem["outra_ponta_pessoa_fisica"] == 1
+    assert len(tabela) == 1 and tabela["cnpj_gerador"].isna().all()
+    _sem_nada_de_pessoa_nem_do_que_sai(tabela)
+
+
 def test_duas_declaracoes_iguais_continuam_duas_com_chaves_diferentes_e_estaveis():
     arquivo = _arquivo(rapp.EMISSOES, {}, {})
     tabela, _ = rapp.ler(rapp.EMISSOES, arquivo)
