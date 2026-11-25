@@ -61,6 +61,9 @@
         "items": {
          "enum": [
           "micro",
+          "pequena",
+          "demais",
+          "nao_informado",
           "small",
           "other",
           "not_informed"
@@ -74,7 +77,7 @@
        }
       ],
       "default": null,
-      "description": "Porte na Receita: micro, small (pequeno), other (os demais; a Receita não tem 'médio' nem 'grande'), not_informed.",
+      "description": "Porte na Receita: micro, pequena, demais (os demais; a Receita não tem 'médio' nem 'grande') ou nao_informado. Os nomes da API (small, other, not_informed) também valem.",
       "title": "Porte"
      },
      "natureza_juridica": {

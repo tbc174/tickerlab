@@ -32,17 +32,25 @@ from tickerlab.configuracao import (
     endereco_da_api,
     gravar_chave,
 )
-from tickerlab.consultas import faixa_inteira, maximo, traducao, valores
+from tickerlab.consultas import (
+    compilado,
+    faixa_inteira,
+    faixa_real,
+    maximo,
+    traducao,
+    valores,
+)
 from tickerlab.instrucoes_montadas import ARQUIVOS, montar
 
 # pontuação que o CNPJ costuma trazer; o resto (letras do CNPJ alfanumérico, números) fica
 PONTUACAO_DO_CNPJ = re.compile(r"[.\-/\s]")
 FORMATO_DO_CNPJ = re.compile(r"[0-9A-Z]{14}")
-# a chave do setor como a API a dá (`tickerlab setor` lista); nada além disso chega ao endereço do pedido
-FORMATO_DO_SETOR = re.compile(r"[a-z0-9_]{1,40}")
+# a chave do setor como a API a dá (`tickerlab setor` lista), o mesmo formato do conector; nada além disso chega
+# ao endereço do pedido
+FORMATO_DO_SETOR = compilado("chave_do_setor")
 # o nome que a API sugere para o deck; qualquer outro (ou com pasta dentro) é ignorado
 NOME_DO_DECK = re.compile(
-    r'filename="(tickerlab-(?:empresa-\d{14}|setor-[a-z0-9_]{1,40})\.pptx)"'
+    rf'filename="(tickerlab-(?:empresa-\d{{14}}|setor-{FORMATO_DO_SETOR.pattern})\.pptx)"'
 )
 # os filtros da busca (`prospectar`): o formato de cada um, conferido antes de gastar um pedido
 # o CNAE: a subclasse inteira (7 dígitos) ou um prefixo (divisão, grupo, classe)
@@ -94,13 +102,17 @@ def _cnpj(_contexto: click.Context, _parametro: click.Parameter, valor: str) -> 
 def _setor(
     _contexto: click.Context, _parametro: click.Parameter, valor: str | None
 ) -> str | None:
-    """A chave do setor em letras minúsculas, números e `_`; a lista certa sai de `tickerlab setor`."""
-    if valor is not None and not FORMATO_DO_SETOR.fullmatch(valor):
+    """A chave do setor em letras minúsculas, números e `_` (o hífen vira `_`, como no conector); a lista certa sai
+    de `tickerlab setor`."""
+    if valor is None:
+        return None
+    chave = valor.replace("-", "_")
+    if not FORMATO_DO_SETOR.fullmatch(chave):
         raise click.BadParameter(
             "a chave do setor é como `eletricas` ou `saude_suplementar`; veja a lista com `tickerlab setor`.",
             param_hint="CHAVE",
         )
-    return valor
+    return chave
 
 
 def _codigos(
@@ -664,7 +676,7 @@ def demonstracoes(
 @opcao_como_era
 @click.option(
     "--retorno-suposto",
-    type=float,
+    type=faixa_real("fundo", "--retorno-suposto"),
     metavar="0.12",
     help="Retorno bruto ao ano que você supõe, em fração (0.12 = 12%), para a conta do custo da taxa.",
 )
