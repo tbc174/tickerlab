@@ -2009,11 +2009,20 @@ class ConectarV1(BaseModel):
     limites: list[str]
 
 
+class PontaDoSetorV1(PontaDoVinculoV1):
+    """A empresa do setor onde o movimento aconteceu. Quando ela está baixada e a base diz quando e por que, vêm
+    também a situação, o dia da baixa e o código do motivo (como a Receita publica), cada um com fonte e dia."""
+
+    situacao_da_empresa: CampoComFonteV1 | None = None
+    baixada_em: CampoComFonteV1 | None = None
+    motivo_da_baixa: CampoComFonteV1 | None = None
+
+
 class ExemploDeProvaV1(BaseModel):
     """Um exemplo de prova: a empresa do setor onde o movimento aconteceu, a UF dela e os campos do sinal
     (data de entrada, tipo, participação...), cada um com fonte e dia. `ainda_socio` só vale para a entrada."""
 
-    empresa_do_setor: PontaDoVinculoV1
+    empresa_do_setor: PontaDoSetorV1
     uf: str | None
     ainda_socio: bool | None = None
     campos: dict[str, CampoComFonteV1]
@@ -2070,7 +2079,12 @@ def _exemplo_do_analista(exemplo: dict) -> ExemploDeProvaV1:
         if nome not in ("empresa_do_setor", "uf", "ainda_socio")
     }
     return ExemploDeProvaV1(
-        empresa_do_setor=_ponta_do_analista(alvo),
+        empresa_do_setor=PontaDoSetorV1(
+            **_ponta_do_analista(alvo).model_dump(),
+            situacao_da_empresa=alvo.get("situacao_da_empresa"),
+            baixada_em=alvo.get("baixada_em"),
+            motivo_da_baixa=alvo.get("motivo_da_baixa"),
+        ),
         uf=exemplo.get("uf"),
         ainda_socio=exemplo.get("ainda_socio"),
         campos=campos,  # type: ignore[arg-type]

@@ -220,6 +220,10 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "desde": "since",
     "empresas_ativas": "active_companies",
     "empresa_do_setor": "sector_company",
+    # buyers: a baixa da empresa onde a entrada aconteceu (linha 1042): situação, dia da baixa e código do motivo
+    "situacao_da_empresa": "company_status",
+    "baixada_em": "closed_on",
+    "motivo_da_baixa": "closure_reason_code",
     "data_entrada": "entry_date",
     "ainda_socio": "stake_still_held",
     "entrou_como_socio": "took_stake",
