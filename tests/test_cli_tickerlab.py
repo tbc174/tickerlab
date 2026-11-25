@@ -1112,6 +1112,7 @@ def test_instrucoes_do_agente(rodar):
         "consumo",
         "deck",
         "credito",
+        "de-onde-vem",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
         assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
@@ -2786,5 +2787,111 @@ def test_credito_sem_o_conjunto_sai_com_o_codigo_de_nada_disponivel(rodar, chave
 def test_a_ajuda_do_credito_diz_o_que_nao_e(rodar):
     ajuda = rodar("credito", "--help").stdout.lower()
     assert "não é rating" in ajuda and "scr" in ajuda
+    for palavra in ("recomend", "oportunidade", "r$", "garant"):
+        assert palavra not in ajuda, palavra
+
+
+# ---------------------------------------------------------------- de-onde-vem (linha 980, onda 2, PR 3)
+
+
+def _catalogo_de_mentira() -> dict:
+    return {
+        "datasets": [
+            {
+                "dataset": "profiles",
+                "purpose": "analysis",
+                "fields": [{"field": "legal_name", "source": "rfb-cnpj"}],
+            },
+            {
+                "dataset": "credit",
+                "purpose": "credit",
+                "fields": [
+                    {"field": "fidcs_as_assignor", "source": "cvm-fidc"},
+                    {"field": "legal_name", "source": "rfb-cnpj", "pilot": True},
+                ],
+            },
+        ],
+        "sources": [
+            {"source": "rfb-cnpj", "license": "licença X", "attribution": "Fonte: X."},
+            {"source": "cvm-fidc", "license": "licença Y", "attribution": "Fonte: Y."},
+        ],
+        "pilot_notice": FRASE_DE_PILOTO,
+    }
+
+
+def test_de_onde_vem_pede_so_o_catalogo(rodar, chave):
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido):
+        pedidos.append(pedido)
+        return httpx.Response(200, json=_catalogo_de_mentira())
+
+    resultado = rodar(
+        "de-onde-vem", "credit", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    assert pedido.url.path == "/data/v1/catalog"
+    assert not pedido.url.params
+
+
+def test_de_onde_vem_de_um_conjunto_mostra_campos_fontes_e_piloto(rodar, chave):
+    resultado = rodar(
+        "de-onde-vem",
+        "CREDIT",
+        http=_resposta_fixa(_catalogo_de_mentira()),
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == 0, resultado.output
+    texto = resultado.stdout
+    assert "fidcs_as_assignor" in texto and "cvm-fidc" in texto
+    assert "licença Y" in texto and "Fonte: Y." in texto
+    assert "credit.legal_name" in texto  # o campo de piloto, pelo nome
+    assert texto.count(FRASE_DE_PILOTO) == 1  # o aviso uma vez só
+    assert "não traz o significado de cada campo" in texto  # o limite do catálogo
+
+
+def test_de_onde_vem_de_um_campo_lista_cada_conjunto_que_o_tem(rodar, chave):
+    resultado = rodar(
+        "de-onde-vem", "legal_name", "--json",
+        http=_resposta_fixa(_catalogo_de_mentira()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    corpo = json.loads(resultado.stdout)
+    assert corpo["kind"] == "field"
+    assert [m["dataset"] for m in corpo["matches"]] == ["profiles", "credit"]
+    assert corpo["pilot_fields"] == ["credit.legal_name"]
+
+
+def test_de_onde_vem_sem_nada_com_esse_nome_sai_com_o_codigo_de_nada_disponivel(
+    rodar, chave
+):
+    resultado = rodar(
+        "de-onde-vem",
+        "nao_existe",
+        http=_resposta_fixa(_catalogo_de_mentira()),
+        **_com_chave(chave),
+    )
+    assert resultado.exit_code == 5
+    assert "tickerlab catalogo" in resultado.output
+
+
+def test_de_onde_vem_com_nome_mal_escrito_nao_pede_nada(rodar, chave):
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido):
+        pedidos.append(pedido)
+        return httpx.Response(200, json=_catalogo_de_mentira())
+
+    resultado = rodar(
+        "de-onde-vem", "a/../b", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 2
+    assert not pedidos
+
+
+def test_a_ajuda_do_de_onde_vem_diz_o_que_nao_traz(rodar):
+    ajuda = " ".join(rodar("de-onde-vem", "--help").stdout.lower().split())
+    assert "não traz" in ajuda and "dado de empresa" in ajuda
     for palavra in ("recomend", "oportunidade", "r$", "garant"):
         assert palavra not in ajuda, palavra

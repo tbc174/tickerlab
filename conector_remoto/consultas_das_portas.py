@@ -756,12 +756,11 @@ CONSULTAS: tuple[Consulta, ...] = (
             "a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto, para saber de onde veio um número antes de citá-lo; não traz dado de empresa"
         ),
         ferramentas=(_DE_ONDE_VEM,),
+        comandos=("de-onde-vem",),
         fora_de_uma_porta={
-            "cli": _LINHA_980,
             "api": "lê o `GET /catalog` (a consulta `catalogo`); não é rota própria",
         },
         na_pagina={
-            "cli": "só no conector",
             "api": "só no conector",
         },
     ),

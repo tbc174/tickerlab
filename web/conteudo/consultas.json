@@ -266,7 +266,9 @@
     },
     "chave": "de_onde_vem",
     "cli": {
-      "frase": "só no conector"
+      "nomes": [
+        "tickerlab de-onde-vem"
+      ]
     },
     "conector": {
       "nomes": [
