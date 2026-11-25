@@ -165,6 +165,37 @@ def test_datas_das_ofertas_nunca_adiantam():
 
 
 # --- carga ------------------------------------------------------------------------------------------
+ATLAS = "22.875.049/0001-20"  # a raiz está na lista de empresas da Receita do ambiente
+DE_MEI = "11.222.333/0001-81"  # a raiz não está: MEI ou sem Receita
+
+
+def _com_devedores() -> bytes:
+    """O ZIP de ofertas com dois CNPJ citados como devedores no 1º requerimento da 160."""
+    with zipfile.ZipFile(io.BytesIO(OFERTAS)) as original:
+        arquivos = {n: original.read(n) for n in original.namelist()}
+    linhas = arquivos[ofertas.RESOLUCAO_160].decode("latin-1").splitlines(keepends=True)
+    cabecalho = linhas[0].rstrip("\r\n").split(";")
+    campos = linhas[1].rstrip("\r\n").split(";")
+    campos[cabecalho.index("Identificacao_devedores_coobrigados")] = (
+        f"Devedora {ATLAS}, e outra {DE_MEI}"
+    )
+    linhas[1] = ";".join(campos) + "\r\n"
+    arquivos[ofertas.RESOLUCAO_160] = "".join(linhas).encode("latin-1")
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as novo:
+        for nome, conteudo in arquivos.items():
+            novo.writestr(nome, conteudo)
+    return saida.getvalue()
+
+
+def _gravar_a_lista_de_empresas(base) -> None:
+    """As duas tabelas da Receita que dizem quem é empresa (a raiz do ATLAS está nas duas)."""
+    for tabela in ("cnpj_empresas_pj", "cnpj_estabelecimentos_pj"):
+        pasta = base / tabela
+        pasta.mkdir(parents=True)
+        pd.DataFrame({"cnpj_basico": ["22875049"]}).to_parquet(pasta / "22.parquet")
+
+
 @pytest.fixture
 def ambiente(tmp_path, monkeypatch):
     url = f"sqlite:///{(tmp_path / 'b.sqlite').as_posix()}"
@@ -175,7 +206,7 @@ def ambiente(tmp_path, monkeypatch):
     quando = datetime(2026, 10, 15, 5, tzinfo=UTC)
     with criar_engine(url).begin() as c:
         for fonte, endereco, conteudo in (
-            (ofertas.FONTE, ofertas.URL, OFERTAS),
+            (ofertas.FONTE, ofertas.URL, _com_devedores()),
             (carga.FONTE_DO_FRE, URL_DO_FRE, FRE),
         ):
             caminho = acervo.guardar_original(fonte, endereco, conteudo, quando)
@@ -188,6 +219,7 @@ def ambiente(tmp_path, monkeypatch):
                 agora=quando,
                 caminho_do_original=caminho,
             )
+    _gravar_a_lista_de_empresas(tmp_path / "acervo" / "base")
     return tmp_path / "acervo" / "base"
 
 
@@ -198,6 +230,7 @@ def test_carga_grava_cada_tabela_com_manifesto_e_linhagem(ambiente):
     arquivos = [
         ambiente / "ofertas" / "antigas.parquet",
         ambiente / "ofertas" / "resolucao_160.parquet",
+        ambiente / "ofertas" / "cnpj_dos_devedores.parquet",
         *(ambiente / pasta / "2024.parquet" for pasta in carga.TABELAS_DO_FRE),
     ]
     with criar_engine().connect() as c:
@@ -213,6 +246,28 @@ def test_carga_grava_cada_tabela_com_manifesto_e_linhagem(ambiente):
     assert (ambiente / "fre_conselho" / "2024.json").read_text(
         encoding="utf-8"
     ) == antes
+
+
+def test_carga_dos_devedores_so_grava_o_cnpj_de_empresa(ambiente):
+    assert carga.main(["--base", str(ambiente)]) == 0
+    gravada = pd.read_parquet(ambiente / "ofertas" / "cnpj_dos_devedores.parquet")
+    assert list(gravada["cnpj"]) == [ATLAS]  # o MEI, sem a raiz na lista, ficou de fora
+    manifesto = json.loads(
+        (ambiente / "ofertas" / "cnpj_dos_devedores.json").read_text(encoding="utf-8")
+    )
+    assert manifesto["origens"][0]["raizes_sha256"]  # a lista nova refaz a tabela
+
+
+def test_sem_a_lista_de_empresas_os_devedores_nao_sao_gravados_e_o_resto_segue(
+    ambiente, caplog
+):
+    import shutil
+
+    shutil.rmtree(ambiente / "cnpj_empresas_pj")
+    assert carga.main(["--base", str(ambiente)]) == 1
+    assert not (ambiente / "ofertas" / "cnpj_dos_devedores.parquet").exists()
+    assert (ambiente / "ofertas" / "resolucao_160.parquet").exists()
+    assert "lista de empresas" in caplog.text
 
 
 def test_sem_a_versao_do_codigo_nao_grava(ambiente, monkeypatch):
