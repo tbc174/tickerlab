@@ -1,7 +1,8 @@
 """Licenças e registros por CNPJ (linha 525 da fila; Ficha Clara, etapa 2b): os cadastros que a coleta
 da etapa 2a guarda (`base/arquivo/fontes.py`) em seis tabelas, uma por órgão, com as mesmas colunas:
 `anvisa_registros` (AFE, boas práticas e produtos registrados), `antt_rntrc` (transportadores de
-carga), `mapa_sipeagro` (produto veterinário e aviação agrícola), `anatel_outorgas`, `anm_titulos`
+carga), `mapa_sipeagro` (produto veterinário e aviação agrícola, e os cinco arquivos que mascaram o
+CNPJ, ligados pelo registro), `anatel_outorgas`, `anm_titulos`
 (Cadastro Mineiro) e `ancine_agentes`. A ficha da empresa lê todas do mesmo jeito.
 
 Lê os arquivos que o arquivista já guardou (não baixa nada); cada um é um **retrato** do cadastro no
@@ -18,6 +19,17 @@ por valor diferente de cada registro; o que some do arquivo ganha `consta=False`
   (concessão, publicação, vencimento, cancelamento) ficam nas colunas delas, para ler, nunca como
   `disponivel_em`.
 
+- **SIPEAGRO ligado pelo registro** (linha 1021): fertilizantes, qualidade vegetal, vinhos e bebidas e
+  alimentação animal escrevem o documento mascarado (`**.***.333/***-**`: só 3 dígitos da raiz) e a
+  multiplicação animal nem o traz. A linha só entra quando o número do registro do estabelecimento
+  casa com **um único** CNPJ dos dois arquivos de CNPJ inteiro **e** os 3 dígitos à vista batem com a
+  raiz dele (sem documento: a UF e o município batem). Nunca pelo nome; registro sem par, com CNPJs
+  diferentes, CPF mascarado e máscara sem dígito ficam de fora e só entram na contagem
+  (`sem_par`, `registro_ambiguo`, `digitos_nao_batem`, `local_nao_bate`, `documento_sem_digitos`).
+  A coluna `cnpj_ligado_por` diz como o CNPJ veio (`arquivo` ou `registro_mapa`). Cada retrato usa só
+  os arquivos de CNPJ inteiro que já estavam no acervo no dia dele. Limite: se só o arquivo de CNPJ
+  inteiro mudar, o retrato mascarado igual ao anterior é pulado (`refazer` relê tudo).
+
 Limites conhecidos: o arquivista começou a guardar estes cadastros em 29/10/2026, então nada aqui vale
 antes do primeiro retrato; a situação "Sim/Não" do Cadastro Mineiro fica de fora (o sentido não está
 no dicionário da ANM); vários registros da mesma chave (a linha repetida do SIPEAGRO) ficam com o
@@ -33,9 +45,9 @@ duas ficam, com a identidade na chave (`identidade_em_conflito`); linha sem o ti
 """
 
 import io
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -45,6 +57,7 @@ import sqlalchemy as sa
 from base import cnpj as cnpjs
 from base import retratos as motor
 from base.arquivo.fontes import ARQUIVOS_DO_CADASTRO_MINEIRO
+from base.arquivo.obter import PADRAO_DA_MASCARA_DO_CNPJ
 from base.parquet import LINHAGEM
 from src.versao_do_codigo import versao_do_codigo
 
@@ -92,6 +105,20 @@ COLUNAS = [
 ]
 ORDEM = ["id_na_fonte", "visto_em"]
 
+# SIPEAGRO (linha 1021): só `mapa_sipeagro` diz como o CNPJ de cada linha foi obtido
+COLUNA_DA_LIGACAO = "cnpj_ligado_por"
+LIGADO_PELO_ARQUIVO = "arquivo"  # o CNPJ inteiro estava no arquivo
+LIGADO_PELO_REGISTRO = "registro_mapa"  # o CNPJ veio do número do registro, conferido
+TABELA_COM_LIGACAO = "mapa_sipeagro"
+DIGITOS_DA_RAIZ_A_VISTA = slice(5, 8)  # `**.***.333/***-**`: os dígitos 6 a 8 da raiz
+_DEPOIS_DA_RAIZ = COLUNAS.index("cnpj_basico") + 1
+COLUNAS_COM_LIGACAO = [
+    *COLUNAS[:_DEPOIS_DA_RAIZ],
+    COLUNA_DA_LIGACAO,
+    *COLUNAS[_DEPOIS_DA_RAIZ:],
+]
+VALORES_COM_LIGACAO = [*VALORES, COLUNA_DA_LIGACAO]
+
 Colunas = dict[
     str, tuple[str, ...]
 ]  # nossa coluna -> as da fonte, e vale a 1ª que não vier vazia
@@ -116,6 +143,9 @@ class Cadastro:
     identidade: tuple[str, ...] = ()
     # as linhas repetidas da chave viram uma só sem depender da ordem do arquivo, com todas as situações
     situacoes_juntas: bool = False
+    # a fonte mascara o CNPJ (ou nem traz documento): o CNPJ vem do número do registro, conferido com os
+    # dígitos à vista (ou com a UF e o município, se não há documento), nunca pelo nome (linha 1021)
+    ligado_pelo_registro: bool = False
 
 
 _AFE: Colunas = {
@@ -195,6 +225,17 @@ _SIPEAGRO: Colunas = {
     "situacao": ("STATUS_DO_REGISTRO", "STATUS_REGISTRO_ESTABELECIMENTO"),
     "uf": ("UNIDADE_DA_FEDERACAO",),
     "municipio": ("MUNICIPIO",),
+}
+# os arquivos que mascaram o CNPJ: a UF e o status mudam de nome de um para outro
+_SIPEAGRO_MASCARADO: Colunas = {
+    **_SIPEAGRO,
+    "situacao": (*_SIPEAGRO["situacao"], "STATUS_REGISTRO"),
+    "uf": (*_SIPEAGRO["uf"], "UF"),
+}
+# a multiplicação animal tem uma linha por espécie
+_SIPEAGRO_MULTIPLICACAO: Colunas = {
+    **_SIPEAGRO_MASCARADO,
+    "complemento": ("CARACTERISTICA_ADICIONAL", "ESPECIE"),
 }
 # uma linha por serviço notificado dentro de cada outorga
 _ANATEL: Colunas = {
@@ -322,6 +363,47 @@ CADASTROS: dict[str, Cadastro] = {
             codificacao=UTF8,
             url_termina_em="/sipeagroaviacaoagricolaregistro.csv",
         ),
+        *(
+            Cadastro(
+                nome,
+                "mapa-sipeagro",
+                TABELA_COM_LIGACAO,
+                documento,
+                colunas,
+                ("registro", "categoria", "descricao", "complemento"),
+                formatos=(),
+                codificacao=UTF8,
+                url_termina_em=f"/{arquivo}.csv",
+                ligado_pelo_registro=True,
+            )
+            for nome, arquivo, documento, colunas in (
+                ("fertilizante", "sipeagrofertilizante", "CNPJ", _SIPEAGRO_MASCARADO),
+                (
+                    "qualidade_vegetal",
+                    "sipeagroqualidadevegetal",
+                    "CPF_CNPJ",
+                    _SIPEAGRO_MASCARADO,
+                ),
+                (
+                    "vinhos_e_bebidas",
+                    "sipeagrovinhosebebidas",
+                    "CPF_CNPJ",
+                    _SIPEAGRO_MASCARADO,
+                ),
+                (
+                    "alimentacao_animal",
+                    "sipeagroalimentacaoanimal",
+                    "CPF_CNPJ",
+                    _SIPEAGRO_MASCARADO,
+                ),
+                (
+                    "multiplicacao_animal",
+                    "sipeagromultiplicacaoanimal",
+                    "",
+                    _SIPEAGRO_MULTIPLICACAO,
+                ),
+            )
+        ),
         Cadastro(
             "outorgas",
             "anatel-outorgas",
@@ -356,6 +438,8 @@ CADASTROS: dict[str, Cadastro] = {
     )
 }
 TABELAS = tuple(dict.fromkeys(c.tabela for c in CADASTROS.values()))
+# os arquivos do SIPEAGRO que trazem o CNPJ inteiro: de onde vêm os registros para ligar os outros
+DIRETOS_DO_SIPEAGRO = ("produto_veterinario", "aviacao_agricola")
 
 
 def _ler_csv(caminho: Path, cadastro: Cadastro) -> pd.DataFrame:
@@ -363,7 +447,9 @@ def _ler_csv(caminho: Path, cadastro: Cadastro) -> pd.DataFrame:
     lidas = {
         motor.nome_da_coluna(c)
         for c in (
-            cadastro.cnpj_em,
+            *(
+                [cadastro.cnpj_em] if cadastro.cnpj_em else []
+            ),  # o arquivo pode nem ter documento
             *(f for fs in cadastro.colunas.values() for f in fs),
         )
     }
@@ -402,21 +488,171 @@ def _datas(texto: pd.Series, formatos: tuple[str, ...]) -> pd.Series:
     return datas
 
 
-def ler_retrato(
+@dataclass(frozen=True)
+class RegistrosDoMapa:
+    """Os registros dos arquivos do SIPEAGRO de CNPJ inteiro, para ligar os que mascaram o CNPJ.
+
+    `por_registro`: uma linha por número de registro (índice), com o `cnpj` de 14 caracteres, a raiz
+    (`cnpj_basico`) e `ambiguo` (o mesmo registro com CNPJs diferentes: nunca liga). `locais`: os
+    pares registro + UF + município (sem acento nem maiúscula) de cada estabelecimento."""
+
+    por_registro: pd.DataFrame
+    locais: frozenset[str]
+
+
+SEM_REGISTROS = RegistrosDoMapa(
+    pd.DataFrame(
+        {"cnpj": [], "cnpj_basico": [], "ambiguo": []},
+        index=pd.Index([], dtype=object),
+    ),
+    frozenset(),
+)
+
+
+def _local(registro: pd.Series, uf: pd.Series, municipio: pd.Series) -> pd.Series:
+    """`registro|UF|MUNICIPIO` normalizado: o mesmo estabelecimento escrito de dois jeitos dá o mesmo texto."""
+    return (
+        registro.fillna("")
+        + motor.SEPARADOR_DA_CHAVE
+        + uf.fillna("").str.upper()
+        + motor.SEPARADOR_DA_CHAVE
+        + municipio.fillna("").map(motor.nome_da_coluna)
+    )
+
+
+def _registros_juntos(diretos: Iterable[pd.DataFrame]) -> pd.DataFrame:
+    """As linhas com registro e CNPJ dos retratos já lidos de CNPJ inteiro, com o CNPJ de 14 caracteres."""
+    juntos = pd.concat(
+        [d[["registro", "cnpj", "cnpj_basico", "uf", "municipio"]] for d in diretos],
+        ignore_index=True,
+    ).dropna(subset=["registro", "cnpj"])
+    return juntos.assign(cnpj=juntos["cnpj"].map(cnpjs.completo))
+
+
+def _mapa_dos_registros(juntos: pd.DataFrame) -> RegistrosDoMapa:
+    if juntos.empty:
+        return SEM_REGISTROS
+    por_registro = juntos.groupby("registro").agg(
+        cnpj=("cnpj", "first"),
+        cnpj_basico=("cnpj_basico", "first"),
+        ambiguo=("cnpj", lambda cnpjs_do_registro: cnpjs_do_registro.nunique() > 1),
+    )
+    locais = _local(juntos["registro"], juntos["uf"], juntos["municipio"])
+    return RegistrosDoMapa(por_registro, frozenset(locais))
+
+
+def registros_do_mapa(
+    diretos: Iterable[pd.DataFrame],
+    anteriores: Iterable[Iterable[pd.DataFrame]] = (),
+) -> RegistrosDoMapa:
+    """Os registros que os retratos já lidos de CNPJ inteiro (`ler_retrato`) trazem.
+
+    O mesmo número de registro com CNPJs diferentes (nos dois arquivos, ou no mesmo) vira `ambiguo`:
+    o registro identifica um estabelecimento, e se não identifica um só, nenhum lado vale.
+
+    `anteriores`: retratos mais velhos dos mesmos arquivos, do mais novo para o mais velho. O registro
+    identifica o estabelecimento para sempre: o que sumiu do retrato atual mas já foi provado antes
+    continua valendo (a linha mascarada, que continua no arquivo dela, não deixa de constar). O registro
+    que o retrato atual traz, esse, vale pelo atual (inclusive o ambíguo)."""
+    juntos = _registros_juntos(diretos)
+    for antigos in anteriores:
+        velhos = _registros_juntos(antigos)
+        juntos = pd.concat(
+            [juntos, velhos[~velhos["registro"].isin(juntos["registro"])]],
+            ignore_index=True,
+        )
+    return _mapa_dos_registros(juntos)
+
+
+def _ligar_pelo_registro(
+    nossas: pd.DataFrame,
+    documento: pd.Series,
+    cadastro: Cadastro,
+    registros: RegistrosDoMapa,
+) -> tuple[pd.Series, dict[str, int]]:
+    """O CNPJ de cada linha do arquivo que mascara o documento (nulo onde não liga) e a contagem.
+
+    Só liga a linha cujo número de registro está num arquivo de CNPJ inteiro, com um CNPJ só, **e**
+    cujos 3 dígitos à vista batem com a raiz dele (arquivo sem documento: a UF e o município batem).
+    O nome nunca entra: homônimos existem, e o registro é o que identifica o estabelecimento."""
+    com_documento = bool(cadastro.cnpj_em)
+    indice = nossas.index
+    digitos = documento.str.extract(f"^{PADRAO_DA_MASCARA_DO_CNPJ}$")[0].str.upper()
+    sem_digitos = (
+        digitos.isna() if com_documento else pd.Series(False, index=indice)
+    )  # CPF mascarado ou máscara sem dígito à vista
+    par = registros.por_registro.reindex(nossas["registro"])
+    par.index = indice
+    sem_par = ~sem_digitos & par["cnpj"].isna()
+    ambiguo = ~sem_digitos & ~sem_par & par["ambiguo"].fillna(False).astype(bool)
+    if com_documento:
+        raiz = par["cnpj_basico"].fillna("").astype(str)  # sem registros, tudo nulo
+        confere = raiz.str[DIGITOS_DA_RAIZ_A_VISTA].str.upper().eq(digitos)
+    else:
+        local = _local(nossas["registro"], nossas["uf"], nossas["municipio"])
+        confere = local.isin(registros.locais)
+    ligada = ~sem_digitos & ~sem_par & ~ambiguo & confere
+    nao_confere = ~sem_digitos & ~sem_par & ~ambiguo & ~confere
+    contagem = {
+        "documento_sem_digitos": int(sem_digitos.sum()),
+        "sem_par": int(sem_par.sum()),
+        "registro_ambiguo": int(ambiguo.sum()),
+        "digitos_nao_batem" if com_documento else "local_nao_bate": int(
+            nao_confere.sum()
+        ),
+        "ligadas_pelo_registro": int(ligada.sum()),
+    }
+    return par["cnpj"].where(ligada).astype(object), contagem
+
+
+def _documento_e_colunas(
     caminho: Path, cadastro: Cadastro
-) -> tuple[pd.DataFrame, dict[str, int]]:
-    """Os registros de CNPJ inteiro de um arquivo e a contagem do que ficou de fora."""
+) -> tuple[pd.DataFrame, pd.Series]:
+    """As colunas do cadastro com os nomes nossos e o documento como a fonte o escreveu (arquivo sem
+    documento: texto vazio). O resto do arquivo (e qualquer nome) fica para trás."""
     bruta = _ler_csv(caminho, cadastro)
-    cnpj = bruta[motor.nome_da_coluna(cadastro.cnpj_em)].map(cnpjs.completo)
-    valido = cnpj.map(lambda c: isinstance(c, str) and cnpjs.dv_confere(c)).astype(bool)
     nossas = pd.DataFrame(
         {c: _primeira_cheia(bruta, fs) for c, fs in cadastro.colunas.items()},
         index=bruta.index,
     )
-    linhas = len(bruta)
+    documento = (
+        bruta[motor.nome_da_coluna(cadastro.cnpj_em)]
+        if cadastro.cnpj_em
+        else pd.Series("", index=bruta.index, dtype=object)
+    )
+    return nossas, documento
+
+
+def _cnpj_do_arquivo(documento: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """O CNPJ inteiro do documento e quais linhas têm um de dígito certo (CPF que escapou da coleta,
+    CNPJ mascarado e dígito errado não passam)."""
+    cnpj = documento.map(cnpjs.completo)
+    valido = cnpj.map(lambda c: isinstance(c, str) and cnpjs.dv_confere(c)).astype(bool)
+    return cnpj, valido
+
+
+def ler_retrato(
+    caminho: Path, cadastro: Cadastro, registros: RegistrosDoMapa = SEM_REGISTROS
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Os registros de CNPJ inteiro de um arquivo e a contagem do que ficou de fora.
+
+    Arquivo que mascara o CNPJ (`ligado_pelo_registro`): só as linhas que `registros` liga (sem
+    `registros`, nenhuma)."""
+    nossas, documento = _documento_e_colunas(caminho, cadastro)
+    linhas = len(nossas)
+    if cadastro.ligado_pelo_registro:
+        cnpj, contagem_da_ligacao = _ligar_pelo_registro(
+            nossas, documento, cadastro, registros
+        )
+        valido = cnpj.notna()
+        ligado_por = LIGADO_PELO_REGISTRO
+    else:
+        cnpj, valido = _cnpj_do_arquivo(documento)
+        contagem_da_ligacao = {}
+        ligado_por = LIGADO_PELO_ARQUIVO
     del (
-        bruta
-    )  # o documento que não é CNPJ (um CPF que escapou da coleta) não passa daqui
+        documento
+    )  # o documento que não vira CNPJ (um CPF que escapou da coleta) não passa daqui
     tabela = nossas[valido].assign(cnpj=cnpj[valido])
     tabela["id_na_fonte"], em_conflito = _identificar(tabela, cadastro)
     contagem_da_chave = _contagem_da_chave(tabela, cadastro, em_conflito)
@@ -432,6 +668,12 @@ def ler_retrato(
             "id_na_fonte": tabela["id_na_fonte"],
             "cnpj": tabela["cnpj"].map(cnpjs.formatar),
             "cnpj_basico": tabela["cnpj"].str[: cnpjs.TAMANHO_DA_RAIZ],
+            # só a tabela do SIPEAGRO diz como o CNPJ foi obtido: nas outras o CNPJ é sempre do arquivo
+            **(
+                {COLUNA_DA_LIGACAO: ligado_por}
+                if cadastro.tabela == TABELA_COM_LIGACAO
+                else {}
+            ),
             **{c: motor.sem_vazio(padrao[c].fillna("")) for c in TEXTOS},
             **{c: _datas(padrao[c].fillna(""), cadastro.formatos) for c in DATAS},
         }
@@ -441,6 +683,7 @@ def ler_retrato(
         "cnpj_invalido": int((~valido).sum()),
         "id_repetido": int(repetido.sum()),
         **contagem_da_chave,
+        **contagem_da_ligacao,
     }
     return pronta, contagem
 
@@ -496,13 +739,16 @@ def juntar_retratos(
     lidos: list[tuple[motor.Retrato, pd.DataFrame]],
 ) -> tuple[pd.DataFrame, int]:
     """Os retratos lidos (do mais antigo ao mais novo) numa tabela de valores, e quantos foram pulados."""
-    return motor.juntar(lidos, VALORES, _disponivel_no_primeiro)
+    com_ligacao = COLUNA_DA_LIGACAO in lidos[0][1]
+    valores = VALORES_COM_LIGACAO if com_ligacao else VALORES
+    return motor.juntar(lidos, valores, _disponivel_no_primeiro)
 
 
 def _para_gravar(
     tabela: pd.DataFrame, pessoas: np.ndarray, agora: datetime
 ) -> pd.DataFrame:
     basico = tabela["cnpj_basico"].astype(str)
+    colunas = COLUNAS_COM_LIGACAO if COLUNA_DA_LIGACAO in tabela else COLUNAS
     return (
         tabela.assign(
             trata_como_pessoa=cnpjs.contem(pessoas, cnpjs.raizes_em_numeros(basico))
@@ -515,10 +761,68 @@ def _para_gravar(
             consta=tabela["consta"].astype(bool),
             montado_em=agora.isoformat(),
             versao_do_codigo=versao_do_codigo(),
-        )[[*COLUNAS, *LINHAGEM]]
+        )[[*colunas, *LINHAGEM]]
         .sort_values(ORDEM, kind="stable")
         .reset_index(drop=True)
     )
+
+
+class _LeitorComRegistros:
+    """O `ler` da montagem: lê cada arquivo sozinho, e os do SIPEAGRO que mascaram o CNPJ com os
+    registros dos de CNPJ inteiro que **já estavam no acervo no dia dele** (sem olhar o futuro: um
+    arquivo de CNPJ inteiro baixado depois não liga um retrato de antes)."""
+
+    def __init__(self, conexao: sa.Connection) -> None:
+        mascarados = [c for c in CADASTROS.values() if c.ligado_pelo_registro]
+        self._dia_de = {
+            r.caminho: r.dia
+            for c in mascarados
+            for r in motor.retratos(conexao, c.fonte, c.url_termina_em)
+        }
+        self._diretos = {
+            nome: motor.retratos(
+                conexao, CADASTROS[nome].fonte, CADASTROS[nome].url_termina_em
+            )
+            for nome in DIRETOS_DO_SIPEAGRO
+        }
+        self._lidos: dict[Path, pd.DataFrame] = {}
+        self._registros: dict[
+            tuple[tuple[tuple[str, Path], ...], ...], RegistrosDoMapa
+        ] = {}
+
+    def __call__(
+        self, caminho: Path, cadastro: Cadastro
+    ) -> tuple[pd.DataFrame, dict[str, int]]:
+        if not cadastro.ligado_pelo_registro:
+            return ler_retrato(caminho, cadastro)
+        return ler_retrato(caminho, cadastro, self._registros_em(self._dia_de[caminho]))
+
+    def _registros_em(self, dia: date) -> RegistrosDoMapa:
+        """Os registros do retrato mais novo de cada arquivo de CNPJ inteiro baixado até o `dia`, e,
+        para o registro que sumiu dele, o dos retratos mais velhos (do mais novo para o mais velho)."""
+        ate_o_dia = {
+            nome: [r.caminho for r in retratos if r.dia <= dia][::-1]
+            for nome, retratos in self._diretos.items()
+        }
+        camadas = tuple(
+            tuple(
+                (nome, caminhos[posicao])
+                for nome, caminhos in ate_o_dia.items()
+                if posicao < len(caminhos)
+            )
+            for posicao in range(max(map(len, ate_o_dia.values()), default=0))
+        )
+        if camadas not in self._registros:
+            lidas = [[self._ler_direto(n, c) for n, c in camada] for camada in camadas]
+            self._registros[camadas] = (
+                registros_do_mapa(lidas[0], lidas[1:]) if lidas else SEM_REGISTROS
+            )
+        return self._registros[camadas]
+
+    def _ler_direto(self, nome: str, caminho: Path) -> pd.DataFrame:
+        if caminho not in self._lidos:
+            self._lidos[caminho] = ler_retrato(caminho, CADASTROS[nome])[0]
+        return self._lidos[caminho]
 
 
 def montar(
@@ -539,7 +843,7 @@ def montar(
         pasta,
         agora,
         list(CADASTROS.values()),
-        ler=ler_retrato,
+        ler=_LeitorComRegistros(conexao),
         juntar=juntar_retratos,
         para_gravar=_para_gravar,
         ordem=ORDEM,

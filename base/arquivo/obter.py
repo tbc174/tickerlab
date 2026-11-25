@@ -327,6 +327,23 @@ def tem_cnpj_inteiro(documento: str | None) -> bool:
     return cnpj is not None and cnpjs.dv_confere(cnpj)
 
 
+# O SIPEAGRO mascara o CNPJ deixando à vista só 3 dígitos da raiz: `**.***.333/***-**`
+PADRAO_DA_MASCARA_DO_CNPJ = (
+    r"\*\*\.\*\*\*\.([0-9A-Za-z]{3})/\*\*\*-\*\*"  # o grupo: os 3 dígitos
+)
+MASCARA_DO_CNPJ_COM_DIGITOS = re.compile(PADRAO_DA_MASCARA_DO_CNPJ)
+
+
+def tem_cnpj_mascarado(documento: str | None) -> bool:
+    """O documento é um CNPJ mascarado com os 3 dígitos da raiz à vista (`**.***.333/***-**`).
+
+    CPF mascarado (`***.***.333-**`), máscara sem dígito (`**.***./***-**`), CNPJ inteiro e documento
+    em branco não servem: o CPF é de pessoa, e os outros não dão o que conferir."""
+    return documento is not None and bool(
+        MASCARA_DO_CNPJ_COM_DIGITOS.fullmatch(documento.strip())
+    )
+
+
 @contextmanager
 def _texto_do_csv(
     bruto: Path, codificacao: str, dentro_do_zip: bool, membro: str | None = None
@@ -356,6 +373,7 @@ def csv_so_com_colunas(
     *,
     separador: str = ";",
     so_com_cnpj_em: str | None = None,
+    so_com_cnpj_mascarado_em: str | None = None,
     dentro_do_zip: bool = False,
     membro: str | None = None,
 ) -> Obter:
@@ -364,10 +382,23 @@ def csv_so_com_colunas(
     Lista de colunas que ficam, e não de colunas que saem (como `obter_pj.csv_so_pj`): o nome do
     titular vem em colunas como "Titular" ou "NO_RAZAO_SOCIAL", que nenhum filtro de nome pegaria.
     `so_com_cnpj_em`: a coluna do documento; a linha sem um CNPJ inteiro (CPF de pessoa física, CNPJ
-    mascarado) não é gravada, então o CPF nem chega ao acervo. `dentro_do_zip`: o endereço é um ZIP
+    mascarado) não é gravada, então o CPF nem chega ao acervo. `so_com_cnpj_mascarado_em`: o contrário,
+    para a fonte que mascara o CNPJ (SIPEAGRO): só fica a linha com a máscara de CNPJ e os 3 dígitos à
+    vista (`tem_cnpj_mascarado`); o CPF mascarado e o resto não são gravados. `dentro_do_zip`: o endereço é um ZIP
     com um CSV só (Anatel); `membro`: o nome do CSV que vale, quando o ZIP tem mais de um (os PADOs da
     Anatel trazem também as infrações, sem CNPJ). O "utf-8-sig" da leitura tira o BOM; a gravação sai sem ele.
     """
+
+    if so_com_cnpj_em is not None and so_com_cnpj_mascarado_em is not None:
+        raise ValueError("o documento é inteiro ou mascarado, não os dois")
+    # `is not None`, e não `or`: um nome de coluna vazio não pode desligar o filtro (falha aberta,
+    # CPF entrando no acervo); vazio vira "sem a coluna do documento" e a coleta para
+    coluna_do_documento = (
+        so_com_cnpj_em if so_com_cnpj_em is not None else so_com_cnpj_mascarado_em
+    )
+    documento_serve = (
+        tem_cnpj_inteiro if so_com_cnpj_em is not None else tem_cnpj_mascarado
+    )
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
         bruto = destino.with_name(destino.name + ".bruto")
@@ -378,14 +409,17 @@ def csv_so_com_colunas(
                 campos = [c for c in (leitor.fieldnames or []) if c in colunas]
                 if not campos:
                     raise ValueError(f"{url}: nenhuma das colunas pedidas no cabeçalho")
-                if so_com_cnpj_em is not None and so_com_cnpj_em not in campos:
+                if (
+                    coluna_do_documento is not None
+                    and coluna_do_documento not in campos
+                ):
                     raise ValueError(
-                        f"{url}: sem a coluna do documento {so_com_cnpj_em!r}"
+                        f"{url}: sem a coluna do documento {coluna_do_documento!r}"
                     )
                 linhas = (
                     leitor
-                    if so_com_cnpj_em is None
-                    else (l for l in leitor if tem_cnpj_inteiro(l[so_com_cnpj_em]))
+                    if coluna_do_documento is None
+                    else (l for l in leitor if documento_serve(l[coluna_do_documento]))
                 )
                 saida_codificacao = codificacao.removesuffix("-sig")
                 with destino.open("w", encoding=saida_codificacao, newline="") as saida:

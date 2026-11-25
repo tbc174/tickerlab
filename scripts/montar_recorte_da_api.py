@@ -48,6 +48,9 @@ só a linha sem a marca, só raiz da `cnpj_empresas_pj` da mesma saída, sem nom
 o nome comercial do produto da Anatel fica em casa. Como o recebedor troca a `base/` inteira, quem envia o degrau 8
 leva junto o 7 e o 6; o envio pede o pode da Diretoria com as contagens.
 
+`--enviar` (envio à mão) pede a variável de ambiente `TICKERLAB_DESTINO_DO_ENVIO_DA_BASE` com o destino do ssh;
+sem ela o script para. O envio diário de casa tem roteiro próprio e não usa `--enviar`.
+
 
     python -m scripts.montar_recorte_da_api --degrau 1 --base <acervo>/base --saida /tmp/base-api
     python -m scripts.montar_recorte_da_api --degrau 2 --base <acervo>/base --enviar
@@ -66,6 +69,7 @@ Roda: cron de casa pelo ~/bin/enviar-base-ao-vps.sh (depois da coleta da noite);
 import argparse
 import io
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -895,11 +899,23 @@ def enviar(saida: Path, comando_ssh: list[str]) -> int:
         return processo.wait()
 
 
+# o destino do ssh (usuário e endereço do servidor) não fica no repositório, que é público: quem manda o
+# recorte à mão por `--enviar` entrega o destino nesta variável. O envio diário de casa tem roteiro próprio.
+VARIAVEL_DO_DESTINO = "TICKERLAB_DESTINO_DO_ENVIO_DA_BASE"
+
+
 def comando_ssh_padrao() -> list[str]:
+    destino = os.environ.get(VARIAVEL_DO_DESTINO, "").strip()
+    # destino com "-" na frente ou com espaço viraria opção do ssh, não um endereço
+    if not destino or destino.startswith("-") or any(c.isspace() for c in destino):
+        raise SystemExit(
+            f"Sem o destino do envio: defina a variável {VARIAVEL_DO_DESTINO} "
+            "(usuário@servidor, sem espaços) antes de usar --enviar."
+        )
     return [
         "ssh", "-T", "-i", str(Path.home() / ".ssh" / "enviar_dossies"),
         "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "ConnectTimeout=30",
-        "tiago@tickerlab-vps.taila57363.ts.net", "receber-base-api",
+        destino, "receber-base-api",
     ]  # fmt: skip
 
 
