@@ -215,6 +215,7 @@ ARQUIVOS: dict[str, str] = {
     "noticias_fatos": "noticias_fatos/*.parquet",
     "noticias_numeros": "noticias_numeros/*.parquet",
     "controladas": "controladas/*.parquet",
+    "controladas_primeiro_fre": "controladas_primeiro_fre/controladas_primeiro_fre.parquet",
     "controladas_pj": "controladas_pj/*.parquet",  # só no VPS (linha 844)
     "rotulos_atraso": "rotulos_atraso/rotulos_atraso.parquet",
     "colunas_atraso": "colunas_atraso/colunas_atraso.parquet",
