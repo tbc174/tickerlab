@@ -96,6 +96,8 @@ ${cssDasAbas()}
 .consulta dd { margin: 0; color: var(--apagado); overflow-wrap: anywhere; }
 .consulta dd code { color: var(--azul-texto); font-weight: 600; }
 .passos-em-linha { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 1.6rem; }
+/* o passo mais alto estica os outros: o título e o texto ficam no topo, sem vão entre eles */
+.passos-em-linha li { align-content: start; }
 
 /* as rotas da API */
 .v2-api .rotas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.6rem; }
