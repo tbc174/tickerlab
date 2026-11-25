@@ -343,6 +343,11 @@ def test_a_trava_aceita_a_copia_boa(tmp_path):
         (SICAF, {"natureza_juridica": "'2135'"}, "empresário individual"),
         (SICAF, {"natureza_juridica": "'4120'"}, "pessoa física"),
         (SICAF, {"natureza_juridica": "NULL::VARCHAR"}, "sem natureza"),
+        # o código com máscara, com zero na frente ou vazio (revisão cruzada): a leitura mais estreita não deixa sair
+        (SICAF, {"natureza_juridica": "'213-5'"}, "empresário individual"),
+        (SICAF, {"natureza_juridica": "'02135'"}, "empresário individual"),
+        (SICAF, {"natureza_juridica": "'412-0'"}, "pessoa física"),
+        (SICAF, {"natureza_juridica": "''"}, "sem natureza"),
         (
             BPS,
             {"cnpj_do_fabricante": f"'{_cnpj_errado(RAIZ_OUTRA)}'"},
@@ -358,6 +363,12 @@ def test_a_trava_aceita_a_copia_boa(tmp_path):
         ),
         (BPS, {"cnpj_basico_do_fabricante": f"'{RAIZ_PJ}'"}, "raiz do fabricante"),
         (BPS, {"cnpj_da_instituicao": f"'{_cnpj_errado(RAIZ_PJ)}'"}, "instituição"),
+        # a compradora com o dígito certo, mas de raiz fora da lista sem pessoa (empresário individual, MEI)
+        (
+            BPS,
+            {"cnpj_da_instituicao": f"'{_cnpj(RAIZ_FORA)}'"},
+            "raiz da instituição",
+        ),
         (
             BPS,
             {"item": f"'para {formatado(cpf_que_confere('888777666'))}'"},

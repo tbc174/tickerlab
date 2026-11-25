@@ -148,13 +148,19 @@ TEXTOS_LIVRES: dict[str, tuple[str, ...]] = {
 # estavam sem ela (a natureza na Receita já era outra). A leitura mais estreita: se uma das duas diz pessoa, não sai
 NATUREZA_DO_EMPRESARIO_INDIVIDUAL = "2135"
 GRUPO_DE_PESSOA_FISICA = "4"
+DIGITOS_DA_NATUREZA = 4
+# o código só com os dígitos e sem zero na frente ("213-5" e "02135" são "2135"; revisão cruzada de 25/11/2026)
+_NATUREZA = (
+    "ltrim(regexp_replace(CAST(natureza_juridica AS VARCHAR), '[^0-9]', '', 'g'), '0')"
+)
 # condições a mais de cada tabela, `{pj}` é a lista sem pessoa: a linha só sai se todas valem (filtro), e a trava
 # conta a linha da saída em que alguma não vale (descrição -> condição)
 CONDICOES_A_MAIS: dict[str, dict[str, str]] = {
     SICAF: {
         "linha(s) que o SICAF diz ser de empresário individual, de pessoa física ou sem natureza": (
-            f"coalesce(natureza_juridica <> '{NATUREZA_DO_EMPRESARIO_INDIVIDUAL}' "
-            f"AND NOT starts_with(natureza_juridica, '{GRUPO_DE_PESSOA_FISICA}'), false)"
+            f"coalesce(length({_NATUREZA}) = {DIGITOS_DA_NATUREZA} "
+            f"AND {_NATUREZA} <> '{NATUREZA_DO_EMPRESARIO_INDIVIDUAL}' "
+            f"AND NOT starts_with({_NATUREZA}, '{GRUPO_DE_PESSOA_FISICA}'), false)"
         ),
     },
     BPS: {
@@ -170,6 +176,11 @@ CONDICOES_A_MAIS: dict[str, dict[str, str]] = {
         "linha(s) com o CNPJ da instituição compradora que não confere": (
             "(cnpj_da_instituicao IS NULL OR "
             "coalesce({funcao}(CAST(cnpj_da_instituicao AS VARCHAR)), false))"
+        ),
+        # a compradora pode ser hospital ou farmácia de um dono só: a raiz dela também tem de estar na lista sem
+        # pessoa (revisão cruzada de 25/11/2026)
+        "linha(s) com a raiz da instituição compradora fora da lista sem pessoa": (
+            "(cnpj_da_instituicao IS NULL OR {raiz_da_instituicao} IN ({pj}))"
         ),
     },
 }
@@ -265,6 +276,7 @@ def _condicoes_a_mais(nome: str, pj: str) -> dict[str, str]:
             pj=pj,
             funcao=FUNCAO_CNPJ_DE_EMPRESA,
             raiz_do_fabricante=_raiz_do_cnpj("cnpj_do_fabricante"),
+            raiz_da_instituicao=_raiz_do_cnpj("cnpj_da_instituicao"),
         )
         for descricao, condicao in CONDICOES_A_MAIS.get(nome, {}).items()
     }
