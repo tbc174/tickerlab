@@ -340,8 +340,10 @@ COLUNAS_DO_RNTRC = (
     "numero_rntrc", "data_primeiro_cadastro", "situacao_rntrc", "cpfcnpjtransportador",
     "categoria_transportador", "municipio", "uf", "equiparado", "data_situacao_rntrc",
 )  # fmt: skip
-# SIPEAGRO (MAPA): só os dois arquivos com o CNPJ inteiro; fertilizantes, qualidade vegetal, vinhos e
-# bebidas e alimentação animal mascaram o CNPJ, e nunca se cruza pelo nome (homônimos)
+# SIPEAGRO (MAPA): dois arquivos com o CNPJ inteiro; fertilizantes, qualidade vegetal, vinhos e bebidas e
+# alimentação animal mascaram o CNPJ (só 3 dígitos da raiz à vista) e a multiplicação animal não traz
+# documento: esses cinco só ligam a um CNPJ pelo número do registro (`base/licencas.py`, linha 1021),
+# e nunca se cruza pelo nome (homônimos)
 SIPEAGRO = "https://dados.agricultura.gov.br/dataset/52a01565-72d6-410e-b21b-64035831a7be/resource/"
 PRODUTO_VETERINARIO_DO_SIPEAGRO = (
     SIPEAGRO
@@ -357,6 +359,27 @@ COLUNAS_DO_SIPEAGRO = (
     "CLASSIFICACAO", "CARACTERISTICA_ADICIONAL", "ESPECIE", "NUMERO_REGISTRO_AERONAVE",
     "STATUS_AERONAVE",
 )  # fmt: skip
+# qualidade vegetal, vinhos e bebidas e alimentação animal escrevem a UF e o status de outro jeito
+COLUNAS_DO_SIPEAGRO_MASCARADO = (*COLUNAS_DO_SIPEAGRO, "UF", "STATUS_REGISTRO")
+FERTILIZANTES_DO_SIPEAGRO = (
+    SIPEAGRO + "e0bbc9d5-f161-448b-a6d4-c7beb312ec33/download/sipeagrofertilizante.csv"
+)
+QUALIDADE_VEGETAL_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "e9368a44-4c15-4218-ad96-1a62052ff2c6/download/sipeagroqualidadevegetal.csv"
+)
+VINHOS_E_BEBIDAS_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "8ef7a4fc-f9d9-495b-b3ae-a2ffe931ff82/download/sipeagrovinhosebebidas.csv"
+)
+ALIMENTACAO_ANIMAL_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "378b184b-67bd-48fa-9901-17bb7a0700fb/download/sipeagroalimentacaoanimal.csv"
+)
+MULTIPLICACAO_ANIMAL_DO_SIPEAGRO = (
+    SIPEAGRO
+    + "aacf761c-d6b2-4f11-975f-11a736e547b9/download/sipeagromultiplicacaoanimal.csv"
+)
 # Anatel, prestadoras com outorga: um ZIP com um CSV só (UTF-8 com BOM)
 OUTORGAS_DA_ANATEL = "https://www.anatel.gov.br/dadosabertos/paineis_de_dados/outorga_e_licenciamento/prestadoras_servicos_telecomunicacoes.zip"
 COLUNAS_DAS_OUTORGAS_DA_ANATEL = (
@@ -894,11 +917,19 @@ class CsvDeCadastro:
     codificacao: str = "latin-1"
     separador: str = ";"
     dentro_do_zip: bool = False
+    # a fonte mascara o CNPJ: fica só a linha com a máscara e os 3 dígitos à vista; `cnpj_em` vazio =
+    # o arquivo nem traz documento, e todas as linhas ficam (só as colunas da lista)
+    mascarado: bool = False
 
     def alvo(self) -> Alvo:
+        documento = (
+            {"so_com_cnpj_mascarado_em": self.cnpj_em or None}
+            if self.mascarado
+            else {"so_com_cnpj_em": self.cnpj_em}
+        )
         obter = csv_so_com_colunas(
             self.url, self.colunas, self.codificacao, separador=self.separador,
-            so_com_cnpj_em=self.cnpj_em, dentro_do_zip=self.dentro_do_zip,
+            dentro_do_zip=self.dentro_do_zip, **documento,
         )  # fmt: skip
         return Alvo(self.url, ".csv", obter)
 
@@ -950,6 +981,18 @@ CADASTROS_DO_SIPEAGRO = (
     CsvDeCadastro(
         AVIACAO_AGRICOLA_DO_SIPEAGRO, COLUNAS_DO_SIPEAGRO, "CPF_CNPJ", "utf-8"
     ),
+)
+CADASTROS_MASCARADOS_DO_SIPEAGRO = tuple(
+    CsvDeCadastro(
+        url, COLUNAS_DO_SIPEAGRO_MASCARADO, documento, "utf-8", mascarado=True
+    )
+    for url, documento in (
+        (FERTILIZANTES_DO_SIPEAGRO, "CNPJ"),
+        (QUALIDADE_VEGETAL_DO_SIPEAGRO, "CPF_CNPJ"),
+        (VINHOS_E_BEBIDAS_DO_SIPEAGRO, "CPF_CNPJ"),
+        (ALIMENTACAO_ANIMAL_DO_SIPEAGRO, "CPF_CNPJ"),
+        (MULTIPLICACAO_ANIMAL_DO_SIPEAGRO, ""),
+    )
 )
 OUTORGAS_DA_ANATEL_FILTRADAS = CsvDeCadastro(
     OUTORGAS_DA_ANATEL,
@@ -1504,7 +1547,11 @@ FONTES: list[Fonte] = [
     ),
     Fonte("anvisa-cmed", "mensal", _cadastros(*CADASTROS_DE_PRECOS_DA_CMED)),
     Fonte("antt-rntrc", "mensal", descobrir_rntrc, pesada=True),
-    Fonte("mapa-sipeagro", "mensal", _cadastros(*CADASTROS_DO_SIPEAGRO)),
+    Fonte(
+        "mapa-sipeagro",
+        "mensal",
+        _cadastros(*CADASTROS_DO_SIPEAGRO, *CADASTROS_MASCARADOS_DO_SIPEAGRO),
+    ),
     Fonte(
         "anatel-outorgas",
         "mensal",
