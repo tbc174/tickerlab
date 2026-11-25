@@ -71,7 +71,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, não traz o SCR individual e só aparece para a chave com o conjunto de crédito |
 | O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público; serve para retomar uma empresa já analisada e mostra só os blocos que a sua chave vê |
 | Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero, e não há nota nem ordenação das empresas |
-| Acompanhar uma lista de empresas | o que mudou em 2 a 5 empresas desde um dia, numa chamada: o cadastro, os vínculos e os eventos, só a diferença, cada item com a fonte e o dia em que ficou público; a empresa sem mudança aparece numa linha só |
+| Acompanhar uma lista de empresas | o que mudou em 2 a 5 empresas desde um dia, numa chamada: cadastro, vínculos e eventos, só a diferença, com a fonte de cada item; a empresa sem mudança aparece numa linha só |
 <!-- fim da lista das portas -->
 
 Para várias consultas, dá para pedir a informação **como ela era numa data** ("como era em 31/12/2025").

@@ -502,7 +502,7 @@ def test_a_pagina_inicial_tem_uma_secao_so_das_portas():
 # quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281) e, da
 # onda 2 do conector (linha 980), a consulta "Acompanhar uma lista de empresas"
 IMPRESSAO_DA_LISTA_DA_PAGINA = (
-    "970e2668d4032cd6e936a5f9d2338772e9208781122f059d422e816790ebd579"
+    "41d9561c5e49eb0a52320dc99e45bc72799f02da626acda4a53e8c72605efbd9"
 )
 
 

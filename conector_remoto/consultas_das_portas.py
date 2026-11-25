@@ -816,7 +816,7 @@ CONSULTAS: tuple[Consulta, ...] = (
         "acompanhar",
         nome="Acompanhar uma lista de empresas",
         resumo=(
-            "o que mudou em 2 a 5 empresas desde um dia, numa chamada: o cadastro, os vínculos e os eventos, só a diferença, cada item com a fonte e o dia em que ficou público; a empresa sem mudança aparece numa linha só"
+            "o que mudou em 2 a 5 empresas desde um dia, numa chamada: cadastro, vínculos e eventos, só a diferença, com a fonte de cada item; a empresa sem mudança aparece numa linha só"
         ),
         ferramentas=(_ACOMPANHAR_EMPRESAS,),
         fora_de_uma_porta={

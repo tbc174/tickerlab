@@ -416,3 +416,12 @@ def test_so_blocos_que_a_chave_nao_ve_diz_isso_em_vez_de_dizer_que_a_base_nao_te
         )
     assert erro and "cadastro" in texto and "chave" in texto
     assert not [p for p in pedidos if "/companies/" in p.url.path]
+
+
+def test_o_teto_de_5_empresas_que_a_pagina_promete_e_o_da_ferramenta():
+    """A página inicial diz "2 a 5 empresas": o número só pode estar lá se a ferramenta o garante."""
+    from conector_remoto import acompanhar
+
+    assert (acompanhar.MINIMO_DE_EMPRESAS, acompanhar.MAXIMO_DE_EMPRESAS) == (2, 5)
+    (consulta,) = [c for c in consultas_das_portas.CONSULTAS if c.chave == "acompanhar"]
+    assert "2 a 5 empresas" in consulta.resumo
