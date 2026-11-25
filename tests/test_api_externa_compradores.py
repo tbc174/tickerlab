@@ -296,10 +296,12 @@ def test_a_prova_traz_a_empresa_do_setor_e_cada_campo_com_fonte_e_dia(cliente, c
     assert compradora["legal_name"]["value"] == NOMES[COMPRADORA]
     assert compradora["legal_name"]["source"] == "rfb-cnpj"
     entradas = compradora["evidence"]["took_stake"]
-    assert (
-        entradas["count"] == 1
-    )  # a de fora do setor e a da empresa baixada não contam
-    (exemplo,) = entradas["examples"]
+    # a de fora do setor não conta; a da empresa baixada conta (linha 1042)
+    assert entradas["count"] == 2
+    exemplo, na_baixada = sorted(
+        entradas["examples"], key=lambda e: e["sector_company"]["cnpj_root"] != ALVO_SP
+    )
+    assert na_baixada["sector_company"]["cnpj_root"] == BAIXADA
     assert exemplo["sector_company"]["cnpj_root"] == ALVO_SP
     assert exemplo["sector_company"]["legal_name"]["value"] == NOMES[ALVO_SP]
     assert exemplo["state_code"] == "SP"

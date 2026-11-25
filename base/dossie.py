@@ -129,6 +129,7 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
     "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
     "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
+    "ofertas_cnpj_dos_devedores",  # linha 1034: CNPJ de empresa tirado do texto dos devedores; fechada como a irmã
     # lote 1 das 300 pelo CNPJ (linha 904): vai ao VPS só no degrau 6 do recorte, com o pode da Diretoria, e segue
     # fechado aqui até entrar na prontidão
     "fip_informe", "fii_informe_mensal", "fii_ativos", "fii_administradores",
