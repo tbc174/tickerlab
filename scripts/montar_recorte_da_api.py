@@ -176,6 +176,11 @@ FICAM_EM_CASA = (
     "sefa_pr_divida_ativa",
     # linha 770: planos de saúde da ANS pelo CNPJ da operadora (ponte `ans_operadoras`); o envio ao VPS pede o "pode"
     "ans_produtos",
+    # linha 1075 (estados, lote 1): contratos, sanções e fornecedores do SIGA do RJ (PDDL), só com CNPJ; o envio ao VPS
+    # pede o "pode" da Diretoria com a prova de zero pessoa da 1ª carga
+    "rj_contratos",
+    "rj_sancoes_fornecedores",
+    "rj_fornecedores",
     # linha 1074 (PR 1): RAPP do IBAMA (família `ibama`, integridade sob contrato), só CNPJ; o envio ao VPS pede o
     # "pode" da Diretoria com a prova de zero pessoa da 1ª carga
     "ibama_rapp_emissoes_atmosfericas",
