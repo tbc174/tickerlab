@@ -184,8 +184,7 @@ def test_baixar_da_fonte_tenta_de_novo_o_403_do_firewall(monkeypatch):
     for status in (403, 200):
         resposta = requests.Response()
         resposta.status_code = status
-        resposta.raw = io.BytesIO(b"")
-        resposta._content = b"candles"
+        resposta.raw = io.BytesIO(b"candles")
         respostas.append(resposta)
     monkeypatch.setattr("requests.get", lambda *_a, **_k: respostas.pop(0))
 

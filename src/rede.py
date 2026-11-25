@@ -50,10 +50,6 @@ _exponencial = wait_exponential_jitter(
 )
 
 
-def _passageira(resposta: requests.Response) -> bool:
-    return getattr(resposta, "status_code", None) in STATUS_PASSAGEIROS
-
-
 def _pedida_pela_fonte(resposta: requests.Response) -> float | None:
     """O Retry-After em segundos (o 429 e o 503 às vezes dizem quanto esperar); data é ignorada."""
     valor = resposta.headers.get("Retry-After", "").strip()
