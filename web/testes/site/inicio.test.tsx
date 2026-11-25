@@ -5,11 +5,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { baseEmNumeros, catalogo, fatosDaBase, paginasDoApp, vitrine } from "../../src/conteudo";
+import { baseEmNumeros, catalogo, consultasDasPortas, fatosDaBase, paginasDoApp, vitrine } from "../../src/conteudo";
 import { renderizar } from "../../src/entry-server";
 import { css } from "../../src/estilo";
 import { COMO_PEDIR_A_CHAVE, DADOS, FRASE_DO_TOPO, RESPOSTA_DO_EXEMPLO } from "../../src/paginas/Inicio";
-import { REGRAS_DA_BASE, URL_DA_API, linkDoApp } from "../../src/site/textos";
+import { REGRAS_DA_BASE, URL_DA_API, URL_DO_CODIGO, linkDoApp } from "../../src/site/textos";
 
 const html = renderizar("index.html");
 const semTags = (texto: string) => texto.replace(/<[^>]+>/g, "");
@@ -55,6 +55,11 @@ const ler = (...partes: string[]) => readFileSync(join(RAIZ, ...partes), "utf8")
 const CLI = ler("cli", "tickerlab", "comandos.py");
 const FERRAMENTAS = ler("conector_remoto", "ferramentas.py");
 const DOCUMENTACAO = ler("site-api", "documentacao", "index.html");
+// as ferramentas do analista (crédito, o que mudou, comparar, de onde vem) ficam noutro arquivo do conector
+const TODAS_AS_FERRAMENTAS = FERRAMENTAS + ler("conector_remoto", "ferramentas_do_analista.py");
+// rotas que existem na API (o teste da lista única confere no roteador) mas a página de documentação ainda não lista:
+// linha 1026 da fila; quando a documentação as listar, este teste falha e a rota sai daqui
+const ROTAS_AINDA_SEM_DOCUMENTACAO = ["GET /companies/{cnpj}/analysis", "GET /research/news"];
 
 /** Confere um comando citado (`tickerlab x --opcao …`): o comando e cada opção existem na CLI. */
 function comandoExiste(citado: string) {
@@ -62,10 +67,13 @@ function comandoExiste(citado: string) {
   if (comando) expect(CLI, citado).toMatch(new RegExp(`^def ${comando}\\(`, "m"));
   for (const opcao of citado.match(/--[a-z-]+/g) ?? []) expect(CLI, citado).toContain(`"${opcao}"`);
 }
-/** Confere uma rota citada (`GET /data/v1/…`): está na tabela de rotas da documentação da API. */
+/** Confere uma rota citada (`GET /data/v1/…`): está na tabela de rotas da documentação da API, salvo as que a
+ * documentação ainda não lista (e então confere que de fato não lista, para a exceção sair quando ela listar). */
 function rotaDocumentada(rota: string) {
   const [metodo, caminho] = rota.split(" ");
-  expect(DOCUMENTACAO, rota).toContain(`<code>${metodo} ${caminho.replace("/data/v1", "")}</code>`);
+  const curta = `${metodo} ${caminho.replace("/data/v1", "")}`;
+  if (ROTAS_AINDA_SEM_DOCUMENTACAO.includes(curta)) expect(DOCUMENTACAO, rota).not.toContain(`<code>${curta}</code>`);
+  else expect(DOCUMENTACAO, rota).toContain(`<code>${curta}</code>`);
 }
 
 describe("página inicial de um site só: uma proposta e três portas", () => {
@@ -139,18 +147,70 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     expect(DOCUMENTACAO).toContain('id="comecar"');
   });
 
-  it("as três portas: o conector é a principal, depois a CLI e a API, cada uma levando à sua seção", () => {
-    const secao = trecho('<section class="faixa secao portas" id="portas"', "</section>");
-    const cartoes = secao.split('<article class="porta').slice(1);
+  // PR 4 da frente 2 (texto aprovado pelo Tiago em 24/11/2026): uma seção só, com os cartões, a lista da lista
+  // única das portas e os passos para começar
+  const portas = () => trecho('<section class="faixa secao portas" id="portas"', "</section>");
+
+  it("as três portas: o conector é a principal, depois a CLI e a API, cada cartão com a âncora antiga e o seu guia", () => {
+    const cartoes = portas().split('<article id="').slice(1);
+    expect(cartoes.map((c) => c.slice(0, c.indexOf('"')))).toEqual(["conector", "comandos", "api"]);
+    for (const ancora of ["conector", "comandos", "api"]) expect(vezes(html, `id="${ancora}"`), ancora).toBe(1);
     expect(cartoes.map((c) => semTags(c.match(/<h3>([^<]+)<\/h3>/)?.[1] ?? ""))).toEqual(["Conector MCP", "CLI", "API"]);
-    expect(cartoes.map((c) => c.startsWith(" principal"))).toEqual([true, false, false]);
-    const ancoras = cartoes.map((c) => c.match(/class="seta" href="#([a-z]+)"/)?.[1] ?? "");
-    expect(ancoras).toEqual(["conector", "comandos", "api"]);
-    for (const ancora of ancoras) expect(html, ancora).toContain(`id="${ancora}"`);
+    expect(cartoes.map((c) => c.includes('class="porta principal"'))).toEqual([true, false, false]);
+    const links = cartoes.map((c) => c.match(/class="seta" href="([^"]+)"/)?.[1] ?? "");
+    expect(links).toEqual([
+      `${URL_DO_CODIGO}/blob/main/docs/guia-do-analista-conector.md`,
+      `${URL_DO_CODIGO}/blob/main/docs/cli.md`,
+      `${URL_DA_API}/documentacao/`,
+    ]);
+    // os guias citados existem no repositório público
+    for (const guia of ["guia-do-analista-conector.md", "cli.md"]) expect(ler("docs", guia).length, guia).toBeGreaterThan(0);
     const exemplos = cartoes.map((c) => desesc(c.match(/<code class="porta-exemplo">([^<]+)<\/code>/)?.[1] ?? ""));
+    expect(exemplos[0]).toBe("analise_completa · buscar_empresas");
     for (const nome of exemplos[0].split(" · ")) expect(FERRAMENTAS, nome).toMatch(new RegExp(`async def ${nome}\\(`));
     comandoExiste(exemplos[1]);
     rotaDocumentada(exemplos[2]);
+  });
+
+  it("a lista do que dá para pedir vem da lista única: cada nome existe na sua porta", () => {
+    const lista = trecho('<ul class="consultas-grade">', "</ul>");
+    const cartoes = lista.split('<li class="consulta">').slice(1);
+    expect(cartoes).toHaveLength(consultasDasPortas.length);
+    expect(cartoes.map((c) => desesc(c.match(/<h4>([^<]+)<\/h4>/)?.[1] ?? ""))).toEqual(
+      consultasDasPortas.map((c) => c.nome),
+    );
+    const nomesDaPorta = (porta: "conector" | "cli" | "api") => consultasDasPortas.flatMap((c) => c[porta].nomes ?? []);
+    expect(nomesDaPorta("conector")).toContain("analise_completa");
+    for (const nome of nomesDaPorta("conector")) expect(TODAS_AS_FERRAMENTAS, nome).toMatch(new RegExp(`async def ${nome}\\(`));
+    for (const comando of nomesDaPorta("cli")) comandoExiste(comando);
+    for (const rota of nomesDaPorta("api")) rotaDocumentada(rota);
+    // nada de pessoa física: nem a consulta, nem a ferramenta, nem a rota
+    expect(semTags(portas())).not.toMatch(/Sócios e donos|socios_e_donos|\/people|CPF/);
+  });
+
+  it("como começar: três passos que só citam comandos da CLI, o beta sem cobrança e nenhum endereço publicado", () => {
+    const passos = trecho('<ol class="v2-passos-da-cli passos-em-linha">', "</ol>");
+    expect(vezes(passos, "<li>")).toBe(3);
+    const citados = [...passos.matchAll(/<code>([^<]+)<\/code>/g)].map((m) => desesc(m[1]));
+    expect(citados).toEqual(["pipx", "tickerlab login", "tickerlab instrucoes"]);
+    for (const citado of citados) comandoExiste(citado);
+    expect(semTags(passos)).toContain("beta fechado, sem cobrança");
+    expect(passos).toContain(`href="${COMO_PEDIR_A_CHAVE}"`);
+    // o endereço do conector vem com a chave: nenhuma parte da página o publica
+    expect(html).not.toMatch(/mcp\.tickerlab|https?:\/\/[^\s"]*\/mcp/);
+  });
+
+  it("os botões das portas levam à documentação, a todas as rotas e ao guia do analista", () => {
+    const atalhos = trecho('<p class="atalhos">', "</p>");
+    expect(atalhos).toContain(`href="${URL_DA_API}/documentacao/"`);
+    expect(atalhos).toContain(`href="${URL_DA_API}/#catalogo"`);
+    expect(atalhos).toContain(`href="${URL_DO_CODIGO}/blob/main/docs/guia-do-analista-conector.md"`);
+    expect(ler("site-api", "index.html")).toContain('id="catalogo"');
+  });
+
+  it("as seções antigas de cada porta saíram (agora é uma seção só)", () => {
+    for (const antiga of ["Porta 1 · Conector MCP", "Porta 2 · CLI", "Porta 3 · API", "v2-conector", "v2-cli"])
+      expect(html, antiga).not.toContain(antiga);
   });
 
   it("a descrição da página diz as três portas e cabe no Google", () => {
@@ -158,50 +218,6 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     expect(DADOS.descricao).toMatch(/fonte/);
     for (const porta of ["conector MCP", "CLI", "API"]) expect(DADOS.descricao, porta).toContain(porta);
     expect(html).toContain(`<meta name="description" content="${esc(DADOS.descricao)}"`);
-  });
-
-  it("o conector: o que dá para pedir, os três passos e nenhum endereço publicado", () => {
-    const secao = trecho('<section class="faixa secao v2-comandos v2-conector"', "</section>");
-    expect(secao).toContain('id="conector"');
-    expect(semTags(secao)).toContain("No Claude e no ChatGPT");
-    expect(vezes(secao, "<li>")).toBe(3);
-    // o endereço do conector vem com a chave: nenhuma parte da página o publica
-    expect(html).not.toMatch(/mcp\.tickerlab|https?:\/\/[^\s"]*\/mcp/);
-  });
-
-  it("os cartões do conector só citam ferramentas e prompts que o conector registra", () => {
-    const prompts = ler("conector_remoto", "prompts.py");
-    const secao = trecho('<section class="faixa secao v2-comandos v2-conector"', "</section>");
-    const citados = [...secao.matchAll(/<code>([^<]+)<\/code>/g)].flatMap((m) => m[1].split(" · "));
-    expect(citados.length).toBeGreaterThanOrEqual(10);
-    for (const nome of citados) {
-      if (nome === "prompts do conector") expect(prompts).toContain("def registrar_prompts(");
-      else expect(FERRAMENTAS, nome).toMatch(new RegExp(`async def ${nome}\\(`));
-    }
-  });
-
-  it("a CLI: os cartões e os passos só citam comandos e opções que ela tem", () => {
-    const secao = trecho('<section class="faixa secao v2-comandos v2-cli" id="comandos"', "</section>");
-    expect(vezes(secao, "<li>")).toBe(3);
-    const citados = [...secao.matchAll(/<code>([^<]+)<\/code>/g)].map((m) => desesc(m[1]));
-    expect(citados.length).toBeGreaterThanOrEqual(8);
-    expect(citados).toEqual(expect.arrayContaining(["tickerlab login", "tickerlab instrucoes", "pipx"]));
-    for (const citado of citados) comandoExiste(citado);
-    expect(semTags(secao)).toContain("beta fechado, sem cobrança");
-  });
-
-  it("a API: cada rota citada está na documentação, com as licenças, e os links levam à raiz da API", () => {
-    const secao = trecho('<section class="faixa secao v2-api" id="api"', "</section>");
-    const rotas = [...secao.matchAll(/<span class="metodo"><b>([A-Z]+)<\/b> ([^<]+)<\/span>/g)].map(
-      (m) => `${m[1]} ${desesc(m[2])}`,
-    );
-    expect(rotas).toHaveLength(4);
-    for (const rota of rotas) rotaDocumentada(rota);
-    expect(semTags(secao)).toContain("TickerLab Data");
-    expect(secao).toContain('<span class="odbl">ODbL · CVM</span>');
-    expect(secao).toContain(`href="${URL_DA_API}/documentacao/"`);
-    expect(secao).toContain(`href="${URL_DA_API}/#catalogo"`);
-    expect(ler("site-api", "index.html")).toContain('id="catalogo"');
   });
 
   it("as travas das três portas numa lista só, com a de pessoa física e a da chave", () => {
@@ -246,7 +262,7 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     expect(desesc(semTags(respostas[0][2]))).toContain(`"valid_until": "${RESPOSTA_DO_EXEMPLO.publicado}"`);
   });
 
-  it("a demonstração da conversa vem depois do conector, dita gravada, com fonte e sem pessoa nem promessa", () => {
+  it("a demonstração da conversa vem depois das portas, dita gravada, com fonte e sem pessoa nem promessa", () => {
     // linha 903, PR E: texto fixo, nenhuma chamada a modelo no site público
     const secao = trecho('<section class="faixa secao v2-demonstracao"', "</section>");
     const texto = semTags(secao);
@@ -286,14 +302,14 @@ describe("página inicial de um site só: uma proposta e três portas", () => {
     }
   });
 
-  it("a ordem da página: topo, portas, o detalhe de cada uma, travas, como era na data, a base e a vitrine", () => {
+  it("a ordem da página: topo, portas (com o cartão de cada uma), a demonstração, travas, como era na data, a base e a vitrine", () => {
     const ordem = [
       'id="titulo-heroi"',
       'id="portas"',
       'id="conector"',
-      'id="demonstracao"',
       'id="comandos"',
       'id="api"',
+      'id="demonstracao"',
       'id="travas"',
       'id="como-era"',
       'id="titulo-da-base"',

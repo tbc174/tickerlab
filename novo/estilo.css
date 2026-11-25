@@ -1000,8 +1000,22 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   color: #e8f0ff; font-size: .78rem; overflow-wrap: anywhere; }
 .porta .seta { font-weight: 700; }
 
-/* o detalhe de cada porta: os passos lado a lado, embaixo dos cartões */
+/* o que dá para pedir, e o nome em cada porta (a lista única das portas) e os passos para começar */
+.consultas-titulo { margin: 2.6rem 0 0; font-size: 1.2rem; }
+.consultas-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin: 1rem 0 0; padding: 0;
+  list-style: none; }
+.consulta { padding: 1rem 1.15rem; background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); }
+.consulta h4 { margin: 0 0 .3rem; font-size: 1rem; }
+.consulta > p { margin: 0 0 .75rem; color: var(--apagado); font-size: .9rem; line-height: 1.5; }
+/* o resumo da lista única começa em minúscula (nos documentos ele vem depois de "Nome:"); aqui abre a frase */
+.consulta > p::first-letter { text-transform: uppercase; }
+.consulta dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .3rem .9rem; margin: 0; font-size: .8rem; }
+.consulta dt { color: var(--sutil); font-weight: 600; }
+.consulta dd { margin: 0; color: var(--apagado); overflow-wrap: anywhere; }
+.consulta dd code { color: var(--azul-texto); font-weight: 600; }
 .passos-em-linha { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 1.6rem; }
+/* o passo mais alto estica os outros: o título e o texto ficam no topo, sem vão entre eles */
+.passos-em-linha li { align-content: start; }
 
 /* as rotas da API */
 .v2-api .rotas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.6rem; }
@@ -1035,7 +1049,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 
 @media (max-width: 960px) {
   .heroi.heroi-janela, .demo-data { grid-template-columns: minmax(0, 1fr); }
-  .portas-grade, .travas-em-grade, .passos-em-linha { grid-template-columns: minmax(0, 1fr); }
+  .portas-grade, .travas-em-grade, .passos-em-linha, .consultas-grade { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 680px) {
   .v2-api .rotas { grid-template-columns: minmax(0, 1fr); }

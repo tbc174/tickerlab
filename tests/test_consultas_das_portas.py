@@ -9,8 +9,11 @@ propósito, regrave a foto com `TICKERLAB_GRAVAR_FOTO=1` e diga no PR o que a IA
 """
 
 import asyncio
+import hashlib
+import html
 import json
 import os
+import re
 from pathlib import Path
 
 import click
@@ -386,6 +389,128 @@ def test_os_documentos_gerados_rodam_a_suite_inteira():
 def test_trocar_a_tabela_pede_as_marcas():
     with pytest.raises(ValueError):
         registro.trocar_a_tabela("sem marca", "guia")
+
+
+# ---------------------------------------------------------------- a página inicial do site (PR 4 da frente 2)
+# o texto aprovado pelo Tiago em 24/11/2026 ("Aprovo o texto"): só as consultas que leem a base, nesta ordem;
+# a de pessoa física, a chave e as instruções do agente ficam fora
+CONSULTAS_DA_PAGINA = (
+    "busca", "ficha", "analise", "comparaveis", "demonstracoes", "eventos", "vinculos", "ativos", "compradores",
+    "fundo", "setores", "novidades", "catalogo", "de_onde_vem", "credito", "o_que_mudou", "comparar", "dossie",
+    "deck", "lotes",
+)  # fmt: skip
+# nomes de concorrente que o texto público não cita
+CONCORRENTES = (
+    "brapi",
+    "economatica",
+    "bloomberg",
+    "capital iq",
+    "refinitiv",
+    "pitchbook",
+    "speedio",
+    "econodata",
+)
+# o motivo interno das tabelas do repositório cita fila e decisões; a página leva só a frase curta
+INTERNO = ("linha ", "diretoria", "fila", "#", "pr ", "adr")
+INDEX = RAIZ / "site" / "index.html"
+
+
+def test_a_pagina_leva_so_as_consultas_que_leem_a_base():
+    assert [c["chave"] for c in registro.para_o_site()] == list(CONSULTAS_DA_PAGINA)
+
+
+def test_a_lista_da_pagina_e_a_do_conteudo_do_site():
+    gravada = json.loads(
+        (RAIZ / "web" / "conteudo" / "consultas.json").read_text(encoding="utf-8")
+    )
+    assert gravada == registro.para_o_site(), (
+        "rode python -m scripts.exportar_conteudo e os geradores do site"
+    )
+
+
+@pytest.mark.parametrize(
+    "consulta",
+    [c for c in registro.CONSULTAS if c.chave in CONSULTAS_DA_PAGINA],
+    ids=lambda c: c.chave,
+)
+def test_a_porta_sem_a_consulta_tem_a_frase_curta_da_pagina(consulta):
+    assert set(consulta.na_pagina) == set(consulta.fora_de_uma_porta)
+    for frase in consulta.na_pagina.values():
+        assert 0 < len(frase) <= 40, frase
+        assert not any(palavra in frase.lower() for palavra in INTERNO), frase
+
+
+def test_a_lista_da_pagina_nao_leva_pessoa_nem_frase_travada():
+    texto = json.dumps(registro.para_o_site(), ensure_ascii=False).lower()
+    assert (
+        "socios_e_donos" not in texto
+        and "sócios e donos" not in texto
+        and "/people" not in texto
+    )
+    for palavra in PALAVRAS_FORA + CONCORRENTES:
+        assert palavra.lower() not in texto, palavra
+
+
+def _secao_das_portas() -> str:
+    """O texto da seção "Três portas, uma base" do site gerado, sem as marcas do HTML."""
+    pagina = INDEX.read_text(encoding="utf-8")
+    comeco = pagina.index('id="portas"')
+    secao = pagina[comeco : pagina.index("</section>", comeco)]
+    # a marca sai sem espaço: `lote (<code>POST …</code>)` fica como a frase; o teste só procura trechos
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", "", secao)).split())
+
+
+def test_a_pagina_inicial_gerada_mostra_a_lista_das_portas():
+    secao = _secao_das_portas()
+    for consulta in registro.para_o_site():
+        assert (
+            f"{consulta['nome']}" in secao
+            and " ".join(str(consulta["resumo"]).split()) in secao
+        ), consulta
+        for porta in registro.PORTAS:
+            celula = consulta[porta]
+            textos = celula.get("nomes") or [str(celula["frase"]).replace("`", "")]
+            for texto in textos:
+                assert " ".join(texto.split()) in secao, (
+                    consulta["chave"],
+                    porta,
+                    texto,
+                )
+
+
+def test_a_secao_das_portas_nao_leva_pessoa_nem_frase_travada():
+    secao = _secao_das_portas().lower()
+    assert (
+        "socios_e_donos" not in secao
+        and "sócios e donos" not in secao
+        and "/people" not in secao
+    )
+    for palavra in PALAVRAS_FORA + CONCORRENTES:
+        assert palavra.lower() not in secao, palavra
+
+
+def test_a_pagina_inicial_tem_uma_secao_so_das_portas():
+    pagina = INDEX.read_text(encoding="utf-8")
+    for antiga in ("Porta 1 · Conector MCP", "Porta 2 · CLI", "Porta 3 · API"):
+        assert antiga not in pagina
+    # as âncoras antigas seguem valendo: agora levam ao cartão de cada porta
+    for ancora in ('id="conector"', 'id="comandos"', 'id="api"'):
+        assert pagina.count(ancora) == 1, ancora
+
+
+# a impressão digital do texto da lista da página inicial (texto público, nível 1): o aprovado em 24/11/2026, com as
+# quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281)
+IMPRESSAO_DA_LISTA_DA_PAGINA = (
+    "230c1a07ce221db6656195cbdf7484404f210fcafe3ae3893b01b6a779b924b5"
+)
+
+
+def test_o_texto_da_lista_da_pagina_e_o_aprovado():
+    texto = json.dumps(registro.para_o_site(), ensure_ascii=False, sort_keys=True)
+    assert hashlib.sha256(texto.encode()).hexdigest() == IMPRESSAO_DA_LISTA_DA_PAGINA, (
+        "o texto da lista da página inicial mudou (um nome, resumo ou frase do registro): é texto público, passa "
+        "pela revisão de segurança e pela cruzada; depois regrave IMPRESSAO_DA_LISTA_DA_PAGINA"
+    )
 
 
 # PR 5a: a chave do setor no formato da API, a mesma nas duas portas; o que cada porta aceitava antes continua

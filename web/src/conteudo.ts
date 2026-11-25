@@ -456,3 +456,25 @@ export const fatosDaBase: {
   subtitulo: string;
   medido_em_curto: string;
 } = fatosJson as never;
+
+import consultasJson from "../conteudo/consultas.json";
+
+/** O nome de uma consulta numa porta, ou a frase curta da página quando a porta não a tem (`para_o_site` de
+ * conector_remoto/consultas_das_portas.py). */
+export interface CelulaDaPorta {
+  nomes?: string[];
+  frase?: string;
+}
+
+/** O que dá para pedir, e o nome em cada porta: a lista única das portas (o conector, a CLI e a API leem a
+ * mesma; um teste confere que a página inicial gerada a mostra). */
+export interface ConsultaDasPortas {
+  chave: string;
+  nome: string;
+  resumo: string;
+  conector: CelulaDaPorta;
+  cli: CelulaDaPorta;
+  api: CelulaDaPorta;
+}
+
+export const consultasDasPortas: ConsultaDasPortas[] = consultasJson;
