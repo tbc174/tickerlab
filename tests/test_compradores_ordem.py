@@ -98,3 +98,26 @@ def test_o_empate_nao_olha_a_data_a_entrada_de_ontem_nao_sobe_o_comprador():
 
 def test_o_corte_pega_os_primeiros_da_ordem():
     assert _ordem(limite=2) == [MUITAS, UMA_E_CONTROLADA]
+
+
+def test_comprador_so_com_sinal_sem_data_continua_na_lista_e_vem_depois_de_quem_tem_entrada():
+    """Controlada sem data de referência (a data vem vazia do FRE): o comprador não some nem derruba a ordem, e a
+    falta de data não o põe na frente de ninguém que tenha entrada."""
+    lista = _lista()
+    sem_data = "40000006"
+    lista.anotar_controladas(
+        pd.DataFrame(
+            {
+                "comprador": [sem_data],
+                "alvo": [ALVOS[0]],
+                "tipo": ["controlada"],
+                "participacao": [100.0],
+                "referencia": [pd.NaT],
+                "publico_em": [DIA],
+            }
+        )
+    )
+    ordem = [c["raiz_do_cnpj"] for c in lista.montar(_nomes(lista), 50)]
+    assert sem_data in ordem
+    assert ordem[-2:] == [SO_CONTROLADA, sem_data]  # só controlada: desempata a raiz
+    assert ordem.index(sem_data) > ordem.index(UMA_NOVA)
