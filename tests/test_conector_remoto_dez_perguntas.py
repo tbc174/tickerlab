@@ -493,6 +493,7 @@ SEM_PERGUNTA_DAS_DEZ = {
     "de_onde_vem": "linha 980, onda 1: explica a origem de um conjunto ou campo, que as dez não perguntam; testada em test_conector_de_onde_vem",
     "o_que_mudou": "linha 980, onda 1: serve à volta a uma empresa já analisada, que as dez não têm; testada em test_conector_ferramentas_do_analista",
     "comparar_empresas": "linha 980, onda 1: põe lado a lado empresas que o analista já escolheu, que as dez não pedem; testada em test_conector_ferramentas_do_analista",
+    "acompanhar_empresas": "linha 980, onda 2: a volta a uma lista de empresas já analisadas, que as dez não têm; testada em test_conector_acompanhar_empresas",
 }
 
 
@@ -860,6 +861,7 @@ MEDIDAS_A_PARTE = {
     "credito_da_empresa": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
     "o_que_mudou": "linha 980, onda 1: teto em test_conector_ferramentas_do_analista",
     "comparar_empresas": "linha 980, onda 1: cinco fichas pequenas; teto em test_conector_ferramentas_do_analista",
+    "acompanhar_empresas": "linha 980, onda 2: teto em test_conector_acompanhar_empresas",
     "de_onde_vem": "linha 980, onda 1: só explica o catálogo; teto em test_conector_de_onde_vem",
 }
 

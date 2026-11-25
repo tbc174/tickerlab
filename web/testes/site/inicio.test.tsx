@@ -55,8 +55,10 @@ const ler = (...partes: string[]) => readFileSync(join(RAIZ, ...partes), "utf8")
 const CLI = ler("cli", "tickerlab", "comandos.py");
 const FERRAMENTAS = ler("conector_remoto", "ferramentas.py");
 const DOCUMENTACAO = ler("site-api", "documentacao", "index.html");
-// as ferramentas do analista (crédito, o que mudou, comparar, de onde vem) ficam noutro arquivo do conector
-const TODAS_AS_FERRAMENTAS = FERRAMENTAS + ler("conector_remoto", "ferramentas_do_analista.py");
+// as ferramentas do analista (crédito, o que mudou, comparar, de onde vem) e as da onda 2 (acompanhar) ficam noutros
+// arquivos do conector
+const TODAS_AS_FERRAMENTAS =
+  FERRAMENTAS + ler("conector_remoto", "ferramentas_do_analista.py") + ler("conector_remoto", "acompanhar.py");
 // rotas que existem na API (o teste da lista única confere no roteador) mas a página de documentação ainda não lista:
 // linha 1026 da fila; quando a documentação as listar, este teste falha e a rota sai daqui
 const ROTAS_AINDA_SEM_DOCUMENTACAO = ["GET /companies/{cnpj}/analysis", "GET /research/news"];
