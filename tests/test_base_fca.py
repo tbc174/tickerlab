@@ -8,6 +8,8 @@ informa "4030" no lugar do ticker. Série 4, PR 1: a CVM publica os valores mobi
 mais nova de cada formulário, e a data que vale é a entrega dessa versão (`DT_RECEB`).
 """
 
+import io
+import zipfile
 from datetime import date
 from pathlib import Path
 
@@ -376,3 +378,24 @@ def test_linhas_iguais_do_mesmo_documento_continuam(valores):
     assert len(juntas) == len(
         abertos
     )  # cada documento vem de uma baixada só, com todas as linhas
+
+
+def _versao_sem_xml_de_valores() -> bytes:
+    """O zip do RAD de uma versão cujo formulário não traz o XML dos valores mobiliários (a CVM deixou
+    de incluí-lo em alguma versão; a carga mensal de 12/11/2026 morreu com KeyError)."""
+    interno = io.BytesIO()
+    with zipfile.ZipFile(interno, "w") as formulario:
+        formulario.writestr("Outro.xml", "<Raiz/>")
+    externo = io.BytesIO()
+    with zipfile.ZipFile(externo, "w") as pacote:
+        pacote.writestr("0001.fca", interno.getvalue())
+    return externo.getvalue()
+
+
+def test_versao_sem_o_xml_de_valores_vira_zero_linhas_e_nao_derruba_a_carga(caplog):
+    documento = _documentos_de_2021().loc["104636"]
+    with caplog.at_level("WARNING"):
+        linhas = fca.ler_documento_da_versao(_versao_sem_xml_de_valores(), documento)
+    assert linhas.empty
+    assert list(linhas.columns) == list(fca.COLUNAS)
+    assert "104636" in caplog.text

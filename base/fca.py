@@ -34,6 +34,7 @@ A coluna `origem` diz de onde veio cada linha.
 """
 
 import io
+import logging
 import re
 import xml.etree.ElementTree as ET
 import zipfile
@@ -43,6 +44,8 @@ from itertools import pairwise
 from pathlib import Path
 
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 CODIFICACAO_DA_CVM = "latin-1"
 # o emissor tem 4 posições começando por letra e pode ter número (B3SA, da B3); o ticker é o emissor
@@ -244,7 +247,15 @@ def ler_documento_da_versao(
     with zipfile.ZipFile(io.BytesIO(conteudo)) as externo:
         nome = next(n for n in externo.namelist() if n.endswith(".fca"))
         with zipfile.ZipFile(io.BytesIO(externo.read(nome))) as formulario:
-            raiz = ET.fromstring(formulario.read(XML_DOS_VALORES))
+            if XML_DOS_VALORES in formulario.namelist():
+                raiz = ET.fromstring(formulario.read(XML_DOS_VALORES))
+            else:  # a CVM deixou de incluir o XML em alguma versão: sem valores em vez de derrubar a carga
+                log.warning(
+                    "FCA, versão do documento %s: o formulário não traz %s; sem valores",
+                    documento["id_documento"],
+                    XML_DOS_VALORES,
+                )
+                raiz = ET.Element("ValoresMobiliarios")
     linhas = [
         linha
         for valor in raiz.findall("ValorMobiliario")
