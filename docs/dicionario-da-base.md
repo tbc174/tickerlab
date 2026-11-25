@@ -7096,6 +7096,36 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `controladas_entrada`
+
+Quando cada controlada ou coligada entrou no FRE da companhia (linha 1045): uma linha por par companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade, com a **primeira** entrega do FRE que trouxe o par. `conhecido_em` é o recebimento na CVM, o dia em que o par ficou público; a `referencia` de `controladas` é o fim do exercício e pode ser futura (2026-12-31 num FRE entregue em junho de 2026). `entrada_observada` é falso quando o par já estava no primeiro FRE que a base vê da companhia: a ligação existe 'não depois de' `primeiro_ano_no_fre`. **Limites:** a CVM só publica a versão mais nova de cada FRE, então `conhecido_em` pode ser depois da data em que a companhia de fato informou o par, nunca antes; o FRE de 2023 informa muito mais sociedades que o de 2022 (4.222 para 5.263 pares medidos em 25/11/2026), então o pico de entradas em 2023 não é de aquisições; a entrada no FRE não é a data do negócio. Só pessoa jurídica com CNPJ que confere: sociedade sem CNPJ fica de fora (não conferido) e nunca se liga pelo nome. Sem razão social, nome nem CPF.
+
+- **Fonte:** CVM: dados abertos do FRE, tabela de participação em sociedades (derivada de `controladas`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados
+- **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; o par vale a partir de `conhecido_em`
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_companhia`, `raiz_da_controlada`
+- **Três datas:** aconteceu_em = `primeira_referencia`; publico_em = `conhecido_em`; coletado_em = `montado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/controladas_entrada/controladas_entrada.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Sai de `controladas`, que guarda o SHA-256 de cada FRE; o manifesto leva o hash das tabelas de entrada; `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_companhia` | CNPJ da companhia que informou o FRE (14 dígitos) | texto |
+| `raiz_da_controlada` | Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais | texto |
+| `cnpj` | CNPJ da sociedade como veio na primeira entrega (14 dígitos) | texto |
+| `primeiro_ano_no_fre` | Ano da referência do FRE que trouxe o par pela primeira vez | ano |
+| `primeira_referencia` | Referência (fim do exercício) desse FRE; pode ser futura | data (dia) |
+| `conhecido_em` | Data em que a CVM recebeu esse FRE: quando o par ficou público | data (dia) |
+| `tipo_na_entrada` | controlada, coligada ou vazio (o FRE novo deixa em branco) | texto |
+| `entrada_observada` | Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela | verdadeiro ou falso |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `controladas_pj`
 
 Cópia reduzida de `controladas` que vai ao VPS só para a lista de compradores por setor da API externa (linha 844): só a companhia e a controlada cujas raízes estão em `cnpj_empresas_pj` (sem pessoa), sem a razão social da sociedade nem o nome da companhia. Cada documento do FRE (companhia, referência e versão) tem ainda uma linha de marca, com `cnpj`, `tipo` e `participacao` vazios: assim o FRE mais recente da companhia continua o mesmo da tabela inteira, mesmo quando ele só tinha controladas fora da lista. Montada no envio, não fica no acervo de casa
