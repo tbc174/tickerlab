@@ -3656,7 +3656,7 @@ def _outra_ponta_do_rapp(sufixo: str, quem: str) -> dict[str, tuple[str, str]]:
     """O CNPJ da outra ponta de um relatório de resíduos: vazio quando a fonte traz CPF ou CNPJ de DV errado."""
     return {
         f"cnpj_{sufixo}": (
-            f"CNPJ {quem} (14 dígitos com máscara); vazio quando a fonte traz CPF",
+            f"CNPJ {quem} (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado",
             TEXTO,
         ),
         f"cnpj_basico_{sufixo}": (f"Raiz do CNPJ {quem} (8 caracteres)", TEXTO),

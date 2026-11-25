@@ -17,7 +17,7 @@
       "unidade": "texto"
     },
     "cnpj_gerador": {
-      "descricao": "CNPJ de quem gerou o resíduo (14 dígitos com máscara); vazio quando a fonte traz CPF",
+      "descricao": "CNPJ de quem gerou o resíduo (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado",
       "unidade": "texto"
     },
     "cnpj_basico_gerador": {
@@ -25,7 +25,7 @@
       "unidade": "texto"
     },
     "cnpj_destino": {
-      "descricao": "CNPJ de para onde o resíduo foi mandado (14 dígitos com máscara); vazio quando a fonte traz CPF",
+      "descricao": "CNPJ de para onde o resíduo foi mandado (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado",
       "unidade": "texto"
     },
     "cnpj_basico_destino": {

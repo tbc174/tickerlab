@@ -162,11 +162,20 @@ def _ilegiveis(bruta: pd.DataFrame, colunas: Collection[str]) -> int:
     )
 
 
-def _outra_ponta(texto: pd.Series) -> tuple[pd.Series, int]:
-    """O CNPJ de 14 caracteres da outra ponta (nulo se não for CNPJ de DV certo) e quantos eram CPF."""
-    digitos = texto.str.replace(r"\D", "", regex=True)
-    cnpj14, de_cpf = comum.documentos(digitos)
-    return cnpj14, int(de_cpf.sum())
+def _sem_pontuacao(texto: pd.Series) -> pd.Series:
+    """O documento sem ponto, barra, traço e espaço, em maiúsculas: as letras do CNPJ alfanumérico (IN RFB
+    2.229/2024) ficam; o teste de CPF de `comum.documentos` olha só os dígitos."""
+    return texto.str.replace(cnpjs.SEPARADORES.pattern, "", regex=True).str.upper()
+
+
+def _outra_ponta(texto: pd.Series) -> tuple[pd.Series, int, int]:
+    """O CNPJ de 14 caracteres da outra ponta (nulo se não for CNPJ de DV certo), quantos eram CPF e quantos
+    vieram preenchidos sem ser CNPJ de DV certo nem CPF."""
+    documento = _sem_pontuacao(texto)
+    cnpj14, de_cpf = comum.documentos(documento)
+    cnpj14 = cnpj14.astype("string")  # sem nenhum CNPJ a série viria como número
+    invalido = cnpj14.isna() & ~de_cpf & documento.fillna("").ne("")
+    return cnpj14, int(de_cpf.sum()), int(invalido.sum())
 
 
 def ler(relatorio: Relatorio, conteudo: bytes) -> tuple[pd.DataFrame, dict[str, int]]:
@@ -177,9 +186,7 @@ def ler(relatorio: Relatorio, conteudo: bytes) -> tuple[pd.DataFrame, dict[str, 
     é contada em `id_repetido`."""
     bruta, quebradas = _csv(conteudo, relatorio)
     tabela, contagem = comum.so_pessoa_juridica(
-        bruta.assign(
-            **{relatorio.cnpj: bruta[relatorio.cnpj].str.replace(r"\D", "", regex=True)}
-        ),
+        bruta.assign(**{relatorio.cnpj: _sem_pontuacao(bruta[relatorio.cnpj])}),
         relatorio.cnpj,
     )
     contagem["linha_quebrada"] = quebradas
@@ -188,9 +195,11 @@ def ler(relatorio: Relatorio, conteudo: bytes) -> tuple[pd.DataFrame, dict[str, 
     )
     colunas: dict[str, pd.Series] = {**comum.com_cnpj(tabela["cnpj14"])}
     contagem["outra_ponta_pessoa_fisica"] = 0
+    contagem["outra_ponta_invalida"] = 0
     for da_fonte, sufixo in relatorio.outras_pontas.items():
-        cnpj14, de_cpf = _outra_ponta(tabela[da_fonte])
+        cnpj14, de_cpf, invalidos = _outra_ponta(tabela[da_fonte])
         contagem["outra_ponta_pessoa_fisica"] += de_cpf
+        contagem["outra_ponta_invalida"] += invalidos
         colunas[f"cnpj_{sufixo}"] = cnpj14.map(cnpjs.formatar, na_action="ignore")
         colunas[f"cnpj_basico_{sufixo}"] = cnpj14.str[: cnpjs.TAMANHO_DA_RAIZ]
     colunas["ano"] = pd.to_numeric(tabela[relatorio.ano], errors="coerce").astype(

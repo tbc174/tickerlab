@@ -159,6 +159,44 @@ def test_a_outra_ponta_com_cpf_fica_vazia_e_contada_e_a_com_cnpj_ganha_a_raiz():
     _sem_nada_de_pessoa_nem_do_que_sai(tabela)
 
 
+def _alfanumerico(primeiros_12: str) -> str:
+    return primeiros_12 + cnpjs.digitos_verificadores(primeiros_12)
+
+
+ALFANUMERICO = _alfanumerico("12ABC34501DE")
+
+
+def test_cnpj_alfanumerico_entra_nas_duas_pontas_com_as_letras():
+    tabela, contagem = rapp.ler(
+        rapp.RESIDUOS_DESTINADOS,
+        _arquivo(
+            rapp.RESIDUOS_DESTINADOS,
+            {
+                "CNPJ do destinador": _formatado(ALFANUMERICO),
+                "CNPJ do gerador do resíduo": _formatado(ALFANUMERICO),
+            },
+        ),
+    )
+    assert contagem["cnpj_invalido"] == 0
+    assert tabela["cnpj_basico"].tolist() == [ALFANUMERICO[:8]]
+    assert tabela["cnpj_basico_gerador"].tolist() == [ALFANUMERICO[:8]]
+    assert tabela["cnpj_gerador"].tolist() == [_formatado(ALFANUMERICO)]
+
+
+def test_a_outra_ponta_com_digito_errado_fica_vazia_e_e_contada_a_parte_do_cpf():
+    tabela, contagem = rapp.ler(
+        rapp.RESIDUOS_TRANSPORTADOS,
+        _arquivo(
+            rapp.RESIDUOS_TRANSPORTADOS,
+            {"CNPJ da origem": DV_ERRADO},
+            {"CNPJ da origem": ""},
+        ),
+    )
+    assert tabela["cnpj_origem"].isna().all()
+    assert contagem["outra_ponta_invalida"] == 1  # o vazio não conta
+    assert contagem["outra_ponta_pessoa_fisica"] == 0
+
+
 def test_duas_declaracoes_iguais_continuam_duas_com_chaves_diferentes_e_estaveis():
     arquivo = _arquivo(rapp.EMISSOES, {}, {})
     tabela, _ = rapp.ler(rapp.EMISSOES, arquivo)

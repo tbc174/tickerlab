@@ -17,7 +17,7 @@
       "unidade": "texto"
     },
     "cnpj_origem": {
-      "descricao": "CNPJ de onde o resíduo saiu (14 dígitos com máscara); vazio quando a fonte traz CPF",
+      "descricao": "CNPJ de onde o resíduo saiu (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado",
       "unidade": "texto"
     },
     "cnpj_basico_origem": {

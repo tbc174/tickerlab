@@ -5685,7 +5685,7 @@ Resíduos sólidos que cada destinador declarou ao IBAMA ter recebido, de 2011 a
 | `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
 | `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
-| `cnpj_gerador` | CNPJ de quem gerou o resíduo (14 dígitos com máscara); vazio quando a fonte traz CPF | texto |
+| `cnpj_gerador` | CNPJ de quem gerou o resíduo (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado | texto |
 | `cnpj_basico_gerador` | Raiz do CNPJ de quem gerou o resíduo (8 caracteres) | texto |
 | `ano` | Ano a que a declaração se refere | número inteiro |
 | `categoria_codigo` | Código da categoria de atividade no Cadastro Técnico Federal | texto |
@@ -5730,7 +5730,7 @@ Transportes de resíduos sólidos que cada transportador declarou ao IBAMA, de 2
 | `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
 | `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
-| `cnpj_origem` | CNPJ de onde o resíduo saiu (14 dígitos com máscara); vazio quando a fonte traz CPF | texto |
+| `cnpj_origem` | CNPJ de onde o resíduo saiu (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado | texto |
 | `cnpj_basico_origem` | Raiz do CNPJ de onde o resíduo saiu (8 caracteres) | texto |
 | `ano` | Ano a que a declaração se refere | número inteiro |
 | `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
@@ -5766,9 +5766,9 @@ Resíduos sólidos que cada armazenador declarou ao IBAMA, de 2013 a 2026 (o úl
 | `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
 | `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
-| `cnpj_gerador` | CNPJ de quem gerou o resíduo (14 dígitos com máscara); vazio quando a fonte traz CPF | texto |
+| `cnpj_gerador` | CNPJ de quem gerou o resíduo (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado | texto |
 | `cnpj_basico_gerador` | Raiz do CNPJ de quem gerou o resíduo (8 caracteres) | texto |
-| `cnpj_destino` | CNPJ de para onde o resíduo foi mandado (14 dígitos com máscara); vazio quando a fonte traz CPF | texto |
+| `cnpj_destino` | CNPJ de para onde o resíduo foi mandado (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado | texto |
 | `cnpj_basico_destino` | Raiz do CNPJ de para onde o resíduo foi mandado (8 caracteres) | texto |
 | `ano` | Ano a que a declaração se refere | número inteiro |
 | `residuo_codigo` | Código do resíduo na lista do IBAMA | texto |
