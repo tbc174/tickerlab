@@ -10155,16 +10155,38 @@ TABELAS: dict[str, Tabela] = {
         onde="Parquet em `<acervo>/base/controladas_primeiro_fre/controladas_primeiro_fre.parquet` (servidor de casa, `scripts/montar_base_historica.py`)",
         linhagem=(
             "Sai de `controladas`, que guarda o SHA-256 de cada FRE; o manifesto leva o hash das tabelas de "
-            "entrada; `montado_em` diz quando a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+            "entrada; `montado_em` diz quando a tabela foi montada. "
+            + COM_VERSAO_DO_CODIGO
         ),
         colunas={
-            "cnpj_companhia": ("CNPJ da companhia que informou o FRE (14 dígitos)", TEXTO),
-            "raiz_da_controlada": ("Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais", TEXTO),
-            "cnpj": ("CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos)", TEXTO),
-            "primeiro_ano_no_fre": ("Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)", "ano"),
-            "primeira_referencia": ("Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura", DATA),
-            "conhecido_em": ("Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público", DATA),
-            "tipo_no_primeiro_fre": ("controlada, coligada ou vazio (o FRE novo deixa em branco)", TEXTO),
+            "cnpj_companhia": (
+                "CNPJ da companhia que informou o FRE (14 dígitos)",
+                TEXTO,
+            ),
+            "raiz_da_controlada": (
+                "Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais",
+                TEXTO,
+            ),
+            "cnpj": (
+                "CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos)",
+                TEXTO,
+            ),
+            "primeiro_ano_no_fre": (
+                "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
+                "ano",
+            ),
+            "primeira_referencia": (
+                "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
+                DATA,
+            ),
+            "conhecido_em": (
+                "Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público",
+                DATA,
+            ),
+            "tipo_no_primeiro_fre": (
+                "controlada, coligada ou vazio (o FRE novo deixa em branco)",
+                TEXTO,
+            ),
             "fre_anterior_sem_o_par": (
                 "Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela",
                 SIM_OU_NAO,
