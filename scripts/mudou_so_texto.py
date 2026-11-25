@@ -31,8 +31,16 @@ SO_TEXTO = (
     "docs/imagens/*",
 )
 
-# Textos conferidos por teste: o trader guarda a impressão digital (SHA-256) do critério da M2.
-NUNCA_SO_TEXTO = ("docs/pre-registro-*",)
+# Textos conferidos por teste: o trader guarda a impressão digital (SHA-256) do critério da M2; os documentos com
+# a tabela da lista das portas (`scripts/exportar_conteudo.py::DOCUMENTOS_DAS_PORTAS`) são conferidos contra o
+# registro (`tests/test_consultas_das_portas.py`).
+NUNCA_SO_TEXTO = (
+    "docs/pre-registro-*",
+    "docs/guia-do-analista-conector.md",
+    "docs/conector-remoto.md",
+    "docs/cli.md",
+    "docs/api/README.md",
+)
 
 
 def e_so_texto(caminho: str) -> bool:

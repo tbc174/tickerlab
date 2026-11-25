@@ -51,21 +51,27 @@ quando a chave é revogada.
 
 O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe sozinha as consultas certas:
 
+<!-- gerado: lista das portas (python -m scripts.exportar_conteudo); não edite à mão -->
 | Consulta | Para quê |
 |---|---|
-| Buscar empresas | achar empresas por atividade (CNAE), UF, município, porte ou idade |
-| Ficha da empresa | a triagem de um CNPJ antes da reunião: cadastro na Receita, situação, atividade e, se for companhia aberta, as entregas à CVM |
-| Comparáveis | empresas parecidas com a do CNPJ |
-| Demonstrações | os números publicados, quando a empresa publica |
-| Eventos | O que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho. |
-| Vínculos | As controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM. Só companhia aberta informa, uma vez por ano. |
+| Buscar empresas | achar empresas por atividade (CNAE), UF, município, porte ou idade no cadastro da Receita; só empresa, sem sócio nem contato |
+| Ficha da empresa | a triagem de um CNPJ antes da reunião: o cadastro na Receita e, se for companhia aberta, cada DFP e ITR com o prazo da CVM |
+| Análise completa | cada bloco que a chave vê numa resposta (cadastro, sócios pessoa jurídica, vínculos, eventos, crédito, ativos, comparáveis e as bases das agências), com a frase do topo, a linha do tempo e o que não foi achado |
+| Comparáveis | as companhias abertas do mesmo grupo de setores, com os números do último DFP e a mediana de cada razão |
+| Demonstrações | a DFP e o ITR da companhia aberta, conta a conta; empresa fechada não tem, e a base não estima o faturamento dela |
+| Eventos | o que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho |
+| Vínculos | as controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM; só companhia aberta informa, uma vez por ano |
+| Ativos físicos | os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM |
+| Quem já se mexeu no setor | quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
-| Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público. Só aparece se a sua chave tem o conjunto de crédito. Não é rating, nota nem elegibilidade, e não traz o SCR individual |
-| O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia que você escolhe contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público. Vale para retomar uma empresa que você já analisou. Mostra só os blocos que a sua chave vê e diz quais ficaram de fora. Não traz o que mudou mas ainda não foi publicado na base |
-| Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas, para pôr lado a lado as que você já escolheu. O que a base não tem vem como «não disponível», nunca como zero. Não traz nota nem ordenação das empresas |
-| Setores e setor | o panorama de um setor |
-| O que posso ver | o que a sua chave libera |
-| De onde vem um conjunto ou um campo | a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto. Serve para saber de onde veio um número antes de citá-lo. Não traz dado de empresa nem o significado do campo |
+| Setores | os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta |
+| Novidades da pesquisa | as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original |
+| O que posso ver | o que a sua chave libera (conjuntos, campos, fontes e licenças) e o consumo do mês |
+| De onde vem um conjunto ou um campo | a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto, para saber de onde veio um número antes de citá-lo; não traz dado de empresa |
+| Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, não traz o SCR individual e só aparece para a chave com o conjunto de crédito |
+| O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público; serve para retomar uma empresa já analisada e mostra só os blocos que a sua chave vê |
+| Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero, e não há nota nem ordenação das empresas |
+<!-- fim da lista das portas -->
 
 Para várias consultas, dá para pedir a informação **como ela era numa data** ("como era em 31/12/2025").
 
