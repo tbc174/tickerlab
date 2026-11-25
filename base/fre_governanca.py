@@ -632,7 +632,8 @@ def categoria_da_relacao(texto: str) -> str:
 
 def categoria_da_natureza(texto: str) -> str:
     """ "Mútuo para reforço de caixa" → `emprestimo_ou_mutuo`; vazio, "N/A" ou "não se aplica" →
-    `nao_informada`; o que não casa com nenhuma palavra, `outra`."""
+    `nao_informada` (também quando o FRE do ano nem traz a coluna); o que não casa, `outra`."""
+    texto = texto if isinstance(texto, str) else ""
     simples = sem_acento(texto).strip(" .;:-")
     if simples in NATUREZA_VAZIA or simples.startswith(NATUREZA_VAZIA_NO_COMECO):
         return "nao_informada"

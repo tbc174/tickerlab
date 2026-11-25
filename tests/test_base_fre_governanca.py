@@ -659,6 +659,10 @@ def test_natureza_da_transacao(texto, natureza):
     assert governanca.categoria_da_natureza(texto) == natureza
 
 
+def test_natureza_vazia_de_ano_sem_a_coluna_nao_quebra():
+    assert governanca.categoria_da_natureza(float("nan")) == "nao_informada"
+
+
 def test_parte_relacionada_traz_so_a_categoria_da_natureza_e_nunca_o_texto_livre():
     linhas = [
         {**_documento(ESTRELA), "Parte_Relacionada": "Fornecedora Fictícia S.A.",
