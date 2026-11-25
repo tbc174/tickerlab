@@ -9095,7 +9095,7 @@
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
       "consultavel": false,
-      "frase": "Desde quando cada controlada ou coligada aparece no FRE da companhia (linha 1045): uma linha por par companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade.",
+      "frase": "Desde quando cada controlada ou coligada aparece no FRE da companhia: uma linha por par companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade, com o **primeiro** FRE em que o par aparece.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
