@@ -392,10 +392,7 @@ def _versao_sem_xml_de_valores() -> bytes:
     return externo.getvalue()
 
 
-def test_versao_sem_o_xml_de_valores_vira_zero_linhas_e_nao_derruba_a_carga(caplog):
+def test_versao_sem_o_xml_de_valores_levanta_um_erro_proprio_com_o_id():
     documento = _documentos_de_2021().loc["104636"]
-    with caplog.at_level("WARNING"):
-        linhas = fca.ler_documento_da_versao(_versao_sem_xml_de_valores(), documento)
-    assert linhas.empty
-    assert list(linhas.columns) == list(fca.COLUNAS)
-    assert "104636" in caplog.text
+    with pytest.raises(fca.VersaoSemValores, match="104636"):
+        fca.ler_documento_da_versao(_versao_sem_xml_de_valores(), documento)
