@@ -201,6 +201,8 @@ def test_o_chat_do_app_nao_ganha_o_rodape_porque_nao_tem_todas_as_ferramentas_ci
         ("eventos", "unavailable_event_types"),
         ("vinculos", "unavailable_link_types"),
         ("compradores_do_setor", "unavailable_signals"),
+        # linha 980, item (e): par vazio com número que a chave não vê (observação da revisão cruzada do #1253)
+        ("comparaveis", "unavailable_figures"),
     ],
 )
 def test_lista_vazia_com_tipo_nao_consultado_nao_diz_que_a_base_nao_tem(

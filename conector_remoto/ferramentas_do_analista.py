@@ -163,6 +163,31 @@ def _retrato(bloco: str, corpo: object) -> Retrato:
     )
 
 
+def _mes_do_retrato(corpo: object, limite: str | None = None) -> dict | None:
+    """O mês do retrato da Receita que a API leu para o cadastro (o envelope), ou `None` se ela não o mandou ou se
+    ele ficou público depois de `limite` (o lado antigo nunca olha o futuro)."""
+    if not isinstance(corpo, dict):
+        return None
+    cadastro = corpo.get("registration")
+    base = cadastro if isinstance(cadastro, dict) else corpo
+    for nome in sorted(CAMPOS_DO_RETRATO):
+        envelope = base.get(nome)
+        if isinstance(envelope, dict) and _e_envelope(envelope):
+            if limite and _depois_de(envelope["published_at"], limite):
+                return None
+            return envelope
+    return None
+
+
+def _retratos_dos_dois_lados(dois: "DoisDias", desde: str) -> dict[str, object] | None:
+    """O mês do retrato de cada lado do cadastro (linha 980, item d), ou `None` se a API não mandou nenhum."""
+    antes = _mes_do_retrato(dois.antes.corpo, desde) if dois.antes.ok else None
+    depois = _mes_do_retrato(dois.depois.corpo) if dois.depois.ok else None
+    if antes is None and depois is None:
+        return None
+    return {"before": antes, "after": depois}
+
+
 def _datas(no: object) -> Iterator[str]:
     """Os dias em que algo ficou público dentro de `no` (cada envelope e o `published_at` solto do item)."""
     if isinstance(no, dict):
@@ -431,6 +456,13 @@ def _montar_a_saida(
         )
         depois = _retrato(bloco, dois.depois.corpo) if dois.depois.ok else None
         saida[bloco] = diferenca = _comparar(bloco, antes, depois)
+        retratos = (
+            _retratos_dos_dois_lados(dois, desde.isoformat())
+            if bloco == "registration"
+            else None
+        )
+        if retratos and isinstance(diferenca, dict):
+            diferenca["snapshot_month"] = retratos
         achadas += _quantas(diferenca)
         todos += [r.corpo for r in (dois.antes, dois.depois) if r.ok]
     if not saida:
