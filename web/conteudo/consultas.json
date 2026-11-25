@@ -1,0 +1,379 @@
+[
+  {
+    "api": {
+      "nomes": [
+        "GET /companies"
+      ]
+    },
+    "chave": "busca",
+    "cli": {
+      "nomes": [
+        "tickerlab prospectar"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "buscar_empresas"
+      ]
+    },
+    "nome": "Buscar empresas",
+    "resumo": "achar empresas por atividade (CNAE), UF, município, porte ou idade no cadastro da Receita; só empresa, sem sócio nem contato"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/profile"
+      ]
+    },
+    "chave": "ficha",
+    "cli": {
+      "nomes": [
+        "tickerlab empresa"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "ficha_da_empresa"
+      ]
+    },
+    "nome": "Ficha da empresa",
+    "resumo": "a triagem de um CNPJ antes da reunião: o cadastro na Receita e, se for companhia aberta, cada DFP e ITR com o prazo da CVM"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/analysis"
+      ]
+    },
+    "chave": "analise",
+    "cli": {
+      "nomes": [
+        "tickerlab analise"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "analise_completa"
+      ]
+    },
+    "nome": "Análise completa",
+    "resumo": "cada bloco que a chave vê numa resposta (cadastro, sócios pessoa jurídica, vínculos, eventos, crédito, ativos, comparáveis e as bases das agências), com a frase do topo, a linha do tempo e o que não foi achado"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/comparables"
+      ]
+    },
+    "chave": "comparaveis",
+    "cli": {
+      "nomes": [
+        "tickerlab comparaveis"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "comparaveis"
+      ]
+    },
+    "nome": "Comparáveis",
+    "resumo": "as companhias abertas do mesmo grupo de setores, com os números do último DFP e a mediana de cada razão"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/financials"
+      ]
+    },
+    "chave": "demonstracoes",
+    "cli": {
+      "nomes": [
+        "tickerlab demonstracoes"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "demonstracoes"
+      ]
+    },
+    "nome": "Demonstrações",
+    "resumo": "a DFP e o ITR da companhia aberta, conta a conta; empresa fechada não tem, e a base não estima o faturamento dela"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/events"
+      ]
+    },
+    "chave": "eventos",
+    "cli": {
+      "nomes": [
+        "tickerlab eventos"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "eventos"
+      ]
+    },
+    "nome": "Eventos",
+    "resumo": "o que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/links"
+      ]
+    },
+    "chave": "vinculos",
+    "cli": {
+      "nomes": [
+        "tickerlab vinculos"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "vinculos"
+      ]
+    },
+    "nome": "Vínculos",
+    "resumo": "as controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM; só companhia aberta informa, uma vez por ano"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/assets"
+      ]
+    },
+    "chave": "ativos",
+    "cli": {
+      "nomes": [
+        "tickerlab ativos"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "ativos"
+      ]
+    },
+    "nome": "Ativos físicos",
+    "resumo": "os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /buyers"
+      ]
+    },
+    "chave": "compradores",
+    "cli": {
+      "nomes": [
+        "tickerlab compradores"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "compradores_do_setor"
+      ]
+    },
+    "nome": "Quem já se mexeu no setor",
+    "resumo": "quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /funds/{cnpj}"
+      ]
+    },
+    "chave": "fundo",
+    "cli": {
+      "nomes": [
+        "tickerlab fundo"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "fundo"
+      ]
+    },
+    "nome": "Fundo",
+    "resumo": "o raio-x de um fundo na CVM: cadastro, taxas e carteira"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /sectors"
+      ]
+    },
+    "chave": "setores",
+    "cli": {
+      "nomes": [
+        "tickerlab setor"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "setores",
+        "setor"
+      ]
+    },
+    "nome": "Setores",
+    "resumo": "os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /research/news"
+      ]
+    },
+    "chave": "novidades",
+    "cli": {
+      "nomes": [
+        "tickerlab novidades"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "novidades"
+      ]
+    },
+    "nome": "Novidades da pesquisa",
+    "resumo": "as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /catalog"
+      ]
+    },
+    "chave": "catalogo",
+    "cli": {
+      "nomes": [
+        "tickerlab catalogo"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "o_que_posso_ver"
+      ]
+    },
+    "nome": "O que posso ver",
+    "resumo": "o que a sua chave libera (conjuntos, campos, fontes e licenças) e o consumo do mês"
+  },
+  {
+    "api": {
+      "frase": "só no conector"
+    },
+    "chave": "de_onde_vem",
+    "cli": {
+      "frase": "só no conector"
+    },
+    "conector": {
+      "nomes": [
+        "de_onde_vem"
+      ]
+    },
+    "nome": "De onde vem um conjunto ou um campo",
+    "resumo": "a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto, para saber de onde veio um número antes de citá-lo; não traz dado de empresa"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /credit/{cnpj}"
+      ]
+    },
+    "chave": "credito",
+    "cli": {
+      "frase": "(ainda não)"
+    },
+    "conector": {
+      "nomes": [
+        "credito_da_empresa"
+      ]
+    },
+    "nome": "Fatos de crédito de uma empresa",
+    "resumo": "situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, não traz o SCR individual e só aparece para a chave com o conjunto de crédito"
+  },
+  {
+    "api": {
+      "frase": "só no conector"
+    },
+    "chave": "o_que_mudou",
+    "cli": {
+      "frase": "só no conector"
+    },
+    "conector": {
+      "nomes": [
+        "o_que_mudou"
+      ]
+    },
+    "nome": "O que mudou numa empresa desde um dia",
+    "resumo": "o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público; serve para retomar uma empresa já analisada e mostra só os blocos que a sua chave vê"
+  },
+  {
+    "api": {
+      "frase": "lote (`POST /companies/batch`)"
+    },
+    "chave": "comparar",
+    "cli": {
+      "frase": "só no conector"
+    },
+    "conector": {
+      "nomes": [
+        "comparar_empresas"
+      ]
+    },
+    "nome": "Fichas de 2 a 5 empresas lado a lado",
+    "resumo": "o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero, e não há nota nem ordenação das empresas"
+  },
+  {
+    "api": {
+      "frase": "quatro rotas"
+    },
+    "chave": "dossie",
+    "cli": {
+      "nomes": [
+        "tickerlab dossie"
+      ]
+    },
+    "conector": {
+      "frase": "a IA compõe pelas ferramentas"
+    },
+    "nome": "Dossiê",
+    "resumo": "perfil, eventos, vínculos e comparáveis do CNPJ numa saída só"
+  },
+  {
+    "api": {
+      "nomes": [
+        "GET /companies/{cnpj}/deck"
+      ]
+    },
+    "chave": "deck",
+    "cli": {
+      "nomes": [
+        "tickerlab deck"
+      ]
+    },
+    "conector": {
+      "frase": "(devolve texto, não arquivo)"
+    },
+    "nome": "Deck",
+    "resumo": "o deck (.pptx) da empresa ou do setor, com a fonte e a data de cada tabela"
+  },
+  {
+    "api": {
+      "nomes": [
+        "POST /companies/batch"
+      ]
+    },
+    "chave": "lotes",
+    "cli": {
+      "frase": "(um CNPJ por vez)"
+    },
+    "conector": {
+      "frase": "(na conversa, as fichas de 2 a 5)"
+    },
+    "nome": "Lotes",
+    "resumo": "até 100 CNPJs num pedido, para sistema"
+  }
+]

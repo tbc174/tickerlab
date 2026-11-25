@@ -24,7 +24,11 @@ import numpy as np
 from base import contrato, receita_codigos, vitrine
 from base.arquivo import registro
 from base.dicionario import TABELAS
-from conector_remoto.consultas_das_portas import json_da_cli, trocar_a_tabela
+from conector_remoto.consultas_das_portas import (
+    json_da_cli,
+    para_o_site,
+    trocar_a_tabela,
+)
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
@@ -482,6 +486,8 @@ def conteudo() -> dict[str, object]:
         "ativos": _ativos(),
         "cnaes": _cnaes(),
         "empresas_da_base": vitrine.empresas_da_base(),
+        # o que dá para pedir em cada porta (a página inicial), da lista única das portas
+        "consultas": para_o_site(),
     }
 
 

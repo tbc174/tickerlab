@@ -94,7 +94,9 @@ class Consulta:
 
     `rotas` são as da `/data/v1` (método e caminho). Porta que não oferece a consulta tem o motivo escrito em
     `fora_de_uma_porta` (chave: uma das `PORTAS`). `nome` e `resumo` são o que as tabelas dos documentos mostram
-    (`tabela`); `publica` falso tira a consulta delas (a de pessoa física fica fora da documentação pública)."""
+    (`tabela`); `publica` falso tira a consulta delas (a de pessoa física fica fora da documentação pública).
+    A página inicial do site (`para_o_site`) mostra só as públicas que leem a base (`le_a_base`) e, na porta que
+    não tem a consulta, a frase curta de `na_pagina`, não o motivo interno (que cita fila e decisões)."""
 
     chave: str
     nome: str = ""
@@ -104,6 +106,8 @@ class Consulta:
     ferramentas: tuple[Ferramenta, ...] = ()
     comandos: tuple[str, ...] = ()
     fora_de_uma_porta: dict[str, str] = field(default_factory=dict)
+    na_pagina: dict[str, str] = field(default_factory=dict)
+    le_a_base: bool = True
 
 
 _BUSCAR_EMPRESAS = Ferramenta(
@@ -717,6 +721,10 @@ CONSULTAS: tuple[Consulta, ...] = (
             "cli": _LINHA_980,
             "api": "lê o `GET /catalog` (a consulta `catalogo`); não é rota própria",
         },
+        na_pagina={
+            "cli": "só no conector",
+            "api": "só no conector",
+        },
     ),
     Consulta(
         "credito",
@@ -728,6 +736,9 @@ CONSULTAS: tuple[Consulta, ...] = (
         ferramentas=(_CREDITO_DA_EMPRESA,),
         fora_de_uma_porta={
             "cli": "linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)"
+        },
+        na_pagina={
+            "cli": "(ainda não)",
         },
     ),
     Consulta(
@@ -741,6 +752,10 @@ CONSULTAS: tuple[Consulta, ...] = (
             "cli": _LINHA_980,
             "api": "composta no conector: compara o retrato de hoje com o de `desde` (cadastro, vínculos e eventos)",
         },
+        na_pagina={
+            "cli": "só no conector",
+            "api": "só no conector",
+        },
     ),
     Consulta(
         "comparar",
@@ -752,6 +767,10 @@ CONSULTAS: tuple[Consulta, ...] = (
         fora_de_uma_porta={
             "cli": _LINHA_980,
             "api": "composta no conector: as fichas de 2 a 5 CNPJs (para sistema, há o lote `POST /companies/batch`)",
+        },
+        na_pagina={
+            "cli": "só no conector",
+            "api": "lote (`POST /companies/batch`)",
         },
     ),
     Consulta(
@@ -776,6 +795,10 @@ CONSULTAS: tuple[Consulta, ...] = (
             "conector": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
             "api": "composto na CLI com quatro rotas: a ficha, os eventos, os vínculos e os comparáveis",
         },
+        na_pagina={
+            "conector": "a IA compõe pelas ferramentas",
+            "api": "quatro rotas",
+        },
     ),
     Consulta(
         "deck",
@@ -788,6 +811,9 @@ CONSULTAS: tuple[Consulta, ...] = (
         fora_de_uma_porta={
             "conector": "grava um arquivo .pptx; o conector devolve texto, não arquivo (Diretoria 12/11, linha 782)"
         },
+        na_pagina={
+            "conector": "(devolve texto, não arquivo)",
+        },
     ),
     Consulta(
         "lotes",
@@ -797,6 +823,10 @@ CONSULTAS: tuple[Consulta, ...] = (
         fora_de_uma_porta={
             "conector": "lote de até 100 CNPJs é para sistema; na conversa, `comparar_empresas` põe 2 a 5 lado a lado",
             "cli": "lote é para sistema; a CLI pede um CNPJ por vez",
+        },
+        na_pagina={
+            "conector": "(na conversa, as fichas de 2 a 5)",
+            "cli": "(um CNPJ por vez)",
         },
     ),
     Consulta(
@@ -808,6 +838,7 @@ CONSULTAS: tuple[Consulta, ...] = (
             "conector": "a chave entra pela página /autorizar do OAuth; quem corta o acesso é revogar a chave",
             "api": "não leem a base: guardam e apagam a chave no PC",
         },
+        le_a_base=False,
     ),
     Consulta(
         "instrucoes",
@@ -818,6 +849,7 @@ CONSULTAS: tuple[Consulta, ...] = (
             "conector": "no conector, a descrição de cada ferramenta ensina a IA a chamá-la",
             "api": "não lê a base: ensina a IA do PC a chamar a CLI",
         },
+        le_a_base=False,
     ),
 )
 
@@ -891,6 +923,35 @@ def _linha_das_portas(consulta: Consulta) -> str:
         _celula(consulta, "api", list(consulta.rotas)),
     ]
     return "| " + " | ".join(celulas) + " |"
+
+
+def _celula_do_site(consulta: Consulta, porta: str) -> dict[str, object]:
+    """Os nomes da consulta numa porta (todas as ferramentas, o primeiro comando, a primeira rota sem o prefixo
+    `/data/v1`) ou, se a porta não a tem, a frase curta da página."""
+    if porta == "conector":
+        nomes = [item.nome for item in consulta.ferramentas]
+    elif porta == "cli":
+        nomes = [f"tickerlab {comando}" for comando in consulta.comandos[:1]]
+    else:
+        nomes = list(consulta.rotas[:1])
+    if nomes:
+        return {"nomes": nomes}
+    return {"frase": consulta.na_pagina[porta]}
+
+
+def para_o_site() -> list[dict[str, object]]:
+    """O que dá para pedir, e o nome em cada porta, como a página inicial do site mostra (gravado pelo
+    `exportar_conteudo` em `web/conteudo/consultas.json`). Só as consultas públicas que leem a base."""
+    return [
+        {
+            "chave": consulta.chave,
+            "nome": consulta.nome,
+            "resumo": consulta.resumo,
+            **{porta: _celula_do_site(consulta, porta) for porta in PORTAS},
+        }
+        for consulta in CONSULTAS
+        if consulta.publica and consulta.le_a_base
+    ]
 
 
 def tabela(qual: str) -> str:
