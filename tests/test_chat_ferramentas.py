@@ -63,6 +63,7 @@ def _executar(caixa, nome, entrada):
 # `analise_completa` (frente 3, 18/11) também: o chat já compõe pelas ferramentas de cada bloco, e uma resposta
 # com todos os blocos encheria o contexto do modelo do chat; o dono do chat decide se ela entra.
 # `credito_da_empresa`, `o_que_mudou` e `comparar_empresas` (linha 980, onda 1): ferramentas do analista no conector; o dono do chat decide.
+# `acompanhar_empresas` (linha 980, onda 2): idem; o dono do chat decide.
 SO_NO_CONECTOR = frozenset(
     {
         "ativos",
@@ -72,6 +73,7 @@ SO_NO_CONECTOR = frozenset(
         "o_que_mudou",
         "comparar_empresas",
         "de_onde_vem",
+        "acompanhar_empresas",
     }
 )
 

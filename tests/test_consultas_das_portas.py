@@ -396,7 +396,7 @@ def test_trocar_a_tabela_pede_as_marcas():
 # a de pessoa física, a chave e as instruções do agente ficam fora
 CONSULTAS_DA_PAGINA = (
     "busca", "ficha", "analise", "comparaveis", "demonstracoes", "eventos", "vinculos", "ativos", "compradores",
-    "fundo", "setores", "novidades", "catalogo", "de_onde_vem", "credito", "o_que_mudou", "comparar", "dossie",
+    "fundo", "setores", "novidades", "catalogo", "de_onde_vem", "credito", "o_que_mudou", "comparar", "acompanhar", "dossie",
     "deck", "lotes",
 )  # fmt: skip
 # nomes de concorrente que o texto público não cita
@@ -499,9 +499,10 @@ def test_a_pagina_inicial_tem_uma_secao_so_das_portas():
 
 
 # a impressão digital do texto da lista da página inicial (texto público, nível 1): o aprovado em 24/11/2026, com as
-# quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281)
+# quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281) e, da
+# onda 2 do conector (linha 980), a consulta "Acompanhar uma lista de empresas"
 IMPRESSAO_DA_LISTA_DA_PAGINA = (
-    "230c1a07ce221db6656195cbdf7484404f210fcafe3ae3893b01b6a779b924b5"
+    "41d9561c5e49eb0a52320dc99e45bc72799f02da626acda4a53e8c72605efbd9"
 )
 
 
