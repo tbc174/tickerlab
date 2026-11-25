@@ -1,0 +1,64 @@
+{
+  "tabela": "ofertas_cnpj_dos_devedores",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "numero_requerimento": {
+      "descricao": "Como a CVM publica (`Numero_Requerimento`)",
+      "unidade": "texto"
+    },
+    "numero_processo": {
+      "descricao": "Como a CVM publica (`Numero_Processo`)",
+      "unidade": "texto"
+    },
+    "cnpj_emissor": {
+      "descricao": "CNPJ do emissor da oferta (a securitizadora), como a CVM publica",
+      "unidade": "texto"
+    },
+    "nome_emissor": {
+      "descricao": "Como a CVM publica (`Nome_Emissor`)",
+      "unidade": "texto"
+    },
+    "valor_mobiliario": {
+      "descricao": "Como a CVM publica (`Valor_Mobiliario`)",
+      "unidade": "texto"
+    },
+    "emissao": {
+      "descricao": "Como a CVM publica (`Emissao`)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ de empresa citado como devedor ou coobrigado, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "anunciada_em": {
+      "descricao": "Quando a oferta ficou pública na CVM (data do registro)",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "numero_requerimento",
+    "cnpj_emissor",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "anunciada_em",
+    "publico_em": "disponivel_em"
+  },
+  "sinonimos_de_tempo": {
+    "anunciada_em": "aconteceu_em",
+    "disponivel_em": "publico_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária (o ZIP é regerado todo dia)",
+  "atraso": "Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)"
+}

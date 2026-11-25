@@ -574,9 +574,13 @@ def test_a_mediana_sai_da_razao_inteira_dos_pares_com_4_casas(pasta_quebrada):
 
 
 def test_o_numero_guardado_nao_muda():
-    # o arredondamento é só da saída: a conta de `numeros_do_exercicio` fica com a razão inteira
+    # o arredondamento é só da saída: a conta de `numeros_do_grupo` fica com a razão inteira
     linhas = pd.DataFrame(
         _dfp(ALFA, 2024, {**NUMEROS_DA_ALFA, "receita": 3000.0}, "2025-03-20")
     )
-    numeros = comparaveis.numeros_do_exercicio(linhas, ebitda=250.0)
-    assert numeros["margem_liquida"] == 100.0 / 3000.0
+    for coluna in ("inicio", "fim", "divulgado_em"):
+        linhas[coluna] = pd.to_datetime(linhas[coluna])
+    (exercicio,) = comparaveis.numeros_do_grupo(
+        linhas, pd.Timestamp("2024-01-01")
+    ).values()
+    assert exercicio.numeros["margem_liquida"] == 100.0 / 3000.0

@@ -30,6 +30,7 @@ rodam a cada pedido, depois da memória, e nada do que é de quem pede entra nel
 (`ENTRADAS_GUARDADAS`), e a mais velha sai primeiro.
 """
 
+import functools
 import math
 import statistics
 import threading
@@ -243,74 +244,9 @@ def _profundidade(conta: str) -> int:
     return conta.count(".")
 
 
-def _um(linhas: pd.DataFrame) -> float | None:
-    """O valor da primeira linha achada; a linha com o valor vazio (NaN na base) conta como conta que falta."""
-    valores = linhas["valor"].dropna()
-    return None if valores.empty else float(valores.iloc[0])
-
-
 def _soma(*valores: float | None) -> float | None:
     presentes = [v for v in valores if v is not None]
     return sum(presentes) if presentes else None
-
-
-def _do_balanco(
-    linhas: pd.DataFrame, demonstracao: str, conta: str, comeco: str
-) -> float | None:
-    """A conta do balanço pelo código e pelo começo da descrição (as regras de `src.demonstracoes`)."""
-    achadas = linhas[
-        (linhas["demonstracao"] == demonstracao)
-        & (linhas["conta"] == conta)
-        & linhas["s"].str.startswith(comeco)
-    ]  # fmt: skip
-    return _um(achadas)
-
-
-def _patrimonio(linhas: pd.DataFrame) -> float | None:
-    bpp = linhas[linhas["demonstracao"] == "BPP"]
-    return _um(
-        bpp[
-            (bpp["conta"].map(_profundidade) == 1)
-            & bpp["s"].str.startswith("patrimonio liquido")
-        ]
-    )
-
-
-def _lucro(linhas: pd.DataFrame) -> float | None:
-    dre = linhas[
-        (linhas["demonstracao"] == "DRE") & (linhas["conta"].map(_profundidade) == 1)
-    ]
-    return _um(
-        dre[dre["descricao"].map(lambda d: bool(LINHA_DO_LUCRO.match(str(d).strip())))]
-    )
-
-
-def _ebitdas(exercicios: list[pd.DataFrame]) -> dict[tuple[str, pd.Timestamp], float]:
-    """O EBITDA de cada (cnpj, fim) pela mesma conta da ficha de caixa (`base.indicadores_de_caixa`: EBIT +
-    D&A), numa conta só para todas as companhias (o período lá já separa por cnpj e grupo)."""
-    if not exercicios:
-        return {}
-    tabela = caixa.indicadores_de_caixa(pd.concat(exercicios, ignore_index=True))
-    tabela = tabela[tabela["ebitda"].notna()]
-    return {
-        (str(linha.cnpj), pd.Timestamp(linha.fim)): float(linha.ebitda)
-        for linha in tabela.itertuples(index=False)
-    }
-
-
-def _divida_liquida(linhas: pd.DataFrame) -> float | None:
-    """Empréstimos e financiamentos (curto e longo prazo) menos caixa e aplicações; sem a dívida ou sem o
-    caixa, não há conta (a falta não vira zero)."""
-    divida = _soma(
-        _do_balanco(linhas, "BPP", "2.01.04", "emprestimos e financiamentos"),
-        _do_balanco(linhas, "BPP", "2.02.01", "emprestimos e financiamentos"),
-    )
-    caixa_ = _do_balanco(linhas, "BPA", "1.01.01", "caixa")
-    if divida is None or caixa_ is None:
-        return None
-    return (
-        divida - caixa_ - (_do_balanco(linhas, "BPA", "1.01.02", "aplicacoes") or 0.0)
-    )
 
 
 def _dividir(numerador: float | None, denominador: float | None) -> float | None:
@@ -320,17 +256,24 @@ def _dividir(numerador: float | None, denominador: float | None) -> float | None
     return numerador / denominador
 
 
-def numeros_do_exercicio(
-    linhas: pd.DataFrame, ebitda: float | None
+@functools.lru_cache(maxsize=65536)
+def _simples_de(texto: str) -> str:
+    return _simples(texto)
+
+
+@functools.lru_cache(maxsize=65536)
+def _e_o_lucro(texto: str) -> bool:
+    return bool(LINHA_DO_LUCRO.match(texto.strip()))
+
+
+def _numeros(
+    receita: float | None,
+    ebitda: float | None,
+    lucro: float | None,
+    patrimonio: float | None,
+    divida: float | None,
 ) -> dict[str, float]:
-    """Os números e as razões de um exercício, a partir das linhas do DFP de um grupo (con ou ind) e do
-    EBITDA já calculado (`_ebitdas`)."""
-    linhas = linhas.assign(s=linhas["descricao"].map(_simples))
-    dre = linhas[linhas["demonstracao"] == "DRE"]
-    receita = _um(dre[dre["conta"] == "3.01"])
-    lucro = _lucro(linhas)
-    patrimonio = _patrimonio(linhas)
-    divida = _divida_liquida(linhas)
+    """Os números e as razões de um exercício; só número finito sai (o JSON da API não leva NaN nem infinito)."""
     valores = {
         "receita": receita,
         "ebitda": ebitda,
@@ -342,7 +285,6 @@ def numeros_do_exercicio(
         "roe": _dividir(lucro, patrimonio),
         "divida_liquida_sobre_ebitda": _dividir(divida, ebitda),
     }
-    # só número finito sai: o JSON da API não leva NaN nem infinito
     return {
         nome: valor
         for nome, valor in valores.items()
@@ -350,31 +292,118 @@ def numeros_do_exercicio(
     }
 
 
-def _do_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
-    """As linhas do grupo consolidado (sem ele, do individual), uma por conta: a da entrega mais nova."""
-    grupo = CONSOLIDADO if (linhas["grupo"] == CONSOLIDADO).any() else INDIVIDUAL
-    linhas = linhas[linhas["grupo"] == grupo]
-    chave = ["demonstracao", "conta", "inicio"]
-    return linhas.sort_values(["divulgado_em", "versao"]).drop_duplicates(
-        chave, keep="last"
+@dataclass(frozen=True)
+class Exercicio:
+    """O último exercício recente de uma companhia: o fim, os números e as razões (só de leitura: ficam guardados
+    na memória por grupo e dia) e o dia mais novo em que as linhas usadas ficaram públicas."""
+
+    fim: pd.Timestamp
+    numeros: Mapping[str, float]
+    publicos_em: pd.Timestamp
+
+
+def _do_ultimo_exercicio(dfps: pd.DataFrame, mais_velho: pd.Timestamp) -> pd.DataFrame:
+    """De cada companhia, as linhas do último exercício, se ele não é mais velho que `mais_velho`. Sai só o grupo
+    consolidado (sem ele, o individual) e uma linha por conta, a da entrega mais nova.
+
+    As linhas saem agrupadas por cnpj, cada companhia na ordem da entrega. É a mesma ordem em que a conta
+    companhia a companhia as via, e "a primeira linha achada" de cada conta continua a mesma."""
+    fim = dfps.groupby("cnpj")["fim"].transform("max")
+    linhas = dfps[(dfps["fim"] == fim) & (fim >= mais_velho)]
+    tem_consolidado = (
+        (linhas["grupo"] == CONSOLIDADO).groupby(linhas["cnpj"]).transform("any")
     )
+    linhas = linhas[
+        linhas["grupo"] == tem_consolidado.map({True: CONSOLIDADO, False: INDIVIDUAL})
+    ]
+    # ordenação estável: dentro de cada companhia a ordem é a de antes; entre elas, a do cnpj
+    linhas = linhas.sort_values(["divulgado_em", "versao"], kind="stable")
+    linhas = linhas.drop_duplicates(
+        ["cnpj", "demonstracao", "conta", "inicio"], keep="last"
+    )
+    return linhas.sort_values("cnpj", kind="stable").reset_index(drop=True)
 
 
-def _exercicios_recentes(
+def _primeiro(linhas: pd.DataFrame, achadas: pd.Series) -> dict[str, float]:
+    """Por cnpj, o valor da primeira linha achada; a linha com o valor vazio conta como conta que falta."""
+    com_valor = linhas[achadas & linhas["valor"].notna()]
+    return {
+        str(cnpj): float(valor)
+        for cnpj, valor in com_valor.groupby("cnpj", sort=False)["valor"]
+        .first()
+        .items()
+    }
+
+
+def numeros_do_grupo(
     dfps: pd.DataFrame, mais_velho: pd.Timestamp
-) -> dict[str, tuple[pd.Timestamp, pd.DataFrame]]:
-    """O último exercício de cada companhia (cnpj formatado), se não for mais velho que `mais_velho`: o fim e
-    as linhas dele (`_do_exercicio`)."""
+) -> dict[str, Exercicio]:
+    """O último exercício recente de cada companhia das linhas do DFP (`_dfps`), por cnpj formatado, com as contas
+    das regras de `src.demonstracoes`, feitas uma vez para o grupo inteiro (linha 1015, item d):
+    - receita: a conta 3.01 da DRE;
+    - lucro: a linha de profundidade 1 da DRE que é o lucro ou prejuízo do período;
+    - patrimônio: a linha de profundidade 1 do BPP que começa por "patrimônio líquido";
+    - dívida líquida: empréstimos e financiamentos de curto e de longo prazo, menos caixa e aplicações. Sem a
+      dívida ou sem o caixa não há conta, e a falta nunca vira zero;
+    - EBITDA: a mesma conta da ficha de caixa (`base.indicadores_de_caixa`: EBIT + D&A).
+    """
+    if dfps.empty:
+        return {}
+    linhas = _do_ultimo_exercicio(dfps, mais_velho)
+    if linhas.empty:
+        return {}
+    simples = linhas["descricao"].map(lambda d: _simples_de(str(d)))
+    profundidade = linhas["conta"].map(_profundidade)
+    demonstracao, conta = linhas["demonstracao"], linhas["conta"]
+    dre, bpa, bpp = demonstracao == "DRE", demonstracao == "BPA", demonstracao == "BPP"
+
+    def do_balanco(da: pd.Series, codigo: str, comeco: str) -> dict[str, float]:
+        return _primeiro(
+            linhas, da & (conta == codigo) & simples.str.startswith(comeco)
+        )
+
+    receitas = _primeiro(linhas, dre & (conta == "3.01"))
+    lucros = _primeiro(
+        linhas,
+        dre
+        & (profundidade == 1)
+        & linhas["descricao"].map(lambda d: _e_o_lucro(str(d))),
+    )
+    patrimonios = _primeiro(
+        linhas, bpp & (profundidade == 1) & simples.str.startswith("patrimonio liquido")
+    )
+    dividas_cp = do_balanco(bpp, "2.01.04", "emprestimos e financiamentos")
+    dividas_lp = do_balanco(bpp, "2.02.01", "emprestimos e financiamentos")
+    caixas = do_balanco(bpa, "1.01.01", "caixa")
+    aplicacoes = do_balanco(bpa, "1.01.02", "aplicacoes")
+    tabela = caixa.indicadores_de_caixa(linhas)
+    tabela = tabela[tabela["ebitda"].notna()]
+    ebitdas = {
+        (str(linha.cnpj), pd.Timestamp(linha.fim)): float(linha.ebitda)
+        for linha in tabela.itertuples(index=False)
+    }
+    publicos = linhas.groupby("cnpj", sort=False)["divulgado_em"].max()
+    fins = linhas.groupby("cnpj", sort=False)["fim"].first()
     exercicios = {}
-    for formatado, linhas in (
-        {} if dfps.empty else dict(tuple(dfps.groupby("cnpj")))
-    ).items():
-        fim = pd.Timestamp(linhas["fim"].max())
-        if fim >= mais_velho:
-            exercicios[str(formatado)] = (
-                fim,
-                _do_exercicio(linhas[linhas["fim"] == fim]),
-            )
+    for cnpj, fim in fins.items():
+        formatado, fim = str(cnpj), pd.Timestamp(fim)
+        divida = _soma(dividas_cp.get(formatado), dividas_lp.get(formatado))
+        caixa_ = caixas.get(formatado)
+        liquida = (
+            None
+            if divida is None or caixa_ is None
+            else divida - caixa_ - (aplicacoes.get(formatado) or 0.0)
+        )
+        numeros = _numeros(
+            receitas.get(formatado),
+            ebitdas.get((formatado, fim)),
+            lucros.get(formatado),
+            patrimonios.get(formatado),
+            liquida,
+        )
+        exercicios[formatado] = Exercicio(
+            fim, MappingProxyType(numeros), pd.Timestamp(publicos[cnpj])
+        )
     return exercicios
 
 
@@ -383,6 +412,11 @@ def _na_saida(nome: str, valor: float | str) -> float | str:
     if nome in RAZOES and isinstance(valor, float):
         return round(valor, CASAS_DAS_RAZOES)
     return valor
+
+
+def _corte(como_era_em: date) -> pd.Timestamp:
+    """O fim de exercício mais velho que ainda serve de par no dia."""
+    return pd.Timestamp(como_era_em) - IDADE_MAXIMA_DO_EXERCICIO
 
 
 class LeitorDeComparaveis:
@@ -418,6 +452,10 @@ class LeitorDeComparaveis:
         return fca[fca["cnpj"].astype(bool)].reset_index(drop=True)
 
     def _dfps(self, cnpjs: list[str], como_era_em: date) -> pd.DataFrame:
+        """As linhas do DFP das companhias, só dos exercícios que terminam depois do corte de
+        `IDADE_MAXIMA_DO_EXERCICIO` (linha 1015, item d). O exercício mais novo de cada companhia, quando
+        passa do corte, está inteiro depois dele; quando não passa, a companhia já fica sem números. Ler o
+        histórico inteiro dava o mesmo resultado (há teste), com 980 mil linhas num grupo da base do ensaio."""
         if TABELA_DAS_DEMONSTRACOES not in views(self.porta.con):
             return pd.DataFrame()
         colunas = [
@@ -429,6 +467,7 @@ class LeitorDeComparaveis:
             como_era_em=como_era_em,
             filtros={"cnpj": [cnpj_.formatar(c) for c in cnpjs], "documento": "DFP"},
             colunas=colunas,
+            a_partir_de={"fim": _corte(como_era_em).date()},
         )
 
     def _companhias(
@@ -436,10 +475,7 @@ class LeitorDeComparaveis:
     ) -> dict[str, _Companhia]:
         """Cada companhia dos cadastros com os números do último DFP recente (sem ele, só o cadastro)."""
         dfps = self._dfps(list(cadastros["cnpj"]), como_era_em)
-        exercicios = _exercicios_recentes(
-            dfps, pd.Timestamp(como_era_em) - IDADE_MAXIMA_DO_EXERCICIO
-        )
-        ebitdas = _ebitdas([linhas for _fim, linhas in exercicios.values()])
+        exercicios = numeros_do_grupo(dfps, _corte(como_era_em))
         companhias = {}
         for linha in cadastros.itertuples(index=False):
             companhia = _Companhia(
@@ -450,18 +486,12 @@ class LeitorDeComparaveis:
             )
             formatado = cnpj_.formatar(companhia.cnpj)
             if formatado in exercicios:
-                fim, do_exercicio = exercicios[formatado]
+                do_exercicio = exercicios[formatado]
                 companhia = replace(
                     companhia,
-                    exercicio=fim.date(),
-                    numeros=MappingProxyType(
-                        numeros_do_exercicio(
-                            do_exercicio, ebitdas.get((formatado, fim))
-                        )
-                    ),
-                    numeros_publicos_em=pd.Timestamp(
-                        do_exercicio["divulgado_em"].max()
-                    ).date(),
+                    exercicio=do_exercicio.fim.date(),
+                    numeros=do_exercicio.numeros,
+                    numeros_publicos_em=do_exercicio.publicos_em.date(),
                 )
             companhias[companhia.cnpj] = companhia
         return companhias

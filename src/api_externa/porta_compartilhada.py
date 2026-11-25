@@ -28,10 +28,18 @@ from base.porta import METADADOS, Porta
 from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
 from src import acervo
 
+# O contêiner da API tem meia CPU (`compose.yaml`) e o DuckDB vê os núcleos da máquina, não a cota: com as threads
+# padrão, as linhas de execução disputam o meio núcleo. Medido no PC com teto rígido de meio núcleo, na análise
+# completa fria de duas companhias grandes: padrão (16) 13,7 a 16,0 s; 2, de 8,3 a 8,8 s; 1, de 7,3 a 7,9 s (linha
+# 1015, item e). Os pedidos ao mesmo tempo seguem em paralelo: cada cursor roda na linha de execução de quem pede
+# (duas consultas pesadas em dois cursores, com 1: 2,38 s uma, 2,67 s as duas). A memória fica no padrão do DuckDB:
+# a porta é uma só para todos os pedidos, e um teto como o da `api_v1` (512MB por pedido) não foi medido aqui.
+THREADS_DA_PORTA = 1
+
 
 def abrir_a_base() -> Porta:
     """Abre a porta da base do acervo (os testes trocam esta função)."""
-    return porta_da_base.abrir()
+    return porta_da_base.abrir(threads=THREADS_DA_PORTA)
 
 
 class PortaEmprestada(Porta):

@@ -27,6 +27,10 @@ import re
 import zipfile
 
 import pandas as pd
+import pyarrow as pa
+
+from base import cnpj as cnpj_da_base
+from base.raizes_de_empresa import RaizesDeEmpresa
 
 FONTE = "cvm-ofertas"
 URL = "https://dados.cvm.gov.br/dados/OFERTA/DISTRIB/DADOS/oferta_distribuicao.zip"
@@ -34,8 +38,10 @@ CODIFICACAO = "latin-1"
 ANTIGAS = "oferta_distribuicao.csv"
 RESOLUCAO_160 = "oferta_resolucao_160.csv"
 FORA_DAS_ANTIGAS = ("Nome_Vendedor",)
+# o texto livre de devedores nunca entra em tabela nenhuma; só os CNPJ válidos dele (`ler_cnpj_dos_devedores`)
+DEVEDORES_NO_TEXTO = "Identificacao_devedores_coobrigados"
 FORA_DA_160 = (
-    "Identificacao_devedores_coobrigados",
+    DEVEDORES_NO_TEXTO,
     "Descricao_garantias",
     "Descricao_lastro",
     "Destinacao_recursos",  # texto livre: um trazia um número com cara de CPF (16/10/2026)
@@ -45,6 +51,32 @@ TEXTOS_COM_NOME_DE_NUMERO = (
     "Valor_Mobiliario",
 )  # o tipo do título na 160 ("Debêntures")
 CNPJ = re.compile(r"^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$")
+# o CNPJ com pontuação dentro de um texto (as 12 primeiras posições aceitam letra: IN RFB 2.229/2024)
+CNPJ_NO_TEXTO = re.compile(
+    r"(?<![0-9A-Za-z])[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}/[0-9A-Z]{4}-\d{2}(?!\d)"
+)
+DA_OFERTA_DOS_DEVEDORES = (
+    "Numero_Requerimento",
+    "Numero_Processo",
+    "Data_Registro",
+    "Data_Encerramento",
+    "Valor_Mobiliario",
+    "CNPJ_Emissor",
+    "Nome_Emissor",
+    "Emissao",
+    DEVEDORES_NO_TEXTO,
+)
+COLUNAS_DOS_DEVEDORES = (
+    "numero_requerimento",
+    "numero_processo",
+    "cnpj_emissor",
+    "nome_emissor",
+    "valor_mobiliario",
+    "emissao",
+    "cnpj",
+    "anunciada_em",
+    "disponivel_em",
+)
 CPF = re.compile(r"\d{3}\.\d{3}\.\d{3}-\d{2}")
 # a ordem é a da preferência: a primeira data que existe é o anúncio
 ANUNCIO_DAS_ANTIGAS = (
@@ -57,11 +89,18 @@ ANUNCIO_DA_160 = ("data_registro",)
 FIM_DA_160 = ("data_encerramento",)
 
 
-def _ler_csv(conteudo_do_zip: bytes, nome: str, fora: tuple[str, ...]) -> pd.DataFrame:
+def _ler_csv(
+    conteudo_do_zip: bytes,
+    nome: str,
+    fora: tuple[str, ...],
+    so: tuple[str, ...] | None = None,
+) -> pd.DataFrame:
+    """O CSV do ZIP, sem as colunas de `fora` e, se `so` vier, só com as colunas de `so`."""
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         bruto = pd.read_csv(
             arquivo.open(nome), sep=";", encoding=CODIFICACAO, encoding_errors="replace",
-            dtype=str, keep_default_na=False, usecols=lambda coluna: coluna not in fora,
+            dtype=str, keep_default_na=False,
+            usecols=lambda coluna: coluna not in fora and (so is None or coluna in so),
         )  # fmt: skip
     return bruto
 
@@ -114,3 +153,51 @@ def ler_resolucao_160(conteudo_do_zip: bytes) -> pd.DataFrame:
     """Os requerimentos de oferta pela Resolução 160 (2023 em diante), com as datas "como era"."""
     tabela = _tipos(_ler_csv(conteudo_do_zip, RESOLUCAO_160, FORA_DA_160))
     return _com_datas(tabela, ANUNCIO_DA_160, FIM_DA_160)
+
+
+def _cnpjs_do_texto(texto: object) -> list[str]:
+    """Os CNPJ de empresa citados num texto livre, no formato da base, sem repetir e na ordem em que
+    aparecem. Só vale o CNPJ com pontuação e dígito verificador certo: 14 dígitos soltos podem ser
+    outra coisa, e CPF nunca casa (não tem a barra)."""
+    if not isinstance(texto, str):
+        return []
+    achados = (m.group(0) for m in CNPJ_NO_TEXTO.finditer(texto))
+    validos = (c for c in achados if cnpj_da_base.dv_confere(_so_caracteres(c)))
+    return list(dict.fromkeys(validos))
+
+
+def _so_caracteres(cnpj: str) -> str:
+    return cnpj_da_base.SEPARADORES.sub("", cnpj)
+
+
+def ler_cnpj_dos_devedores(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Uma linha por requerimento da Resolução 160 e CNPJ de empresa citado como devedor ou coobrigado.
+
+    A CVM não deixa cedente e devedor no informe mensal de todo CRA (em 2024, 249 dos 755 certificados não
+    têm linha nenhuma), mas o requerimento da oferta cita o devedor em texto livre. Esse texto nunca entra
+    na base (pode trazer pessoa): sai dele só o CNPJ válido, e o CPF e o resto ficam para trás. O próprio
+    emissor citado no texto não conta como devedor. As datas são as de `ler_resolucao_160` (a oferta só
+    vale quando a linha inteira era pública)."""
+    bruto = _ler_csv(conteudo_do_zip, RESOLUCAO_160, (), DA_OFERTA_DOS_DEVEDORES)
+    citados = bruto.pop(DEVEDORES_NO_TEXTO).map(_cnpjs_do_texto)
+    tabela = _tipos(bruto).assign(cnpj=citados.to_numpy())
+    tabela = tabela.explode("cnpj").dropna(subset=["cnpj"])
+    tabela = tabela[tabela["cnpj"] != tabela["cnpj_emissor"]]
+    datada = _com_datas(tabela, ANUNCIO_DA_160, FIM_DA_160)
+    return datada[list(COLUNAS_DOS_DEVEDORES)].reset_index(drop=True)
+
+
+def so_devedor_de_empresa(
+    tabela: pd.DataFrame, empresas: RaizesDeEmpresa
+) -> pd.DataFrame:
+    """Só o devedor cuja raiz de CNPJ é empresa de verdade (ADR 0075).
+
+    O CNPJ de empresário individual e de MEI é de pessoa, e a raiz que a Receita não tem não prova nada: na
+    dúvida, fica de fora. `empresas` é a lista de `base/raizes_de_empresa.py` (as duas tabelas da Receita
+    cruzadas); lista vazia recusa, porque apagaria tudo sem avisar."""
+    if len(empresas.valores) == 0:
+        raise ValueError("lista de empresas vazia: não dá para conferir quem é pessoa")
+    sem_pontuacao = tabela["cnpj"].map(_so_caracteres)
+    raizes = pa.array(sem_pontuacao.str[:8].tolist(), type=pa.string())
+    na_lista = empresas.esta_na_lista(raizes).to_numpy(zero_copy_only=False)
+    return tabela[na_lista].reset_index(drop=True)
