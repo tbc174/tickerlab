@@ -398,3 +398,21 @@ def test_cinco_empresas_com_a_pagina_cheia_de_eventos_cabem_no_teto():
     assert len(texto) < saida.TETO_DE_CARACTERES
     corpo = json.loads(texto)
     assert all(e["changes_shown"] < e["changes_found"] for e in corpo["companies"])
+
+
+def test_so_blocos_que_a_chave_nao_ve_diz_isso_em_vez_de_dizer_que_a_base_nao_tem():
+    """Achado P2 da revisão de segurança do PR 1: antes, as duas empresas iam para `not_available` (a base não as
+    serve), quando era a chave que não via o bloco pedido."""
+    pedidos: list[httpx.Request] = []
+    transporte = _api(catalogos={CHAVE: ("events",)}, pedidos=pedidos)
+    with aj.conector(transporte) as cliente:
+        erro, texto = aj.chamar(
+            cliente,
+            CHAVE,
+            "acompanhar_empresas",
+            cnpjs=[ALFA, BETA],
+            desde=DESDE,
+            blocos=["cadastro"],
+        )
+    assert erro and "cadastro" in texto and "chave" in texto
+    assert not [p for p in pedidos if "/companies/" in p.url.path]

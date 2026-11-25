@@ -512,6 +512,11 @@ def _blocos_do_pedido(
     return visiveis, tuple(b for b in CONJUNTOS_DO_BLOCO if b not in pedidos_)
 
 
+def blocos_visiveis(blocos: list[str] | None, conjuntos: frozenset[str]) -> list[str]:
+    """Os blocos (nomes da API) que a chave vê entre os que o analista pediu (todos, se não pediu)."""
+    return _blocos_do_pedido(blocos, conjuntos)[0]
+
+
 def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
     """A diferença do cadastro, dos vínculos e dos eventos entre um dia passado e hoje."""
 

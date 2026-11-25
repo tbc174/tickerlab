@@ -16,6 +16,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
+from conector_remoto.acesso import acesso_do_pedido
 from conector_remoto.cliente_api import RespostaDaApi
 from conector_remoto.enxugar import enxugar_o_que_mudou
 from conector_remoto.ferramentas import Pedidos, anunciar, cnpj_do_pedido
@@ -24,6 +25,7 @@ from conector_remoto.ferramentas_do_analista import (
     BlocosPedidos,
     Desde,
     EmpresaNaoDisponivel,
+    blocos_visiveis,
     diferenca_da_empresa,
     exigir_desde_no_passado,
     juntar_sem_repetir,
@@ -31,7 +33,8 @@ from conector_remoto.ferramentas_do_analista import (
 
 NOME = "acompanhar_empresas"
 MINIMO_DE_EMPRESAS = 2
-# cada empresa faz até 6 pedidos (3 blocos x 2 dias) e a organização tem 60 por minuto: 5 empresas usam metade
+# cada empresa faz até 8 pedidos (3 blocos x 2 dias, e a ficha cai no cadastro plano quando não há perfil) e a
+# organização tem 60 por minuto: 5 empresas usam até 40
 MAXIMO_DE_EMPRESAS = 5
 LIMITE_PADRAO_POR_LISTA = 5
 LIMITE_MAXIMO_POR_LISTA = 50
@@ -155,6 +158,19 @@ async def _diferenca_ou_nada(
         return None
 
 
+def exigir_um_bloco_visivel(blocos: list[str] | None) -> None:
+    """`ToolError` se a chave não vê nenhum dos blocos pedidos: sem isso, toda empresa iria para `not_available`,
+    como se a base não a servisse (achado P2 da revisão de segurança do PR 1)."""
+    acesso = acesso_do_pedido()
+    conjuntos = acesso.conjuntos if acesso else frozenset()
+    if not blocos_visiveis(blocos, conjuntos):
+        pedidos_ = ", ".join(blocos or [])
+        raise ToolError(
+            f"A chave não vê nenhum dos blocos pedidos ({pedidos_}): peça outro bloco (cadastro, vinculos ou "
+            "eventos) ou chame `o_que_posso_ver` para ver o que a chave libera."
+        )
+
+
 def registrar(servidor: MCPServer, pedidos: Pedidos) -> None:
     """Põe a ferramenta no servidor (chamada por `registrar_ferramentas`)."""
 
@@ -168,6 +184,7 @@ def registrar(servidor: MCPServer, pedidos: Pedidos) -> None:
         numeros = cnpjs_da_lista(cnpjs)
         exigir_desde_no_passado(desde)
         pedidos_dos_blocos = list(blocos) if blocos else None
+        exigir_um_bloco_visivel(pedidos_dos_blocos)
         # as empresas correm juntas: a espera é a de uma empresa, não a soma de cinco
         resultados = await asyncio.gather(
             *(
