@@ -15948,10 +15948,6 @@
           "descricao": "Ano a que a declaração se refere",
           "unidade": "número inteiro"
         },
-        "certificado": {
-          "descricao": "O certificado declarado (número ou nome), como o IBAMA escreve",
-          "unidade": "texto"
-        },
         "tipo_de_certificado": {
           "descricao": "ISO 14000 ou outros, como o IBAMA escreve",
           "unidade": "texto"

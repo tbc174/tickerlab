@@ -301,6 +301,26 @@ def test_silvicultura_le_a_area_no_formato_brasileiro_e_as_arvores_com_virgula_d
     _sem_nada_de_pessoa_nem_do_que_sai(tabela)
 
 
+def test_o_numero_ou_nome_do_certificado_fica_de_fora_mesmo_com_cpf():
+    """Texto livre em que há números que fecham como CPF: a coluna não entra (revisão de segurança do PR 2)."""
+    cabecalho = [*rapp.CERTIFICADOS.colunas_da_fonte, "Certificado"]
+    linha = {c: "TEXTO" for c in rapp.CERTIFICADOS.colunas_da_fonte} | {
+        "CNPJ": _formatado(EMPRESA),
+        "Ano": "2015",
+        "Validade": "30/06/2027",
+        "Certificado": f"CERTIFICADO {CPF_DE_TESTE} {NOME_INVENTADO}",
+    }
+    corpo = [";".join(cabecalho), ";".join(linha[c] for c in cabecalho)]
+    arquivo = "\n".join(corpo).encode("utf-8")
+    tabela, _ = rapp.ler(rapp.CERTIFICADOS, arquivo)
+    assert "certificado" not in tabela.columns
+    assert len(tabela) == 1
+    _sem_nada_de_pessoa_nem_do_que_sai(tabela)
+    assert (
+        not tabela.astype(str).apply(lambda c: c.str.contains(CPF_DE_TESTE)).any().any()
+    )
+
+
 def test_madeira_com_cerquilhas_vira_vazio_contado():
     tabela, contagem = rapp.ler(
         rapp.MADEIRA_E_LENHA, _arquivo(rapp.MADEIRA_E_LENHA, {"Tora (m³)": "####"})

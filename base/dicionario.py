@@ -4096,14 +4096,11 @@ def _tabelas_do_rapp_florestal_e_mineral() -> dict[str, Tabela]:
             "ibama_rapp_certificados_ambientais",
             "certificados",
             "Certificados ambientais (ISO 14000 e outros) que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 "
-            "(o último ano no arquivo de 25/11/2026): o certificado, o tipo, quem certificou e a validade. "
+            "(o último ano no arquivo de 25/11/2026): o tipo, quem certificou e a validade. O número ou nome do "
+            "certificado fica de fora (texto livre, em que há números que fecham como CPF). "
             f"{_PARADO_DESDE_2018}; o ano vem vazio em parte das linhas da fonte.",
             "certificados ambientais",
             {
-                "certificado": (
-                    f"O certificado declarado (número ou nome), {como_veio}",
-                    TEXTO,
-                ),
                 "tipo_de_certificado": (f"ISO 14000 ou outros, {como_veio}", TEXTO),
                 "certificador": (f"Quem emitiu o certificado, {como_veio}", TEXTO),
                 **_SITUACAO_NO_CTF,

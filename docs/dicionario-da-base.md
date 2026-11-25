@@ -5843,7 +5843,7 @@ Resíduos sólidos que cada armazenador declarou ao IBAMA, de 2013 a 2026 (o úl
 
 ## `ibama_rapp_certificados_ambientais`
 
-Certificados ambientais (ISO 14000 e outros) que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 (o último ano no arquivo de 25/11/2026): o certificado, o tipo, quem certificou e a validade. O IBAMA deixou de pôr declarações novas neste arquivo depois de 2018 (o arquivo de 25/11/2026 vai até 2018): serve ao histórico, não ao retrato de hoje; o ano vem vazio em parte das linhas da fonte. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
+Certificados ambientais (ISO 14000 e outros) que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 (o último ano no arquivo de 25/11/2026): o tipo, quem certificou e a validade. O número ou nome do certificado fica de fora (texto livre, em que há números que fecham como CPF). O IBAMA deixou de pôr declarações novas neste arquivo depois de 2018 (o arquivo de 25/11/2026 vai até 2018): serve ao histórico, não ao retrato de hoje; o ano vem vazio em parte das linhas da fonte. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
 
 - **Fonte:** IBAMA: dados abertos, RAPP, certificados ambientais (`base/ibama_rapp.py`)
 - **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
@@ -5865,7 +5865,6 @@ Certificados ambientais (ISO 14000 e outros) que cada estabelecimento declarou a
 | `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
 | `ano` | Ano a que a declaração se refere | número inteiro |
-| `certificado` | O certificado declarado (número ou nome), como o IBAMA escreve | texto |
 | `tipo_de_certificado` | ISO 14000 ou outros, como o IBAMA escreve | texto |
 | `certificador` | Quem emitiu o certificado, como o IBAMA escreve | texto |
 | `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |

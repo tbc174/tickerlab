@@ -681,7 +681,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "de poluentes no ar, os efluentes líquidos e onde são lançados, as fontes de energia que consome, "
         "a cadeia dos resíduos sólidos, de quem gera a quem transporta, armazena e dá o destino, e a parte "
         "florestal e mineral: madeira e lenha exploradas, produtos de origem florestal, florestas plantadas, "
-        "minérios extraídos e certificados ambientais. É o que a empresa declara, não uma fiscalização.",
+        "minérios extraídos e certificados ambientais (parte destes relatórios parou de receber declarações "
+        "anos atrás). É o que a empresa declara, não uma fiscalização.",
         (
             "ibama_rapp_emissoes_atmosfericas",
             "ibama_rapp_efluentes_liquidos",

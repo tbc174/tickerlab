@@ -422,7 +422,6 @@ CERTIFICADOS = Relatorio(
     cnpj="CNPJ",
     ano="Ano",
     textos={
-        "Certificado": "certificado",
         "Tipo Certificado": "tipo_de_certificado",
         "Certificador": "certificador",
         **_SITUACAO,

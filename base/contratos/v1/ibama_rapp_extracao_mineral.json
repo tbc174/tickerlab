@@ -103,8 +103,8 @@
     "coletado_em": "origem_coletada_em"
   },
   "sinonimos_de_tempo": {
-    "data_do_decreto": "a_conferir",
-    "pra_aprovado_em": "a_conferir",
+    "data_do_decreto": "aconteceu_em",
+    "pra_aprovado_em": "aconteceu_em",
     "visto_em": "visto_em",
     "disponivel_em": "publico_em",
     "origem_coletada_em": "coletado_em",
