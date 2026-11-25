@@ -131,10 +131,15 @@ def resumo_das_falhas(problemas: list[str]) -> str:
     return "FALHAS: " + "; ".join(problemas)
 
 
-def _situacao_do_termo(fonte_id: str, url: str | None) -> tuple[str, bool]:
+def _situacao_do_termo(
+    fonte_id: str, url: str | None, motivo: str = ""
+) -> tuple[str, bool]:
     """(frase, vira_ficha): desde quando a página de termos não responde. Nunca respondeu, ou 7 dias
-    ou mais, vira ficha para uma pessoa."""
-    desde = ultima_ok_em(url) if url else None
+    ou mais, vira ficha para uma pessoa. Sem o endereço que falhou (a rodada inteira caiu na descoberta
+    ou na rede), não dá para dizer desde quando: só o aviso da rodada, sem ficha."""
+    if url is None:
+        return f"{fonte_id} sem resposta nesta rodada ({motivo})", False
+    desde = ultima_ok_em(url)
     if desde is None:
         return f"{fonte_id} nunca respondeu", True
     if desde.tzinfo is None:
@@ -180,14 +185,16 @@ def main(argv: list[str] | None = None) -> int:
     temporaria = (pasta or Path.cwd()) / ".temporario"
     cliente = ClienteHttp()
     problemas: list[str] = []
-    termos_fora: list[tuple[str, str | None]] = []  # (fonte, endereço que falhou)
+    termos_fora: list[
+        tuple[str, str | None, str]
+    ] = []  # (fonte, endereço que falhou, motivo)
     orcamento = _Orcamento()
     mudou = False
     for fonte in fontes:
         resultado = _arquivar_com_nova_tentativa(fonte, cliente, temporaria, orcamento)
         if isinstance(resultado, str):
             if _eh_termo(fonte):
-                termos_fora.append((fonte.id, None))
+                termos_fora.append((fonte.id, None, resultado))
             else:
                 problemas.append(f"{fonte.id} ({resultado})")
             continue
@@ -201,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
             len(resultado.falhas),
         )
         if resultado.falhas and _eh_termo(fonte):
-            termos_fora.append((fonte.id, resultado.falhas[0]))
+            termos_fora.append((fonte.id, resultado.falhas[0], ""))
         elif resultado.falhas:
             problemas.append(
                 f"{fonte.id} ({len(resultado.falhas)} arquivos; 1º: {resultado.falhas[0]})"
@@ -217,8 +224,8 @@ def main(argv: list[str] | None = None) -> int:
             log.warning("%s: o texto mudou em %s (ler de novo)", fonte.id, url)
             mudou = True
     ficha = False
-    for fonte_id, url in termos_fora:
-        frase, vira_ficha = _situacao_do_termo(fonte_id, url)
+    for fonte_id, url, motivo in termos_fora:
+        frase, vira_ficha = _situacao_do_termo(fonte_id, url, motivo)
         print(f"{'FICHA' if vira_ficha else 'AVISO'}: {frase}")
         ficha = ficha or vira_ficha
     if problemas:

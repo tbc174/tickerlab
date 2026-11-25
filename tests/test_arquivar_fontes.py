@@ -326,6 +326,33 @@ def test_falha_de_dado_sai_com_1_e_a_linha_de_falhas_nao_traz_os_termos(
     assert "FICHA: termos-senado nunca respondeu" in texto
 
 
+def test_termo_cuja_rodada_inteira_cai_na_rede_e_so_aviso_sem_ficha(
+    monkeypatch, capsys
+):
+    """Sem o endereço que falhou (a descoberta ou a rede caiu), não dá para dizer "nunca respondeu":
+    a página pode ter respondido ontem. Fica o aviso da rodada, sem ficha."""
+    import requests
+
+    from base.arquivo.coleta import Fonte
+
+    def arquivar_falso(fonte, cliente, agora, pasta):
+        raise requests.ConnectionError("sem rede")
+
+    monkeypatch.setattr(arquivar_fontes, "arquivar", arquivar_falso)
+    monkeypatch.setattr(arquivar_fontes, "esperar", lambda s: None)
+    monkeypatch.setattr(
+        arquivar_fontes,
+        "escolher",
+        lambda alvo: [Fonte("termos-senado", "diaria", lambda c, a: [])],
+    )
+    monkeypatch.setattr(arquivar_fontes, "ultima_ok_em", lambda url: None)
+    saida = arquivar_fontes.main(["diaria"])
+    texto = capsys.readouterr().out
+    assert saida == 0
+    assert "FICHA" not in texto and "FALHAS" not in texto
+    assert "AVISO: termos-senado sem resposta nesta rodada" in texto
+
+
 def test_pagina_de_termos_que_falha_espera_30_s_e_nao_300(monkeypatch, capsys):
     _, _, esperas = _rodar_termos(monkeypatch, capsys, None)
     assert esperas == [arquivar_fontes.ESPERA_DOS_TERMOS] == [30]
