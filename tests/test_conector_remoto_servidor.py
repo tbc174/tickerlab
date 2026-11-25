@@ -347,6 +347,26 @@ def test_busca_traduz_os_parametros_e_nao_poe_a_chave_na_url():
     assert "tld_" not in str(busca.url)
 
 
+def test_busca_aceita_o_porte_em_portugues_e_o_traduz():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/companies": httpx.Response(200, json={"companies": [EMPRESA]})}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        aj.chamar_ok(
+            cliente, aj.CHAVE_DE_MENTIRA, "buscar_empresas",
+            cnae=["62"], porte=["pequena", "demais", "not_informed"],
+        )  # fmt: skip
+    (busca,) = [p for p in pedidos if p.url.path == "/data/v1/companies"]
+    assert busca.url.params.get_list("size") == ["small", "other", "not_informed"]
+
+
+def test_setor_com_hifen_vai_a_api_com_sublinhado():
+    pedidos: list[httpx.Request] = []
+    rotas = {"/sectors/saude_suplementar": httpx.Response(200, json={"sector": {}})}
+    with _conector(rotas, pedidos=pedidos) as cliente:
+        aj.chamar_ok(cliente, aj.CHAVE_DE_MENTIRA, "setor", chave="saude-suplementar")
+    assert "/data/v1/sectors/saude_suplementar" in [p.url.path for p in pedidos]
+
+
 @pytest.mark.parametrize(
     "cnpj",
     [
@@ -378,7 +398,7 @@ def test_cnpj_com_pontuacao_e_letras_vai_limpo():
 
 
 @pytest.mark.parametrize(
-    "chave", ["..", ".", "../catalog", "bancos/..", "Bancos", "_x"]
+    "chave", ["..", ".", "../catalog", "bancos/..", "Bancos", "a.b", "x" * 81]
 )
 def test_setor_com_caminho_montado_e_recusado(chave):
     pedidos: list[httpx.Request] = []

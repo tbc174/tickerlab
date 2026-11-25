@@ -34,6 +34,9 @@
         "minimo_aberto": false,
         "valores": [
           "micro",
+          "pequena",
+          "demais",
+          "nao_informado",
           "small",
           "other",
           "not_informed"
@@ -141,5 +144,8 @@
         "valores": []
       }
     }
+  },
+  "formatos": {
+    "chave_do_setor": "[a-z0-9_]{1,80}"
   }
 }

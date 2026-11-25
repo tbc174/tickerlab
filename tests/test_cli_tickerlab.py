@@ -429,12 +429,25 @@ def test_fundo_sem_retorno_suposto_nao_manda_o_parametro(rodar, chave):
 
 
 @pytest.mark.usefixtures("leituras_prontas")
-def test_retorno_suposto_fora_do_plausivel_e_pedido_invalido(rodar, chave):
-    resultado = rodar(
-        "fundo", "11111111000191", "--retorno-suposto", "5", **_com_chave(chave)
+def test_retorno_suposto_fora_da_faixa_para_antes_da_api(rodar, chave):
+    """PR 5b: a CLI confere a faixa do conector (acima de -1 e até 1) e não gasta um pedido."""
+    for valor in ("5", "-1", "1.01"):
+        resultado = rodar(
+            "fundo", "11111111000191", "--retorno-suposto", valor, **_com_chave(chave)
+        )
+        assert resultado.exit_code == Saida.USO, valor
+        assert "--retorno-suposto" in resultado.stderr
+    assert _Fundos.pedidos == []
+
+
+@pytest.mark.usefixtures("leituras_prontas")
+def test_retorno_suposto_na_ponta_da_faixa_vai_a_api(rodar, chave):
+    assert (
+        rodar(
+            "fundo", "11111111000191", "--retorno-suposto", "1", **_com_chave(chave)
+        ).exit_code
+        == 0
     )
-    assert resultado.exit_code == Saida.PEDIDO_INVALIDO
-    assert "--retorno-suposto" in resultado.stderr
 
 
 # ---------------------------------------------------------------- setor (molde D, a ficha da noite)
