@@ -21,7 +21,7 @@ from datetime import date
 
 import pandas as pd
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from base import cnpj as cnpj_
@@ -370,13 +370,17 @@ def _iguais(nova: dict, antiga: dict) -> bool:
 )
 def test_a_passada_unica_da_o_mesmo_em_dfp_gerados(linhas, mais_velho):
     dfps = _tabela(linhas)
-    try:
-        antiga = conta_antiga(dfps, mais_velho)
-    except KeyError:
-        # a conta antiga quebrava com linhas da DRE sem nenhuma de profundidade 1 (o filtro vazio do pandas vira
-        # seleção de colunas): não há número antigo a comparar (o caso fica no teste abaixo)
-        assume(False)
-    nova = conta_nova(dfps, mais_velho)
+    # a conta antiga quebrava com linhas da DRE sem nenhuma de profundidade 1 (o filtro vazio do pandas vira seleção
+    # de colunas): só a companhia em que ela quebra sai da comparação (o caso fica no teste abaixo); as outras
+    # seguem juntas, porque a ordem entre companhias é parte do que se prova
+    quebradas = []
+    for cnpj in dfps["cnpj"].unique():
+        try:
+            conta_antiga(dfps[dfps["cnpj"] == cnpj], mais_velho)
+        except KeyError:
+            quebradas.append(cnpj)
+    dfps = dfps[~dfps["cnpj"].isin(quebradas)].reset_index(drop=True)
+    antiga, nova = conta_antiga(dfps, mais_velho), conta_nova(dfps, mais_velho)
     assert _iguais(nova, antiga), (nova, antiga)
 
 
@@ -410,6 +414,12 @@ def test_a_porta_le_a_partir_de_um_valor(tmp_path):
     assert (tudo["fim"] < pd.Timestamp(corte)).any()
     assert (recentes["fim"] >= pd.Timestamp(corte)).all()
     assert len(recentes) == (tudo["fim"] >= pd.Timestamp(corte)).sum()
+
+
+def test_a_porta_recusa_a_partir_de_sem_valor(tmp_path):
+    pasta = de_mentira.gravar_base(tmp_path / "base")
+    with Porta(pasta) as porta, pytest.raises(ValueError, match="sem valor"):
+        porta.ler(comparaveis.TABELA_DAS_DEMONSTRACOES, a_partir_de={"fim": None})
 
 
 def test_a_porta_recusa_coluna_que_nao_existe_no_a_partir_de(tmp_path):

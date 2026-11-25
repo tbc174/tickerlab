@@ -254,6 +254,9 @@ class Porta:
             raise ValueError(f"{tabela}: coluna {desconhecidas[0]!r} não existe")
         condicoes, parametros = _igualdades(filtros or {}, "f")
         for i, (coluna, valor) in enumerate((a_partir_de or {}).items()):
+            if valor is None:
+                # `coluna >= NULL` não deixa linha nenhuma, sem erro: melhor recusar
+                raise ValueError(f"{tabela}: a_partir_de de {coluna!r} sem valor")
             condicoes.append(f"{_nome(coluna)} >= $d{i}")
             parametros[f"d{i}"] = _valor(valor)
         if como_era_em is not None:
