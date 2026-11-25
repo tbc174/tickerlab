@@ -36,7 +36,9 @@ LEITORES = {
     "fre_capital_social": governanca.ler_capital_social,
     "fre_empregados": governanca.ler_empregados,
     "fre_acionistas": governanca.ler_acionistas,
+    "fre_acionistas_por_classe": governanca.ler_acionistas_por_classe,
     "fre_distribuicao_capital": governanca.ler_distribuicao_capital,
+    "fre_distribuicao_capital_por_classe": governanca.ler_distribuicao_capital_por_classe,
     "fre_partes_relacionadas": governanca.ler_partes_relacionadas,
 }
 ACIONISTAS = "fre_cia_aberta_posicao_acionaria_2024.csv"
@@ -143,7 +145,66 @@ def _documento_de(conteudo_do_zip: bytes, id_documento: str) -> tuple[str, str, 
     )
 
 
-RECORTE = _com_distribuicao(RECORTE_SEM_DISTRIBUICAO)
+RECORTE_COM_DISTRIBUICAO = _com_distribuicao(RECORTE_SEM_DISTRIBUICAO)
+
+POSICAO_POR_CLASSE = "fre_cia_aberta_posicao_acionaria_classe_acao_2024.csv"
+DISTRIBUICAO_POR_CLASSE = "fre_cia_aberta_distribuicao_capital_classe_acao_2024.csv"
+CABECALHO_DA_POSICAO_POR_CLASSE = (
+    "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Companhia;ID_Acionista;"
+    "Tipo_Classe_Acao_Preferencial;Quantidade_Acoes;Percentual_Acoes"
+)
+CABECALHO_DA_DISTRIBUICAO_POR_CLASSE = (
+    "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Companhia;"
+    "Sigla_Classe_Acoes_Preferenciais;Classe_Acoes_Preferenciais;"
+    "Quantidade_Acoes_Preferenciais_Circulacao;Percentual_Acoes_Preferenciais_Circulacao"
+)
+CLASSE_A, CLASSE_B = "Preferencial Classe A", "Preferencial Classe B"
+ANTIGA_DO_LIFEMED = "138502"
+# números inventados: (documento, ID_Acionista, classe, quantidade, percentual). 7596983 e 7596993 são
+# empresas do Lifemed, 7596992 é a pessoa que controla a Kumla, 7657227 é a pessoa do Estrela, 7657228 é
+# o "Outros" do Estrela; 9999001 e 9999002 não existem na posição acionária (a CVM tem linhas assim)
+POSICAO_DAS_CLASSES = (
+    (LIFEMED, "7596983", CLASSE_A, "1000", "10.5"),
+    (LIFEMED, "7596992", CLASSE_A, "300", "3.0"),
+    (LIFEMED, "7596993", CLASSE_B, "50", "0.5"),
+    (LIFEMED, "9999001", CLASSE_A, "20", "0.2"),
+    (LIFEMED, "9999002", CLASSE_A, "30", "0.3"),
+    (ANTIGA_DO_LIFEMED, "9999003", CLASSE_A, "7", "0.07"),
+    (ESTRELA, "7657227", CLASSE_A, "100", "1.5"),
+    (ESTRELA, "7657228", "", "5", "0.1"),
+)
+DISTRIBUICAO_DAS_CLASSES = (
+    (LIFEMED, "PNA", CLASSE_A, "4000", "40.5"),
+    (LIFEMED, "PNB", CLASSE_B, "600", "6.25"),
+    (ANTIGA_DO_LIFEMED, "PNA", CLASSE_A, "3500", "35.5"),
+    (PETROBRAS, "PNA", CLASSE_A, "2000000000", "55.1"),
+)
+
+
+def _com_classes(conteudo_do_zip: bytes) -> bytes:
+    """O recorte com os CSVs por classe de ação (15.1 e 15.7), que o recorte real não traz."""
+    posicao = [CABECALHO_DA_POSICAO_POR_CLASSE]
+    distribuicao = [CABECALHO_DA_DISTRIBUICAO_POR_CLASSE]
+    for id_documento, *resto in POSICAO_DAS_CLASSES:
+        doc = _documento_de(conteudo_do_zip, id_documento)
+        posicao.append(";".join([*doc, id_documento, "Empresa", *resto]))
+    for id_documento, *resto in DISTRIBUICAO_DAS_CLASSES:
+        doc = _documento_de(conteudo_do_zip, id_documento)
+        distribuicao.append(";".join([*doc, id_documento, "Empresa", *resto]))
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as original:
+        arquivos = {n: original.read(n) for n in original.namelist()}
+    arquivos[POSICAO_POR_CLASSE] = ("\r\n".join(posicao) + "\r\n").encode("latin-1")
+    arquivos[DISTRIBUICAO_POR_CLASSE] = ("\r\n".join(distribuicao) + "\r\n").encode(
+        "latin-1"
+    )
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as novo:
+        for n, conteudo in arquivos.items():
+            novo.writestr(n, conteudo)
+    return saida.getvalue()
+
+
+RECORTE = _com_classes(RECORTE_COM_DISTRIBUICAO)
 
 
 # --- capital social ---------------------------------------------------------------------------------
@@ -445,6 +506,181 @@ def test_distribuicao_sem_o_arquivo_da_vazio_com_as_colunas():
 def test_distribuicao_so_com_numero_de_acionistas_nao_leva_nome_nem_documento():
     colunas = set(governanca.ler_distribuicao_capital(RECORTE).columns)
     assert not colunas & {"nome", "nome_companhia", "cpf", "documento"}
+
+
+# --- ações por classe de cada acionista (item 15.1) ---------------------------------------------------
+def _acionistas_por_classe(conteudo: bytes = RECORTE) -> pd.DataFrame:
+    return governanca.ler_acionistas_por_classe(conteudo)
+
+
+def test_acionista_por_classe_traz_a_empresa_com_o_id_da_posicao_acionaria():
+    tabela = _acionistas_por_classe()
+    assert list(tabela.columns) == list(governanca.COLUNAS_DOS_ACIONISTAS_POR_CLASSE)
+    lifemed = tabela[tabela["id_documento"] == LIFEMED]
+    empresa = lifemed[(lifemed["id_acionista"] == "7596983")].iloc[0]
+    assert empresa["tipo_acionista"] == "pj"
+    assert empresa["classe"] == CLASSE_A
+    assert empresa["acoes"] == 1000
+    assert empresa["percentual"] == pytest.approx(10.5)
+    assert empresa["conhecido_em"] == pd.Timestamp("2025-01-15")
+
+
+def test_pessoa_por_classe_vira_o_id_do_grupo_e_nao_deixa_o_id_dela():
+    tabela = _acionistas_por_classe()
+    lifemed = tabela[tabela["id_documento"] == LIFEMED].set_index(
+        ["id_acionista", "classe"]
+    )
+    pessoa = lifemed.loc[("pf:7596991:S:S", CLASSE_A)]
+    assert pessoa["tipo_acionista"] == "pf_somada"
+    assert pessoa["acoes"] == 300
+    assert "7596992" not in set(tabela["id_acionista"])
+    assert "7657227" not in set(tabela["id_acionista"])
+
+
+def test_pessoas_do_mesmo_grupo_somam_as_acoes_de_cada_classe():
+    mais_uma = {
+        **_documento(LIFEMED), "ID_Acionista": "5001", "Acionista": "PESSOA FICTICIA D",
+        "Tipo_Pessoa_Acionista": "PF", "CPF_CNPJ_Acionista": "888.000.000-46",
+        "ID_Acionista_Relacionado": "7596991", "Acionista_Controlador": "S",
+        "Participante_Acordo_Acionistas": "S",
+    }  # fmt: skip
+    com_a_pessoa = _acrescentar(RECORTE, ACIONISTAS, [mais_uma])
+    classe = {
+        **_documento(LIFEMED), "ID_Acionista": "5001",
+        "Tipo_Classe_Acao_Preferencial": CLASSE_A, "Quantidade_Acoes": "200",
+        "Percentual_Acoes": "2.0",
+    }  # fmt: skip
+    conteudo = _acrescentar(com_a_pessoa, POSICAO_POR_CLASSE, [classe])
+    tabela = _acionistas_por_classe(conteudo)
+    grupo = tabela[
+        (tabela["id_documento"] == LIFEMED)
+        & (tabela["id_acionista"] == "pf:7596991:S:S")
+    ].iloc[0]
+    assert grupo["acoes"] == 500
+    assert grupo["percentual"] == pytest.approx(5.0)
+    assert grupo["acionistas_no_grupo"] == 2
+    assert "5001" not in set(tabela["id_acionista"])
+    assert "PESSOA" not in tabela.astype(str).to_string().upper()
+
+
+def test_classe_sem_acionista_na_posicao_nao_mostra_o_id_e_soma_por_classe():
+    tabela = _acionistas_por_classe()
+    orfas = tabela[
+        (tabela["id_documento"] == LIFEMED)
+        & (tabela["tipo_acionista"] == "nao_identificado")
+    ]
+    assert list(orfas["id_acionista"]) == ["nao_identificado"]
+    assert orfas.iloc[0]["acoes"] == 50  # 20 + 30, sem como saber se é pessoa
+    assert orfas.iloc[0]["acionistas_no_grupo"] == 2
+    assert not {"9999001", "9999002", "9999003"} & set(tabela["id_acionista"])
+
+
+def test_classe_em_branco_vira_nao_informada_e_a_chave_nao_repete():
+    tabela = _acionistas_por_classe()
+    estrela = tabela[tabela["id_documento"] == ESTRELA].set_index("id_acionista")
+    assert estrela.loc["7657228", "classe"] == "nao_informada"
+    chave = [*governanca.conselhos.COLUNAS_DO_DOCUMENTO, "id_acionista", "classe"]
+    assert not tabela.duplicated(chave).any()
+
+
+def test_toda_classe_de_acionista_conhecido_tem_o_acionista_na_tabela_de_acionistas():
+    classes = _acionistas_por_classe()
+    acionistas = governanca.ler_acionistas(RECORTE)
+    chave = ["id_documento", "id_acionista"]
+    conhecidos = set(map(tuple, acionistas[chave].to_numpy()))
+    achados = classes[classes["tipo_acionista"] != "nao_identificado"]
+    assert set(map(tuple, achados[chave].to_numpy())) <= conhecidos
+
+
+def test_acionista_por_classe_sem_o_arquivo_da_vazio_com_as_colunas():
+    tabela = _acionistas_por_classe(RECORTE_SEM_DISTRIBUICAO)
+    assert tabela.empty
+    assert list(tabela.columns) == list(governanca.COLUNAS_DOS_ACIONISTAS_POR_CLASSE)
+
+
+# --- ações em circulação por classe (item 15.7) ------------------------------------------------------
+def test_distribuicao_por_classe_traz_a_quantidade_e_o_percentual_de_cada_classe():
+    tabela = governanca.ler_distribuicao_capital_por_classe(RECORTE)
+    assert list(tabela.columns) == list(governanca.COLUNAS_DA_DISTRIBUICAO_POR_CLASSE)
+    lifemed = tabela[tabela["id_documento"] == LIFEMED].set_index("sigla_classe")
+    assert lifemed.loc["PNA", "classe"] == CLASSE_A
+    assert lifemed.loc["PNA", "circulacao"] == 4000
+    assert lifemed.loc["PNB", "percentual"] == pytest.approx(6.25)
+    assert lifemed.loc["PNA", "conhecido_em"] == pd.Timestamp("2025-01-15")
+
+
+def test_distribuicao_por_classe_guarda_as_duas_versoes_com_a_entrega_de_cada_uma():
+    tabela = governanca.ler_distribuicao_capital_por_classe(RECORTE)
+    lifemed = tabela[
+        (tabela["cnpj"] == "02.357.251/0001-53") & (tabela["sigla_classe"] == "PNA")
+    ].sort_values("versao")
+    assert list(lifemed["versao"]) == [1, 2]
+    assert list(lifemed["percentual"]) == [35.5, 40.5]
+    assert list(lifemed["conhecido_em"]) == [
+        pd.Timestamp("2024-05-31"),
+        pd.Timestamp("2025-01-15"),
+    ]
+
+
+def test_distribuicao_por_classe_sem_o_arquivo_da_vazio_com_as_colunas():
+    tabela = governanca.ler_distribuicao_capital_por_classe(RECORTE_SEM_DISTRIBUICAO)
+    assert tabela.empty
+    assert list(tabela.columns) == list(governanca.COLUNAS_DA_DISTRIBUICAO_POR_CLASSE)
+
+
+# --- natureza da transação com parte relacionada ------------------------------------------------------
+@pytest.mark.parametrize(
+    ("texto", "natureza"),
+    [
+        ("Mútuo realizado para reforço de capital de giro.", "emprestimo_ou_mutuo"),
+        ("Captação por meio de sindicato dos bancos.", "emprestimo_ou_mutuo"),
+        ("Aval prestado em favor da controlada", "garantia"),
+        ("Pagamento de dividendos e juros sobre capital próprio", "dividendos_e_capital"),
+        ("Rateio de despesas e custos comuns entre as sociedades", "rateio_de_custos"),
+        ("Compartilhamento de pessoal", "rateio_de_custos"),
+        ("Contrato de licenciamento de cultivares, com royalties", "licenca_ou_royalties"),
+        ("O imóvel é sublocado para fins não residenciais", "aluguel"),
+        ("Contrato de parceria agrícola", "aluguel"),
+        ("Uso do sistema de transmissão rateado pelo ONS", "energia"),
+        ("Compra de energia", "energia"),
+        ("Seguro saúde em favor dos funcionários", "seguro_e_beneficios"),
+        ("Depósitos mantidos em conta corrente do cliente", "conta_corrente_ou_deposito"),
+        ("Prestação de serviços", "servicos"),
+        ("Venda de mercadorias a preços de mercado", "compra_e_venda"),
+        ("Operação sem descrição que case", "outra"),
+        ("", "nao_informada"),
+        ("N/A", "nao_informada"),
+        ("-", "nao_informada"),
+        ("Não se aplica.", "nao_informada"),
+        ("Não há", "nao_informada"),
+    ],
+)  # fmt: skip
+def test_natureza_da_transacao(texto, natureza):
+    assert governanca.categoria_da_natureza(texto) == natureza
+
+
+def test_natureza_vazia_de_ano_sem_a_coluna_nao_quebra():
+    assert governanca.categoria_da_natureza(float("nan")) == "nao_informada"
+
+
+def test_parte_relacionada_traz_so_a_categoria_da_natureza_e_nunca_o_texto_livre():
+    linhas = [
+        {**_documento(ESTRELA), "Parte_Relacionada": "Fornecedora Fictícia S.A.",
+         "Tipo_Pessoa": "PJ", "Documento_Parte_Relacionada": "11.222.333/0001-81",
+         "Relacao_Emissor": "Controle comum",
+         "Natureza_Razao_Operacao": "Mútuo para o caixa de PESSOA FICTICIA Z"},
+        {**_documento(ESTRELA), "Parte_Relacionada": "PESSOA FICTICIA Y", "Tipo_Pessoa": "PF",
+         "Relacao_Emissor": "Diretor", "Natureza_Razao_Operacao": "Mútuo",
+         "Montante_Envolvido": "10"},
+    ]  # fmt: skip
+    partes = governanca.ler_partes_relacionadas(_acrescentar(RECORTE, PARTES, linhas))
+    assert list(partes.columns) == list(governanca.COLUNAS_DAS_PARTES)
+    estrela = partes[partes["id_documento"] == ESTRELA].set_index("linha")
+    assert estrela.loc["7", "natureza"] == "emprestimo_ou_mutuo"
+    # a pessoa só entra somada por relação, sem a natureza
+    assert pd.isna(estrela.loc["pf:PF:administracao", "natureza"])
+    assert "FICTICI" not in partes.astype(str).to_string().upper()
+    assert set(partes["natureza"].dropna()) <= set(governanca.NATUREZAS)
 
 
 # --- regras de toda tabela --------------------------------------------------------------------------

@@ -3000,7 +3000,7 @@
           "CVM"
         ],
         "tabelas": 7,
-        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 7 de 9 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Sócios e administradores na Receita, acionistas e ações em circulação no formulário de referência e a rede de controladas e coligadas, com a data de cada ligação. Hoje estão montadas 7 de 11 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Quem é dono e quem controla"
       },
       {
@@ -7940,7 +7940,7 @@
     {
       "atraso": null,
       "consultavel": false,
-      "frase": "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia.",
+      "frase": "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação e da natureza da operação, os montantes, a taxa e a posição da companhia.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",

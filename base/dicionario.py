@@ -7696,6 +7696,51 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fre_acionistas_por_classe": Tabela(
+        descricao=(
+            "Ações de cada acionista do FRE por classe (item 15.1): para quem a posição acionária (`fre_acionistas`) mostra preferenciais, a quantidade e o percentual de cada classe (Preferencial Classe A, B...), desde 2010. O `id_acionista` casa com o de `fre_acionistas`; pessoa física só somada no id do grupo (ADR 0075, item 5), nunca com o id da CVM. Linha de um acionista que a posição do mesmo documento não traz soma por classe em `nao_identificado`, porque não há como saber se é pessoa"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_acionistas_por_classe/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "id_acionista": (
+                'Identificador do acionista como em `fre_acionistas` (o da CVM, ou "pf:<grupo>:<controlador S/N>:<acordo S/N>" nas pessoas somadas); `nao_identificado` quando a posição acionária do documento não traz o acionista',
+                TEXTO,
+            ),
+            "tipo_acionista": (
+                "`pj`, `pf_somada`, `outros` ou `tesouraria` (como em `fre_acionistas`) ou `nao_identificado`",
+                TEXTO,
+            ),
+            "classe": (
+                'Classe de ação como a companhia escreve ("Preferencial Classe A"); `nao_informada` quando vem em branco',
+                TEXTO,
+            ),
+            "acoes": (
+                "Quantidade de ações da classe (somada nas pessoas e nos não identificados)",
+                ACOES,
+            ),
+            "percentual": (
+                "Percentual da classe, de 0 a 100 como a CVM escreve (somado nas pessoas e nos não identificados)",
+                NUMERO_DECIMAL,
+            ),
+            "acionistas_no_grupo": (
+                "Quantas linhas da CVM a linha soma (1 fora das pessoas somadas e dos não identificados)",
+                NUMERO,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
     "fre_acionistas": Tabela(
         descricao=(
             "Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido"
@@ -7765,9 +7810,40 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fre_distribuicao_capital_por_classe": Tabela(
+        descricao=(
+            "Ações preferenciais em circulação de cada FRE por classe (item 15.7): a quantidade e o percentual de cada classe (PNA, PNB...) fora o controlador, os administradores e a tesouraria. Complementa `fre_distribuicao_capital`, que traz o total por espécie. Só contagens e percentuais, sem nome nem documento"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_distribuicao_capital_por_classe/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "sigla_classe": (
+                "Sigla da classe de ação preferencial (PNA, PNB...)",
+                TEXTO,
+            ),
+            "classe": ("Nome da classe como a companhia escreve", TEXTO),
+            "circulacao": ("Ações da classe em circulação", ACOES),
+            "percentual": (
+                "Percentual da classe em circulação, de 0 a 100 como a CVM escreve",
+                NUMERO_DECIMAL,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
     "fre_partes_relacionadas": Tabela(
         descricao=(
-            "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia. Empresa entra com nome e CNPJ; pessoa física (ou CPF, ou sem tipo e nome sem cara de empresa) só somada por tipo e relação, sem nome nem documento (ADR 0075, item 5); o objeto e as garantias (texto livre) nem são lidos"
+            "Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação e da natureza da operação, os montantes, a taxa e a posição da companhia. Empresa entra com nome e CNPJ; pessoa física (ou CPF, ou sem tipo e nome sem cara de empresa) só somada por tipo e relação, sem nome nem documento (ADR 0075, item 5); o objeto e as garantias (texto livre) nem são lidos, e da natureza e razão da operação só fica a categoria"
         ),
         fonte="CVM: formulário de referência (FRE), dados abertos",
         familia_da_fonte="cvm",
@@ -7798,6 +7874,10 @@ TABELAS: dict[str, Tabela] = {
             ),
             "relacao": (
                 "Categoria da relação com a companhia (controle_comum, controle_conjunto, controladora, controlada, coligada, administracao, familiar, acionista, outra, nao_informada), tirada do texto livre",
+                TEXTO,
+            ),
+            "natureza": (
+                "Categoria da natureza e razão da operação (emprestimo_ou_mutuo, garantia, dividendos_e_capital, rateio_de_custos, licenca_ou_royalties, aluguel, energia, seguro_e_beneficios, remuneracao, conta_corrente_ou_deposito, compra_e_venda, servicos, outra, nao_informada), tirada do texto livre, que não entra na base; vazio nas pessoas somadas",
                 TEXTO,
             ),
             "data_transacao": ("Data da transação; vazio nas pessoas somadas", DATA),
@@ -11513,8 +11593,10 @@ _CONTRATO = {
     "fre_capital_social": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_capital_social'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_empregados": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'recorte', 'grupo'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde="2023-01-01"),
     "fre_distribuicao_capital": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_documento'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_acionistas_por_classe": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'id_acionista', 'classe'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_distribuicao_capital_por_classe": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'id_documento', 'sigla_classe'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "fre_acionistas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'id_acionista'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
-    "fre_partes_relacionadas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'linha'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_partes_relacionadas": _contrato(modulo=_ME, pessoa=True, chaves=('cnpj', 'referencia', 'versao', 'linha'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),  # 1.1.0 (25/11/2026): coluna nova `natureza` (categoria da natureza e razão da operação; linha 714)
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO, versao_do_contrato="1.1.0"),

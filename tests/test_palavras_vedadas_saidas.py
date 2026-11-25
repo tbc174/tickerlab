@@ -105,6 +105,10 @@ NAO_E_SAIDA: dict[tuple[str, str], str] = {
         "seguro",
     ): "regex que classifica o nome da parte; não é texto exibido",
     ("src/raio_x.py", "seguro"): "regex do setor 'Seguro' (nome de setor), não é juízo",
+    (
+        "base/fre_governanca.py",
+        "seguro",
+    ): "regex e nome da categoria `seguro_e_beneficios` da natureza da operação (nome do produto), não é juízo",
     **{
         (
             arquivo,

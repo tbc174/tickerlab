@@ -14,6 +14,13 @@ Aqui entram os que faltavam para a governança:
   pessoa física, pessoa jurídica e investidor institucional a companhia declara. Só contagens e
   percentuais: a tabela não traz nome nem documento.
 
+- `fre_acionistas_por_classe` (item 15.1) e `fre_distribuicao_capital_por_classe` (item 15.7): as ações
+  preferenciais por classe (PNA, PNB...), de cada acionista e em circulação. A primeira usa o mesmo id da
+  `fre_acionistas`; pessoa física só somada no id do grupo, e linha de acionista que a posição do documento
+  não traz soma em `nao_identificado` (não há como saber se é pessoa);
+- a `natureza` de `fre_partes_relacionadas` (texto livre "natureza e razão da operação") entra só como
+  categoria (`categoria_da_natureza`); nas pessoas somadas ela some.
+
 Pessoa física (ADR 0075): até o parecer jurídico, entra só como número somado, sem nome, CPF, id, UF
 ou nacionalidade; o representante legal nem é lido. A base olha para empresas.
 
@@ -332,6 +339,15 @@ def _relacionado(bruto: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _id_do_grupo_de_pessoas(tabela: pd.DataFrame) -> pd.Series:
+    """Id estável e sem nada da pessoa: o grupo e o que a companhia declarou (`pf:<grupo>:S:N`)."""
+    return (
+        "pf:" + tabela["id_acionista_relacionado"].fillna("raiz")
+        + ":" + tabela["controlador"].map(LETRA).fillna("-")
+        + ":" + tabela["acordo_de_acionistas"].map(LETRA).fillna("-")
+    )  # fmt: skip
+
+
 def _somar_pessoas(tabela: pd.DataFrame) -> pd.DataFrame:
     """As pessoas físicas de cada grupo viram uma linha só: quantas são e quanto têm somado."""
     pessoas = tabela[tabela["tipo_acionista"] == PF_SOMADA]
@@ -344,25 +360,20 @@ def _somar_pessoas(tabela: pd.DataFrame) -> pd.DataFrame:
         .sum(min_count=1)
         .reset_index()
     )
-    # id estável e sem nada da pessoa: o grupo e o que a companhia declarou
-    somadas["id_acionista"] = (
-        "pf:" + somadas["id_acionista_relacionado"].fillna("raiz")
-        + ":" + somadas["controlador"].map(LETRA).fillna("-")
-        + ":" + somadas["acordo_de_acionistas"].map(LETRA).fillna("-")
-    )  # fmt: skip
+    somadas["id_acionista"] = _id_do_grupo_de_pessoas(somadas)
     somadas["tipo_acionista"] = PF_SOMADA
     empresas = tabela[tabela["tipo_acionista"] != PF_SOMADA]
     return pd.concat([empresas, somadas], ignore_index=True)
 
 
-def ler_acionistas(conteudo_do_zip: bytes) -> pd.DataFrame:
-    """Os acionistas de cada FRE com 5% ou mais, e os acionistas deles até a pessoa física; as
-    pessoas físicas entram somadas por grupo, sem nome nem documento (ADR 0075)."""
+def _acionistas_sem_somar(conteudo_do_zip: bytes) -> pd.DataFrame | None:
+    """Cada linha da posição acionária já sem o que identifica a pessoa, mas ainda uma linha por
+    acionista (o `id_acionista` é o da CVM). `None` se o FRE não traz a tabela."""
     bruto = conselhos._tabela(
         conteudo_do_zip, "posicao_acionaria", [*conselhos.DOCUMENTO, *ACIONISTA]
     )
     if bruto.empty:
-        return pd.DataFrame(columns=list(COLUNAS_DOS_ACIONISTAS))
+        return None
     pessoa = _e_pessoa(
         bruto["Tipo_Pessoa_Acionista"], bruto["CPF_CNPJ_Acionista"], bruto["Acionista"]
     )
@@ -390,11 +401,95 @@ def ler_acionistas(conteudo_do_zip: bytes) -> pd.DataFrame:
     ):
         tabela[novo] = pd.to_datetime(bruto[velho].str.strip(), errors="coerce")
     tabela["acionistas_no_grupo"] = 1
-    tabela = _somar_pessoas(conselhos._so_com_data(tabela.drop_duplicates()))
-    tabela = tabela.reindex(columns=list(COLUNAS_DOS_ACIONISTAS))
+    return conselhos._so_com_data(tabela.drop_duplicates())
+
+
+def ler_acionistas(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Os acionistas de cada FRE com 5% ou mais, e os acionistas deles até a pessoa física; as
+    pessoas físicas entram somadas por grupo, sem nome nem documento (ADR 0075)."""
+    sem_somar = _acionistas_sem_somar(conteudo_do_zip)
+    if sem_somar is None:
+        return pd.DataFrame(columns=list(COLUNAS_DOS_ACIONISTAS))
+    tabela = _somar_pessoas(sem_somar).reindex(columns=list(COLUNAS_DOS_ACIONISTAS))
     return conferir_sem_cpf(
         tabela, ("acionista", "cnpj_acionista", "cnpj_acionista_relacionado")
     )
+
+
+# --- ações por classe de cada acionista (item 15.1 do FRE) -------------------------------------------
+NAO_IDENTIFICADO = "nao_identificado"
+SEM_CLASSE = "nao_informada"
+COLUNAS_DOS_ACIONISTAS_POR_CLASSE = (
+    *conselhos.COLUNAS_DO_DOCUMENTO, "id_acionista", "tipo_acionista", "classe", "acoes",
+    "percentual", "acionistas_no_grupo", "conhecido_em",
+)  # fmt: skip
+
+
+def _id_publico_dos_acionistas(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """(`id_documento`, `id_da_cvm`) → o `id_acionista` e o `tipo_acionista` que `ler_acionistas`
+    devolve: o id da CVM para empresa, "Outros" e tesouraria; o id do grupo para pessoa."""
+    sem_somar = _acionistas_sem_somar(conteudo_do_zip)
+    if sem_somar is None:
+        return pd.DataFrame(
+            columns=["id_documento", "id_da_cvm", "id_acionista", "tipo_acionista"]
+        )
+    pessoa = sem_somar["tipo_acionista"].eq(PF_SOMADA)
+    publico = sem_somar["id_acionista"].where(
+        ~pessoa, _id_do_grupo_de_pessoas(sem_somar)
+    )
+    return pd.DataFrame(
+        {
+            "id_documento": sem_somar["id_documento"],
+            "id_da_cvm": sem_somar["id_acionista"],
+            "id_acionista": publico,
+            "tipo_acionista": sem_somar["tipo_acionista"],
+        }
+    ).drop_duplicates(["id_documento", "id_da_cvm"])  # fmt: skip
+
+
+def ler_acionistas_por_classe(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """As ações de cada acionista por classe, do mesmo jeito que a posição acionária: o
+    `id_acionista` casa com o de `ler_acionistas`; pessoa física só somada no id do grupo (nunca o
+    id da CVM). Linha de um acionista que a posição do mesmo documento não traz (a CVM tem algumas)
+    não mostra o id: soma por classe em `nao_identificado`, porque não há como saber se é pessoa."""
+    bruto = conselhos._tabela(
+        conteudo_do_zip,
+        "posicao_acionaria_classe_acao",
+        [*conselhos.DOCUMENTO, "ID_Acionista", "Tipo_Classe_Acao_Preferencial",
+         "Quantidade_Acoes", "Percentual_Acoes"],
+    )  # fmt: skip
+    if bruto.empty:
+        return pd.DataFrame(columns=list(COLUNAS_DOS_ACIONISTAS_POR_CLASSE))
+    tabela = conselhos._documento(bruto, conselhos.entregas(conteudo_do_zip))
+    tabela["id_da_cvm"] = bruto["ID_Acionista"].str.strip()
+    tabela = tabela.merge(
+        _id_publico_dos_acionistas(conteudo_do_zip),
+        on=["id_documento", "id_da_cvm"],
+        how="left",
+    )
+    tabela["id_acionista"] = tabela["id_acionista"].fillna(NAO_IDENTIFICADO)
+    tabela["tipo_acionista"] = tabela["tipo_acionista"].fillna(NAO_IDENTIFICADO)
+    tabela["classe"] = (
+        bruto["Tipo_Classe_Acao_Preferencial"].str.strip().replace("", SEM_CLASSE)
+    ).to_numpy()
+    tabela["acoes"] = numero(bruto["Quantidade_Acoes"]).to_numpy()
+    tabela["percentual"] = numero(bruto["Percentual_Acoes"]).to_numpy()
+    tabela["acionistas_no_grupo"] = 1
+    tabela = conselhos._so_com_data(tabela.drop_duplicates())
+    chave = [
+        *conselhos.COLUNAS_DO_DOCUMENTO, "id_acionista", "tipo_acionista", "classe",
+        "conhecido_em",
+    ]  # fmt: skip
+    somadas = (
+        tabela.groupby(chave, sort=False, dropna=False)[["acoes", "percentual", "acionistas_no_grupo"]]
+        .agg(
+            acoes=("acoes", _soma),
+            percentual=("percentual", _soma),
+            acionistas_no_grupo=("acionistas_no_grupo", "sum"),
+        )
+        .reset_index()
+    )  # fmt: skip
+    return somadas.reindex(columns=list(COLUNAS_DOS_ACIONISTAS_POR_CLASSE))
 
 
 # --- distribuição do capital: o free float (item 15.7 do FRE) ----------------------------------------
@@ -435,12 +530,46 @@ def ler_distribuicao_capital(conteudo_do_zip: bytes) -> pd.DataFrame:
     return tabela.reindex(columns=list(COLUNAS_DA_DISTRIBUICAO))
 
 
+# --- ações em circulação por classe (item 15.7 do FRE) ------------------------------------------------
+DISTRIBUICAO_POR_CLASSE = {
+    "Sigla_Classe_Acoes_Preferenciais": "sigla_classe",
+    "Classe_Acoes_Preferenciais": "classe",
+    "Quantidade_Acoes_Preferenciais_Circulacao": "circulacao",
+    "Percentual_Acoes_Preferenciais_Circulacao": "percentual",
+}
+COLUNAS_DA_DISTRIBUICAO_POR_CLASSE = (
+    *conselhos.COLUNAS_DO_DOCUMENTO, *DISTRIBUICAO_POR_CLASSE.values(), "conhecido_em",
+)  # fmt: skip
+
+
+def ler_distribuicao_capital_por_classe(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """As ações preferenciais em circulação de cada FRE, uma linha por classe (PNA, PNB...), com a
+    quantidade e o percentual de 0 a 100 como a CVM escreve. Só contagens: sem nome nem documento."""
+    bruto = conselhos._tabela(
+        conteudo_do_zip,
+        "distribuicao_capital_classe_acao",
+        [*conselhos.DOCUMENTO, *DISTRIBUICAO_POR_CLASSE],
+    )
+    if bruto.empty:
+        return pd.DataFrame(columns=list(COLUNAS_DA_DISTRIBUICAO_POR_CLASSE))
+    tabela = conselhos._documento(bruto, conselhos.entregas(conteudo_do_zip))
+    for texto in ("Sigla_Classe_Acoes_Preferenciais", "Classe_Acoes_Preferenciais"):
+        vazio = bruto[texto].str.strip().eq("")
+        tabela[DISTRIBUICAO_POR_CLASSE[texto]] = (
+            bruto[texto].str.strip().where(~vazio, SEM_CLASSE)
+        )
+    tabela["circulacao"] = numero(bruto["Quantidade_Acoes_Preferenciais_Circulacao"])
+    tabela["percentual"] = numero(bruto["Percentual_Acoes_Preferenciais_Circulacao"])
+    tabela = conselhos._so_com_data(tabela.drop_duplicates())
+    return tabela.reindex(columns=list(COLUNAS_DA_DISTRIBUICAO_POR_CLASSE))
+
+
 # --- transações com partes relacionadas (item 11.2 do FRE) -------------------------------------------
 PARTE = (
     "Parte_Relacionada", "Tipo_Pessoa", "Documento_Parte_Relacionada", "Relacao_Emissor",
     "Data_Transacao", "Montante_Envolvido", "Saldo_Existente",
     "Montante_Interesse_Parte_Relacionada", "Emprestimo_Divida", "Taxa_Juros",
-    "Posicao_Contratual_Emissor",
+    "Posicao_Contratual_Emissor", "Natureza_Razao_Operacao",
 )  # fmt: skip
 MONTANTES = {
     "Montante_Envolvido": "montante_envolvido",
@@ -459,10 +588,30 @@ RELACOES = (
     ("familiar", r"conjuge|parente|familiar|\bfilh[oa]s?\b|\birma[os]?\b|\bpai\b|\bmae\b"),
     ("acionista", r"acionista|socio|cotista"),
 )  # fmt: skip
+# a natureza e a razão da operação também são texto livre (de "N/A" a um parágrafo); fica só a
+# categoria, procurada nesta ordem (a primeira que casa vale: "uso do sistema de transmissão" é
+# energia, não serviço), no texto sem acento. O texto original não entra na base.
+NATUREZAS_POR_PALAVRA = (
+    ("emprestimo_ou_mutuo", r"mutuo|emprestimo|financiamento|captacao|debenture|capital de giro|nota promissoria|cedula"),
+    ("garantia", r"\baval\b|avalista|fianca|garantia"),
+    ("dividendos_e_capital", r"dividendo|juros sobre (o )?capital|\bj[s]?cp\b|aumento de capital|integralizacao|\bafac\b|adiantamento para futuro aumento"),
+    ("rateio_de_custos", r"rateio|compartilhamento|reembolso"),
+    ("licenca_ou_royalties", r"royalt|licenciamento|licenca|cultivar|propriedade intelectual|uso de marca"),
+    ("aluguel", r"locacao|aluguel|sublocac|sublocad|arrendamento|parceria agricola|\bimovel\b|comodato"),
+    ("energia", r"energia|transmissao|\bccear\b|\bccee\b|\bons\b"),
+    ("seguro_e_beneficios", r"seguro|plano de saude|previdencia|beneficio"),
+    ("remuneracao", r"remuneracao|salario|pro.?labore|honorario|\bbonus\b|participacao nos lucros"),
+    ("conta_corrente_ou_deposito", r"conta.corrente|deposito|aplicacao financeira|\bcdb\b"),
+    ("compra_e_venda", r"\bcompra|\bvenda|fornecimento|comercializacao|aquisicao|mercadoria|\bprodutos?\b|insumos?"),
+    ("servicos", r"servico|consultoria|assessoria|gestao|administracao|manutencao"),
+)  # fmt: skip
+NATUREZAS = (*(nome for nome, _ in NATUREZAS_POR_PALAVRA), "outra", "nao_informada")
+NATUREZA_VAZIA = ("", "n/a", "na", "n.a", "nao", "nenhum", "nenhuma", "sem natureza")
+NATUREZA_VAZIA_NO_COMECO = ("nao se aplica", "nao aplicavel", "nao ha", "nao informad")
 POSICOES = ("credor", "devedor", "outra")
 COLUNAS_DAS_PARTES = (
     *conselhos.COLUNAS_DO_DOCUMENTO, "linha", "tipo_pessoa", "contraparte", "cnpj_contraparte",
-    "relacao", "data_transacao", *MONTANTES.values(), "emprestimo", "taxa_de_juros",
+    "relacao", "natureza", "data_transacao", *MONTANTES.values(), "emprestimo", "taxa_de_juros",
     "posicao_contratual", "transacoes", "conhecido_em",
 )  # fmt: skip
 GRUPO_DAS_PESSOAS = (
@@ -478,6 +627,23 @@ def categoria_da_relacao(texto: str) -> str:
         return "nao_informada"
     return next(
         (nome for nome, padrao in RELACOES if re.search(padrao, simples)), "outra"
+    )
+
+
+def categoria_da_natureza(texto: str) -> str:
+    """ "Mútuo para reforço de caixa" → `emprestimo_ou_mutuo`; vazio, "N/A" ou "não se aplica" →
+    `nao_informada` (também quando o FRE do ano nem traz a coluna); o que não casa, `outra`."""
+    texto = texto if isinstance(texto, str) else ""
+    simples = sem_acento(texto).strip(" .;:-")
+    if simples in NATUREZA_VAZIA or simples.startswith(NATUREZA_VAZIA_NO_COMECO):
+        return "nao_informada"
+    return next(
+        (
+            nome
+            for nome, padrao in NATUREZAS_POR_PALAVRA
+            if re.search(padrao, sem_acento(texto))
+        ),
+        "outra",
     )
 
 
@@ -527,6 +693,10 @@ def ler_partes_relacionadas(conteudo_do_zip: bytes) -> pd.DataFrame:
         bruto["Documento_Parte_Relacionada"]
     ).where(~pessoa)
     tabela["relacao"] = bruto["Relacao_Emissor"].map(categoria_da_relacao)
+    # com pessoa (ou sem como saber) a natureza também some: só a soma por relação
+    tabela["natureza"] = (
+        bruto["Natureza_Razao_Operacao"].map(categoria_da_natureza).where(~pessoa)
+    )
     tabela["data_transacao"] = pd.to_datetime(
         bruto["Data_Transacao"].str.strip(), errors="coerce"
     )
