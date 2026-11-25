@@ -174,6 +174,8 @@ FICAM_EM_CASA = (
     # `COMPRAS_PUBLICAS`, linha 988.)
     # linha 830 (frente 5, 19/11/2026): dívida ativa do Paraná tem linha de pessoa (marcada `trata_como_pessoa`); monta em casa e não sai
     "sefa_pr_divida_ativa",
+    # linha 770: planos de saúde da ANS pelo CNPJ da operadora (ponte `ans_operadoras`); o envio ao VPS pede o "pode"
+    "ans_produtos",
     # linha 1074 (PR 1): RAPP do IBAMA (família `ibama`, integridade sob contrato), só CNPJ; o envio ao VPS pede o
     # "pode" da Diretoria com a prova de zero pessoa da 1ª carga
     "ibama_rapp_emissoes_atmosfericas",

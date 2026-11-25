@@ -139,6 +139,7 @@ ARQUIVOS: dict[str, str] = {
     "financiamentos_finep": "financiamentos_finep/*.parquet",
     "cmed_precos": "cmed_precos/*.parquet",
     "ans_operadoras": "ans_operadoras/*.parquet",
+    "ans_produtos": "ans_produtos/*.parquet",
     "susep_cadastro": "susep_cadastro/*.parquet",
     "mte_lista_suja": "mte_lista_suja/*.parquet",
     "ibama_embargos": "ibama_embargos/*.parquet",
