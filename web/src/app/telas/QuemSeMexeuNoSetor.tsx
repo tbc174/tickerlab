@@ -177,8 +177,8 @@ function Resultado({ dados, atividades }: { dados: CompradoresDoSetorV1; ativida
             comprar ou vender. Holding de família e reorganização também entram, e entrar como sócia não é aquisição.
           </li>
           <li>
-            A ordem é pelo número de tipos de movimento (entrou como sócia, fundo sócio, controla no setor) e, depois, pelo
-            de entradas como sócia: não é uma classificação de quem compraria.
+            A ordem é pelo número de entradas como sócia e, depois, pelo de tipos de movimento (entrou como sócia, fundo
+            sócio, controla no setor): não é uma classificação de quem compraria.
           </li>
           <li>
             A coluna Quando traz a data do registro mais recente entre os exemplos de cada empresa; cada tipo mostra só
