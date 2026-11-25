@@ -321,6 +321,31 @@ def test_o_numero_ou_nome_do_certificado_fica_de_fora_mesmo_com_cpf():
     )
 
 
+def test_texto_com_onze_digitos_seguidos_vira_vazio_contado_valha_o_dv_ou_nao():
+    """O decreto de lavra de 25/11/2026 traz números que fecham como CPF: o texto inteiro sai, com ou sem pontuação,
+    e o número curto de decreto fica (revisão da Diretoria no PR 2)."""
+    pontuado = (
+        f"{CPF_DE_TESTE[:3]}.{CPF_DE_TESTE[3:6]}.{CPF_DE_TESTE[6:9]}-{CPF_DE_TESTE[9:]}"
+    )
+    dv_errado = CPF_DE_TESTE[:-1] + str((int(CPF_DE_TESTE[-1]) + 1) % 10)
+    tabela, contagem = rapp.ler(
+        rapp.EXTRACAO_MINERAL,
+        _arquivo(
+            rapp.EXTRACAO_MINERAL,
+            {"Nº Decreto da Lavra": CPF_DE_TESTE},
+            {"Nº Decreto da Lavra": f"DECRETO {pontuado}"},
+            {"Nº Decreto da Lavra": dv_errado},
+            {"Nº Decreto da Lavra": "1234/2005"},
+            {"Nº Decreto da Lavra": _formatado(OUTRA)},
+        ),
+    )
+    assert tabela["decreto_de_lavra"].tolist()[:4] == [pd.NA, pd.NA, pd.NA, "1234/2005"]
+    # catorze dígitos (um CNPJ) não têm cara de CPF
+    assert tabela["decreto_de_lavra"].tolist()[4] == _formatado(OUTRA)
+    assert contagem["texto_com_cara_de_cpf"] == 3
+    _sem_nada_de_pessoa_nem_do_que_sai(tabela)
+
+
 def test_madeira_com_cerquilhas_vira_vazio_contado():
     tabela, contagem = rapp.ler(
         rapp.MADEIRA_E_LENHA, _arquivo(rapp.MADEIRA_E_LENHA, {"Tora (m³)": "####"})

@@ -16523,7 +16523,7 @@
           "unidade": "texto"
         },
         "decreto_de_lavra": {
-          "descricao": "Número do decreto de lavra, como o IBAMA escreve",
+          "descricao": "Número do decreto de lavra, como o IBAMA escreve; vazio quando o texto traz onze dígitos seguidos (cara de CPF: 117 linhas no arquivo de 25/11/2026)",
           "unidade": "texto"
         },
         "situacao_cadastral": {

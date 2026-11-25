@@ -19,7 +19,8 @@ aparece, e não declarar não é o mesmo que zero.
   e são contados). O CNPJ da outra ponta (quem gerou o resíduo, de onde o transporte saiu, para onde foi) fica só
   quando é CNPJ de DV certo; o CPF dessa ponta (115 linhas no destinador, 159 no transportador e 34 no armazenador
   em 25/11/2026) vira nulo e é contado. MEI e empresário individual, nas duas pontas, são marcados por
-  `trata_como_pessoa` na montagem.
+  `trata_como_pessoa` na montagem. Campo de texto com onze dígitos seguidos (cara de CPF, valha o DV ou não) vira
+  nulo e é contado (`texto_com_cara_de_cpf`).
 - **Ficam de fora** a razão social (a Receita tem; no empresário individual é o nome da pessoa), o estado e o
   município por extenso (a Receita tem, pelo CNPJ do estabelecimento), a latitude e a longitude dos efluentes (no
   MEI o estabelecimento costuma ser a casa), o nome da empresa receptora do efluente e os campos de texto livre
@@ -34,6 +35,7 @@ Sem Streamlit; pandas só.
 
 import csv
 import io
+import re
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -61,6 +63,9 @@ FORMATO_DA_DATA = "%d/%m/%Y"  # `31/12/2018`; a hora, quando vem, fica de fora
 TAMANHO_DA_DATA = len("31/12/2018")
 # ano declarado fora desta faixa (há `5279` e `0002` nos arquivos de 25/11/2026) é erro de digitação: vira nulo contado
 ANO_MINIMO, ANO_MAXIMO = 1900, 2100
+# onze dígitos seguidos (com ou sem a pontuação do CPF) num campo de texto: no decreto de lavra de 25/11/2026, 10 dos
+# 117 assim fecham o DV de CPF (ao acaso seria 1 em 100). O texto inteiro vira nulo contado, valha o DV ou não
+CARA_DE_CPF = re.compile(r"(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)")
 CARIMBO = ("id_na_fonte", "cnpj", "cnpj_basico")
 OCORRENCIA = "ocorrencia"
 
@@ -218,6 +223,14 @@ def _data(texto: pd.Series) -> tuple[pd.Series, int]:
     return dia, int(invalida.sum())
 
 
+def _sem_cara_de_cpf(texto: pd.Series) -> tuple[pd.Series, int]:
+    """O texto, com nulo onde há onze dígitos seguidos (`CARA_DE_CPF`), e quantos eram assim."""
+    com_cpf = (
+        texto.astype("string").str.contains(CARA_DE_CPF).fillna(False).astype(bool)
+    )
+    return texto.mask(com_cpf), int(com_cpf.sum())
+
+
 def _pontas(
     tabela: pd.DataFrame, relatorio: Relatorio, contagem: dict[str, int]
 ) -> dict[str, pd.Series]:
@@ -244,7 +257,10 @@ def _valores(
     for da_fonte, nosso in anos.items():
         colunas[nosso], fora = _ano(tabela[da_fonte])
         contagem["ano_fora_da_faixa"] += fora
-    colunas |= base.renomeadas(tabela, relatorio.textos)
+    contagem["texto_com_cara_de_cpf"] = 0
+    for nosso, texto in base.renomeadas(tabela, relatorio.textos).items():
+        colunas[nosso], com_cpf = _sem_cara_de_cpf(texto)
+        contagem["texto_com_cara_de_cpf"] += com_cpf
     contagem["data_invalida"] = 0
     for da_fonte, nosso in relatorio.datas.items():
         colunas[nosso], invalidas = _data(tabela[da_fonte])

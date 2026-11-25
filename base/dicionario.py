@@ -4147,7 +4147,13 @@ def _tabelas_do_rapp_florestal_e_mineral() -> dict[str, Tabela]:
             {
                 "produto": (f"Produto mineral, {como_veio}", TEXTO),
                 "unidade": (f"Unidade da quantidade, {como_veio}", TEXTO),
-                "decreto_de_lavra": (f"Número do decreto de lavra, {como_veio}", TEXTO),
+                "decreto_de_lavra": (
+                    (
+                        f"Número do decreto de lavra, {como_veio}; vazio quando o texto traz onze dígitos "
+                        "seguidos (cara de CPF: 117 linhas no arquivo de 25/11/2026)"
+                    ),
+                    TEXTO,
+                ),
                 **_SITUACAO_NO_CTF,
                 "inicio_da_exploracao": (
                     "Ano de início da exploração declarado (vazio fora de 1900 a 2100)",

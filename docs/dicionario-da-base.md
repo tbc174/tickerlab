@@ -6072,7 +6072,7 @@ Extração e tratamento de minerais que cada estabelecimento declarou ao IBAMA, 
 | `ano` | Ano a que a declaração se refere | número inteiro |
 | `produto` | Produto mineral, como o IBAMA escreve | texto |
 | `unidade` | Unidade da quantidade, como o IBAMA escreve | texto |
-| `decreto_de_lavra` | Número do decreto de lavra, como o IBAMA escreve | texto |
+| `decreto_de_lavra` | Número do decreto de lavra, como o IBAMA escreve; vazio quando o texto traz onze dígitos seguidos (cara de CPF: 117 linhas no arquivo de 25/11/2026) | texto |
 | `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
 | `inicio_da_exploracao` | Ano de início da exploração declarado (vazio fora de 1900 a 2100) | número inteiro |
 | `fim_da_exploracao` | Ano de término da exploração declarado (vazio fora de 1900 a 2100) | número inteiro |
