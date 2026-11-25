@@ -142,7 +142,7 @@
   "sinonimos_de_tempo": {
     "contratado_em": "aconteceu_em",
     "assinado_em": "aconteceu_em",
-    "publicado_em": "publico_em",
+    "publicado_em": "aconteceu_em",
     "vigencia_inicio": "aconteceu_em",
     "vigencia_fim": "ate",
     "visto_em": "visto_em",

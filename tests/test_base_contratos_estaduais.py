@@ -205,6 +205,29 @@ def test_sancao_que_some_ganha_consta_falso_e_a_nova_so_vale_desde_que_apareceu(
     assert nova_linha["motivo"].tolist() == ["Inexecução parcial"]
 
 
+def test_sancoes_que_so_diferem_no_motivo_sao_penalidades_diferentes(
+    banco, tmp_path, monkeypatch
+):
+    """No arquivo real, três penalidades só se distinguiam pelo motivo ou pela situação: nenhuma some."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    outro_motivo = {**_sancao(), "motivo": "Atraso na entrega"}
+    _guardar(
+        banco,
+        ce.RJ_SANCOES,
+        "FORNECEDOR_SANCOES.CSV",
+        PRIMEIRO_DIA,
+        [_sancao(), outro_motivo, _sancao(situacao="Encerrada"), _sancao()],
+    )
+    resumo = _montar(banco, tmp_path)["rj_sancoes_fornecedores/fornecedor_sancoes"]
+    assert resumo["id_repetido"] == 1  # só a cópia idêntica
+    tabela = _tabela(tmp_path, ce.RJ_SANCOES, "fornecedor_sancoes")
+    assert sorted(zip(tabela["motivo"], tabela["situacao"], strict=True)) == [
+        ("Atraso na entrega", "Vigente"),
+        ("Inexecução parcial", "Encerrada"),
+        ("Inexecução parcial", "Vigente"),
+    ]
+
+
 def test_fornecedores_um_por_cnpj_com_mei_marcado_como_pessoa(
     banco, tmp_path, monkeypatch
 ):
@@ -324,6 +347,15 @@ def test_comando_monta_as_tabelas_e_sai_com_1_sem_arquivo(banco, tmp_path, monke
         tmp_path / "b" / "rj_fornecedores" / "fornecedores.parquet"
     )
     assert tabela["trata_como_pessoa"].all()  # sem a Receita guardada: o conservador
+
+
+def test_a_publicacao_no_diario_oficial_e_fato_e_nao_a_data_em_que_a_base_soube():
+    """Quem lê o contrato não pode cortar "como era em D" pelo `publicado_em` (o valor pago é de depois)."""
+    from base.tempo import sinonimos_de_tempo
+
+    sinonimos = sinonimos_de_tempo(TABELAS["rj_contratos"], "rj_contratos")
+    assert sinonimos["publicado_em"] == "aconteceu_em"
+    assert sinonimos["disponivel_em"] == "publico_em"
 
 
 def test_o_historico_do_catalogo_comeca_no_dia_em_que_a_fonte_entrou():

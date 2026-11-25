@@ -5574,7 +5574,7 @@ def _tabelas_dos_contratos_estaduais() -> dict[str, Tabela]:
             "Semanal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
             {
                 "id_na_fonte": (
-                    "CNPJ, órgão, contrato, enquadramento e dia da efetivação juntos por `|`",
+                    "CNPJ, órgão, contrato, enquadramento, dia da efetivação, motivo e situação juntos por `|`",
                     TEXTO,
                 ),
                 **comum,

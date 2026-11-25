@@ -4253,7 +4253,7 @@ Penalidades que os órgãos do governo do Rio de Janeiro aplicaram a fornecedore
 
 | Coluna | O que é | Unidade |
 |---|---|---|
-| `id_na_fonte` | CNPJ, órgão, contrato, enquadramento e dia da efetivação juntos por `|` | texto |
+| `id_na_fonte` | CNPJ, órgão, contrato, enquadramento, dia da efetivação, motivo e situação juntos por `|` | texto |
 | `arquivo` | O arquivo da fonte de onde a linha veio (o nome, sem a extensão) | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |

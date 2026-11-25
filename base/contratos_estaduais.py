@@ -139,7 +139,17 @@ RJ_SANCOES = Tabela(
         "situacao": "status da penalidade",
         "efetivada_em": "data de efetivação",
     },
-    chave=("cnpj", "orgao_apenador", "contrato", "enquadramento_legal", "efetivada_em"),
+    # o motivo e a situação entram: no arquivo de 25/11/2026 três penalidades do mesmo órgão, contrato,
+    # enquadramento e dia só se distinguiam por eles (revisão cruzada do #1316)
+    chave=(
+        "cnpj",
+        "orgao_apenador",
+        "contrato",
+        "enquadramento_legal",
+        "efetivada_em",
+        "motivo",
+        "situacao",
+    ),
     datas=("efetivada_em",),
 )
 RJ_FORNECEDORES = Tabela(
