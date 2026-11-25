@@ -375,3 +375,17 @@ def test_se_o_calculo_falha_quem_esperava_calcula_e_nada_fica_guardado():
     assert len(erros) == 1
     assert respostas == ["2026-10"]
     assert memoria == {"mes": "2026-10"}
+
+
+def test_as_travas_tem_limite_como_a_memoria():
+    """O dia variado de quem pede (`known_at`) não cresce a lista de travas sem fim."""
+    memoria: dict = {}
+    for i in range(compartilhada.MEMORIA_MAXIMA * 2 + 3):
+        assert (
+            compartilhada.lembrar(
+                _porta_com_memoria(memoria), ("dia", i), lambda i=i: i
+            )
+            == i
+        )
+    assert len(compartilhada._TRAVAS) <= compartilhada.MEMORIA_MAXIMA
+    assert len(memoria) <= compartilhada.MEMORIA_MAXIMA
