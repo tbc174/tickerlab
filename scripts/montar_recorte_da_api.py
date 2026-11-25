@@ -174,6 +174,8 @@ FICAM_EM_CASA = (
     # `COMPRAS_PUBLICAS`, linha 988.)
     # linha 830 (frente 5, 19/11/2026): dívida ativa do Paraná tem linha de pessoa (marcada `trata_como_pessoa`); monta em casa e não sai
     "sefa_pr_divida_ativa",
+    # linha 770: planos de saúde da ANS pelo CNPJ da operadora (ponte `ans_operadoras`); o envio ao VPS pede o "pode"
+    "ans_produtos",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.
