@@ -409,7 +409,7 @@ _COMPRADORES_DO_SETOR = Ferramenta(
         "Quem já se mexeu num setor (CNAE, na UF se dada) nos últimos `anos`, como era no dia: as\n"
         "empresas que entraram como sócias de empresas ativas do setor, os fundos (FIP) sócios delas e as companhias\n"
         "abertas com controlada ou coligada no setor. Cada comprador traz os sinais e até 5 exemplos por sinal, com\n"
-        "fonte e data, na ordem do número de sinais. Serve para a lista de quem compraria uma empresa do setor.\n"
+        "fonte e data, na ordem do número de entradas como sócia e, depois, do de sinais. Serve para a lista de quem compraria uma empresa do setor.\n"
         "Fonte: quadro de sócios da Receita Federal (só sócio pessoa jurídica); registro de fundos e FRE da CVM.\n"
         "Não traz: sócio pessoa física, nem intenção de compra: é movimento passado, como dizem os `limits`."
     ),
@@ -756,12 +756,11 @@ CONSULTAS: tuple[Consulta, ...] = (
             "a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto, para saber de onde veio um número antes de citá-lo; não traz dado de empresa"
         ),
         ferramentas=(_DE_ONDE_VEM,),
+        comandos=("de-onde-vem",),
         fora_de_uma_porta={
-            "cli": _LINHA_980,
             "api": "lê o `GET /catalog` (a consulta `catalogo`); não é rota própria",
         },
         na_pagina={
-            "cli": "só no conector",
             "api": "só no conector",
         },
     ),

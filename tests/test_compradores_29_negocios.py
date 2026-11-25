@@ -184,7 +184,8 @@ class Mundo:
     def _cortados_pelos_50(self) -> None:
         """2 negócios com uma entrada antiga (2023) numa empresa ativa do setor: a lista de 50 só tem holding mais nova."""
         for i in range(2):
-            comprador, alvo = self.comprador(), self.empresa("21")
+            # a raiz vem depois das holdings do ruído: o desempate é por raiz (neutro), então a sorte da raiz não decide
+            comprador, alvo = self.comprador("39"), self.empresa("21")
             self.entrar(comprador, self.empresa("20"), f"2023-1{i}-10")
             self.caso(
                 f"cortado pelos 50 {i + 1}",
@@ -366,6 +367,16 @@ def test_o_placar_conta_as_empresas_baixadas_e_sobe_de_5_para_10(pasta):
     acertos = placar(pasta)
     assert len(acertos[ACERTA_COM_UF]) == 2 and len(acertos[ACERTA_SEM_UF]) == 3
     assert len(acertos[EMPRESA_BAIXADA]) == 5
+    assert total(acertos) == PLACAR_DE_PARTIDA + 5
+
+
+def test_a_ordem_nova_da_1044_nao_muda_o_placar_e_diz_porque(pasta):
+    """A linha 1044 trocou o desempate pela data mais nova por um neutro (a raiz) e botou as entradas de terceiros
+    na frente dos sinais. No dublê isso não mexe no placar: o comprador com UMA entrada antiga continua atrás de 60
+    holdings com uma entrada cada (empate de verdade), e o que o tiraria de lá é outro conserto (cursor além dos 50,
+    "também fora da UF"), que mexe no contrato da ferramenta e espera o ok da Diretoria."""
+    acertos = placar(pasta)
+    assert CORTADO_PELOS_50 not in acertos
     assert total(acertos) == PLACAR_DE_PARTIDA + 5
 
 

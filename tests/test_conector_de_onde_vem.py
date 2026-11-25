@@ -8,10 +8,13 @@ passarem pela tranca de saída. Todo valor aqui é inventado.
 """
 
 import json
+import sys
 import time
 
 import httpx
 import pytest
+from click.testing import CliRunner
+from tickerlab import comandos, configuracao
 
 from conector_remoto import ferramentas, ferramentas_do_analista, saida
 from conector_remoto.configuracao import TEMPO_LIMITE_DA_API_S
@@ -331,3 +334,54 @@ def test_campo_em_muitos_conjuntos_vem_cortado_e_cabe_no_teto():
     corpo = _explicar("size", pedidos=None, catalogos={CHAVE_A: catalogo})
     assert len(corpo["matches"]) == MAXIMO_DE_ACHADOS and corpo["truncated"] is True
     assert len(json.dumps(corpo)) < saida.TETO_DE_CARACTERES
+
+
+# ---------------------------------------------------------------- a mesma resposta pela CLI (onda 2, PR 3)
+#
+# A CLI não importa o conector (é um pacote à parte): repete a explicação em `tickerlab/origem.py`. Este teste
+# trava as duas na mesma resposta, para uma não mudar sem a outra.
+
+
+def _pela_cli(sobre: str, tmp_path) -> dict:
+    def abrir(_endereco: str) -> httpx.Client:
+        return httpx.Client(base_url="https://api.exemplo.test", transport=_api())
+
+    resultado = CliRunner().invoke(
+        comandos.principal,
+        ["de-onde-vem", sobre, "--json"],
+        obj=abrir,
+        env={
+            configuracao.VARIAVEL_DA_PASTA: str(tmp_path / "config"),
+            configuracao.VARIAVEL_DA_CHAVE: CHAVE_A,
+            configuracao.VARIAVEL_DO_ENDERECO: "https://api.exemplo.test",
+        },
+    )
+    assert resultado.exit_code == 0, resultado.output
+    return json.loads(resultado.stdout)
+
+
+@pytest.mark.parametrize(
+    "sobre", ["credit", "profiles", "legal_name", "fidcs_as_assignor", " Size "]
+)
+def test_a_cli_explica_igual_ao_conector(sobre, tmp_path):
+    assert _pela_cli(sobre, tmp_path) == _explicar(sobre)
+
+
+def test_a_cli_corta_no_mesmo_ponto_que_o_conector(tmp_path, monkeypatch):
+    muitos = {
+        "datasets": [
+            {
+                "dataset": f"d{i}",
+                "purpose": "x",
+                "fields": [{"field": "comum", "source": "s"}],
+            }
+            for i in range(MAXIMO_DE_ACHADOS + 3)
+        ],
+        "sources": [{"source": "s", "license": "l", "attribution": "a"}],
+    }
+    monkeypatch.setattr(sys.modules[__name__], "_catalogo_da_a", lambda: muitos)
+    pela_cli = _pela_cli("comum", tmp_path)
+    assert pela_cli == _explicar("comum")
+    assert (
+        pela_cli["truncated"] is True and len(pela_cli["matches"]) == MAXIMO_DE_ACHADOS
+    )

@@ -7,6 +7,8 @@ passar a servir aparece sozinho, sem mudar a CLI. Os nomes dos campos saem como 
 
 from collections.abc import Iterable, Mapping, Sequence
 
+from tickerlab.origem import campos_do_achado
+
 VAZIO = "—"
 LARGURA_MAXIMA = 40  # caracteres por célula; o resto vira "…" (o --json traz tudo)
 IDENTIFICACAO = {
@@ -508,6 +510,38 @@ def catalogo(corpo: Mapping) -> str:
             ],
         )
     return "\n\n".join([topo, fontes(corpo.get("sources"))])
+
+
+def de_onde_vem(corpo: Mapping) -> str:
+    """De onde vem um conjunto ou um campo: cada campo com o conjunto, a finalidade e a fonte; os campos de
+    piloto pelo nome; o que o catálogo não diz; e as licenças no fim (o aviso de piloto entra uma vez só, por
+    `com_aviso_de_piloto`)."""
+    achados = [a for a in corpo.get("matches") or [] if isinstance(a, Mapping)]
+    linhas = [
+        (
+            str(achado.get("dataset")),
+            str(achado.get("purpose")),
+            str(campo.get("field")),
+            str(campo.get("source")),
+            "sim" if campo.get("pilot") is True else VAZIO,
+        )
+        for achado in achados
+        for campo in campos_do_achado(achado)
+        if isinstance(campo, Mapping)
+    ]
+    o_que = "o conjunto" if corpo.get("kind") == "dataset" else "o campo"
+    partes = [
+        f"De onde vem {o_que} `{corpo.get('asked')}`, pelo catálogo da sua chave:",
+        tabela(("conjunto", "finalidade", "campo", "fonte", "piloto"), linhas),
+    ]
+    if corpo.get("truncated") is True:
+        partes.append(AVISO_DE_CORTE)
+    de_piloto = corpo.get("pilot_fields")
+    if isinstance(de_piloto, list) and de_piloto:
+        partes.append("Campos de piloto: " + ", ".join(map(str, de_piloto)) + ".")
+    partes += [str(limite) for limite in corpo.get("limits") or []]
+    partes.append(fontes(corpo.get("sources")))
+    return "\n\n".join(partes)
 
 
 def consumo(corpo: Mapping) -> str:

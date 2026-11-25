@@ -21,7 +21,7 @@ social, gestor nem administrador. A resposta é a mesma; quando a porta tem a ta
 
 Cada comprador sai com a raiz do CNPJ, a razão social (em envelope) e, por sinal, quantas provas e até
 `EXEMPLOS_POR_SINAL` exemplos, cada campo com a fonte e o dia em que ficou público. A ordem é pelo número de
-sinais e depois pelo de entradas, não por chance de compra. O sinal que não foi consultado (o portão não o libera
+entradas como sócia (compras de terceiros) e depois pelo de sinais, sem desempate pela data, e não por chance de compra. O sinal que não foi consultado (o portão não o libera
 ou a porta não tem a tabela dele) não some em silêncio (linha 881, `src/api_externa/nao_disponivel.py`): ele vai
 em `sinais_nao_disponiveis`, com o nome de fora, e os limites só falam dos sinais consultados.
 
@@ -116,8 +116,9 @@ SINAIS = (ENTROU, FUNDO, CONTROLA)
 LIMITES_GERAIS = (
     (
         "Isto mostra movimentos passados, não intenção de compra: holding de família, reorganização e aumento "
-        "de capital também entram, e entrar como sócio não é aquisição. A ordem é pelo número de sinais, não "
-        "por chance de compra. Nada aqui é recomendação de investimento."
+        "de capital também entram, e entrar como sócio não é aquisição. A ordem é pelo número de entradas como "
+        "sócia, depois pelo de sinais, e não por chance de compra nem por quão recente é a entrada. Nada aqui é "
+        "recomendação de investimento."
     ),
     (
         "O setor é o das empresas com estabelecimento ativo do CNAE principal pedido (e na UF, se pedida) no "
@@ -730,26 +731,21 @@ class _Lista:
     def montar(
         self, nomes: dict[str, tuple[str, date]], limite: int
     ) -> list[dict[str, object]]:
-        """Os `limite` primeiros: mais sinais, depois mais entradas, depois a prova mais nova, depois a raiz."""
+        """Os `limite` primeiros: mais entradas de terceiros, depois mais sinais, depois mais provas e, no fim, a
+        raiz. A data da prova não desempata (linha 1044): desempatar pela mais nova fazia o negócio de ontem subir o
+        comprador e jogava para fora dos 50 quem comprou há mais tempo."""
 
-        def chave(comprador: str) -> tuple[int, int, str]:
+        def chave(comprador: str) -> tuple[int, int, int, str]:
             sinais = self.provas[comprador]
-            return -len(sinais), -len(sinais.get(ENTROU, [])), comprador
-
-        def mais_nova(comprador: str) -> str:
-            return max(
-                (
-                    str(p["_ordem"])
-                    for lista in self.provas[comprador].values()
-                    for p in lista
-                ),
-                default="",
+            provas = sum(len(lista) for lista in sinais.values())
+            return (
+                -len(sinais.get(ENTROU, [])),
+                -len(sinais),
+                -provas,
+                comprador,
             )
 
-        ordem = sorted(sorted(self._validos(nomes)), key=mais_nova, reverse=True)
-        ordem.sort(
-            key=lambda c: chave(c)[:2]
-        )  # estável: o empate fica com a prova mais nova primeiro
+        ordem = sorted(self._validos(nomes), key=chave)
         return [self._comprador(c, nomes) for c in ordem[:limite]]
 
     def _empresa(

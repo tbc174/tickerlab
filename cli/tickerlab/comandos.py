@@ -14,7 +14,7 @@ from pathlib import Path
 
 import click
 
-from tickerlab import __version__, formato, planilha
+from tickerlab import __version__, formato, origem, planilha
 from tickerlab.cliente import (
     SEM_CHAVE,
     AbrirHttp,
@@ -963,6 +963,30 @@ def prospectar(
 def catalogo(contexto: click.Context, como_json: bool) -> None:
     """O que a sua chave pode pedir hoje: conjuntos, campos, fontes e licenças. Não gasta a quota."""
     _mostrar(_api(contexto).catalogo(), como_json, formato.catalogo)
+
+
+@principal.command(name="de-onde-vem")
+@click.argument("sobre")
+@opcao_json
+@click.pass_context
+def de_onde_vem(contexto: click.Context, sobre: str, como_json: bool) -> None:
+    """De onde vem um conjunto ou um campo que a sua chave vê: fonte, licença e piloto. Não gasta a quota.
+
+    Para cada campo, a fonte, a licença e a frase de atribuição dessa fonte, a finalidade do conjunto e se o
+    campo é de piloto. SOBRE é o nome de um conjunto (como `credit`) ou de um campo (como `legal_name`), da lista de `tickerlab
+    catalogo`; de um campo, sai cada conjunto que o tem. Serve para saber de onde veio um número antes de
+    citá-lo e o que pode ser dito dele. Não traz dado de empresa, o significado de cada campo, o dia do retrato
+    nem conjunto ou campo que a sua chave não vê; nome que ela não vê sai com o código 5.
+    """
+    try:
+        nome = origem.pergunta(sobre)
+    except origem.NomeInvalido as erro:
+        raise ErroDaCli(str(erro), Saida.USO) from None
+    try:
+        corpo = origem.explicacao(_api(contexto).catalogo(), nome)
+    except origem.NadaComEsseNome as erro:
+        raise ErroDaCli(str(erro), Saida.SEM_DADO) from None
+    _mostrar(corpo, como_json, formato.de_onde_vem)
 
 
 @principal.command()

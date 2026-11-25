@@ -31,6 +31,7 @@ ORDEM = (
     "deck",
     "novidades",
     "catalogo",
+    "de-onde-vem",
     "consumo",
 )
 # as opções que todo comando de dado tem: as instruções as explicam uma vez, fora da tabela

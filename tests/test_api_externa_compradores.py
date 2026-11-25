@@ -261,8 +261,9 @@ def test_os_compradores_saem_pelos_sinais_em_ordem(cliente, cenario):
     assert resposta.status_code == 200
     corpo = resposta.json()
     assert corpo["known_at"] == "2026-11-10"
-    # o FIP tem dois sinais; entre os de um, quem entrou vem antes de quem só controla
-    assert _raizes(resposta) == [FUNDO, COMPRADORA, ABERTA]
+    # a ordem é a das entradas de terceiros (linha 1044): a COMPRADORA tem duas, o FIP uma (e dois sinais), a
+    # companhia aberta só controla
+    assert _raizes(resposta) == [COMPRADORA, FUNDO, ABERTA]
     assert _comprador(resposta, FUNDO)["signals"] == [
         "took_stake",
         "fund_stake",
@@ -350,7 +351,7 @@ def test_a_uf_corta_o_setor(cliente, cenario):
 
 def test_o_limite_corta_e_avisa(cliente, cenario):
     corpo = _get(cliente, cenario, limit=1).json()
-    assert [c["cnpj_root"] for c in corpo["buyers"]] == [FUNDO]
+    assert [c["cnpj_root"] for c in corpo["buyers"]] == [COMPRADORA]
     assert corpo["truncated"] is True
     assert corpo["total_buyers"] == 3
 
