@@ -62,6 +62,9 @@ DIAS_ATE_VIRAR_FICHA = 7
 # máximo 30 minutos esperando (a rodada de 17/11/2026 durou 14 h de esperas por fonte)
 ESPERA_DOS_TERMOS = 30
 ORCAMENTO_DE_ESPERA = 1800
+# as páginas de termos têm espera à parte: 58 delas caindo juntas (rede fora) não podem gastar a segunda
+# tentativa das fontes de dado (revisão cruzada do #1287)
+ORCAMENTO_DOS_TERMOS = 300
 
 
 def agora() -> datetime:
@@ -102,7 +105,10 @@ def _uma_rodada(
 
 
 def _arquivar_com_nova_tentativa(
-    fonte: Fonte, cliente: ClienteHttp, temporaria: Path, orcamento: _Orcamento
+    fonte: Fonte,
+    cliente: ClienteHttp,
+    temporaria: Path,
+    orcamentos: dict[bool, _Orcamento],
 ) -> Resultado | str:
     """Uma rodada; se falhou (toda ou em parte), espera e tenta mais uma vez. Freio de disco não
     tenta de novo (vira falha na hora). Sem orçamento de espera na rodada, não tenta de novo."""
@@ -111,7 +117,7 @@ def _arquivar_com_nova_tentativa(
         if isinstance(resultado, Resultado) and not resultado.falhas:
             return resultado
         espera = ESPERA_DOS_TERMOS if _eh_termo(fonte) else ESPERA_PARA_TENTAR_DE_NOVO
-        if not orcamento.gastar(espera):
+        if not orcamentos[_eh_termo(fonte)].gastar(espera):
             log.warning(
                 "%s: falhou; sem nova tentativa (o orçamento de espera da rodada acabou)",
                 fonte.id,
@@ -188,10 +194,10 @@ def main(argv: list[str] | None = None) -> int:
     termos_fora: list[
         tuple[str, str | None, str]
     ] = []  # (fonte, endereço que falhou, motivo)
-    orcamento = _Orcamento()
+    orcamentos = {False: _Orcamento(), True: _Orcamento(ORCAMENTO_DOS_TERMOS)}
     mudou = False
     for fonte in fontes:
-        resultado = _arquivar_com_nova_tentativa(fonte, cliente, temporaria, orcamento)
+        resultado = _arquivar_com_nova_tentativa(fonte, cliente, temporaria, orcamentos)
         if isinstance(resultado, str):
             if _eh_termo(fonte):
                 termos_fora.append((fonte.id, None, resultado))

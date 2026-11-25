@@ -367,6 +367,16 @@ def test_a_rodada_tem_um_orcamento_de_espera_e_depois_nao_tenta_de_novo(
     assert len(esperas) == 6  # 6 x 300 s = 30 min; as outras 14 não esperam
 
 
+def test_termos_fora_do_ar_nao_gastam_a_espera_das_fontes_de_dado(monkeypatch, capsys):
+    """58 páginas de termos caindo juntas (rede fora) não podem comer a segunda tentativa do dado."""
+    ids = tuple(f"termos-p{n}" for n in range(58)) + ("catalogo-bc",)
+    _, _, esperas = _rodar_termos(monkeypatch, capsys, None, ids=ids, dado=True)
+    assert esperas.count(arquivar_fontes.ESPERA_PARA_TENTAR_DE_NOVO) == 1
+    assert sum(esperas) <= (
+        arquivar_fontes.ORCAMENTO_DE_ESPERA + arquivar_fontes.ORCAMENTO_DOS_TERMOS
+    )
+
+
 def test_ultima_ok_em_diz_quando_o_endereco_respondeu_pela_ultima_vez(
     tmp_path, monkeypatch
 ):
