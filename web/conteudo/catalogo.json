@@ -79,7 +79,12 @@
         "ibama-rapp-fontes-energeticas",
         "ibama-rapp-residuos-destinador",
         "ibama-rapp-residuos-transportador",
-        "ibama-rapp-residuos-armazenador"
+        "ibama-rapp-residuos-armazenador",
+        "ibama-rapp-certificados-ambientais",
+        "ibama-rapp-madeira-lenha",
+        "ibama-rapp-extracao-mineral",
+        "ibama-rapp-produtos-florestais",
+        "ibama-rapp-silvicultura"
       ],
       "familia": "ibama",
       "licencas": [
@@ -5988,6 +5993,41 @@
     },
     {
       "id": "ibama-rapp-residuos-armazenador",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-certificados-ambientais",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-madeira-lenha",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-extracao-mineral",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-produtos-florestais",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-silvicultura",
       "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
       "marca": "uso_interno",
       "ritmo": "mensal",

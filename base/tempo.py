@@ -48,6 +48,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
         "registrado_em", "funciona_desde",  # linha 904: registro do administrador de FII; início do FII
+        "data_do_decreto", "pra_aprovado_em",  # linha 1074: decreto de lavra e plano de recuperação (RAPP do IBAMA)
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
         # linha 440: carimbo do arquivo na fonte, dia do fato e prazo (o `datas` já os tem assim)
         "gerado_em", "atualizado_em", "data", "prazo",

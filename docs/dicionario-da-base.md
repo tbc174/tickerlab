@@ -5841,6 +5841,211 @@ Resíduos sólidos que cada armazenador declarou ao IBAMA, de 2013 a 2026 (o úl
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `ibama_rapp_certificados_ambientais`
+
+Certificados ambientais (ISO 14000 e outros) que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 (o último ano no arquivo de 25/11/2026): o certificado, o tipo, quem certificou e a validade. O IBAMA deixou de pôr declarações novas neste arquivo depois de 2018 (o arquivo de 25/11/2026 vai até 2018): serve ao histórico, não ao retrato de hoje; o ano vem vazio em parte das linhas da fonte. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
+
+- **Fonte:** IBAMA: dados abertos, RAPP, certificados ambientais (`base/ibama_rapp.py`)
+- **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
+- **Frequência:** Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista olha todo mês e guarda só o que mudou
+- **Atraso de divulgação:** O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a linha vale desde o dia do arquivo, nunca desde o ano declarado
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ibama_rapp_certificados_ambientais/certificados.parquet` (servidor de casa, `base/ibama_rapp.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ano` | Ano a que a declaração se refere | número inteiro |
+| `certificado` | O certificado declarado (número ou nome), como o IBAMA escreve | texto |
+| `tipo_de_certificado` | ISO 14000 ou outros, como o IBAMA escreve | texto |
+| `certificador` | Quem emitiu o certificado, como o IBAMA escreve | texto |
+| `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
+| `valido_ate` | Validade declarada do certificado; vazia quando a fonte não traz ou traz data fora de 1900 a 2100 | data (dia) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ibama_rapp_madeira_e_lenha`
+
+Exploração de madeira, lenha e subprodutos florestais que cada estabelecimento declarou ao IBAMA, de 2013 a 2025 (o último ano no arquivo de 25/11/2026): a lenha, a tora e a área explorada, por ano. 0 quer dizer que declarou zero. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
+
+- **Fonte:** IBAMA: dados abertos, RAPP, exploração econômica de madeira, lenha e subprodutos florestais (`base/ibama_rapp.py`)
+- **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
+- **Frequência:** Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista olha todo mês e guarda só o que mudou
+- **Atraso de divulgação:** O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a linha vale desde o dia do arquivo, nunca desde o ano declarado
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ibama_rapp_madeira_e_lenha/madeira.parquet` (servidor de casa, `base/ibama_rapp.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ano` | Ano a que a declaração se refere | número inteiro |
+| `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
+| `lenha` | Lenha explorada, em estéreo ou m³ (a fonte não separa a unidade); vazia quando a célula veio ilegível (só cerquilhas) | número com decimais, na unidade da fonte |
+| `tora_m3` | Tora explorada, em m³; vazia quando a célula veio ilegível | número com decimais, na unidade da fonte |
+| `area_explorada_ha` | Área total explorada, em hectares | número com decimais, na unidade da fonte |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ibama_rapp_extracao_mineral`
+
+Extração e tratamento de minerais que cada estabelecimento declarou ao IBAMA, de 2000 a 2018 (o último ano no arquivo de 25/11/2026): o produto, a quantidade, a área, o decreto de lavra e o plano de recuperação da área degradada. O IBAMA deixou de pôr declarações novas neste arquivo depois de 2018 (o arquivo de 25/11/2026 vai até 2018): serve ao histórico, não ao retrato de hoje. A fonte traz números negativos e anos impossíveis: o número vem como veio, e o ano ou a data fora de 1900 a 2100 fica vazio. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
+
+- **Fonte:** IBAMA: dados abertos, RAPP, extração e tratamento de produtos minerais (`base/ibama_rapp.py`)
+- **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
+- **Frequência:** Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista olha todo mês e guarda só o que mudou
+- **Atraso de divulgação:** O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a linha vale desde o dia do arquivo, nunca desde o ano declarado
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ibama_rapp_extracao_mineral/minerais.parquet` (servidor de casa, `base/ibama_rapp.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ano` | Ano a que a declaração se refere | número inteiro |
+| `produto` | Produto mineral, como o IBAMA escreve | texto |
+| `unidade` | Unidade da quantidade, como o IBAMA escreve | texto |
+| `decreto_de_lavra` | Número do decreto de lavra, como o IBAMA escreve | texto |
+| `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
+| `inicio_da_exploracao` | Ano de início da exploração declarado (vazio fora de 1900 a 2100) | número inteiro |
+| `fim_da_exploracao` | Ano de término da exploração declarado (vazio fora de 1900 a 2100) | número inteiro |
+| `data_do_decreto` | Data do decreto de lavra declarada | data (dia) |
+| `pra_aprovado_em` | Data de aprovação do plano de recuperação de área degradada (PRA); vazia quando não declarada. Quem aprovou fica de fora (texto livre) | data (dia) |
+| `quantidade` | Quantidade explorada, na unidade da coluna `unidade`, como veio | número com decimais, na unidade da fonte |
+| `area` | Tamanho da área, como veio (a fonte não diz a unidade) | número com decimais, na unidade da fonte |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ibama_rapp_produtos_florestais`
+
+Produtos de matéria-prima florestal que cada fabricante declarou ao IBAMA, de 1999 a 2018 (o último ano no arquivo de 25/11/2026): o que recebeu, processou, vendeu, estocou e transportou, e a capacidade, por produto e ano. O IBAMA deixou de pôr declarações novas neste arquivo depois de 2018 (o arquivo de 25/11/2026 vai até 2018): serve ao histórico, não ao retrato de hoje. A fonte traz negativos e o teto 999.999,99: o número vem como veio. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
+
+- **Fonte:** IBAMA: dados abertos, RAPP, fabricante de produtos que utilizam matéria-prima de origem florestal (`base/ibama_rapp.py`)
+- **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
+- **Frequência:** Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista olha todo mês e guarda só o que mudou
+- **Atraso de divulgação:** O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a linha vale desde o dia do arquivo, nunca desde o ano declarado
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ibama_rapp_produtos_florestais/florestais.parquet` (servidor de casa, `base/ibama_rapp.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ano` | Ano a que a declaração se refere | número inteiro |
+| `produto` | Produto, como o IBAMA escreve | texto |
+| `unidade` | Unidade das quantidades, como o IBAMA escreve | texto |
+| `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
+| `recebida` | Quantidade recebida, na unidade da coluna `unidade`, como veio | número com decimais, na unidade da fonte |
+| `comercializada` | Quantidade comercializada, na unidade da coluna `unidade`, como veio | número com decimais, na unidade da fonte |
+| `processada` | Quantidade processada, na unidade da coluna `unidade`, como veio | número com decimais, na unidade da fonte |
+| `estocada` | Quantidade estocada, na unidade da coluna `unidade`, como veio | número com decimais, na unidade da fonte |
+| `capacidade_de_processamento` | Capacidade de processamento declarada, como veio | número com decimais, na unidade da fonte |
+| `documentos_estaduais_recebidos` | Quantidade de documentos estaduais (de origem florestal) recebidos | número com decimais, na unidade da fonte |
+| `documentos_estaduais_utilizados` | Quantidade de documentos estaduais (de origem florestal) utilizados | número com decimais, na unidade da fonte |
+| `transportada` | Quantidade transportada, na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ibama_rapp_silvicultura`
+
+Florestas plantadas que cada estabelecimento declarou ao IBAMA, de 2013 a 2025 (o último ano no arquivo de 25/11/2026): a espécie, a área plantada, o ano do plantio e do corte, as árvores e o volume explorado. As observações (texto livre) ficam de fora. Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero. Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município por extenso ficam de fora (a Receita os tem pelo CNPJ)
+
+- **Fonte:** IBAMA: dados abertos, RAPP, silvicultura (`base/ibama_rapp.py`)
+- **Licença:** Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)
+- **Revenda:** só uso interno, menos a linha de pessoa jurídica na API por chave da organização com o conjunto de integridade no contrato (ADR 0122, Emenda 1; citar a fonte)
+- **Frequência:** Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista olha todo mês e guarda só o que mudou
+- **Atraso de divulgação:** O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a linha vale desde o dia do arquivo, nunca desde o ano declarado
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ibama_rapp_silvicultura/silvicultura.parquet` (servidor de casa, `base/ibama_rapp.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `cnpj` | CNPJ do estabelecimento que declara (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `ano` | Ano a que a declaração se refere | número inteiro |
+| `nome_cientifico` | Espécie plantada, nome científico, como o IBAMA escreve | texto |
+| `nome_popular` | Nome popular da espécie; vazio em boa parte das linhas | texto |
+| `espacamento` | Espaçamento do plantio, como o IBAMA escreve | texto |
+| `unidade` | Unidade do volume explorado, como o IBAMA escreve | texto |
+| `situacao_cadastral` | Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve | texto |
+| `ano_do_plantio` | Ano do plantio declarado | número inteiro |
+| `ano_de_corte` | Ano de corte declarado | número inteiro |
+| `area_plantada_ha` | Área de efetivo plantio, em hectares | número com decimais, na unidade da fonte |
+| `volume_explorado` | Volume ou quantidade explorada, na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `arvores` | Número total de árvores declarado, como veio | número com decimais, na unidade da fonte |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `receita_regime_tributario`
 
 O regime de tributação do lucro que cada empresa declarou na ECF, por ano: lucro presumido, real ou arbitrado, imune ou isenta, e quantas escriturações entregou. Uma linha por CNPJ, ano, sociedade em conta de participação e forma de tributação (há empresa que muda de forma no ano). Sinal de porte e de complexidade contábil. A ECF do ano X sai no ano X+1
