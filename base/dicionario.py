@@ -10949,8 +10949,8 @@ TABELAS: dict[str, Tabela] = {
     ),
     "controladas_primeiro_fre": Tabela(
         descricao=(
-            "Desde quando cada controlada ou coligada aparece no FRE da companhia (linha 1045): uma linha por par "
-            "companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade, com o **primeiro** FRE em que "
+            "Desde quando cada controlada ou coligada aparece no FRE da companhia: uma linha por par "
+            "companhia ↔ sociedade, pela raiz de 8 dígitos do CNPJ da sociedade, com o primeiro FRE em que "
             "o par aparece. `conhecido_em` é o recebimento na CVM, o dia em que o par ficou público; a `referencia` "
             "de `controladas` é o fim do exercício e pode ser futura (2026-12-31 num FRE entregue em junho de 2026). "
             "`fre_anterior_sem_o_par` é falso quando o par já estava no primeiro FRE que a base vê da companhia: a "
