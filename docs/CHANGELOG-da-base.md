@@ -18,6 +18,8 @@ muda de unidade ou de chave; menor: coluna nova; correção: dado.
   - colunas novas: `motivo`
 - `ans_beneficiarios`: 1.0.0 → 1.1.0
   - colunas novas: `cnpj`, `cnpj_basico`
+- `fre_partes_relacionadas`: 1.0.0 → 1.1.0
+  - colunas novas: `natureza`
 - `susep_seguros`: 1.0.0 → 1.1.0
   - colunas novas: `cnpj`, `cnpj_basico`
 - `amostra_painel`: 1.0.0 → 1.1.0

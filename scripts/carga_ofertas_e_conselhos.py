@@ -8,7 +8,7 @@ Lê os originais que o arquivista já guardou (não baixa nada) e grava, com man
 (`gravar_com_versoes`: com as mesmas origens, nada é lido de novo):
 - `<base>/ofertas/antigas.parquet` e `<base>/ofertas/resolucao_160.parquet` (a baixada mais nova);
 - do FRE de cada ano, `<base>/fre_<tabela>/<ano>.parquet` para conselho, comitês, remuneração,
-  extremos da remuneração, diversidade, capital social, empregados, acionistas e partes
+  extremos da remuneração, diversidade, capital social, empregados, acionistas (e por classe), distribuição do capital (e por classe) e partes
   relacionadas (`base/fre_governanca.py`), juntando todas as baixadas guardadas do ano (as versões
   antigas dos formulários continuam valendo com a data delas).
 Nenhuma pessoa entra: as colunas de nome, CPF, nascimento e currículo nem são lidas; acionista e
@@ -62,9 +62,17 @@ TABELAS_DO_FRE: dict[str, tuple[Callable[[bytes], pd.DataFrame], list[str]]] = {
         [*DOCUMENTO, "recorte", "grupo"],
     ),
     "fre_acionistas": (fre_governanca.ler_acionistas, [*DOCUMENTO, "id_acionista"]),
+    "fre_acionistas_por_classe": (
+        fre_governanca.ler_acionistas_por_classe,
+        [*DOCUMENTO, "id_acionista", "classe"],
+    ),
     "fre_distribuicao_capital": (
         fre_governanca.ler_distribuicao_capital,
         [*DOCUMENTO, "id_documento"],
+    ),
+    "fre_distribuicao_capital_por_classe": (
+        fre_governanca.ler_distribuicao_capital_por_classe,
+        [*DOCUMENTO, "sigla_classe"],
     ),
     "fre_partes_relacionadas": (
         fre_governanca.ler_partes_relacionadas,

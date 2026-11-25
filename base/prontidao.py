@@ -531,6 +531,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "fips_registrados",
         "fre_comites",
         "fre_distribuicao_capital",
+        "fre_distribuicao_capital_por_classe",
         "fre_diversidade",
         "fre_empregados",
         "fre_remuneracao_extremos",

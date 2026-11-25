@@ -1561,6 +1561,37 @@ Distribuição do capital de cada FRE (item 15.7): as ações em circulação, o
 | `ultima_assembleia_em` | Data da última assembleia geral a que a distribuição se refere | data (dia) |
 | `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
 
+## `fre_acionistas_por_classe`
+
+Ações de cada acionista do FRE por classe (item 15.1): para quem a posição acionária (`fre_acionistas`) mostra preferenciais, a quantidade e o percentual de cada classe (Preferencial Classe A, B...), desde 2010. O `id_acionista` casa com o de `fre_acionistas`; pessoa física só somada no id do grupo (ADR 0075, item 5), nunca com o id da CVM. Linha de um acionista que a posição do mesmo documento não traz soma por classe em `nao_identificado`, porque não há como saber se é pessoa
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj`, `referencia`, `versao`, `id_acionista`, `classe`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_acionistas_por_classe/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `id_acionista` | Identificador do acionista como em `fre_acionistas` (o da CVM, ou "pf:<grupo>:<controlador S/N>:<acordo S/N>" nas pessoas somadas); `nao_identificado` quando a posição acionária do documento não traz o acionista | texto |
+| `tipo_acionista` | `pj`, `pf_somada`, `outros` ou `tesouraria` (como em `fre_acionistas`) ou `nao_identificado` | texto |
+| `classe` | Classe de ação como a companhia escreve ("Preferencial Classe A"); `nao_informada` quando vem em branco | texto |
+| `acoes` | Quantidade de ações da classe (somada nas pessoas e nos não identificados) | ações |
+| `percentual` | Percentual da classe, de 0 a 100 como a CVM escreve (somado nas pessoas e nos não identificados) | número com decimais, na unidade da fonte |
+| `acionistas_no_grupo` | Quantas linhas da CVM a linha soma (1 fora das pessoas somadas e dos não identificados) | número inteiro |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
 ## `fre_acionistas`
 
 Posição acionária de cada FRE: os acionistas que a companhia declara (controladores e quem tem 5% ou mais de uma espécie) e os acionistas deles, até a pessoa física, com as ações e o percentual de cada espécie, desde 2010. Empresa e fundo entram com nome e CNPJ; pessoa física (ou CPF, ou nome sem cara de empresa) só somada por grupo, sem nome, CPF, UF nem nacionalidade (ADR 0075, item 5); o representante legal nem é lido
@@ -1607,9 +1638,38 @@ Posição acionária de cada FRE: os acionistas que a companhia declara (control
 | `acionistas_no_grupo` | Quantos acionistas a linha soma (1 fora das pessoas somadas) | número inteiro |
 | `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
 
+## `fre_distribuicao_capital_por_classe`
+
+Ações preferenciais em circulação de cada FRE por classe (item 15.7): a quantidade e o percentual de cada classe (PNA, PNB...) fora o controlador, os administradores e a tesouraria. Complementa `fre_distribuicao_capital`, que traz o total por espécie. Só contagens e percentuais, sem nome nem documento
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `id_documento`, `sigla_classe`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_distribuicao_capital_por_classe/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `sigla_classe` | Sigla da classe de ação preferencial (PNA, PNB...) | texto |
+| `classe` | Nome da classe como a companhia escreve | texto |
+| `circulacao` | Ações da classe em circulação | ações |
+| `percentual` | Percentual da classe em circulação, de 0 a 100 como a CVM escreve | número com decimais, na unidade da fonte |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
 ## `fre_partes_relacionadas`
 
-Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação, os montantes, a taxa e a posição da companhia. Empresa entra com nome e CNPJ; pessoa física (ou CPF, ou sem tipo e nome sem cara de empresa) só somada por tipo e relação, sem nome nem documento (ADR 0075, item 5); o objeto e as garantias (texto livre) nem são lidos
+Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a categoria da relação e da natureza da operação, os montantes, a taxa e a posição da companhia. Empresa entra com nome e CNPJ; pessoa física (ou CPF, ou sem tipo e nome sem cara de empresa) só somada por tipo e relação, sem nome nem documento (ADR 0075, item 5); o objeto e as garantias (texto livre) nem são lidos, e da natureza e razão da operação só fica a categoria
 
 - **Fonte:** CVM: formulário de referência (FRE), dados abertos
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -1620,7 +1680,7 @@ Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a c
 - **Chaves:** `cnpj`, `referencia`, `versao`, `linha`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fre_partes_relacionadas/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
 - **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
 
@@ -1635,6 +1695,7 @@ Transações com partes relacionadas de cada FRE, desde 2010: a contraparte, a c
 | `contraparte` | Nome da parte relacionada; vazio nas pessoas somadas | texto |
 | `cnpj_contraparte` | CNPJ da parte relacionada; vazio nas pessoas somadas | texto |
 | `relacao` | Categoria da relação com a companhia (controle_comum, controle_conjunto, controladora, controlada, coligada, administracao, familiar, acionista, outra, nao_informada), tirada do texto livre | texto |
+| `natureza` | Categoria da natureza e razão da operação (emprestimo_ou_mutuo, garantia, dividendos_e_capital, rateio_de_custos, licenca_ou_royalties, aluguel, energia, seguro_e_beneficios, remuneracao, conta_corrente_ou_deposito, compra_e_venda, servicos, outra, nao_informada), tirada do texto livre, que não entra na base; vazio nas pessoas somadas | texto |
 | `data_transacao` | Data da transação; vazio nas pessoas somadas | data (dia) |
 | `montante_envolvido` | Montante envolvido (soma nas pessoas somadas) | reais (R$), já multiplicado pela escala informada |
 | `saldo_existente` | Saldo existente (soma nas pessoas somadas) | reais (R$), já multiplicado pela escala informada |

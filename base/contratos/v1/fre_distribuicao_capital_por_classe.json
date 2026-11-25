@@ -1,0 +1,66 @@
+{
+  "tabela": "fre_distribuicao_capital_por_classe",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia (como a CVM escreve)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_documento": {
+      "descricao": "Identificador do documento na CVM",
+      "unidade": "texto"
+    },
+    "sigla_classe": {
+      "descricao": "Sigla da classe de ação preferencial (PNA, PNB...)",
+      "unidade": "texto"
+    },
+    "classe": {
+      "descricao": "Nome da classe como a companhia escreve",
+      "unidade": "texto"
+    },
+    "circulacao": {
+      "descricao": "Ações da classe em circulação",
+      "unidade": "ações"
+    },
+    "percentual": {
+      "descricao": "Percentual da classe em circulação, de 0 a 100 como a CVM escreve",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "conhecido_em": {
+      "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "referencia",
+    "versao",
+    "id_documento",
+    "sigla_classe"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em"
+  },
+  "sinonimos_de_tempo": {
+    "referencia": "referencia",
+    "conhecido_em": "publico_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+  "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+}
