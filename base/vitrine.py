@@ -674,6 +674,22 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         ),
     ),
     TemaDoCnpj(
+        "ambiente",
+        "O que a empresa declara ao IBAMA",
+        "O relatório anual que cada estabelecimento de atividade poluidora entrega ao IBAMA: as emissões "
+        "de poluentes no ar, os efluentes líquidos e onde são lançados, as fontes de energia que consome e "
+        "a cadeia dos resíduos sólidos, de quem gera a quem transporta, armazena e dá o destino. É o que a "
+        "empresa declara, não uma fiscalização.",
+        (
+            "ibama_rapp_emissoes_atmosfericas",
+            "ibama_rapp_efluentes_liquidos",
+            "ibama_rapp_fontes_de_energia",
+            "ibama_rapp_residuos_destinados",
+            "ibama_rapp_residuos_transportados",
+            "ibama_rapp_residuos_armazenados",
+        ),
+    ),
+    TemaDoCnpj(
         "saude",
         "Atendimento pelo SUS",
         "Internações e procedimentos ambulatoriais que o SUS pagou a cada hospital e clínica, mês "

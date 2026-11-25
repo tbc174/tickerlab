@@ -174,6 +174,14 @@ FICAM_EM_CASA = (
     # `COMPRAS_PUBLICAS`, linha 988.)
     # linha 830 (frente 5, 19/11/2026): dívida ativa do Paraná tem linha de pessoa (marcada `trata_como_pessoa`); monta em casa e não sai
     "sefa_pr_divida_ativa",
+    # linha 1074 (PR 1): RAPP do IBAMA (família `ibama`, integridade sob contrato), só CNPJ; o envio ao VPS pede o
+    # "pode" da Diretoria com a prova de zero pessoa da 1ª carga
+    "ibama_rapp_emissoes_atmosfericas",
+    "ibama_rapp_efluentes_liquidos",
+    "ibama_rapp_fontes_de_energia",
+    "ibama_rapp_residuos_destinados",
+    "ibama_rapp_residuos_transportados",
+    "ibama_rapp_residuos_armazenados",
 )
 # As demais que `base.dossie.pode_consultar` libera (a consulta aberta da v1). Tabela nova que a porta liberar
 # não entra sozinha: o teste falha até ela ser escrita aqui ou em FICAM_EM_CASA.

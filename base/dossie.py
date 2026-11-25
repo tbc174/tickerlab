@@ -147,6 +147,9 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "anp_tancagem",
     # conferência de 19/11: SICAF e Banco de Preços em Saúde; em casa até o pode do envio
     "comprasgov_sicaf", "bps_compras",
+    # linha 1074 (PR 1): RAPP do IBAMA, só CNPJ; em casa até o pode do envio
+    "ibama_rapp_emissoes_atmosfericas", "ibama_rapp_efluentes_liquidos", "ibama_rapp_fontes_de_energia",
+    "ibama_rapp_residuos_destinados", "ibama_rapp_residuos_transportados", "ibama_rapp_residuos_armazenados",
 })  # fmt: skip
 
 

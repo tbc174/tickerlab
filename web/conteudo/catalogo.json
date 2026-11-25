@@ -73,7 +73,13 @@
     {
       "coletas": [
         "ibama-autos",
-        "ibama-embargos"
+        "ibama-embargos",
+        "ibama-rapp-emissoes-atmosfericas",
+        "ibama-rapp-efluentes-liquidos",
+        "ibama-rapp-fontes-energeticas",
+        "ibama-rapp-residuos-destinador",
+        "ibama-rapp-residuos-transportador",
+        "ibama-rapp-residuos-armazenador"
       ],
       "familia": "ibama",
       "licencas": [
@@ -5944,6 +5950,48 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-10-21"
+    },
+    {
+      "id": "ibama-rapp-emissoes-atmosfericas",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-efluentes-liquidos",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-fontes-energeticas",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-residuos-destinador",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-residuos-transportador",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
+    },
+    {
+      "id": "ibama-rapp-residuos-armazenador",
+      "licenca": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+      "marca": "uso_interno",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-18"
     },
     {
       "id": "rfb-renuncias-regime-presumido",
