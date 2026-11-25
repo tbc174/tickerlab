@@ -1467,3 +1467,73 @@ def test_cnpj_de_tamanho_absurdo_e_recusado_pelo_esquema_antes_de_qualquer_pedid
         )
     assert erro
     assert not [p for p in pedidos[n:] if "/companies/" in p.url.path]
+
+
+# ---------------------------------------------------------------- o retrato de cada lado (linha 980, item d)
+
+
+def _com_retrato(ficha: dict, mes: str, publico_em: str) -> dict:
+    ficha["registration"]["snapshot_month"] = _fato(mes, "rfb-cnpj", publico_em)
+    return ficha
+
+
+def test_o_cadastro_diz_de_que_retrato_da_receita_vem_cada_lado():
+    hoje = _como_hoje()
+    era = _como_era()
+    _com_retrato(hoje[CAMINHO_DA_FICHA], "2026-10", "2026-10-20")
+    _com_retrato(era[CAMINHO_DA_FICHA], "2025-12", "2025-12-20")
+    with aj.conector(_api_do_historico(hoje=hoje, era=era)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    assert corpo["registration"]["snapshot_month"] == {
+        "before": _fato("2025-12", "rfb-cnpj", "2025-12-20"),
+        "after": _fato("2026-10", "rfb-cnpj", "2026-10-20"),
+    }
+    # o mês do retrato diz qual retrato a base leu, não o que mudou: não conta como mudança
+    assert "snapshot_month" not in _campos(corpo["registration"]["changed"])
+
+
+def test_o_retrato_do_lado_antigo_publicado_depois_de_desde_nao_aparece():
+    hoje = _como_hoje()
+    era = _como_era()
+    _com_retrato(hoje[CAMINHO_DA_FICHA], "2026-10", "2026-10-20")
+    _com_retrato(era[CAMINHO_DA_FICHA], "2026-02", "2026-02-20")  # a API vazou o futuro
+    with aj.conector(_api_do_historico(hoje=hoje, era=era)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    assert corpo["registration"]["snapshot_month"] == {
+        "before": None,
+        "after": _fato("2026-10", "rfb-cnpj", "2026-10-20"),
+    }
+
+
+def test_os_dois_retratos_saem_cada_um_com_o_proprio_nome():
+    """A situação cadastral (`snapshot_month`) e a razão social e a natureza (`registry_snapshot_month`) vêm de
+    retratos diferentes da Receita, que podem ser de meses diferentes: um não pode sair com o nome do outro, e o
+    retrato futuro de um não apaga o outro no lado antigo (revisão cruzada do #1320)."""
+    hoje = _como_hoje()
+    era = _como_era()
+    _com_retrato(hoje[CAMINHO_DA_FICHA], "2026-10", "2026-10-20")
+    hoje[CAMINHO_DA_FICHA]["registration"]["registry_snapshot_month"] = _fato(
+        "2026-09", "rfb-cnpj", "2026-09-30"
+    )
+    _com_retrato(era[CAMINHO_DA_FICHA], "2025-12", "2025-12-20")
+    era[CAMINHO_DA_FICHA]["registration"]["registry_snapshot_month"] = _fato(
+        "2026-02", "rfb-cnpj", "2026-02-28"
+    )  # a API vazou o futuro só neste
+    with aj.conector(_api_do_historico(hoje=hoje, era=era)) as cliente:
+        corpo = _o_que_mudou(cliente)
+    assert corpo["registration"]["snapshot_month"] == {
+        "before": _fato("2025-12", "rfb-cnpj", "2025-12-20"),
+        "after": _fato("2026-10", "rfb-cnpj", "2026-10-20"),
+    }
+    assert corpo["registration"]["registry_snapshot_month"] == {
+        "before": None,
+        "after": _fato("2026-09", "rfb-cnpj", "2026-09-30"),
+    }
+    campos = _campos(corpo["registration"]["changed"])
+    assert "snapshot_month" not in campos and "registry_snapshot_month" not in campos
+
+
+def test_sem_o_mes_do_retrato_na_api_o_campo_nao_aparece():
+    with aj.conector(_api_do_historico()) as cliente:
+        corpo = _o_que_mudou(cliente)
+    assert "snapshot_month" not in corpo["registration"]

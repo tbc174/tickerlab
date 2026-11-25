@@ -327,11 +327,15 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
             continue
         if linha.conjunto == compradores.CONJUNTO:
             # a lista de compradores lê o setor e os nomes das duas tabelas sem pessoa (linha 584) e as entradas
-            # da tabela de sócios PJ, montada só com raízes dessa lista (linha 810): o corte é na montagem
+            # da tabela de sócios PJ, montada só com raízes dessa lista (linha 810): o corte é na montagem. A baixa
+            # da empresa (linha 1042) vem da situação cadastral, montada só com os estabelecimentos das raízes
+            # dessa mesma lista (`base/situacao_cadastral.py`: "só entram os estabelecimentos das raízes da lista
+            # sem pessoa"); a lista só mostra a baixa de quem tem razão social servida
             assert tabela in {
                 compradores.EMPRESAS,
                 compradores.ESTABELECIMENTOS,
                 compradores.ENTRADAS,
+                compradores.SITUACAO,
             }, linha
             continue
         if linha.conjunto == vinculos.CONJUNTO:

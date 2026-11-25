@@ -163,6 +163,36 @@ def _retrato(bloco: str, corpo: object) -> Retrato:
     )
 
 
+def _mes_do_retrato(corpo: object, nome: str, limite: str | None = None) -> dict | None:
+    """O envelope do campo `nome` (um dos `CAMPOS_DO_RETRATO`) no cadastro, ou `None` se a API não o mandou ou se
+    ele ficou público depois de `limite` (o lado antigo nunca olha o futuro)."""
+    if not isinstance(corpo, dict):
+        return None
+    cadastro = corpo.get("registration")
+    base = cadastro if isinstance(cadastro, dict) else corpo
+    envelope = base.get(nome)
+    if not isinstance(envelope, dict) or not _e_envelope(envelope):
+        return None
+    if limite and _depois_de(envelope["published_at"], limite):
+        return None
+    return envelope
+
+
+def _retratos_dos_dois_lados(dois: "DoisDias", desde: str) -> dict[str, object]:
+    """O mês de cada retrato da Receita, antes e depois (linha 980, item d), um por campo e com o nome dele: a
+    situação cadastral (`snapshot_month`) e a razão social e a natureza (`registry_snapshot_month`) vêm de retratos
+    que podem ser de meses diferentes. Campo que a API não mandou em nenhum lado não aparece."""
+    retratos: dict[str, object] = {}
+    for nome in sorted(CAMPOS_DO_RETRATO):
+        antes = (
+            _mes_do_retrato(dois.antes.corpo, nome, desde) if dois.antes.ok else None
+        )
+        depois = _mes_do_retrato(dois.depois.corpo, nome) if dois.depois.ok else None
+        if antes is not None or depois is not None:
+            retratos[nome] = {"before": antes, "after": depois}
+    return retratos
+
+
 def _datas(no: object) -> Iterator[str]:
     """Os dias em que algo ficou público dentro de `no` (cada envelope e o `published_at` solto do item)."""
     if isinstance(no, dict):
@@ -431,6 +461,8 @@ def _montar_a_saida(
         )
         depois = _retrato(bloco, dois.depois.corpo) if dois.depois.ok else None
         saida[bloco] = diferenca = _comparar(bloco, antes, depois)
+        if bloco == "registration" and isinstance(diferenca, dict):
+            diferenca.update(_retratos_dos_dois_lados(dois, desde.isoformat()))
         achadas += _quantas(diferenca)
         todos += [r.corpo for r in (dois.antes, dois.depois) if r.ok]
     if not saida:
