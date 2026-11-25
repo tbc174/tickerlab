@@ -41,6 +41,7 @@ URL_DO_RNTRC = (
     "https://dados.antt.gov.br/dataset/rntrc/resource/{mes}/download/rntrc_{mes}.csv"
 )
 URL_DA_AVIACAO = fontes.CADASTROS_DO_SIPEAGRO[1].url
+URL_DO_VETERINARIO = fontes.CADASTROS_DO_SIPEAGRO[0].url
 URL_DA_LAVRA = next(
     c.url for c in fontes.CADASTRO_MINEIRO_FILTRADO if "/Portaria_de_Lavra." in c.url
 )
@@ -49,6 +50,7 @@ COLETAS_FIXAS = [
     *(("anvisa-empresas", c) for c in fontes.CADASTROS_DE_EMPRESAS_DA_ANVISA),
     *(("anvisa-produtos", c) for c in fontes.CADASTROS_DE_PRODUTOS_DA_ANVISA),
     *(("mapa-sipeagro", c) for c in fontes.CADASTROS_DO_SIPEAGRO),
+    *(("mapa-sipeagro", c) for c in fontes.CADASTROS_MASCARADOS_DO_SIPEAGRO),
     ("anatel-outorgas", fontes.OUTORGAS_DA_ANATEL_FILTRADAS),
     *(("anm-cadastro-mineiro", c) for c in fontes.CADASTRO_MINEIRO_FILTRADO),
     ("ancine-agentes", fontes.AGENTES_DA_ANCINE_FILTRADOS),
@@ -598,3 +600,306 @@ def test_comando_monta_e_sem_nada_guardado_sai_com_1(banco, tmp_path, monkeypatc
     assert carga_licencas.main(["--pasta", str(tmp_path / "b")]) == 0
     tabela = pd.read_parquet(tmp_path / "b" / "anvisa_registros" / "afe.parquet")
     assert tabela["trata_como_pessoa"].all()  # sem a Receita guardada: o conservador
+
+
+# --- SIPEAGRO: os arquivos que mascaram o CNPJ, ligados pelo número do registro (linha 1021) ---------
+# Tudo inventado: registros, CNPJs e municípios de mentira.
+
+
+def _url_mascarada(sufixo: str) -> str:
+    return next(
+        c.url for c in fontes.CADASTROS_MASCARADOS_DO_SIPEAGRO if c.url.endswith(sufixo)
+    )
+
+
+URL_DE_FERTILIZANTES = _url_mascarada("/sipeagrofertilizante.csv")
+URL_DE_MULTIPLICACAO = _url_mascarada("/sipeagromultiplicacaoanimal.csv")
+URL_DE_ALIMENTACAO = _url_mascarada("/sipeagroalimentacaoanimal.csv")
+REGISTRO = "SP0000001"
+OUTRO_REGISTRO = "SP0000002"
+
+
+def _mascara(cnpj: str, digitos: str | None = None) -> str:
+    """O CNPJ como o MAPA o mascara: só os 3 últimos dígitos da raiz à vista."""
+    return f"**.***.{digitos or cnpj[5:8]}/***-**"
+
+
+def _veterinario(
+    documento: str, registro: str = REGISTRO, municipio: str = "CAMPINAS"
+) -> dict:
+    return {
+        "UNIDADE_DA_FEDERACAO": "SP",
+        "MUNICIPIO": municipio,
+        "NUMERO_REGISTRO_ESTABELECIMENTO": registro,
+        "STATUS_DO_REGISTRO": "Ativo",
+        "CNPJ": documento,
+        "ATIVIDADE": "FABRICANTE",
+        "CLASSIFICACAO": "PRODUTO FARMACÊUTICO",
+        "CARACTERISTICA_ADICIONAL": "",
+    }
+
+
+def _fertilizante(documento: str, registro: str = REGISTRO) -> dict:
+    return {
+        "UNIDADE_DA_FEDERACAO": "SP",
+        "MUNICIPIO": "CAMPINAS",
+        "NUMERO_REGISTRO_ESTABELECIMENTO": registro,
+        "STATUS_DO_REGISTRO": "Ativo",
+        "CNPJ": documento,
+        "RAZAO_SOCIAL": RAZAO_SOCIAL,  # a coleta não guarda; aqui confere que nem é lida
+        "ATIVIDADE": "PRODUTOR",
+        "CLASSIFICACAO": "FERTILIZANTE MINERAL",
+    }
+
+
+def _alimentacao(documento: str, registro: str = REGISTRO) -> dict:
+    """A alimentação animal escreve UF, STATUS_REGISTRO e CPF_CNPJ de outro jeito."""
+    return {
+        "UF": "SP",
+        "MUNICIPIO": "CAMPINAS",
+        "NUMERO_REGISTRO_ESTABELECIMENTO": registro,
+        "STATUS_REGISTRO": "Ativo",
+        "CPF_CNPJ": documento,
+        "ATIVIDADE": "FABRICANTE",
+        "CLASSIFICACAO": "RAÇÃO",
+    }
+
+
+def _multiplicacao(registro: str = REGISTRO, municipio: str = "CAMPINAS") -> dict:
+    return {
+        "UNIDADE_DA_FEDERACAO": "SP",
+        "MUNICIPIO": municipio,
+        "NUMERO_REGISTRO_ESTABELECIMENTO": registro,
+        "STATUS_DO_REGISTRO": "Ativo",
+        "ATIVIDADE": "PRODUTOR",
+        "ESPECIE": "BOVINOS",
+        "CLASSIFICACAO": "SÊMEN",
+    }
+
+
+def _coletar_sipeagro(banco, url: str, linhas: list[dict], dia: date) -> None:
+    _coletar(banco, "mapa-sipeagro", url, _csv(linhas, licencas.UTF8), dia)
+
+
+def _montar_sipeagro(banco, tmp_path, monkeypatch) -> dict:
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    return _montar(banco, tmp_path)
+
+
+def test_fertilizante_liga_pelo_registro_quando_os_tres_digitos_batem(
+    banco, tmp_path, monkeypatch
+):
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco, URL_DE_FERTILIZANTES, [_fertilizante(_mascara(EMPRESA))], PRIMEIRO_DIA
+    )
+    resumo = _montar_sipeagro(banco, tmp_path, monkeypatch)
+    ligada = _tabela(tmp_path, "fertilizante").iloc[0]
+    assert ligada["cnpj"] == cnpjs.formatar(EMPRESA)
+    assert ligada["cnpj_basico"] == "11222333"
+    assert ligada["cnpj_ligado_por"] == "registro_mapa"
+    assert ligada["registro"] == REGISTRO
+    assert ligada["uf"] == "SP"
+    assert ligada["disponivel_em"] == PRIMEIRO_DIA
+    assert resumo["fertilizante"]["ligadas_pelo_registro"] == 1
+    direta = _tabela(tmp_path, "produto_veterinario").iloc[0]
+    assert direta["cnpj_ligado_por"] == "arquivo"
+    gravado = _texto_gravado(tmp_path)
+    assert "MENTIRA" not in gravado and "***" not in gravado
+
+
+def test_alimentacao_animal_com_colunas_de_outro_nome_tambem_liga(
+    banco, tmp_path, monkeypatch
+):
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco, URL_DE_ALIMENTACAO, [_alimentacao(_mascara(EMPRESA))], PRIMEIRO_DIA
+    )
+    _montar_sipeagro(banco, tmp_path, monkeypatch)
+    ligada = _tabela(tmp_path, "alimentacao_animal").iloc[0]
+    assert ligada["cnpj"] == cnpjs.formatar(EMPRESA)
+    assert ligada["situacao"] == "Ativo"
+    assert ligada["uf"] == "SP"
+
+
+def test_tres_digitos_que_nao_batem_deixam_o_registro_de_fora(
+    banco, tmp_path, monkeypatch
+):
+    errados = "000" if EMPRESA[5:8] != "000" else "111"
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco,
+        URL_DE_FERTILIZANTES,
+        [_fertilizante(_mascara(EMPRESA, errados))],
+        PRIMEIRO_DIA,
+    )
+    resumo = _montar_sipeagro(banco, tmp_path, monkeypatch)
+    assert _tabela(tmp_path, "fertilizante").empty
+    assert resumo["fertilizante"]["digitos_nao_batem"] == 1
+    assert resumo["fertilizante"]["ligadas_pelo_registro"] == 0
+
+
+def test_registro_sem_par_fica_de_fora_e_so_entra_na_contagem(
+    banco, tmp_path, monkeypatch
+):
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco,
+        URL_DE_FERTILIZANTES,
+        [_fertilizante(_mascara(EMPRESA), registro=OUTRO_REGISTRO)],
+        PRIMEIRO_DIA,
+    )
+    resumo = _montar_sipeagro(banco, tmp_path, monkeypatch)
+    assert _tabela(tmp_path, "fertilizante").empty
+    assert resumo["fertilizante"]["sem_par"] == 1
+
+
+def test_registro_com_cnpjs_diferentes_nos_arquivos_de_cnpj_inteiro_nao_liga(
+    banco, tmp_path, monkeypatch
+):
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco,
+        URL_DA_AVIACAO,
+        [{**_veterinario(OUTRA), "CPF_CNPJ": OUTRA, "CNPJ": ""}],
+        PRIMEIRO_DIA,
+    )
+    _coletar_sipeagro(
+        banco, URL_DE_FERTILIZANTES, [_fertilizante(_mascara(EMPRESA))], PRIMEIRO_DIA
+    )
+    resumo = _montar_sipeagro(banco, tmp_path, monkeypatch)
+    assert _tabela(tmp_path, "fertilizante").empty
+    assert resumo["fertilizante"]["registro_ambiguo"] == 1
+
+
+def test_nunca_liga_pelo_nome_e_documento_sem_digito_a_vista_fica_de_fora(
+    banco, tmp_path, monkeypatch
+):
+    """Mesma razão social do arquivo de CNPJ inteiro, mas outro registro: não liga. CPF mascarado
+    e máscara sem dígito à vista também ficam de fora, mesmo com o registro certo."""
+    _coletar_sipeagro(
+        banco,
+        URL_DO_VETERINARIO,
+        [
+            {**_veterinario(EMPRESA), "RAZAO_SOCIAL": RAZAO_SOCIAL},
+            _veterinario(OUTRA, registro=OUTRO_REGISTRO),
+        ],
+        PRIMEIRO_DIA,
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DE_FERTILIZANTES,
+        [
+            _fertilizante(_mascara(EMPRESA), registro="SP0000099"),
+            _fertilizante("***.***.123-**"),
+            _fertilizante("**.***./***-**", registro=OUTRO_REGISTRO),
+        ],
+        PRIMEIRO_DIA,
+    )
+    resumo = _montar_sipeagro(banco, tmp_path, monkeypatch)
+    assert _tabela(tmp_path, "fertilizante").empty
+    assert resumo["fertilizante"]["sem_par"] == 1
+    assert resumo["fertilizante"]["documento_sem_digitos"] == 2
+    assert "MENTIRA" not in _texto_gravado(tmp_path)
+
+
+def test_arquivo_sem_documento_liga_pelo_registro_e_confere_uf_e_municipio(
+    banco, tmp_path, monkeypatch
+):
+    """A multiplicação animal não traz documento: o registro só vale se a UF e o município (sem
+    acento nem maiúscula) forem os do estabelecimento de CNPJ inteiro."""
+    _coletar_sipeagro(
+        banco,
+        URL_DO_VETERINARIO,
+        [
+            _veterinario(EMPRESA, municipio="SÃO JOÃO"),
+            _veterinario(OUTRA, registro=OUTRO_REGISTRO),
+        ],
+        PRIMEIRO_DIA,
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DE_MULTIPLICACAO,
+        [
+            _multiplicacao(municipio="Sao Joao"),
+            _multiplicacao(registro=OUTRO_REGISTRO, municipio="OUTRA CIDADE"),
+        ],
+        PRIMEIRO_DIA,
+    )
+    resumo = _montar_sipeagro(banco, tmp_path, monkeypatch)
+    ligada = _tabela(tmp_path, "multiplicacao_animal")
+    assert ligada["registro"].tolist() == [REGISTRO]
+    assert ligada["cnpj"].tolist() == [cnpjs.formatar(EMPRESA)]
+    assert ligada["complemento"].tolist() == ["BOVINOS"]
+    assert resumo["multiplicacao_animal"]["local_nao_bate"] == 1
+
+
+def test_registro_so_liga_a_partir_do_dia_em_que_o_cnpj_inteiro_ja_estava_no_acervo(
+    banco, tmp_path, monkeypatch
+):
+    """Sem olhar o futuro: o arquivo de CNPJ inteiro só chega no 2º dia, então a ligação só vale
+    desde o 2º dia, e o retrato do 1º dia continua sem a linha."""
+    _coletar_sipeagro(
+        banco, URL_DE_ALIMENTACAO, [_alimentacao(_mascara(EMPRESA))], PRIMEIRO_DIA
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DE_ALIMENTACAO,
+        [
+            _alimentacao(_mascara(EMPRESA)),
+            _alimentacao(_mascara(OUTRA), registro="SP0000007"),
+        ],
+        SEGUNDO_DIA,
+    )
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], SEGUNDO_DIA)
+    _montar_sipeagro(banco, tmp_path, monkeypatch)
+    tabela = _tabela(tmp_path, "alimentacao_animal")
+    assert tabela["visto_em"].tolist() == [SEGUNDO_DIA]
+    assert tabela["disponivel_em"].tolist() == [SEGUNDO_DIA]
+    assert tabela["registro"].tolist() == [REGISTRO]
+
+
+def test_so_a_tabela_do_sipeagro_tem_a_coluna_de_como_o_cnpj_foi_obtido(
+    banco, tmp_path, monkeypatch
+):
+    _coletar(
+        banco,
+        "antt-rntrc",
+        URL_DO_RNTRC.format(mes="2026-10"),
+        _csv([_rntrc(EMPRESA, "1")]),
+        PRIMEIRO_DIA,
+    )
+    _montar_sipeagro(banco, tmp_path, monkeypatch)
+    assert "cnpj_ligado_por" not in _tabela(tmp_path, "rntrc").columns
+
+
+def test_registro_que_sai_do_arquivo_de_cnpj_inteiro_mantem_o_cnpj_ja_provado(
+    banco, tmp_path, monkeypatch
+):
+    """O registro identifica o estabelecimento para sempre: se ele some do arquivo de CNPJ inteiro
+    num retrato seguinte, a linha mascarada, que continua no arquivo dela, não ganha `consta=False`."""
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco, URL_DE_FERTILIZANTES, [_fertilizante(_mascara(EMPRESA))], PRIMEIRO_DIA
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DO_VETERINARIO,
+        [_veterinario(OUTRA, registro=OUTRO_REGISTRO)],
+        SEGUNDO_DIA,
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DE_FERTILIZANTES,
+        [
+            _fertilizante(_mascara(EMPRESA)),
+            _fertilizante(_mascara(OUTRA), registro=OUTRO_REGISTRO),
+        ],
+        SEGUNDO_DIA,
+    )
+    _montar_sipeagro(banco, tmp_path, monkeypatch)
+    tabela = _tabela(tmp_path, "fertilizante")
+    do_registro = tabela[tabela["registro"] == REGISTRO]
+    assert do_registro["consta"].tolist() == [True]
+    assert do_registro["cnpj"].tolist() == [cnpjs.formatar(EMPRESA)]
+    assert set(tabela["registro"]) == {REGISTRO, OUTRO_REGISTRO}

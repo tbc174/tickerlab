@@ -270,6 +270,72 @@ def test_filtro_por_cnpj_tira_cpf_e_cnpj_mascarado(tmp_path):
     ]
 
 
+def test_filtro_do_cnpj_mascarado_guarda_so_a_mascara_com_digitos_a_vista(tmp_path):
+    """O SIPEAGRO mascara o CNPJ (`**.***.333/***-**`): só essa forma, com os 3 dígitos, chega ao
+    acervo, sem a razão social. CPF mascarado, máscara sem dígito, CNPJ inteiro e documento em
+    branco não são gravados (o CNPJ inteiro tem arquivo próprio)."""
+    bruto = (
+        b"UF;MUNICIPIO;NUMERO_REGISTRO_ESTABELECIMENTO;CPF_CNPJ;RAZAO_SOCIAL\n"
+        b"SP;CAMPINAS;SP0000001;**.***.333/***-**;EMPRESA FICTICIA\n"
+        b"SP;CAMPINAS;SP0000002;***.***.123-**;PESSOA FICTICIA\n"
+        b"SP;CAMPINAS;SP0000003;**.***./***-**;SEM DIGITOS\n"
+        b"SP;CAMPINAS;SP0000004;11222333000181;INTEIRO\n"
+        b"SP;CAMPINAS;SP0000005;;SEM DOCUMENTO\n"
+        b"SP;CAMPINAS;SP0000006;**.***.A1B/***-**;COM LETRAS\n"
+    )
+    url = "https://exemplo/sipeagro.csv"
+    colunas = ("UF", "MUNICIPIO", "NUMERO_REGISTRO_ESTABELECIMENTO", "CPF_CNPJ")
+    obter_ = obter.csv_so_com_colunas(
+        url, colunas, "utf-8", so_com_cnpj_mascarado_em="CPF_CNPJ"
+    )
+    destino = tmp_path / "sipeagro.csv"
+    obter_(ServidorComTrechos({url: bruto}), destino)
+    assert destino.read_text(encoding="utf-8").splitlines() == [
+        "UF;MUNICIPIO;NUMERO_REGISTRO_ESTABELECIMENTO;CPF_CNPJ",
+        "SP;CAMPINAS;SP0000001;**.***.333/***-**",
+        "SP;CAMPINAS;SP0000006;**.***.A1B/***-**",
+    ]
+
+
+def test_nome_de_coluna_vazio_nao_desliga_o_filtro_do_cnpj_inteiro(tmp_path):
+    """Regressão de segurança: `so_com_cnpj_em=""` não pode virar "sem filtro" (o CPF entraria)."""
+    url = "https://exemplo/x.csv"
+    obter_ = obter.csv_so_com_colunas(url, ("A", "DOC"), "utf-8", so_com_cnpj_em="")
+    with pytest.raises(ValueError, match="documento"):
+        obter_(ServidorComTrechos({url: b"A;DOC\n1;88800000046\n"}), tmp_path / "x.csv")
+    assert not (tmp_path / "x.csv").exists()
+
+
+def test_filtro_do_cnpj_mascarado_sem_a_coluna_do_documento_falha(tmp_path):
+    url = "https://exemplo/x.csv"
+    obter_ = obter.csv_so_com_colunas(
+        url, ("A", "DOC"), "utf-8", so_com_cnpj_mascarado_em="DOC"
+    )
+    with pytest.raises(ValueError, match="DOC"):
+        obter_(ServidorComTrechos({url: b"A;DOCUMENTO\n1;123\n"}), tmp_path / "x.csv")
+
+
+def test_multiplicacao_animal_sem_documento_guarda_so_as_colunas_da_lista(tmp_path):
+    """O arquivo não tem documento: todas as linhas ficam, mas razão social e o resto não."""
+    cadastro = next(
+        c
+        for c in fontes.CADASTROS_MASCARADOS_DO_SIPEAGRO
+        if c.url.endswith("/sipeagromultiplicacaoanimal.csv")
+    )
+    bruto = (
+        b"UNIDADE_DA_FEDERACAO;MUNICIPIO;NUMERO_REGISTRO_ESTABELECIMENTO;RAZAO_SOCIAL;ESPECIE\n"
+        b"SP;CAMPINAS;SP0000001;EMPRESA FICTICIA;BOVINOS\n"
+    )
+    destino = tmp_path / "multiplicacao.csv"
+    cadastro.alvo().obter(ServidorComTrechos({cadastro.url: bruto}), destino)
+    guardado = destino.read_text(encoding="utf-8")
+    assert guardado.splitlines() == [
+        "UNIDADE_DA_FEDERACAO;MUNICIPIO;NUMERO_REGISTRO_ESTABELECIMENTO;ESPECIE",
+        "SP;CAMPINAS;SP0000001;BOVINOS",
+    ]
+    assert "FICTICIA" not in guardado
+
+
 def test_filtro_le_o_csv_dentro_do_zip_e_grava_sem_bom(tmp_path):
     csv_ = "﻿CNPJ ou CPF;Nome Entidade;Tipo de Outorga\n12345678000195;FICTICIA;Autorização\n"
     url = "https://exemplo/prestadoras.zip"
@@ -308,6 +374,14 @@ COLUNA_DE_PESSOA = (
     "RESPONSAVEL", "EMAIL", "ELETRÔNICO", "TELEFONE", "CEP", "ENDERECO", "LOGRADOURO", "BAIRRO",
     "HOMEPAGE", "SAC", "RAZÃO", "NOMCLIENTE", "NOMAGENTE", "NOMEPESSOA", "LABORATÓRIO",
 )  # fmt: skip
+
+
+def test_cadastros_mascarados_nao_guardam_coluna_de_pessoa():
+    """O nome e a razão social do estabelecimento nunca chegam ao acervo (lista de colunas que ficam)."""
+    for cadastro in fontes.CADASTROS_MASCARADOS_DO_SIPEAGRO:
+        assert cadastro.mascarado
+        for coluna in cadastro.colunas:
+            assert not any(p in coluna.upper() for p in COLUNA_DE_PESSOA), coluna
 
 
 @pytest.mark.parametrize(

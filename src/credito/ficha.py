@@ -16,6 +16,8 @@ from base.palavras_vedadas import palavras_vedadas_em
 from base.porta import Porta
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.credito import features_da_base as fb
+from src.credito import sinais
+from src.credito.dicionario import DA_FICHA
 from src.credito.dossie import (
     CPF,
     PEDACOS_DE_NOTA,
@@ -29,7 +31,7 @@ from src.credito.features import (
     conferir_ponto_no_tempo,
     features_das_demonstracoes,
 )
-from src.credito.sinais import sinais_da_ficha
+from src.credito.sinais import DO_FIDC, sinais_da_ficha
 from src.rastro import datas_em_texto
 
 LIMITES_DA_FICHA = (
@@ -138,3 +140,48 @@ def ficha_de_credito(
     )
     _conferir(ficha)
     return ficha
+
+
+# Os fatos que `fatos_da_ficha` sabe calcular sem montar a ficha inteira: os que a API externa serve
+# (`src/api_externa/conjuntos/credito.FATOS`; linha 1015).
+SITUACAO_ESPECIAL = "situacao_especial_na_receita"
+SITUACAO_CADASTRAL = "situacao_cadastral_na_receita"
+SOZINHOS = frozenset({SITUACAO_ESPECIAL, *fb.DO_IPE, SITUACAO_CADASTRAL, *DO_FIDC})
+
+
+def fatos_da_ficha(
+    porta: Porta, cnpj: str, data_da_analise: date, chaves: frozenset[str]
+) -> tuple[Feature, ...]:
+    """Só os fatos `chaves` da ficha do CNPJ, sem calcular os outros (PGFN, SCR, listas, rating...).
+
+    Dão o mesmo que `ficha_de_credito(...).fatos` filtrado por `chaves`, sem as demonstrações (`dados`), na
+    mesma ordem, com a mesma trava de pessoa (ADR 0075), o mesmo ponto no tempo e as mesmas conferências de
+    nota e CPF; só não há regras. Serve a API externa, que mostra poucos fatos e não pode pagar a ficha
+    inteira no prazo da análise. Uma chave fora de `SOZINHOS` é recusada."""
+    if fora := chaves - SOZINHOS:
+        raise ValueError(
+            f"fatos que a ficha só calcula inteira: {', '.join(sorted(fora))}"
+        )
+    normal = fb._cnpj(cnpj)
+    raiz, formatado = normal[: cnpj_.TAMANHO_DA_RAIZ], cnpj_.formatar(normal)
+    pessoa = fb._pessoa_natural(porta, raiz, data_da_analise)
+    da_base: list[Feature] = []
+    if SITUACAO_ESPECIAL in chaves:
+        da_base.append(fb._situacao_especial(porta, raiz, data_da_analise))
+    if chaves & set(fb.DO_IPE):
+        da_base.extend(fb._ipe(porta, formatado, data_da_analise))
+    dos_sinais = [chave for chave in DA_FICHA if chave in chaves]
+    if pessoa:  # como `sinais_da_ficha`: a pessoa não tem sinal nenhum
+        sinais_ = sinais._nao_observados(dos_sinais, fb.COMO_PESSOA)
+    else:
+        sinais_ = [
+            *([sinais._situacao_cadastral(porta, raiz, data_da_analise)] if SITUACAO_CADASTRAL in chaves else []),
+            *(sinais._fidc(porta, formatado, data_da_analise) if chaves & set(DO_FIDC) else []),
+        ]  # fmt: skip
+        sinais_.sort(key=lambda sinal: DA_FICHA.index(sinal.chave))
+    fatos = tuple(fato for fato in (*da_base, *sinais_) if fato.chave in chaves)
+    if pessoa:
+        fatos = _como_pessoa(fatos)
+    conferir_ponto_no_tempo(fatos, data_da_analise)
+    _conferir(FichaDeCredito(normal, "", data_da_analise, fatos, regras=()))
+    return fatos

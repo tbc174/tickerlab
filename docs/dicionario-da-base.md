@@ -3555,7 +3555,7 @@ Transportadores rodoviários de carga com registro na ANTT (RNTRC), por CNPJ. Um
 
 ## `mapa_sipeagro`
 
-Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola. Os outros arquivos do SIPEAGRO mascaram o CNPJ e ficam de fora (nunca se cruza pelo nome). Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e CNPJ mascarado saem na coleta; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
+Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola. Os dois trazem o CNPJ inteiro; fertilizantes, qualidade vegetal, vinhos e bebidas e alimentação animal mascaram o documento (só 3 dígitos da raiz à vista) e a multiplicação animal nem o traz: essas linhas só entram quando o número do registro casa com um registro de CNPJ inteiro e os 3 dígitos à vista batem com ele (sem documento, a UF e o município); `cnpj_ligado_por` diz como o CNPJ foi obtido. Nunca se liga pelo nome, e o registro sem par fica de fora (pode ser pessoa física). Uma linha por valor diferente de cada registro: a mudança (situação, vencimento, cancelamento) vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo, com letras ou não: CPF e documento sem dígito à vista saem na coleta, e o CNPJ mascarado só vira linha ligado pelo registro; razão social, nome de fantasia, endereço, contato e responsável técnico nunca chegam ao acervo. Empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado.
 
 - **Fonte:** MAPA: dados abertos do SIPEAGRO (`base/licencas.py`)
 - **Licença:** CC BY (dados abertos do MAPA, SIPEAGRO, no dados.gov.br; citar o MAPA)
@@ -3566,16 +3566,17 @@ Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e
 - **Chaves:** `cadastro`, `id_na_fonte`, `visto_em`
 - **Três datas:** aconteceu_em = `concedido_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-29 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/mapa_sipeagro/<cadastro>.parquet` (servidor de casa, `scripts/carga_licencas.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
-| `cadastro` | De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine) | texto |
+| `cadastro` | De que arquivo veio: produto_veterinario, aviacao_agricola (CNPJ inteiro no arquivo); fertilizante, qualidade_vegetal, vinhos_e_bebidas, alimentacao_animal, multiplicacao_animal (CNPJ ligado pelo número do registro) | texto |
 | `id_na_fonte` | O que identifica o registro no arquivo (o código da fonte, ou as colunas que o identificam juntas por `|`); nos medicamentos, o tipo de autorização + o código (`REGISTRADO|937`: o mesmo código é um registrado de uma empresa e um notificado de outra), e o CNPJ, o registro e o processo no fim se a chave aparecer com dois deles | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `cnpj_ligado_por` | Como o CNPJ da linha foi obtido: `arquivo` (o arquivo trazia o CNPJ inteiro) ou `registro_mapa` (o arquivo mascara o documento: o CNPJ é o do estabelecimento de mesmo número de registro, e os 3 dígitos à vista batem, ou, sem documento, a UF e o município). Nunca pelo nome | texto |
 | `registro` | Número da licença na fonte: autorização (AFE), certificado (CBPF), registro do produto, RNTRC, registro do estabelecimento (MAPA), Fistel da outorga, registro na Ancine | texto |
 | `processo` | Número do processo no órgão | texto |
 | `categoria` | O tipo, como a fonte escreve: tipo de produto (AFE), tipo de certificado, categoria regulatória, categoria do transportador, atividade (MAPA), tipo de outorga, tipo de requerimento (ANM), classificação do agente (Ancine) | texto |

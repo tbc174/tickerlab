@@ -9437,10 +9437,10 @@
       "tabela": "mapa_sipeagro",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cadastro": {
-          "descricao": "De que arquivo veio: afe, cbpf, cbpf_medicamento, medicamentos, saneantes, cosmeticos, produtos_saude, alimentos (Anvisa); rntrc (ANTT); produto_veterinario, aviacao_agricola (MAPA); outorgas (Anatel); o tipo de título (ANM); agentes (Ancine)",
+          "descricao": "De que arquivo veio: produto_veterinario, aviacao_agricola (CNPJ inteiro no arquivo); fertilizante, qualidade_vegetal, vinhos_e_bebidas, alimentacao_animal, multiplicacao_animal (CNPJ ligado pelo número do registro)",
           "unidade": "texto"
         },
         "id_na_fonte": {
@@ -9453,6 +9453,10 @@
         },
         "cnpj_basico": {
           "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "cnpj_ligado_por": {
+          "descricao": "Como o CNPJ da linha foi obtido: `arquivo` (o arquivo trazia o CNPJ inteiro) ou `registro_mapa` (o arquivo mascara o documento: o CNPJ é o do estabelecimento de mesmo número de registro, e os 3 dígitos à vista batem, ou, sem documento, a UF e o município). Nunca pelo nome",
           "unidade": "texto"
         },
         "registro": {

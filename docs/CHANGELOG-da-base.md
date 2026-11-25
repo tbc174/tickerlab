@@ -32,6 +32,8 @@ muda de unidade ou de chave; menor: coluna nova; correção: dado.
 - `sancoes_cgu`: 1.0.0 → 1.1.0
 - `processos_comunicacoes`: 1.0.0 → 1.2.0
   - colunas novas: `achada_por`, `disponibilizada_em`, `resultado`, `resultado_trecho`, `teor_conferido_em`, `tipo_de_ato`, `valor_citado`
+- `mapa_sipeagro`: 1.0.0 → 1.1.0
+  - colunas novas: `cnpj_ligado_por`
 - `mte_lista_suja`: 1.0.0 → 1.1.0
 - `ibama_embargos`: 1.0.0 → 1.1.0
 - `trocas_de_auditor`: 1.0.0 → 1.1.0
