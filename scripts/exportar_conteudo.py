@@ -5,7 +5,8 @@ O Python continua a fonte da verdade (ADR 0048, item 3): módulos (`src/modulos.
 Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
 (`src/metodologia_das_notas.py`). O React lê estes JSON no build;
 há teste que acusa quando um deles fica velho. A CLI (`cli/`, pacote à parte) leva a cópia da lista única das
-portas (`conector_remoto/consultas_das_portas.py`) em `cli/tickerlab/consultas.json`.
+portas (`conector_remoto/consultas_das_portas.py`) em `cli/tickerlab/consultas.json`, e a tabela da mesma lista
+vai, entre as marcas, nos quatro documentos de `DOCUMENTOS_DAS_PORTAS`.
 
 Uso: python -m scripts.exportar_conteudo
 
@@ -23,7 +24,7 @@ import numpy as np
 from base import contrato, receita_codigos, vitrine
 from base.arquivo import registro
 from base.dicionario import TABELAS
-from conector_remoto.consultas_das_portas import json_da_cli
+from conector_remoto.consultas_das_portas import json_da_cli, trocar_a_tabela
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
@@ -60,6 +61,14 @@ from src.estrategias import ESTRATEGIAS
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
 DESTINO_DA_CLI = RAIZ / "cli" / "tickerlab" / "consultas.json"
+# os documentos com a tabela da lista das portas entre as marcas: `guia` (o que perguntar no conector) ou
+# `portas` (cada consulta em cada porta)
+DOCUMENTOS_DAS_PORTAS = {
+    RAIZ / "docs" / "guia-do-analista-conector.md": "guia",
+    RAIZ / "docs" / "conector-remoto.md": "portas",
+    RAIZ / "docs" / "cli.md": "portas",
+    RAIZ / "docs" / "api" / "README.md": "portas",
+}
 # pontos do desenho do painel da página inicial (cinco anos: um ponto a cada ~4 semanas)
 PONTOS_DO_PAINEL = 64
 
@@ -486,7 +495,15 @@ def main() -> None:
     for nome, dados in conteudo().items():
         (DESTINO / f"{nome}.json").write_text(em_json(dados), encoding="utf-8")
     DESTINO_DA_CLI.write_text(json_da_cli(), encoding="utf-8")
-    print(f"Conteúdo exportado para {DESTINO} e {DESTINO_DA_CLI}")
+    for documento, qual in DOCUMENTOS_DAS_PORTAS.items():
+        texto = documento.read_text(encoding="utf-8")
+        # newline: o fim de linha do Git, também no Windows (o documento não ganha diff só de fim de linha)
+        documento.write_text(
+            trocar_a_tabela(texto, qual), encoding="utf-8", newline="\n"
+        )
+    print(
+        f"Conteúdo exportado para {DESTINO}, {DESTINO_DA_CLI} e as tabelas de {len(DOCUMENTOS_DAS_PORTAS)} documentos"
+    )
 
 
 if __name__ == "__main__":

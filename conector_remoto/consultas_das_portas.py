@@ -93,9 +93,13 @@ class Consulta:
     """Uma capacidade do TickerLab Data e como cada porta a oferece.
 
     `rotas` são as da `/data/v1` (método e caminho). Porta que não oferece a consulta tem o motivo escrito em
-    `fora_de_uma_porta` (chave: uma das `PORTAS`)."""
+    `fora_de_uma_porta` (chave: uma das `PORTAS`). `nome` e `resumo` são o que as tabelas dos documentos mostram
+    (`tabela`); `publica` falso tira a consulta delas (a de pessoa física fica fora da documentação pública)."""
 
     chave: str
+    nome: str = ""
+    resumo: str = ""
+    publica: bool = True
     rotas: tuple[str, ...] = ()
     ferramentas: tuple[Ferramenta, ...] = ()
     comandos: tuple[str, ...] = ()
@@ -576,84 +580,138 @@ _LINHA_980 = "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fi
 CONSULTAS: tuple[Consulta, ...] = (
     Consulta(
         "busca",
+        nome="Buscar empresas",
+        resumo=(
+            "achar empresas por atividade (CNAE), UF, município, porte ou idade no cadastro da Receita; só empresa, sem sócio nem contato"
+        ),
         rotas=("GET /companies",),
         ferramentas=(_BUSCAR_EMPRESAS,),
         comandos=("prospectar",),
     ),
     Consulta(
         "ficha",
+        nome="Ficha da empresa",
+        resumo=(
+            "a triagem de um CNPJ antes da reunião: o cadastro na Receita e, se for companhia aberta, cada DFP e ITR com o prazo da CVM"
+        ),
         rotas=("GET /companies/{cnpj}/profile", "GET /companies/{cnpj}"),
         ferramentas=(_FICHA_DA_EMPRESA,),
         comandos=("empresa",),
     ),
     Consulta(
         "analise",
+        nome="Análise completa",
+        resumo=(
+            "cada bloco que a chave vê numa resposta (cadastro, sócios pessoa jurídica, vínculos, eventos, crédito, ativos, comparáveis e as bases das agências), com a frase do topo, a linha do tempo e o que não foi achado"
+        ),
         rotas=("GET /companies/{cnpj}/analysis",),
         ferramentas=(_ANALISE_COMPLETA,),
         comandos=("analise",),
     ),
     Consulta(
         "comparaveis",
+        nome="Comparáveis",
+        resumo=(
+            "as companhias abertas do mesmo grupo de setores, com os números do último DFP e a mediana de cada razão"
+        ),
         rotas=("GET /companies/{cnpj}/comparables",),
         ferramentas=(_COMPARAVEIS,),
         comandos=("comparaveis",),
     ),
     Consulta(
         "demonstracoes",
+        nome="Demonstrações",
+        resumo=(
+            "a DFP e o ITR da companhia aberta, conta a conta; empresa fechada não tem, e a base não estima o faturamento dela"
+        ),
         rotas=("GET /companies/{cnpj}/financials",),
         ferramentas=(_DEMONSTRACOES,),
         comandos=("demonstracoes",),
     ),
     Consulta(
         "eventos",
+        nome="Eventos",
+        resumo=(
+            "o que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho"
+        ),
         rotas=("GET /companies/{cnpj}/events",),
         ferramentas=(_EVENTOS,),
         comandos=("eventos",),
     ),
     Consulta(
         "vinculos",
+        nome="Vínculos",
+        resumo=(
+            "as controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM; só companhia aberta informa, uma vez por ano"
+        ),
         rotas=("GET /companies/{cnpj}/links",),
         ferramentas=(_VINCULOS,),
         comandos=("vinculos",),
     ),
     Consulta(
         "ativos",
+        nome="Ativos físicos",
+        resumo=(
+            "os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM"
+        ),
         rotas=("GET /companies/{cnpj}/assets",),
         ferramentas=(_ATIVOS,),
         comandos=("ativos",),
     ),
     Consulta(
         "compradores",
+        nome="Quem já se mexeu no setor",
+        resumo=(
+            "quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra"
+        ),
         rotas=("GET /buyers",),
         ferramentas=(_COMPRADORES_DO_SETOR,),
         comandos=("compradores",),
     ),
     Consulta(
         "fundo",
+        nome="Fundo",
+        resumo=("o raio-x de um fundo na CVM: cadastro, taxas e carteira"),
         rotas=("GET /funds/{cnpj}",),
         ferramentas=(_FUNDO,),
         comandos=("fundo",),
     ),
     Consulta(
         "setores",
+        nome="Setores",
+        resumo=(
+            "os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta"
+        ),
         rotas=("GET /sectors", "GET /sectors/{key}"),
         ferramentas=(_SETORES, _SETOR),
         comandos=("setor",),  # sem chave, a lista; com chave, o setor
     ),
     Consulta(
         "novidades",
+        nome="Novidades da pesquisa",
+        resumo=(
+            "as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original"
+        ),
         rotas=("GET /research/news",),
         ferramentas=(_NOVIDADES,),
         comandos=("novidades",),
     ),
     Consulta(
         "catalogo",
+        nome="O que posso ver",
+        resumo=(
+            "o que a sua chave libera (conjuntos, campos, fontes e licenças) e o consumo do mês"
+        ),
         rotas=("GET /catalog", "GET /usage"),
         ferramentas=(_O_QUE_POSSO_VER,),
         comandos=("catalogo", "consumo"),
     ),
     Consulta(
         "de_onde_vem",
+        nome="De onde vem um conjunto ou um campo",
+        resumo=(
+            "a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto, para saber de onde veio um número antes de citá-lo; não traz dado de empresa"
+        ),
         ferramentas=(_DE_ONDE_VEM,),
         fora_de_uma_porta={
             "cli": _LINHA_980,
@@ -662,6 +720,10 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "credito",
+        nome="Fatos de crédito de uma empresa",
+        resumo=(
+            "situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, não traz o SCR individual e só aparece para a chave com o conjunto de crédito"
+        ),
         rotas=("GET /credit/{cnpj}",),
         ferramentas=(_CREDITO_DA_EMPRESA,),
         fora_de_uma_porta={
@@ -670,6 +732,10 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "o_que_mudou",
+        nome="O que mudou numa empresa desde um dia",
+        resumo=(
+            "o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público; serve para retomar uma empresa já analisada e mostra só os blocos que a sua chave vê"
+        ),
         ferramentas=(_O_QUE_MUDOU,),
         fora_de_uma_porta={
             "cli": _LINHA_980,
@@ -678,6 +744,10 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "comparar",
+        nome="Fichas de 2 a 5 empresas lado a lado",
+        resumo=(
+            "o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero, e não há nota nem ordenação das empresas"
+        ),
         ferramentas=(_COMPARAR_EMPRESAS,),
         fora_de_uma_porta={
             "cli": _LINHA_980,
@@ -686,6 +756,11 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "socios_e_donos",
+        nome="Sócios e donos",
+        resumo=(
+            "só para a organização com a permissão de pessoas no conector, desligada por padrão"
+        ),
+        publica=False,
         rotas=("GET /companies/{cnpj}/people",),  # escondida da documentação pública
         ferramentas=(_SOCIOS_E_DONOS,),
         fora_de_uma_porta={
@@ -694,6 +769,8 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "dossie",
+        nome="Dossiê",
+        resumo=("perfil, eventos, vínculos e comparáveis do CNPJ numa saída só"),
         comandos=("dossie",),
         fora_de_uma_porta={
             "conector": "Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)",
@@ -702,6 +779,10 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "deck",
+        nome="Deck",
+        resumo=(
+            "o deck (.pptx) da empresa ou do setor, com a fonte e a data de cada tabela"
+        ),
         rotas=("GET /companies/{cnpj}/deck", "GET /sectors/{key}/deck"),
         comandos=("deck",),
         fora_de_uma_porta={
@@ -710,6 +791,8 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "lotes",
+        nome="Lotes",
+        resumo=("até 100 CNPJs num pedido, para sistema"),
         rotas=("POST /companies/batch", "POST /funds/batch", "POST /credit/batch"),
         fora_de_uma_porta={
             "conector": "lote de até 100 CNPJs é para sistema; na conversa, `comparar_empresas` põe 2 a 5 lado a lado",
@@ -718,6 +801,8 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "chave",
+        nome="Chave",
+        resumo=("guardar e apagar a chave da API no PC"),
         comandos=("login", "logout"),
         fora_de_uma_porta={
             "conector": "a chave entra pela página /autorizar do OAuth; quem corta o acesso é revogar a chave",
@@ -726,6 +811,8 @@ CONSULTAS: tuple[Consulta, ...] = (
     ),
     Consulta(
         "instrucoes",
+        nome="Instruções do agente",
+        resumo=("o AGENTS.md e a skill que ensinam a IA do PC a usar a CLI"),
         comandos=("instrucoes",),
         fora_de_uma_porta={
             "conector": "no conector, a descrição de cada ferramenta ensina a IA a chamá-la",
@@ -776,3 +863,54 @@ def _tem_limite(parametro: Parametro) -> bool:
         or parametro.maximo is not None
         or bool(parametro.valores)
     )
+
+
+# as marcas da tabela gerada nos documentos: entre elas, o texto é refeito por `scripts.exportar_conteudo`
+MARCA_DO_COMECO = "<!-- gerado: lista das portas (python -m scripts.exportar_conteudo); não edite à mão -->"
+MARCA_DO_FIM = "<!-- fim da lista das portas -->"
+_CABECALHO_DO_GUIA = "| Consulta | Para quê |\n|---|---|"
+_CABECALHO_DAS_PORTAS = (
+    "| Consulta | Conector | CLI | API (`/data/v1`) |\n|---|---|---|---|"
+)
+
+
+def _celula(consulta: Consulta, porta: str, itens: list[str]) -> str:
+    if itens:
+        return ", ".join(f"`{item}`" for item in itens)
+    motivo = consulta.fora_de_uma_porta.get(porta)
+    return f"não tem ({motivo})" if motivo else "não tem"
+
+
+def _linha_das_portas(consulta: Consulta) -> str:
+    celulas = [
+        f"**{consulta.nome}**: {consulta.resumo}",
+        _celula(consulta, "conector", [item.nome for item in consulta.ferramentas]),
+        _celula(
+            consulta, "cli", [f"tickerlab {comando}" for comando in consulta.comandos]
+        ),
+        _celula(consulta, "api", list(consulta.rotas)),
+    ]
+    return "| " + " | ".join(celulas) + " |"
+
+
+def tabela(qual: str) -> str:
+    """A tabela em Markdown que os documentos levam: `guia` (o que o analista pode perguntar no conector) ou
+    `portas` (cada consulta em cada porta, ou o motivo de não estar). Só as consultas públicas."""
+    publicas = [consulta for consulta in CONSULTAS if consulta.publica]
+    if qual == "guia":
+        linhas = [_CABECALHO_DO_GUIA]
+        linhas += [f"| {c.nome} | {c.resumo} |" for c in publicas if c.ferramentas]
+    elif qual == "portas":
+        linhas = [_CABECALHO_DAS_PORTAS] + [_linha_das_portas(c) for c in publicas]
+    else:
+        raise KeyError(qual)
+    return "\n".join(linhas)
+
+
+def trocar_a_tabela(texto: str, qual: str) -> str:
+    """O documento com a tabela `qual` entre as marcas (`ValueError` se elas não estiverem lá, uma vez cada)."""
+    if texto.count(MARCA_DO_COMECO) != 1 or texto.count(MARCA_DO_FIM) != 1:
+        raise ValueError("o documento não tem as marcas da lista das portas")
+    antes, resto = texto.split(MARCA_DO_COMECO)
+    _, depois = resto.split(MARCA_DO_FIM)
+    return f"{antes}{MARCA_DO_COMECO}\n{tabela(qual)}\n{MARCA_DO_FIM}{depois}"
