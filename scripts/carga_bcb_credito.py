@@ -35,6 +35,7 @@ import re
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -52,6 +53,7 @@ from src.banco.coletas import (
     coletas_guardadas,
     com_registro,
     original_mais_recente,
+    versoes_guardadas,
 )
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
@@ -323,15 +325,59 @@ def carregar_scr_ano(
     conteudo = _obter(conexao, url, baixar_scr, de_novo, PAUSA_SCR)
     if conteudo is None:
         return "sem arquivo"
-    guardadas = _coletas_do_relatorio(conexao, url, conteudo)
+    guardadas = _versoes_do_relatorio(conexao, url, conteudo)
     return gravar_com_versoes(
-        lambda: bcb_scr.ano_com_revisoes(
-            [(dia, bcb_scr.ler_ano(c)) for dia, c in guardadas]
+        lambda: bcb_scr.ano_com_revisoes_dos_arquivos(
+            [(v.dia, v.ler) for v in guardadas]
         ),
         pasta / "scr" / str(ano),
-        [_origem(url, c) for _, c in guardadas],
+        [{"url": url, "sha256": v.sha256} for v in guardadas],
         list(bcb_scr.COLUNAS_DE_TEXTO),
     )
+
+
+@dataclass(frozen=True)
+class VersaoGuardada:
+    """Uma resposta guardada de um endereço, sem o conteúdo: `ler` o traz do acervo só na hora de usar."""
+
+    dia: pd.Timestamp
+    sha256: str
+    ler: Callable[[], bytes]
+
+
+def _versoes_do_relatorio(
+    conexao: sa.Connection, url: str, lido: bytes
+) -> list[VersaoGuardada]:
+    """As mesmas respostas de `_coletas_do_relatorio`, sem ler os arquivos (linha 1076): o SCR do ano
+    corrente guarda uma versão por mês (~140 MB cada em 2026) e a carga lê uma de cada vez. Sem nenhuma
+    guardada (acervo desligado), só a que foi lida agora, sem dia."""
+    pasta = acervo.pasta_do_acervo()
+    guardadas = (
+        []
+        if pasta is None
+        else [
+            v for v in versoes_guardadas(conexao, url) if (pasta / v.caminho).is_file()
+        ]
+    )
+    if not guardadas:
+        return [VersaoGuardada(pd.NaT, _origem(url, lido)["sha256"], lambda: lido)]
+    return [
+        VersaoGuardada(
+            dia_da_coleta(v.baixado_em),
+            v.sha256,
+            lambda caminho=v.caminho: _original_guardado(caminho),
+        )
+        for v in guardadas
+    ]
+
+
+def _original_guardado(caminho: str) -> bytes:
+    conteudo = acervo.ler_original(caminho)
+    if conteudo is None:
+        raise FileNotFoundError(
+            f"original guardado sumiu do acervo durante a carga: {caminho}"
+        )
+    return conteudo
 
 
 def _conferir_opcoes(
