@@ -62,7 +62,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Eventos | o que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho |
 | Vínculos | as controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM; só companhia aberta informa, uma vez por ano |
 | Ativos físicos | os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM |
-| Registros nas agências reguladoras | os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira |
+| Registros nas agências reguladoras | os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira |
 | Quem já se mexeu no setor | quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
 | Setores | os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta |

@@ -731,7 +731,7 @@ CONSULTAS: tuple[Consulta, ...] = (
         "registros",
         nome="Registros nas agências reguladoras",
         resumo=(
-            "os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
+            "os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
         ),
         rotas=("GET /companies/{cnpj}/registrations",),
         ferramentas=(_REGISTROS_NAS_AGENCIAS,),
