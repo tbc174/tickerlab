@@ -242,6 +242,26 @@ def test_scr_le_um_arquivo_de_cada_vez_e_em_ordem():
     assert lidos == [DIA1, DIA2, DIA3, DIA4]
 
 
+def test_scr_devolve_a_memoria_do_arrow_depois_de_cada_arquivo(monkeypatch):
+    passos: list[str] = []
+    monkeypatch.setattr(
+        bcb_scr, "devolver_memoria_do_arrow", lambda: passos.append("devolve")
+    )
+
+    def leitor(conteudo: bytes):
+        def ler() -> bytes:
+            passos.append("lê")
+            return conteudo
+
+        return ler
+
+    bcb_scr.ano_com_revisoes_dos_arquivos(
+        [(d, leitor(c)) for d, c in _quatro_versoes()]
+    )
+
+    assert passos[:8] == ["lê", "devolve"] * 4
+
+
 def test_scr_versao_nova_so_acrescenta_o_que_mudou():
     leitores = [(dia, lambda c=conteudo: c) for dia, conteudo in _quatro_versoes()]
 

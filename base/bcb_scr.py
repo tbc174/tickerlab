@@ -24,6 +24,7 @@ from collections.abc import Callable, Iterator, Sequence
 import numpy as np
 import pandas as pd
 
+from base.parquet import devolver_memoria_do_arrow
 from base.setoriais import revisoes
 
 ENDERECO = "https://www.bcb.gov.br/pda/desig/scrdata_{ano}.zip"
@@ -177,6 +178,7 @@ def _juntar_mes_a_mes(coletas: Sequence[tuple[pd.Timestamp, Meses]]) -> pd.DataF
             por_mes[data_base] = revisoes.acrescentar_coleta(
                 por_mes.get(data_base), dia, mes, CHAVE, carimbos=(_COLETA, _LINHA)
             )
+        devolver_memoria_do_arrow()  # o que a leitura deste arquivo deixou no reservatório do pyarrow
     if not por_mes:
         raise MesForaDoFormatoError("nenhum mês com linhas nos arquivos do ano")
     partes = list(por_mes.values())
