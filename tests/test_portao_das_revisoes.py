@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import portao_do_agente
+from scripts import portao_das_revisoes, portao_do_agente
 from scripts.portao_das_revisoes import (
     arquivos_mudados_depois,
     arquivos_sensiveis,
@@ -55,6 +55,19 @@ def _julgar(caminhos, corpo=CORPO_BOM, depois=_nada_depois):
         "compose.conector.yaml",
         "scripts/portao_das_revisoes.py",
         "scripts/portao_do_agente.py",
+        # fonte em Python ou JS do texto público e legal (revisão de segurança do #1299)
+        "src/paginas.py",
+        "base/vitrine.py",
+        "src/envio_novidades.py",
+        "scripts/gerar_site.py",
+        "web/publico/origem.js",
+        "web/src/rotas.tsx",
+        "web/src/entry-server.tsx",
+        # login e contas do lado do cliente
+        "web/src/app/login.ts",
+        "web/src/app/conta.tsx",
+        "web/src/app/administracao.ts",
+        "web/src/app/EntradaPorEmail.tsx",
     ],
 )
 def test_area_sensivel(caminho):
@@ -270,3 +283,115 @@ def test_arquivos_mudados_depois_ignoram_o_que_veio_da_main(tmp_path, monkeypatc
     assert arquivos_mudados_depois("0000000", cabeca, "main") is None
     fora_do_pr = _git(tmp_path, "rev-parse", "main")
     assert arquivos_mudados_depois(fora_do_pr, cabeca, "main") is None
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="sem git")
+def test_renomear_arquivo_sensivel_depois_da_revisao_aparece(tmp_path, monkeypatch):
+    for variavel in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+        monkeypatch.delenv(variavel, raising=False)
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "teste@exemplo.invalid")
+    _git(tmp_path, "config", "user.name", "teste")
+    _commit(tmp_path, "src/cobranca.py", "cobrança")
+    _git(tmp_path, "switch", "-q", "-c", "ramo")
+    revisado = _commit(tmp_path, "docs/x.md", "revisado")
+    _git(tmp_path, "mv", "src/cobranca.py", "src/outra.py")
+    _git(tmp_path, "commit", "-q", "-m", "renomeia")
+    cabeca = _git(tmp_path, "rev-parse", "HEAD")
+
+    monkeypatch.chdir(tmp_path)
+    assert "src/cobranca.py" in (
+        arquivos_mudados_depois(revisado, cabeca, "main") or []
+    )
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="sem git")
+def test_pr_atras_da_main_nao_herda_o_que_a_main_mudou(tmp_path, monkeypatch, capsys):
+    """No CI, HEAD é o commit que junta o PR à main; o PR só de doc não vira sensível pela main."""
+    for variavel in (
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GITHUB_STEP_SUMMARY",
+    ):
+        monkeypatch.delenv(variavel, raising=False)
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "teste@exemplo.invalid")
+    _git(tmp_path, "config", "user.name", "teste")
+    _commit(tmp_path, "README.md", "início")
+    _git(tmp_path, "switch", "-q", "-c", "ramo")
+    cabeca = _commit(tmp_path, "docs/x.md", "só doc")
+    _git(tmp_path, "switch", "-q", "main")
+    _commit(tmp_path, "src/cobranca.py", "PR sensível mesclado na main depois")
+    _git(tmp_path, "switch", "-q", "--detach", "main")
+    _git(
+        tmp_path, "merge", "-q", "--no-edit", "ramo"
+    )  # o commit de merge que o CI testa
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CORPO", "")
+    monkeypatch.setenv("CABECA", cabeca)
+    monkeypatch.setenv("BASE", "HEAD^1")
+    assert portao_das_revisoes.main() == 0
+    assert "não toca área sensível" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "linha",
+    [
+        f"**Revisão de segurança:** sem achado bloqueante · commit {SHA[:7]}",
+        f"1. Revisão de segurança: sem achado bloqueante · commit `{SHA[:7]}`.",
+        f"`Revisão de segurança: sem achado bloqueante · commit {SHA[:7]}`",
+    ],
+)
+def test_le_a_linha_com_enfeite_de_markdown_no_meio(linha):
+    assert ler_revisoes(linha).seguranca == SHA[:7]
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="sem git")
+def test_conflito_resolvido_no_merge_depois_da_revisao_aparece(tmp_path, monkeypatch):
+    for variavel in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+        monkeypatch.delenv(variavel, raising=False)
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "teste@exemplo.invalid")
+    _git(tmp_path, "config", "user.name", "teste")
+    _commit(tmp_path, "src/autenticacao.py", "base")
+    _git(tmp_path, "switch", "-q", "-c", "ramo")
+    revisado = _commit(tmp_path, "src/autenticacao.py", "versão do ramo")
+    _git(tmp_path, "switch", "-q", "main")
+    _commit(tmp_path, "src/autenticacao.py", "versão da main")
+    _git(tmp_path, "switch", "-q", "ramo")
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "merge", "-q", "main"],
+        capture_output=True,
+        check=False,
+    )
+    (tmp_path / "src/autenticacao.py").write_text(
+        "resolvido à mão, diferente dos dois", encoding="utf-8"
+    )
+    _git(tmp_path, "add", "src/autenticacao.py")
+    _git(tmp_path, "commit", "-q", "--no-edit")
+    cabeca = _git(tmp_path, "rev-parse", "HEAD")
+
+    monkeypatch.chdir(tmp_path)
+    assert "src/autenticacao.py" in (
+        arquivos_mudados_depois(revisado, cabeca, "main") or []
+    )
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="sem git")
+def test_nome_com_acento_sai_sem_aspas(tmp_path, monkeypatch):
+    for variavel in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+        monkeypatch.delenv(variavel, raising=False)
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "config", "user.email", "teste@exemplo.invalid")
+    _git(tmp_path, "config", "user.name", "teste")
+    _commit(tmp_path, "README.md", "início")
+    _git(tmp_path, "switch", "-q", "-c", "ramo")
+    revisado = _commit(tmp_path, "docs/x.md", "revisado")
+    cabeca = _commit(tmp_path, "migracoes/versions/0099_ação.py", "migração com acento")
+
+    monkeypatch.chdir(tmp_path)
+    assert arquivos_mudados_depois(revisado, cabeca, "main") == [
+        "migracoes/versions/0099_ação.py"
+    ]

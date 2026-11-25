@@ -38,14 +38,29 @@ AREAS_SENSIVEIS_EXTRAS = (
 # Pastas geradas: não contam. O CI já confere que batem com a fonte (que conta), e regerar o site acontece em
 # quase todo PR que mexe em src/paginas.py (71 de 100 PRs "sensíveis" de 11 a 25/11 eram só isso).
 GERADAS = ("site/*", "novo/*", "web/conteudo/*")
-# Texto público (nível 1). Dentro de web/, só as páginas públicas: o app com login (web/src/app), os testes e o
-# estilo não são texto público, embora o agente da fila também não possa mexer neles.
+# Texto público e legal (nível 1), com a fonte em Python de onde as pastas geradas saem. Dentro de web/, só as
+# páginas públicas: o resto do app com login, os testes e o estilo não são texto público, embora o agente da fila
+# também não possa mexer neles.
 TEXTO_PUBLICO = (
     "web/src/site/*",
     "web/src/paginas/*",
     "web/src/conteudo.ts",
+    "web/src/rotas.tsx",
+    "web/src/entry-server.tsx",
+    "web/publico/*",
     "conteudo/*",
     "README.md",
+    "src/paginas.py",
+    "src/envio_novidades.py",
+    "base/vitrine.py",
+    "scripts/gerar_site.py",
+)
+# Login e contas do lado do cliente, no app React (a conferência de verdade fica no servidor, já na lista).
+LOGIN_NO_APP = (
+    "web/src/app/login.ts",
+    "web/src/app/conta.tsx",
+    "web/src/app/administracao.ts",
+    "web/src/app/EntradaPorEmail.tsx",
 )
 MIGRACOES = ("migracoes/*",)
 
@@ -92,8 +107,8 @@ def _e_sensivel(caminho: str) -> bool:
     if _casa(caminho, GERADAS):
         return False
     if caminho.startswith("web/"):
-        return _casa(caminho, TEXTO_PUBLICO)
-    return _casa(caminho, AREAS_SENSIVEIS + AREAS_SENSIVEIS_EXTRAS)
+        return _casa(caminho, TEXTO_PUBLICO + LOGIN_NO_APP)
+    return _casa(caminho, AREAS_SENSIVEIS + AREAS_SENSIVEIS_EXTRAS + TEXTO_PUBLICO)
 
 
 def arquivos_sensiveis(caminhos: Iterable[str]) -> list[str]:
@@ -102,8 +117,10 @@ def arquivos_sensiveis(caminhos: Iterable[str]) -> list[str]:
 
 
 def _limpar(linha: str) -> str:
-    """Tira o enfeite de Markdown em volta da linha (marcador de lista, citação, negrito)."""
-    return linha.strip().lstrip("-*> ").strip().strip("*").strip()
+    """Tira o enfeite de Markdown (marcador de lista, citação, negrito, crase, ponto final) sem mudar o texto."""
+    sem_enfeite = linha.replace("**", "").replace("`", "").strip()
+    sem_marcador = re.sub(r"^([-*>]\s*|\d+[.)]\s*)+", "", sem_enfeite)
+    return sem_marcador.strip().rstrip(".").strip()
 
 
 def ler_revisoes(corpo: str) -> Revisoes:
@@ -215,8 +232,13 @@ def julgar(
 
 
 def _git(*argumentos: str) -> subprocess.CompletedProcess[str]:
+    # quotePath=false: nome com acento sai como é, não entre aspas com escapes (e aí não casaria com a lista)
     return subprocess.run(
-        ["git", *argumentos], capture_output=True, text=True, check=False
+        ["git", "-c", "core.quotePath=false", *argumentos],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
 
 
@@ -237,7 +259,9 @@ def arquivos_mudados_depois(sha: str, cabeca: str, base: str) -> list[str] | Non
         return None
     saida = _git(
         "log",
-        "--no-merges",
+        # merge: só o que a resolução de conflito mudou; o que veio da main sai pelo ^base
+        "--diff-merges=remerge",
+        "--no-renames",
         "--format=",
         "--name-only",
         cabeca,
@@ -252,7 +276,11 @@ def main() -> int:
     cabeca = os.environ.get("CABECA") or "HEAD"
     base = os.environ.get("BASE") or "HEAD^1"
     caminhos = _git(
-        "diff", "--name-only", "--no-renames", base, cabeca
+        # três pontos: o que o PR mudou desde que saiu da main, sem o que a main mudou depois
+        "diff",
+        "--name-only",
+        "--no-renames",
+        f"{base}...{cabeca}",
     ).stdout.splitlines()
     veredito = julgar(
         caminhos,
