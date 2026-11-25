@@ -9,6 +9,7 @@ propósito, regrave a foto com `TICKERLAB_GRAVAR_FOTO=1` e diga no PR o que a IA
 """
 
 import asyncio
+import hashlib
 import html
 import json
 import os
@@ -496,3 +497,18 @@ def test_a_pagina_inicial_tem_uma_secao_so_das_portas():
     # as âncoras antigas seguem valendo: agora levam ao cartão de cada porta
     for ancora in ('id="conector"', 'id="comandos"', 'id="api"'):
         assert pagina.count(ancora) == 1, ancora
+
+
+# a impressão digital do texto da lista da página inicial (texto público, nível 1): o aprovado em 24/11/2026, com as
+# quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281)
+IMPRESSAO_DA_LISTA_DA_PAGINA = (
+    "230c1a07ce221db6656195cbdf7484404f210fcafe3ae3893b01b6a779b924b5"
+)
+
+
+def test_o_texto_da_lista_da_pagina_e_o_aprovado():
+    texto = json.dumps(registro.para_o_site(), ensure_ascii=False, sort_keys=True)
+    assert hashlib.sha256(texto.encode()).hexdigest() == IMPRESSAO_DA_LISTA_DA_PAGINA, (
+        "o texto da lista da página inicial mudou (um nome, resumo ou frase do registro): é texto público, passa "
+        "pela revisão de segurança e pela cruzada; depois regrave IMPRESSAO_DA_LISTA_DA_PAGINA"
+    )
