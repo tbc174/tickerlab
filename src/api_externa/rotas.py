@@ -986,5 +986,7 @@ def _leitura_do_setor(
     return ler
 
 
-# a rota dos registros nas agências mora no arquivo dela e entra neste roteador pela importação (linha 980, onda 2)
+# as rotas dos registros nas agências e das compras públicas moram nos arquivos delas e entram neste roteador pela
+# importação (linha 980, onda 2)
+from src.api_externa import compras as _compras  # noqa: F401
 from src.api_externa import registros as _registros  # noqa: F401

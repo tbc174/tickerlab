@@ -134,6 +134,12 @@ CASOS = [
         {"cnpj": CNPJ, "como_era_em": UM_DIA},
         id="registros",
     ),
+    pytest.param(
+        ["compras", CNPJ, "--como-era", UM_DIA],
+        "compras_publicas",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA},
+        id="compras",
+    ),
     pytest.param(["catalogo"], "o_que_posso_ver", {}, id="catalogo"),
     pytest.param(["de-onde-vem", "credit"], "de_onde_vem", {"sobre": "credit"}, id="de_onde_vem"),
     pytest.param(["consumo"], "o_que_posso_ver", {}, id="consumo"),
@@ -141,7 +147,10 @@ CASOS = [
 
 
 def _gravador(pedidos: list[httpx.Request]) -> httpx.MockTransport:
-    return aj.api_de_mentira({}, pedidos=pedidos)
+    # o conjunto das compras públicas nasce desligado: aqui ele vem junto, para a ferramenta aparecer
+    return aj.api_de_mentira(
+        {}, pedidos=pedidos, conjuntos=(*aj.CONJUNTOS_PADRAO, "public_procurement")
+    )
 
 
 def _como_pedido(pedido: httpx.Request) -> tuple[str, tuple[tuple[str, str], ...]]:

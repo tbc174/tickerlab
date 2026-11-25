@@ -89,24 +89,29 @@ def chamar_ok(
     return json.loads(texto)
 
 
+# os conjuntos que o dublê da API lista no catálogo, se o teste não disser outros: os de uso comum, sem os que
+# nascem desligados (o de compras públicas, por exemplo), que o teste pede de propósito
+CONJUNTOS_PADRAO = (
+    "prospecting",
+    "profiles",
+    "companies",
+    "comparables",
+    "financials",
+    "sectors",
+    "funds",
+    "events",
+    "links",
+    "buyers",
+    "research",
+    "assets",
+    "credit",
+    "pessoa_no_conector",  # a permissão de pessoa física (ADR 0128, Emenda 4)
+)
+
+
 def api_de_mentira(
     rotas: dict[str, httpx.Response],
-    conjuntos: tuple[str, ...] = (
-        "prospecting",
-        "profiles",
-        "companies",
-        "comparables",
-        "financials",
-        "sectors",
-        "funds",
-        "events",
-        "links",
-        "buyers",
-        "research",
-        "assets",
-        "credit",
-        "pessoa_no_conector",  # a permissão de pessoa física (ADR 0128, Emenda 4)
-    ),
+    conjuntos: tuple[str, ...] = CONJUNTOS_PADRAO,
     pedidos: list[httpx.Request] | None = None,
 ) -> httpx.MockTransport:
     """Um dublê da API: aceita só a `CHAVE_DE_MENTIRA`, lista `conjuntos` no catálogo e responde

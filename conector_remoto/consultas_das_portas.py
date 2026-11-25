@@ -398,6 +398,30 @@ _REGISTROS_NAS_AGENCIAS = Ferramenta(
     ),
     dica_se_grande="Peça um bloco só (`blocos`) ou menos itens por lista (`limite`).",
 )
+_COMPRAS_PUBLICAS = Ferramenta(
+    nome="compras_publicas",
+    titulo="Compras públicas de uma empresa",
+    descricao=(
+        "As compras públicas da empresa como eram no dia, só com o conjunto de compras públicas no contrato\n"
+        "(`public_procurement`): o cadastro de fornecedor no SICAF (se está ativo e habilitado a licitar, com a\n"
+        "atividade, a natureza jurídica, o porte e o município) e, quando a chave as vê, as compras de medicamentos e\n"
+        "produtos de saúde do BPS em que ela é a fornecedora (a instituição compradora, o item, a quantidade e o valor\n"
+        "unitário). Cada valor traz a fonte e o dia em que ficou público (`published_at`); o bloco consultado que não\n"
+        "achou a empresa vai em `not_found`, a lista que não aparece não foi lida, e nenhum dos dois quer dizer que ela\n"
+        "não vende ao governo. Não abre o resto da análise: conta um pedido.\n"
+        "Serve para saber se a empresa está no cadastro de fornecedores do governo federal e o que ela vendeu na saúde.\n"
+        "Fonte: SICAF (Compras.gov.br) e BPS (Ministério da Saúde), como publicados.\n"
+        "Não traz: o resto da análise (cadastro, vínculos e eventos estão em `analise_completa`), nota, soma, ranking\n"
+        "nem pessoa física."
+    ),
+    conjuntos=frozenset({"public_procurement"}),
+    parametros=(
+        Parametro("cnpj", cli="CNPJ"),
+        Parametro("como_era_em", cli="--como-era"),
+        Parametro("limite", minimo=1, maximo=200),
+    ),
+    dica_se_grande="Peça menos itens por lista (`limite`).",
+)
 _ATIVOS = Ferramenta(
     nome="ativos",
     titulo="Ativos físicos de uma empresa",
@@ -634,6 +658,7 @@ FERRAMENTAS: tuple[Ferramenta, ...] = (
     _SOCIOS_E_DONOS,
     _ATIVOS,
     _REGISTROS_NAS_AGENCIAS,
+    _COMPRAS_PUBLICAS,
     _COMPRADORES_DO_SETOR,
     _NOVIDADES,
     _SETORES,
@@ -738,6 +763,16 @@ CONSULTAS: tuple[Consulta, ...] = (
         rotas=("GET /companies/{cnpj}/registrations",),
         ferramentas=(_REGISTROS_NAS_AGENCIAS,),
         comandos=("registros",),
+    ),
+    Consulta(
+        "compras",
+        nome="Compras públicas",
+        resumo=(
+            "com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
+        ),
+        rotas=("GET /companies/{cnpj}/public-procurement",),
+        ferramentas=(_COMPRAS_PUBLICAS,),
+        comandos=("compras",),
     ),
     Consulta(
         "compradores",

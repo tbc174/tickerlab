@@ -413,6 +413,13 @@ class ApiDoTickerlab:
         conjunto na quota), cada valor com a fonte e o dia em que ficou público."""
         return self.pedir(f"/companies/{cnpj}/registrations", _datas(known_at=como_era))
 
+    def compras(self, cnpj: str, como_era: str | None) -> dict:
+        """As compras públicas da empresa (SICAF e BPS), só com o conjunto de compras públicas no contrato (um
+        pedido na quota), cada valor com a fonte e o dia em que ficou público."""
+        return self.pedir(
+            f"/companies/{cnpj}/public-procurement", _datas(known_at=como_era)
+        )
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:

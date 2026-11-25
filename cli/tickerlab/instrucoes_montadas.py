@@ -21,6 +21,7 @@ ORDEM = (
     "compradores",
     "ativos",
     "registros",
+    "compras",
     "credito",
     "dossie",
     "eventos",

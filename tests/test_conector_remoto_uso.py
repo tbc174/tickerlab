@@ -139,7 +139,8 @@ def test_lista_de_ferramentas_nao_conta_como_chamada(linhas):
 
 def test_toda_ferramenta_registrada_tem_nome_na_medida():
     # a medida reconhece pelo mapa de conjuntos: ferramenta nova fora dele sairia como "desconhecida"
-    with _conector() as cliente:
+    # com todos os conjuntos, também o das compras públicas, que nasce desligado (linha 980, onda 2)
+    with _conector(conjuntos=(*aj.CONJUNTOS_PADRAO, "public_procurement")) as cliente:
         nomes = aj.nomes_das_ferramentas(cliente, aj.CHAVE_DE_MENTIRA)
     assert set(nomes) == set(CONJUNTOS_DA_FERRAMENTA)
 

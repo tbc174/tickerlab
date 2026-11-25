@@ -625,11 +625,12 @@ def registrar_ferramentas(
     _registrar_analise(servidor, pedidos)
     # linha 980: as ferramentas que só compõem o que a API devolve; import aqui por causa do ciclo (o módulo
     # delas usa `Pedidos` e os tipos deste)
-    from conector_remoto import acompanhar, ferramentas_do_analista, registros
+    from conector_remoto import acompanhar, compras, ferramentas_do_analista, registros
 
     ferramentas_do_analista.registrar(servidor, pedidos)
     acompanhar.registrar(servidor, pedidos)  # linha 980, onda 2
     registros.registrar(servidor, pedidos)  # linha 980, onda 2, PR 5
+    compras.registrar(servidor, pedidos)  # linha 980, onda 2, PR 6
 
     @anunciar(servidor, "setores")
     async def setores() -> str:

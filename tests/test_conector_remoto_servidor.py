@@ -38,8 +38,12 @@ from tests import ajudantes_do_conector as aj
 EMPRESA = {"cnpj": "11111111000191", "legal_name": {"value": "ALFA TECNOLOGIA S.A."}}
 
 
+# todos os conjuntos das ferramentas, também o das compras públicas, que nasce desligado (linha 980, onda 2)
+TODOS_OS_CONJUNTOS = (*aj.CONJUNTOS_PADRAO, "public_procurement")
+
+
 def _conector(rotas=None, conjuntos=None, pedidos=None):
-    argumentos = {"pedidos": pedidos} | ({"conjuntos": conjuntos} if conjuntos else {})
+    argumentos = {"pedidos": pedidos, "conjuntos": conjuntos or TODOS_OS_CONJUNTOS}
     return aj.conector(aj.api_de_mentira(rotas or {}, **argumentos))
 
 
@@ -306,6 +310,7 @@ def test_conjuntos_das_ferramentas_sao_os_da_api():
         eventos.CONJUNTO, vinculos.CONJUNTO, compradores.CONJUNTO, novidades.CONJUNTO, ativos.CONJUNTO,
         pessoas.CONJUNTO, credito.CONJUNTO,
         tabelas_por_cnpj.SEM_TRAVA_DE_LICENCA,  # os registros adicionais (linha 980, onda 2)
+        tabelas_por_cnpj.CONJUNTO_DE_COMPRAS_PUBLICAS,  # as compras públicas (linha 980, onda 2, PR 6)
     }  # fmt: skip
     usados = set().union(*ferramentas.CONJUNTOS_DA_FERRAMENTA.values())
     assert usados == da_api

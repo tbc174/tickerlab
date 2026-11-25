@@ -395,7 +395,7 @@ def test_trocar_a_tabela_pede_as_marcas():
 # o texto aprovado pelo Tiago em 24/11/2026 ("Aprovo o texto"): só as consultas que leem a base, nesta ordem;
 # a de pessoa física, a chave e as instruções do agente ficam fora
 CONSULTAS_DA_PAGINA = (
-    "busca", "ficha", "analise", "comparaveis", "demonstracoes", "eventos", "vinculos", "ativos", "registros", "compradores",
+    "busca", "ficha", "analise", "comparaveis", "demonstracoes", "eventos", "vinculos", "ativos", "registros", "compras", "compradores",
     "fundo", "setores", "novidades", "catalogo", "de_onde_vem", "credito", "o_que_mudou", "comparar", "acompanhar", "dossie",
     "deck", "lotes",
 )  # fmt: skip
@@ -502,7 +502,7 @@ def test_a_pagina_inicial_tem_uma_secao_so_das_portas():
 # quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281) e, da
 # onda 2 do conector (linha 980), a consulta "Acompanhar uma lista de empresas"
 IMPRESSAO_DA_LISTA_DA_PAGINA = (
-    "a8e36324786be67a18c93c950e75c63b7ebd699ad04846111e2f5cab41be3595"
+    "2caa990fba6ce78a2fae6c8898673539ad2be0af71c25cef1bb10ea5dc7265fd"
 )
 
 
