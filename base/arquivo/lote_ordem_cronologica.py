@@ -111,6 +111,19 @@ ESPIRITO_SANTO = Formato(
 FORMATOS = (PERNAMBUCO, ESPIRITO_SANTO)
 
 
+def _sem_vazios_no_fim(linha: list[str], colunas: int, da_fonte: int) -> list[str]:
+    """A linha sem os campos vazios do fim, só se ela tem tantos campos quanto o cabeçalho da fonte (com os
+    nomes vazios do fim): assim, um ";" solto no meio de um texto, que desloca as colunas, continua tirando
+    a linha (revisão cruzada do #1327)."""
+    if (
+        da_fonte > colunas
+        and len(linha) == da_fonte
+        and not any(campo.strip() for campo in linha[colunas:])
+    ):
+        return linha[:colunas]
+    return linha
+
+
 def filtrar_csv(origem: IO[bytes], destino: IO[bytes], formato: Formato) -> int:
     """Copia o CSV da fonte só com as colunas do `formato` e só com as linhas de CNPJ; devolve quantas.
 
@@ -133,6 +146,11 @@ def filtrar_csv(origem: IO[bytes], destino: IO[bytes], formato: Formato) -> int:
     cabecalho = next(leitor, None)
     if cabecalho is None:
         raise ValueError("CSV vazio")
+    # o SIGA do RJ põe ";" no fim do cabeçalho das compras diretas e não nas linhas: a coluna sem nome do fim
+    # não existe (com ela, toda linha tinha uma coluna a menos e saía; coleta de 25/11/2026)
+    colunas_da_fonte = len(cabecalho)
+    while len(cabecalho) > 1 and not cabecalho[-1].strip():
+        cabecalho.pop()
     nomes = [coluna.strip().lower() for coluna in cabecalho]
     if nomes.count(formato.documento) != 1:
         raise ValueError(
@@ -142,7 +160,8 @@ def filtrar_csv(origem: IO[bytes], destino: IO[bytes], formato: Formato) -> int:
     documento = nomes.index(formato.documento)
     escritor.writerow([nomes[i] for i in mantidas])
     ficaram = 0
-    for linha in leitor:
+    for lida in leitor:
+        linha = _sem_vazios_no_fim(lida, len(cabecalho), colunas_da_fonte)
         if len(linha) != len(cabecalho):
             continue
         if not tem_cnpj_inteiro(linha[documento].strip()) or tem_cpf_no_texto(linha):

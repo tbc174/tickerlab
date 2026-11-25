@@ -6,6 +6,7 @@ baixa e o que sai **antes** de guardar: só linha de CNPJ inteiro, sem o nome do
 e o endereço do PNCP, e sem linha com CPF (o SIGA mascara o CPF) em campo nenhum. Os arquivos são de mentira.
 """
 
+import csv
 import io
 from datetime import UTC, datetime
 
@@ -247,3 +248,42 @@ def test_fontes_registradas_com_licenca_e_familia_do_endereco():
         )
         assert "CC BY" in licenca_da_fonte(formato.id)
         assert marca_da_fonte(formato.id) is Marca.VENDAVEL
+
+
+def test_ponto_e_virgula_so_no_fim_do_cabecalho_nao_derruba_as_linhas():
+    """O COMPRAS_DIRETAS.CSV de 25/11/2026 traz ";" no fim do cabeçalho (21 nomes, o último vazio) e não nas
+    linhas (20 campos): o filtro tirava toda linha por ter uma coluna a menos, e a coleta guardava só o
+    cabeçalho. A coluna sem nome do fim não conta; linha com um campo vazio a mais no fim também passa, e com
+    um campo cheio a mais sai (não dá para saber qual coluna é qual)."""
+    cabecalho = (
+        "Unidade;ID Processo;Afastamento;Data de Aprovação;Valor do Processo (R$);CNPJ_CPF;ID Item;Qtd.;"
+        "Unidade de Medida;Vl. Unitário (R$);PED;Regime;Temporalidade;\r\n"
+    )
+
+    def linha(item: str, fim: str = "") -> str:
+        return f"SES;9001;Dispensa;10/03/2025;1.500,00;{CNPJ};{item};100;UN;15,00;NAO;Lei 14.133/2021;12{fim}\r\n"
+
+    # um ";" solto no meio do texto e o fim vazio: as colunas andariam uma casa, então a linha sai
+    deslocada = linha("558", ";").replace("Dispensa;", "Dispensa;SOLTO;")
+    guardado = _filtrar(
+        cabecalho
+        + linha("555")
+        + linha("556", ";")
+        + linha("557", ";SOBRA")
+        + deslocada,
+        lote.RJ_COMPRAS_DIRETAS,
+    )
+    lido = list(csv.reader(io.StringIO(guardado), delimiter=";"))
+    assert lido[0] == [
+        n for n in lote.RJ_COMPRAS_DIRETAS.formato.guardadas if n in lido[0]
+    ]
+    assert len(lido[0]) == 13
+    assert [r[lido[0].index("id item")] for r in lido[1:]] == ["555", "556"]
+    # cabeçalho sem ";" no fim: a linha com um campo vazio a mais continua saindo, como antes
+    sem_fim = _filtrar(
+        cabecalho.replace(";\r\n", "\r\n") + linha("555") + linha("556", ";"),
+        lote.RJ_COMPRAS_DIRETAS,
+    )
+    assert [
+        r[6] for r in list(csv.reader(io.StringIO(sem_fim), delimiter=";"))[1:]
+    ] == ["555"]
