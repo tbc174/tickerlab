@@ -172,17 +172,17 @@ def test_o_que_depende_so_dos_arquivos_e_lembrado_enquanto_a_porta_vive(base):
         return 42
 
     with compartilhada.porta_do_pedido() as a:
-        assert compartilhada.lembrar(a, "chave", conta) == 42
+        assert compartilhada.lembrar(a, "chave", conta, tabelas=()) == 42
     with compartilhada.porta_do_pedido() as b:
-        assert compartilhada.lembrar(b, "chave", conta) == 42
-        assert compartilhada.lembrar(b, "outra", conta) == 42
+        assert compartilhada.lembrar(b, "chave", conta, tabelas=()) == 42
+        assert compartilhada.lembrar(b, "outra", conta, tabelas=()) == 42
     assert len(calculos) == 2  # uma por chave
 
     # a base mudou: a porta é outra e a memória da velha não vale
     arquivo = next((base.pasta / prospeccao.EMPRESAS).glob("*.parquet"))
     os.utime(arquivo, ns=(1, 1))
     with compartilhada.porta_do_pedido() as c:
-        assert compartilhada.lembrar(c, "chave", conta) == 42
+        assert compartilhada.lembrar(c, "chave", conta, tabelas=()) == 42
     assert len(calculos) == 3
 
 
@@ -190,28 +190,28 @@ def test_porta_comum_calcula_sempre(base):
     calculos: list[int] = []
     porta = Porta(base.pasta)
     for _ in range(2):
-        compartilhada.lembrar(porta, "chave", lambda: calculos.append(1))
+        compartilhada.lembrar(porta, "chave", lambda: calculos.append(1), tabelas=())
     assert len(calculos) == 2
 
 
 def test_a_memoria_e_limitada(base):
     with compartilhada.porta_do_pedido() as porta:
         for i in range(compartilhada.MEMORIA_MAXIMA + 5):
-            compartilhada.lembrar(porta, i, lambda i=i: i)
+            compartilhada.lembrar(porta, i, lambda i=i: i, tabelas=())
         assert len(porta.memoria_da_base) <= compartilhada.MEMORIA_MAXIMA  # type: ignore[attr-defined]
 
 
 def test_pedido_em_curso_nao_mistura_a_memoria_da_porta_velha_com_a_nova(base):
     """O pedido que pegou a porta antes da troca termina nela; o que chega depois só vê a nova (condição 3)."""
     velho = compartilhada.porta_do_pedido()
-    compartilhada.lembrar(velho, "mes", lambda: "velho")
+    compartilhada.lembrar(velho, "mes", lambda: "velho", tabelas=())
     arquivo = next((base.pasta / prospeccao.EMPRESAS).glob("*.parquet"))
     os.utime(arquivo, ns=(1, 1))
     novo = compartilhada.porta_do_pedido()
     assert len(base.aberturas) == 2
     # o novo não lê o que o velho lembrou, e o que o novo lembra não chega ao velho
-    assert compartilhada.lembrar(novo, "mes", lambda: "novo") == "novo"
-    assert compartilhada.lembrar(velho, "mes", lambda: "outro") == "velho"
+    assert compartilhada.lembrar(novo, "mes", lambda: "novo", tabelas=()) == "novo"
+    assert compartilhada.lembrar(velho, "mes", lambda: "outro", tabelas=()) == "velho"
     # o pedido velho ainda lê (a porta velha não foi fechada debaixo dele)
     assert _linhas(velho) == len(_empresas())
     velho.fechar()
@@ -345,7 +345,7 @@ class _EsvaziadaNoMeio(dict):
 def test_memoria_esvaziada_por_outro_pedido_no_meio_calcula_em_vez_de_quebrar(base):
     with compartilhada.porta_do_pedido() as porta:
         porta.memoria_da_base = _EsvaziadaNoMeio()  # type: ignore[attr-defined]
-        assert compartilhada.lembrar(porta, "chave", lambda: 42) == 42
+        assert compartilhada.lembrar(porta, "chave", lambda: 42, tabelas=()) == 42
 
 
 def test_memoria_cheia_nao_leva_junto_as_tabelas_e_as_colunas(base, monkeypatch):
@@ -355,7 +355,7 @@ def test_memoria_cheia_nao_leva_junto_as_tabelas_e_as_colunas(base, monkeypatch)
         for i in range(
             compartilhada.MEMORIA_MAXIMA + 5
         ):  # um dia por pedido, como `known_at` variado
-            compartilhada.lembrar(porta, ("dia", i), lambda i=i: i)
+            compartilhada.lembrar(porta, ("dia", i), lambda i=i: i, tabelas=())
         porta.colunas(prospeccao.EMPRESAS)
     assert len(tabelas) == 1
 

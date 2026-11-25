@@ -275,6 +275,7 @@ def mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
         porta,
         ("mes_do_retrato_compradores", como_era_em),
         lambda: _ler_o_mes_do_retrato(porta, como_era_em),
+        tabelas=(ESTABELECIMENTOS, EMPRESAS),
     )
 
 
@@ -285,6 +286,7 @@ def primeiro_dia_do_retrato(porta: Porta) -> date | None:
         porta,
         ("primeiro_dia_do_retrato_compradores",),
         lambda: _ler_o_primeiro_dia_do_retrato(porta),
+        tabelas=(ESTABELECIMENTOS, EMPRESAS),
     )
 
 

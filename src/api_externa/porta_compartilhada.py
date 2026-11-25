@@ -83,7 +83,13 @@ def _impressao(pasta: Path, arquivos: dict[str, str]) -> tuple:
     impressao = []
     for padrao in arquivos.values():
         for arquivo in arquivos_da_tabela(pasta, padrao):
-            estado = arquivo.stat()
+            try:
+                estado = arquivo.stat()
+            except FileNotFoundError:
+                # a carga apagou o arquivo entre o glob e a data: conta como mudado (nunca é igual a uma impressão
+                # tirada com ele), sem derrubar o pedido
+                impressao.append((arquivo.as_posix(), None, None))
+                continue
             impressao.append((arquivo.as_posix(), estado.st_mtime_ns, estado.st_size))
     return tuple(impressao)
 
@@ -114,24 +120,45 @@ def _trava_da(chave: object) -> threading.Lock:
         return _TRAVAS.setdefault(chave, threading.Lock())
 
 
-def lembrar[T](porta: Porta, chave: object, calcular: Callable[[], T]) -> T:
+def impressao_das_tabelas(porta: Porta, tabelas: tuple[str, ...]) -> tuple:
+    """Os arquivos que as views de `tabelas` leem (caminho, data e tamanho), sem abrir nenhum."""
+    # `porta.arquivos[t]`, sem `get`: um nome errado quebra o teste em vez de nunca conferir os arquivos
+    return _impressao(porta.pasta, {t: porta.arquivos[t] for t in tabelas})
+
+
+def lembrar[T](
+    porta: Porta,
+    chave: object,
+    calcular: Callable[[], T],
+    *,
+    tabelas: tuple[str, ...],
+) -> T:
     """O resultado de uma consulta que só depende dos arquivos da base, guardado enquanto a porta dona vive (a
     base mudou → porta nova → memória nova). Porta que não é de pedido (os testes) calcula sempre. Com a memória
     fria, os pedidos da mesma chave esperam o primeiro calcular; se o cálculo dele falha (o prazo interrompeu a
-    consulta), nada fica guardado e o seguinte calcula."""
+    consulta), nada fica guardado e o seguinte calcula.
+
+    `tabelas` são as que o cálculo lê (obrigatório: `()` só para o que não lê arquivo); o guardado leva a impressão
+    dos arquivos delas e só vale enquanto ela não muda. As views leem
+    os Parquets pelo caminho: se a carga troca um arquivo enquanto um pedido ainda está com a porta velha, o
+    pedido calcula de novo, como fazia antes do guardado (achado P1 do Revisor no #1325, linha 1098)."""
     memoria = getattr(porta, "memoria_da_base", None)
     if memoria is None:
         return calcular()
+    # a impressão é tirada ANTES de calcular: se o arquivo mudar durante o cálculo, o próximo calcula de novo
+    conferida = impressao_das_tabelas(porta, tabelas) if tabelas else None
     # uma leitura só: entre um `in` e a leitura, outro pedido pode esvaziar a memória cheia (KeyError, 500)
-    valor = memoria.get(chave, _NADA)
-    if valor is not _NADA:
-        return valor
+    guardado = memoria.get(chave, _NADA)
+    if guardado is not _NADA and guardado[0] == conferida:
+        return guardado[1]
     with _trava_da(chave):
-        valor = memoria.get(chave, _NADA)  # quem esperou acha o que o primeiro calculou
-        if valor is not _NADA:
-            return valor
+        guardado = memoria.get(
+            chave, _NADA
+        )  # quem esperou acha o que o primeiro calculou
+        if guardado is not _NADA and guardado[0] == conferida:
+            return guardado[1]
         valor = calcular()
-        _guardar(memoria, chave, valor)
+        _guardar(memoria, chave, (conferida, valor))
     return valor  # não relê: outro pedido pode ter esvaziado a memória cheia entre as duas linhas
 
 
