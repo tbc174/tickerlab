@@ -557,3 +557,27 @@ def test_a_publicacao_no_diario_oficial_e_fato_e_nao_a_data_em_que_a_base_soube(
 def test_o_historico_do_catalogo_comeca_no_dia_em_que_a_fonte_entrou():
     for spec in ce.TABELAS:
         assert TABELAS[spec.tabela].historico_desde == "2026-11-25"
+
+
+def test_as_formas_de_numero_das_fontes_viram_o_valor_certo():
+    """As formas vistas nos arquivos de 25/11/2026: milhar com vírgula, só centavos, inteiro sem ponto, vazio."""
+    valores = ce.reais(pd.Series(["1.234,50", ",5", "1000", "59,64", ""]))
+    assert valores[:4].tolist() == [1234.5, 0.5, 1000.0, 59.64]
+    assert pd.isna(valores[4])
+
+
+def test_dois_empenhos_do_mesmo_contrato_sao_duas_linhas(banco, tmp_path, monkeypatch):
+    """O `Id` do arquivo de empenhos é do empenho: o mesmo contrato com dois empenhos dá duas linhas."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    segundo = {**_empenho_es("11"), "numeroempenho": "2025NE00002"}
+    _guardar_em(
+        banco,
+        ce.ES_EMPENHOS,
+        ES.format("c", "empenhos-2025.csv"),
+        PRIMEIRO_DIA,
+        [_empenho_es("10"), segundo],
+    )
+    resumo = _montar(banco, tmp_path)["es_empenhos/empenhos-2025"]
+    assert resumo["id_repetido"] == 0
+    tabela = _tabela(tmp_path, ce.ES_EMPENHOS, "empenhos-2025")
+    assert sorted(tabela["empenho"]) == ["2025NE00001", "2025NE00002"]

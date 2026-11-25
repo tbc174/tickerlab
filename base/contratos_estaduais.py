@@ -214,6 +214,7 @@ ES_CONTRATOS = Tabela(
         "valor_inicial": "valorinicial",
         "valor_final": "valorfinal",
     },
+    # no contratos-2025.csv de 25/11/2026, id e CNPJ não repetem (0 em 10.440 linhas de CNPJ)
     chave=("id_contrato", "cnpj"),
     datas=("celebrado_em", "vigencia_inicio", "vigencia_fim"),
     reais=("valor_inicial", "valor_final"),
@@ -230,6 +231,8 @@ ES_EMPENHOS = Tabela(
         "empenho": "numeroempenho",
         "valor_global": "valorglobal",
     },
+    # o `Id` é do empenho, não do contrato: no empenhos-2025.csv de 25/11/2026, 27.138 linhas de CNPJ e 27.138
+    # ids distintos; o número do empenho, ao contrário, repete entre órgãos (6.967 distintos), então não é chave
     chave=("id_empenho", "cnpj"),
     reais=("valor_global",),
 )
@@ -271,7 +274,11 @@ def data(texto: pd.Series, formato: str = FORMATO_DA_DATA_BR) -> pd.Series:
 
 
 def reais(texto: pd.Series) -> pd.Series:
-    """ "1.234,50" e "59,64" em número (a fonte usa vírgula decimal); vazio e lixo viram nulo."""
+    """ "1.234,50" e "59,64" em número (a fonte usa vírgula decimal); vazio e lixo viram nulo.
+
+    Sem vírgula, o ponto não é tirado: "1.5" é 1,5. Nos arquivos do SIGA e do ES de 25/11/2026 nenhum valor
+    traz ponto sem vírgula (o inteiro vem sem ponto de milhar, "1000"), então não há "1.000" a confundir.
+    """
     com_virgula = texto.str.contains(",", regex=False)
     sem_milhar = texto.where(~com_virgula, texto.str.replace(".", "", regex=False))
     return pd.to_numeric(sem_milhar.str.replace(",", ".", regex=False), errors="coerce")
