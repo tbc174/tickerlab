@@ -11189,6 +11189,760 @@
       "frequencia": "Mensal (o arquivista guarda o arquivo do ano a cada coleta, só o que mudou)",
       "atraso": "A fonte não diz quando publicou cada pagamento: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa em 06/11/2026); as datas do pagamento ficam nas colunas `liquidado_em` e `pago_em`"
     },
+    "rj_contratos": {
+      "tabela": "rj_contratos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Código do contrato e CNPJ juntos por `|`",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "codigo_contrato": {
+          "descricao": "Código do contrato no SIGA",
+          "unidade": "texto"
+        },
+        "id_processo": {
+          "descricao": "Identificador do processo de compra no SIGA",
+          "unidade": "texto"
+        },
+        "contratacao": {
+          "descricao": "Número da contratação no SIGA",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação da contratação, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "unidade": {
+          "descricao": "Órgão ou unidade do estado que contratou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "codigo_ug": {
+          "descricao": "Código da unidade gestora",
+          "unidade": "texto"
+        },
+        "tipo_de_aquisicao": {
+          "descricao": "Tipo de aquisição (pregão, dispensa, adesão a ata...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "criterio_de_julgamento": {
+          "descricao": "Critério de julgamento da compra",
+          "unidade": "texto"
+        },
+        "regime_juridico": {
+          "descricao": "Lei de licitações que rege o contrato (8.666 ou 14.133)",
+          "unidade": "texto"
+        },
+        "emergencial": {
+          "descricao": "Marca da fonte para contratação emergencial (S ou N)",
+          "unidade": "texto"
+        },
+        "contratado_em": {
+          "descricao": "Dia da contratação",
+          "unidade": "data (dia)"
+        },
+        "assinado_em": {
+          "descricao": "Dia da assinatura do contrato; vazio quando a fonte não diz",
+          "unidade": "data (dia)"
+        },
+        "publicado_em": {
+          "descricao": "Dia da publicação no Diário Oficial do estado; vazio quando a fonte não diz",
+          "unidade": "data (dia)"
+        },
+        "vigencia_inicio": {
+          "descricao": "Primeiro dia da vigência",
+          "unidade": "data (dia)"
+        },
+        "vigencia_fim": {
+          "descricao": "Último dia da vigência",
+          "unidade": "data (dia)"
+        },
+        "valor_contratado": {
+          "descricao": "Valor total do contrato (ou o estimado para a contratação), em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_empenhado": {
+          "descricao": "Valor total empenhado até o dia do arquivo, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_liquidado": {
+          "descricao": "Valor total liquidado até o dia do arquivo, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "valor_pago": {
+          "descricao": "Valor total pago até o dia do arquivo, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "contratado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "contratado_em": "aconteceu_em",
+        "assinado_em": "aconteceu_em",
+        "publicado_em": "aconteceu_em",
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "rj_sancoes_fornecedores": {
+      "tabela": "rj_sancoes_fornecedores",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "CNPJ, órgão, contrato, enquadramento, dia da efetivação e motivo juntos por `|`",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "orgao_apenador": {
+          "descricao": "Órgão ou entidade do estado que aplicou a penalidade",
+          "unidade": "texto"
+        },
+        "enquadramento_legal": {
+          "descricao": "Artigo de lei em que a penalidade se apoia",
+          "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "Motivo da penalidade, como a fonte escreve (lista fechada da fonte)",
+          "unidade": "texto"
+        },
+        "contrato": {
+          "descricao": "Número do contrato ligado à penalidade, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação da penalidade (vigente, encerrada...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "efetivada_em": {
+          "descricao": "Dia em que a penalidade passou a valer",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "efetivada_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "efetivada_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Semanal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "rj_fornecedores": {
+      "tabela": "rj_fornecedores",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O CNPJ (um fornecedor por linha)",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "crc": {
+          "descricao": "Tem certificado de registro cadastral (CRC) no estado (SIM ou NÃO)",
+          "unidade": "texto"
+        },
+        "tipo_empresarial": {
+          "descricao": "Tipo empresarial, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "me_epp": {
+          "descricao": "Microempresa ou empresa de pequeno porte (SIM ou NÃO)",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação do fornecedor no cadastro do estado",
+          "unidade": "texto"
+        },
+        "cidade": {
+          "descricao": "Cidade da empresa no cadastro (não é endereço)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da empresa no cadastro",
+          "unidade": "texto"
+        },
+        "cadastrado_em": {
+          "descricao": "Dia do cadastro no SIGA",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "cadastrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "cadastrado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "rj_compras_diretas": {
+      "tabela": "rj_compras_diretas",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Processo, item, CNPJ, quantidade e preço unitário juntos por `|`",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "unidade": {
+          "descricao": "Órgão ou unidade do estado que comprou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "id_processo": {
+          "descricao": "Identificador do processo de compra no SIGA",
+          "unidade": "texto"
+        },
+        "afastamento": {
+          "descricao": "Por que a licitação foi afastada (dispensa, inexigibilidade...), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "codigo_item": {
+          "descricao": "Código do item no processo (a descrição, texto livre, não fica)",
+          "unidade": "texto"
+        },
+        "unidade_de_medida": {
+          "descricao": "Unidade de medida do item, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "pedido": {
+          "descricao": "Marca da fonte para pedido (PED), como a fonte escreve",
+          "unidade": "texto"
+        },
+        "regime_juridico": {
+          "descricao": "Lei de licitações que rege a compra (8.666 ou 14.133)",
+          "unidade": "texto"
+        },
+        "temporalidade": {
+          "descricao": "Prazo da contratação na fonte (em meses), como texto",
+          "unidade": "texto"
+        },
+        "aprovado_em": {
+          "descricao": "Dia da aprovação da compra direta",
+          "unidade": "data (dia)"
+        },
+        "valor_do_processo": {
+          "descricao": "Valor do processo inteiro, em reais",
+          "unidade": "reais (R$)"
+        },
+        "quantidade": {
+          "descricao": "Quantidade do item",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_unitario": {
+          "descricao": "Preço unitário do item, em reais",
+          "unidade": "reais (R$)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "aprovado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "aprovado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "es_contratos": {
+      "tabela": "es_contratos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Identificador do contrato no portal e CNPJ juntos por `|`",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "id_contrato": {
+          "descricao": "Identificador do contrato no portal da transparência",
+          "unidade": "texto"
+        },
+        "codigo_orgao": {
+          "descricao": "Código do órgão",
+          "unidade": "texto"
+        },
+        "orgao": {
+          "descricao": "Órgão do estado que contratou, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "processo": {
+          "descricao": "Número do processo (e-Docs ou SEP)",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "Modalidade do processo de compra, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "edital": {
+          "descricao": "Número do edital; vazio quando não houve",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "Número do contrato ou da ata, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "tipo_de_documento": {
+          "descricao": "Contrato, ata de registro de preço...",
+          "unidade": "texto"
+        },
+        "tipo_de_aquisicao": {
+          "descricao": "Compra, serviço, obra..., como a fonte escreve",
+          "unidade": "texto"
+        },
+        "situacao": {
+          "descricao": "Situação do contrato, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "registro_de_preco": {
+          "descricao": "Marca da fonte para registro de preço (S ou N)",
+          "unidade": "texto"
+        },
+        "celebrado_em": {
+          "descricao": "Dia da celebração do contrato",
+          "unidade": "data (dia)"
+        },
+        "vigencia_inicio": {
+          "descricao": "Primeiro dia da vigência; vazio quando a fonte não diz",
+          "unidade": "data (dia)"
+        },
+        "vigencia_fim": {
+          "descricao": "Último dia da vigência; vazio quando a fonte não diz",
+          "unidade": "data (dia)"
+        },
+        "valor_inicial": {
+          "descricao": "Valor inicial do contrato, em reais",
+          "unidade": "reais (R$)"
+        },
+        "valor_final": {
+          "descricao": "Valor final do contrato (com os aditivos), em reais",
+          "unidade": "reais (R$)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "celebrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "celebrado_em": "aconteceu_em",
+        "vigencia_inicio": "aconteceu_em",
+        "vigencia_fim": "ate",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
+    "es_empenhos": {
+      "tabela": "es_empenhos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "Identificador do empenho no portal e CNPJ juntos por `|`",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "id_empenho": {
+          "descricao": "Identificador do empenho no portal da transparência",
+          "unidade": "texto"
+        },
+        "processo": {
+          "descricao": "Número do processo (e-Docs ou SEP)",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "Número do contrato ou da ata a que o empenho se liga",
+          "unidade": "texto"
+        },
+        "tipo_de_documento": {
+          "descricao": "Contrato, ata de registro de preço...",
+          "unidade": "texto"
+        },
+        "empenho": {
+          "descricao": "Número da nota de empenho (o ano vem no começo)",
+          "unidade": "texto"
+        },
+        "valor_global": {
+          "descricao": "Valor global do empenho, em reais",
+          "unidade": "reais (R$)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que o arquivista viu a linha",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "arquivo",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+      "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+      "linhas_de_pessoa": "trata_como_pessoa"
+    },
     "financiamentos_bndes": {
       "tabela": "financiamentos_bndes",
       "modulo": "governo_e_sancoes",
@@ -12050,6 +12804,171 @@
       "pessoa": true,
       "frequencia": "Mensal (a CMED republica as listas inteiras)",
       "atraso": "A lista não diz desde quando vale cada preço: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa no dia em que a coleta entrou); o dia da publicação do arquivo fica em `lista_publicada_em`"
+    },
+    "ans_produtos": {
+      "tabela": "ans_produtos",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_na_fonte": {
+          "descricao": "O `ID_PLANO` da ANS, único no arquivo",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da operadora do plano, pelo registro dela em `ans_operadoras` (a linha da ponte que já era pública no dia em que o plano ficou público); vazio quando a ponte não tem o registro",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ da operadora (8 caracteres); vazia quando o `cnpj` é",
+          "unidade": "texto"
+        },
+        "codigo_do_plano": {
+          "descricao": "Código do plano (`CD_PLANO`), como a ANS escreve",
+          "unidade": "texto"
+        },
+        "nome_do_plano": {
+          "descricao": "Nome comercial do plano, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "registro_da_operadora": {
+          "descricao": "Registro da operadora na ANS (`REGISTRO_OPERADORA`): a chave que liga o plano ao CNPJ pela ponte `ans_operadoras`",
+          "unidade": "texto"
+        },
+        "modalidade_da_operadora": {
+          "descricao": "Modalidade da operadora (Medicina de Grupo, Cooperativa Médica...)",
+          "unidade": "texto"
+        },
+        "porte_da_operadora": {
+          "descricao": "Porte da operadora pelo número de beneficiários, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "vigencia_do_plano": {
+          "descricao": "Vigência do plano, como a ANS escreve (`P` ou `A`); todo `A` vem sem data de registro",
+          "unidade": "texto"
+        },
+        "contratacao": {
+          "descricao": "Tipo de contratação, como a ANS escreve",
+          "unidade": "texto"
+        },
+        "grupo_de_contratacao": {
+          "descricao": "Contratação agrupada (individual, coletivo empresarial, coletivo por adesão)",
+          "unidade": "texto"
+        },
+        "segmentacao_assistencial": {
+          "descricao": "Segmentação assistencial do plano",
+          "unidade": "texto"
+        },
+        "grupo_de_segmentacao": {
+          "descricao": "Segmentação agrupada (ambulatorial, hospitalar, ambos, odontológico)",
+          "unidade": "texto"
+        },
+        "odontologico": {
+          "descricao": "Verdadeiro quando o plano é odontológico (`LG_ODONTOLOGICO`)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "obstetricia": {
+          "descricao": "Se o plano cobre obstetrícia",
+          "unidade": "texto"
+        },
+        "cobertura": {
+          "descricao": "Tipo de cobertura (médico-hospitalar, odontológica)",
+          "unidade": "texto"
+        },
+        "tipo_de_financiamento": {
+          "descricao": "Financiamento (preestabelecido, pós-estabelecido, misto)",
+          "unidade": "texto"
+        },
+        "abrangencia": {
+          "descricao": "Abrangência geográfica da cobertura (municipal, grupo de municípios, estadual...)",
+          "unidade": "texto"
+        },
+        "id_da_cobertura_geografica": {
+          "descricao": "Código (hash) da lista de municípios da cobertura, que a ANS publica em outro arquivo; vazio em parte dos planos",
+          "unidade": "texto"
+        },
+        "fator_moderador": {
+          "descricao": "Fator moderador (ausente, coparticipação, franquia)",
+          "unidade": "texto"
+        },
+        "acomodacao_hospitalar": {
+          "descricao": "Acomodação hospitalar (individual, coletiva)",
+          "unidade": "texto"
+        },
+        "livre_escolha": {
+          "descricao": "Livre escolha de prestadores (ausente, total, parcial)",
+          "unidade": "texto"
+        },
+        "situacao_do_plano": {
+          "descricao": "Situação do plano (ativo, suspenso, cancelado, transferido)",
+          "unidade": "texto"
+        },
+        "situacao_desde": {
+          "descricao": "Data em que o plano ficou na situação atual, como a ANS informa",
+          "unidade": "data (dia)"
+        },
+        "registrado_em": {
+          "descricao": "Data do registro do plano na ANS; vazia nos planos de vigência `A`",
+          "unidade": "data (dia)"
+        },
+        "consta": {
+          "descricao": "Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que o plano apareceu, ou em que a mudança apareceu (nunca a data do registro do plano)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "registrado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "situacao_desde": "aconteceu_em",
+        "registrado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-25",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)",
+      "atraso": "A fonte publica o estado de hoje e não diz desde quando publica cada plano: a linha vale desde o dia do arquivo em que o arquivista a viu pela primeira vez, mesmo com `registrado_em` mais antigo (o conservador; a história guardada começa em 25/10/2026, no 1º arquivo guardado). Uma mudança vale desde o dia do arquivo em que apareceu.",
+      "linhas_de_pessoa": "trata_como_pessoa"
     },
     "ans_operadoras": {
       "tabela": "ans_operadoras",
@@ -19389,6 +20308,75 @@
       "pessoa": false,
       "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`"
+    },
+    "controladas_primeiro_fre": {
+      "tabela": "controladas_primeiro_fre",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_companhia": {
+          "descricao": "CNPJ da companhia que informou o FRE (14 dígitos)",
+          "unidade": "texto"
+        },
+        "raiz_da_controlada": {
+          "descricao": "Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos)",
+          "unidade": "texto"
+        },
+        "primeiro_ano_no_fre": {
+          "descricao": "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
+          "unidade": "ano"
+        },
+        "referencia": {
+          "descricao": "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
+          "unidade": "data (dia)"
+        },
+        "conhecido_em": {
+          "descricao": "Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público",
+          "unidade": "data (dia)"
+        },
+        "tipo_no_primeiro_fre": {
+          "descricao": "controlada, coligada ou vazio (o FRE novo deixa em branco)",
+          "unidade": "texto"
+        },
+        "fre_anterior_sem_o_par": {
+          "descricao": "Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela",
+          "unidade": "verdadeiro ou falso"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj_companhia",
+        "raiz_da_controlada"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em",
+        "coletado_em": "montado_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "conhecido_em": "publico_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; o par vale a partir de `conhecido_em`"
     },
     "controladas_pj": {
       "tabela": "controladas_pj",

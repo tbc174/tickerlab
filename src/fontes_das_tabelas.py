@@ -48,6 +48,7 @@ COLETAS_PROPRIAS: dict[str, tuple[str, ...]] = {
 DERIVADAS: dict[str, tuple[str, ...]] = {
     "fre_remuneracao_extremos": ("fre_remuneracao",),
     "trocas_de_auditor": ("auditores",),
+    "controladas_primeiro_fre": ("controladas",),
 }
 
 # tabela montada de várias tabelas, sem fonte própria que marque o prazo (a de origem é que vale)

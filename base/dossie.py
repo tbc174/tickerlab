@@ -127,7 +127,7 @@ def e_do_cnpj(nome_da_tabela: str) -> bool:
 # teste que cobra: tabela nova de `FICAM_EM_CASA` que a consulta libera tem de vir para cá.
 FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "scr_credito", "ons_geracao", "comex_preco_medio", "fidc_informe", "processos_partes",
-    "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "auditores",
+    "anatel_acessos", "ifdata_cadastro", "carteiras_bloco_8", "controladas", "controladas_primeiro_fre", "auditores",
     "ofertas_antigas", "trocas_de_auditor", "ofertas_resolucao_160", "ma_datas", "ma_regua",
     "ofertas_cnpj_dos_devedores",  # linha 1034: CNPJ de empresa tirado do texto dos devedores; fechada como a irmã
     # lote 1 das 300 pelo CNPJ (linha 904): vai ao VPS só no degrau 6 do recorte, com o pode da Diretoria, e segue
@@ -147,6 +147,12 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "anp_tancagem",
     # conferência de 19/11: SICAF e Banco de Preços em Saúde; em casa até o pode do envio
     "comprasgov_sicaf", "bps_compras",
+    # linha 770: planos de saúde da ANS pelo CNPJ da operadora; em casa até o pode do envio
+    "ans_produtos",
+    # linha 1075 (estados, lote 1): contratos, sanções e fornecedores do SIGA do RJ; em casa até o pode do envio
+    "rj_contratos", "rj_sancoes_fornecedores", "rj_fornecedores",
+    # linha 1075, PR 2: compras diretas do RJ e contratos e empenhos do ES
+    "rj_compras_diretas", "es_contratos", "es_empenhos",
 })  # fmt: skip
 
 

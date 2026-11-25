@@ -434,7 +434,7 @@ _COMPRADORES_DO_SETOR = Ferramenta(
         "Quem já se mexeu num setor (CNAE, na UF se dada) nos últimos `anos`, como era no dia: as\n"
         "empresas que entraram como sócias de empresas ativas do setor, os fundos (FIP) sócios delas e as companhias\n"
         "abertas com controlada ou coligada no setor. Cada comprador traz os sinais e até 5 exemplos por sinal, com\n"
-        "fonte e data, na ordem do número de sinais. Serve para a lista de quem compraria uma empresa do setor.\n"
+        "fonte e data, na ordem do número de entradas como sócia e, depois, do de sinais. Serve para a lista de quem compraria uma empresa do setor.\n"
         "Fonte: quadro de sócios da Receita Federal (só sócio pessoa jurídica); registro de fundos e FRE da CVM.\n"
         "Não traz: sócio pessoa física, nem intenção de compra: é movimento passado, como dizem os `limits`."
     ),

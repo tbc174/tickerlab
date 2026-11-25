@@ -2,7 +2,7 @@
 
 import json
 
-from base import contrato
+from base import contrato, tempo
 from base.dicionario import TABELAS
 from base.tempo import (
     A_CONFERIR,
@@ -59,7 +59,8 @@ def test_os_sinonimos_citados_na_d6_apontam_para_o_nome_da_d6():
     achados = {}
     for nome, tabela in TABELAS.items():
         for coluna, canonico in sinonimos_de_tempo(tabela, nome).items():
-            if coluna in esperado:
+            # a exceção por tabela é de propósito (o mesmo nome com outro sentido, `base/tempo.py`)
+            if coluna in esperado and (nome, coluna) not in tempo._POR_TABELA:
                 achados[coluna] = canonico
                 assert canonico == esperado[coluna], coluna
     assert achados.keys() == esperado.keys()

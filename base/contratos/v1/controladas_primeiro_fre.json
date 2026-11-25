@@ -1,0 +1,69 @@
+{
+  "tabela": "controladas_primeiro_fre",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj_companhia": {
+      "descricao": "CNPJ da companhia que informou o FRE (14 dígitos)",
+      "unidade": "texto"
+    },
+    "raiz_da_controlada": {
+      "descricao": "Raiz do CNPJ da sociedade (8 dígitos): a chave do par, igual para as filiais",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da sociedade como veio no primeiro FRE em que o par aparece (14 dígitos)",
+      "unidade": "texto"
+    },
+    "primeiro_ano_no_fre": {
+      "descricao": "Ano da referência do primeiro FRE em que o par aparece (o par 'aparece no FRE desde' esse ano)",
+      "unidade": "ano"
+    },
+    "referencia": {
+      "descricao": "Referência (fim do exercício) do primeiro FRE em que o par aparece; pode ser futura",
+      "unidade": "data (dia)"
+    },
+    "conhecido_em": {
+      "descricao": "Data em que a CVM recebeu o primeiro FRE em que o par aparece: quando o par ficou público",
+      "unidade": "data (dia)"
+    },
+    "tipo_no_primeiro_fre": {
+      "descricao": "controlada, coligada ou vazio (o FRE novo deixa em branco)",
+      "unidade": "texto"
+    },
+    "fre_anterior_sem_o_par": {
+      "descricao": "Verdadeiro: a companhia já tinha entregue um FRE mais antigo sem o par; falso: o par já estava no primeiro FRE que a base vê dela",
+      "unidade": "verdadeiro ou falso"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj_companhia",
+    "raiz_da_controlada"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em",
+    "coletado_em": "montado_em"
+  },
+  "sinonimos_de_tempo": {
+    "referencia": "referencia",
+    "conhecido_em": "publico_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
+  "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; o par vale a partir de `conhecido_em`"
+}

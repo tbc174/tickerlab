@@ -60,6 +60,9 @@ class Formato:
     guardadas: tuple[
         str, ...
     ]  # colunas que ficam (em minúsculas); o nome do credor nunca
+    codificacao: str = CODIFICACAO  # o SIGA do RJ publica em Latin-1
+    # só os CSVs cujo nome casa (o pacote do ES junta contratos, empenhos, aditivos e comissões); vazio: todos
+    arquivos: str = ""
 
 
 # Pernambuco: `cnpj` e `cpf` são colunas separadas (a de CPF fica vazia nas linhas de empresa); o nome
@@ -117,7 +120,7 @@ def filtrar_csv(origem: IO[bytes], destino: IO[bytes], formato: Formato) -> int:
     """
     csv.field_size_limit(LIMITE_DO_CAMPO)
     leitor = csv.reader(
-        io.TextIOWrapper(origem, encoding=CODIFICACAO, newline=""),
+        io.TextIOWrapper(origem, encoding=formato.codificacao, newline=""),
         delimiter=SEPARADOR_DA_FONTE,
     )
     saida = io.TextIOWrapper(destino, encoding="utf-8", newline="")
@@ -179,9 +182,14 @@ def descobrir_em(cliente: Cliente, formato: Formato) -> list[Alvo]:
     endereco_da_pagina = f"{formato.portal}/dataset/{formato.pacote}"
     pagina = cliente.ler(endereco_da_pagina).conteudo.decode("utf-8", errors="replace")
     resolvidos = (urljoin(endereco_da_pagina, h) for h in CSV_DO_PORTAL.findall(pagina))
-    enderecos = list(
-        dict.fromkeys(e for e in resolvidos if e.startswith(f"{formato.portal}/"))
+    do_portal = (e for e in resolvidos if e.startswith(f"{formato.portal}/"))
+    escolhidos = (
+        e
+        for e in do_portal
+        if not formato.arquivos
+        or re.fullmatch(formato.arquivos, e.rsplit("/", 1)[-1], re.IGNORECASE)
     )
+    enderecos = list(dict.fromkeys(escolhidos))
     if not enderecos:
         raise ErroDeDescoberta(f"{formato.pacote}: nenhum CSV na página do conjunto")
     return [alvo_do_csv(e, formato) for e in enderecos]

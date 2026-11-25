@@ -213,8 +213,10 @@ def _colunas(arquivo: Path) -> list[str]:
 # --- a lista e o degrau ----------------------------------------------------------------------------
 
 
-def test_os_cadastros_sao_os_cinco_do_comando_da_montagem_e_as_sancoes_da_cgu():
-    assert set(recorte.CADASTROS) == {*carga_cadastros.MODULOS, recorte.SANCOES}
+def test_os_cadastros_sao_os_do_comando_da_montagem_e_as_sancoes_da_cgu():
+    # `ans_produtos` (linha 770) fica em casa até o "pode" do envio ao VPS: não tem cópia reduzida
+    do_comando = set(carga_cadastros.MODULOS) - {"ans_produtos"}
+    assert set(recorte.CADASTROS) == {*do_comando, recorte.SANCOES}
 
 
 def test_as_colunas_que_saem_existem_e_nenhuma_e_de_nome_ou_texto_livre():

@@ -276,6 +276,9 @@ _REGULADORES_PLANEJADAS = {
     "aneel-inadimplencia": _tabela("aneel_inadimplencia"),
     # das pastas da ANS no lote, as penalidades e o IDSS viram tabela; o resto (sem CNPJ) segue só no acervo
     "ans-qualidade": _tabela("ans_penalidades", "ans_idss"),
+    # linha 770: das três pastas da ANS que o lote guarda, as características dos planos viram tabela, ligada
+    # ao CNPJ pelo registro da operadora; taxa de cobertura e produtos e prestadores seguem só no acervo
+    "ans-cobertura-e-produtos": _tabela("ans_produtos"),
 }
 
 # o que o Research vai usar: macro fiscal (RTN, receitas e despesas da União) e dividendos das estatais
@@ -463,6 +466,13 @@ DESTINOS: dict[str, Destino] = {
     ),  # incentivo estadual (linha 578)
     "sefazpe-ordem-cronologica": _tabela("sefaz_pe_ordem_cronologica"),
     "esdados-ordem-cronologica": _tabela("es_ordem_cronologica"),
+    # linha 1075: contratos, sanções e fornecedores do SIGA do RJ
+    "govrj-contratos": _tabela("rj_contratos"),
+    "govrj-sancoes": _tabela("rj_sancoes_fornecedores"),
+    "govrj-fornecedores": _tabela("rj_fornecedores"),
+    "govrj-compras-diretas": _tabela("rj_compras_diretas"),
+    "esdados-contratos": _tabela("es_contratos"),
+    "esdados-empenhos": _tabela("es_empenhos"),
     "sefapr-divida-ativa": _tabela(
         "sefa_pr_divida_ativa"
     ),  # dívida ativa do Paraná (linha 755)
