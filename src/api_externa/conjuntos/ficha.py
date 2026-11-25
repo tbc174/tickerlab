@@ -49,6 +49,7 @@ from src.api_externa.conjuntos import Permitido, empresas
 from src.api_externa.conjuntos.empresas import LeitorDeEmpresas
 from src.api_externa.envelope import campo
 from src.api_externa.nomes import NOMES_DE_FORA
+from src.api_externa.porta_compartilhada import lembrar
 
 CONJUNTO = "profiles"
 TABELA_DAS_ENTREGAS = "rotulos_atraso"
@@ -240,6 +241,11 @@ def entrega_no_dia(
     return valores, pd.Timestamp(linha["prazo"])
 
 
+def chave_do_retrato_do_estabelecimento(como_era_em: date) -> tuple[str, str]:
+    """A chave, na memória da porta dona, do mês do estabelecimento num dia: só o dia, nada de quem pede."""
+    return ("retrato_do_estabelecimento", dia_de(como_era_em))
+
+
 class LeitorDeFicha:
     """Lê o perfil de uma empresa de uma porta para um pedido."""
 
@@ -273,7 +279,17 @@ class LeitorDeFicha:
         return (servidos, fonte) if servidos else None
 
     def _retrato_do_estabelecimento(self, como_era_em: date) -> str | None:
-        """O mês do retrato mais novo da lista de estabelecimentos já público no dia; None sem a lista."""
+        """O mês do retrato mais novo da lista de estabelecimentos já público no dia; None sem a lista.
+
+        O `max` varre a lista inteira (no PC, em meia CPU, 1 a 4 s por análise): o mês de cada dia fica lembrado
+        enquanto a base é a mesma, com o dia na chave, para nunca responder a outro dia (linha 1015, item f)."""
+        return lembrar(
+            self.porta,
+            chave_do_retrato_do_estabelecimento(como_era_em),
+            lambda: self._ler_o_retrato_do_estabelecimento(como_era_em),
+        )
+
+    def _ler_o_retrato_do_estabelecimento(self, como_era_em: date) -> str | None:
         con = self.porta.con
         if TABELA_DO_ESTABELECIMENTO not in views(con):
             return None

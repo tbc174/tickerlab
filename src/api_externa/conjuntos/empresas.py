@@ -271,9 +271,26 @@ def retratos_de_empresa(
     }
 
 
+# a chave do mês das duas listas na memória da porta dona: nada do pedido (nem CNPJ, nem dia, nem quem pede); a
+# memória é da porta, e arquivo novo ou trocado abre outra porta, com outra memória (`porta_compartilhada`)
+CHAVE_DO_RETRATO_DAS_DUAS_LISTAS = ("retrato_das_duas_listas",)
+
+
 def _retrato_das_duas_listas(porta: Porta) -> str | None:
     """O mês mais novo, se é o mesmo nas duas listas; senão None (uma lista de outro mês não tira o MEI
-    nem a pessoa daquele mês)."""
+    nem a pessoa daquele mês).
+
+    São duas varreduras inteiras das listas (no PC, em meia CPU, 3 a 4 s de cada análise de empresa fechada): o
+    mês fica lembrado enquanto a base é a mesma (linha 1015, item f). Ele não depende do dia do pedido: a trava
+    do "é empresa" usa sempre o retrato mais novo, e por isso o dia não entra na chave (há teste)."""
+    return lembrar(
+        porta,
+        CHAVE_DO_RETRATO_DAS_DUAS_LISTAS,
+        lambda: _ler_o_retrato_das_duas_listas(porta),
+    )
+
+
+def _ler_o_retrato_das_duas_listas(porta: Porta) -> str | None:
     meses = {
         porta.con.execute(f"SELECT max({MES}) FROM {_view(tabela)}").fetchone()
         for tabela in (LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS)

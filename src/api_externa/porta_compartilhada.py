@@ -97,9 +97,28 @@ _NADA = object()  # o que `lembrar` lê quando a chave não está na memória
 MEMORIA_MAXIMA = 256  # entradas por porta dona: o dia da pergunta (`known_at`) varia de pedido para pedido
 
 
+# Uma trava por chave em cálculo: os pedidos que chegam juntos com a memória fria esperam o primeiro em vez de
+# varrer a base cada um (três análises frias em meia CPU faziam três vezes as mesmas varreduras, linha 1015, item
+# f). Quem espera relê a memória da própria porta: a trava de uma porta velha e de uma nova com a mesma chave só
+# põe uma depois da outra.
+_TRAVAS_EM_USO = threading.Lock()
+_TRAVAS: dict[object, threading.Lock] = {}
+
+
+def _trava_da(chave: object) -> threading.Lock:
+    with _TRAVAS_EM_USO:
+        if len(_TRAVAS) >= MEMORIA_MAXIMA and chave not in _TRAVAS:
+            # o dia variado de quem pede não pode crescer a lista sem fim; quem já tem a trava velha termina com
+            # ela, e o pior caso é um cálculo a mais, nunca uma resposta trocada
+            _TRAVAS.clear()
+        return _TRAVAS.setdefault(chave, threading.Lock())
+
+
 def lembrar[T](porta: Porta, chave: object, calcular: Callable[[], T]) -> T:
     """O resultado de uma consulta que só depende dos arquivos da base, guardado enquanto a porta dona vive (a
-    base mudou → porta nova → memória nova). Porta que não é de pedido (os testes) calcula sempre."""
+    base mudou → porta nova → memória nova). Porta que não é de pedido (os testes) calcula sempre. Com a memória
+    fria, os pedidos da mesma chave esperam o primeiro calcular; se o cálculo dele falha (o prazo interrompeu a
+    consulta), nada fica guardado e o seguinte calcula."""
     memoria = getattr(porta, "memoria_da_base", None)
     if memoria is None:
         return calcular()
@@ -107,7 +126,16 @@ def lembrar[T](porta: Porta, chave: object, calcular: Callable[[], T]) -> T:
     valor = memoria.get(chave, _NADA)
     if valor is not _NADA:
         return valor
-    valor = calcular()
+    with _trava_da(chave):
+        valor = memoria.get(chave, _NADA)  # quem esperou acha o que o primeiro calculou
+        if valor is not _NADA:
+            return valor
+        valor = calcular()
+        _guardar(memoria, chave, valor)
+    return valor  # não relê: outro pedido pode ter esvaziado a memória cheia entre as duas linhas
+
+
+def _guardar(memoria: dict[Any, Any], chave: object, valor: object) -> None:
     if len(memoria) >= MEMORIA_MAXIMA:
         # as tabelas e as colunas da porta (uma entrada só, do tamanho da base) ficam: o dia variado de quem pede
         # não pode expulsá-las e fazer cada pedido perguntar tudo de novo
@@ -116,7 +144,6 @@ def lembrar[T](porta: Porta, chave: object, calcular: Callable[[], T]) -> T:
         if metadados is not None:
             memoria[METADADOS] = metadados
     memoria[chave] = valor
-    return valor  # não relê: outro pedido pode ter esvaziado a memória cheia entre as duas linhas
 
 
 def zerar() -> None:
