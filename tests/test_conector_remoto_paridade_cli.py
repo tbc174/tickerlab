@@ -128,6 +128,12 @@ CASOS = [
         {"cnpj": CNPJ, "como_era_em": UM_DIA},
         id="credito",
     ),
+    pytest.param(
+        ["registros", CNPJ, "--como-era", UM_DIA],
+        "registros_nas_agencias",
+        {"cnpj": CNPJ, "como_era_em": UM_DIA},
+        id="registros",
+    ),
     pytest.param(["catalogo"], "o_que_posso_ver", {}, id="catalogo"),
     pytest.param(["de-onde-vem", "credit"], "de_onde_vem", {"sobre": "credit"}, id="de_onde_vem"),
     pytest.param(["consumo"], "o_que_posso_ver", {}, id="consumo"),
