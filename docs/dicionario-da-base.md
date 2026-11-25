@@ -4253,7 +4253,7 @@ Penalidades que os órgãos do governo do Rio de Janeiro aplicaram a fornecedore
 
 | Coluna | O que é | Unidade |
 |---|---|---|
-| `id_na_fonte` | CNPJ, órgão, contrato, enquadramento, dia da efetivação, motivo e situação juntos por `|` | texto |
+| `id_na_fonte` | CNPJ, órgão, contrato, enquadramento, dia da efetivação e motivo juntos por `|` | texto |
 | `arquivo` | O arquivo da fonte de onde a linha veio (o nome, sem a extensão) | texto |
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
@@ -4559,6 +4559,60 @@ Preços máximos de medicamentos da CMED por apresentação (CNPJ + código GGRE
 | `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
 | `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
 | `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a lista não diz desde quando vale cada preço) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `ans_produtos`
+
+Planos de saúde registrados na ANS, um por `ID_PLANO`: segmentação, cobertura, abrangência, contratação, financiamento, fator moderador, acomodação e situação, ligados ao CNPJ da operadora pelo registro dela em `ans_operadoras` (nunca pelo nome). O nome da operadora não é repetido aqui, e a data de atualização do arquivo, igual em todas as linhas, também não. Operadora sem linha na ponte, que seja pessoa ou que já tenha saído do cadastro deixa o `cnpj` vazio. Uma linha por valor diferente de cada registro: a mudança vira linha nova que só vale desde o dia em que foi vista, e o registro que some do arquivo ganha uma linha com `consta` falso (`base/setoriais/revisoes.py::como_era_em` dá o retrato de qualquer dia). Só CNPJ inteiro de dígito certo (ADR 0075): CPF e documento que não fecha o dígito nunca entram, nem o nome de pessoa física; empresário individual e MEI ficam com `trata_como_pessoa`. Arquivo com menos da metade dos registros do anterior é pulado: é arquivo cortado da fonte, não registro que acabou.
+
+- **Fonte:** ANS: dados abertos, características dos produtos de saúde suplementar (PDA 008) (`base/ans_produtos.py`)
+- **Licença:** CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a ANS recarrega o arquivo inteiro; o arquivista guarda só o que mudou)
+- **Atraso de divulgação:** A fonte publica o estado de hoje e não diz desde quando publica cada plano: a linha vale desde o dia do arquivo em que o arquivista a viu pela primeira vez, mesmo com `registrado_em` mais antigo (o conservador; a história guardada começa em 25/10/2026, no 1º arquivo guardado). Uma mudança vale desde o dia do arquivo em que apareceu.
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `registrado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ans_produtos/planos.parquet` (servidor de casa, `base/cadastros_em_retrato.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | O `ID_PLANO` da ANS, único no arquivo | texto |
+| `cnpj` | CNPJ da operadora do plano, pelo registro dela em `ans_operadoras` (a linha da ponte que já era pública no dia em que o plano ficou público); vazio quando a ponte não tem o registro | texto |
+| `cnpj_basico` | Raiz do CNPJ da operadora (8 caracteres); vazia quando o `cnpj` é | texto |
+| `codigo_do_plano` | Código do plano (`CD_PLANO`), como a ANS escreve | texto |
+| `nome_do_plano` | Nome comercial do plano, como a ANS escreve | texto |
+| `registro_da_operadora` | Registro da operadora na ANS (`REGISTRO_OPERADORA`): a chave que liga o plano ao CNPJ pela ponte `ans_operadoras` | texto |
+| `modalidade_da_operadora` | Modalidade da operadora (Medicina de Grupo, Cooperativa Médica...) | texto |
+| `porte_da_operadora` | Porte da operadora pelo número de beneficiários, como a ANS escreve | texto |
+| `vigencia_do_plano` | Vigência do plano, como a ANS escreve (`P` ou `A`); todo `A` vem sem data de registro | texto |
+| `contratacao` | Tipo de contratação, como a ANS escreve | texto |
+| `grupo_de_contratacao` | Contratação agrupada (individual, coletivo empresarial, coletivo por adesão) | texto |
+| `segmentacao_assistencial` | Segmentação assistencial do plano | texto |
+| `grupo_de_segmentacao` | Segmentação agrupada (ambulatorial, hospitalar, ambos, odontológico) | texto |
+| `odontologico` | Verdadeiro quando o plano é odontológico (`LG_ODONTOLOGICO`) | verdadeiro ou falso |
+| `obstetricia` | Se o plano cobre obstetrícia | texto |
+| `cobertura` | Tipo de cobertura (médico-hospitalar, odontológica) | texto |
+| `tipo_de_financiamento` | Financiamento (preestabelecido, pós-estabelecido, misto) | texto |
+| `abrangencia` | Abrangência geográfica da cobertura (municipal, grupo de municípios, estadual...) | texto |
+| `id_da_cobertura_geografica` | Código (hash) da lista de municípios da cobertura, que a ANS publica em outro arquivo; vazio em parte dos planos | texto |
+| `fator_moderador` | Fator moderador (ausente, coparticipação, franquia) | texto |
+| `acomodacao_hospitalar` | Acomodação hospitalar (individual, coletiva) | texto |
+| `livre_escolha` | Livre escolha de prestadores (ausente, total, parcial) | texto |
+| `situacao_do_plano` | Situação do plano (ativo, suspenso, cancelado, transferido) | texto |
+| `situacao_desde` | Data em que o plano ficou na situação atual, como a ANS informa | data (dia) |
+| `registrado_em` | Data do registro do plano na ANS; vazia nos planos de vigência `A` | data (dia) |
+| `consta` | Verdadeiro enquanto o registro está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075); sem CNPJ, falso | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que o plano apareceu, ou em que a mudança apareceu (nunca a data do registro do plano) | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

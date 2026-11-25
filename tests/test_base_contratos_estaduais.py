@@ -208,7 +208,7 @@ def test_sancao_que_some_ganha_consta_falso_e_a_nova_so_vale_desde_que_apareceu(
 def test_sancoes_que_so_diferem_no_motivo_sao_penalidades_diferentes(
     banco, tmp_path, monkeypatch
 ):
-    """No arquivo real, três penalidades só se distinguiam pelo motivo ou pela situação: nenhuma some."""
+    """No arquivo real, três penalidades só se distinguiam pelo motivo: nenhuma some."""
     monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     outro_motivo = {**_sancao(), "motivo": "Atraso na entrega"}
     _guardar(
@@ -216,16 +216,35 @@ def test_sancoes_que_so_diferem_no_motivo_sao_penalidades_diferentes(
         ce.RJ_SANCOES,
         "FORNECEDOR_SANCOES.CSV",
         PRIMEIRO_DIA,
-        [_sancao(), outro_motivo, _sancao(situacao="Encerrada"), _sancao()],
+        [_sancao(), outro_motivo, _sancao()],
     )
     resumo = _montar(banco, tmp_path)["rj_sancoes_fornecedores/fornecedor_sancoes"]
     assert resumo["id_repetido"] == 1  # só a cópia idêntica
     tabela = _tabela(tmp_path, ce.RJ_SANCOES, "fornecedor_sancoes")
-    assert sorted(zip(tabela["motivo"], tabela["situacao"], strict=True)) == [
-        ("Atraso na entrega", "Vigente"),
-        ("Inexecução parcial", "Encerrada"),
-        ("Inexecução parcial", "Vigente"),
-    ]
+    assert sorted(tabela["motivo"]) == ["Atraso na entrega", "Inexecução parcial"]
+
+
+def test_sancao_que_muda_de_situacao_e_versao_nova_da_mesma_penalidade(
+    banco, tmp_path, monkeypatch
+):
+    """Vigente → Encerrada não é "o estado tirou uma e pôs outra": é a mesma penalidade, desde o dia novo."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    arquivo = "FORNECEDOR_SANCOES.CSV"
+    _guardar(banco, ce.RJ_SANCOES, arquivo, PRIMEIRO_DIA, [_sancao(), _sancao(OUTRA)])
+    _guardar(
+        banco,
+        ce.RJ_SANCOES,
+        arquivo,
+        SEGUNDO_DIA,
+        [_sancao(situacao="Encerrada"), _sancao(OUTRA)],
+    )
+    _montar(banco, tmp_path)
+    tabela = _tabela(tmp_path, ce.RJ_SANCOES, "fornecedor_sancoes")
+    da_empresa = tabela[tabela["cnpj_basico"] == EMPRESA[:8]].sort_values("visto_em")
+    assert da_empresa["id_na_fonte"].nunique() == 1
+    assert da_empresa["situacao"].tolist() == ["Vigente", "Encerrada"]
+    assert da_empresa["consta"].tolist() == [True, True]
+    assert da_empresa["disponivel_em"].tolist() == [PRIMEIRO_DIA, SEGUNDO_DIA]
 
 
 def test_fornecedores_um_por_cnpj_com_mei_marcado_como_pessoa(

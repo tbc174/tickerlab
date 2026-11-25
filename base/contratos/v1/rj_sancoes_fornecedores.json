@@ -5,7 +5,7 @@
   "versao": "1.0.0",
   "colunas": {
     "id_na_fonte": {
-      "descricao": "CNPJ, órgão, contrato, enquadramento, dia da efetivação, motivo e situação juntos por `|`",
+      "descricao": "CNPJ, órgão, contrato, enquadramento, dia da efetivação e motivo juntos por `|`",
       "unidade": "texto"
     },
     "arquivo": {

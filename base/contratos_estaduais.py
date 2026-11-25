@@ -139,8 +139,9 @@ RJ_SANCOES = Tabela(
         "situacao": "status da penalidade",
         "efetivada_em": "data de efetivação",
     },
-    # o motivo e a situação entram: no arquivo de 25/11/2026 três penalidades do mesmo órgão, contrato,
-    # enquadramento e dia só se distinguiam por eles (revisão cruzada do #1316)
+    # o motivo entra: no arquivo de 25/11/2026 três penalidades do mesmo órgão, contrato, enquadramento e
+    # dia só se distinguiam por ele (revisão cruzada do #1316); a situação fica fora da chave, para que
+    # "Vigente" → "Encerrada" seja versão nova da mesma penalidade, não uma que sumiu (revisão de segurança)
     chave=(
         "cnpj",
         "orgao_apenador",
@@ -148,7 +149,6 @@ RJ_SANCOES = Tabela(
         "enquadramento_legal",
         "efetivada_em",
         "motivo",
-        "situacao",
     ),
     datas=("efetivada_em",),
 )

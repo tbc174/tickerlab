@@ -643,6 +643,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "patentes, desenhos e programas de computador no INPI.",
         (
             "ans_operadoras",
+            "ans_produtos",
             "susep_cadastro",
             "anvisa_registros",
             "anvisa_por_empresa",
