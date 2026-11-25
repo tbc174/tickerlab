@@ -520,18 +520,18 @@ def _local(registro: pd.Series, uf: pd.Series, municipio: pd.Series) -> pd.Serie
     )
 
 
-def registros_do_mapa(diretos: Iterable[pd.DataFrame]) -> RegistrosDoMapa:
-    """Os registros que os retratos já lidos de CNPJ inteiro (`ler_retrato`) trazem.
-
-    O mesmo número de registro com CNPJs diferentes (nos dois arquivos, ou no mesmo) vira `ambiguo`:
-    o registro identifica um estabelecimento, e se não identifica um só, nenhum lado vale."""
+def _registros_juntos(diretos: Iterable[pd.DataFrame]) -> pd.DataFrame:
+    """As linhas com registro e CNPJ dos retratos já lidos de CNPJ inteiro, com o CNPJ de 14 caracteres."""
     juntos = pd.concat(
         [d[["registro", "cnpj", "cnpj_basico", "uf", "municipio"]] for d in diretos],
         ignore_index=True,
     ).dropna(subset=["registro", "cnpj"])
+    return juntos.assign(cnpj=juntos["cnpj"].map(cnpjs.completo))
+
+
+def _mapa_dos_registros(juntos: pd.DataFrame) -> RegistrosDoMapa:
     if juntos.empty:
         return SEM_REGISTROS
-    juntos = juntos.assign(cnpj=juntos["cnpj"].map(cnpjs.completo))
     por_registro = juntos.groupby("registro").agg(
         cnpj=("cnpj", "first"),
         cnpj_basico=("cnpj_basico", "first"),
@@ -539,6 +539,29 @@ def registros_do_mapa(diretos: Iterable[pd.DataFrame]) -> RegistrosDoMapa:
     )
     locais = _local(juntos["registro"], juntos["uf"], juntos["municipio"])
     return RegistrosDoMapa(por_registro, frozenset(locais))
+
+
+def registros_do_mapa(
+    diretos: Iterable[pd.DataFrame],
+    anteriores: Iterable[Iterable[pd.DataFrame]] = (),
+) -> RegistrosDoMapa:
+    """Os registros que os retratos já lidos de CNPJ inteiro (`ler_retrato`) trazem.
+
+    O mesmo número de registro com CNPJs diferentes (nos dois arquivos, ou no mesmo) vira `ambiguo`:
+    o registro identifica um estabelecimento, e se não identifica um só, nenhum lado vale.
+
+    `anteriores`: retratos mais velhos dos mesmos arquivos, do mais novo para o mais velho. O registro
+    identifica o estabelecimento para sempre: o que sumiu do retrato atual mas já foi provado antes
+    continua valendo (a linha mascarada, que continua no arquivo dela, não deixa de constar). O registro
+    que o retrato atual traz, esse, vale pelo atual (inclusive o ambíguo)."""
+    juntos = _registros_juntos(diretos)
+    for antigos in anteriores:
+        velhos = _registros_juntos(antigos)
+        juntos = pd.concat(
+            [juntos, velhos[~velhos["registro"].isin(juntos["registro"])]],
+            ignore_index=True,
+        )
+    return _mapa_dos_registros(juntos)
 
 
 def _ligar_pelo_registro(
@@ -763,7 +786,9 @@ class _LeitorComRegistros:
             for nome in DIRETOS_DO_SIPEAGRO
         }
         self._lidos: dict[Path, pd.DataFrame] = {}
-        self._registros: dict[tuple[tuple[str, Path], ...], RegistrosDoMapa] = {}
+        self._registros: dict[
+            tuple[tuple[tuple[str, Path], ...], ...], RegistrosDoMapa
+        ] = {}
 
     def __call__(
         self, caminho: Path, cadastro: Cadastro
@@ -773,19 +798,26 @@ class _LeitorComRegistros:
         return ler_retrato(caminho, cadastro, self._registros_em(self._dia_de[caminho]))
 
     def _registros_em(self, dia: date) -> RegistrosDoMapa:
-        """Os registros do retrato mais novo de cada arquivo de CNPJ inteiro baixado até o `dia`."""
-        escolhidos = tuple(
-            (nome, ate_o_dia[-1].caminho)
+        """Os registros do retrato mais novo de cada arquivo de CNPJ inteiro baixado até o `dia`, e,
+        para o registro que sumiu dele, o dos retratos mais velhos (do mais novo para o mais velho)."""
+        ate_o_dia = {
+            nome: [r.caminho for r in retratos if r.dia <= dia][::-1]
             for nome, retratos in self._diretos.items()
-            if (ate_o_dia := [r for r in retratos if r.dia <= dia])
-        )
-        if escolhidos not in self._registros:
-            self._registros[escolhidos] = (
-                registros_do_mapa(self._ler_direto(n, c) for n, c in escolhidos)
-                if escolhidos
-                else SEM_REGISTROS
+        }
+        camadas = tuple(
+            tuple(
+                (nome, caminhos[posicao])
+                for nome, caminhos in ate_o_dia.items()
+                if posicao < len(caminhos)
             )
-        return self._registros[escolhidos]
+            for posicao in range(max(map(len, ate_o_dia.values()), default=0))
+        )
+        if camadas not in self._registros:
+            lidas = [[self._ler_direto(n, c) for n, c in camada] for camada in camadas]
+            self._registros[camadas] = (
+                registros_do_mapa(lidas[0], lidas[1:]) if lidas else SEM_REGISTROS
+            )
+        return self._registros[camadas]
 
     def _ler_direto(self, nome: str, caminho: Path) -> pd.DataFrame:
         if caminho not in self._lidos:

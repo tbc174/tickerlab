@@ -871,3 +871,35 @@ def test_so_a_tabela_do_sipeagro_tem_a_coluna_de_como_o_cnpj_foi_obtido(
     )
     _montar_sipeagro(banco, tmp_path, monkeypatch)
     assert "cnpj_ligado_por" not in _tabela(tmp_path, "rntrc").columns
+
+
+def test_registro_que_sai_do_arquivo_de_cnpj_inteiro_mantem_o_cnpj_ja_provado(
+    banco, tmp_path, monkeypatch
+):
+    """O registro identifica o estabelecimento para sempre: se ele some do arquivo de CNPJ inteiro
+    num retrato seguinte, a linha mascarada, que continua no arquivo dela, não ganha `consta=False`."""
+    _coletar_sipeagro(banco, URL_DO_VETERINARIO, [_veterinario(EMPRESA)], PRIMEIRO_DIA)
+    _coletar_sipeagro(
+        banco, URL_DE_FERTILIZANTES, [_fertilizante(_mascara(EMPRESA))], PRIMEIRO_DIA
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DO_VETERINARIO,
+        [_veterinario(OUTRA, registro=OUTRO_REGISTRO)],
+        SEGUNDO_DIA,
+    )
+    _coletar_sipeagro(
+        banco,
+        URL_DE_FERTILIZANTES,
+        [
+            _fertilizante(_mascara(EMPRESA)),
+            _fertilizante(_mascara(OUTRA), registro=OUTRO_REGISTRO),
+        ],
+        SEGUNDO_DIA,
+    )
+    _montar_sipeagro(banco, tmp_path, monkeypatch)
+    tabela = _tabela(tmp_path, "fertilizante")
+    do_registro = tabela[tabela["registro"] == REGISTRO]
+    assert do_registro["consta"].tolist() == [True]
+    assert do_registro["cnpj"].tolist() == [cnpjs.formatar(EMPRESA)]
+    assert set(tabela["registro"]) == {REGISTRO, OUTRO_REGISTRO}
