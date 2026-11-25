@@ -162,6 +162,26 @@
   {
     "api": {
       "nomes": [
+        "GET /companies/{cnpj}/registrations"
+      ]
+    },
+    "chave": "registros",
+    "cli": {
+      "nomes": [
+        "tickerlab registros"
+      ]
+    },
+    "conector": {
+      "nomes": [
+        "registros_nas_agencias"
+      ]
+    },
+    "nome": "Registros nas agências reguladoras",
+    "resumo": "os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
+  },
+  {
+    "api": {
+      "nomes": [
         "GET /buyers"
       ]
     },
