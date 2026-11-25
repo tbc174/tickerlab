@@ -60,6 +60,7 @@ class Formato:
     guardadas: tuple[
         str, ...
     ]  # colunas que ficam (em minúsculas); o nome do credor nunca
+    codificacao: str = CODIFICACAO  # o SIGA do RJ publica em Latin-1
 
 
 # Pernambuco: `cnpj` e `cpf` são colunas separadas (a de CPF fica vazia nas linhas de empresa); o nome
@@ -117,7 +118,7 @@ def filtrar_csv(origem: IO[bytes], destino: IO[bytes], formato: Formato) -> int:
     """
     csv.field_size_limit(LIMITE_DO_CAMPO)
     leitor = csv.reader(
-        io.TextIOWrapper(origem, encoding=CODIFICACAO, newline=""),
+        io.TextIOWrapper(origem, encoding=formato.codificacao, newline=""),
         delimiter=SEPARADOR_DA_FONTE,
     )
     saida = io.TextIOWrapper(destino, encoding="utf-8", newline="")

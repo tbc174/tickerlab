@@ -62,6 +62,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"SEFAZ-PE \(citar", "SEFAZ-PE"),
     (r"Sefa-PR, dívida", "Sefa-PR"),
     (r"Governo do ES \(citar", "Governo do ES"),
+    (r"SIGA do Governo do RJ", "Governo do RJ"),  # linha 1075
     (r"SEF-MG, dívida", "SEF-MG"),
     (r"TCE-SP:", "TCE-SP"),
     (r"TCE-CE:", "TCE-CE"),
@@ -610,7 +611,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "riscos",
         "Dívida, sanções e processos",
-        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de "
+        "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU e pelo governo do Rio de Janeiro, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de "
         "empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação "
         "lidas dos documentos que a companhia entrega à CVM, processos "
         "judiciais nas comunicações do CNJ e os que a companhia cita nas notas.",
@@ -620,6 +621,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sef_mg_divida_ativa",
             "sef_mg_parcelamentos",
             "sancoes_cgu",
+            "rj_sancoes_fornecedores",
             "ans_penalidades",
             "aneel_autos_de_infracao",
             "aneel_termos_de_notificacao",
@@ -684,7 +686,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
         "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
-        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento "
+        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos e o cadastro de fornecedores do governo do Rio de Janeiro, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento "
         "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
@@ -701,6 +703,8 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "sefaz_pe_beneficios",
             "sefaz_pe_ordem_cronologica",
             "es_ordem_cronologica",
+            "rj_contratos",
+            "rj_fornecedores",
             "receita_dirbi",
             "receita_ecf_renuncia",
             "receita_transacoes_individual",

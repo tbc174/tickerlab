@@ -463,6 +463,10 @@ DESTINOS: dict[str, Destino] = {
     ),  # incentivo estadual (linha 578)
     "sefazpe-ordem-cronologica": _tabela("sefaz_pe_ordem_cronologica"),
     "esdados-ordem-cronologica": _tabela("es_ordem_cronologica"),
+    # linha 1075: contratos, sanções e fornecedores do SIGA do RJ
+    "govrj-contratos": _tabela("rj_contratos"),
+    "govrj-sancoes": _tabela("rj_sancoes_fornecedores"),
+    "govrj-fornecedores": _tabela("rj_fornecedores"),
     "sefapr-divida-ativa": _tabela(
         "sefa_pr_divida_ativa"
     ),  # dívida ativa do Paraná (linha 755)

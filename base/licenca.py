@@ -116,6 +116,7 @@ FAMILIA_DO_ENDERECO = {
     "www.dados.ms.gov.br/": "msestado",  # despesas por credor (linhas 658 e 688)
     "dados.ms.gov.br/": "msestado",
     "dados.es.gov.br/": "esdados",  # ordem cronológica de pagamentos do ES (linha 755)
+    "www.compras.rj.gov.br/siga/": "govrj",  # contratos, sanções e fornecedores do SIGA (linha 1075)
     "dados.pe.gov.br/": "sefazpe",  # benefícios fiscais da SEFAZ-PE (linha 578)
     "listadevedores.sefa.pr.gov.br/": "sefapr",  # dívida ativa do Paraná (linha 755)
     "www.fazenda.mg.gov.br/transparencia/Divida-Ativa/": "sefmg",  # dívida ativa de Minas (linha 755)

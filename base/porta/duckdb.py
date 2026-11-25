@@ -197,6 +197,10 @@ ARQUIVOS: dict[str, str] = {
     "sef_mg_parcelamentos": "sef_mg_parcelamentos/*.parquet",
     "sefaz_pe_ordem_cronologica": "sefaz_pe_ordem_cronologica/*.parquet",
     "es_ordem_cronologica": "es_ordem_cronologica/*.parquet",
+    # linha 1075: contratos, sanções e fornecedores do SIGA do RJ
+    "rj_contratos": "rj_contratos/*.parquet",
+    "rj_sancoes_fornecedores": "rj_sancoes_fornecedores/*.parquet",
+    "rj_fornecedores": "rj_fornecedores/*.parquet",
     "ratings": "ratings/*.parquet",
     "debentures_assembleias": "debentures_assembleias/*.parquet",
     "auditores": "auditores/*.parquet",
