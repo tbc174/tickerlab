@@ -1,0 +1,41 @@
+name: revisões
+
+# PR que toca área sensível só fica certo com as duas revisões escritas no corpo (AGENTS.md;
+# scripts/portao_das_revisoes.py). Fica fora do testes.yml de propósito: o "edited" refaz a checagem
+# quando o corpo muda, e lá ele reiniciaria a suíte inteira.
+# Semana de medição (Diretoria, 25/11/2026): o passo avisa e não barra; o check não é exigido na main.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: revisoes-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  revisoes:
+    name: revisões
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0 # o portão segue os commits do PR depois do commit revisado
+          persist-credentials: false
+
+      # O corpo do PR entra só por variável de ambiente: escrito direto no run, viraria comando do shell.
+      - name: Revisões de área sensível
+        id: portao
+        continue-on-error: true
+        env:
+          CORPO: ${{ github.event.pull_request.body }}
+          CABECA: ${{ github.event.pull_request.head.sha }}
+          BASE: HEAD^1 # o commit testado junta o PR à main: o 1º pai é a main
+        run: python3 -m scripts.portao_das_revisoes
+
+      - name: Aviso (semana de medição)
+        if: steps.portao.outcome == 'failure'
+        run: echo "::warning title=Revisões::PR de área sensível sem as duas revisões no formato fixo; o motivo está no resumo do job."

@@ -79,6 +79,29 @@ PROIBIDOS = (
     "tests/test_portao_do_agente.py",
 )
 
+# Do que está acima, o que não é área sensível do AGENTS.md: continua proibido ao agente, mas o portão
+# das revisões (scripts/portao_das_revisoes.py) não pede as duas revisões por isso.
+SO_DO_AGENTE = (
+    "requirements*.txt",
+    "ruff.toml",
+    "pyrightconfig.json",
+    "pytest.ini",
+    ".coveragerc",
+    "trader/*",
+    "pesquisa_m2/*",
+    "static/*",
+    "CLAUDE.md",
+    "*/CLAUDE.md",
+    "AGENTS.md",
+    "*/AGENTS.md",
+    "SECURITY.md",
+    "docs/pre-registro-*",
+    "scripts/mudou_so_texto.py",
+    "scripts/repartir_testes.py",
+    "tests/test_portao_do_agente.py",
+)
+AREAS_SENSIVEIS = tuple(padrao for padrao in PROIBIDOS if padrao not in SO_DO_AGENTE)
+
 # O que entra sozinho pelo auto-merge (escolha do Tiago em 20/10: teste e doc).
 SEM_REVISAO = (
     "tests/test_*.py",
