@@ -609,6 +609,46 @@ def test_contar_as_consultas_nao_muda_o_que_o_bloco_le(porta, blocos):
     assert montada.corpo["blocos"]["vinculos"] == {"vinculos": [{"quantas": 2}]}
 
 
+class _LeituraLenta:
+    """Uma conexão em que a consulta volta logo e o resultado demora a ser lido, como no DuckDB: o `execute`
+    devolve a própria conexão, e as linhas vêm no `df` ou no `fetchall`."""
+
+    def execute(self, _sql, _parametros=None):
+        return self
+
+    def df(self):
+        time.sleep(0.2)
+        return pd.DataFrame({"x": [1]})
+
+    def fetchall(self):
+        time.sleep(0.2)
+        return [(1,)]
+
+
+def test_o_tempo_das_consultas_conta_a_leitura_do_resultado():
+    """Pelo log de 25/11 os comparáveis pareciam CPU do Python (18 s com 3 s em consultas): o tempo era o do
+    `execute`, e a leitura das linhas (`df`), que é a parte cara, ficava de fora (linha 1015, item d)."""
+    contador = analise._Consultas(_LeituraLenta())  # type: ignore[arg-type]
+    assert contador.execute("SELECT 1").df().equals(pd.DataFrame({"x": [1]}))
+    assert contador.execute("SELECT 1").fetchall() == [(1,)]
+    assert contador.vezes == 2
+    assert (
+        contador.segundos >= 0.3
+    )  # duas leituras de 0,2 s (o relógio do Windows anda de 15 em 15 ms)
+
+
+def test_o_contador_le_do_duckdb_como_a_conexao_de_verdade(porta):
+    contador = analise._Consultas(porta.con.cursor())
+    assert contador.execute("SELECT 42 AS x").fetchone() == (42,)
+    assert contador.execute("SELECT 42 AS x").df()["x"].tolist() == [42]
+    resultado = contador.execute("SELECT * FROM range(5)")
+    lidas = 0
+    while not (lote := resultado.fetch_df_chunk()).empty:
+        lidas += len(lote)
+    assert lidas == 5
+    assert contador.vezes == 3
+
+
 def test_sem_cadastro_aberto_nao_ha_tempo_nem_log(porta, blocos, caplog):
     blocos()
     caplog.set_level("INFO", logger=analise.__name__)
