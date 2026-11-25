@@ -104,7 +104,8 @@ Meses = Callable[[], Iterator[pd.DataFrame]]
 
 
 class MesForaDoFormatoError(ValueError):
-    """Um CSV do arquivo do ano não é de um mês só, ou repete o mês de outro CSV: a leitura mês a mês não vale."""
+    """Um CSV do arquivo do ano não é de um mês só, ou repete o mês de outro CSV (a leitura mês a mês não vale),
+    ou os arquivos do ano não têm nenhum mês com linhas."""
 
 
 def ano_com_revisoes(
@@ -151,6 +152,8 @@ def _meses_do_arquivo(conteudo_do_zip: bytes) -> Iterator[pd.DataFrame]:
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         for nome in sorted(arquivo.namelist()):
             mes = _ler_mes(arquivo, nome)
+            if mes.empty:  # só o cabeçalho: em `ler_ano` também não acrescenta nada
+                continue
             datas = set(mes["data_base"].unique())
             if len(datas) != 1 or datas & vistos:
                 raise MesForaDoFormatoError(nome)
@@ -174,6 +177,8 @@ def _juntar_mes_a_mes(coletas: Sequence[tuple[pd.Timestamp, Meses]]) -> pd.DataF
             por_mes[data_base] = revisoes.acrescentar_coleta(
                 por_mes.get(data_base), dia, mes, CHAVE, carimbos=(_COLETA, _LINHA)
             )
+    if not por_mes:
+        raise MesForaDoFormatoError("nenhum mês com linhas nos arquivos do ano")
     partes = list(por_mes.values())
     por_mes.clear()
     juntas = revisoes.concatenar(partes)

@@ -261,6 +261,29 @@ def test_scr_csv_com_mes_repetido_para_a_leitura():
         bcb_scr.ano_com_revisoes_dos_arquivos([(DIA1, lambda: repetido)])
 
 
+def test_scr_csv_so_com_cabecalho_nao_conta_como_mes():
+    """Como em `ler_ano`, um CSV sem linhas não acrescenta nada (revisão cruzada do PR da linha 1076)."""
+    meses = _meses_da_amostra()
+    vazio = next(iter(meses.values())).splitlines(keepends=True)[0]
+    coletas = [(DIA1, _zip({**meses, "scrdata_201299.csv": vazio}))]
+
+    mes_a_mes = bcb_scr.ano_com_revisoes_dos_arquivos(
+        [(DIA1, lambda c=coletas[0][1]: c)]
+    )
+
+    pd.testing.assert_frame_equal(
+        mes_a_mes, _como_era_ate_a_linha_1076(coletas), check_categorical=False
+    )
+
+
+def test_scr_arquivo_sem_nenhum_mes_para_a_leitura():
+    so_cabecalho = next(iter(_meses_da_amostra().values())).splitlines(keepends=True)[0]
+    sem_linhas = _zip({"scrdata_201211.csv": so_cabecalho})
+
+    with pytest.raises(bcb_scr.MesForaDoFormatoError, match="nenhum mês"):
+        bcb_scr.ano_com_revisoes_dos_arquivos([(DIA1, lambda: sem_linhas)])
+
+
 @settings(deadline=None, max_examples=20)
 @given(st.integers(0, 60), st.integers(1, 10**6))
 def test_scr_mes_a_mes_cortar_o_futuro_nao_muda_o_passado(
