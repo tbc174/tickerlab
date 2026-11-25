@@ -228,7 +228,10 @@ def mes_do_retrato_publico(porta: Porta, como_era_em: date) -> str | None:
     mesma, com o dia na chave, para nunca responder a outro dia (linha 1015, item c, PR 2)."""
     dia = dia_de(como_era_em)
     return lembrar(
-        porta, ("mes_do_retrato_publico", dia), lambda: _mes_do_retrato(porta, dia)
+        porta,
+        ("mes_do_retrato_publico", dia),
+        lambda: _mes_do_retrato(porta, dia),
+        tabelas=(LISTA_DE_EMPRESAS,),
     )
 
 
@@ -287,6 +290,7 @@ def _retrato_das_duas_listas(porta: Porta) -> str | None:
         porta,
         CHAVE_DO_RETRATO_DAS_DUAS_LISTAS,
         lambda: _ler_o_retrato_das_duas_listas(porta),
+        tabelas=(LISTA_DE_EMPRESAS, LISTA_DE_ESTABELECIMENTOS),
     )
 
 

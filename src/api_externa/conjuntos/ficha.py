@@ -287,6 +287,7 @@ class LeitorDeFicha:
             self.porta,
             chave_do_retrato_do_estabelecimento(como_era_em),
             lambda: self._ler_o_retrato_do_estabelecimento(como_era_em),
+            tabelas=(TABELA_DO_ESTABELECIMENTO,),
         )
 
     def _ler_o_retrato_do_estabelecimento(self, como_era_em: date) -> str | None:

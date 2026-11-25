@@ -390,7 +390,9 @@ def test_se_o_calculo_falha_quem_esperava_calcula_e_nada_fica_guardado():
     segundo.join(5)
     assert len(erros) == 1
     assert respostas == ["2026-10"]
-    assert memoria == {"mes": "2026-10"}
+    # o erro não ficou guardado; o valor de quem esperou, sim
+    nunca = lambda: pytest.fail("calculou de novo")
+    assert compartilhada.lembrar(_porta_com_memoria(memoria), "mes", nunca) == "2026-10"
 
 
 def test_as_travas_tem_limite_como_a_memoria():
@@ -405,3 +407,104 @@ def test_as_travas_tem_limite_como_a_memoria():
         )
     assert len(compartilhada._TRAVAS) <= compartilhada.MEMORIA_MAXIMA
     assert len(memoria) <= compartilhada.MEMORIA_MAXIMA
+
+
+# ---------------------------------------------------------------- a troca da base com um pedido em andamento
+# Achado P1 do Revisor no #1325 (linha 1098): as views leem os Parquets pelo caminho. Se a carga troca um arquivo no
+# mesmo caminho enquanto um pedido ainda está com a porta, o mês guardado antes da troca não pode servir aos arquivos
+# novos: a porta aberta tem de responder o que uma porta aberta depois da troca responde (o que o `max` na hora dava).
+TROCADA = "13131313000191"  # entra no retrato de 2026-11 no mesmo arquivo da EMPRESA (prefixo 1)
+
+
+def _acrescentar_no_mesmo_arquivo(pasta, tabela: str, novas: pd.DataFrame) -> None:
+    """Regrava o arquivo do prefixo das linhas novas no mesmo caminho, com as linhas velhas e as novas."""
+    prefixo = novas["cnpj_basico"].str[:2].iloc[0]
+    arquivo = pasta / tabela / f"{prefixo}.parquet"
+    velhas = pd.read_parquet(arquivo)
+    pd.concat([velhas, novas[velhas.columns]], ignore_index=True).to_parquet(
+        arquivo, index=False
+    )
+    os.utime(
+        arquivo, ns=(1, 1)
+    )  # a data muda mesmo que a gravação caia no mesmo instante
+
+
+def _retrato_novissimo_no_mesmo_caminho(pasta) -> None:
+    empresas_novas = _no_mes(
+        listas_de_mentira._empresas([(EMPRESA[:8], "2062", NOVISSIMO)])
+    )
+    estabelecimentos_novos = _no_mes(
+        listas_de_mentira._estabelecimentos([(EMPRESA, NOVISSIMO)])
+    )
+    _acrescentar_no_mesmo_arquivo(pasta, empresas.LISTA_DE_EMPRESAS, empresas_novas)
+    _acrescentar_no_mesmo_arquivo(
+        pasta, empresas.LISTA_DE_ESTABELECIMENTOS, estabelecimentos_novos
+    )
+
+
+def _depois_da_troca(pasta, ler):
+    """O que uma porta aberta depois da troca responde (sem memória: o cálculo na hora)."""
+    with Porta(pasta) as nova:
+        return ler(nova)
+
+
+def test_porta_aberta_durante_a_troca_ve_o_mes_novo_do_estabelecimento(base):
+    dia = date(2026, 12, 15)
+    porta = compartilhada.porta_do_pedido()
+    try:
+        leitor = ficha.LeitorDeFicha(porta, lambda *_: True)
+        assert (
+            leitor._retrato_do_estabelecimento(dia) == NOVO
+        )  # esquenta a memória com o mês de antes
+        _retrato_novissimo_no_mesmo_caminho(base.pasta)
+        depois = _depois_da_troca(
+            base.pasta,
+            lambda p: ficha.LeitorDeFicha(
+                p, lambda *_: True
+            )._retrato_do_estabelecimento(dia),
+        )
+        assert depois == NOVISSIMO
+        assert leitor._retrato_do_estabelecimento(dia) == depois
+    finally:
+        porta.fechar()
+
+
+def test_porta_aberta_durante_a_troca_ve_o_mes_novo_das_duas_listas(base):
+    porta = compartilhada.porta_do_pedido()
+    try:
+        assert empresas._retrato_das_duas_listas(porta) == NOVO
+        _retrato_novissimo_no_mesmo_caminho(base.pasta)
+        depois = _depois_da_troca(base.pasta, empresas._retrato_das_duas_listas)
+        assert depois == NOVISSIMO
+        assert empresas._retrato_das_duas_listas(porta) == depois
+        # e a trava do "é empresa" segue o mês novo: a EMPRESA está nele; o MEI, que só está em 2026-10, não
+        assert empresas.e_empresa(porta, EMPRESA)
+        assert not empresas.e_empresa(porta, listas_de_mentira.FILIAL)
+    finally:
+        porta.fechar()
+
+
+def test_porta_aberta_durante_a_troca_ve_o_mes_publico_novo_das_empresas(base):
+    dia = date(2026, 12, 15)
+    porta = compartilhada.porta_do_pedido()
+    try:
+        assert empresas.mes_do_retrato_publico(porta, dia) == NOVO
+        _retrato_novissimo_no_mesmo_caminho(base.pasta)
+        depois = _depois_da_troca(
+            base.pasta, lambda p: empresas.mes_do_retrato_publico(p, dia)
+        )
+        assert depois == NOVISSIMO
+        assert empresas.mes_do_retrato_publico(porta, dia) == depois
+    finally:
+        porta.fechar()
+
+
+def test_sem_troca_a_memoria_continua_valendo(base, contadas):
+    """A conferência dos arquivos não desfaz o guardado: sem troca, o mês das duas listas é lido uma vez."""
+    porta = compartilhada.porta_do_pedido()
+    try:
+        for _ in range(3):
+            assert empresas._retrato_das_duas_listas(porta) == NOVO
+        assert len(contadas) == 1
+    finally:
+        porta.fechar()
