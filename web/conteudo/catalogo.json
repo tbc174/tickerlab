@@ -2546,6 +2546,17 @@
       "tabelas": 4
     },
     {
+      "historico_desde": "2026-11-25",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Governo do RJ",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "Sem licença do conjunto (rodapé CC BY-ND 3.0); como publicado, citando o INPI",
       "modulos": [
@@ -2585,17 +2596,6 @@
         "governo_e_sancoes"
       ],
       "orgao": "Governo do ES",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 3
-    },
-    {
-      "historico_desde": "2026-11-25",
-      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
-      "modulos": [
-        "governo_e_sancoes"
-      ],
-      "orgao": "Governo do RJ",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 3
@@ -3001,7 +3001,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 27,
-    "tabelas": 146,
+    "tabelas": 147,
     "temas": [
       {
         "chave": "cvm",
@@ -3127,8 +3127,8 @@
           "Compras.gov.br",
           "Ministério da Saúde (BPS)"
         ],
-        "tabelas": 16,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos, as compras diretas e o cadastro de fornecedores do governo do Rio de Janeiro, os contratos e os empenhos do governo do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 16 de 25 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 17,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos, as compras diretas e o cadastro de fornecedores do governo do Rio de Janeiro, os contratos e os empenhos do governo do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 17 de 25 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -3202,7 +3202,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 52
+      "tabelas": 53
     },
     {
       "chave": "credito_e_fidc",
@@ -8613,6 +8613,17 @@
     {
       "atraso": null,
       "consultavel": false,
+      "frase": "Compras diretas (dispensa e inexigibilidade de licitação) dos órgãos do governo do Rio de Janeiro, item por item, por CNPJ do fornecedor que venceu: a unidade, o tipo de afastamento da licitação.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-11-25",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Governo do RJ",
+      "situacao": "licenciada",
+      "tabela": "rj_compras_diretas"
+    },
+    {
+      "atraso": null,
+      "consultavel": false,
       "frase": "Contratos dos órgãos do governo do Espírito Santo com cada fornecedor, por CNPJ: o órgão, a modalidade, o tipo de aquisição, a situação, o dia da celebração, a vigência e os valores inicial e final.",
       "frequencia": "Mensal",
       "historico_desde": "2026-11-25",
@@ -9508,7 +9519,7 @@
     "fontes": 49,
     "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 177,
+    "tabelas": 178,
     "tabelas_conferidas_em_curto": "25/11"
   }
 }
