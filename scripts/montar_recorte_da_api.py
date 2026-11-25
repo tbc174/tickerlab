@@ -5,7 +5,7 @@ O contêiner `tickerlab-api` de produção não tinha `<acervo>/base`: sem ela a
 serve**, em degraus (`--degrau 1`: o núcleo da API externa; `--degrau 2`: mais as tabelas da consulta
 aberta da v1; `--degrau 3`: mais a rede só de pessoa jurídica, linha 843; `--degrau 4`: mais as cópias reduzidas
 da lista de compradores, linha 844; `--degrau 5`: mais as cópias reduzidas dos cinco cadastros, linha 915;
-`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904; `--degrau 7`: mais as cópias reduzidas dos setores, linha 978; `--degrau 8`: mais as quatro fontes ampliadas, linha 978), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
+`--degrau 6`: mais as tabelas do lote 1 das 300 pelo CNPJ, linha 904; `--degrau 7`: mais as cópias reduzidas dos setores, linha 978; `--degrau 8`: mais as quatro fontes ampliadas, linha 978; `--degrau 9`: mais as compras públicas, linha 988), e a entrega ao VPS num tar pela mesma chave dos dossiês (pedido `receber-base-api`).
 
 Lista de permissão (Diretoria, 10/11/2026, ADR 0101 Emenda 4): só vai a tabela escrita em `DEGRAU_1` ou
 `DEGRAU_2_ACRESCENTA`, e só a coluna que o dicionário (`base/dicionario.py`) conhece, menos as
@@ -48,6 +48,12 @@ só a linha sem a marca, só raiz da `cnpj_empresas_pj` da mesma saída, sem nom
 o nome comercial do produto da Anatel fica em casa. Como o recebedor troca a `base/` inteira, quem envia o degrau 8
 leva junto o 7 e o 6; o envio pede o pode da Diretoria com as contagens.
 
+As compras públicas (`comprasgov_sicaf`, o cadastro de fornecedores do SICAF, e `bps_compras`, o Banco de Preços em
+Saúde; linha 988) têm CNPJ inteiro em toda linha e a mesma marca. Vão no degrau 9 (o 8 mais as duas), pelo mesmo filtro
+e pela mesma trava, com as condições a mais de `recorte_dos_cadastros.CONDICOES_A_MAIS` (a natureza de pessoa que o
+SICAF escreve; o fabricante e a instituição do BPS). O número do processo de compra do BPS fica em casa. Quem envia o
+degrau 9 leva junto o 8, o 7 e o 6; o envio pede o pode da Diretoria com as contagens.
+
 `--enviar` (envio à mão) pede a variável de ambiente `TICKERLAB_DESTINO_DO_ENVIO_DA_BASE` com o destino do ssh;
 sem ela o script para. O envio diário de casa tem roteiro próprio e não usa `--enviar`.
 
@@ -60,6 +66,7 @@ sem ela o script para. O envio diário de casa tem roteiro próprio e não usa `
     python -m scripts.montar_recorte_da_api --degrau 6 --base <acervo>/base --saida /tmp/base-api-lotes
     python -m scripts.montar_recorte_da_api --degrau 7 --base <acervo>/base --saida /tmp/base-api-setores
     python -m scripts.montar_recorte_da_api --degrau 8 --base <acervo>/base --saida /tmp/base-api-ampliadas
+    python -m scripts.montar_recorte_da_api --degrau 9 --base <acervo>/base --saida /tmp/base-api-compras
 
 Saída 0 tudo certo; 1 falha, com a última linha `FALHAS: ...` (vai para o aviso do Kuma).
 
@@ -159,10 +166,8 @@ FICAM_EM_CASA = (
     "anm_tah",
     # (`mte_pat`, `anatel_pados`, `anatel_produtos_homologados` e `anp_tancagem` vão ao VPS só em cópia reduzida, pelo
     # degrau 8, `AMPLIADAS`, linha 978.)
-    # conferência de 19/11: SICAF e Banco de Preços em Saúde; o envio ao VPS pede o "pode" da Diretoria com a
-    # prova de zero pessoa da 1ª carga (a licença do BPS está a confirmar)
-    "comprasgov_sicaf",
-    "bps_compras",
+    # (`comprasgov_sicaf` e `bps_compras`, conferência de 19/11, vão ao VPS só em cópia reduzida, pelo degrau 9,
+    # `COMPRAS_PUBLICAS`, linha 988.)
     # linha 830 (frente 5, 19/11/2026): dívida ativa do Paraná tem linha de pessoa (marcada `trata_como_pessoa`); monta em casa e não sai
     "sefa_pr_divida_ativa",
 )
@@ -232,11 +237,21 @@ CADASTROS = recorte_dos_cadastros.CADASTROS
 # As quatro fontes ampliadas (Anatel PADOs e homologados, ANP tancagem e PAT do MTE; linha 978): só no degrau 8, pelo
 # mesmo filtro e pela mesma trava dos cadastros, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
 AMPLIADAS = recorte_dos_cadastros.AMPLIADAS
+# As compras públicas (SICAF e Banco de Preços em Saúde; linha 988): só no degrau 9, pelo mesmo filtro e pela mesma
+# trava dos cadastros, com as condições a mais, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
+COMPRAS_PUBLICAS = recorte_dos_cadastros.COMPRAS_PUBLICAS
 # As cópias reduzidas dos setores (linha 978: a ligação das entidades às companhias e os acessos da Anatel): só no degrau 7,
 # pelo filtro e pela trava de `base/recorte_dos_setores.py`, nunca pela cópia por arquivo. As tabelas inteiras seguem em casa.
 SETORES = recorte_dos_setores.SETORES
 # o que tem filtro e trava próprios (não passa pela cópia por arquivo)
-COM_FILTRO_PROPRIO = (*REDE_SO_PJ, *REDUZIDAS, *CADASTROS, *SETORES, *AMPLIADAS)
+COM_FILTRO_PROPRIO = (
+    *REDE_SO_PJ,
+    *REDUZIDAS,
+    *CADASTROS,
+    *SETORES,
+    *AMPLIADAS,
+    *COMPRAS_PUBLICAS,
+)
 # Nada daqui vai, em nenhum degrau: pastas inteiras com pessoa ou de trabalho.
 PASTAS_PROIBIDAS = ("cnpj", "restrito", "pessoas")
 SUFIXO_DO_MANIFESTO = ".json"
@@ -262,7 +277,8 @@ class Resultado:
 def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
     """As tabelas do degrau (1 = núcleo; 2 = núcleo + consulta aberta; 3 = o 2 + a rede só PJ; 4 = o 3 + as cópias
     reduzidas da lista de compradores; 5 = o 4 + as cópias reduzidas dos cinco cadastros; 6 = o 5 + os lotes das
-    300 pelo CNPJ (lote 1); 7 = o 6 + as cópias reduzidas dos setores), na ordem da lista."""
+    300 pelo CNPJ (lote 1); 7 = o 6 + as cópias reduzidas dos setores; 8 = o 7 + as fontes ampliadas; 9 = o 8 + as
+    compras públicas), na ordem da lista."""
     if degrau == 1:
         return DEGRAU_1
     if degrau == 2:
@@ -279,7 +295,9 @@ def tabelas_do_degrau(degrau: int) -> tuple[str, ...]:
         return (*tabelas_do_degrau(6), *SETORES)
     if degrau == 8:
         return (*tabelas_do_degrau(7), *AMPLIADAS)
-    raise RecorteErro(f"degrau {degrau} não existe (1 a 8)")
+    if degrau == 9:
+        return (*tabelas_do_degrau(8), *COMPRAS_PUBLICAS)
+    raise RecorteErro(f"degrau {degrau} não existe (1 a 9)")
 
 
 def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
@@ -300,6 +318,10 @@ def conferir_a_lista(tabelas: tuple[str, ...]) -> None:
         if nome in AMPLIADAS:
             raise RecorteErro(
                 f"{nome}: a cópia reduzida das fontes ampliadas só vai pelo degrau 8, com o filtro e a trava"
+            )
+        if nome in COMPRAS_PUBLICAS:
+            raise RecorteErro(
+                f"{nome}: a cópia reduzida das compras públicas só vai pelo degrau 9, com o filtro e a trava"
             )
         if nome in SETORES:
             raise RecorteErro(
@@ -720,7 +742,9 @@ def montar_cadastros(
     mesmo caminho relativo (a API lê a tabela pelo nome); cadastro sem arquivo na base derruba o envio."""
     if "cnpj_empresas_pj" not in tabelas:
         raise RecorteErro("os cadastros só vão junto com cnpj_empresas_pj")
-    nomes = tuple(t for t in (*CADASTROS, *AMPLIADAS) if t in tabelas)
+    nomes = tuple(
+        t for t in (*CADASTROS, *AMPLIADAS, *COMPRAS_PUBLICAS) if t in tabelas
+    )
     empresas = sorted((saida / "cnpj_empresas_pj").glob("*.parquet"))
     origem = {nome: _origem_do_cadastro(base, nome) for nome in nomes}
     destinos: dict[str, list[Path]] = {}
@@ -826,7 +850,9 @@ def montar(base: Path, saida: Path, tabelas: tuple[str, ...]) -> list[Resultado]
     """Monta em `saida` (= a futura `<acervo>/base` do VPS) o recorte das tabelas; confere tudo."""
     rede = tuple(t for t in tabelas if t in REDE_SO_PJ)
     reduzidas = tuple(t for t in tabelas if t in REDUZIDAS)
-    cadastros = tuple(t for t in tabelas if t in (*CADASTROS, *AMPLIADAS))
+    cadastros = tuple(
+        t for t in tabelas if t in (*CADASTROS, *AMPLIADAS, *COMPRAS_PUBLICAS)
+    )
     setores = tuple(t for t in tabelas if t in SETORES)
     tabelas_por_arquivo = tuple(t for t in tabelas if t not in COM_FILTRO_PROPRIO)
     conferir_a_lista(tabelas_por_arquivo)
@@ -922,7 +948,7 @@ def comando_ssh_padrao() -> list[str]:
 def _argumentos(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Recorte da base para o VPS (linha 739)")
     p.add_argument(
-        "--degrau", type=int, choices=(1, 2, 3, 4, 5, 6, 7, 8), required=True
+        "--degrau", type=int, choices=(1, 2, 3, 4, 5, 6, 7, 8, 9), required=True
     )
     p.add_argument(
         "--base", type=Path, help="<acervo>/base (padrão: o acervo do ambiente)"
@@ -940,7 +966,7 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
 
 def obrigatorias_sem_arquivo(resultados: list[Resultado]) -> list[str]:
     """As tabelas que não podem sair sem arquivo: o núcleo e o lote 1 das 300 (sem elas a montagem falha)."""
-    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300, *SETORES, *AMPLIADAS)
+    obrigatorias = (*DEGRAU_1, *LOTE_1_DAS_300, *SETORES, *AMPLIADAS, *COMPRAS_PUBLICAS)
     return [
         r.tabela for r in resultados if r.arquivos == 0 and r.tabela in obrigatorias
     ]

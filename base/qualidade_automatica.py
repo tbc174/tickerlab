@@ -579,6 +579,12 @@ REGRAS: dict[str, Regra] = {
     "anm_tah": Regra(chave=("id_na_fonte", "visto_em")),
     "anp_tancagem": Regra(chave=("id_na_fonte", "visto_em")),
     "mte_pat": Regra(chave=("id_na_fonte", "visto_em")),
+    # compras públicas (linha 988): o cadastro do SICAF é um retrato (sem data de fato, uma linha por CNPJ); no BPS
+    # cada compra tem o dia e o preço, então o salto de linhas e a escala do preço entre os anos contam
+    "comprasgov_sicaf": Regra(chave=("id_na_fonte", "visto_em")),
+    "bps_compras": Regra(
+        chave=("id_na_fonte", "visto_em"), periodo="data_da_compra", valor="preco_total"
+    ),
     # setores (linha 978): a ligação das entidades dos reguladores às companhias e os acessos da Anatel.
     # Medido na base de 19/11/2026 (só contagens): na `empresa_serie`, via e desde só existem na linha ligada a
     # uma companhia (as 19 ligações do comexstat não trazem `desde`); a chave com `via` e `desde` não repete linha.
