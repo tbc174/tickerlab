@@ -65,8 +65,9 @@ const ROTAS_AINDA_SEM_DOCUMENTACAO = ["GET /companies/{cnpj}/analysis", "GET /re
 
 /** Confere um comando citado (`tickerlab x --opcao …`): o comando e cada opção existem na CLI. */
 function comandoExiste(citado: string) {
-  const comando = citado.match(/^\$? ?tickerlab ([a-z]+)/)?.[1];
-  if (comando) expect(CLI, citado).toMatch(new RegExp(`^def ${comando}\\(`, "m"));
+  // o comando de duas palavras (`de-onde-vem`) é a função com `_` (o click troca `_` por `-` no nome)
+  const comando = citado.match(/^\$? ?tickerlab ([a-z]+(?:-[a-z]+)*)/)?.[1];
+  if (comando) expect(CLI, citado).toMatch(new RegExp(`^def ${comando.replaceAll("-", "_")}\\(`, "m"));
   for (const opcao of citado.match(/--[a-z-]+/g) ?? []) expect(CLI, citado).toContain(`"${opcao}"`);
 }
 /** Confere uma rota citada (`GET /data/v1/…`): está na tabela de rotas da documentação da API, salvo as que a

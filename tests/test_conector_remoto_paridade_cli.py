@@ -129,6 +129,7 @@ CASOS = [
         id="credito",
     ),
     pytest.param(["catalogo"], "o_que_posso_ver", {}, id="catalogo"),
+    pytest.param(["de-onde-vem", "credit"], "de_onde_vem", {"sobre": "credit"}, id="de_onde_vem"),
     pytest.param(["consumo"], "o_que_posso_ver", {}, id="consumo"),
 ]  # fmt: skip
 
