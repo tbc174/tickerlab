@@ -228,3 +228,88 @@ def test_entrada_em_empresa_baixada_ainda_nao_publica_nao_aparece(pasta):
         compradores.ENTROU
     ]
     assert entradas_da_compradora["quantas"] == 1
+
+
+# ---- o que a revisão cruzada achou (P1): "baixada" é a empresa sem NENHUM estabelecimento ativo
+
+
+def _estabelecimento_a_mais(pasta, linhas):
+    """Acrescenta estabelecimentos (raiz, situação, cnae, uf) nos dois retratos da base de mentira."""
+    existentes = _estabelecimentos()
+    novos = pd.DataFrame(
+        [
+            (raiz, situacao, "2012-01-01", cnae, uf, mes, publico)
+            for raiz, situacao, cnae, uf in linhas
+            for mes, publico in (("2026-09", "2026-09-30"), ("2026-10", "2026-10-31"))
+        ],
+        columns=["cnpj_basico", "situacao_cadastral", "data_inicio_atividade", "cnae_principal", "uf",
+                 "mes_do_retrato", "disponivel_em"],
+    )  # fmt: skip
+    novos["cnpj"] = novos["cnpj_basico"] + "000199"
+    novos["matriz"] = False
+    novos["municipio"] = "7107"
+    novos["data_inicio_atividade"] = pd.to_datetime(novos["data_inicio_atividade"])
+    novos["disponivel_em"] = pd.to_datetime(novos["disponivel_em"]).dt.date
+    for coluna in ("origem_sha256", "montado_em", "versao_do_codigo"):
+        novos[coluna] = existentes[coluna].iloc[0]
+    _gravar(
+        pasta / compradores.ESTABELECIMENTOS / "11.parquet",
+        pd.concat([existentes, novos], ignore_index=True),
+    )
+
+
+def _com_a_comprador_entrando(pasta, raiz, nome):
+    nomes = pd.read_parquet(pasta / compradores.EMPRESAS / "11.parquet")
+    novos = nomes.iloc[:2].assign(cnpj_basico=raiz, razao_social=nome)
+    _gravar(
+        pasta / compradores.EMPRESAS / "11.parquet",
+        pd.concat([nomes, novos], ignore_index=True),
+    )
+    entradas = _entradas()
+    modelo = entradas.iloc[[0]].assign(raiz_socio_pj=COMPRADORA, cnpj_basico=raiz, data_entrada=date(2025, 4, 10),
+                                       mes_do_retrato="2025-05", disponivel_em=date(2025, 6, 30), movimento="entrou")  # fmt: skip
+    _gravar(
+        pasta / compradores.ENTRADAS / "parte.parquet",
+        pd.concat([entradas, modelo], ignore_index=True),
+    )
+
+
+def test_empresa_com_filial_ativa_em_outra_uf_nao_e_baixada_do_setor(pasta):
+    """Matriz ativa no RJ e filial baixada em SP: a empresa funciona, a entrada nela não é de empresa baixada em SP."""
+    raiz = "16000001"
+    _estabelecimento_a_mais(
+        pasta, [(raiz, "02", SETOR, "RJ"), (raiz, "08", SETOR, "SP")]
+    )
+    _com_a_comprador_entrando(pasta, raiz, "FILIAL FECHADA LTDA")
+    em_sp = _comprador(_lista(pasta, uf="SP"), COMPRADORA)["provas"][compradores.ENTROU]
+    raizes = {e["empresa_do_setor"]["raiz_do_cnpj"] for e in em_sp["exemplos"]}
+    assert raiz not in raizes
+    no_rj = _comprador(_lista(pasta, uf="RJ"), COMPRADORA)["provas"][compradores.ENTROU]
+    assert raiz in {
+        e["empresa_do_setor"]["raiz_do_cnpj"] for e in no_rj["exemplos"]
+    }  # ativa no RJ: conta como sempre
+
+
+def test_empresa_com_loja_ativa_em_outro_cnae_nao_e_baixada_do_setor(pasta):
+    """A varejista tem lojas ativas e um estabelecimento antigo de TI baixado: quem entra no capital dela não é comprador de TI."""
+    raiz = "16000002"
+    _estabelecimento_a_mais(
+        pasta, [(raiz, "02", "4711302", "SP"), (raiz, "08", SETOR, "SP")]
+    )
+    _com_a_comprador_entrando(pasta, raiz, "VAREJISTA LTDA")
+    todas = _comprador(_lista(pasta), COMPRADORA)["provas"][compradores.ENTROU]
+    assert raiz not in {
+        e["empresa_do_setor"]["raiz_do_cnpj"] for e in todas["exemplos"]
+    }
+
+
+def test_a_uf_da_empresa_ativa_vem_so_dos_estabelecimentos_ativos(pasta):
+    """Filial baixada na BA não muda a UF da prova de uma empresa ativa em SP (min(uf) das ativas, como antes)."""
+    _estabelecimento_a_mais(pasta, [(ALVO_SP, "08", SETOR, "BA")])
+    entradas = _comprador(_lista(pasta), COMPRADORA)["provas"][compradores.ENTROU]
+    (alvo,) = [
+        e
+        for e in entradas["exemplos"]
+        if e["empresa_do_setor"]["raiz_do_cnpj"] == ALVO_SP
+    ]
+    assert alvo["uf"] == "SP"

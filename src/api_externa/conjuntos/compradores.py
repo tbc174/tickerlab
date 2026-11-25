@@ -517,24 +517,33 @@ class _Consulta:
     def alvos(self, cnae: str, uf: str | None, com_baixadas: bool) -> pd.DataFrame:
         """As raízes do setor no retrato, com a abertura mais antiga, a UF e se estão `baixada`.
 
-        As ativas são as que têm estabelecimento ativo do CNAE (na UF). As baixadas (todo estabelecimento do CNAE
-        baixado) só vêm com `com_baixadas` e só as que tiveram alguém entrando na janela: o retrato tem centenas
-        de milhares delas, e só estas pesam na lista."""
+        As ativas são as que têm estabelecimento ativo do CNAE (na UF), com a UF e a abertura só dos
+        estabelecimentos ativos. As baixadas só vêm com `com_baixadas` e são as que têm estabelecimento baixado do
+        CNAE (na UF) e **nenhum estabelecimento ativo no retrato**, em nenhum CNAE nem UF (empresa que fechou a
+        filial daquele CNAE ou daquela UF segue funcionando e não é baixada do setor). Só as que tiveram alguém
+        entrando na janela: o retrato tem centenas de milhares delas, e só estas pesam na lista."""
+        ativas = "SELECT raiz, abertura_ativa AS abertura, uf_ativa AS uf, false AS baixada FROM recorte WHERE ativa"
         baixadas = (
-            f"OR (baixada AND EXISTS (SELECT 1 FROM {_view(ENTRADAS)} e WHERE e.cnpj_basico = raiz "
+            " UNION ALL "
+            "SELECT raiz, abertura_todas, uf_todas, true FROM recorte WHERE so_baixadas AND EXISTS "
+            f"(SELECT 1 FROM {_view(ENTRADAS)} e WHERE e.cnpj_basico = recorte.raiz "
             f"AND e.movimento = 'entrou' AND e.{PUBLICADO_EM} <= CAST($dia AS DATE) "
-            "AND e.data_entrada >= CAST($desde AS DATE) AND e.data_entrada <= CAST($dia AS DATE)))"
+            "AND e.data_entrada >= CAST($desde AS DATE) AND e.data_entrada <= CAST($dia AS DATE)) "
+            f"AND NOT EXISTS (SELECT 1 FROM {_view(ESTABELECIMENTOS)} a WHERE a.cnpj_basico = recorte.raiz "
+            f"AND a.{MES} = $mes AND a.situacao_cadastral = $ativa)"
             if com_baixadas
             else ""
         )
         return self._df(
-            "WITH estabelecimentos AS (SELECT cnpj_basico AS raiz, min(data_inicio_atividade) AS abertura, "
-            "min(uf) AS uf, bool_or(situacao_cadastral = $ativa) AS ativa, "
-            "bool_and(situacao_cadastral = $baixada) AS baixada "
+            "WITH recorte AS (SELECT cnpj_basico AS raiz, "
+            "min(data_inicio_atividade) FILTER (WHERE situacao_cadastral = $ativa) AS abertura_ativa, "
+            "min(uf) FILTER (WHERE situacao_cadastral = $ativa) AS uf_ativa, "
+            "min(data_inicio_atividade) AS abertura_todas, min(uf) AS uf_todas, "
+            "coalesce(bool_or(situacao_cadastral = $ativa), false) AS ativa, "
+            "coalesce(bool_and(situacao_cadastral = $baixada), false) AS so_baixadas "
             f"FROM {_view(ESTABELECIMENTOS)} WHERE {MES} = $mes "
             "AND starts_with(cnae_principal, $cnae) AND ($uf IS NULL OR uf = $uf) GROUP BY cnpj_basico) "
-            "SELECT raiz, abertura, uf, coalesce(baixada, false) AS baixada FROM estabelecimentos "
-            f"WHERE ativa {baixadas}",
+            f"{ativas}{baixadas}",
             {
                 "mes": self.mes,
                 "ativa": ATIVA,
