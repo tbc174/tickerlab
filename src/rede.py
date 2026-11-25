@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterable
 
 import requests
 from tenacity import (
@@ -47,10 +48,6 @@ log = logging.getLogger(__name__)
 _exponencial = wait_exponential_jitter(
     multiplier=ESPERA_INICIAL, max=ESPERA_MAXIMA, jitter=1
 )
-
-
-def _passageira(resposta: requests.Response) -> bool:
-    return getattr(resposta, "status_code", None) in STATUS_PASSAGEIROS
 
 
 def _pedida_pela_fonte(resposta: requests.Response) -> float | None:
@@ -109,14 +106,28 @@ def get_com_agente(url: str, *args: object, **kwargs: object) -> requests.Respon
     return requests.get(url, *args, **kwargs)  # type: ignore[arg-type]
 
 
-def obter(url: str, *args: object, **kwargs: object) -> requests.Response:
-    """Como `requests.get(url, ...)`, com novas tentativas nas falhas passageiras."""
+def obter(
+    url: str,
+    *args: object,
+    status_a_repetir: Iterable[int] = (),
+    **kwargs: object,
+) -> requests.Response:
+    """Como `requests.get(url, ...)`, com novas tentativas nas falhas passageiras.
+
+    `status_a_repetir`: códigos a mais que valem nova tentativa só para este pedido (o 403 do firewall
+    de uma fonte que às vezes solta o pedido na tentativa seguinte). Sem laço: são no máximo
+    `TENTATIVAS` pedidos, com a espera crescente de sempre."""
     kwargs.setdefault("timeout", TEMPO_LIMITE)
     _com_agente(kwargs)
+    a_repetir = STATUS_PASSAGEIROS | frozenset(status_a_repetir)
+
+    def _repetir(resposta: requests.Response) -> bool:
+        return getattr(resposta, "status_code", None) in a_repetir
+
     tentativas = Retrying(
         stop=stop_after_attempt(TENTATIVAS),
         wait=_espera,
-        retry=retry_if_exception_type(ERROS_PASSAGEIROS) | retry_if_result(_passageira),
+        retry=retry_if_exception_type(ERROS_PASSAGEIROS) | retry_if_result(_repetir),
         sleep=lambda segundos: esperar(segundos),
         before_sleep=_antes_de_esperar,
         retry_error_callback=_ultimo_resultado,
