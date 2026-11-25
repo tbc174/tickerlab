@@ -46,6 +46,9 @@ from src import acervo
 
 __all__ = ["Porta", "Rede", "abrir", "carteira", "catalogo", "ler", "linhagem", "rede"]
 
+# a chave, na memória da porta dona, do que a porta lembra das tabelas e das colunas (`Porta._metadados`)
+METADADOS = ("porta", "metadados")
+
 # tabelas com manifesto por ano (`base/ponto_no_tempo.py`) → o formato de cada uma
 POR_ANO_DE_BALANCO: dict[str, Formato] = {
     "demonstracoes_como_era": DEMONSTRACOES,
@@ -109,6 +112,31 @@ class Porta:
     def __enter__(self) -> Self:
         return self
 
+    # --- o que só depende dos arquivos da base --------------------------------------------------
+    def _metadados(self) -> dict | None:
+        """Onde a porta guarda as tabelas e as colunas que já perguntou: a memória da porta dona, que a API
+        externa dá a cada pedido (`src/api_externa/porta_compartilhada.py`) e que morre quando a base muda.
+        A porta comum não tem memória e pergunta sempre (linha 1015, item c, PR 2)."""
+        memoria = getattr(self, "memoria_da_base", None)
+        return None if memoria is None else memoria.setdefault(METADADOS, {})
+
+    def _views(self) -> frozenset[str]:
+        metadados = self._metadados()
+        if metadados is None:
+            return frozenset(views(self.con))
+        if (existem := metadados.get("views")) is None:
+            existem = metadados["views"] = frozenset(views(self.con))
+        return existem
+
+    def _colunas_da_view(self, view: str) -> list[str]:
+        metadados = self._metadados()
+        if metadados is None:
+            return colunas(self.con, view)
+        chave = ("colunas", view)
+        if (lembradas := metadados.get(chave)) is None:
+            lembradas = metadados[chave] = tuple(colunas(self.con, view))
+        return list(lembradas)  # uma lista nova: quem pede pode mexer nela
+
     def __exit__(self, *_: object) -> None:
         self.fechar()
 
@@ -135,7 +163,7 @@ class Porta:
     def _view(self, tabela: str, versao: str | None) -> str:
         if tabela not in self.tabelas:
             raise KeyError(f"tabela `{tabela}` não existe no dicionário da base")
-        existem = views(self.con)
+        existem = self._views()
         if tabela not in existem:
             raise KeyError(
                 f"tabela `{tabela}` não tem arquivo nesta base ({self.pasta})"
@@ -147,7 +175,7 @@ class Porta:
 
     def colunas(self, tabela: str, versao: str | None = None) -> list[str]:
         """As colunas da tabela nesta base (com as datas pelos apelidos), sem ler as linhas."""
-        return colunas(self.con, self._view(tabela, versao))
+        return self._colunas_da_view(self._view(tabela, versao))
 
     def tipos(self, tabela: str, versao: str | None = None) -> dict[str, str]:
         """O tipo do DuckDB de cada coluna da tabela nesta base (`DATE`, `VARCHAR`...), sem ler as
@@ -383,7 +411,7 @@ class Porta:
     ) -> set[object]:
         """Os valores diferentes de uma coluna (sem os vazios), sem trazer a tabela inteira."""
         view = self._view(tabela, versao)
-        if coluna not in colunas(self.con, view):
+        if coluna not in self._colunas_da_view(view):
             raise ValueError(f"{tabela}: coluna {coluna!r} não existe")
         linhas = self.con.execute(
             f"SELECT DISTINCT {_nome(coluna)} FROM {_nome(view)} "

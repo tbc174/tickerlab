@@ -24,7 +24,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from base import porta as porta_da_base
-from base.porta import Porta
+from base.porta import METADADOS, Porta
 from base.porta.duckdb import ARQUIVOS, arquivos_da_tabela
 from src import acervo
 
@@ -85,6 +85,7 @@ def impressao_da_base(porta: Porta) -> tuple:
     return _impressao(porta.pasta, porta.arquivos)
 
 
+_NADA = object()  # o que `lembrar` lê quando a chave não está na memória
 MEMORIA_MAXIMA = 256  # entradas por porta dona: o dia da pergunta (`known_at`) varia de pedido para pedido
 
 
@@ -94,13 +95,20 @@ def lembrar[T](porta: Porta, chave: object, calcular: Callable[[], T]) -> T:
     memoria = getattr(porta, "memoria_da_base", None)
     if memoria is None:
         return calcular()
-    if chave not in memoria:
-        valor = calcular()
-        if len(memoria) >= MEMORIA_MAXIMA:
-            memoria.clear()
-        memoria[chave] = valor
-        return valor  # não relê: outro pedido pode ter esvaziado a memória cheia entre as duas linhas
-    return memoria[chave]
+    # uma leitura só: entre um `in` e a leitura, outro pedido pode esvaziar a memória cheia (KeyError, 500)
+    valor = memoria.get(chave, _NADA)
+    if valor is not _NADA:
+        return valor
+    valor = calcular()
+    if len(memoria) >= MEMORIA_MAXIMA:
+        # as tabelas e as colunas da porta (uma entrada só, do tamanho da base) ficam: o dia variado de quem pede
+        # não pode expulsá-las e fazer cada pedido perguntar tudo de novo
+        metadados = memoria.get(METADADOS)
+        memoria.clear()
+        if metadados is not None:
+            memoria[METADADOS] = metadados
+    memoria[chave] = valor
+    return valor  # não relê: outro pedido pode ter esvaziado a memória cheia entre as duas linhas
 
 
 def zerar() -> None:
