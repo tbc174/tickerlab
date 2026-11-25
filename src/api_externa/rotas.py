@@ -98,10 +98,31 @@ def _fora_do_ar() -> HTTPException:
     return HTTPException(status_code=503, detail="service_unavailable")
 
 
+# segundos que o cliente espera antes de pedir de novo quando a base mudou no meio do pedido: o recebedor termina a
+# troca e o pedido seguinte abre a porta na base nova
+ESPERA_DA_TROCA_S = 30
+
+
+def _conferir_no_fim(porta: Porta) -> None:
+    """503 `base_updating` com `Retry-After` se a base mudou durante o pedido (linha 1099, parte b): nunca uma
+    resposta que junta arquivos de antes e de depois da troca."""
+    try:
+        porta_compartilhada.conferir_no_fim(porta)
+    except porta_compartilhada.BaseEmAtualizacao as erro:
+        log.warning("a base mudou durante o pedido: 503 base_updating")
+        raise HTTPException(
+            status_code=503,
+            detail="base_updating",
+            headers={"Retry-After": str(ESPERA_DA_TROCA_S)},
+        ) from erro
+
+
 @contextmanager
 def _porta(banco: sa.Connection) -> Iterator[Porta]:
     """A porta aberta; 503 sem dizer onde nem por quê se a base não está neste servidor ou falha na
-    leitura (a transação volta e o pedido não conta no consumo)."""
+    leitura (a transação volta e o pedido não conta no consumo). No fim, com ou sem erro no meio, a base é
+    conferida: se mudou durante o pedido, o que sai é o 503 da troca, também no lugar de um erro ou de um 404
+    decididos sobre a base misturada."""
     try:
         porta = abrir_porta(banco)
     except (ImportError, OSError, ValueError) as erro:
@@ -110,7 +131,12 @@ def _porta(banco: sa.Connection) -> Iterator[Porta]:
         try:
             yield porta
         except (duckdb.Error, OSError) as erro:
+            _conferir_no_fim(porta)
             raise _fora_do_ar() from erro
+        except Exception:
+            _conferir_no_fim(porta)
+            raise
+        _conferir_no_fim(porta)
 
 
 def _recusa(codigo: str) -> HTTPException:

@@ -349,14 +349,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Compradores Do Setor"
@@ -914,14 +915,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Busca De Empresas"
@@ -1074,14 +1076,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Lote De Empresas"
@@ -1271,14 +1274,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Empresa"
@@ -1468,14 +1472,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Analise Da Empresa"
@@ -1665,14 +1670,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Ativos Da Empresa"
@@ -1862,14 +1868,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Comparaveis Da Empresa"
@@ -2055,14 +2062,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Deck Da Empresa"
@@ -2299,14 +2307,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Eventos Da Empresa"
@@ -2513,14 +2522,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Demonstracoes Da Empresa"
@@ -2735,14 +2745,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Vinculos Da Empresa"
@@ -2932,14 +2943,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Perfil Da Empresa"
@@ -3129,14 +3141,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Compras Da Empresa"
@@ -3326,14 +3339,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Registros Da Empresa"
@@ -3486,14 +3500,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Lote De Credito"
@@ -3683,14 +3698,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Ficha De Credito"
@@ -3843,14 +3859,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Lote De Fundos"
@@ -4057,14 +4074,15 @@
                   "properties": {
                     "detail": {
                       "enum": [
-                        "service_unavailable"
+                        "service_unavailable",
+                        "base_updating"
                       ]
                     }
                   }
                 }
               }
             },
-            "description": "`service_unavailable`: a base não está disponível neste servidor agora"
+            "description": "`service_unavailable`: a base não está disponível neste servidor agora; `base_updating`: a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
           }
         },
         "summary": "Fundo"

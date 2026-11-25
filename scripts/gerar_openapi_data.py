@@ -60,9 +60,21 @@ ERROS: dict[str, tuple[int, str]] = {
         ),
     ),
     "service_unavailable": (503, "a base não está disponível neste servidor agora"),
+    "base_updating": (
+        503,
+        (
+            "a base foi atualizada durante o pedido e a resposta não sai para não juntar dado de antes e "
+            "de depois; peça de novo depois do `Retry-After` (o pedido não conta na quota do mês)"
+        ),
+    ),
 }
 SEMPRE = ("api_key_in_url", "invalid_api_key", "rate_limited")
-DE_DADO = ("monthly_quota_exceeded", "invalid_known_at", "service_unavailable")
+DE_DADO = (
+    "monthly_quota_exceeded",
+    "invalid_known_at",
+    "service_unavailable",
+    "base_updating",
+)
 DE_UM_CNPJ = ("invalid_cnpj", "not_available")
 # rota de dado que lê a ficha da noite, não a base (`conjuntos/setores.py`): sem o 503 da base, com o 404
 DA_FICHA_DA_NOITE = ("/data/v1/sectors/{key}", "/data/v1/sectors/{key}/deck")
@@ -91,6 +103,7 @@ def codigos_da_operacao(caminho: str, operacao: dict) -> list[str]:
         codigos += DE_UM_CNPJ
     if caminho in DA_FICHA_DA_NOITE:
         codigos.remove("service_unavailable")
+        codigos.remove("base_updating")
         codigos.append("not_available")
     if caminho in DO_ARQUIVO_DAS_NOVIDADES:
         codigos += ["monthly_quota_exceeded", "not_available"]
