@@ -24,7 +24,9 @@ from src import portao_externo as portao
 from src.api_externa import rotas
 from src.api_externa.conjuntos import credito
 from src.banco.modelo import consumo_da_api
+from src.credito import features_da_base, sinais
 from src.credito.dicionario import DA_BASE, DA_FICHA
+from src.credito.ficha import SOZINHOS, fatos_da_ficha, ficha_de_credito
 from src.credito.sinais import DO_FIDC
 from src.portao_externo import (
     DIREITOS_DA_API_EXTERNA,
@@ -163,6 +165,97 @@ def test_nenhum_fato_e_de_depois_do_dia_pedido(tmp_path, dias):
     for chave, valor in servida.corpo.items():
         if isinstance(valor, dict):
             assert valor["publico_em"] <= dia.isoformat(), chave
+
+
+# ---------------------------------------------------------------- só os fatos servidos (linha 1015)
+
+# Em produção, a rota montava a ficha inteira (PGFN, SCR, listas, rating...) para servir os poucos fatos de
+# `FATOS`: em 25/11 o bloco `credit` sozinho levou de 13 a 18 s e nunca coube no prazo da análise. A rota
+# passa a calcular só os fatos de `FATOS`; estes testes provam que o corte não muda nem o fato, nem a trava
+# de pessoa, nem o ponto no tempo.
+CHAVES_SERVIDAS = frozenset(credito.FATOS)
+NO_PASSADO = (DIA, date(2026, 6, 1), date(2025, 11, 7), date(2020, 1, 1))
+
+
+@pytest.mark.parametrize("dia", NO_PASSADO)
+@pytest.mark.parametrize("cnpj", [MUNDIAL, GPA, PESSOA, MEI])
+def test_os_fatos_servidos_sao_os_da_ficha_inteira_filtrada(tmp_path, cnpj, dia):
+    # PESSOA e MEI a rede conhece como pessoa: a trava da ficha (`_pessoa_natural`) os barra
+    with _porta(tmp_path) as porta:
+        inteira = ficha_de_credito(porta, cnpj, credito.PAPEL_DA_FICHA, dia)
+        so_os_servidos = fatos_da_ficha(porta, cnpj, dia, CHAVES_SERVIDAS)
+    esperado = tuple(fato for fato in inteira.fatos if fato.chave in CHAVES_SERVIDAS)
+    assert so_os_servidos == esperado
+    assert {fato.chave for fato in so_os_servidos} == CHAVES_SERVIDAS
+
+
+def test_todo_fato_servido_a_ficha_sabe_calcular_sozinha():
+    # uma chave nova em `FATOS` sem cálculo próprio derrubaria a rota com 500: falha aqui antes
+    assert CHAVES_SERVIDAS <= SOZINHOS
+
+
+@pytest.mark.parametrize(
+    "chaves",
+    [
+        frozenset({"situacao_cadastral_na_receita"}),
+        frozenset({"situacao_especial_na_receita"}),
+        frozenset({"fatos_relevantes_12_meses"}),
+        frozenset(DO_FIDC),
+        frozenset({"fatos_relevantes_12_meses", "situacao_cadastral_na_receita"}),
+    ],
+)
+@pytest.mark.parametrize("cnpj", [MUNDIAL, PESSOA])
+def test_uma_parte_dos_fatos_e_a_mesma_parte_da_ficha_inteira(tmp_path, cnpj, chaves):
+    with _porta(tmp_path) as porta:
+        inteira = ficha_de_credito(porta, cnpj, credito.PAPEL_DA_FICHA, DIA)
+        parte = fatos_da_ficha(porta, cnpj, DIA, chaves)
+    assert parte == tuple(fato for fato in inteira.fatos if fato.chave in chaves)
+
+
+@pytest.mark.parametrize(
+    "sem", ["eventos", "insolvencia", "fidc_informe", "cnpj_situacao_cadastral"]
+)
+def test_sem_uma_tabela_os_fatos_sao_os_da_ficha_inteira(tmp_path, sem):
+    extras = _extras()
+    del extras[sem]
+    with Porta(tmp_path, arquivos={}, conferidas={}, extras=extras) as porta:
+        inteira = ficha_de_credito(porta, MUNDIAL, credito.PAPEL_DA_FICHA, DIA)
+        so_os_servidos = fatos_da_ficha(porta, MUNDIAL, DIA, CHAVES_SERVIDAS)
+    esperado = tuple(fato for fato in inteira.fatos if fato.chave in CHAVES_SERVIDAS)
+    assert so_os_servidos == esperado
+
+
+@pytest.mark.parametrize("cnpj", [PESSOA, MEI])
+def test_a_trava_de_pessoa_continua_tirando_todo_valor(tmp_path, cnpj):
+    with _porta(tmp_path) as porta:
+        fatos = fatos_da_ficha(porta, cnpj, DIA, CHAVES_SERVIDAS)
+    assert fatos
+    assert all(fato.valor is None for fato in fatos)
+
+
+def test_a_rota_nao_calcula_os_fatos_que_nao_serve(tmp_path, monkeypatch):
+    def nao_devia_ser_chamada(*_args, **_kwargs):
+        raise AssertionError("a rota de crédito calculou um fato que não serve")
+
+    for modulo, nome in (
+        (features_da_base, "_pgfn"),
+        (features_da_base, "_scr"),
+        (sinais, "_pgfn_por_situacao"),
+        (sinais, "_das_listas"),
+        (sinais, "_do_estado"),
+        (sinais, "_rating"),
+        (sinais, "_insolvencia"),
+        (sinais, "_atrasos"),
+    ):
+        monkeypatch.setattr(modulo, nome, nao_devia_ser_chamada)
+    servida = _ficha(tmp_path, MUNDIAL)
+    assert servida is not None
+    assert servida.corpo["fundos_em_que_cede"]["valor"] == 2
+
+
+def test_fato_que_a_ficha_nao_sabe_calcular_sozinho_e_recusado(tmp_path):
+    with _porta(tmp_path) as porta, pytest.raises(ValueError, match="divida_ativa"):
+        fatos_da_ficha(porta, MUNDIAL, DIA, frozenset({"divida_ativa_da_uniao"}))
 
 
 # ---------------------------------------------------------------- os direitos
