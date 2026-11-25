@@ -645,6 +645,29 @@ def ativos(
 @principal.command()
 @argumento_cnpj
 @opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
+def credito(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os fatos de crédito da empresa como eram no dia, cada um com a fonte e o dia em que ficou público.
+
+    A situação na Receita, os fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC. Não é rating,
+    nota nem elegibilidade, e não traz o SCR individual do Banco Central. Só para a chave com o conjunto de
+    crédito; sem ele, a CLI sai com o código 5. Só pessoa jurídica.
+    """
+    corpo = _api(contexto).credito(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
 @click.option(
     "--periodo",
     type=click.DateTime(formats=["%Y-%m-%d"]),

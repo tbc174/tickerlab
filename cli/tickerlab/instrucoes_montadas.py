@@ -20,6 +20,7 @@ ORDEM = (
     "comparaveis",
     "compradores",
     "ativos",
+    "credito",
     "dossie",
     "eventos",
     "vinculos",
