@@ -422,7 +422,6 @@ def test_as_travas_tem_limite_como_a_memoria():
 # Achado P1 do Revisor no #1325 (linha 1098): as views leem os Parquets pelo caminho. Se a carga troca um arquivo no
 # mesmo caminho enquanto um pedido ainda está com a porta, o mês guardado antes da troca não pode servir aos arquivos
 # novos: a porta aberta tem de responder o que uma porta aberta depois da troca responde (o que o `max` na hora dava).
-TROCADA = "13131313000191"  # entra no retrato de 2026-11 no mesmo arquivo da EMPRESA (prefixo 1)
 
 
 def _acrescentar_no_mesmo_arquivo(pasta, tabela: str, novas: pd.DataFrame) -> None:
