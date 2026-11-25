@@ -8279,7 +8279,7 @@
     {
       "atraso": null,
       "consultavel": false,
-      "frase": "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola.",
+      "frase": "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e aviação agrícola, que trazem o CNPJ inteiro.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-29",
       "modulo": "governo_e_sancoes",
