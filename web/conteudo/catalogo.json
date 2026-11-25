@@ -1465,7 +1465,7 @@
       "orgao": "Compras.gov.br (Ministério da Gestão)",
       "ritmo": null,
       "termos_lidos_em": "2026-10-22",
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -1480,7 +1480,7 @@
       "orgao": "Ministério da Saúde (Banco de Preços em Saúde)",
       "ritmo": null,
       "termos_lidos_em": null,
-      "uso": "guardada"
+      "uso": "em_uso"
     },
     {
       "coletas": [
@@ -2764,6 +2764,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-19",
+      "licenca": "Dados abertos do compras.gov.br (Decreto 8.777/2016; citar a SEGES)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Compras.gov.br",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-19",
       "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
       "modulos": [
@@ -2896,6 +2907,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-11-19",
+      "licenca": "Banco de Preços em Saúde (MS): licença a confirmar (lido em 19/11/2026)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Ministério da Saúde (BPS)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
       "modulos": [
@@ -2941,8 +2963,8 @@
     }
   ],
   "ligado_pelo_cnpj": {
-    "orgaos": 25,
-    "tabelas": 134,
+    "orgaos": 26,
+    "tabelas": 136,
     "temas": [
       {
         "chave": "cvm",
@@ -3062,10 +3084,12 @@
           "Banco Central",
           "SEFAZ-PE",
           "Governo do ES",
-          "Receita Federal (transações)"
+          "Receita Federal (transações)",
+          "Compras.gov.br",
+          "Ministério da Saúde (BPS)"
         ],
-        "tabelas": 10,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 10 de 18 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 12,
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 20 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -3134,7 +3158,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 81
+      "tabelas": 83
     },
     {
       "chave": "governo_e_sancoes",
@@ -8772,6 +8796,28 @@
       "tabela": "anp_tancagem"
     },
     {
+      "atraso": "O SICAF não diz quando o cadastro mudou",
+      "consultavel": false,
+      "frase": "O cadastro de fornecedores do governo federal (SICAF): se a empresa está ativa no cadastro e habilitada a licitar, o CNAE, a natureza jurídica, o porte e o município.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-19",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Compras.gov.br",
+      "situacao": "licenciada",
+      "tabela": "comprasgov_sicaf"
+    },
+    {
+      "atraso": "O Ministério não escreve a data de publicação",
+      "consultavel": false,
+      "frase": "As compras públicas de medicamentos e produtos de saúde registradas no Banco de Preços em Saúde do Ministério da Saúde: quem vendeu (o fornecedor), o fabricante, a instituição compradora.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-11-19",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Ministério da Saúde (BPS)",
+      "situacao": "em consulta",
+      "tabela": "bps_compras"
+    },
+    {
       "atraso": null,
       "consultavel": false,
       "frase": "Estabelecimentos de saúde do CNES por competência, com o CNPJ do estabelecimento e o da mantenedora em colunas separadas.",
@@ -9225,11 +9271,11 @@
   ],
   "totais": {
     "familias": 134,
-    "familias_em_uso": 46,
-    "fontes": 46,
-    "fontes_em_consulta": 11,
+    "familias_em_uso": 48,
+    "fontes": 48,
+    "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 165,
+    "tabelas": 167,
     "tabelas_conferidas_em_curto": "20/11"
   }
 }
