@@ -648,6 +648,32 @@ def ativos(
 @opcao_planilha
 @opcao_json
 @click.pass_context
+def registros(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """Os registros da empresa nas agências reguladoras como eram no dia, cada valor com a fonte e a data.
+
+    Em `blocks`: os indicadores comerciais da distribuidora na ANEEL e o IDSS da operadora de saúde na ANS
+    (`regulated_activities`) e, com o conjunto `extended_sources`, os processos e os produtos homologados na
+    Anatel, a taxa anual por hectare na ANM, a tancagem na ANP e o PAT no MTE (`additional_records`). Bloco que a
+    chave não vê não aparece; `not_found` é o bloco consultado que não achou a empresa, e isso não quer dizer que
+    ela não tem registro na agência. Não abre o resto da análise: cada conjunto aberto conta um pedido na quota
+    (`requests_used`). Sem nenhum dos dois conjuntos, a CLI sai com o código 5. Só pessoa jurídica.
+    """
+    corpo = _api(contexto).registros(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
 def credito(
     contexto: click.Context,
     cnpj: str,

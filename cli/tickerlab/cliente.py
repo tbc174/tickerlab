@@ -408,6 +408,11 @@ class ApiDoTickerlab:
         """Os ativos da empresa por bloco (hoje, os contratos de E&P da ANP), cada bloco com a própria fonte."""
         return self.pedir(f"/companies/{cnpj}/assets", _datas(known_at=como_era))
 
+    def registros(self, cnpj: str, como_era: str | None) -> dict:
+        """Os registros da empresa nas agências reguladoras, um bloco por conjunto que a chave vê (um pedido por
+        conjunto na quota), cada valor com a fonte e o dia em que ficou público."""
+        return self.pedir(f"/companies/{cnpj}/registrations", _datas(known_at=como_era))
+
     def demonstracoes(
         self, cnpj: str, como_era: str | None, periodo: str | None
     ) -> dict:

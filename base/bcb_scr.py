@@ -19,10 +19,12 @@ de ML, PR 7).
 
 import io
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 
+import numpy as np
 import pandas as pd
 
+from base.parquet import devolver_memoria_do_arrow
 from base.setoriais import revisoes
 
 ENDERECO = "https://www.bcb.gov.br/pda/desig/scrdata_{ano}.zip"
@@ -91,18 +93,102 @@ def _com_a_ordem_na_chave(tabela: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _com_prazo(tabela: pd.DataFrame) -> pd.DataFrame:
+    return _com_a_ordem_na_chave(tabela).assign(disponivel_em=disponivel_em(tabela))
+
+
+CHAVE = [*COLUNAS_DE_TEXTO, "ocorrencia"]
+# a posição de cada linha no jeito de juntar de antes (a coleta, a linha dentro dela): fora da comparação dos
+# valores (`carimbos`), servem só para devolver as linhas na mesma ordem de `revisoes.juntar_coletas`
+_COLETA, _LINHA = "_coleta", "_linha"
+Meses = Callable[[], Iterator[pd.DataFrame]]
+
+
+class MesForaDoFormatoError(ValueError):
+    """Um CSV do arquivo do ano não é de um mês só, ou repete o mês de outro CSV (a leitura mês a mês não vale),
+    ou os arquivos do ano não têm nenhum mês com linhas."""
+
+
 def ano_com_revisoes(
     coletas: Sequence[tuple[pd.Timestamp, pd.DataFrame]],
 ) -> pd.DataFrame:
     """As coletas de um ano (dia da baixada, `ler_ano`) numa tabela com as revisões do BC.
 
     Sem o dia (acervo desligado) a coleta entra com `visto_em` vazio: o valor vale desde o prazo."""
-    com_prazo = [
-        (dia, _com_a_ordem_na_chave(tabela).assign(disponivel_em=disponivel_em(tabela)))
-        for dia, tabela in coletas
-    ]
-    chave = [*COLUNAS_DE_TEXTO, "ocorrencia"]
-    juntas = revisoes.juntar_coletas(com_prazo, chave)
+    return _juntar_mes_a_mes(
+        [
+            (dia, lambda tabela=tabela: _meses_da_tabela(tabela))
+            for dia, tabela in coletas
+        ]
+    )
+
+
+def ano_com_revisoes_dos_arquivos(
+    coletas: Sequence[tuple[pd.Timestamp, Callable[[], bytes]]],
+) -> pd.DataFrame:
+    """O mesmo que `ano_com_revisoes` com as coletas lidas por `ler_ano`, linha por linha, sem abrir todas
+    (linha 1076): cada arquivo (dia da baixada, função que traz o zip) é lido só na sua vez, um mês por vez.
+
+    O ano corrente guarda uma versão por mês e, com todas abertas, a carga caía sem memória (o SCR de 2026
+    caiu com 4 GB em 25/11/2026). Dá para juntar mês a mês porque a data-base está na chave e nos valores:
+    revisão e repetição nunca cruzam dois meses. A memória fica nas linhas diferentes já vistas de cada mês
+    mais um mês de um arquivo."""
+    return _juntar_mes_a_mes(
+        [(dia, lambda ler=ler: _meses_do_arquivo(ler())) for dia, ler in coletas]
+    )
+
+
+def _meses_da_tabela(tabela: pd.DataFrame) -> Iterator[pd.DataFrame]:
+    com_prazo = _com_prazo(tabela)
+    com_prazo[_LINHA] = np.arange(len(com_prazo))
+    for _, mes in com_prazo.groupby("data_base", sort=False):
+        yield mes
+
+
+def _meses_do_arquivo(conteudo_do_zip: bytes) -> Iterator[pd.DataFrame]:
+    """Os meses do arquivo como `ler_ano` + `_com_prazo` os dariam, um CSV por vez (a `ocorrencia` conta dentro
+    da chave, que tem a data-base: com um mês por CSV, contar no CSV é o mesmo que contar no ano)."""
+    vistos: set[pd.Timestamp] = set()
+    inicio = 0
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        for nome in sorted(arquivo.namelist()):
+            mes = _ler_mes(arquivo, nome)
+            if mes.empty:  # só o cabeçalho: em `ler_ano` também não acrescenta nada
+                continue
+            datas = set(mes["data_base"].unique())
+            if len(datas) != 1 or datas & vistos:
+                raise MesForaDoFormatoError(nome)
+            vistos |= datas
+            com_prazo = _com_prazo(mes)
+            com_prazo[_LINHA] = np.arange(inicio, inicio + len(mes))
+            inicio += len(mes)
+            yield com_prazo
+
+
+def _juntar_mes_a_mes(coletas: Sequence[tuple[pd.Timestamp, Meses]]) -> pd.DataFrame:
+    """`revisoes.juntar_coletas` de cada mês, uma coleta por vez, com as linhas na ordem de lá."""
+    if not coletas:
+        raise ValueError("nenhuma coleta para juntar")
+    por_mes: dict[pd.Timestamp, pd.DataFrame] = {}
+    em_ordem = sorted(coletas, key=revisoes.ordem_da_coleta)
+    for posicao, (dia, meses) in enumerate(em_ordem):
+        for mes in meses():
+            mes[_COLETA] = posicao
+            data_base = mes["data_base"].iat[0]
+            por_mes[data_base] = revisoes.acrescentar_coleta(
+                por_mes.get(data_base), dia, mes, CHAVE, carimbos=(_COLETA, _LINHA)
+            )
+        devolver_memoria_do_arrow()  # o que a leitura deste arquivo deixou no reservatório do pyarrow
+    if not por_mes:
+        raise MesForaDoFormatoError("nenhum mês com linhas nos arquivos do ano")
+    partes = list(por_mes.values())
+    por_mes.clear()
+    juntas = revisoes.concatenar(partes)
+    del partes
+    ordem = np.lexsort((juntas[_LINHA].to_numpy(), juntas[_COLETA].to_numpy()))
+    juntas = juntas.take(ordem).drop(columns=[_COLETA, _LINHA]).reset_index(drop=True)
     for coluna in COLUNAS_DE_TEXTO[1:]:
-        juntas[coluna] = juntas[coluna].astype("category")
+        # as categorias de `astype("category")` sobre o texto: só as usadas, em ordem
+        usadas = juntas[coluna].astype("category").cat.remove_unused_categories()
+        juntas[coluna] = usadas.cat.reorder_categories(sorted(usadas.cat.categories))
     return juntas

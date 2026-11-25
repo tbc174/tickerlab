@@ -1113,6 +1113,7 @@ def test_instrucoes_do_agente(rodar):
         "deck",
         "credito",
         "de-onde-vem",
+        "registros",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
         assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
@@ -2893,5 +2894,73 @@ def test_de_onde_vem_com_nome_mal_escrito_nao_pede_nada(rodar, chave):
 def test_a_ajuda_do_de_onde_vem_diz_o_que_nao_traz(rodar):
     ajuda = " ".join(rodar("de-onde-vem", "--help").stdout.lower().split())
     assert "não traz" in ajuda and "dado de empresa" in ajuda
+    for palavra in ("recomend", "oportunidade", "r$", "garant"):
+        assert palavra not in ajuda, palavra
+
+
+# ---------------------------------------------------------------- registros (linha 980, onda 2, PR 5)
+
+
+def _registros_de_mentira() -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "known_at": "2025-07-01",
+        "blocks": {
+            "regulated_activities": {
+                "aneel_commercial_indicators": {
+                    "found": True,
+                    "items": [{"active_consumer_units": _env(300)}],
+                }
+            }
+        },
+        "not_found": [],
+        "requests_used": 1,
+        "limits": ["Só os registros da empresa nas agências que a sua chave vê."],
+        "sources": [{"source": "rfb-cnpj"}],
+    }
+
+
+def test_registros_pede_a_rota_dos_registros_com_o_dia(rodar, chave):
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido):
+        pedidos.append(pedido)
+        return httpx.Response(200, json=_registros_de_mentira())
+
+    resultado = rodar(
+        "registros", "11.111.111/0001-91", "--como-era", "2025-07-01",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    assert pedido.url.path == "/data/v1/companies/11111111000191/registrations"
+    assert pedido.url.params["known_at"] == "2025-07-01"
+    assert "active_consumer_units" in resultado.stdout
+
+
+def test_registros_em_json_passa_inteiro(rodar, chave):
+    resultado = rodar(
+        "registros", "11111111000191", "--json",
+        http=_resposta_fixa(_registros_de_mentira()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == _registros_de_mentira()
+
+
+def test_registros_sem_nenhum_dos_conjuntos_sai_com_o_codigo_de_nada_disponivel(
+    rodar, chave
+):
+    def responder(_pedido):
+        return httpx.Response(404, json={"detail": "not_available"})
+
+    resultado = rodar(
+        "registros", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 5
+
+
+def test_a_ajuda_dos_registros_diz_o_que_nao_quer_dizer(rodar):
+    ajuda = " ".join(rodar("registros", "--help").stdout.lower().split())
+    assert "não quer dizer que ela não tem registro" in ajuda
     for palavra in ("recomend", "oportunidade", "r$", "garant"):
         assert palavra not in ajuda, palavra

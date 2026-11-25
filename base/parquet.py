@@ -19,6 +19,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
 
 from base.licenca import licenca_para_gravar
 from src.versao_do_codigo import versao_do_codigo
@@ -28,6 +29,15 @@ ALGARISMOS_SIGNIFICATIVOS = "%.17g"  # o mesmo número sempre vira o mesmo texto
 LINHAS_POR_PEDACO = (
     200_000  # o texto do hash sai em pedaços: a tabela inteira não cabe na memória
 )
+
+
+def devolver_memoria_do_arrow() -> None:
+    """Devolve ao sistema a memória que o reservatório do pyarrow já soltou e ainda segura.
+
+    O mimalloc (Windows) e o jemalloc (Linux) guardam a memória das tabelas lidas para reusar, e a
+    soma de uma leitura com a seguinte passava do limite do contêiner: a carga do SCR de 2026 ia a
+    2,2 GB só gravando (linha 1076). Não mexe em nenhuma tabela viva."""
+    pa.default_memory_pool().release_unused()
 
 
 def gravar_atomico(destino: Path, gravar: Callable[[Path], object]) -> None:
@@ -68,7 +78,10 @@ def como_no_disco(tabela: pd.DataFrame) -> pd.DataFrame:
     memoria = io.BytesIO()
     tabela.to_parquet(memoria, index=False)
     memoria.seek(0)
-    return pd.read_parquet(memoria)
+    tabela_do_disco = pd.read_parquet(memoria)
+    del memoria
+    devolver_memoria_do_arrow()
+    return tabela_do_disco
 
 
 def _conferencia_do_contrato(tabela: pd.DataFrame, destino: Path) -> dict[str, object]:
@@ -117,7 +130,9 @@ def gravar_tabela(
     destino.parent.mkdir(parents=True, exist_ok=True)
     arquivo = destino.with_suffix(".parquet")
     gravar_atomico(arquivo, lambda caminho: tabela.to_parquet(caminho, index=False))
+    devolver_memoria_do_arrow()
     no_disco = ler_tabela(arquivo)
+    devolver_memoria_do_arrow()
     manifesto = {
         "linhas": len(tabela),
         "sha256_da_tabela": hash_da_tabela(no_disco, ordem),

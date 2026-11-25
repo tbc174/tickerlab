@@ -428,3 +428,42 @@ def test_gravar_atomico_apaga_o_temporario_se_a_gravacao_falha(tmp_path):
     with pytest.raises(OSError):
         parquet.gravar_atomico(tmp_path / "t.parquet", gravar)
     assert not list(tmp_path.iterdir())
+
+
+def test_gravar_devolve_a_memoria_do_arrow_antes_e_depois_de_ler_de_volta(
+    tmp_path, monkeypatch
+):
+    """O reservatório do pyarrow segura a memória que já soltou: sem devolvê-la entre gravar e ler de
+    volta, a carga do SCR de 2026 passava de 2 GB só na gravação (linha 1076)."""
+    passos: list[str] = []
+    ler = parquet.ler_tabela
+    monkeypatch.setattr(
+        parquet, "devolver_memoria_do_arrow", lambda: passos.append("devolve")
+    )
+    monkeypatch.setattr(
+        parquet, "ler_tabela", lambda arquivo: passos.append("lê") or ler(arquivo)
+    )
+
+    parquet.gravar_tabela(pd.DataFrame({"a": [1, 2]}), tmp_path / "t", [], ["a"])
+
+    assert passos[:3] == ["devolve", "lê", "devolve"]
+
+
+def test_como_no_disco_devolve_a_memoria_do_arrow(monkeypatch):
+    passos: list[str] = []
+    monkeypatch.setattr(
+        parquet, "devolver_memoria_do_arrow", lambda: passos.append("devolve")
+    )
+
+    tabela = parquet.como_no_disco(pd.DataFrame({"a": [1.0, 2.0]}))
+
+    assert passos == ["devolve"]
+    assert tabela["a"].tolist() == [1.0, 2.0]
+
+
+def test_devolver_memoria_do_arrow_nao_muda_a_tabela_viva():
+    tabela = parquet.como_no_disco(pd.DataFrame({"a": [1.5, 2.5], "b": ["x", "y"]}))
+
+    parquet.devolver_memoria_do_arrow()
+
+    assert tabela.to_dict("list") == {"a": [1.5, 2.5], "b": ["x", "y"]}

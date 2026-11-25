@@ -373,6 +373,31 @@ _SOCIOS_E_DONOS = Ferramenta(
     conjuntos=frozenset({CONJUNTO_DAS_PESSOAS}),
     parametros=(Parametro("cnpj"),),
 )
+_REGISTROS_NAS_AGENCIAS = Ferramenta(
+    nome="registros_nas_agencias",
+    titulo="Registros de uma empresa nas agências reguladoras",
+    descricao=(
+        "Os registros da empresa nas agências reguladoras como eram no dia, um bloco por conjunto que a chave vê:\n"
+        "os indicadores comerciais da distribuidora na ANEEL e o IDSS da operadora de saúde na ANS\n"
+        "(`regulated_activities`) e, com as fontes ampliadas no contrato, os processos e os produtos homologados na\n"
+        "Anatel, a taxa anual por hectare na ANM, a tancagem na ANP e o PAT no MTE (`additional_records`). Cada valor\n"
+        "traz a fonte e o dia em que ficou público (`published_at`); o bloco consultado que não achou a empresa vai em\n"
+        "`not_found`, e não achar não quer dizer que ela não tem registro na agência. Não abre o resto da análise: cada\n"
+        "conjunto aberto conta um pedido. Serve para saber em que agências a empresa aparece e o que elas publicam\n"
+        "dela.\n"
+        "Fonte: ANEEL (fiscalização comercial), ANS (IDSS), Anatel, ANM, ANP e MTE (PAT), como publicados.\n"
+        "Não traz: o resto da análise (cadastro, vínculos e eventos estão em `analise_completa`), os contratos de\n"
+        "petróleo e gás e a mineração (`ativos`), nota, opinião nem pessoa física."
+    ),
+    conjuntos=frozenset({"profiles", "extended_sources"}),
+    parametros=(
+        Parametro("cnpj", cli="CNPJ"),
+        Parametro("como_era_em", cli="--como-era"),
+        Parametro("blocos", valores=("regulated_activities", "additional_records")),
+        Parametro("limite", minimo=1, maximo=200),
+    ),
+    dica_se_grande="Peça um bloco só (`blocos`) ou menos itens por lista (`limite`).",
+)
 _ATIVOS = Ferramenta(
     nome="ativos",
     titulo="Ativos físicos de uma empresa",
@@ -608,6 +633,7 @@ FERRAMENTAS: tuple[Ferramenta, ...] = (
     _VINCULOS,
     _SOCIOS_E_DONOS,
     _ATIVOS,
+    _REGISTROS_NAS_AGENCIAS,
     _COMPRADORES_DO_SETOR,
     _NOVIDADES,
     _SETORES,
@@ -702,6 +728,16 @@ CONSULTAS: tuple[Consulta, ...] = (
         rotas=("GET /companies/{cnpj}/assets",),
         ferramentas=(_ATIVOS,),
         comandos=("ativos",),
+    ),
+    Consulta(
+        "registros",
+        nome="Registros nas agências reguladoras",
+        resumo=(
+            "os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira"
+        ),
+        rotas=("GET /companies/{cnpj}/registrations",),
+        ferramentas=(_REGISTROS_NAS_AGENCIAS,),
+        comandos=("registros",),
     ),
     Consulta(
         "compradores",

@@ -498,6 +498,13 @@ DESTINOS: dict[str, Destino] = {
     ),
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
     "ibama-embargos": _tabela("ibama_embargos"),
+    # linha 1074 (PR 1): relatórios do RAPP do IBAMA, só pessoa jurídica
+    "ibama-rapp-emissoes-atmosfericas": _tabela("ibama_rapp_emissoes_atmosfericas"),
+    "ibama-rapp-efluentes-liquidos": _tabela("ibama_rapp_efluentes_liquidos"),
+    "ibama-rapp-fontes-energeticas": _tabela("ibama_rapp_fontes_de_energia"),
+    "ibama-rapp-residuos-destinador": _tabela("ibama_rapp_residuos_destinados"),
+    "ibama-rapp-residuos-transportador": _tabela("ibama_rapp_residuos_transportados"),
+    "ibama-rapp-residuos-armazenador": _tabela("ibama_rapp_residuos_armazenados"),
     "mte-lista-suja": _tabela("mte_lista_suja"),
     "gleif-br": _tabela("gleif_ponte"),
     # M&A e intradiários

@@ -3760,6 +3760,301 @@ def _tabelas_dos_cadastros_da_antt() -> dict[str, Tabela]:
     }
 
 
+_ONDE_DO_RAPP = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/ibama_rapp.py`)"
+_RAPP_DECLARADO = (
+    "Dado declarado pelo próprio estabelecimento no RAPP (Relatório Anual de Atividades Potencialmente "
+    "Poluidoras) do IBAMA, não veredito: quem não declarou não aparece, e não declarar não é o mesmo que zero"
+)
+_RAPP_SO_CNPJ = (
+    "Só CNPJ de dígito certo de quem declara (o CPF sai e é contado); a razão social, o estado e o município "
+    "por extenso ficam de fora (a Receita os tem pelo CNPJ)"
+)
+_DA_ATIVIDADE_DO_RAPP = {
+    "categoria_codigo": (
+        "Código da categoria de atividade no Cadastro Técnico Federal",
+        TEXTO,
+    ),
+    "categoria": (
+        "Categoria de atividade, como o IBAMA escreve (indústria química, metalúrgica...)",
+        TEXTO,
+    ),
+    "detalhe_codigo": ("Código do detalhe da atividade", TEXTO),
+    "detalhe": ("Detalhe da atividade, como o IBAMA escreve", TEXTO),
+}
+
+
+def _outra_ponta_do_rapp(sufixo: str, quem: str) -> dict[str, tuple[str, str]]:
+    """O CNPJ da outra ponta de um relatório de resíduos: vazio quando a fonte traz CPF ou CNPJ de DV errado."""
+    return {
+        f"cnpj_{sufixo}": (
+            f"CNPJ {quem} (14 caracteres com máscara); vazio quando a fonte traz CPF ou CNPJ de dígito errado",
+            TEXTO,
+        ),
+        f"cnpj_basico_{sufixo}": (f"Raiz do CNPJ {quem} (8 caracteres)", TEXTO),
+    }
+
+
+def _tabelas_do_rapp_do_ibama() -> dict[str, Tabela]:
+    """Emissões, efluentes, fontes de energia e a cadeia dos resíduos sólidos no RAPP do IBAMA
+    (`base/ibama_rapp.py`: linha 1074, meta das 300 tabelas pelo CNPJ). Domínio público no portal; no código, a
+    família `ibama` (integridade sob contrato, ADR 0122 Emenda 1)."""
+    comum = {
+        "familia_da_fonte": "ibama",
+        "frequencia": (
+            "Um arquivo por relatório, republicado inteiro pelo IBAMA (a última vez em 04/05/2026); o arquivista "
+            "olha todo mês e guarda só o que mudou"
+        ),
+        "linhagem": LINHAGEM_DA_HISTORICA_SEM_ANO,
+    }
+    atraso = (
+        "O RAPP do ano X é entregue até 31 de março de X+1, e o IBAMA não diz quando publica cada linha: a "
+        "linha vale desde o dia do arquivo, nunca desde o ano declarado"
+    )
+    carimbos = _carimbos_do_retrato(_DISPONIVEL_PELO_ARQUIVO)
+    da_empresa = {
+        "id_na_fonte": carimbos["id_na_fonte"],  # primeiro, como no leitor
+        "cnpj": ("CNPJ do estabelecimento que declara (14 dígitos com máscara)", TEXTO),
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres)", TEXTO),
+    }
+    ano = {"ano": ("Ano a que a declaração se refere", NUMERO)}
+    situacao = {
+        "situacao_cadastral": (
+            "Situação do estabelecimento no Cadastro Técnico Federal (ativa, encerrado...), como o IBAMA escreve",
+            TEXTO,
+        )
+    }
+    residuo = {
+        "residuo_codigo": ("Código do resíduo na lista do IBAMA", TEXTO),
+        "residuo": ("Resíduo, como o IBAMA escreve", TEXTO),
+        "unidade": ("Unidade da quantidade, como o IBAMA escreve", TEXTO),
+    }
+    return {
+        "ibama_rapp_emissoes_atmosfericas": Tabela(
+            descricao=(
+                "Emissões de poluentes no ar que cada estabelecimento declarou ao IBAMA, de 2013 a 2025 (o último ano no "
+                "arquivo de 25/11/2026): a atividade, o poluente e a quantidade, por ano. "
+                f"{_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}"
+            ),
+            fonte="IBAMA: dados abertos, RAPP, emissões de poluentes atmosféricos (`base/ibama_rapp.py`)",
+            atraso=atraso,
+            onde=_ONDE_DO_RAPP.format(
+                pasta="ibama_rapp_emissoes_atmosfericas", arquivo="emissoes"
+            ),
+            colunas={
+                **da_empresa,
+                **ano,
+                **_DA_ATIVIDADE_DO_RAPP,
+                "poluente": ("Poluente emitido, como o IBAMA escreve", TEXTO),
+                **situacao,
+                "quantidade": (
+                    (
+                        "Quantidade emitida que o estabelecimento declarou, na unidade do RAPP (o arquivo não traz a "
+                        "unidade)"
+                    ),
+                    NUMERO_DECIMAL,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "ibama_rapp_efluentes_liquidos": Tabela(
+            descricao=(
+                "Efluentes líquidos que cada estabelecimento declarou ao IBAMA, de 2000 a 2025 (o último ano no arquivo "
+                "de 25/11/2026): a atividade, o tratamento, a eficiência, onde lança (rio, solo, rede) e a quantidade, "
+                f"por ano. {_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}; a latitude, a longitude, o nome do corpo hídrico, a "
+                "empresa receptora e o texto livre também ficam de fora"
+            ),
+            fonte="IBAMA: dados abertos, RAPP, efluentes líquidos (`base/ibama_rapp.py`)",
+            atraso=atraso,
+            onde=_ONDE_DO_RAPP.format(
+                pasta="ibama_rapp_efluentes_liquidos", arquivo="efluentes"
+            ),
+            colunas={
+                **da_empresa,
+                **ano,
+                **_DA_ATIVIDADE_DO_RAPP,
+                "tipo_de_tratamento": (
+                    "Tipo de tratamento do efluente, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "nivel_de_tratamento": (
+                    "Nível de tratamento, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "compartimento_ambiental": (
+                    "Para onde vai a emissão (água, solo...), como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "tipo_de_emissao": ("Tipo de emissão, como o IBAMA escreve", TEXTO),
+                "tipo_do_corpo_receptor": (
+                    "Tipo do corpo receptor, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "classe_do_corpo_receptor": (
+                    "Classe do corpo receptor (classe da água), como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "corpo_receptor": (
+                    "Corpo receptor (rede pública, rio...), como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "tipo_de_emissao_para_o_solo": (
+                    "Tipo de emissão para o solo, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                **situacao,
+                "quantidade": (
+                    (
+                        "Quantidade de efluente que o estabelecimento declarou, na unidade do RAPP (o arquivo não traz a "
+                        "unidade); vazia quando a fonte não traz ou a célula veio ilegível (só cerquilhas)"
+                    ),
+                    NUMERO_DECIMAL,
+                ),
+                "eficiencia_do_tratamento": (
+                    "Eficiência do tratamento declarada, em %, como veio (há valores fora de 0 a 100 na fonte)",
+                    NUMERO_DECIMAL,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "ibama_rapp_fontes_de_energia": Tabela(
+            descricao=(
+                "Fontes de energia que cada estabelecimento declarou ao IBAMA, de 2011 a 2025 (o último ano no arquivo "
+                "de 25/11/2026): o combustível ou a fonte, a quantidade consumida, a energia e as emissões de CO2 que "
+                f"o RAPP calcula, por ano. {_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}; os fatores técnicos (densidade, poder "
+                "calorífico, carbono, oxidação), a observação e as justificativas também ficam de fora. A linha "
+                "malformada na fonte (com mais ou menos colunas que o cabeçalho; 510 em 25/11/2026) sai e é "
+                "contada"
+            ),
+            fonte="IBAMA: dados abertos, RAPP, fontes energéticas (`base/ibama_rapp.py`)",
+            atraso=atraso,
+            onde=_ONDE_DO_RAPP.format(
+                pasta="ibama_rapp_fontes_de_energia", arquivo="energia"
+            ),
+            colunas={
+                **da_empresa,
+                **ano,
+                **_DA_ATIVIDADE_DO_RAPP,
+                "fonte_de_energia": (
+                    "Tipo de fonte energética (óleo, gás, lenha, eletricidade...), como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "unidade": (
+                    "Unidade da quantidade consumida, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                **situacao,
+                "quantidade_consumida": (
+                    "Quantidade consumida, na unidade da coluna `unidade`",
+                    NUMERO_DECIMAL,
+                ),
+                "energia": (
+                    "Energia que o RAPP calcula para o consumo, na unidade do RAPP (o arquivo não a traz)",
+                    NUMERO_DECIMAL,
+                ),
+                "emissoes_de_co2": (
+                    (
+                        "Emissões de CO2 que o RAPP calcula para o consumo, na unidade do RAPP (o arquivo não a traz); "
+                        "vazia quando a fonte não traz"
+                    ),
+                    NUMERO_DECIMAL,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "ibama_rapp_residuos_destinados": Tabela(
+            descricao=(
+                "Resíduos sólidos que cada destinador declarou ao IBAMA ter recebido, de 2011 a 2025 (o último ano no "
+                "arquivo de 25/11/2026), com o CNPJ de quem gerou: o resíduo, a quantidade e o destino (aterro, "
+                "reciclagem, incineração...), por ano. Liga o gerador ao destinador (quem é cliente de quem). "
+                f"{_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}. Quando o gerador é pessoa física, o documento dele fica vazio "
+                "(115 linhas em 25/11/2026)"
+            ),
+            fonte="IBAMA: dados abertos, RAPP, resíduos sólidos, destinador (`base/ibama_rapp.py`)",
+            atraso=atraso,
+            onde=_ONDE_DO_RAPP.format(
+                pasta="ibama_rapp_residuos_destinados", arquivo="destinados"
+            ),
+            colunas={
+                **da_empresa,
+                **_outra_ponta_do_rapp("gerador", "de quem gerou o resíduo"),
+                **ano,
+                **_DA_ATIVIDADE_DO_RAPP,
+                **residuo,
+                "tipo_de_destinacao": (
+                    "Tipo de destinação (aterro, reciclagem...), como o IBAMA escreve",
+                    TEXTO,
+                ),
+                **situacao,
+                "quantidade": (
+                    "Quantidade destinada, na unidade da coluna `unidade`",
+                    NUMERO_DECIMAL,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+        "ibama_rapp_residuos_transportados": Tabela(
+            descricao=(
+                "Transportes de resíduos sólidos que cada transportador declarou ao IBAMA, de 2008 a 2026 (o último ano "
+                "no arquivo de 25/11/2026), com o CNPJ de onde o resíduo saiu (a origem), por ano. Liga a "
+                f"transportadora aos clientes dela. {_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}. Quando a origem é pessoa "
+                "física, o documento dela fica vazio (159 linhas em 25/11/2026)"
+            ),
+            fonte="IBAMA: dados abertos, RAPP, resíduos sólidos, transportador (`base/ibama_rapp.py`)",
+            atraso=atraso,
+            onde=_ONDE_DO_RAPP.format(
+                pasta="ibama_rapp_residuos_transportados", arquivo="transportados"
+            ),
+            colunas={
+                **da_empresa,
+                **_outra_ponta_do_rapp("origem", "de onde o resíduo saiu"),
+                **ano,
+                **situacao,
+                **carimbos,
+            },
+            **comum,
+        ),
+        "ibama_rapp_residuos_armazenados": Tabela(
+            descricao=(
+                "Resíduos sólidos que cada armazenador declarou ao IBAMA, de 2013 a 2026 (o último ano no arquivo de "
+                "25/11/2026): de quem recebeu (o gerador), o resíduo, a quantidade, se ficou armazenado ou foi mandado "
+                f"adiante e para quem (o destino), por ano. {_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}. Quando o gerador é "
+                "pessoa física, o documento dele fica vazio (34 linhas em 25/11/2026)"
+            ),
+            fonte="IBAMA: dados abertos, RAPP, resíduos sólidos, armazenador (`base/ibama_rapp.py`)",
+            atraso=atraso,
+            onde=_ONDE_DO_RAPP.format(
+                pasta="ibama_rapp_residuos_armazenados", arquivo="armazenados"
+            ),
+            colunas={
+                **da_empresa,
+                **_outra_ponta_do_rapp("gerador", "de quem gerou o resíduo"),
+                **_outra_ponta_do_rapp("destino", "de para onde o resíduo foi mandado"),
+                **ano,
+                **residuo,
+                "tipo_de_armazenamento_ou_destinacao": (
+                    "Tipo de armazenamento ou de destinação, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                "armazenado_ou_destinado": (
+                    "Se o resíduo ficou armazenado ou foi destinado, como o IBAMA escreve",
+                    TEXTO,
+                ),
+                **situacao,
+                "quantidade": (
+                    "Quantidade armazenada ou enviada, na unidade da coluna `unidade`",
+                    NUMERO_DECIMAL,
+                ),
+                **carimbos,
+            },
+            **comum,
+        ),
+    }
+
+
 _ONDE_DOS_CADASTROS_CONFERIDOS = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/cadastros_conferidos.py`)"
 _SO_CNPJ_SEM_NOME = (
     "Só CNPJ de dígito certo (o CPF, inteiro ou mascarado, sai e é contado); o nome do titular fica de fora "
@@ -9798,6 +10093,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_da_fiscalizacao_da_aneel(),
     **_tabelas_dos_cadastros_do_bcb(),
     **_tabelas_dos_cadastros_da_antt(),
+    **_tabelas_do_rapp_do_ibama(),
     **_tabelas_dos_cadastros_conferidos(),
     **_tabelas_dos_conferidos_19_11(),
     **_tabelas_do_cnes(),
@@ -12094,6 +12390,9 @@ _CADASTROS_DO_BCB_E_DA_ANTT = "2026-11-16"
 _CADASTROS_CONFERIDOS = "2026-11-17"
 # conferência de 19/11 (SICAF e BPS): entram no arquivista neste dia; a linha vale desde o dia do arquivo
 _CONFERIDOS_19_11 = "2026-11-19"
+# linha 1074 (PR 1): os relatórios do RAPP do IBAMA entram no arquivista neste dia; a linha vale desde o dia do
+# arquivo, nunca desde o ano declarado
+_RAPP_DO_IBAMA = "2026-11-25"
 _ANM_SEM_HISTORICO = "2026-11-04"  # SIGBM e Anuário: a ANM sobrescreve o arquivo; a série começa na 1ª coleta
 _CADASTROS_227 = "2026-10-16"  # a ANS e a SUSEP (cadastros) foram guardadas pelo arquivista desde este dia; MTE e IBAMA, desde `_GOVERNO`
 _CNES = (
@@ -12367,6 +12666,13 @@ _CONTRATO = {
     "bcb_regimes_especiais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
     "antt_operadores_multimodais": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
     "antt_seguros_de_transportadores": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio_da_apolice", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_DO_BCB_E_DA_ANTT, granularidade_do_publico_em="dia"),
+    # linha 1074 (PR 1): RAPP do IBAMA, o que cada estabelecimento declara (licença em src/banco/coletas.py)
+    "ibama_rapp_emissoes_atmosfericas": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_efluentes_liquidos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_fontes_de_energia": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_residuos_destinados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_residuos_transportados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
+    "ibama_rapp_residuos_armazenados": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_RAPP_DO_IBAMA, granularidade_do_publico_em="dia"),
     # linha 904 (conferência de 14/11): ECF, PAT, TAH, PADOs, homologados e tancagem (licenças em src/banco/coletas.py)
     "receita_regime_tributario": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "mte_pat": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_do_cadastro", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
@@ -12760,6 +13066,35 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "antt_seguros_de_transportadores",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "numero_da_apolice"),
         "faixas": {c: _SEM_NEGATIVO for c in ("veiculos", "assentos", "endossos")},
+    },
+    # linha 1074 (PR 1): medido nos arquivos de 25/11/2026 (o ano nunca vem vazio; efluentes tem negativo na fonte)
+    "ibama_rapp_emissoes_atmosfericas": {
+        "pasta": "ibama_rapp_emissoes_atmosfericas",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "poluente", "quantidade"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("quantidade", )},
+    },
+    "ibama_rapp_efluentes_liquidos": {
+        "pasta": "ibama_rapp_efluentes_liquidos",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "tipo_de_tratamento"),
+    },
+    "ibama_rapp_fontes_de_energia": {
+        "pasta": "ibama_rapp_fontes_de_energia",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "fonte_de_energia", "unidade"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("quantidade_consumida", "energia", "emissoes_de_co2", )},
+    },
+    "ibama_rapp_residuos_destinados": {
+        "pasta": "ibama_rapp_residuos_destinados",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "residuo", "unidade"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("quantidade", )},
+    },
+    "ibama_rapp_residuos_transportados": {
+        "pasta": "ibama_rapp_residuos_transportados",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano"),
+    },
+    "ibama_rapp_residuos_armazenados": {
+        "pasta": "ibama_rapp_residuos_armazenados",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "ano", "residuo", "unidade", "quantidade"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("quantidade", )},
     },
     "receita_regime_tributario": {
         "pasta": "receita_regime_tributario",
