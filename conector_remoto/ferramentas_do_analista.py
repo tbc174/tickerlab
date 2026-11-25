@@ -371,7 +371,7 @@ async def _buscar(
     return resposta
 
 
-def _juntar_sem_repetir(corpos: list[object], chave: str) -> list[object]:
+def juntar_sem_repetir(corpos: list[object], chave: str) -> list[object]:
     """Os `limits` ou `sources` de todas as respostas, na ordem em que apareceram e sem repetir."""
     vistos: dict[str, object] = {}
     for corpo in corpos:
@@ -381,6 +381,10 @@ def _juntar_sem_repetir(corpos: list[object], chave: str) -> list[object]:
                 json.dumps(item, sort_keys=True, ensure_ascii=False), item
             )
     return list(vistos.values())
+
+
+class EmpresaNaoDisponivel(ToolError):
+    """A base não serve nenhum bloco da empresa nos dois dias (a mesma frase do 404 das outras ferramentas)."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -430,7 +434,7 @@ def _montar_a_saida(
         achadas += _quantas(diferenca)
         todos += [r.corpo for r in (dois.antes, dois.depois) if r.ok]
     if not saida:
-        raise ToolError(
+        raise EmpresaNaoDisponivel(
             mensagem_do_erro(
                 RespostaDaApi(STATUS_NAO_DISPONIVEL, {"detail": MOTIVO_NAO_DISPONIVEL})
             )
@@ -452,11 +456,11 @@ def _montar_a_saida(
         **saida,
         "not_consulted": nao_consultados,
         "limits": [
-            *_juntar_sem_repetir(todos, "limits"),
+            *juntar_sem_repetir(todos, "limits"),
             AVISO_DA_FERRAMENTA,
             *([AVISO_DE_PAGINA_CHEIA] if parcial else []),
         ],
-        "sources": _juntar_sem_repetir(todos, "sources"),
+        "sources": juntar_sem_repetir(todos, "sources"),
     }
 
 
@@ -519,46 +523,66 @@ def _registrar_o_que_mudou(servidor: MCPServer, pedidos: Pedidos) -> None:
         limite: LimiteDeMudancas = None,
     ) -> str:
         numeros = cnpj_do_pedido(cnpj)
-        if desde >= _hoje():
-            raise ToolError(
-                "A data `desde` precisa ser anterior a hoje: não há o que comparar."
-            )
-        acesso = acesso_do_pedido()
-        conjuntos = acesso.conjuntos if acesso else frozenset()
-        visiveis, fora_do_pedido = _blocos_do_pedido(blocos, conjuntos)
-        dias = (desde.isoformat(), None)
-        # os dois dias de cada bloco correm juntos: a espera é a de um pedido, não a soma de seis
-        resultados = await asyncio.gather(
-            *(
-                _buscar(pedidos, b, numeros, dia, conjuntos)
-                for b in visiveis
-                for dia in dias
-            ),
-            return_exceptions=True,
+        exigir_desde_no_passado(desde)
+        saida = await diferenca_da_empresa(
+            pedidos, numeros, desde, blocos, ferramenta="o_que_mudou"
         )
-        for resultado in resultados:
-            if isinstance(resultado, BaseException):
-                raise resultado
-        respostas = [r for r in resultados if isinstance(r, RespostaDaApi)]
-        pares = [
-            DoisDias(respostas[i], respostas[i + 1])
-            for i in range(0, len(respostas), 2)
-        ]
-        _exigir_que_a_api_serviu(pares)
-        dos_blocos: dict[str, DoisDias | None] = {
-            b: None for b in CONJUNTOS_DO_BLOCO if b not in fora_do_pedido
-        }
-        dos_blocos.update(zip(visiveis, pares, strict=True))
-        # a tranca de pessoa vê cada resposta crua, inclusive o que a comparação não repete; o teto de tamanho
-        # só vale para o que vai à IA, que é a diferença (uma ficha crua de companhia aberta já passa de 90 mil)
-        for dois in pares:
-            for resposta in (dois.antes, dois.depois):
-                pedidos.conferir_pessoa(resposta, "o_que_mudou")
-        saida = _montar_a_saida(numeros, desde, dos_blocos, fora_do_pedido)
         return pedidos.entregar(
             RespostaDaApi(200, enxugar_o_que_mudou(saida, limite=limite)),
             "o_que_mudou",
         )
+
+
+def exigir_desde_no_passado(desde: date) -> None:
+    """`ToolError` se `desde` é hoje ou depois: não há o que comparar."""
+    if desde >= _hoje():
+        raise ToolError(
+            "A data `desde` precisa ser anterior a hoje: não há o que comparar."
+        )
+
+
+async def diferenca_da_empresa(
+    pedidos: Pedidos,
+    numeros: str,
+    desde: date,
+    blocos: list[str] | None,
+    *,
+    ferramenta: str,
+) -> dict[str, object]:
+    """A diferença de uma empresa entre `desde` e hoje, nos blocos que a chave vê e o analista pediu, antes de
+    enxugar. `EmpresaNaoDisponivel` se a base não serve nenhum bloco dela; outro erro da API para tudo.
+    `ferramenta` é a que aparece no registro quando a tranca de pessoa recusa uma resposta."""
+    acesso = acesso_do_pedido()
+    conjuntos = acesso.conjuntos if acesso else frozenset()
+    visiveis, fora_do_pedido = _blocos_do_pedido(blocos, conjuntos)
+    dias = (desde.isoformat(), None)
+    # os dois dias de cada bloco correm juntos: a espera é a de um pedido, não a soma de seis
+    resultados = await asyncio.gather(
+        *(
+            _buscar(pedidos, b, numeros, dia, conjuntos)
+            for b in visiveis
+            for dia in dias
+        ),
+        return_exceptions=True,
+    )
+    for resultado in resultados:
+        if isinstance(resultado, BaseException):
+            raise resultado
+    respostas = [r for r in resultados if isinstance(r, RespostaDaApi)]
+    pares = [
+        DoisDias(respostas[i], respostas[i + 1]) for i in range(0, len(respostas), 2)
+    ]
+    _exigir_que_a_api_serviu(pares)
+    dos_blocos: dict[str, DoisDias | None] = {
+        b: None for b in CONJUNTOS_DO_BLOCO if b not in fora_do_pedido
+    }
+    dos_blocos.update(zip(visiveis, pares, strict=True))
+    # a tranca de pessoa vê cada resposta crua, inclusive o que a comparação não repete; o teto de tamanho
+    # só vale para o que vai à IA, que é a diferença (uma ficha crua de companhia aberta já passa de 90 mil)
+    for dois in pares:
+        for resposta in (dois.antes, dois.depois):
+            pedidos.conferir_pessoa(resposta, ferramenta)
+    return _montar_a_saida(numeros, desde, dos_blocos, fora_do_pedido)
 
 
 # ---------------------------------------------------------------- comparar_empresas
@@ -667,8 +691,8 @@ def _montar_a_comparacao(respostas: dict[str, RespostaDaApi]) -> dict[str, objec
             for cnpj, r in respostas.items()
         },
         "not_available": [cnpj for cnpj, r in respostas.items() if not r.ok],
-        "limits": [*_juntar_sem_repetir(corpos, "limits"), AVISO_DA_COMPARACAO],
-        "sources": _juntar_sem_repetir(corpos, "sources"),
+        "limits": [*juntar_sem_repetir(corpos, "limits"), AVISO_DA_COMPARACAO],
+        "sources": juntar_sem_repetir(corpos, "sources"),
     }
     cortadas = {
         cnpj: _quantas_entregas(r.corpo)

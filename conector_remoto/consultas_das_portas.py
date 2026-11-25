@@ -568,6 +568,33 @@ _COMPARAR_EMPRESAS = Ferramenta(
     dica_se_grande="Compare menos empresas por vez (`cnpjs`).",
 )
 
+_ACOMPANHAR_EMPRESAS = Ferramenta(
+    nome="acompanhar_empresas",
+    titulo="O que mudou em 2 a 5 empresas desde um dia",
+    descricao=(
+        "O que mudou em 2 a 5 empresas desde um dia, numa chamada: para cada empresa da lista, compara o que a\n"
+        "base sabia em `desde` com o que sabe hoje, nos blocos que a chave vê (o cadastro na Receita, com as\n"
+        "entregas de DFP e ITR, os vínculos e os eventos), e lista só a diferença, cada item com o antes e o\n"
+        "depois, a fonte e o dia em que ficou público. As empresas saem na ordem pedida; a que não mudou vem só\n"
+        "com `changes_found` 0, a que a base não serve vem em `not_available`, e as fontes e os avisos vêm uma vez\n"
+        "só no topo. Cada empresa traz até `limite` mudanças por lista (`changes_shown`); `o_que_mudou` traz o\n"
+        "resto de uma empresa. Serve para retomar a lista de empresas que o analista acompanha e ler, antes da\n"
+        "reunião, o que é novo em cada uma.\n"
+        "Fonte: as dos blocos: cadastro CNPJ da Receita Federal; FRE, FCA e IPE da CVM.\n"
+        "Não traz: a lista guardada de uma vez para outra (ela vem no pedido), mudança que ainda não foi\n"
+        "publicada na base, sócio pessoa física, contato nem endereço, faturamento de empresa fechada, o motivo\n"
+        "de cada mudança, nota nem ordenação das empresas."
+    ),
+    conjuntos=frozenset({"companies", "events", "links", "profiles"}),
+    parametros=(
+        Parametro("cnpjs"),
+        Parametro("desde"),
+        Parametro("blocos", valores=("cadastro", "vinculos", "eventos")),
+        Parametro("limite", minimo=1, maximo=50),
+    ),
+    dica_se_grande="Acompanhe menos empresas por vez (`cnpjs`), peça um bloco só (`blocos`) ou menos mudanças por lista (`limite`).",
+)
+
 FERRAMENTAS: tuple[Ferramenta, ...] = (
     _BUSCAR_EMPRESAS,
     _FICHA_DA_EMPRESA,
@@ -588,6 +615,7 @@ FERRAMENTAS: tuple[Ferramenta, ...] = (
     _CREDITO_DA_EMPRESA,
     _O_QUE_MUDOU,
     _COMPARAR_EMPRESAS,
+    _ACOMPANHAR_EMPRESAS,
 )
 
 _LINHA_980 = "linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)"
@@ -782,6 +810,22 @@ CONSULTAS: tuple[Consulta, ...] = (
         na_pagina={
             "cli": "só no conector",
             "api": "lote (`POST /companies/batch`)",
+        },
+    ),
+    Consulta(
+        "acompanhar",
+        nome="Acompanhar uma lista de empresas",
+        resumo=(
+            "o que mudou em 2 a 5 empresas desde um dia, numa chamada: o cadastro, os vínculos e os eventos, só a diferença, cada item com a fonte e o dia em que ficou público; a empresa sem mudança aparece numa linha só"
+        ),
+        ferramentas=(_ACOMPANHAR_EMPRESAS,),
+        fora_de_uma_porta={
+            "cli": "linha 980, onda 2: composta no conector; a CLI não tem o comando",
+            "api": "composta no conector: o `o_que_mudou` de cada empresa da lista",
+        },
+        na_pagina={
+            "cli": "só no conector",
+            "api": "só no conector",
         },
     ),
     Consulta(

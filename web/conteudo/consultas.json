@@ -328,6 +328,22 @@
   },
   {
     "api": {
+      "frase": "só no conector"
+    },
+    "chave": "acompanhar",
+    "cli": {
+      "frase": "só no conector"
+    },
+    "conector": {
+      "nomes": [
+        "acompanhar_empresas"
+      ]
+    },
+    "nome": "Acompanhar uma lista de empresas",
+    "resumo": "o que mudou em 2 a 5 empresas desde um dia, numa chamada: o cadastro, os vínculos e os eventos, só a diferença, cada item com a fonte e o dia em que ficou público; a empresa sem mudança aparece numa linha só"
+  },
+  {
+    "api": {
       "frase": "quatro rotas"
     },
     "chave": "dossie",
