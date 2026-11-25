@@ -9,7 +9,13 @@ todos"). As tabelas saem de `base/contratos_estaduais.py`; aqui só se descobre 
   os contratos (`CONTRATOS.CSV`, uns 53 MB), as sanções a fornecedores (`FORNECEDOR_SANCOES.CSV`) e o cadastro
   de fornecedores (`FORNECEDORES.CSV`). Licença PDDL (domínio público) nos conjuntos do CKAN do estado, lida em
   25/11/2026; o `robots.txt` do `compras.rj.gov.br` não existe (404) e o do CKAN fecha `/api/`, então a coleta
-  não passa pelo CKAN: baixa os três endereços fixos.
+  não passa pelo CKAN: baixa os três endereços fixos. Depois (PR 2), as compras diretas
+  (`COMPRAS_DIRETAS.CSV`, uns 66 MB: dispensa e inexigibilidade, item por item), do mesmo jeito.
+- **Espírito Santo, portal da transparência** (`esdados-contratos` e `esdados-empenhos`): os CSVs por ano dos
+  contratos e dos empenhos do conjunto `portal-da-transparencia-contratos` (dados.es.gov.br, CC BY, lida em
+  25/11/2026; UTF-8 com ";"). O pacote junta contratos, empenhos, aditivos e comissões: o nome do arquivo escolhe.
+  A descoberta lê a página do conjunto (o `robots.txt` fecha `/api/` e pede 10 s entre pedidos), só links do
+  próprio portal; as alterações contratuais não trazem o CNPJ e ficam fora.
 
 Escolhas (testes em `tests/test_base_arquivo_lote_contratos_estaduais.py`), as mesmas da ordem cronológica
 (`base/arquivo/lote_ordem_cronologica.py`, de onde vem o filtro):
@@ -25,7 +31,12 @@ Escolhas (testes em `tests/test_base_arquivo_lote_contratos_estaduais.py`), as m
 from dataclasses import dataclass
 
 from base.arquivo.coleta import Fonte
-from base.arquivo.lote_ordem_cronologica import Formato, alvo_do_csv
+from base.arquivo.lote_ordem_cronologica import (
+    PAUSA_DO_ROBOTS_EM_SEGUNDOS,
+    Formato,
+    alvo_do_csv,
+    descobrir_em,
+)
 
 MENSAL = "mensal"
 SEMANAL = "semanal"
@@ -117,7 +128,82 @@ RJ_FORNECEDORES = ArquivoFixo(
     ),
     grupo=MENSAL,
 )
-ARQUIVOS_FIXOS = (RJ_CONTRATOS, RJ_SANCOES, RJ_FORNECEDORES)
+RJ_COMPRAS_DIRETAS = ArquivoFixo(
+    url=f"{SIGA_DO_RJ}/COMPRAS_DIRETAS.CSV",
+    formato=Formato(
+        id="govrj-compras-diretas",
+        portal="https://www.compras.rj.gov.br",
+        pacote="compras-diretas",
+        documento="cnpj_cpf",
+        # sem o processo, o objeto, o enquadramento legal e o item: texto livre (15 mil e 41 mil valores no
+        # arquivo de 25/11/2026), onde pode aparecer nome; fica o código do item
+        guardadas=(
+            "unidade",
+            "id processo",
+            "afastamento",
+            "data de aprovação",
+            "valor do processo (r$)",
+            "cnpj_cpf",
+            "id item",
+            "qtd.",
+            "unidade de medida",
+            "vl. unitário (r$)",
+            "ped",
+            "regime",
+            "temporalidade",
+        ),
+        codificacao=LATIN1,
+    ),
+    grupo=MENSAL,
+)
+ARQUIVOS_FIXOS = (RJ_CONTRATOS, RJ_SANCOES, RJ_FORNECEDORES, RJ_COMPRAS_DIRETAS)
+
+PORTAL_DO_ES = "https://dados.es.gov.br"
+PACOTE_DO_ES = "portal-da-transparencia-contratos"
+# o fornecedor e o objeto são texto livre (o de MEI é o nome da pessoa) e não ficam; o CNPJ formatado repete o outro
+ES_CONTRATOS = Formato(
+    id="esdados-contratos",
+    portal=PORTAL_DO_ES,
+    pacote=PACOTE_DO_ES,
+    documento="cnpjfornecedor",
+    guardadas=(
+        "id",
+        "idorgao",
+        "nomeorgao",
+        "numeroprocesso",
+        "modalidadeprocesso",
+        "numeroedital",
+        "numerodocumento",
+        "tipodocumento",
+        "cnpjfornecedor",
+        "tipoaquisicao",
+        "situacao",
+        "datacelebracao",
+        "datainiciovigencia",
+        "datafimvigencia",
+        "valorinicial",
+        "valorfinal",
+        "eregistropreco",
+    ),
+    arquivos=r"contratos-\d{4}\.csv",
+)
+ES_EMPENHOS = Formato(
+    id="esdados-empenhos",
+    portal=PORTAL_DO_ES,
+    pacote=PACOTE_DO_ES,
+    documento="cnpjfornecedor",
+    guardadas=(
+        "id",
+        "numeroprocesso",
+        "numerodocumento",
+        "tipodocumento",
+        "numeroempenho",
+        "valorglobal",
+        "cnpjfornecedor",
+    ),
+    arquivos=r"empenhos-\d{4}\.csv",
+)
+CONJUNTOS_DO_ES = (ES_CONTRATOS, ES_EMPENHOS)
 
 
 def _fonte_fixa(arquivo: ArquivoFixo) -> Fonte:
@@ -125,6 +211,18 @@ def _fonte_fixa(arquivo: ArquivoFixo) -> Fonte:
     return Fonte(arquivo.formato.id, arquivo.grupo, lambda _cliente, _agora: [alvo])
 
 
+def _fonte_do_portal(formato: Formato) -> Fonte:
+    return Fonte(
+        formato.id,
+        MENSAL,
+        lambda cliente, _agora: descobrir_em(cliente, formato),
+        pausa_minima=PAUSA_DO_ROBOTS_EM_SEGUNDOS,
+    )
+
+
 def fontes() -> list[Fonte]:
-    """As fontes do lote para a lista `FONTES` (o id segue a família: `govrj-...`)."""
-    return [_fonte_fixa(arquivo) for arquivo in ARQUIVOS_FIXOS]
+    """As fontes do lote para a lista `FONTES` (o id segue a família: `govrj-...`, `esdados-...`)."""
+    return [
+        *(_fonte_fixa(arquivo) for arquivo in ARQUIVOS_FIXOS),
+        *(_fonte_do_portal(formato) for formato in CONJUNTOS_DO_ES),
+    ]

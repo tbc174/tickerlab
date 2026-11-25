@@ -6113,11 +6113,28 @@ def _tabelas_dos_contratos_estaduais() -> dict[str, Tabela]:
         "www.compras.rj.gov.br, PDDL (`base/contratos_estaduais.py`)"
     )
 
-    def tabela(nome: str, descricao: str, frequencia: str, colunas: dict) -> Tabela:
+    fonte_do_es = (
+        "Governo do ES: portal da transparência (SEGER), CSVs por ano do conjunto "
+        "`portal-da-transparencia-contratos` em dados.es.gov.br, CC BY (`base/contratos_estaduais.py`)"
+    )
+    so_pj_do_es = so_pj.replace(
+        "(o SIGA mascara o CPF)", "(o ES traz o CPF inteiro na mesma coluna)"
+    )
+
+    def tabela(
+        nome: str,
+        descricao: str,
+        frequencia: str,
+        colunas: dict,
+        *,
+        fonte: str = fonte_do_siga,
+        familia: str = "govrj",
+        regra_de_pessoa: str = so_pj,
+    ) -> Tabela:
         return Tabela(
-            descricao=descricao + montagem + so_pj,
-            fonte=fonte_do_siga,
-            familia_da_fonte="govrj",
+            descricao=descricao + montagem + regra_de_pessoa,
+            fonte=fonte,
+            familia_da_fonte=familia,
             frequencia=frequencia,
             atraso=atraso,
             onde=(
@@ -6257,6 +6274,149 @@ def _tabelas_dos_contratos_estaduais() -> dict[str, Tabela]:
                 "uf": ("UF da empresa no cadastro", TEXTO),
                 "cadastrado_em": ("Dia do cadastro no SIGA", DATA),
             },
+        ),
+        "rj_compras_diretas": tabela(
+            "rj_compras_diretas",
+            (
+                "Compras diretas (dispensa e inexigibilidade de licitação) dos órgãos do governo do Rio de "
+                "Janeiro, item por item, por CNPJ do fornecedor que venceu: a unidade, o tipo de afastamento "
+                "da licitação, o dia da aprovação, o valor do processo, o código do item, a quantidade e o "
+                "preço unitário. Para quem o estado compra sem licitação, e quanto."
+            ),
+            mensal,
+            {
+                "id_na_fonte": (
+                    "Processo, item, CNPJ, quantidade e preço unitário juntos por `|`",
+                    TEXTO,
+                ),
+                **comum,
+                "unidade": (
+                    "Órgão ou unidade do estado que comprou, como a fonte escreve",
+                    TEXTO,
+                ),
+                "id_processo": ("Identificador do processo de compra no SIGA", TEXTO),
+                "afastamento": (
+                    "Por que a licitação foi afastada (dispensa, inexigibilidade...), como a fonte escreve",
+                    TEXTO,
+                ),
+                "codigo_item": (
+                    "Código do item no processo (a descrição, texto livre, não fica)",
+                    TEXTO,
+                ),
+                "unidade_de_medida": (
+                    "Unidade de medida do item, como a fonte escreve",
+                    TEXTO,
+                ),
+                "pedido": (
+                    "Marca da fonte para pedido (PED), como a fonte escreve",
+                    TEXTO,
+                ),
+                "regime_juridico": (
+                    "Lei de licitações que rege a compra (8.666 ou 14.133)",
+                    TEXTO,
+                ),
+                "temporalidade": (
+                    "Prazo da contratação na fonte (em meses), como texto",
+                    TEXTO,
+                ),
+                "aprovado_em": ("Dia da aprovação da compra direta", DATA),
+                "valor_do_processo": (
+                    "Valor do processo inteiro, em reais",
+                    REAIS_EXATOS,
+                ),
+                "quantidade": ("Quantidade do item", NUMERO_DECIMAL),
+                "valor_unitario": ("Preço unitário do item, em reais", REAIS_EXATOS),
+            },
+        ),
+        "es_contratos": tabela(
+            "es_contratos",
+            (
+                "Contratos dos órgãos do governo do Espírito Santo com cada fornecedor, por CNPJ: o órgão, a "
+                "modalidade, o tipo de aquisição, a situação, o dia da celebração, a vigência e os valores "
+                "inicial e final. Um Parquet por ano do arquivo da fonte (2001 em diante)."
+            ),
+            mensal,
+            {
+                "id_na_fonte": (
+                    "Identificador do contrato no portal e CNPJ juntos por `|`",
+                    TEXTO,
+                ),
+                **comum,
+                "id_contrato": (
+                    "Identificador do contrato no portal da transparência",
+                    TEXTO,
+                ),
+                "codigo_orgao": ("Código do órgão", TEXTO),
+                "orgao": ("Órgão do estado que contratou, como a fonte escreve", TEXTO),
+                "processo": ("Número do processo (e-Docs ou SEP)", TEXTO),
+                "modalidade": (
+                    "Modalidade do processo de compra, como a fonte escreve",
+                    TEXTO,
+                ),
+                "edital": ("Número do edital; vazio quando não houve", TEXTO),
+                "documento": (
+                    "Número do contrato ou da ata, como a fonte escreve",
+                    TEXTO,
+                ),
+                "tipo_de_documento": ("Contrato, ata de registro de preço...", TEXTO),
+                "tipo_de_aquisicao": (
+                    "Compra, serviço, obra..., como a fonte escreve",
+                    TEXTO,
+                ),
+                "situacao": ("Situação do contrato, como a fonte escreve", TEXTO),
+                "registro_de_preco": (
+                    "Marca da fonte para registro de preço (S ou N)",
+                    TEXTO,
+                ),
+                "celebrado_em": ("Dia da celebração do contrato", DATA),
+                "vigencia_inicio": (
+                    "Primeiro dia da vigência; vazio quando a fonte não diz",
+                    DATA,
+                ),
+                "vigencia_fim": (
+                    "Último dia da vigência; vazio quando a fonte não diz",
+                    DATA,
+                ),
+                "valor_inicial": ("Valor inicial do contrato, em reais", REAIS_EXATOS),
+                "valor_final": (
+                    "Valor final do contrato (com os aditivos), em reais",
+                    REAIS_EXATOS,
+                ),
+            },
+            fonte=fonte_do_es,
+            familia="esdados",
+            regra_de_pessoa=so_pj_do_es,
+        ),
+        "es_empenhos": tabela(
+            "es_empenhos",
+            (
+                "Notas de empenho do governo do Espírito Santo ligadas a contratos, por CNPJ do fornecedor: o "
+                "processo, o contrato, o número do empenho e o valor global. A fonte não traz a data do "
+                "empenho; o ano é o do arquivo (e está no número do empenho). Um Parquet por ano."
+            ),
+            mensal,
+            {
+                "id_na_fonte": (
+                    "Identificador do empenho no portal e CNPJ juntos por `|`",
+                    TEXTO,
+                ),
+                **comum,
+                "id_empenho": (
+                    "Identificador do empenho no portal da transparência",
+                    TEXTO,
+                ),
+                "processo": ("Número do processo (e-Docs ou SEP)", TEXTO),
+                "documento": (
+                    "Número do contrato ou da ata a que o empenho se liga",
+                    TEXTO,
+                ),
+                "tipo_de_documento": ("Contrato, ata de registro de preço...", TEXTO),
+                "empenho": ("Número da nota de empenho (o ano vem no começo)", TEXTO),
+                "valor_global": ("Valor global do empenho, em reais", REAIS_EXATOS),
+            },
+            fonte=fonte_do_es,
+            familia="esdados",
+            regra_de_pessoa=so_pj_do_es,
         ),
     }
 
@@ -12456,6 +12616,7 @@ _SEFA_PR = (
 _ORDEM_CRONOLOGICA = "2026-11-06"  # a ordem cronológica de pagamentos de PE e ES entrou no arquivista neste dia (linha 755)
 _SEF_MG = "2026-11-06"  # a dívida ativa de Minas Gerais entrou no arquivista neste dia (linha 755)
 _CONTRATOS_ESTADUAIS = "2026-11-25"  # os contratos, sanções e fornecedores do SIGA do RJ entraram no arquivista neste dia (linha 1075)
+_CONTRATOS_ESTADUAIS_2 = "2026-11-25"  # as compras diretas do RJ e os contratos e empenhos do ES (linha 1075, PR 2)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -12825,6 +12986,9 @@ _CONTRATO = {
     "rj_contratos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "contratado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS, granularidade_do_publico_em="dia"),
     "rj_sancoes_fornecedores": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "efetivada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS, granularidade_do_publico_em="dia"),
     "rj_fornecedores": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "cadastrado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS, granularidade_do_publico_em="dia"),
+    "rj_compras_diretas": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "aprovado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS_2, granularidade_do_publico_em="dia"),
+    "es_contratos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "celebrado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS_2, granularidade_do_publico_em="dia"),
+    "es_empenhos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS_2, granularidade_do_publico_em="dia"),
     "sef_mg_parcelamentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "parcelado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
@@ -13305,6 +13469,20 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     },
     "rj_sancoes_fornecedores": {
         "pasta": "rj_sancoes_fornecedores",
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "rj_compras_diretas": {
+        "pasta": "rj_compras_diretas",
+        "faixas": {"valor_do_processo": _SEM_NEGATIVO, "quantidade": _SEM_NEGATIVO, "valor_unitario": _SEM_NEGATIVO},
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "es_contratos": {
+        "pasta": "es_contratos",
+        "faixas": {"valor_inicial": _SEM_NEGATIVO, "valor_final": _SEM_NEGATIVO},
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "es_empenhos": {
+        "pasta": "es_empenhos",
         "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "rj_fornecedores": {

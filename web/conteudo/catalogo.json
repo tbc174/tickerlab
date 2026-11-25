@@ -1775,7 +1775,9 @@
     },
     {
       "coletas": [
-        "esdados-ordem-cronologica"
+        "esdados-ordem-cronologica",
+        "esdados-contratos",
+        "esdados-empenhos"
       ],
       "familia": "esdados",
       "licencas": [
@@ -1792,7 +1794,8 @@
       "coletas": [
         "govrj-contratos",
         "govrj-sancoes",
-        "govrj-fornecedores"
+        "govrj-fornecedores",
+        "govrj-compras-diretas"
       ],
       "familia": "govrj",
       "licencas": [
@@ -3117,7 +3120,7 @@
           "Ministério da Saúde (BPS)"
         ],
         "tabelas": 12,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos e o cadastro de fornecedores do governo do Rio de Janeiro, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 22 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos, as compras diretas e o cadastro de fornecedores do governo do Rio de Janeiro, os contratos e os empenhos do governo do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 25 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -6686,6 +6689,27 @@
       "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": "2026-11-25"
+    },
+    {
+      "id": "govrj-compras-diretas",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
+      "id": "esdados-contratos",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-06"
+    },
+    {
+      "id": "esdados-empenhos",
+      "licenca": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-06"
     },
     {
       "id": "gleif-goldencopy-lei2",

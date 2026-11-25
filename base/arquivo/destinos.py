@@ -470,6 +470,9 @@ DESTINOS: dict[str, Destino] = {
     "govrj-contratos": _tabela("rj_contratos"),
     "govrj-sancoes": _tabela("rj_sancoes_fornecedores"),
     "govrj-fornecedores": _tabela("rj_fornecedores"),
+    "govrj-compras-diretas": _tabela("rj_compras_diretas"),
+    "esdados-contratos": _tabela("es_contratos"),
+    "esdados-empenhos": _tabela("es_empenhos"),
     "sefapr-divida-ativa": _tabela(
         "sefa_pr_divida_ativa"
     ),  # dívida ativa do Paraná (linha 755)

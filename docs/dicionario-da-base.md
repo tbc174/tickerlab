@@ -4312,6 +4312,139 @@ Cadastro de fornecedores do governo do Rio de Janeiro, por CNPJ: se tem certific
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `rj_compras_diretas`
+
+Compras diretas (dispensa e inexigibilidade de licitação) dos órgãos do governo do Rio de Janeiro, item por item, por CNPJ do fornecedor que venceu: a unidade, o tipo de afastamento da licitação, o dia da aprovação, o valor do processo, o código do item, a quantidade e o preço unitário. Para quem o estado compra sem licitação, e quanto. O arquivo é regravado inteiro todo dia: linha nova, ou com qualquer valor diferente, vira versão nova desde o dia em que foi vista, e o que some do arquivo ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do fornecedor (o de MEI é o da pessoa), o texto livre e as linhas com CPF (o SIGA mascara o CPF); quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** Governo do RJ: SIGA (Sistema Integrado de Gestão de Aquisições, SEPLAG), CSV em www.compras.rj.gov.br, PDDL (`base/contratos_estaduais.py`)
+- **Licença:** PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `aprovado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/rj_compras_diretas/<arquivo>.parquet` (servidor de casa, `scripts/carga_contratos_estaduais.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Processo, item, CNPJ, quantidade e preço unitário juntos por `|` | texto |
+| `arquivo` | O arquivo da fonte de onde a linha veio (o nome, sem a extensão) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `unidade` | Órgão ou unidade do estado que comprou, como a fonte escreve | texto |
+| `id_processo` | Identificador do processo de compra no SIGA | texto |
+| `afastamento` | Por que a licitação foi afastada (dispensa, inexigibilidade...), como a fonte escreve | texto |
+| `codigo_item` | Código do item no processo (a descrição, texto livre, não fica) | texto |
+| `unidade_de_medida` | Unidade de medida do item, como a fonte escreve | texto |
+| `pedido` | Marca da fonte para pedido (PED), como a fonte escreve | texto |
+| `regime_juridico` | Lei de licitações que rege a compra (8.666 ou 14.133) | texto |
+| `temporalidade` | Prazo da contratação na fonte (em meses), como texto | texto |
+| `aprovado_em` | Dia da aprovação da compra direta | data (dia) |
+| `valor_do_processo` | Valor do processo inteiro, em reais | reais (R$) |
+| `quantidade` | Quantidade do item | número com decimais, na unidade da fonte |
+| `valor_unitario` | Preço unitário do item, em reais | reais (R$) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `es_contratos`
+
+Contratos dos órgãos do governo do Espírito Santo com cada fornecedor, por CNPJ: o órgão, a modalidade, o tipo de aquisição, a situação, o dia da celebração, a vigência e os valores inicial e final. Um Parquet por ano do arquivo da fonte (2001 em diante). O arquivo é regravado inteiro todo dia: linha nova, ou com qualquer valor diferente, vira versão nova desde o dia em que foi vista, e o que some do arquivo ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do fornecedor (o de MEI é o da pessoa), o texto livre e as linhas com CPF (o ES traz o CPF inteiro na mesma coluna); quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** Governo do ES: portal da transparência (SEGER), CSVs por ano do conjunto `portal-da-transparencia-contratos` em dados.es.gov.br, CC BY (`base/contratos_estaduais.py`)
+- **Licença:** CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `celebrado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/es_contratos/<arquivo>.parquet` (servidor de casa, `scripts/carga_contratos_estaduais.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador do contrato no portal e CNPJ juntos por `|` | texto |
+| `arquivo` | O arquivo da fonte de onde a linha veio (o nome, sem a extensão) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `id_contrato` | Identificador do contrato no portal da transparência | texto |
+| `codigo_orgao` | Código do órgão | texto |
+| `orgao` | Órgão do estado que contratou, como a fonte escreve | texto |
+| `processo` | Número do processo (e-Docs ou SEP) | texto |
+| `modalidade` | Modalidade do processo de compra, como a fonte escreve | texto |
+| `edital` | Número do edital; vazio quando não houve | texto |
+| `documento` | Número do contrato ou da ata, como a fonte escreve | texto |
+| `tipo_de_documento` | Contrato, ata de registro de preço... | texto |
+| `tipo_de_aquisicao` | Compra, serviço, obra..., como a fonte escreve | texto |
+| `situacao` | Situação do contrato, como a fonte escreve | texto |
+| `registro_de_preco` | Marca da fonte para registro de preço (S ou N) | texto |
+| `celebrado_em` | Dia da celebração do contrato | data (dia) |
+| `vigencia_inicio` | Primeiro dia da vigência; vazio quando a fonte não diz | data (dia) |
+| `vigencia_fim` | Último dia da vigência; vazio quando a fonte não diz | data (dia) |
+| `valor_inicial` | Valor inicial do contrato, em reais | reais (R$) |
+| `valor_final` | Valor final do contrato (com os aditivos), em reais | reais (R$) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `es_empenhos`
+
+Notas de empenho do governo do Espírito Santo ligadas a contratos, por CNPJ do fornecedor: o processo, o contrato, o número do empenho e o valor global. A fonte não traz a data do empenho; o ano é o do arquivo (e está no número do empenho). Um Parquet por ano. O arquivo é regravado inteiro todo dia: linha nova, ou com qualquer valor diferente, vira versão nova desde o dia em que foi vista, e o que some do arquivo ganha `consta` falso. Só pessoa jurídica: a coleta tira o nome do fornecedor (o de MEI é o da pessoa), o texto livre e as linhas com CPF (o ES traz o CPF inteiro na mesma coluna); quem a Receita guardada trata como pessoa fica com `trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra.
+
+- **Fonte:** Governo do ES: portal da transparência (SEGER), CSVs por ano do conjunto `portal-da-transparencia-contratos` em dados.es.gov.br, CC BY (`base/contratos_estaduais.py`)
+- **Licença:** CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)
+- **Atraso de divulgação:** A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `arquivo`, `id_na_fonte`, `visto_em`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/es_empenhos/<arquivo>.parquet` (servidor de casa, `scripts/carga_contratos_estaduais.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_na_fonte` | Identificador do empenho no portal e CNPJ juntos por `|` | texto |
+| `arquivo` | O arquivo da fonte de onde a linha veio (o nome, sem a extensão) | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `id_empenho` | Identificador do empenho no portal da transparência | texto |
+| `processo` | Número do processo (e-Docs ou SEP) | texto |
+| `documento` | Número do contrato ou da ata a que o empenho se liga | texto |
+| `tipo_de_documento` | Contrato, ata de registro de preço... | texto |
+| `empenho` | Número da nota de empenho (o ano vem no começo) | texto |
+| `valor_global` | Valor global do empenho, em reais | reais (R$) |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075) | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que o arquivista viu a linha | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `financiamentos_bndes`
 
 Histórico de contratações de crédito reembolsável do BNDES por CNPJ (operações não automáticas, diretas e pelas instituições credenciadas). **Não é saldo nem dívida atual:** é o fluxo que o banco divulga (contratado e desembolsado); nada se soma (subcréditos ficam separados, e a outra fonte fica na outra tabela) e o vazio fica vazio. Uma linha por valor diferente de cada operação: a mudança vira linha nova desde o dia em que foi vista, e a que some do arquivo ganha `consta` falso. Só pessoa jurídica: nome do cliente e texto do projeto nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.

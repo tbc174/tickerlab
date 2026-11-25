@@ -181,6 +181,10 @@ FICAM_EM_CASA = (
     "rj_contratos",
     "rj_sancoes_fornecedores",
     "rj_fornecedores",
+    # linha 1075, PR 2: compras diretas do RJ (PDDL) e contratos e empenhos do ES (CC BY), só com CNPJ; mesmo pode
+    "rj_compras_diretas",
+    "es_contratos",
+    "es_empenhos",
     # linha 1074 (PR 1): RAPP do IBAMA (família `ibama`, integridade sob contrato), só CNPJ; o envio ao VPS pede o
     # "pode" da Diretoria com a prova de zero pessoa da 1ª carga
     "ibama_rapp_emissoes_atmosfericas",

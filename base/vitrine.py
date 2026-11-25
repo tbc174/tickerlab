@@ -710,7 +710,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "dinheiro_publico",
         "Dinheiro público e capital de fora",
         "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de "
-        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos e o cadastro de fornecedores do governo do Rio de Janeiro, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento "
+        "Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos, as compras diretas e o cadastro de fornecedores do governo do Rio de Janeiro, os contratos e os empenhos do governo do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento "
         "estrangeiro registrado no Banco Central.",
         (
             "financiamentos_bndes",
@@ -729,6 +729,9 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "es_ordem_cronologica",
             "rj_contratos",
             "rj_fornecedores",
+            "rj_compras_diretas",
+            "es_contratos",
+            "es_empenhos",
             "receita_dirbi",
             "receita_ecf_renuncia",
             "receita_transacoes_individual",
