@@ -66,9 +66,10 @@ def _com_versao(monkeypatch):
     monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
 
 
-def test_as_cinco_tabelas_estao_no_comando_do_menor_ao_maior():
+def test_as_seis_tabelas_estao_no_comando_com_a_ponte_antes_de_quem_a_usa():
     assert list(carga_cadastros.MODULOS) == [
         "ans_operadoras",
+        "ans_produtos",
         "susep_cadastro",
         "mte_lista_suja",
         "gleif_ponte",

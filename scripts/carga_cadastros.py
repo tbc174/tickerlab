@@ -1,11 +1,12 @@
 """Carga dos cadastros que a fonte publica inteiros a cada vez (`base/cadastros_em_retrato.py`) para a base.
 
-    python -m scripts.carga_cadastros                          (as cinco tabelas)
+    python -m scripts.carga_cadastros                          (as seis tabelas)
     python -m scripts.carga_cadastros --tabela mte_lista_suja  (só uma; repita a opção para mais)
     python -m scripts.carga_cadastros --pasta /tmp/base        (outra pasta de saída)
     python -m scripts.carga_cadastros --refazer                (relê mesmo sem retrato novo: código novo)
 
-As cinco tabelas: `ans_operadoras`, `susep_cadastro`, `mte_lista_suja`, `ibama_embargos` e `gleif_ponte`.
+As seis tabelas: `ans_operadoras`, `ans_produtos` (os planos, ligados ao CNPJ pela `ans_operadoras`, que vem antes),
+`susep_cadastro`, `mte_lista_suja`, `ibama_embargos` e `gleif_ponte`.
 Até a linha 915 nenhum script as montava, e o acervo de produção não tinha pasta delas. Lê os arquivos que
 o arquivista já guardou no acervo (não baixa nada). Só pessoa jurídica com CNPJ de dígito certo entra;
 nome e CPF nunca (ADR 0075); empresário individual e MEI ficam marcados em `trata_como_pessoa`, pela
@@ -25,11 +26,13 @@ from pathlib import Path
 
 from base import (
     ans_operadoras,
+    ans_produtos,
     gleif,
     ibama_embargos,
     mte_lista_suja,
     susep_cadastro,
 )
+from base.parquet import ler_tabela
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -41,12 +44,15 @@ MODULOS = {
     modulo.TABELA: modulo
     for modulo in (
         ans_operadoras,
+        ans_produtos,
         susep_cadastro,
         mte_lista_suja,
         gleif,
         ibama_embargos,
     )
 }
+# os cadastros que se ligam ao CNPJ por uma ponte já montada (`ans_produtos` pela `ans_operadoras`): relê o Parquet dela
+COM_PONTE = frozenset({ans_produtos.TABELA})
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,7 +77,11 @@ def main(argv: list[str] | None = None) -> int:
     with obter_engine().connect() as conexao:
         for tabela in pedidas:
             resumo = MODULOS[tabela].montar(
-                conexao, pasta, datetime.now(UTC), refazer=opcoes.refazer
+                conexao,
+                pasta,
+                datetime.now(UTC),
+                refazer=opcoes.refazer,
+                **({"leitor": ler_tabela} if tabela in COM_PONTE else {}),
             )
             if not resumo:
                 log.warning("%s: nenhum arquivo guardado no acervo", tabela)
