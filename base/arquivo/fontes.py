@@ -38,6 +38,7 @@ from base.arquivo import (
     lote_commodities_oficiais,
     lote_conferidas_14_11,
     lote_conferidas_19_11,
+    lote_contratos_estaduais,
     lote_cvm,
     lote_divida_estadual,
     lote_documentais,
@@ -1691,6 +1692,8 @@ FONTES: list[Fonte] = [
     # dívida ativa estadual (Sefa-PR; linha 755 da fila): o ZIP do dia, só CNPJ e sem o nome
     *lote_divida_estadual.fontes(),
     *lote_ordem_cronologica.fontes(),
+    # linha 1075: contratos, sanções e fornecedores dos estados (lote 1: SIGA do RJ)
+    *lote_contratos_estaduais.fontes(),
     # lote cadastros globais (rodada 4, linha 287): golden copy do GLEIF, Wikidata, tickers da SEC e
     # sanções de empresas (OFAC, UE, OFSI); só pessoa jurídica (ADR 0088)
     *lote_cadastros.fontes(),

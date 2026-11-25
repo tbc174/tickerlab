@@ -1779,6 +1779,23 @@
     },
     {
       "coletas": [
+        "govrj-contratos",
+        "govrj-sancoes",
+        "govrj-fornecedores"
+      ],
+      "familia": "govrj",
+      "licencas": [
+        "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto"
+      ],
+      "link": "https://www.compras.rj.gov.br/",
+      "marca": "vendavel",
+      "orgao": "Governo do Rio de Janeiro (SIGA, SEPLAG)",
+      "ritmo": null,
+      "termos_lidos_em": "2026-11-25",
+      "uso": "guardada"
+    },
+    {
+      "coletas": [
         "wikidata-lei",
         "wikidata-isin",
         "wikidata-cnpj",
@@ -2475,18 +2492,6 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-      "modulos": [
-        "governo_e_sancoes",
-        "mercado_e_empresas"
-      ],
-      "orgao": "ANS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 5
-    },
-    {
-      "historico_desde": "2026-10-14",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "modulos": [
         "governo_e_sancoes"
@@ -2495,6 +2500,18 @@
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 5
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "governo_e_sancoes",
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 4
     },
     {
       "historico_desde": "2026-10-14",
@@ -2964,7 +2981,7 @@
   ],
   "ligado_pelo_cnpj": {
     "orgaos": 26,
-    "tabelas": 137,
+    "tabelas": 136,
     "temas": [
       {
         "chave": "cvm",
@@ -3037,7 +3054,7 @@
           "CVM"
         ],
         "tabelas": 12,
-        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 12 de 15 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Dívida ativa da União, do Paraná e de Minas Gerais, empresas punidas pela CGU e pelo governo do Rio de Janeiro, penalidades da ANS, autos de infração e notificações da ANEEL, processos sancionadores da Anatel, liquidações e outros regimes especiais do Banco Central, o cadastro de empregadores do MTE, os embargos do IBAMA, a recuperação judicial, a falência e a liquidação lidas dos documentos que a companhia entrega à CVM, processos judiciais nas comunicações do CNJ e os que a companhia cita nas notas. Hoje estão montadas 12 de 16 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dívida, sanções e processos"
       },
       {
@@ -3061,8 +3078,8 @@
           "MTE (PAT)",
           "INPI"
         ],
-        "tabelas": 31,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 31 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "tabelas": 30,
+        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 30 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -3089,7 +3106,7 @@
           "Ministério da Saúde (BPS)"
         ],
         "tabelas": 12,
-        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 20 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Crédito do BNDES e da Finep, projetos no REIDI, descontos da CDE, benefícios fiscais de Pernambuco, os incentivos que as empresas declaram à Receita (DIRBI e ECF), a ordem cronológica de pagamentos de Pernambuco e do Espírito Santo, os contratos e o cadastro de fornecedores do governo do Rio de Janeiro, contratos com estados e municípios nos tribunais de contas, o cadastro de fornecedores do governo federal no SICAF, as compras públicas de medicamentos e produtos de saúde registradas no Ministério da Saúde e o investimento estrangeiro registrado no Banco Central. Hoje estão montadas 12 de 22 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Dinheiro público e capital de fora"
       },
       {
@@ -3163,7 +3180,7 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 47
+      "tabelas": 46
     },
     {
       "chave": "credito_e_fidc",
@@ -6562,6 +6579,27 @@
       "termos_lidos_em": "2026-11-06"
     },
     {
+      "id": "govrj-contratos",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
+      "id": "govrj-sancoes",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "semanal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
+      "id": "govrj-fornecedores",
+      "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-11-25"
+    },
+    {
       "id": "gleif-goldencopy-lei2",
       "licenca": "CC0 (GLEIF, Global LEI Index)",
       "marca": "vendavel",
@@ -8457,17 +8495,6 @@
     {
       "atraso": null,
       "consultavel": false,
-      "frase": "Planos de saúde registrados na ANS, um por ID_PLANO: segmentação, cobertura, abrangência, contratação, financiamento, fator moderador, acomodação e situação.",
-      "frequencia": "Mensal",
-      "historico_desde": "2026-10-25",
-      "modulo": "governo_e_sancoes",
-      "orgao": "ANS",
-      "situacao": "licenciada",
-      "tabela": "ans_produtos"
-    },
-    {
-      "atraso": null,
-      "consultavel": false,
       "frase": "Cadastro de operadoras de planos de saúde da ANS por CNPJ, em dois arquivos: ativas e canceladas (com a data e o motivo do descredenciamento).",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-16",
@@ -9281,12 +9308,12 @@
     }
   ],
   "totais": {
-    "familias": 134,
+    "familias": 135,
     "familias_em_uso": 48,
     "fontes": 48,
     "fontes_em_consulta": 12,
     "modulos": 6,
-    "tabelas": 168,
+    "tabelas": 167,
     "tabelas_conferidas_em_curto": "20/11"
   }
 }

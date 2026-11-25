@@ -66,6 +66,8 @@ LICENCAS = {
     "sefapr": "Sefa-PR, dívida ativa: sem licença escrita (a confirmar; citar a Sefa-PR)",
     "esdados": "CC BY, Governo do ES (citar a fonte). Só CNPJ, sem o nome do credor",
     "sefmg": "SEF-MG, dívida ativa: sem licença escrita (a confirmar; citar a SEF-MG)",
+    # linha 1075 (conjuntos do SIGA no CKAN do RJ, lidos em 25/11/2026): PDDL, domínio público
+    "govrj": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
     "spcapital": "CC0, contratos da Prefeitura de São Paulo (citar a Prefeitura)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     # lote Brasil, segunda camada (22/10/2026): só CNPJ e agregados, sem pessoa física (ADR 0088)
@@ -385,6 +387,7 @@ REVENDA = {
     "sefapr": VENDAVEL_RISCO_ASSUMIDO,  # lista pública de devedores, sem licença nem termos escritos (linha 755); nada perguntado à fonte (ADR 0102 Emenda 2)
     "sefmg": VENDAVEL_RISCO_ASSUMIDO,  # idem para Minas: lista pública (Res. Conj. SEF/AGE 5.625/2022, CTN art. 198 §3º II), sem licença escrita
     "spcapital": VENDAVEL_COM_ATRIBUICAO,  # CC0; uso público com a fonte aprovado em 04/11/2026
+    "govrj": VENDAVEL_COM_ATRIBUICAO,  # PDDL nos conjuntos do SIGA no CKAN do RJ (lida em 25/11/2026, linha 1075); nada perguntado à fonte (ADR 0102 Emenda 2)
     "pgfn": VENDAVEL_RISCO_ASSUMIDO,
     # dado pessoal (autuados, empregadores pessoa física): só interno, menos a pessoa jurídica no conjunto de
     # integridade da API por chave (ADR 0122, Emenda 1)
@@ -701,6 +704,9 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
     "sefapr": _ABERTA_GUARDA_NAO_DIZ,
     # SEF-MG (06/11/2026): sem robots.txt (404) nem termos de uso para a lista; guarda não dita
     "sefmg": _ABERTA_GUARDA_NAO_DIZ,
+    # SIGA do RJ (25/11/2026, linha 1075): o compras.rj.gov.br não tem robots.txt (404); a PDDL (domínio
+    # público) dos conjuntos no CKAN do estado não limita a guarda. A coleta não passa pelo CKAN (Disallow /api/)
+    "govrj": _ABERTA_SEM_PRAZO,
     # o termo veda a coleta e a cópia
     **dict.fromkeys(("yahoo", "kraken", "fnc"), _TERMO_VEDA_NAO_GUARDAR),
     "fmi": ColetaEGuarda(

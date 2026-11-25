@@ -149,6 +149,8 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "comprasgov_sicaf", "bps_compras",
     # linha 770: planos de saúde da ANS pelo CNPJ da operadora; em casa até o pode do envio
     "ans_produtos",
+    # linha 1075 (estados, lote 1): contratos, sanções e fornecedores do SIGA do RJ; em casa até o pode do envio
+    "rj_contratos", "rj_sancoes_fornecedores", "rj_fornecedores",
 })  # fmt: skip
 
 
