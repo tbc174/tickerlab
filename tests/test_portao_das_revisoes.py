@@ -46,8 +46,10 @@ def _julgar(caminhos, corpo=CORPO_BOM, depois=_nada_depois):
         ".github/workflows/testes.yml",
         "telas/conta/entrar.py",
         "src/conformidade.py",
-        "site/index.html",
-        "web/src/App.tsx",
+        "conteudo/termos-de-uso.md",
+        "web/src/site/Inicio.tsx",
+        "web/src/paginas/precos.tsx",
+        "web/src/conteudo.ts",
         "README.md",
         "src/banco/membros_da_organizacao.py",
         "compose.conector.yaml",
@@ -67,6 +69,14 @@ def test_area_sensivel(caminho):
         "docs/cli.md",
         "trader/modelo.py",
         "requirements.txt",
+        # pastas geradas: o CI já confere que batem com a fonte, e a fonte é que conta
+        "site/index.html",
+        "novo/app.js",
+        "web/conteudo/paginas.json",
+        # dentro de web/, só as páginas públicas são texto público: o app com login e os testes, não
+        "web/src/app/Carteira.tsx",
+        "web/testes/site.test.tsx",
+        "web/src/estilo.ts",
     ],
 )
 def test_fora_da_area_sensivel(caminho):
@@ -203,8 +213,8 @@ def test_cruzada_dispensada_vale_so_para_migracao():
 
 def test_revisoes_dispensadas_valem_so_para_texto_publico():
     corpo = "Revisões: dispensadas (digitação, Emenda 2)"
-    assert _julgar(["site/index.html", "README.md"], corpo=corpo).passa
-    veredito = _julgar(["site/index.html", "src/cobranca.py"], corpo=corpo)
+    assert _julgar(["web/src/site/Inicio.tsx", "README.md"], corpo=corpo).passa
+    veredito = _julgar(["web/src/site/Inicio.tsx", "src/cobranca.py"], corpo=corpo)
     assert not veredito.passa
     assert "dispensa" in veredito.motivo
 

@@ -35,7 +35,18 @@ AREAS_SENSIVEIS_EXTRAS = (
     "scripts/portao_das_revisoes.py",
     "scripts/portao_do_agente.py",
 )
-TEXTO_PUBLICO = ("site/*", "web/*", "novo/*", "conteudo/*", "README.md")
+# Pastas geradas: não contam. O CI já confere que batem com a fonte (que conta), e regerar o site acontece em
+# quase todo PR que mexe em src/paginas.py (71 de 100 PRs "sensíveis" de 11 a 25/11 eram só isso).
+GERADAS = ("site/*", "novo/*", "web/conteudo/*")
+# Texto público (nível 1). Dentro de web/, só as páginas públicas: o app com login (web/src/app), os testes e o
+# estilo não são texto público, embora o agente da fila também não possa mexer neles.
+TEXTO_PUBLICO = (
+    "web/src/site/*",
+    "web/src/paginas/*",
+    "web/src/conteudo.ts",
+    "conteudo/*",
+    "README.md",
+)
 MIGRACOES = ("migracoes/*",)
 
 _SHA = r"([0-9a-f]{7,40})"
@@ -77,10 +88,17 @@ def _casa(caminho: str, padroes: Iterable[str]) -> bool:
     return any(fnmatch(caminho, padrao) for padrao in padroes)
 
 
+def _e_sensivel(caminho: str) -> bool:
+    if _casa(caminho, GERADAS):
+        return False
+    if caminho.startswith("web/"):
+        return _casa(caminho, TEXTO_PUBLICO)
+    return _casa(caminho, AREAS_SENSIVEIS + AREAS_SENSIVEIS_EXTRAS)
+
+
 def arquivos_sensiveis(caminhos: Iterable[str]) -> list[str]:
     """Os arquivos do PR que são área sensível ou de nível 1."""
-    padroes = AREAS_SENSIVEIS + AREAS_SENSIVEIS_EXTRAS
-    return [caminho for caminho in caminhos if _casa(caminho, padroes)]
+    return [caminho for caminho in caminhos if _e_sensivel(caminho)]
 
 
 def _limpar(linha: str) -> str:
