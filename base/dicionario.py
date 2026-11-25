@@ -5875,6 +5875,187 @@ def _tabelas_da_ordem_cronologica() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_dos_contratos_estaduais() -> dict[str, Tabela]:
+    """Contratos, sanções e cadastro de fornecedores dos estados (`base/contratos_estaduais.py`, linha 1075):
+    a mesma situação de linha da ordem cronológica de pagamentos."""
+    situacao = {
+        c: _tabelas_dos_incentivos()["sefa_pr_divida_ativa"].colunas[c]
+        for c in ("consta", "trata_como_pessoa", "visto_em", "disponivel_em")
+    }
+    comum = {
+        "arquivo": (
+            "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+            TEXTO,
+        ),
+        "cnpj": _EMPRESA["cnpj"],
+        "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+    }
+    so_pj = (
+        " Só pessoa jurídica: a coleta tira o nome do fornecedor (o de MEI é o da pessoa), o texto livre e "
+        "as linhas com CPF (o SIGA mascara o CPF); quem a Receita guardada trata como pessoa fica com "
+        "`trata_como_pessoa`. Linha sem CNPJ completo e de dígito certo não entra."
+    )
+    montagem = (
+        " O arquivo é regravado inteiro todo dia: linha nova, ou com qualquer valor diferente, vira versão "
+        "nova desde o dia em que foi vista, e o que some do arquivo ganha `consta` falso."
+    )
+    atraso = (
+        "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista "
+        "a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data"
+    )
+    fonte_do_siga = (
+        "Governo do RJ: SIGA (Sistema Integrado de Gestão de Aquisições, SEPLAG), CSV em "
+        "www.compras.rj.gov.br, PDDL (`base/contratos_estaduais.py`)"
+    )
+
+    def tabela(nome: str, descricao: str, frequencia: str, colunas: dict) -> Tabela:
+        return Tabela(
+            descricao=descricao + montagem + so_pj,
+            fonte=fonte_do_siga,
+            familia_da_fonte="govrj",
+            frequencia=frequencia,
+            atraso=atraso,
+            onde=(
+                f"Parquet em `<acervo>/base/{nome}/<arquivo>.parquet` (servidor de casa, "
+                "`scripts/carga_contratos_estaduais.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={**colunas, **situacao, **_ORIGEM_SEM_ANO},
+        )
+
+    mensal = (
+        "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)"
+    )
+    return {
+        "rj_contratos": tabela(
+            "rj_contratos",
+            (
+                "Contratos dos órgãos do governo do Rio de Janeiro com cada fornecedor, por CNPJ: a unidade "
+                "que contratou, o tipo de aquisição, a situação, as datas (contratação, assinatura, "
+                "publicação no Diário Oficial, vigência) e os valores contratado, empenhado, liquidado e "
+                "pago. Para quem a empresa vende no estado e quanto já recebeu."
+            ),
+            mensal,
+            {
+                "id_na_fonte": ("Código do contrato e CNPJ juntos por `|`", TEXTO),
+                **comum,
+                "codigo_contrato": ("Código do contrato no SIGA", TEXTO),
+                "id_processo": ("Identificador do processo de compra no SIGA", TEXTO),
+                "contratacao": ("Número da contratação no SIGA", TEXTO),
+                "situacao": ("Situação da contratação, como a fonte escreve", TEXTO),
+                "unidade": (
+                    "Órgão ou unidade do estado que contratou, como a fonte escreve",
+                    TEXTO,
+                ),
+                "codigo_ug": ("Código da unidade gestora", TEXTO),
+                "tipo_de_aquisicao": (
+                    "Tipo de aquisição (pregão, dispensa, adesão a ata...), como a fonte escreve",
+                    TEXTO,
+                ),
+                "criterio_de_julgamento": ("Critério de julgamento da compra", TEXTO),
+                "regime_juridico": (
+                    "Lei de licitações que rege o contrato (8.666 ou 14.133)",
+                    TEXTO,
+                ),
+                "emergencial": (
+                    "Marca da fonte para contratação emergencial (S ou N)",
+                    TEXTO,
+                ),
+                "contratado_em": ("Dia da contratação", DATA),
+                "assinado_em": (
+                    "Dia da assinatura do contrato; vazio quando a fonte não diz",
+                    DATA,
+                ),
+                "publicado_em": (
+                    "Dia da publicação no Diário Oficial do estado; vazio quando a fonte não diz",
+                    DATA,
+                ),
+                "vigencia_inicio": ("Primeiro dia da vigência", DATA),
+                "vigencia_fim": ("Último dia da vigência", DATA),
+                "valor_contratado": (
+                    "Valor total do contrato (ou o estimado para a contratação), em reais",
+                    REAIS,
+                ),
+                "valor_empenhado": (
+                    "Valor total empenhado até o dia do arquivo, em reais",
+                    REAIS,
+                ),
+                "valor_liquidado": (
+                    "Valor total liquidado até o dia do arquivo, em reais",
+                    REAIS,
+                ),
+                "valor_pago": (
+                    "Valor total pago até o dia do arquivo, em reais",
+                    REAIS,
+                ),
+            },
+        ),
+        "rj_sancoes_fornecedores": tabela(
+            "rj_sancoes_fornecedores",
+            (
+                "Penalidades que os órgãos do governo do Rio de Janeiro aplicaram a fornecedores, por CNPJ: o "
+                "órgão que puniu, o enquadramento legal, o motivo, o contrato, o dia em que a penalidade "
+                "começou a valer e a situação dela. Risco de contraparte no estado."
+            ),
+            "Semanal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+            {
+                "id_na_fonte": (
+                    "CNPJ, órgão, contrato, enquadramento, dia da efetivação e motivo juntos por `|`",
+                    TEXTO,
+                ),
+                **comum,
+                "orgao_apenador": (
+                    "Órgão ou entidade do estado que aplicou a penalidade",
+                    TEXTO,
+                ),
+                "enquadramento_legal": (
+                    "Artigo de lei em que a penalidade se apoia",
+                    TEXTO,
+                ),
+                "motivo": (
+                    "Motivo da penalidade, como a fonte escreve (lista fechada da fonte)",
+                    TEXTO,
+                ),
+                "contrato": (
+                    "Número do contrato ligado à penalidade, como a fonte escreve",
+                    TEXTO,
+                ),
+                "situacao": (
+                    "Situação da penalidade (vigente, encerrada...), como a fonte escreve",
+                    TEXTO,
+                ),
+                "efetivada_em": ("Dia em que a penalidade passou a valer", DATA),
+            },
+        ),
+        "rj_fornecedores": tabela(
+            "rj_fornecedores",
+            (
+                "Cadastro de fornecedores do governo do Rio de Janeiro, por CNPJ: se tem certificado de "
+                "registro cadastral (CRC), se é ME ou EPP, o tipo empresarial, a situação no cadastro, a "
+                "cidade e a UF e o dia do cadastro. Quem já se habilitou a vender ao estado."
+            ),
+            mensal,
+            {
+                "id_na_fonte": ("O CNPJ (um fornecedor por linha)", TEXTO),
+                **comum,
+                "crc": (
+                    "Tem certificado de registro cadastral (CRC) no estado (SIM ou NÃO)",
+                    TEXTO,
+                ),
+                "tipo_empresarial": ("Tipo empresarial, como a fonte escreve", TEXTO),
+                "me_epp": (
+                    "Microempresa ou empresa de pequeno porte (SIM ou NÃO)",
+                    TEXTO,
+                ),
+                "situacao": ("Situação do fornecedor no cadastro do estado", TEXTO),
+                "cidade": ("Cidade da empresa no cadastro (não é endereço)", TEXTO),
+                "uf": ("UF da empresa no cadastro", TEXTO),
+                "cadastrado_em": ("Dia do cadastro no SIGA", DATA),
+            },
+        ),
+    }
+
+
 TABELAS: dict[str, Tabela] = {
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -9742,6 +9923,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_das_licencas(),
     **_tabelas_dos_incentivos(),
     **_tabelas_da_ordem_cronologica(),
+    **_tabelas_dos_contratos_estaduais(),
     **_tabelas_dos_financiamentos(),
     **_tabelas_da_cmed(),
     **_tabelas_dos_cadastros_em_retrato(),
@@ -12067,6 +12249,7 @@ _SEFA_PR = (
 )
 _ORDEM_CRONOLOGICA = "2026-11-06"  # a ordem cronológica de pagamentos de PE e ES entrou no arquivista neste dia (linha 755)
 _SEF_MG = "2026-11-06"  # a dívida ativa de Minas Gerais entrou no arquivista neste dia (linha 755)
+_CONTRATOS_ESTADUAIS = "2026-11-25"  # os contratos, sanções e fornecedores do SIGA do RJ entraram no arquivista neste dia (linha 1075)
 _COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
@@ -12427,6 +12610,9 @@ _CONTRATO = {
     "sef_mg_divida_ativa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "inscrito_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
     "sefaz_pe_ordem_cronologica": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "pago_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_ORDEM_CRONOLOGICA, granularidade_do_publico_em="dia"),
     "es_ordem_cronologica": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "pago_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_ORDEM_CRONOLOGICA, granularidade_do_publico_em="dia"),
+    "rj_contratos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "contratado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS, granularidade_do_publico_em="dia"),
+    "rj_sancoes_fornecedores": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "efetivada_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS, granularidade_do_publico_em="dia"),
+    "rj_fornecedores": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("arquivo", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "cadastrado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONTRATOS_ESTADUAIS, granularidade_do_publico_em="dia"),
     "sef_mg_parcelamentos": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "parcelado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SEF_MG, granularidade_do_publico_em="dia"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.0.1"),  # 1.0.1 (05/11/2026): a porta deixou de servir as linhas de pessoa natural (`trata_como_pessoa`, ADR 0075); a tabela saiu da lista proibida na virada (`docs/virada-empresas-fechadas.md`)
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
@@ -12874,6 +13060,19 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "es_ordem_cronologica": {
         "pasta": "es_ordem_cronologica",
         "faixas": {"valor_pago": _SEM_NEGATIVO},
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "rj_contratos": {
+        "pasta": "rj_contratos",
+        "faixas": {"valor_contratado": _SEM_NEGATIVO, "valor_empenhado": _SEM_NEGATIVO, "valor_liquidado": _SEM_NEGATIVO, "valor_pago": _SEM_NEGATIVO},
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "rj_sancoes_fornecedores": {
+        "pasta": "rj_sancoes_fornecedores",
+        "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+    },
+    "rj_fornecedores": {
+        "pasta": "rj_fornecedores",
         "nao_nulas": ("arquivo", "id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
     },
     "sef_mg_parcelamentos": {

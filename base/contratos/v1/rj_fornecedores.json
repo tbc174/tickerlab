@@ -1,0 +1,109 @@
+{
+  "tabela": "rj_fornecedores",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_na_fonte": {
+      "descricao": "O CNPJ (um fornecedor por linha)",
+      "unidade": "texto"
+    },
+    "arquivo": {
+      "descricao": "O arquivo da fonte de onde a linha veio (o nome, sem a extensão)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+      "unidade": "texto"
+    },
+    "crc": {
+      "descricao": "Tem certificado de registro cadastral (CRC) no estado (SIM ou NÃO)",
+      "unidade": "texto"
+    },
+    "tipo_empresarial": {
+      "descricao": "Tipo empresarial, como a fonte escreve",
+      "unidade": "texto"
+    },
+    "me_epp": {
+      "descricao": "Microempresa ou empresa de pequeno porte (SIM ou NÃO)",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação do fornecedor no cadastro do estado",
+      "unidade": "texto"
+    },
+    "cidade": {
+      "descricao": "Cidade da empresa no cadastro (não é endereço)",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da empresa no cadastro",
+      "unidade": "texto"
+    },
+    "cadastrado_em": {
+      "descricao": "Dia do cadastro no SIGA",
+      "unidade": "data (dia)"
+    },
+    "consta": {
+      "descricao": "Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "visto_em": {
+      "descricao": "Dia do arquivo em que o arquivista viu a linha",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a linha vale para a base: o dia do arquivo em que foi vista, também no 1º (a fonte não diz quando publicou cada linha)",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "arquivo",
+    "id_na_fonte",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "cadastrado_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "cadastrado_em": "aconteceu_em",
+    "visto_em": "visto_em",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-25",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "PDDL, SIGA do Governo do RJ (citar a fonte). Só CNPJ, sem nome nem objeto",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (o arquivista guarda o arquivo do dia a cada coleta, só o que mudou)",
+  "atraso": "A fonte não diz quando cada linha entrou no arquivo: toda linha vale desde o dia em que o arquivista a viu (a história guardada começa na primeira coleta); as datas do fato ficam nas colunas de data",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}
