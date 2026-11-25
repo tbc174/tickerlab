@@ -98,6 +98,7 @@ ARQUIVOS: dict[str, str] = {
     "fre_partes_relacionadas": "fre_partes_relacionadas/*.parquet",
     "ofertas_antigas": "ofertas/antigas.parquet",
     "ofertas_resolucao_160": "ofertas/resolucao_160.parquet",
+    "ofertas_cnpj_dos_devedores": "ofertas/cnpj_dos_devedores.parquet",
     "amostra_painel": "amostra/v1/painel/*.parquet",
     "ifdata_valores": "bcb/ifdata/valores/*/*.parquet",
     "ifdata_cadastro": "bcb/ifdata/cadastro/*.parquet",

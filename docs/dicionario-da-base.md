@@ -1892,6 +1892,35 @@ Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por 
 | `anunciada_em` | Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476) | data (dia) |
 | `disponivel_em` | Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento) | data (dia) |
 
+## `ofertas_cnpj_dos_devedores`
+
+O CNPJ de empresa citado como devedor ou coobrigado em cada requerimento de oferta pela Resolução CVM 160 (CRI, CRA e outros certificados de recebíveis; 2023 em diante), uma linha por requerimento e CNPJ. Vem do texto livre `Identificacao_devedores_coobrigados`, que **nunca entra**: só o CNPJ com pontuação e dígito verificador certo é guardado; CPF, nome e o resto do texto ficam de fora. Existe porque o informe mensal do certificado (`securitizacao_cedente_devedor`) não traz cedente nem devedor de todo CRA (em 2024, 249 dos 755 certificados não têm nenhuma linha), e o devedor só aparece aqui, na oferta. É a ligação da empresa à emissão pela raiz do CNPJ, **não** prova de que ela é a devedora do certificado de hoje: o requerimento cita quem a securitizadora disse que seria. Sem juízo de qualidade sobre o devedor
+
+- **Fonte:** CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária (o ZIP é regerado todo dia)
+- **Atraso de divulgação:** Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `numero_requerimento`, `cnpj_emissor`, `cnpj`
+- **Três datas:** aconteceu_em = `anunciada_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ofertas/cnpj_dos_devedores.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_requerimento` | Como a CVM publica (`Numero_Requerimento`) | texto |
+| `numero_processo` | Como a CVM publica (`Numero_Processo`) | texto |
+| `cnpj_emissor` | CNPJ do emissor da oferta (a securitizadora), como a CVM publica | texto |
+| `nome_emissor` | Como a CVM publica (`Nome_Emissor`) | texto |
+| `valor_mobiliario` | Como a CVM publica (`Valor_Mobiliario`) | texto |
+| `emissao` | Como a CVM publica (`Emissao`) | texto |
+| `cnpj` | CNPJ de empresa citado como devedor ou coobrigado, no formato 00.000.000/0000-00 | texto |
+| `anunciada_em` | Quando a oferta ficou pública na CVM (data do registro) | data (dia) |
+| `disponivel_em` | Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento) | data (dia) |
+
 ## `susep_seguros`
 
 Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O CNPJ vem do cadastro da SUSEP (`susep_cadastro`), pelo código da seguradora, quando ele está montado na base (linha 915); a igualdade entre o `coenti` do SES e o código FIP do cadastro ainda não foi conferida em dado real. Os códigos que a B13 não liga continuam nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)

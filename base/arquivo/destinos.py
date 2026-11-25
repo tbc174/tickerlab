@@ -346,7 +346,9 @@ DESTINOS: dict[str, Destino] = {
     ),
     "cvm-fidc": _tabela("fidc_informe"),
     "cvm-fidc-recente": _tabela("fidc_informe"),
-    "cvm-ofertas": _tabela("ofertas_antigas", "ofertas_resolucao_160"),
+    "cvm-ofertas": _tabela(
+        "ofertas_antigas", "ofertas_resolucao_160", "ofertas_cnpj_dos_devedores"
+    ),
     "cvm-cadastros": _tabela("cadastro_das_companhias", "cadastro_de_fundos"),
     "cvm-cri": _tabela(*_INFORME_DE_SECURITIZACAO),
     "cvm-cra": _tabela(*_INFORME_DE_SECURITIZACAO),
