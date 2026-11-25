@@ -197,7 +197,7 @@ def test_as_listas_da_conta_de_orgaos_so_citam_nomes_que_existem():
 ORGAOS_PUBLICOS_CONFERIDOS = frozenset(
     {
         "ANAC", "ANEEL", "ANM", "ANP", "ANS", "ANTT", "Anatel", "Ancine", "Anvisa", "BNDES", "Banco Central",
-        "CFTC", "CGU", "CNJ", "CONAB", "CVM", "Compras.gov.br", "Finep", "Governo do ES", "IBAMA", "INPI", "MAPA", "MDIC", "MME",
+        "CFTC", "CGU", "CNJ", "CONAB", "CVM", "Compras.gov.br", "Finep", "Governo do ES", "Governo do RJ", "IBAMA", "INPI", "MAPA", "MDIC", "MME",
         "MTE", "Ministério da Saúde (DATASUS)", "PGFN", "Receita Federal", "SEF-MG", "SEFAZ-PE", "SUSEP",
         "Sefa-PR", "TCE-CE", "TCE-PE", "TCE-RS", "TCE-SP", "Tesouro Nacional", "USDA",
     }

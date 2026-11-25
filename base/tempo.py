@@ -46,6 +46,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "ultima_alteracao_em", "instante",
         "transito_em_julgado", "concedido_em", "situacao_desde", "portaria_em", "execucao_desde",
         "contratado_em", "data_assinatura", "data_contrato", "vigencia_inicio",
+        "assinado_em", "efetivada_em", "cadastrado_em",  # contratos, sanções e fornecedores do RJ (linha 1075)
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
         "registrado_em", "funciona_desde",  # linha 904: registro do administrador de FII; início do FII
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
@@ -109,6 +110,9 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("sigsif_habilitados", "dt_ocorrencia"): "aconteceu_em",
     ("sigsif_habilitados", "dt_suspensao"): "aconteceu_em",
     ("receita_transacoes_individual", "data_acordo"): "aconteceu_em",
+    # linha 1075: o dia da publicação no Diário Oficial do RJ é fato do contrato; a base soube no
+    # dia do arquivo (`disponivel_em`), então não é a data de publicar (revisão de segurança do #1316)
+    ("rj_contratos", "publicado_em"): "aconteceu_em",
     # linha 904 (lote 2 das 300 tabelas): os passos da fiscalização da ANEEL são fatos do processo; o
     # `recebido_em` é o dia em que o agente recebeu o auto ou o termo, não o dia em que ficou público
     **{

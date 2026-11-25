@@ -61,6 +61,7 @@ PASSAM_AS_MARCAS = {
     "msestado",  # CC BY, "pode" do Tiago em 05/11/2026 (linha 688)
     "sefazpe",  # CC BY, linha 578 (nível 2: fonte já licenciada)
     "esdados",  # CC BY, linha 755 (nível 2: fonte já licenciada)
+    "govrj",  # PDDL, SIGA do RJ, linha 1075
     "anvisa",  # CC Attribution nas fichas do dados.gov.br e sem robots.txt, lidos em 12/11/2026 (linha 860)
 }
 
