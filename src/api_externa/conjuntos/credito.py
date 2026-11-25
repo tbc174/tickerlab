@@ -29,11 +29,12 @@ from src.api_externa.conjuntos.empresas import e_empresa
 from src.api_externa.envelope import campo
 from src.credito.elegibilidade import CEDENTE
 from src.credito.features import Feature
-from src.credito.ficha import ficha_de_credito
+from src.credito.ficha import fatos_da_ficha
 from src.credito.sinais import DO_FIDC
 
 CONJUNTO = "credit"
-# as regras ficam fora desta rota e os fatos não mudam com o papel: a ficha pede um, qualquer um
+# as regras ficam fora desta rota e os fatos não mudam com o papel: a ficha inteira pede um, qualquer um
+# (os testes comparam com ela)
 PAPEL_DA_FICHA = CEDENTE
 
 
@@ -112,8 +113,9 @@ class LeitorDeCredito:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
         if not e_empresa(self.porta, normal):
             return None
-        ficha = ficha_de_credito(self.porta, normal, PAPEL_DA_FICHA, como_era_em)
-        liberados = self._liberados(ficha.fatos)
+        # só os fatos de `FATOS`: a ficha inteira (PGFN, SCR, listas...) não cabia no prazo (linha 1015)
+        fatos = fatos_da_ficha(self.porta, normal, como_era_em, frozenset(FATOS))
+        liberados = self._liberados(fatos)
         if not liberados:
             return None
         servidos = {
