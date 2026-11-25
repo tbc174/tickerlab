@@ -118,3 +118,42 @@ def test_linhagem_de_cada_tabela_e_completa(ambiente):
         assert versoes == {VERSAO}  # o registro de cada arquivo também diz o commit
     finally:
         motor.dispose()
+
+
+def test_versao_sem_o_xml_dos_valores_vai_dita_no_resultado_e_nao_derruba_a_carga(
+    monkeypatch, caplog
+):
+    """A carga de 12/11/2026 morreu com KeyError porque um zip do RAD veio sem o XML dos valores:
+    a versão sai da tabela, a carga segue, e a falta fica dita (id e endereço), nunca em silêncio."""
+    from types import SimpleNamespace
+
+    from base import fca
+
+    linha = SimpleNamespace(
+        url="https://rad.cvm.gov.br/x?numSequencia=104636&numVersao=1",
+        caminho_do_original="qualquer",
+        sha256="0" * 64,
+    )
+    monkeypatch.setattr(carga_fca, "originais_mais_recentes", lambda *_: [linha])
+    monkeypatch.setattr(carga_fca.acervo, "ler_original", lambda _: b"zip")
+
+    def sem_valores(conteudo, documento):
+        raise fca.VersaoSemValores(str(documento["id_documento"]))
+
+    monkeypatch.setattr(fca, "ler_documento_da_versao", sem_valores)
+    documentos = pd.DataFrame({"id_documento": ["104636"], "cnpj": ["x"]})
+    with caplog.at_level("WARNING"):
+        versoes, origens, faltas = carga_fca.ler_versoes(None, documentos)
+    assert versoes.empty and origens == []
+    assert faltas == [{"id_documento": "104636", "url": linha.url}]
+    assert "104636" in caplog.text
+
+
+def test_manifesto_diz_as_versoes_sem_valores(ambiente):
+    pasta, _ = ambiente
+    carga_fca.main(["--pasta", str(pasta), "--desde", "2021", "--ate", "2021"])
+    manifesto = json.loads(
+        (pasta / "valores_mobiliarios.json").read_text(encoding="utf-8")
+    )
+    assert manifesto["versoes_sem_valores"] == []
+    assert len(manifesto["conferido_em"]) == 10

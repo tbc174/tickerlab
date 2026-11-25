@@ -235,15 +235,23 @@ def _linhas_do_valor(valor: ET.Element) -> list[dict[str, object]]:
     ]  # fmt: skip
 
 
+class VersaoSemValores(ValueError):
+    """O zip da versão no RAD não traz o XML dos valores mobiliários (a CVM deixou de incluí-lo em
+    alguma versão). Quem lê decide: a carga conta a falta e segue, nunca em silêncio."""
+
+
 def ler_documento_da_versao(
     conteudo: bytes, documento: Mapping[str, object]
 ) -> pd.DataFrame:
     """Os valores mobiliários do documento de uma versão do FCA (zip do RAD da CVM), no formato de
     `ler_valores_mobiliarios`. `documento` é a linha dele em `documentos` (CNPJ, referência, versão,
-    número e data de entrega vêm do arquivo principal, não do documento)."""
+    número e data de entrega vêm do arquivo principal, não do documento). `VersaoSemValores` se o
+    formulário não traz o XML dos valores."""
     with zipfile.ZipFile(io.BytesIO(conteudo)) as externo:
         nome = next(n for n in externo.namelist() if n.endswith(".fca"))
         with zipfile.ZipFile(io.BytesIO(externo.read(nome))) as formulario:
+            if XML_DOS_VALORES not in formulario.namelist():
+                raise VersaoSemValores(str(documento["id_documento"]))
             raiz = ET.fromstring(formulario.read(XML_DOS_VALORES))
     linhas = [
         linha

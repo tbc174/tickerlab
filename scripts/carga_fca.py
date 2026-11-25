@@ -92,9 +92,11 @@ def ler_anos(conexao: sa.Connection, anos: range) -> list[tuple[str, bytes]]:
 
 def ler_versoes(
     conexao: sa.Connection, documentos: pd.DataFrame
-) -> tuple[pd.DataFrame, list[dict[str, str]]]:
+) -> tuple[pd.DataFrame, list[dict[str, str]], list[dict[str, str]]]:
     """Os valores das versões antigas guardadas (`coletar_fca_versoes`) dos documentos dos anos lidos,
-    com a origem de cada uma (endereço e SHA-256)."""
+    com a origem de cada uma (endereço e SHA-256) e as versões que o RAD entregou sem o XML dos
+    valores (id e endereço): a falta vai dita no manifesto, nunca em silêncio."""
+    sem_valores: list[dict[str, str]] = []
     por_numero = documentos.drop_duplicates("id_documento").set_index("id_documento")
     partes, origens = [], []
     for linha in originais_mais_recentes(conexao, fca.FONTE_DAS_VERSOES):
@@ -103,17 +105,27 @@ def ler_versoes(
         if numero not in por_numero.index or conteudo is None:
             continue
         documento = por_numero.loc[numero].to_dict() | {"id_documento": numero}
-        partes.append(fca.ler_documento_da_versao(conteudo, documento))
+        try:
+            partes.append(fca.ler_documento_da_versao(conteudo, documento))
+        except fca.VersaoSemValores:
+            log.warning("FCA, versão %s (%s): sem o XML dos valores", numero, linha.url)
+            sem_valores.append({"id_documento": numero, "url": linha.url})
+            continue
         origens.append({"url": linha.url, "sha256": linha.sha256})
     versoes = (
         pd.concat(partes, ignore_index=True)
         if partes
         else pd.DataFrame(columns=list(fca.COLUNAS))
     )
-    return versoes, origens
+    return versoes, origens, sem_valores
 
 
-def gravar(valores: pd.DataFrame, origens: list[dict[str, str]], pasta: Path) -> None:
+def gravar(
+    valores: pd.DataFrame,
+    origens: list[dict[str, str]],
+    pasta: Path,
+    sem_valores: list[dict[str, str]] | None = None,
+) -> None:
     tickers, emissores = fca.com_codigos_conferidos(
         tickers_dos_valores(valores), fca.emissores(valores), fca.codigos_conferidos()
     )
@@ -139,8 +151,13 @@ def gravar(valores: pd.DataFrame, origens: list[dict[str, str]], pasta: Path) ->
             origens,
         ),
     }
+    # a falta fica dita em todo manifesto da carga: versão que o RAD entregou sem o XML dos valores
+    extras = {
+        "versoes_sem_valores": sem_valores or [],
+        "conferido_em": datetime.now(ZoneInfo("America/Sao_Paulo")).date().isoformat(),
+    }
     for nome, (tabela, ordem, de_onde) in tabelas.items():
-        gravar_tabela(tabela, pasta / nome, de_onde, ordem)
+        gravar_tabela(tabela, pasta / nome, de_onde, ordem, extras=extras)
         log.info("%s: %s linhas", nome, len(tabela))
 
 
@@ -175,14 +192,22 @@ def main(argv: list[str] | None = None) -> int:
             documentos = pd.concat(
                 [fca.documentos(c) for c in conteudos], ignore_index=True
             )
-            versoes, origens_das_versoes = ler_versoes(conexao, documentos)
+            versoes, origens_das_versoes, sem_valores = ler_versoes(conexao, documentos)
     finally:
         motor.dispose()
     origens = [{"url": u, "sha256": hashlib.sha256(c).hexdigest()} for u, c in lidos]
     log.info("Versões antigas do RAD: %s documentos", len(origens_das_versoes))
     gravar(
-        fca.juntar_versoes(abertos, versoes), [*origens, *origens_das_versoes], pasta
+        fca.juntar_versoes(abertos, versoes),
+        [*origens, *origens_das_versoes],
+        pasta,
+        sem_valores,
     )
+    if sem_valores:
+        log.warning(
+            "%s versão(ões) do FCA sem o XML dos valores (ver `versoes_sem_valores` do manifesto)",
+            len(sem_valores),
+        )
     return 0
 
 
