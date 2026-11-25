@@ -168,7 +168,82 @@ RJ_FORNECEDORES = Tabela(
     chave=("cnpj",),
     datas=("cadastrado_em",),
 )
-TABELAS = (RJ_CONTRATOS, RJ_SANCOES, RJ_FORNECEDORES)
+RJ_COMPRAS_DIRETAS = Tabela(
+    fonte="govrj-compras-diretas",
+    tabela="rj_compras_diretas",
+    como_chamar={
+        "cnpj": "cnpj_cpf",
+        "unidade": "unidade",
+        "id_processo": "id processo",
+        "afastamento": "afastamento",
+        "codigo_item": "id item",
+        "unidade_de_medida": "unidade de medida",
+        "pedido": "ped",
+        "regime_juridico": "regime",
+        "temporalidade": "temporalidade",
+        "aprovado_em": "data de aprovação",
+        "valor_do_processo": "valor do processo (r$)",
+        "quantidade": "qtd.",
+        "valor_unitario": "vl. unitário (r$)",
+    },
+    # no arquivo de 25/11/2026, processo, item e CNPJ repetem com quantidade e preço diferentes (164 casos);
+    # com os dois na chave, o que repete é cópia idêntica
+    chave=("id_processo", "codigo_item", "cnpj", "quantidade", "valor_unitario"),
+    datas=("aprovado_em",),
+    reais=("valor_do_processo", "quantidade", "valor_unitario"),
+)
+ES_CONTRATOS = Tabela(
+    fonte="esdados-contratos",
+    tabela="es_contratos",
+    como_chamar={
+        "cnpj": "cnpjfornecedor",
+        "id_contrato": "id",
+        "codigo_orgao": "idorgao",
+        "orgao": "nomeorgao",
+        "processo": "numeroprocesso",
+        "modalidade": "modalidadeprocesso",
+        "edital": "numeroedital",
+        "documento": "numerodocumento",
+        "tipo_de_documento": "tipodocumento",
+        "tipo_de_aquisicao": "tipoaquisicao",
+        "situacao": "situacao",
+        "registro_de_preco": "eregistropreco",
+        "celebrado_em": "datacelebracao",
+        "vigencia_inicio": "datainiciovigencia",
+        "vigencia_fim": "datafimvigencia",
+        "valor_inicial": "valorinicial",
+        "valor_final": "valorfinal",
+    },
+    # no contratos-2025.csv de 25/11/2026, id e CNPJ não repetem (0 em 10.440 linhas de CNPJ)
+    chave=("id_contrato", "cnpj"),
+    datas=("celebrado_em", "vigencia_inicio", "vigencia_fim"),
+    reais=("valor_inicial", "valor_final"),
+)
+ES_EMPENHOS = Tabela(
+    fonte="esdados-empenhos",
+    tabela="es_empenhos",
+    como_chamar={
+        "cnpj": "cnpjfornecedor",
+        "id_empenho": "id",
+        "processo": "numeroprocesso",
+        "documento": "numerodocumento",
+        "tipo_de_documento": "tipodocumento",
+        "empenho": "numeroempenho",
+        "valor_global": "valorglobal",
+    },
+    # o `Id` é do empenho, não do contrato: no empenhos-2025.csv de 25/11/2026, 27.138 linhas de CNPJ e 27.138
+    # ids distintos; o número do empenho, ao contrário, repete entre órgãos (6.967 distintos), então não é chave
+    chave=("id_empenho", "cnpj"),
+    reais=("valor_global",),
+)
+TABELAS = (
+    RJ_CONTRATOS,
+    RJ_SANCOES,
+    RJ_FORNECEDORES,
+    RJ_COMPRAS_DIRETAS,
+    ES_CONTRATOS,
+    ES_EMPENHOS,
+)
 
 
 # --- leitura de um arquivo guardado --------------------------------------------------------------------------
@@ -199,7 +274,11 @@ def data(texto: pd.Series, formato: str = FORMATO_DA_DATA_BR) -> pd.Series:
 
 
 def reais(texto: pd.Series) -> pd.Series:
-    """ "1.234,50" e "59,64" em número (a fonte usa vírgula decimal); vazio e lixo viram nulo."""
+    """ "1.234,50" e "59,64" em número (a fonte usa vírgula decimal); vazio e lixo viram nulo.
+
+    Sem vírgula, o ponto não é tirado: "1.5" é 1,5. Nos arquivos do SIGA e do ES de 25/11/2026 nenhum valor
+    traz ponto sem vírgula (o inteiro vem sem ponto de milhar, "1000"), então não há "1.000" a confundir.
+    """
     com_virgula = texto.str.contains(",", regex=False)
     sem_milhar = texto.where(~com_virgula, texto.str.replace(".", "", regex=False))
     return pd.to_numeric(sem_milhar.str.replace(",", ".", regex=False), errors="coerce")
