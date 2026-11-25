@@ -39,7 +39,7 @@ recebido pela CVM, e a versão mais nova já recebida.
 import copy
 import threading
 from collections import OrderedDict, defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -61,6 +61,8 @@ from src.api_externa.porta_compartilhada import lembrar
 CONJUNTO = "buyers"
 RECEITA, FRE, REGISTRO = "rfb-cnpj", "cvm-hist-fre", "cvm-fidc-base"
 ESTABELECIMENTOS, EMPRESAS = "cnpj_estabelecimentos_pj", "cnpj_empresas_pj"
+# a situação cadastral versão por versão (só PJ): dela vêm a data e o motivo da baixa das empresas baixadas
+SITUACAO = "cnpj_situacao_cadastral"
 # o código do erro do pedido anterior ao primeiro retrato da Receita, que vem com a primeira data que funciona
 # (`first_known_at`); letras e sublinhado, como os outros códigos, para o conector poder repeti-lo
 ANTES_DO_PRIMEIRO_RETRATO = "known_at_before_first_snapshot"
@@ -81,6 +83,11 @@ LEITURAS = {
 }
 PUBLICADO_EM, MES = "publico_em", "mes_do_retrato"
 ATIVA, BAIXADA, FIP = "02", "08", "FIP"
+# os campos que o portão confere para mostrar a baixa (situação, data e motivo), da mesma fonte da razão social
+CAMPOS_DA_BAIXA = tuple(
+    (RECEITA, nome)
+    for nome in ("situacao_cadastral", "data_situacao_cadastral", "motivo_situacao")
+)
 ANOS_PADRAO, ANOS_MAXIMO = 3, 10
 LIMITE_PADRAO, LIMITE_MAXIMO = 20, 50
 EXEMPLOS_POR_SINAL = 5
@@ -90,6 +97,8 @@ UFS = frozenset({
     "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 })  # fmt: skip
 DIAS_POR_ANO = 365.25
+# a baixa de uma empresa: o dia da baixa, o código do motivo como a Receita publica e o dia em que a versão ficou pública
+Baixa = tuple[date, str, date]
 
 # o sinal: a chave das provas (traduzida em `nomes.py`) e o nome que sai na lista `sinais` (já de fora)
 ENTROU, FUNDO, CONTROLA = "entrou_como_socio", "fundo_socio", "controla_no_setor"
@@ -356,6 +365,10 @@ class LeitorDeCompradores:
     def _libera(self, campos: tuple[tuple[str, str], ...]) -> bool:
         return all(self.permitido(fonte, nome, False) for fonte, nome in campos)
 
+    def _le_a_baixa(self) -> bool:
+        """Os campos da baixa saem quando o portão libera os três e a porta tem a situação cadastral."""
+        return SITUACAO in self.tabelas and self._libera(CAMPOS_DA_BAIXA)
+
     def _sinais_liberados(self) -> tuple[str, ...]:
         """Os sinais com todos os campos liberados pelo portão e as tabelas na porta."""
         precisa = {
@@ -461,7 +474,9 @@ class LeitorDeCompradores:
             fontes.add(FRE)
         nomes = consulta.nomes(lista.raizes())
         compradores = lista.montar(
-            nomes, min(pedido.limite, max(self.linhas_maximas, 1))
+            nomes,
+            min(pedido.limite, max(self.linhas_maximas, 1)),
+            consulta.baixas if self._le_a_baixa() else None,
         )
         corpo: dict[str, object] = {
             "como_era_em": como_era_em.isoformat(),
@@ -560,6 +575,35 @@ class _Consulta:
             },
         )
 
+    def baixas(self, raizes: set[str]) -> dict[str, Baixa]:
+        """Quando e por que baixou cada raiz (as que a lista mostra): a versão mais nova **já pública no dia** de cada
+        estabelecimento da situação cadastral, só a que está baixada e consta no arquivo; da raiz vale a última filial
+        a baixar (a empresa só baixa quando a última fecha). O motivo vai como código, sem traduzir."""
+        if not raizes:
+            return {}
+        tabela = self._df(
+            f"SELECT raiz, data_situacao_cadastral AS quando, lpad(motivo_situacao, 2, '0') AS motivo, "
+            f"{PUBLICADO_EM} AS publico_em FROM ("
+            f"SELECT cnpj_basico AS raiz, cnpj, consta, data_situacao_cadastral, motivo_situacao, "
+            f"lpad(situacao_cadastral, 2, '0') AS situacao, {PUBLICADO_EM} "
+            f"FROM {_view(SITUACAO)} WHERE cnpj_basico IN (SELECT raiz FROM baixadas) "
+            f"AND {PUBLICADO_EM} <= CAST($dia AS DATE) "
+            f"QUALIFY row_number() OVER (PARTITION BY cnpj ORDER BY {MES} DESC, {PUBLICADO_EM} DESC) = 1) "
+            f"WHERE consta AND situacao = $baixada AND data_situacao_cadastral IS NOT NULL "
+            f"QUALIFY row_number() OVER (PARTITION BY raiz ORDER BY data_situacao_cadastral DESC, cnpj) = 1",
+            {"dia": dia_de(self.dia), "baixada": BAIXADA},
+            baixadas=pd.DataFrame({"raiz": pd.Series(sorted(raizes), dtype="string")}),
+        )
+        return {
+            str(linha["raiz"]): (
+                pd.Timestamp(linha["quando"]).date(),
+                str(linha["motivo"]),
+                pd.Timestamp(linha["publico_em"]).date(),
+            )
+            for linha in tabela.to_dict("records")
+            if _texto(linha["motivo"]) not in (None, "")
+        }
+
     def socias_no_dia(self, raizes: set[str]) -> pd.DataFrame:
         """O quadro de sócios PJ do dia das `raizes`, refeito das entradas e saídas já públicas: o último
         movimento do par. Filtrar pela raiz antes da janela não muda o resultado (a raiz é chave da partição)
@@ -651,6 +695,13 @@ class _Consulta:
         }
 
 
+def _mais_novas(provas: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Os exemplos de um sinal: as `EXEMPLOS_POR_SINAL` provas mais novas (a empresa desempata)."""
+    return sorted(
+        provas, key=lambda p: (str(p["_ordem"]), str(p["_alvo"])), reverse=True
+    )[:EXEMPLOS_POR_SINAL]
+
+
 def _mesmo_grupo(alvo: str, comprador: str, socias: dict[str, set[str]]) -> bool:
     """Uma era sócia da outra (fora a entrada que se olha) ou as duas tinham uma sócia PJ em comum."""
     do_alvo = socias.get(alvo, set()) - {comprador}
@@ -664,6 +715,9 @@ class _Lista:
     def __init__(self, setor: pd.DataFrame) -> None:
         self.ufs = {
             str(r): _texto(u) for r, u in zip(setor["raiz"], setor["uf"], strict=True)
+        }
+        self.baixadas = {
+            str(r) for r, b in zip(setor["raiz"], setor["baixada"], strict=True) if b
         }
         self.provas: dict[str, dict[str, list[dict[str, object]]]] = defaultdict(
             lambda: defaultdict(list)
@@ -729,11 +783,15 @@ class _Lista:
         return len(self._validos(nomes))
 
     def montar(
-        self, nomes: dict[str, tuple[str, date]], limite: int
+        self,
+        nomes: dict[str, tuple[str, date]],
+        limite: int,
+        baixas_de: Callable[[set[str]], dict[str, Baixa]] | None = None,
     ) -> list[dict[str, object]]:
         """Os `limite` primeiros: mais entradas de terceiros, depois mais sinais, depois mais provas e, no fim, a
         raiz. A data da prova não desempata (linha 1044): desempatar pela mais nova fazia o negócio de ontem subir o
-        comprador e jogava para fora dos 50 quem comprou há mais tempo."""
+        comprador e jogava para fora dos 50 quem comprou há mais tempo. `baixas_de` diz quando e por que baixou cada
+        empresa baixada **que aparece num exemplo**: só estas são lidas, e só elas ganham os campos da baixa."""
 
         def chave(comprador: str) -> tuple[int, int, int, str]:
             sinais = self.provas[comprador]
@@ -745,11 +803,21 @@ class _Lista:
                 comprador,
             )
 
-        ordem = sorted(self._validos(nomes), key=chave)
-        return [self._comprador(c, nomes) for c in ordem[:limite]]
+        escolhidos = sorted(self._validos(nomes), key=chave)[:limite]
+        mostradas = {
+            str(p["_alvo"])
+            for c in escolhidos
+            for lista in self.provas[c].values()
+            for p in _mais_novas(lista)
+        } & self.baixadas
+        baixas = baixas_de(mostradas) if baixas_de and mostradas else {}
+        return [self._comprador(c, nomes, baixas) for c in escolhidos]
 
     def _empresa(
-        self, raiz: str, nomes: dict[str, tuple[str, date]]
+        self,
+        raiz: str,
+        nomes: dict[str, tuple[str, date]],
+        baixas: Mapping[str, Baixa] | None = None,
     ) -> dict[str, object]:
         empresa: dict[str, object] = {"raiz_do_cnpj": raiz}
         if raiz in nomes:
@@ -757,29 +825,40 @@ class _Lista:
             empresa["razao_social"] = campo(
                 nome, fonte=RECEITA, publico_em=publico_em, visto_em=None
             )
+        if baixas and raiz in baixas:
+            quando, motivo, publico_em = baixas[raiz]
+            for nome_do_campo, valor in (
+                ("situacao_da_empresa", "baixada"),
+                ("baixada_em", quando.isoformat()),
+                ("motivo_da_baixa", motivo),
+            ):
+                empresa[nome_do_campo] = campo(
+                    valor, fonte=RECEITA, publico_em=publico_em, visto_em=None
+                )
         return empresa
 
     def _comprador(
-        self, comprador: str, nomes: dict[str, tuple[str, date]]
+        self,
+        comprador: str,
+        nomes: dict[str, tuple[str, date]],
+        baixas: Mapping[str, Baixa],
     ) -> dict[str, object]:
         sinais = self.provas[comprador]
         ordem = [s for s in (ENTROU, FUNDO, CONTROLA) if s in sinais]
         provas = {}
         for sinal in ordem:
-            lista = sorted(
-                sinais[sinal],
-                key=lambda p: (str(p["_ordem"]), str(p["_alvo"])),
-                reverse=True,
-            )
+            lista = sinais[sinal]
             provas[sinal] = {
                 "quantas": len(lista),
                 "exemplos": [
                     {
-                        "empresa_do_setor": self._empresa(str(p["_alvo"]), nomes),
+                        "empresa_do_setor": self._empresa(
+                            str(p["_alvo"]), nomes, baixas
+                        ),
                         "uf": self.ufs.get(str(p["_alvo"])),
                         **{k: v for k, v in p.items() if not k.startswith("_")},
                     }
-                    for p in lista[:EXEMPLOS_POR_SINAL]
+                    for p in _mais_novas(lista)
                 ],
             }
         return {
