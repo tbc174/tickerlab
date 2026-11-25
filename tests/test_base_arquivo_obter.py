@@ -297,6 +297,15 @@ def test_filtro_do_cnpj_mascarado_guarda_so_a_mascara_com_digitos_a_vista(tmp_pa
     ]
 
 
+def test_nome_de_coluna_vazio_nao_desliga_o_filtro_do_cnpj_inteiro(tmp_path):
+    """Regressão de segurança: `so_com_cnpj_em=""` não pode virar "sem filtro" (o CPF entraria)."""
+    url = "https://exemplo/x.csv"
+    obter_ = obter.csv_so_com_colunas(url, ("A", "DOC"), "utf-8", so_com_cnpj_em="")
+    with pytest.raises(ValueError, match="documento"):
+        obter_(ServidorComTrechos({url: b"A;DOC\n1;88800000046\n"}), tmp_path / "x.csv")
+    assert not (tmp_path / "x.csv").exists()
+
+
 def test_filtro_do_cnpj_mascarado_sem_a_coluna_do_documento_falha(tmp_path):
     url = "https://exemplo/x.csv"
     obter_ = obter.csv_so_com_colunas(

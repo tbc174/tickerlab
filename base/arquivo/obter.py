@@ -391,7 +391,11 @@ def csv_so_com_colunas(
 
     if so_com_cnpj_em is not None and so_com_cnpj_mascarado_em is not None:
         raise ValueError("o documento é inteiro ou mascarado, não os dois")
-    coluna_do_documento = so_com_cnpj_em or so_com_cnpj_mascarado_em
+    # `is not None`, e não `or`: um nome de coluna vazio não pode desligar o filtro (falha aberta,
+    # CPF entrando no acervo); vazio vira "sem a coluna do documento" e a coleta para
+    coluna_do_documento = (
+        so_com_cnpj_em if so_com_cnpj_em is not None else so_com_cnpj_mascarado_em
+    )
     documento_serve = (
         tem_cnpj_inteiro if so_com_cnpj_em is not None else tem_cnpj_mascarado
     )
