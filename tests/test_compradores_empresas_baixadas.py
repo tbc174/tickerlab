@@ -174,21 +174,29 @@ def test_baixada_de_outro_cnae_ou_de_outra_uf_nao_conta(pasta):
     assert BAIXADA_DE_OUTRO_SETOR not in raizes and FORA not in raizes
 
 
-def test_entrada_em_empresa_baixada_antes_da_abertura_nao_conta(pasta):
-    """O fundador não é comprador, nem numa empresa que depois baixou: a BAIXADA abriu em 2012."""
-    entradas = _entradas()
-    fundadora = entradas[entradas["cnpj_basico"] == BAIXADA].assign(
-        data_entrada=date(2012, 1, 1)
+def test_entrada_em_empresa_baixada_na_abertura_nao_conta(pasta):
+    """O fundador não é comprador, nem numa empresa que depois baixou: aberta em 2025-01-01, com a COMPRADORA como
+    sócia desde o dia da abertura (a janela de 3 anos pega a data, então só a regra do fundador a tira)."""
+    raiz = "16000003"
+    _estabelecimento_a_mais(pasta, [(raiz, "08", SETOR, "SP")], abertura="2025-01-01")
+    _com_a_comprador_entrando(
+        pasta, raiz, "FUNDADA E BAIXADA LTDA", entrou="2025-01-01"
     )
-    resto = entradas[entradas["cnpj_basico"] != BAIXADA]
-    _gravar(
-        pasta / compradores.ENTRADAS / "parte.parquet",
-        pd.concat([resto, fundadora], ignore_index=True),
+    entradas = _comprador(_lista(pasta), COMPRADORA)["provas"][compradores.ENTROU]
+    assert raiz not in {
+        e["empresa_do_setor"]["raiz_do_cnpj"] for e in entradas["exemplos"]
+    }
+    # a entrada logo depois da abertura já é compra
+    _com_a_comprador_entrando(
+        pasta, "16000004", "OUTRA BAIXADA NOVA LTDA", entrou="2025-02-01"
     )
-    entradas_da_compradora = _comprador(_lista(pasta, anos=10), COMPRADORA)["provas"][
-        compradores.ENTROU
-    ]
-    assert entradas_da_compradora["quantas"] == 1  # só a ALVO_SP
+    _estabelecimento_a_mais(
+        pasta, [("16000004", "08", SETOR, "SP")], abertura="2025-01-01"
+    )
+    depois = _comprador(_lista(pasta), COMPRADORA)["provas"][compradores.ENTROU]
+    assert "16000004" in {
+        e["empresa_do_setor"]["raiz_do_cnpj"] for e in depois["exemplos"]
+    }
 
 
 def test_entrada_do_mesmo_grupo_em_empresa_baixada_nao_conta(pasta):
@@ -233,12 +241,12 @@ def test_entrada_em_empresa_baixada_ainda_nao_publica_nao_aparece(pasta):
 # ---- o que a revisão cruzada achou (P1): "baixada" é a empresa sem NENHUM estabelecimento ativo
 
 
-def _estabelecimento_a_mais(pasta, linhas):
+def _estabelecimento_a_mais(pasta, linhas, abertura="2012-01-01"):
     """Acrescenta estabelecimentos (raiz, situação, cnae, uf) nos dois retratos da base de mentira."""
     existentes = _estabelecimentos()
     novos = pd.DataFrame(
         [
-            (raiz, situacao, "2012-01-01", cnae, uf, mes, publico)
+            (raiz, situacao, abertura, cnae, uf, mes, publico)
             for raiz, situacao, cnae, uf in linhas
             for mes, publico in (("2026-09", "2026-09-30"), ("2026-10", "2026-10-31"))
         ],
@@ -258,7 +266,7 @@ def _estabelecimento_a_mais(pasta, linhas):
     )
 
 
-def _com_a_comprador_entrando(pasta, raiz, nome):
+def _com_a_comprador_entrando(pasta, raiz, nome, entrou="2025-04-10"):
     nomes = pd.read_parquet(pasta / compradores.EMPRESAS / "11.parquet")
     novos = nomes.iloc[:2].assign(cnpj_basico=raiz, razao_social=nome)
     _gravar(
@@ -266,7 +274,7 @@ def _com_a_comprador_entrando(pasta, raiz, nome):
         pd.concat([nomes, novos], ignore_index=True),
     )
     entradas = _entradas()
-    modelo = entradas.iloc[[0]].assign(raiz_socio_pj=COMPRADORA, cnpj_basico=raiz, data_entrada=date(2025, 4, 10),
+    modelo = entradas.iloc[[0]].assign(raiz_socio_pj=COMPRADORA, cnpj_basico=raiz, data_entrada=date.fromisoformat(entrou),
                                        mes_do_retrato="2025-05", disponivel_em=date(2025, 6, 30), movimento="entrou")  # fmt: skip
     _gravar(
         pasta / compradores.ENTRADAS / "parte.parquet",
