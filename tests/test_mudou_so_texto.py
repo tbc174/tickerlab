@@ -33,6 +33,8 @@ def test_texto_que_ninguem_le_em_execucao(caminho):
         "conteudo/privacidade.md",  # texto do próprio app
         "conteudo/glossario.md",
         "docs/pre-registro-m2-v0.4.md",  # impressão digital conferida pelo trader
+        "docs/cli.md",  # a tabela da lista das portas, conferida contra o registro
+        "docs/api/README.md",
         "docs/banner.html",
         ".github/workflows/testes.yml",
         "requirements.txt",

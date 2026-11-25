@@ -26,6 +26,8 @@ from conector_remoto import socios_e_donos
 from conector_remoto.cliente_api import ClienteDaApi
 from conector_remoto.ferramentas import registrar_ferramentas
 from conector_remoto.servidor import INSTRUCOES
+from scripts.exportar_conteudo import DOCUMENTOS_DAS_PORTAS
+from scripts.mudou_so_texto import e_so_texto
 from src.api_externa.rotas import router
 from src.chat import ferramentas as do_chat
 
@@ -304,3 +306,84 @@ def test_as_escolhas_de_cada_parametro_saem_do_mapa_da_traducao():
 def test_opcao_fora_da_lista_da_erro_claro():
     with pytest.raises(KeyError):
         consultas.faixa_inteira("prospectar", "--nao-existe")
+
+
+# os documentos com a tabela gerada do registro (PR 3b): entre as marcas, o texto é o de `registro.tabela(...)`
+DOCUMENTOS_GERADOS = DOCUMENTOS_DAS_PORTAS
+# o que nenhuma tabela pública leva (travas do texto público e de pessoa física)
+PALAVRAS_FORA = ("recomend", "oportunidade", "mais dados que", "R$", "garant", "CPF")
+
+
+@pytest.mark.parametrize("caminho", DOCUMENTOS_GERADOS, ids=lambda c: c.name)
+def test_a_tabela_dos_documentos_esta_em_dia(caminho):
+    texto = caminho.read_text(encoding="utf-8")
+    assert texto.count(registro.MARCA_DO_COMECO) == 1, caminho
+    assert texto.count(registro.MARCA_DO_FIM) == 1, caminho
+    assert registro.trocar_a_tabela(texto, DOCUMENTOS_GERADOS[caminho]) == texto, (
+        "a lista das portas mudou: rode python -m scripts.exportar_conteudo e faça o commit dos documentos"
+    )
+
+
+@pytest.mark.parametrize("consulta", registro.CONSULTAS, ids=lambda c: c.chave)
+def test_cada_consulta_tem_nome_e_resumo(consulta):
+    assert consulta.nome.strip() and consulta.resumo.strip()
+    assert "\n" not in consulta.nome + consulta.resumo
+    assert "|" not in consulta.nome + consulta.resumo  # quebraria a tabela
+
+
+@pytest.mark.parametrize("qual", ["guia", "portas"])
+def test_a_tabela_publica_nao_leva_pessoa_nem_frase_travada(qual):
+    tabela = registro.tabela(qual)
+    privadas = [c for c in registro.CONSULTAS if not c.publica]
+    assert [c.chave for c in privadas] == ["socios_e_donos"]
+    for consulta in privadas:
+        assert consulta.nome not in tabela
+        for item in consulta.ferramentas:
+            assert item.nome not in tabela
+        for rota in consulta.rotas:
+            assert rota.split(" ", 1)[1] not in tabela
+    minusculas = tabela.lower()
+    for palavra in PALAVRAS_FORA:
+        assert palavra.lower() not in minusculas, (qual, palavra)
+
+
+def test_a_tabela_das_portas_traz_cada_porta_ou_o_motivo():
+    linhas = registro.tabela("portas").splitlines()
+    assert linhas[0] == "| Consulta | Conector | CLI | API (`/data/v1`) |"
+    publicas = [c for c in registro.CONSULTAS if c.publica]
+    assert len(linhas) == 2 + len(publicas)
+    for consulta, linha in zip(publicas, linhas[2:], strict=True):
+        colunas = linha.strip("|").split(" | ")
+        assert colunas[0].strip() == f"**{consulta.nome}**: {consulta.resumo}"
+        for porta, celula in zip(registro.PORTAS, colunas[1:], strict=True):
+            if porta in consulta.fora_de_uma_porta:
+                assert celula.strip().startswith("não tem"), (consulta.chave, porta)
+        for item in consulta.ferramentas:
+            assert f"`{item.nome}`" in colunas[1]
+        for comando in consulta.comandos:
+            assert f"`tickerlab {comando}`" in colunas[2]
+        for rota in consulta.rotas:
+            assert f"`{rota}`" in colunas[3]
+
+
+def test_o_guia_traz_cada_consulta_do_conector():
+    """O guia do analista lista toda ferramenta pública (antes faltavam a análise, os ativos, os compradores e as
+    novidades)."""
+    tabela = registro.tabela("guia")
+    com_ferramenta = [c for c in registro.CONSULTAS if c.publica and c.ferramentas]
+    assert len(tabela.splitlines()) == 2 + len(com_ferramenta)
+    for consulta in com_ferramenta:
+        assert f"| {consulta.nome} | {consulta.resumo} |" in tabela
+    for nome in ("Análise completa", "Ativos físicos", "Quem já se mexeu no setor"):
+        assert nome in tabela
+
+
+def test_os_documentos_gerados_rodam_a_suite_inteira():
+    """Mudança só nesses documentos não pode pular este arquivo no CI (`scripts/mudou_so_texto.py`)."""
+    for caminho in DOCUMENTOS_DAS_PORTAS:
+        assert not e_so_texto(caminho.relative_to(RAIZ).as_posix()), caminho
+
+
+def test_trocar_a_tabela_pede_as_marcas():
+    with pytest.raises(ValueError):
+        registro.trocar_a_tabela("sem marca", "guia")

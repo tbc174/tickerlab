@@ -62,7 +62,7 @@ Assim, a chave não vai em texto aberto pela rede.
 | `tickerlab analise <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/analysis` (cada bloco que a chave vê) | sim, um pedido por bloco |
 | `tickerlab dossie <cnpj> [--como-era ...]` | `profile`, `events`, `links` e `comparables` da empresa | sim, 4 pedidos |
 | `tickerlab eventos <cnpj> [--tipo ...] [--todas]` | `GET /data/v1/companies/{cnpj}/events` (rota da linha 736) | sim, um pedido por página |
-| `tickerlab ativos <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/assets` (rota da linha 845; hoje o bloco `oil_gas_contracts`, da ANP) | sim |
+| `tickerlab ativos <cnpj> [--como-era ...]` | `GET /data/v1/companies/{cnpj}/assets` (rota da linha 845; os contratos de E&P da ANP e, quando a chave os vê, as barragens e a CFEM da ANM) | sim |
 | `tickerlab demonstracoes <cnpj> [--como-era ...] [--periodo AAAA-MM-DD]` | `GET /data/v1/companies/{cnpj}/financials` (sem dado: "faturamento de empresa fechada a base não tem", mesma frase do conector) | sim |
 | `tickerlab fundo <cnpj> [--como-era ...] [--retorno-suposto 0.12]` | `GET /data/v1/funds/{cnpj}` | sim |
 | `tickerlab prospectar --cnae ... [--uf ..] [--todas] ...` | `GET /data/v1/companies` (busca, rota da linha 794) | sim, um pedido por página |
@@ -141,6 +141,37 @@ Os erros da API saem em português, na saída de erro, cada tipo com um código 
 - `5`: nada disponível, que também cobre o campo que o portão não libera, para não contar o que existe.
 - `6`: pedido recusado.
 - `7`: fora do ar.
+
+## Uma base, três portas
+
+Cada consulta do TickerLab Data e o nome dela em cada porta (o conector MCP, a CLI `tickerlab` e a API `/data/v1`), com o motivo quando uma porta não a oferece. A tabela é gerada da lista única (`conector_remoto/consultas_das_portas.py`) e um teste confere que está em dia; pessoa física fica fora dela.
+
+<!-- gerado: lista das portas (python -m scripts.exportar_conteudo); não edite à mão -->
+| Consulta | Conector | CLI | API (`/data/v1`) |
+|---|---|---|---|
+| **Buscar empresas**: achar empresas por atividade (CNAE), UF, município, porte ou idade no cadastro da Receita; só empresa, sem sócio nem contato | `buscar_empresas` | `tickerlab prospectar` | `GET /companies` |
+| **Ficha da empresa**: a triagem de um CNPJ antes da reunião: o cadastro na Receita e, se for companhia aberta, cada DFP e ITR com o prazo da CVM | `ficha_da_empresa` | `tickerlab empresa` | `GET /companies/{cnpj}/profile`, `GET /companies/{cnpj}` |
+| **Análise completa**: cada bloco que a chave vê numa resposta (cadastro, sócios pessoa jurídica, vínculos, eventos, crédito, ativos, comparáveis e as bases das agências), com a frase do topo, a linha do tempo e o que não foi achado | `analise_completa` | `tickerlab analise` | `GET /companies/{cnpj}/analysis` |
+| **Comparáveis**: as companhias abertas do mesmo grupo de setores, com os números do último DFP e a mediana de cada razão | `comparaveis` | `tickerlab comparaveis` | `GET /companies/{cnpj}/comparables` |
+| **Demonstrações**: a DFP e o ITR da companhia aberta, conta a conta; empresa fechada não tem, e a base não estima o faturamento dela | `demonstracoes` | `tickerlab demonstracoes` | `GET /companies/{cnpj}/financials` |
+| **Eventos**: o que a companhia aberta entregou à CVM (fato relevante, comunicado, assembleia) e as trocas de auditor, do mais novo ao mais velho | `eventos` | `tickerlab eventos` | `GET /companies/{cnpj}/events` |
+| **Vínculos**: as controladas, coligadas e participadas da empresa e quem a auditava, como eram num dia, pelo FRE e pelo FCA da CVM; só companhia aberta informa, uma vez por ano | `vinculos` | `tickerlab vinculos` | `GET /companies/{cnpj}/links` |
+| **Ativos físicos**: os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM | `ativos` | `tickerlab ativos` | `GET /companies/{cnpj}/assets` |
+| **Quem já se mexeu no setor**: quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra | `compradores_do_setor` | `tickerlab compradores` | `GET /buyers` |
+| **Fundo**: o raio-x de um fundo na CVM: cadastro, taxas e carteira | `fundo` | `tickerlab fundo` | `GET /funds/{cnpj}` |
+| **Setores**: os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta | `setores`, `setor` | `tickerlab setor` | `GET /sectors`, `GET /sectors/{key}` |
+| **Novidades da pesquisa**: as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original | `novidades` | `tickerlab novidades` | `GET /research/news` |
+| **O que posso ver**: o que a sua chave libera (conjuntos, campos, fontes e licenças) e o consumo do mês | `o_que_posso_ver` | `tickerlab catalogo`, `tickerlab consumo` | `GET /catalog`, `GET /usage` |
+| **De onde vem um conjunto ou um campo**: a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto; não traz dado de empresa | `de_onde_vem` | não tem (linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)) | não tem (lê o `GET /catalog` (a consulta `catalogo`); não é rota própria) |
+| **Fatos de crédito de uma empresa**: situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, e só aparece para a chave com o conjunto de crédito | `credito_da_empresa` | não tem (linha 980, onda 1: o comando `credito` da CLI vem depois, em PR próprio (fila.md)) | `GET /credit/{cnpj}` |
+| **O que mudou numa empresa desde um dia**: o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público | `o_que_mudou` | não tem (linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)) | não tem (composta no conector: compara o retrato de hoje com o de `desde` (cadastro, vínculos e eventos)) |
+| **Fichas de 2 a 5 empresas lado a lado**: o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero | `comparar_empresas` | não tem (linha 980, onda 1: o comando da CLI vem depois, em PR próprio (fila.md)) | não tem (composta no conector: as fichas de 2 a 5 CNPJs (para sistema, há o lote `POST /companies/batch`)) |
+| **Dossiê**: perfil, eventos, vínculos e comparáveis do CNPJ numa saída só | não tem (Diretoria 11/11: no conector a IA compõe o dossiê pelas instruções do servidor (#1050)) | `tickerlab dossie` | não tem (composto na CLI com quatro rotas: a ficha, os eventos, os vínculos e os comparáveis) |
+| **Deck**: o deck (.pptx) da empresa ou do setor, com a fonte e a data de cada tabela | não tem (grava um arquivo .pptx; o conector devolve texto, não arquivo (Diretoria 12/11, linha 782)) | `tickerlab deck` | `GET /companies/{cnpj}/deck`, `GET /sectors/{key}/deck` |
+| **Lotes**: até 100 CNPJs num pedido, para sistema | não tem (lote de até 100 CNPJs é para sistema; na conversa, `comparar_empresas` põe 2 a 5 lado a lado) | não tem (lote é para sistema; a CLI pede um CNPJ por vez) | `POST /companies/batch`, `POST /funds/batch`, `POST /credit/batch` |
+| **Chave**: guardar e apagar a chave da API no PC | não tem (a chave entra pela página /autorizar do OAuth; quem corta o acesso é revogar a chave) | `tickerlab login`, `tickerlab logout` | não tem (não leem a base: guardam e apagam a chave no PC) |
+| **Instruções do agente**: o AGENTS.md e a skill que ensinam a IA do PC a usar a CLI | não tem (no conector, a descrição de cada ferramenta ensina a IA a chamá-la) | `tickerlab instrucoes` | não tem (não lê a base: ensina a IA do PC a chamar a CLI) |
+<!-- fim da lista das portas -->
 
 ## Uso pelo agente de IA
 
