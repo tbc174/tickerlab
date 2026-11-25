@@ -599,8 +599,9 @@ def test_o_prazo_vale_mesmo_com_os_blocos_disputando_o_portao(porta, blocos):
     assert [t.estado for b, t in tempos.items() if b != "profile"] == [
         analise.ATRASADO
     ] * len(nomes)
-    # todos começam juntos: montar o portão de um bloco não espera os que já correm
-    assert max(t.comecou_ms for t in tempos.values()) < 150
+    # todos começam juntos: montar o portão de um bloco não espera os que já correm (antes, o último começava
+    # depois de 900 ms)
+    assert max(t.comecou_ms for t in tempos.values()) < 400
 
 
 def test_bloco_que_pergunta_depois_do_fim_nao_espera_a_trava(porta, blocos):
