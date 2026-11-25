@@ -36,6 +36,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
+from xml.etree.ElementTree import ParseError
 
 import pandas as pd
 import requests
@@ -45,6 +46,7 @@ from base import dmpl
 from base.cadastro import ler_cadastro
 from base.contas_cvm import Recorte, ler_contas, ler_indice
 from base.enet import DocumentoEnet
+from base.enet_antigo import FormatoNaoLido
 from base.enet_coleta import (
     Baixador,
     baixar_em_fila,
@@ -108,14 +110,28 @@ def documentos_do_enet(
     documentos, faltando, origens = [], [], []
     for versao in versoes_antigas(indice).itertuples():
         xml = original_mais_recente(conexao, versao.link)
-        if xml is None:
+        documento = _ler_ou_none(xml, versao.link) if xml is not None else None
+        if documento is None:
             faltando.append(versao.link)
         else:
-            documentos.append(
-                _com_o_cnpj_do_indice(ler_documento_guardado(xml), versao.cnpj)
-            )
+            documentos.append(_com_o_cnpj_do_indice(documento, versao.cnpj))
             origens.append(_origem(versao.link, xml))
     return documentos, faltando, origens
+
+
+def _ler_ou_none(xml: bytes, link: str) -> DocumentoEnet | None:
+    """O documento do original guardado; `None` (com aviso) se o original não é legível: um só
+    original estragado não pode derrubar a montagem do ano (modelo8-montagem parou em 09/11/2026
+    com ParseError). Conta como versão que falta: o buraco aparece no relatório."""
+    try:
+        return ler_documento_guardado(xml)
+    except (ParseError, FormatoNaoLido) as erro:
+        log.warning(
+            "ENET %s: original guardado ilegível (%s); tratado como faltando",
+            link,
+            type(erro).__name__,
+        )
+        return None
 
 
 def _com_o_cnpj_do_indice(documento: DocumentoEnet, cnpj: str) -> DocumentoEnet:

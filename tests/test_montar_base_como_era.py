@@ -274,3 +274,39 @@ def test_versao_antiga_no_formato_dfp_do_acervo_entra_na_montagem(url):
     assert [d.versao for d in documentos] == [2]
     assert faltando == ["http://enet/antigo/1"]
     assert documentos[0].contas["fim"].max() <= documentos[0].referencia
+
+
+def test_original_do_enet_que_nao_e_xml_nao_derruba_o_ano_e_conta_como_faltando(
+    url, caplog
+):
+    """modelo8-montagem parou em 09/11/2026: um original guardado que não era XML (ParseError na
+    linha 1) derrubava a montagem do ano inteiro (2025 e 2026)."""
+    from base.enet_coleta import FONTE
+
+    motor = criar_engine(url)
+    indice = pd.DataFrame(
+        {
+            "cnpj": ["00.000.208/0001-00"] * 3,
+            "referencia": [pd.Timestamp("2022-12-31")] * 3,
+            "versao": pd.array([1, 2, 3], dtype="Int64"),
+            "recebido_em": pd.to_datetime(["2023-03-10", "2023-04-20", "2023-06-01"]),
+            "link": ["http://enet/1", "http://enet/2", "http://enet/3"],
+        }
+    )
+    estragado = b"<html>pagina de erro, nao e o XML do documento"
+    with motor.begin() as c:
+        guardar(c, "http://enet/1", _pacote(_dfp(versao=1)), COLETADO_EM)
+        caminho = acervo.guardar_original(
+            FONTE, "http://enet/2", estragado, COLETADO_EM, extensao=".xml"
+        )
+        registrar(
+            c, FONTE, "http://enet/2", estragado, "ok", agora=COLETADO_EM,
+            caminho_do_original=caminho,
+        )  # fmt: skip
+    with caplog.at_level("WARNING"), motor.connect() as c:
+        documentos, faltando, origens = montar.documentos_do_enet(c, indice)
+    motor.dispose()
+    assert [d.versao for d in documentos] == [1]
+    assert faltando == ["http://enet/2"]
+    assert [o["url"] for o in origens] == ["http://enet/1"]
+    assert "http://enet/2" in caplog.text
