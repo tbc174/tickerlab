@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 from base.porta import Porta
+from src.api_externa import rotas
 from src.api_externa.conjuntos import compradores
 from tests.test_api_externa_compradores import (
     ALVO_SP,
@@ -21,9 +22,11 @@ from tests.test_api_externa_compradores import (
     COMPRADORA,
     NOMES,
     SETOR,
+    TABELAS,
     _comprador,
     _get,
     _gravar,
+    _regras,
     cenario,  # noqa: F401  (fixture reaproveitada)
     cliente,  # noqa: F401  (fixture reaproveitada)
     pasta,  # noqa: F401  (fixture reaproveitada)
@@ -183,3 +186,52 @@ def test_baixada_fora_da_lista_sem_pessoa_nao_ganha_campo(pasta):
         empresas[empresas["cnpj_basico"] != BAIXADA],
     )
     assert set(_exemplos(pasta)[BAIXADA]) == {"raiz_do_cnpj"}
+
+
+def test_tabela_atras_do_retrato_com_filial_ainda_ativa_nao_da_data_errada(pasta):
+    """A situação cadastral ainda diz que a matriz está ativa: a baixa de uma filial velha não é a da empresa."""
+    versoes = [v for v in VERSOES if v[0] != BAIXADA + "000200"]
+    versoes.append(
+        (BAIXADA + "000200", "02", "2010-01-01", "00", "2025-09", "2025-09-21")
+    )
+    _gravar_a_situacao(pasta, versoes)
+    assert set(_exemplos(pasta)[BAIXADA]) == {"raiz_do_cnpj", "razao_social"}
+
+
+def test_a_frase_dos_limites_so_sai_quando_os_campos_podem_sair(pasta):
+    def limites(permitido):
+        leitor = compradores.LeitorDeCompradores(Porta(pasta), permitido, 50)
+        pedido = compradores.PedidoDeCompradores(SETOR, None, 3, 50)
+        servido = leitor.compradores(pedido, HOJE)
+        assert servido is not None
+        return servido.corpo["limites"]
+
+    sem_a_tabela = limites(lambda *_: True)
+    assert compradores.LIMITE_DA_BAIXA not in sem_a_tabela
+    _gravar_a_situacao(pasta)
+    compradores.zerar_o_cache()
+    assert compradores.LIMITE_DA_BAIXA in limites(lambda *_: True)
+    compradores.zerar_o_cache()
+    negado = limites(lambda _fonte, nome, _padrao: nome != "motivo_situacao")
+    assert compradores.LIMITE_DA_BAIXA not in negado
+
+
+def test_decisao_diferente_do_portao_sobre_a_baixa_nao_aproveita_o_cache(
+    cliente, cenario, pasta, monkeypatch
+):
+    _gravar_a_situacao(pasta)
+
+    def exemplos():
+        resposta = _get(cliente, cenario)
+        return {
+            e["sector_company"]["cnpj_root"]: e["sector_company"]
+            for e in _comprador(resposta, COMPRADORA)["evidence"]["took_stake"][
+                "examples"
+            ]
+        }
+
+    assert "closed_on" in exemplos()[BAIXADA]
+    # a conta passa a não ter a situação cadastral pronta: os sinais seguem os mesmos, os campos da baixa somem
+    sem_a_situacao = tuple(t for t in TABELAS if t != compradores.SITUACAO)
+    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(*sem_a_situacao))
+    assert "closed_on" not in exemplos()[BAIXADA]

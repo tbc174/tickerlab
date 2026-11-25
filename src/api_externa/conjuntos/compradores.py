@@ -139,16 +139,20 @@ LIMITES_GERAIS = (
         "campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra."
     ),
 )
+# só quando o portão libera os campos da baixa e a porta tem a situação cadastral: sem eles a frase não vale
+LIMITE_DA_BAIXA = (
+    "Quando a empresa onde se entrou está baixada (sem nenhum estabelecimento ativo) e a base tem a situação "
+    'cadastral dela, o exemplo traz company_status "baixada", closed_on (o dia da baixa do último '
+    "estabelecimento a baixar, só de versão já pública em known_at) e closure_reason_code (o código da tabela "
+    "de motivos da situação cadastral da Receita, como ela publica, sem tradução nossa). Exemplo sem esses "
+    "campos não prova que a empresa está ativa: a base pode não ter a situação dela."
+)
 LIMITES_DO_SINAL = {
     ENTROU: (
         "Entradas como sócio: do quadro de sócios da Receita, que a base acompanha desde 05/2023 (antes disso, "
         "só quem ainda era sócio naquele mês). Contam também as entradas em empresa do setor que depois foi "
         "baixada (uma incorporação, por exemplo). Não contam quem entrou até a abertura da empresa nem a entrada "
-        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum). "
-        "Quando a empresa onde se entrou está baixada (sem nenhum estabelecimento ativo), o exemplo traz "
-        'company_status "baixada", closed_on (o dia da baixa do último estabelecimento a baixar, só de versão já '
-        "pública em known_at) e closure_reason_code (o código da tabela de motivos da situação cadastral da "
-        "Receita, como ela publica, sem tradução nossa)."
+        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum)."
     ),
     FUNDO: (
         "Fundo sócio: FIP registrado na CVM e não cancelado no dia, sócio de uma empresa do setor no quadro de "
@@ -190,7 +194,7 @@ LIMITES = tuple(limites(SINAIS))
 
 # A resposta de um pedido só depende do pedido, do dia, do teto de linhas, de quais sinais o portão libera
 # e dos arquivos da base; nada da conta, da chave ou da organização entra além do que o portão liberou, e
-# isso já está na chave. Mudou um arquivo (data, tamanho), a chave muda e a conta é refeita (linha 848).
+# isso já está na chave (os sinais e a decisão dos campos da baixa). Mudou um arquivo (data, tamanho), a chave muda e a conta é refeita (linha 848).
 TAMANHO_DO_CACHE = 64
 _CACHE: OrderedDict[tuple, "CompradoresServidos"] = OrderedDict()
 _TRAVA = threading.Lock()
@@ -405,7 +409,14 @@ class LeitorDeCompradores:
         impressao = _impressao_da_base(self.porta)
         if not impressao:  # sem arquivos para vigiar o cache ficaria cego: não guarda
             return self._montar(pedido, como_era_em, sinais)
-        chave = (pedido, como_era_em, self.linhas_maximas, sinais, impressao)
+        chave = (
+            pedido,
+            como_era_em,
+            self.linhas_maximas,
+            sinais,
+            self._le_a_baixa(),
+            impressao,
+        )
         with _TRAVA:
             vez = _EM_CURSO.setdefault(chave, threading.Lock())
         # o mesmo pedido duas vezes ao mesmo tempo (o cliente desistiu aos 30 s e repetiu, ou duas telas) espera
@@ -496,7 +507,10 @@ class LeitorDeCompradores:
             "total_de_compradores": lista.total(nomes),
             "cortada": lista.total(nomes) > len(compradores),
             NAO_DISPONIVEIS: [NOME_DE_FORA[s] for s in nao_disponiveis],
-            "limites": limites(sinais, nao_disponiveis),
+            "limites": [
+                *limites(sinais, nao_disponiveis),
+                *([LIMITE_DA_BAIXA] if ENTROU in sinais and self._le_a_baixa() else []),
+            ],
         }
         return CompradoresServidos(corpo, fontes, len(compradores))
 
@@ -582,20 +596,25 @@ class _Consulta:
 
     def baixas(self, raizes: set[str]) -> dict[str, Baixa]:
         """Quando e por que baixou cada raiz (as que a lista mostra): a versão mais nova **já pública no dia** de cada
-        estabelecimento da situação cadastral, só a que está baixada e consta no arquivo; da raiz vale a última filial
-        a baixar (a empresa só baixa quando a última fecha). O motivo vai como código, sem traduzir."""
+        estabelecimento da situação cadastral; a raiz só entra quando **todos** os que constam estão baixados ali
+        (tabela atrás do retrato: a baixa de uma filial velha não é a da empresa) e vale a última filial a baixar. O
+        motivo vai como código, sem traduzir."""
         if not raizes:
             return {}
         tabela = self._df(
-            f"SELECT raiz, data_situacao_cadastral AS quando, lpad(motivo_situacao, 2, '0') AS motivo, "
-            f"{PUBLICADO_EM} AS publico_em FROM ("
-            f"SELECT cnpj_basico AS raiz, cnpj, consta, data_situacao_cadastral, motivo_situacao, "
-            f"lpad(situacao_cadastral, 2, '0') AS situacao, {PUBLICADO_EM} "
+            f"WITH v AS (SELECT cnpj_basico AS raiz, cnpj, consta, data_situacao_cadastral, "
+            f"lpad(nullif(trim(motivo_situacao), ''), 2, '0') AS motivo, "
+            f"lpad(situacao_cadastral, 2, '0') AS situacao, {PUBLICADO_EM} AS publico_em "
             f"FROM {_view(SITUACAO)} WHERE cnpj_basico IN (SELECT raiz FROM baixadas) "
             f"AND {PUBLICADO_EM} <= CAST($dia AS DATE) "
-            f"QUALIFY row_number() OVER (PARTITION BY cnpj ORDER BY {MES} DESC, {PUBLICADO_EM} DESC) = 1) "
-            f"WHERE consta AND situacao = $baixada AND data_situacao_cadastral IS NOT NULL "
-            f"QUALIFY row_number() OVER (PARTITION BY raiz ORDER BY data_situacao_cadastral DESC, cnpj) = 1",
+            f"QUALIFY row_number() OVER (PARTITION BY cnpj ORDER BY {MES} DESC, {PUBLICADO_EM} DESC) = 1), "
+            # a raiz só vale quando todos os estabelecimentos que constam estão baixados nesta tabela: se um
+            # segue ativo (ela está atrás do retrato), a data de uma filial velha não é a baixa da empresa
+            "c AS (SELECT * FROM v WHERE consta), "
+            "inteiras AS (SELECT raiz FROM c GROUP BY raiz HAVING bool_and(situacao = $baixada)) "
+            "SELECT raiz, data_situacao_cadastral AS quando, motivo, publico_em FROM c "
+            "WHERE raiz IN (SELECT raiz FROM inteiras) AND data_situacao_cadastral IS NOT NULL "
+            "QUALIFY row_number() OVER (PARTITION BY raiz ORDER BY data_situacao_cadastral DESC, cnpj) = 1",
             {"dia": dia_de(self.dia), "baixada": BAIXADA},
             baixadas=pd.DataFrame({"raiz": pd.Series(sorted(raizes), dtype="string")}),
         )
