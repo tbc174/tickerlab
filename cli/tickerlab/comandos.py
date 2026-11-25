@@ -674,6 +674,32 @@ def registros(
 @opcao_planilha
 @opcao_json
 @click.pass_context
+def compras(
+    contexto: click.Context,
+    cnpj: str,
+    como_era: datetime | None,
+    como_json: bool,
+    destino: Path | None,
+) -> None:
+    """As compras públicas da empresa como eram no dia, cada valor com a fonte e a data.
+
+    Só com o conjunto `public_procurement` no contrato da organização. Em `blocks`: o cadastro de fornecedor no
+    SICAF (se está ativo e habilitado a licitar, com a atividade, a natureza jurídica, o porte e o município) e as
+    compras de medicamentos e produtos de saúde do BPS em que ela é a fornecedora (`public_procurement`).
+    `not_found` é o bloco consultado que não achou a empresa, e isso não quer dizer que ela não vende ao governo.
+    Não abre o resto da análise: conta um pedido na quota (`requests_used`). Sem o conjunto, a CLI sai com o
+    código 5. Só pessoa jurídica.
+    """
+    corpo = _api(contexto).compras(cnpj, _dia(como_era))
+    _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
+
+
+@principal.command()
+@argumento_cnpj
+@opcao_como_era
+@opcao_planilha
+@opcao_json
+@click.pass_context
 def credito(
     contexto: click.Context,
     cnpj: str,

@@ -1114,6 +1114,7 @@ def test_instrucoes_do_agente(rodar):
         "credito",
         "de-onde-vem",
         "registros",
+        "compras",
     ):
         assert f"tickerlab {comando}" in agentes.stdout
         assert f"tickerlab {comando}" in rodar("instrucoes", "skill").stdout
@@ -2962,5 +2963,71 @@ def test_registros_sem_nenhum_dos_conjuntos_sai_com_o_codigo_de_nada_disponivel(
 def test_a_ajuda_dos_registros_diz_o_que_nao_quer_dizer(rodar):
     ajuda = " ".join(rodar("registros", "--help").stdout.lower().split())
     assert "não quer dizer que ela não tem registro" in ajuda
+    for palavra in ("recomend", "oportunidade", "r$", "garant"):
+        assert palavra not in ajuda, palavra
+
+
+# ---------------------------------------------------------------- compras (linha 980, onda 2, PR 6)
+
+
+def _compras_de_mentira() -> dict:
+    return {
+        "cnpj": "11111111000191",
+        "known_at": "2025-07-01",
+        "blocks": {
+            "public_procurement": {
+                "sicaf_supplier_registration": {
+                    "found": True,
+                    "items": [{"qualified_to_bid": _env(True)}],
+                }
+            }
+        },
+        "not_found": [],
+        "requests_used": 1,
+        "limits": ["Só as compras públicas que a sua chave vê."],
+        "sources": [{"source": "comprasgov-sicaf"}],
+    }
+
+
+def test_compras_pede_a_rota_das_compras_com_o_dia(rodar, chave):
+    pedidos: list[httpx.Request] = []
+
+    def responder(pedido):
+        pedidos.append(pedido)
+        return httpx.Response(200, json=_compras_de_mentira())
+
+    resultado = rodar(
+        "compras", "11.111.111/0001-91", "--como-era", "2025-07-01",
+        http=_http_falso(responder), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    (pedido,) = pedidos
+    assert pedido.url.path == "/data/v1/companies/11111111000191/public-procurement"
+    assert pedido.url.params["known_at"] == "2025-07-01"
+    assert "qualified_to_bid" in resultado.stdout
+
+
+def test_compras_em_json_passa_inteiro(rodar, chave):
+    resultado = rodar(
+        "compras", "11111111000191", "--json",
+        http=_resposta_fixa(_compras_de_mentira()), **_com_chave(chave),
+    )  # fmt: skip
+    assert resultado.exit_code == 0, resultado.output
+    assert json.loads(resultado.stdout) == _compras_de_mentira()
+
+
+def test_compras_sem_o_conjunto_sai_com_o_codigo_de_nada_disponivel(rodar, chave):
+    def responder(_pedido):
+        return httpx.Response(404, json={"detail": "not_available"})
+
+    resultado = rodar(
+        "compras", "11111111000191", http=_http_falso(responder), **_com_chave(chave)
+    )
+    assert resultado.exit_code == 5
+
+
+def test_a_ajuda_das_compras_diz_o_que_nao_quer_dizer(rodar):
+    ajuda = " ".join(rodar("compras", "--help").stdout.lower().split())
+    assert "não quer dizer que ela não vende ao governo" in ajuda
     for palavra in ("recomend", "oportunidade", "r$", "garant"):
         assert palavra not in ajuda, palavra

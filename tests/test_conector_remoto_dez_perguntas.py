@@ -495,6 +495,7 @@ SEM_PERGUNTA_DAS_DEZ = {
     "comparar_empresas": "linha 980, onda 1: põe lado a lado empresas que o analista já escolheu, que as dez não pedem; testada em test_conector_ferramentas_do_analista",
     "acompanhar_empresas": "linha 980, onda 2: a volta a uma lista de empresas já analisadas, que as dez não têm; testada em test_conector_acompanhar_empresas",
     "registros_nas_agencias": "linha 980, onda 2: os blocos de agência da análise sem abrir o resto, que as dez já leem pela analise_completa; testada em test_conector_registros_nas_agencias",
+    "compras_publicas": "linha 980, onda 2: o bloco das compras públicas da análise sem abrir o resto, num conjunto desligado por padrão; testada em test_conector_compras_publicas",
 }
 
 
@@ -864,6 +865,7 @@ MEDIDAS_A_PARTE = {
     "comparar_empresas": "linha 980, onda 1: cinco fichas pequenas; teto em test_conector_ferramentas_do_analista",
     "acompanhar_empresas": "linha 980, onda 2: teto em test_conector_acompanhar_empresas",
     "registros_nas_agencias": "linha 980, onda 2: o mesmo corte da analise_completa; teto em test_conector_registros_nas_agencias",
+    "compras_publicas": "linha 980, onda 2: o mesmo corte da analise_completa; teto em test_conector_compras_publicas",
     "de_onde_vem": "linha 980, onda 1: só explica o catálogo; teto em test_conector_de_onde_vem",
 }
 
