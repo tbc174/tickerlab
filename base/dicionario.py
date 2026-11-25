@@ -3932,7 +3932,8 @@ def _tabelas_do_rapp_do_ibama() -> dict[str, Tabela]:
                 "de 25/11/2026): o combustível ou a fonte, a quantidade consumida, a energia e as emissões de CO2 que "
                 f"o RAPP calcula, por ano. {_RAPP_DECLARADO}. {_RAPP_SO_CNPJ}; os fatores técnicos (densidade, poder "
                 "calorífico, carbono, oxidação), a observação e as justificativas também ficam de fora. A linha "
-                "quebrada na fonte (510 em 25/11/2026) sai e é contada"
+                "malformada na fonte (com mais ou menos colunas que o cabeçalho; 510 em 25/11/2026) sai e é "
+                "contada"
             ),
             fonte="IBAMA: dados abertos, RAPP, fontes energéticas (`base/ibama_rapp.py`)",
             atraso=atraso,
