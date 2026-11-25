@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 import duckdb
+import pandas as pd
 import pytest
 
 from base.porta import Porta
@@ -558,6 +559,52 @@ def test_o_log_tem_uma_linha_por_bloco_e_o_total_so_com_ids(porta, blocos, caplo
     assert len({linha.split("pedido=")[1].split()[0] for linha in linhas}) == 1
     # só ids e tempos: nem o CNPJ nem o que o bloco leu
     assert not any(CNPJ in linha or "ALFA" in linha for linha in linhas)
+
+
+def test_cada_bloco_conta_as_consultas_e_o_tempo_delas_no_log(
+    porta, blocos, monkeypatch, caplog
+):
+    """Para explicar por que a produção é 7 a 10 vezes mais lenta que o PC (linha 1015, item c, PR 2): quantas
+    consultas cada bloco fez e quanto tempo elas somaram, só números."""
+
+    def consultas(quantas, corpo):
+        def ler(porta_do_bloco, *_):
+            for _ in range(quantas):
+                porta_do_bloco.con.execute("SELECT 1").fetchall()
+            return _Servido(dict(corpo))
+
+        return ler
+
+    monkeypatch.setattr(
+        analise,
+        "CADASTROS",
+        (_bloco(analise.CADASTRO, consultas(2, CADASTRO), "profiles"),),
+    )
+    blocos(
+        _bloco("vinculos", consultas(3, {"vinculos": [{}]})),
+        _bloco("eventos", consultas(0, {"eventos": [{}]})),
+    )
+    caplog.set_level("INFO", logger=analise.__name__)
+    tempos = _tempos(_montar(porta, conjuntos=("profiles", "vinculos", "eventos")))
+    assert tempos["profile"].consultas == 2
+    assert tempos["links"].consultas == 3
+    assert tempos["events"].consultas == 0
+    assert all(t.consultas_ms >= 0 for t in tempos.values())
+    linha = next(x for x in _linhas_do_log(caplog) if "bloco=links" in x)
+    assert "consultas=3 consultas_ms=" in linha
+
+
+def test_contar_as_consultas_nao_muda_o_que_o_bloco_le(porta, blocos):
+    def le_e_registra(porta_do_bloco, *_):
+        porta_do_bloco.con.register("so_do_bloco", pd.DataFrame({"x": [1, 2]}))
+        (quantas,) = porta_do_bloco.con.execute(
+            "SELECT count(*) FROM so_do_bloco"
+        ).fetchone()
+        return _Servido({"vinculos": [{"quantas": quantas}]})
+
+    blocos(_bloco("vinculos", le_e_registra))
+    montada = _montar(porta, conjuntos=("profiles", "vinculos"))
+    assert montada.corpo["blocos"]["vinculos"] == {"vinculos": [{"quantas": 2}]}
 
 
 def test_sem_cadastro_aberto_nao_ha_tempo_nem_log(porta, blocos, caplog):

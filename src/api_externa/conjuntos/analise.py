@@ -303,12 +303,17 @@ class TempoDoBloco:
     duracao_ms: int | None
     portao_ms: int
     fila_ms: int
+    # quantas consultas o bloco fez à base e o tempo somado delas (linha 1015, item c, PR 2: o que explica a
+    # produção ser 7 a 10 vezes mais lenta que o PC); do bloco atrasado, as que fez até ser interrompido
+    consultas: int = 0
+    consultas_ms: int = 0
 
     def linha(self, pedido: str) -> str:
         return (
             f"análise: pedido={pedido} bloco={self.bloco} estado={self.estado} "
             f"comecou_ms={self.comecou_ms} duracao_ms={self.duracao_ms} "
-            f"portao_ms={self.portao_ms} fila_portao_ms={self.fila_ms}"
+            f"portao_ms={self.portao_ms} fila_portao_ms={self.fila_ms} "
+            f"consultas={self.consultas} consultas_ms={self.consultas_ms}"
         )
 
 
@@ -445,6 +450,7 @@ class _Relogio:
         comecou: float | None,
         acabou: float | None,
         no_portao: _NoPortao,
+        consultas: "_Consultas | None" = None,
     ) -> None:
         # o atrasado não tem duração: a consulta dele foi interrompida, e o fim que ela marca não é o do bloco
         duracao = None
@@ -458,6 +464,8 @@ class _Relogio:
                 duracao,
                 self._ms(no_portao.dentro),
                 self._ms(no_portao.fila),
+                0 if consultas is None else consultas.vezes,
+                0 if consultas is None else self._ms(consultas.segundos),
             )
         )
 
@@ -475,12 +483,42 @@ class _Relogio:
         )
 
 
+class _Consultas:
+    """A conexão de um bloco, contando as consultas e o tempo delas para o log (só os números, nada do que se
+    pergunta); o resto passa direto para a conexão de verdade. O tempo é o do `execute`: o que se busca depois
+    (`fetchall`, `df`) fica de fora."""
+
+    def __init__(self, con: duckdb.DuckDBPyConnection) -> None:
+        self._con = con
+        self.vezes = 0
+        self.segundos = 0.0
+
+    def execute(self, sql: str, parametros: object = None) -> duckdb.DuckDBPyConnection:
+        inicio = time.monotonic()
+        try:
+            return self._con.execute(sql, parametros)
+        finally:
+            self.vezes += 1
+            self.segundos += time.monotonic() - inicio
+
+    def __getattr__(self, nome: str) -> object:
+        return getattr(self._con, nome)
+
+
+def _contada(porta: Porta) -> Porta:
+    """A mesma porta, com a conexão contando as consultas."""
+    copia = copy.copy(porta)
+    copia.con = _Consultas(porta.con)  # type: ignore[assignment]
+    return copia
+
+
 def _cursor(porta: Porta) -> Porta:
     """Outra porta com as mesmas views e um cursor próprio (o mesmo jeito da `porta_compartilhada`), sem o
-    registro de coletas: o bloco não toca no banco por fora do portão."""
+    registro de coletas: o bloco não toca no banco por fora do portão. O cursor conta as consultas."""
     copia = copy.copy(porta)
-    copia.con = porta.con.cursor()
-    copia.con.execute("SET TimeZone = 'UTC'")
+    cursor = porta.con.cursor()
+    cursor.execute("SET TimeZone = 'UTC'")
+    copia.con = _Consultas(cursor)  # type: ignore[assignment]
     copia.banco = None
     return copia
 
@@ -550,6 +588,7 @@ def _ler_ao_mesmo_tempo(
             tarefa.comecou,
             tarefa.acabou,
             portoes.conta(tarefa.bloco),
+            tarefa.porta.con,  # type: ignore[arg-type]
         )
     for tarefa in terminadas:
         erro = tarefa.futuro.exception()  # type: ignore[union-attr]
@@ -621,13 +660,19 @@ def _ler_o_cadastro(
 ) -> Servido | None:
     comecou = time.monotonic()
     estado = ERRO
+    contada = _contada(porta)
     try:
-        lido = cadastro.ler(porta, portoes.de(cadastro), linhas, cnpj, dia)
+        lido = cadastro.ler(contada, portoes.de(cadastro), linhas, cnpj, dia)
         estado = RESPONDEU
         return lido
     finally:
         relogio.anotar(
-            cadastro, estado, comecou, time.monotonic(), portoes.conta(cadastro)
+            cadastro,
+            estado,
+            comecou,
+            time.monotonic(),
+            portoes.conta(cadastro),
+            contada.con,  # type: ignore[arg-type]
         )
 
 

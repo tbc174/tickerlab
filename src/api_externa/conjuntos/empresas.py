@@ -55,6 +55,7 @@ from src.api_externa import nao_disponivel
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.envelope import campo
 from src.api_externa.nomes import NOMES_DE_FORA
+from src.api_externa.porta_compartilhada import lembrar
 
 CONJUNTO = "companies"
 TABELA = "cnpj_situacao_cadastral"
@@ -221,14 +222,24 @@ def _view(tabela: str) -> str:
 def mes_do_retrato_publico(porta: Porta, como_era_em: date) -> str | None:
     """O mês do retrato mais novo de `cnpj_empresas_pj` já público em `como_era_em`; None se a base não tem a
     lista ou se nenhum retrato era público. A raiz só vale se estiver neste retrato: a que saiu da lista não
-    leva o nome de um retrato mais velho (P2 da revisão cruzada do #1075)."""
+    leva o nome de um retrato mais velho (P2 da revisão cruzada do #1075).
+
+    O `max` varre a lista inteira (em produção, segundos): o mês de cada dia fica lembrado enquanto a base é a
+    mesma, com o dia na chave, para nunca responder a outro dia (linha 1015, item c, PR 2)."""
+    dia = dia_de(como_era_em)
+    return lembrar(
+        porta, ("mes_do_retrato_publico", dia), lambda: _mes_do_retrato(porta, dia)
+    )
+
+
+def _mes_do_retrato(porta: Porta, dia: str) -> str | None:
     if LISTA_DE_EMPRESAS not in views(porta.con):
         return None
     existentes = porta.colunas(LISTA_DE_EMPRESAS)
     (mes,) = porta.con.execute(
         f"SELECT max({MES}) FROM {_view(LISTA_DE_EMPRESAS)} "
         f"WHERE {condicao_como_era(existentes, LISTA_DE_EMPRESAS)}",
-        {"dia": dia_de(como_era_em)},
+        {"dia": dia},
     ).fetchone() or (None,)
     return None if mes is None else str(mes)
 
