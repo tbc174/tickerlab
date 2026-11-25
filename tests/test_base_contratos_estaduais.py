@@ -11,6 +11,7 @@ Tudo de mentira.
 import json
 from datetime import date
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -581,3 +582,62 @@ def test_dois_empenhos_do_mesmo_contrato_sao_duas_linhas(banco, tmp_path, monkey
     assert resumo["id_repetido"] == 0
     tabela = _tabela(tmp_path, ce.ES_EMPENHOS, "empenhos-2025")
     assert sorted(tabela["empenho"]) == ["2025NE00001", "2025NE00002"]
+
+
+def _numeros(*documentos: str) -> np.ndarray:
+    return cnpjs.ordenados(
+        cnpjs.raizes_em_numeros(pd.Series([d[:8] for d in documentos]))
+    )
+
+
+def test_a_receita_e_lida_uma_vez_por_carga_e_so_quando_ha_o_que_montar(
+    banco, tmp_path, monkeypatch
+):
+    """Cada arquivo do ES é uma série; perguntar à Receita por série relia os ZIPs dela 56 vezes na carga de
+    25/11/2026 (horas a 100% de um núcleo). Uma pergunta só, com os CNPJs de todos os arquivos, marca o mesmo."""
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    perguntas: list[np.ndarray] = []
+
+    def receita(_conexao, raizes: np.ndarray) -> np.ndarray:
+        perguntas.append(raizes)
+        return raizes[cnpjs.contem(_numeros(OUTRA), raizes)]
+
+    monkeypatch.setattr(ce, "pessoas_pela_receita", receita)
+    monkeypatch.setattr(
+        "base.retratos.pessoas_pela_receita",
+        lambda *_: pytest.fail("a Receita não se pergunta série por série"),
+    )
+    _guardar_em(
+        banco, ce.ES_CONTRATOS, ES.format("a", "contratos-2025.csv"), PRIMEIRO_DIA,
+        [_contrato_es("1"), _contrato_es("2", OUTRA)],
+    )  # fmt: skip
+    _guardar_em(
+        banco, ce.ES_CONTRATOS, ES.format("b", "contratos-2024.csv"), PRIMEIRO_DIA,
+        [_contrato_es("9", OUTRA)],
+    )  # fmt: skip
+    _guardar_em(
+        banco, ce.ES_EMPENHOS, ES.format("c", "empenhos-2025.csv"), PRIMEIRO_DIA,
+        [_empenho_es("7")],
+    )  # fmt: skip
+    _guardar(
+        banco, ce.RJ_CONTRATOS, "CONTRATOS.CSV", PRIMEIRO_DIA, [_contrato("101", OUTRA)]
+    )
+    with banco.connect() as conexao:
+        ce.montar(conexao, tmp_path / "base", AGORA)
+    assert len(perguntas) == 1
+    assert perguntas[0].tolist() == _numeros(EMPRESA, OUTRA).tolist()
+
+    def marcas(spec: ce.Tabela, arquivo: str) -> dict[str, bool]:
+        tabela = _tabela(tmp_path, spec, arquivo)
+        return dict(zip(tabela["cnpj"], tabela["trata_como_pessoa"], strict=True))
+
+    assert marcas(ce.ES_CONTRATOS, "contratos-2025") == {
+        cnpjs.formatar(EMPRESA): False,
+        cnpjs.formatar(OUTRA): True,
+    }
+    assert marcas(ce.ES_CONTRATOS, "contratos-2024") == {cnpjs.formatar(OUTRA): True}
+    assert marcas(ce.ES_EMPENHOS, "empenhos-2025") == {cnpjs.formatar(EMPRESA): False}
+    assert marcas(ce.RJ_CONTRATOS, "contratos") == {cnpjs.formatar(OUTRA): True}
+    with banco.connect() as conexao:
+        ce.montar(conexao, tmp_path / "base", AGORA)  # nada novo: nem uma pergunta
+    assert len(perguntas) == 1

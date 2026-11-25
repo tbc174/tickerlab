@@ -30,7 +30,7 @@ import re
 from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from functools import partial
+from functools import cache, partial
 from pathlib import Path
 from typing import IO
 
@@ -41,6 +41,7 @@ import sqlalchemy as sa
 from base import cnpj as cnpjs
 from base import retratos as motor
 from base.parquet import LINHAGEM
+from base.pgfn import pessoas_pela_receita
 from src.versao_do_codigo import versao_do_codigo
 
 SEPARADOR = ";"  # a coleta grava todo CSV com ";"
@@ -396,6 +397,27 @@ def _para_gravar(
     )
 
 
+def _pessoas_de_todas(
+    conexao: sa.Connection, tabelas: Collection[Tabela]
+) -> np.ndarray:
+    """As raízes de pessoa entre os CNPJs de todos os arquivos guardados das `tabelas`, numa pergunta só.
+
+    Cada pergunta relê os ZIPs da Receita do mês (uns 11, de 2 a 3 GB cada descompactados). Perguntar por série
+    os relia uma vez por arquivo do ES (28 de contratos e 24 de empenhos): horas a 100% de um núcleo na carga
+    de 25/11/2026. A Receita responde raiz por raiz, então a resposta para todas marca cada série igual."""
+    raizes = pd.concat(
+        [
+            ler(retrato.caminho, spec)[0]["cnpj_basico"]
+            for spec in tabelas
+            for retrato in motor.retratos(conexao, spec.fonte)
+        ],
+        ignore_index=True,
+    )
+    return pessoas_pela_receita(
+        conexao, cnpjs.ordenados(cnpjs.raizes_em_numeros(raizes.astype(str)))
+    )
+
+
 def montar(
     conexao: sa.Connection,
     pasta: Path,
@@ -407,7 +429,13 @@ def montar(
     """`<pasta>/<tabela>/<arquivo>.parquet` de cada arquivo guardado de cada tabela, e o resumo da montagem.
 
     Sem retrato novo desde a última montagem, o arquivo é pulado (`refazer` relê mesmo assim, para código
-    novo). `pessoas`: as raízes de pessoa já sabidas; sem elas, pergunta à Receita guardada."""
+    novo). `pessoas`: as raízes de pessoa já sabidas; sem elas, pergunta à Receita guardada uma vez só, com os
+    CNPJs de todos os arquivos, e só se algum arquivo tiver o que montar."""
+    quem_e_pessoa: motor.Pessoas = (
+        cache(partial(_pessoas_de_todas, conexao, tuple(tabelas)))
+        if pessoas is None
+        else pessoas
+    )
     resumo: dict[str, dict[str, int]] = {}
     for spec in tabelas:
         for serie in series(conexao, spec):
@@ -424,7 +452,7 @@ def montar(
                 ),
                 para_gravar=partial(_para_gravar, spec=spec, arquivo=serie.nome),
                 ordem=ORDEM,
-                pessoas=pessoas,
+                pessoas=quem_e_pessoa,
                 refazer=refazer,
             )
             resumo |= {

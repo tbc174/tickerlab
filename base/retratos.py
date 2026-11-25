@@ -201,7 +201,14 @@ class CadastroDeRetratos(Protocol):
     url_termina_em: str | None
 
 
-def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
+# as raízes de pessoa já sabidas, ou quem as dá quando a primeira montagem precisar (uma pergunta só à Receita
+# para várias chamadas de `montar_cadastros`, como as séries de `base/contratos_estaduais.py`)
+Pessoas = Collection[str] | np.ndarray | Callable[[], np.ndarray]
+
+
+def _como_numeros(pessoas: Pessoas) -> np.ndarray:
+    if callable(pessoas):
+        return pessoas()
     if isinstance(pessoas, np.ndarray):
         return pessoas
     return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
@@ -234,14 +241,15 @@ def montar_cadastros[C: CadastroDeRetratos](
     juntar: Callable[[list[tuple[Retrato, pd.DataFrame]]], tuple[pd.DataFrame, int]],
     para_gravar: Callable[[pd.DataFrame, np.ndarray, datetime], pd.DataFrame],
     ordem: Sequence[str],
-    pessoas: Collection[str] | np.ndarray | None = None,
+    pessoas: Pessoas | None = None,
     refazer: bool = False,
 ) -> dict[str, dict[str, int]]:
     """`<pasta>/<tabela>/<cadastro>.parquet` para cada cadastro com arquivo guardado.
 
     Cadastro sem arquivo guardado fica de fora do resumo; sem retrato novo desde a última montagem, é
-    pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas;
-    sem elas, pergunta à Receita guardada (`base/pgfn.py`).
+    pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas, ou
+    a função que as dá (chamada só quando há o que montar); sem elas, pergunta à Receita guardada
+    (`base/pgfn.py`) para cada cadastro.
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in cadastros:
