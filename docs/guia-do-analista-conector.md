@@ -67,10 +67,10 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Setores | os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta |
 | Novidades da pesquisa | as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original |
 | O que posso ver | o que a sua chave libera (conjuntos, campos, fontes e licenças) e o consumo do mês |
-| De onde vem um conjunto ou um campo | a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto; não traz dado de empresa |
-| Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, e só aparece para a chave com o conjunto de crédito |
-| O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público |
-| Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero |
+| De onde vem um conjunto ou um campo | a fonte, a licença e a atribuição de cada campo que a sua chave vê, e quais campos são de piloto, para saber de onde veio um número antes de citá-lo; não traz dado de empresa |
+| Fatos de crédito de uma empresa | situação na Receita, fatos relevantes dos últimos 12 meses e a cessão de recebíveis a FIDC, cada fato com a fonte e o dia em que ficou público; não é rating, nota nem elegibilidade, não traz o SCR individual e só aparece para a chave com o conjunto de crédito |
+| O que mudou numa empresa desde um dia | o cadastro, os vínculos e os eventos como a base os sabia no dia escolhido contra como os sabe hoje, só a diferença, cada item com a fonte e o dia em que ficou público; serve para retomar uma empresa já analisada e mostra só os blocos que a sua chave vê |
+| Fichas de 2 a 5 empresas lado a lado | o cadastro e as entregas à CVM de cada empresa em colunas; o que a base não tem vem como «não disponível», nunca como zero, e não há nota nem ordenação das empresas |
 <!-- fim da lista das portas -->
 
 Para várias consultas, dá para pedir a informação **como ela era numa data** ("como era em 31/12/2025").
