@@ -201,14 +201,13 @@ class CadastroDeRetratos(Protocol):
     url_termina_em: str | None
 
 
-# as raízes de pessoa já sabidas, ou quem as dá quando a primeira montagem precisar (uma pergunta só à Receita
-# para várias chamadas de `montar_cadastros`, como as séries de `base/contratos_estaduais.py`)
-Pessoas = Collection[str] | np.ndarray | Callable[[], np.ndarray]
+# quem responde, para as raízes de um cadastro (números ordenados), quais são de pessoa: tem de responder
+# por todas as pedidas (`base/contratos_estaduais.py` faz uma pergunta só à Receita para várias séries)
+PerguntaDePessoas = Callable[[np.ndarray], np.ndarray]
+Pessoas = Collection[str] | np.ndarray | PerguntaDePessoas
 
 
-def _como_numeros(pessoas: Pessoas) -> np.ndarray:
-    if callable(pessoas):
-        return pessoas()
+def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
     if isinstance(pessoas, np.ndarray):
         return pessoas
     return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
@@ -248,8 +247,8 @@ def montar_cadastros[C: CadastroDeRetratos](
 
     Cadastro sem arquivo guardado fica de fora do resumo; sem retrato novo desde a última montagem, é
     pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas, ou
-    a função que as dá (chamada só quando há o que montar); sem elas, pergunta à Receita guardada
-    (`base/pgfn.py`) para cada cadastro.
+    a função que, com as raízes do cadastro montado, diz quais são de pessoa; sem elas, pergunta à Receita
+    guardada (`base/pgfn.py`) para cada cadastro.
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in cadastros:
@@ -262,13 +261,17 @@ def montar_cadastros[C: CadastroDeRetratos](
             continue
         contagem: dict[str, int] = {}
         tabela, pulados = juntar(list(_lidos(achados, cadastro, ler, contagem)))
-        if pessoas is None:
+        if pessoas is None or callable(pessoas):
             raizes = cnpjs.ordenados(
                 cnpjs.raizes_em_numeros(
                     tabela["cnpj_basico"].drop_duplicates().astype(str)
                 )
             )
-            de_pessoa = pessoas_pela_receita(conexao, raizes)
+            de_pessoa = (
+                pessoas(raizes)
+                if callable(pessoas)
+                else pessoas_pela_receita(conexao, raizes)
+            )
         else:
             de_pessoa = _como_numeros(pessoas)
         gravar_se_mudou(

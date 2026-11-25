@@ -641,3 +641,30 @@ def test_a_receita_e_lida_uma_vez_por_carga_e_so_quando_ha_o_que_montar(
     with banco.connect() as conexao:
         ce.montar(conexao, tmp_path / "base", AGORA)  # nada novo: nem uma pergunta
     assert len(perguntas) == 1
+
+
+def test_raiz_que_nao_estava_na_pergunta_unica_ganha_pergunta_propria(
+    banco, tmp_path, monkeypatch
+):
+    """Revisões do #1323: um arquivo guardado durante a carga traz uma raiz que a pergunta única não viu. Sem
+    resposta, ela sairia sem `trata_como_pessoa`; agora ganha uma pergunta só dela, e a Receita a marca."""
+    perguntas: list[list[int]] = []
+    nova = _numeros("12345678000100")
+
+    def receita(_conexao, raizes: np.ndarray) -> np.ndarray:
+        perguntas.append(raizes.tolist())
+        de_pessoa = cnpjs.ordenados(np.concatenate([_numeros(OUTRA), nova]))
+        return raizes[cnpjs.contem(de_pessoa, raizes)]
+
+    monkeypatch.setattr(ce, "pessoas_pela_receita", receita)
+    _guardar_em(
+        banco, ce.ES_CONTRATOS, ES.format("a", "contratos-2025.csv"), PRIMEIRO_DIA,
+        [_contrato_es("1"), _contrato_es("2", OUTRA)],
+    )  # fmt: skip
+    with banco.connect() as conexao:
+        pergunta = ce.UmaPerguntaSo(conexao, ce.TABELAS)
+        assert pergunta(_numeros(EMPRESA)).tolist() == _numeros(OUTRA).tolist()
+        assert pergunta(_numeros(EMPRESA, OUTRA)).tolist() == _numeros(OUTRA).tolist()
+        de_pessoa = pergunta(np.concatenate([_numeros(EMPRESA), nova]))
+    assert perguntas == [_numeros(EMPRESA, OUTRA).tolist(), nova.tolist()]
+    assert cnpjs.contem(de_pessoa, nova).all()
