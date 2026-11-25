@@ -2028,7 +2028,7 @@ def _tabelas_das_licencas() -> dict[str, Tabela]:
             "mapa_sipeagro",
             (
                 "Estabelecimentos registrados no MAPA (SIPEAGRO) por CNPJ: produto veterinário e "
-                "aviação agrícola, que trazem o CNPJ inteiro. Fertilizantes, qualidade vegetal, vinhos e "
+                "aviação agrícola. Os dois trazem o CNPJ inteiro; fertilizantes, qualidade vegetal, vinhos e "
                 "bebidas e alimentação animal mascaram o documento (só 3 dígitos da raiz à vista) e a "
                 "multiplicação animal nem o traz: essas linhas só entram quando o número do registro "
                 "casa com um registro de CNPJ inteiro e os 3 dígitos à vista batem com ele (sem "
