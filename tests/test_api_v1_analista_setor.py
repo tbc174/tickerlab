@@ -58,14 +58,14 @@ def test_os_compradores_saem_com_sinais_de_dentro_fonte_e_dia(cliente):
     assert dados["estado"] == leitura.PRONTA
     raizes = [c["raiz_do_cnpj"] for c in dados["compradores"]]
     assert raizes == [
-        base_de_mentira.FUNDO,
         base_de_mentira.COMPRADORA,
+        base_de_mentira.FUNDO,
         base_de_mentira.ABERTA,
     ]
-    fundo = dados["compradores"][0]
+    fundo = dados["compradores"][1]
     assert fundo["sinais"] == ["entrou_como_socio", "fundo_socio"]
     assert fundo["razao_social"]["fonte"] == "rfb-cnpj"
-    exemplos = dados["compradores"][1]["provas"]["entrou_como_socio"]["exemplos"]
+    exemplos = dados["compradores"][0]["provas"]["entrou_como_socio"]["exemplos"]
     # a entrada na empresa baixada também conta (linha 1042), no mesmo dia da entrada na ALVO SP
     (exemplo,) = [
         e
