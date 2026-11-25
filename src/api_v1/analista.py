@@ -44,6 +44,7 @@ from src.analista import (
     setor,
     vinculos,
 )
+from src.api_externa import porta_compartilhada
 from src.api_externa import rotas as rotas_da_api_externa
 from src.api_v1 import esquemas
 from src.api_v1.acesso import conta_com_acesso, exigir_api_ligada
@@ -77,6 +78,10 @@ NOME_DA_PLANILHA_DA_COMPARACAO = "comparacao-de-empresas-tickerlab.xlsx"
 COMPARACAO_INVALIDA = "Escolha de 2 a 5 CNPJs diferentes, cada um com 14 caracteres."
 COMPARACAO_INDISPONIVEL = "Comparação não disponível."
 BASE_FORA_DO_AR = "A base não está disponível agora. Tente de novo em alguns minutos."
+# a base mudou durante o pedido (linha 1099, parte b): a resposta não sai, para não juntar dado de antes e de depois
+BASE_EM_ATUALIZACAO = (
+    "A base está sendo atualizada agora. Tente de novo em alguns segundos."
+)
 
 Conta = Annotated[Usuario, Depends(conta_com_acesso)]
 router = APIRouter(prefix="/v1/analista", dependencies=[Depends(exigir_api_ligada)])
@@ -133,12 +138,32 @@ def _porta() -> Generator[Porta]:
             try:
                 yield porta
             except (duckdb.Error, OSError) as erro:
+                _conferir_no_fim(porta)
                 raise HTTPException(status_code=503, detail=BASE_FORA_DO_AR) from erro
             except KeyError as erro:
+                _conferir_no_fim(porta)
                 # o portão libera uma tabela que a base deste servidor não tem (a porta diz qual e onde):
                 # para quem usa, é a base fora do ar; o nome e o caminho ficam só no log do servidor
                 log.warning("tela do analista: tabela fora desta base: %s", erro)
                 raise HTTPException(status_code=503, detail=BASE_FORA_DO_AR) from erro
+            except Exception:
+                _conferir_no_fim(porta)
+                raise
+            _conferir_no_fim(porta)
+
+
+def _conferir_no_fim(porta: Porta) -> None:
+    """A mesma trava da porta do pedido da API externa (linha 1099, parte b): se a base mudou durante o pedido,
+    503 com a frase da tela e o `Retry-After`, nunca uma resposta que junta arquivos de antes e de depois."""
+    try:
+        porta_compartilhada.conferir_no_fim(porta)
+    except porta_compartilhada.BaseEmAtualizacao as erro:
+        log.warning("tela do analista: a base mudou durante o pedido: 503")
+        raise HTTPException(
+            status_code=503,
+            detail=BASE_EM_ATUALIZACAO,
+            headers={"Retry-After": str(rotas_da_api_externa.ESPERA_DA_TROCA_S)},
+        ) from erro
 
 
 def _e_do_piloto(conta: Usuario, dia: date) -> bool:

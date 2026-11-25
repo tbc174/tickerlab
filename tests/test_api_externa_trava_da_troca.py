@@ -270,3 +270,30 @@ def test_no_conector_o_503_da_troca_chega_como_frase_e_nao_como_excecao():
     assert erro
     assert "tente de novo" in texto
     assert "Traceback" not in texto and "base_updating" not in texto
+
+
+# ---------------------------------------------------------------- as telas do analista (mesma porta dona)
+
+
+def test_na_tela_do_analista_o_pedido_que_cruza_a_troca_tambem_da_503(
+    listas, monkeypatch, banco
+):
+    """As telas do analista (`/api/v1`) pegam a porta pela mesma `abrir_porta` da API externa: a mesma trava,
+    com a frase da tela e o `Retry-After`."""
+    from src.api_v1 import analista
+
+    with pytest.raises(HTTPException) as erro, analista._porta() as porta:
+        empresas.e_empresa(porta, listas_de_mentira.EMPRESA)
+        _retrato_novo_com_a_nova(listas)
+    assert erro.value.status_code == 503
+    assert erro.value.detail == analista.BASE_EM_ATUALIZACAO
+    assert erro.value.headers == {"Retry-After": str(rotas.ESPERA_DA_TROCA_S)}
+    with analista._porta() as porta:
+        assert empresas.e_empresa(porta, NOVA)  # o pedido seguinte, na base nova
+
+
+def test_na_tela_do_analista_sem_troca_nada_muda(listas, banco):
+    from src.api_v1 import analista
+
+    with analista._porta() as porta:
+        assert empresas.e_empresa(porta, listas_de_mentira.EMPRESA)
