@@ -561,6 +561,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "fre_distribuicao_capital",
             "fre_distribuicao_capital_por_classe",
             "controladas",
+            "controladas_primeiro_fre",
             "entidades",
             "identificadores",
             "ligacoes",
