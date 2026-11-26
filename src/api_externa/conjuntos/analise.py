@@ -235,6 +235,7 @@ BLOCOS = (
         _vizinhas,
         vizinhas.EXIGE,
         ("no_municipio", "na_uf"),
+        vazio=vizinhas.sem_vizinhas,
         # EXCEÇÃO à regra "um pedido por conjunto lido" (Diretoria, 26/11/2026): as vizinhas não contam pedido,
         # nem na quota nem no consumo, para a análise custar o mesmo de antes a quem já tem a busca de empresas
         # no contrato (cobrar mais mudaria a conta de quem não pediu; cobrar por elas é decisão comercial). A

@@ -59,7 +59,7 @@ TETO_DE_VIZINHAS = 10
 # o que o bloco diz à chave que não tem as linhas da busca de empresas (não depende do CNPJ pedido)
 NAO_HABILITADO = (
     "As vizinhas do mesmo ramo não vieram: a busca de empresas (conjunto prospecting) não está habilitada "
-    "para esta chave hoje. Isso não diz nada sobre a empresa."
+    "ou disponível para esta chave hoje. Isso não diz nada sobre a empresa."
 )
 # quantas candidatas a mais são conferidas, para a lista continuar cheia quando a trava de pessoa tira alguma
 FOLGA_DA_TRAVA = 5
@@ -74,8 +74,8 @@ LIMITES = (
         "vizinhas não contam pedido."
     ),
     (
-        "A lista só tem pessoa jurídica: MEI e empresário individual não entram, nem nos totais; empresa com "
-        "número de pessoa na razão social conta no total e não é listada."
+        "A lista só tem pessoa jurídica: MEI e empresário individual não entram, nem nos totais; empresa que a "
+        "trava de pessoa segura (número de pessoa na razão social, por exemplo) conta no total e não é listada."
     ),
     (
         "A lista não diz quem é o dono (no exterior ou no Brasil) nem traz sinal de risco de cada vizinha: "
@@ -96,6 +96,11 @@ class VizinhasServidas:
     corpo: dict
     fontes: set[str] = field(default_factory=set)
     linhas: int = 0
+
+
+def sem_vizinhas(corpo: dict) -> bool:
+    """O ramo não tem outra empresa na UF: só aí o bloco é "não achado" (lista vazia com total é outra coisa)."""
+    return not corpo.get("total_na_uf")
 
 
 def _view(tabela: str) -> str:

@@ -358,6 +358,11 @@ def test_o_bloco_esta_registrado_na_analise_com_as_listas_dele():
     assert bloco.finalidade == analise.ANALISE
     assert bloco.exige == vizinhas.EXIGE
     assert bloco.listas == ("no_municipio", "na_uf")
+    # "não achado" é ramo sem vizinha, não lista vazia: a UF grande ou a trava podem esvaziar a lista
+    vazias = {"no_municipio": [], "na_uf": []}
+    assert bloco.vazio is not None
+    assert bloco.vazio(vazias | {"total_na_uf": 0}) is True
+    assert bloco.vazio(vazias | {"total_na_uf": 3}) is False
     assert bloco.aviso_se_fechado == vizinhas.NAO_HABILITADO
     # a análise custa o mesmo com ou sem as vizinhas; os outros blocos contam como antes
     assert [b.nome for b in analise.BLOCOS if not b.conta_pedido] == [vizinhas.BLOCO]
