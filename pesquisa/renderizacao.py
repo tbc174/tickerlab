@@ -11,7 +11,7 @@ O Firecrawl entra por HTTP, como ferramenta à parte: é AGPL, e nenhum código 
   próprio PC é recusado. Tem preferência (não gasta crédito);
 - hospedado: com a chave em `FIRECRAWL_API_KEY`, o serviço de `api.firecrawl.dev` (endereço fixo, para a
   chave não ir a outro lugar). Só roda depois do Crawl4AI, quando ele falta ou falha, e só depois do
-  `Porteiro` (nunca vai a terceiro endereço com CPF ou com termo barrado) e dentro do teto de créditos.
+  `Porteiro` (nunca vai a terceiro endereço com termo barrado) e dentro do teto de créditos.
   Pede `proxy: basic` (o `enhanced` existe para vencer anti-robô, e bloqueio não se contorna) e
   `storeInCache: false`.
 """
@@ -64,10 +64,6 @@ PRIMEIRO_STATUS_DE_ERRO = 400
 STATUS_DE_BLOQUEIO = frozenset({401, 403, 429})
 MAXIMO_DE_DECODIFICACOES = 4  # URL dentro de URL: decodifica até parar de mudar
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parent.parent
-# 11 dígitos em grupos 3-3-3-2, com ou sem um separador qualquer (ponto, hífen, espaço, barra...).
-_CPF_NO_TEXTO = re.compile(
-    r"(?<!\d)\d{3}[^0-9a-z]?\d{3}[^0-9a-z]?\d{3}[^0-9a-z]?\d{2}(?!\d)", re.IGNORECASE
-)
 
 Renderizador = Callable[[str], tuple[str, bytes]]
 
@@ -156,17 +152,6 @@ class BloqueioNaRenderizacao(RuntimeError):
     """A página respondeu bloqueio (401, 403, 429). Bloqueio não se contorna: a cascata para aqui."""
 
 
-def _cpf_valido(digitos: str) -> bool:
-    if len(set(digitos)) == 1:
-        return False
-    numeros = [int(d) for d in digitos]
-    for tamanho in (9, 10):
-        soma = sum(n * (tamanho + 1 - i) for i, n in enumerate(numeros[:tamanho]))
-        if (soma * 10 % 11) % 10 != numeros[tamanho]:
-            return False
-    return True
-
-
 def _so_letras_e_numeros(texto: str) -> str:
     """Sem acento, sem caixa e sem separador: "Empresa Fictícia" e "empresa-ficticia" ficam iguais."""
     decomposto = unicodedata.normalize("NFKD", texto)
@@ -175,8 +160,10 @@ def _so_letras_e_numeros(texto: str) -> str:
 
 
 class Porteiro:
-    """Confere o endereço antes de ele ir a um serviço de terceiro: nada com CPF, nada com termo barrado
-    (nome de cliente, alvo de mandato, pessoa). Na dúvida, barra: a comparação ignora separadores."""
+    """Confere o endereço antes de ele ir a um serviço de terceiro: nada com termo barrado (nome de
+    cliente, alvo de mandato, pessoa). Na dúvida, barra: a comparação ignora separadores. Número de CPF
+    no endereço de página pública não é barrado (decisão do Tiago, 26/11/2026; regra "GPL e AGPL" do
+    AGENTS.md)."""
 
     def __init__(self, termos: Iterable[str]) -> None:
         self._termos = [t for t in map(_so_letras_e_numeros, termos) if t]
@@ -187,9 +174,6 @@ class Porteiro:
 
     def conferir(self, url: str) -> None:
         for texto in _leituras_do_endereco(url):
-            achados = _CPF_NO_TEXTO.findall(texto)
-            if any(_cpf_valido(re.sub(r"\D", "", achado)) for achado in achados):
-                raise EnvioBarrado("o endereço tem um número que confere como CPF")
             canonico = _so_letras_e_numeros(texto)
             if any(termo in canonico for termo in self._termos):
                 raise EnvioBarrado("o endereço tem um termo da lista de barrados")
@@ -372,7 +356,7 @@ def escolher_renderizador(
             if porteiro.sem_termos:
                 print(
                     "Firecrawl hospedado ligado com a lista de termos barrados vazia: "
-                    "só o CPF é conferido",
+                    "nenhum endereço é conferido",
                     file=sys.stderr,
                 )
             contador = contador or ContadorDeCreditos()

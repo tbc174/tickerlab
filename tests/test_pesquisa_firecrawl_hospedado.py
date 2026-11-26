@@ -118,31 +118,23 @@ def test_a_chave_nao_aparece_na_mensagem_de_erro():
 # --- porteiro ---------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "molde",
-    ["{d}", "{p}", "q={d}&x=1", "a/{d}/b", "x{d}y"],
-)
-def test_porteiro_recusa_endereco_com_cpf_valido(molde: str):
-    digitos = _cpf_inventado()
-    pontuado = f"{digitos[:3]}.{digitos[3:6]}.{digitos[6:9]}-{digitos[9:]}"
-    url = f"{PAGINA}?" + molde.format(d=digitos, p=pontuado)
-    if molde == "x{d}y":
-        url = f"{PAGINA}/x{digitos}y"
+@pytest.mark.parametrize("molde", ["?id={d}", "?id={p}", "/edital/a-{h}"])
+def test_endereco_de_pagina_com_cpf_vai_e_a_lista_continua_barrando(molde: str):
+    """Decisão do Tiago (26/11/2026): o endereço de página pública com número de CPF pode ir ao
+    Firecrawl. A lista de termos barrados continua valendo no mesmo endereço."""
+    d = _cpf_inventado()
+    url = PAGINA + molde.format(
+        d=d,
+        p=f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}",
+        h=f"{d[:3]}-{d[3:6]}-{d[6:9]}-{d[9:]}",
+    )
     post = _Post(_ok())
-    renderizar, _ = _hospedado(post)
-    with pytest.raises(EnvioBarrado) as erro:
-        renderizar(url)
-    assert digitos not in str(erro.value)
-    assert post.pedidos == []
-
-
-def test_porteiro_deixa_passar_onze_digitos_que_nao_sao_cpf():
-    digitos = _cpf_inventado()
-    errado = digitos[:-1] + str((int(digitos[-1]) + 1) % 10)
-    Porteiro(()).conferir(f"{PAGINA}?id={errado}")
-    Porteiro(()).conferir(
-        f"{PAGINA}?cnpj=00000000000191&id=1{digitos}"
-    )  # 12 dígitos seguidos
+    renderizar, _ = _hospedado(post, termos=["Empresa Fictícia Alfa"])
+    renderizar(url)
+    assert [p["json"]["url"] for p in post.pedidos] == [url]
+    with pytest.raises(EnvioBarrado):
+        renderizar(url + "&q=empresa-ficticia-alfa")
+    assert len(post.pedidos) == 1
 
 
 @pytest.mark.parametrize(
@@ -255,7 +247,8 @@ def test_lista_de_termos_vazia_liga_com_aviso(
         {renderizacao.VARIAVEL_DA_CHAVE: CHAVE}
     )
     assert escolhido is not None
-    assert "vazia" in capsys.readouterr().err
+    erro = capsys.readouterr().err
+    assert "vazia" in erro and "nenhum endereço é conferido" in erro
 
 
 # --- escolha e cascata ------------------------------------------------------------------------
@@ -372,24 +365,6 @@ def _termos_padrao_vazio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pat
     arquivo.write_text("", encoding="utf-8")
     monkeypatch.setattr(renderizacao, "TERMOS_BARRADOS_PADRAO", arquivo)
     return arquivo
-
-
-def _formas_do_cpf(d: str) -> list[str]:
-    return [
-        f"/edital/fulano-{d[:3]}-{d[3:6]}-{d[6:9]}-{d[9:]}",
-        f"?q={d[:3]}+{d[3:6]}+{d[6:9]}+{d[9:]}",
-        f"?q={d[:3]}%20{d[3:6]}%20{d[6:9]}%20{d[9:]}",
-        f"?q={d[:3]}%252E{d[3:6]}%252E{d[6:9]}-{d[9:]}",
-        f"?q={d[:3]},{d[3:6]},{d[6:9]},{d[9:]}",
-        f"/{d[:3]}/{d[3:6]}/{d[6:9]}/{d[9:]}",
-    ]
-
-
-@pytest.mark.parametrize("indice", range(6))
-def test_porteiro_acha_cpf_com_qualquer_separador_e_codificacao(indice: int):
-    trecho = _formas_do_cpf(_cpf_inventado())[indice]
-    with pytest.raises(EnvioBarrado):
-        Porteiro(()).conferir("https://x.gov.br" + trecho)
 
 
 @pytest.mark.parametrize(

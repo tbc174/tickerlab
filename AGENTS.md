@@ -206,7 +206,10 @@ O Tiago trabalha com mais de uma IA (decisão na pasta privada, ADR 0110). Para 
   licença do programa não barra nada: pode-se ler e citar projeto GPL/AGPL em pesquisa, usar a informação, a
   documentação e o dado que ele publica (a licença do dado é a do dado, não a do programa) e usar um programa GPL/AGPL
   como ferramenta à parte (serviço chamado por HTTP ou MCP, linha de comando, no PC ou hospedado), sem copiar código
-  dele para cá. Serviço de terceiro recebe só página e termo público: nunca CPF, nome de pessoa nem dado de cliente.
+  dele para cá. Serviço de terceiro recebe só página e termo público: nunca nome de pessoa, dado de cliente nem alvo
+  de mandato. O endereço de uma página pública que traga um número de CPF pode ir ao Firecrawl (decisão do Tiago em
+  26/11/2026); o CPF continua fora de termo de busca, de log, de teste e de qualquer outro serviço ou modelo de
+  terceiro.
 
 ## Padrões de código
 
