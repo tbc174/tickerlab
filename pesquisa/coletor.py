@@ -29,6 +29,7 @@ from pesquisa.memoria import STATUS_DE_BLOQUEIO, Memoria, Visto, agora
 from pesquisa.pessoa import tem_sequencia_de_cpf
 from pesquisa.renderizacao import (
     BloqueioNaRenderizacao,
+    EnvioBarrado,
     Mapeador,
     TetoDeCreditos,
     so_letras_e_numeros,
@@ -53,6 +54,9 @@ EXTENSOES = {
 TIPOS_QUE_EXIGEM_DOCUMENTO = frozenset({"pdf", "xlsx", "zip"})
 CABECALHOS_DA_PROVENIENCIA = ("Content-Type", "Content-Length", "Last-Modified", "ETag")
 TAMANHO_DA_LEITURA = 1024 * 1024
+# Página com menos texto que isto e com <script> é casca de JavaScript: renderiza sozinha. Na linha de
+# base de 26/11/2026, as cascas vieram com 4, 21 e 82 caracteres; página de verdade passa de centenas.
+TEXTO_MINIMO_DE_PAGINA = 200
 
 
 class Cliente(Protocol):
@@ -155,7 +159,15 @@ class Coletor:
             self.rodada.gastar_busca()
             self._conferir_robots(url)
             url_final, conteudo, cabecalhos = self._pedir_pagina(url, renderizar)
-            return self._responder_pagina(url, url_final, conteudo, cabecalhos)
+            sozinha = None
+            if not renderizar and self._e_casca_de_javascript(conteudo, cabecalhos):
+                url_final, conteudo, cabecalhos, sozinha = self._renderizar_sozinho(
+                    url, (url_final, conteudo, cabecalhos)
+                )
+            resposta = self._responder_pagina(url, url_final, conteudo, cabecalhos)
+            if sozinha is not None and resposta.get("tipo") == "html":
+                resposta["renderizada_sozinha"] = sozinha
+            return resposta
         except LimiteExcedido as erro:
             return {"ok": False, "limite": str(erro)}
         except Recusa as recusa:
@@ -208,17 +220,68 @@ class Coletor:
             try:
                 url_final, html = self.renderizador(url)
             except BloqueioNaRenderizacao as erro:
+                self._anotar_renderizacao(url, False, erro)
                 raise BloqueioAntiRobo(str(erro)) from erro
             except Exception as erro:
+                self._anotar_renderizacao(url, False, erro)
                 raise Recusa(
                     f"a renderização falhou ({type(erro).__name__}); tente buscar_pagina "
                     "sem renderizar",
                     lembrar=False,
                 ) from erro
+            self._anotar_renderizacao(url, False, None)
             return url_final, html, {"Content-Type": "text/html"}
         resposta = self.cliente.ler(url)
         self.rodada.gastar_bytes(len(resposta.conteudo))
         return resposta.url, resposta.conteudo, resposta.cabecalhos
+
+    def _e_casca_de_javascript(
+        self, conteudo: bytes, cabecalhos: Mapping[str, str]
+    ) -> bool:
+        """HTML com <script> e quase sem texto: o conteúdo é montado no navegador."""
+        if self.renderizador is None:
+            return False
+        tipo = {k.lower(): v for k, v in cabecalhos.items()}.get("content-type", "")
+        if "html" not in tipo.lower() or b"<script" not in conteudo.lower():
+            return False
+        extracao = leitores.ler_html(conteudo)
+        texto = extracao.blocos[0].texto if extracao.blocos else ""
+        return len(texto) < TEXTO_MINIMO_DE_PAGINA
+
+    def _renderizar_sozinho(
+        self, url: str, lida: tuple[str, bytes, Mapping[str, str]]
+    ) -> tuple[str, bytes, Mapping[str, str], bool]:
+        """Renderiza a casca pelo mesmo renderizador do `renderizar=true` (porteiro e teto valem). Se
+        não der, a página lida volta como veio: a busca já deu certo, e a falha fica só anotada (um
+        bloqueio aqui não vira negativo, porque a página abriu sem navegador)."""
+        assert self.renderizador is not None
+        self.cliente_espera_a_vez(url)
+        try:
+            url_final, html = self.renderizador(url)
+        except Exception as erro:  # noqa: BLE001 (qualquer falha devolve a página lida)
+            self._anotar_renderizacao(url, True, erro)
+            return (*lida, False)
+        self._anotar_renderizacao(url, True, None)
+        return url_final, html, {"Content-Type": "text/html"}, True
+
+    def _anotar_renderizacao(
+        self, url: str, sozinha: bool, erro: Exception | None
+    ) -> None:
+        if erro is None:
+            resultado = "ok"
+        elif isinstance(erro, BloqueioNaRenderizacao):
+            resultado = "bloqueio"
+        elif isinstance(erro, EnvioBarrado):
+            resultado = "barrado"
+        else:
+            resultado = "falhou"
+        self.memoria.anotar_renderizacao(
+            url,
+            self.rodada.identificador,
+            sozinha=sozinha,
+            resultado=resultado,
+            erro=type(erro).__name__ if erro else None,
+        )
 
     def cliente_espera_a_vez(self, url: str) -> None:
         """O renderizador não passa pelo `ClienteHttp`: o ritmo do domínio vale do mesmo jeito."""
