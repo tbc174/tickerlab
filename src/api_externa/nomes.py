@@ -309,6 +309,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "total_no_municipio": "total_in_municipality",
     "total_na_uf": "total_in_state",
     "nao_habilitado": "not_enabled",
+    "nao_coube_no_tempo": "did_not_fit_in_time",
     # as tabelas ligadas pelo CNPJ do registro (`src/api_externa/tabelas_por_cnpj.py`, linha 978): os blocos e as
     # chaves de cada tabela
     "regulados": "regulated_activities",

@@ -8,6 +8,7 @@ portão nega (viraria oráculo) e o prazo da análise (o nome só se lê das can
 
 import dataclasses
 import re
+import time
 from datetime import date
 
 import pandas as pd
@@ -386,6 +387,12 @@ def test_o_bloco_esta_registrado_na_analise_com_as_listas_dele():
     assert bloco.vazio(vazias | {"total_na_uf": 0}) is True
     assert bloco.vazio(vazias | {"total_na_uf": 3}) is False
     assert bloco.aviso_se_fechado == vizinhas.NAO_HABILITADO
+    # teto próprio, abaixo do prazo da análise: cortado, o bloco diz que não coube
+    assert bloco.teto == analise.TETO_DAS_VIZINHAS_EM_SEGUNDOS == 12.0
+    assert bloco.teto < analise.PRAZO_EM_SEGUNDOS
+    assert bloco.aviso_no_corte == vizinhas.NAO_COUBE
+    assert "vizinhas não couberam no tempo" in vizinhas.NAO_COUBE
+    assert [b.nome for b in analise.BLOCOS if b.teto] == [vizinhas.BLOCO]
     # a análise custa o mesmo com ou sem as vizinhas; os outros blocos contam como antes
     assert [b.nome for b in analise.BLOCOS if not b.conta_pedido] == [vizinhas.BLOCO]
     nomes = [b.nome for b in analise.BLOCOS]
@@ -508,6 +515,10 @@ def test_os_limites_da_resposta_dizem_que_as_vizinhas_nao_contam_pedido(pasta):
     assert "as vizinhas não contam pedido" in " ".join(_ler(pasta).corpo["limites"])
 
 
+def test_os_limites_dizem_que_o_bloco_pode_nao_caber_no_tempo(pasta):
+    assert "não couberem no tempo" in " ".join(_ler(pasta).corpo["limites"])
+
+
 def test_com_ou_sem_o_bloco_a_analise_custa_o_mesmo_na_quota_e_no_consumo(
     banco, cliente, monkeypatch
 ):
@@ -559,10 +570,52 @@ def test_sem_a_busca_no_contrato_nada_das_vizinhas_e_lido(banco, cliente, monkey
     assert resposta.json()["timed_out"] == []
 
 
+def test_bloco_que_nao_cabe_no_tempo_avisa_so_a_quem_tem_a_busca(
+    banco, cliente, monkeypatch
+):
+    lidas: list[int] = []
+
+    def demora(*_):
+        lidas.append(1)
+        time.sleep(1.5)
+
+    monkeypatch.setattr(vizinhas.LeitorDeVizinhas, "vizinhas", demora)
+    monkeypatch.setattr(
+        analise,
+        "BLOCOS",
+        tuple(
+            dataclasses.replace(b, teto=0.2) if b.nome == vizinhas.BLOCO else b
+            for b in analise.BLOCOS
+        ),
+    )
+    ator = aj.admin(banco)
+    org_com, com = _organizacao_com(banco, ator, "Alfa", "companies", vizinhas.CONJUNTO)
+    _org, sem = _organizacao_com(banco, ator, "Beta", "companies")
+    parametros = {"known_at": DIA.isoformat()}
+
+    cortada = cliente.get(ROTA, params=parametros, headers=aj.bearer(com.valor))
+    assert cortada.status_code == 200
+    assert cortada.json()["blocks"]["same_industry_neighbors"] == {
+        "did_not_fit_in_time": vizinhas.NAO_COUBE
+    }
+    assert cortada.json()["timed_out"] == []
+    assert "same_industry_neighbors" not in {
+        n["block"] for n in cortada.json()["not_found"]
+    }
+    assert cortada.json()["requests_used"] == 1
+    assert _por_conjunto(banco, org_com) == {"companies": 1}
+
+    fechada = cliente.get(ROTA, params=parametros, headers=aj.bearer(sem.valor))
+    assert fechada.json()["blocks"]["same_industry_neighbors"] == {
+        "not_enabled": vizinhas.NAO_HABILITADO
+    }
+    assert len(lidas) == 1  # só a organização com a busca leu
+
+
 # ---------------------------------------------------------------- no conector
 
 
-def test_o_conector_corta_as_listas_do_bloco_e_diz_de_onde_pedir_o_resto():
+def test_o_conector_corta_as_listas_do_bloco_e_deixa_o_aviso_do_tempo():
     corpo = {
         "blocks": {
             "same_industry_neighbors": {
@@ -577,7 +630,9 @@ def test_o_conector_corta_as_listas_do_bloco_e_diz_de_onde_pedir_o_resto():
     bloco = curto["blocks"]["same_industry_neighbors"]
     assert len(bloco["in_municipality"]) == 2 and len(bloco["elsewhere_in_state"]) == 2
     assert bloco["truncated"] is True
-    # atrasado, o aviso diz a ferramenta que traz a lista sozinha
-    corpo["timed_out"] = [{"block": "same_industry_neighbors"}]
-    atrasada = enxugar.enxugar_analise(corpo)
-    assert "`buscar_empresas`" in " ".join(atrasada["limits"])
+    # o bloco que não coube no tempo passa como veio, com o aviso que diz onde pedir a lista
+    aviso = {"did_not_fit_in_time": vizinhas.NAO_COUBE}
+    corpo["blocks"]["same_industry_neighbors"] = aviso
+    cortada = enxugar.enxugar_analise(corpo)
+    assert cortada["blocks"]["same_industry_neighbors"] == aviso
+    assert "busca de empresas" in vizinhas.NAO_COUBE

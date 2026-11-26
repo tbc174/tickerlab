@@ -59,6 +59,11 @@ NAO_HABILITADO = (
     "As vizinhas do mesmo ramo não vieram: a busca de empresas (conjunto prospecting) não está habilitada "
     "ou disponível para esta chave hoje. Isso não diz nada sobre a empresa."
 )
+# o que o bloco diz quando a análise o corta pelo teto de tempo dele (`analise.TETO_DAS_VIZINHAS_EM_SEGUNDOS`)
+NAO_COUBE = (
+    "As vizinhas não couberam no tempo desta análise. Isso não quer dizer que não há vizinhas: peça a análise "
+    "de novo ou use a busca de empresas (atividade principal, UF e município)."
+)
 # quantas candidatas a mais são conferidas, para a lista continuar cheia quando a trava de pessoa tira alguma
 FOLGA_DA_TRAVA = 5
 
@@ -69,7 +74,7 @@ LIMITES = (
         "secundária não conta. Uma linha por empresa, da maior para a menor pelo capital social declarado, que "
         "não é faturamento nem valor da empresa. "
         f"São no máximo {TETO_DE_VIZINHAS} em cada recorte (a busca de empresas traz a lista inteira), e as "
-        "vizinhas não contam pedido."
+        "vizinhas não contam pedido. Se não couberem no tempo da análise, o bloco vem sem elas, só com o aviso."
     ),
     (
         "A lista só tem pessoa jurídica: MEI e empresário individual não entram, nem nos totais; empresa que a "
