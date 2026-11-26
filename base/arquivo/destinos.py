@@ -556,6 +556,8 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_LICITACOES_SO_ARQUIVO)
         for f in lote_licitacoes.fontes()
     },
+    "pncp-contratos": _tabela("pncp_contratos"),
+    "pncp-contratos-atualizados": _tabela("pncp_contratos"),
     # lote Brasil segunda camada (linhas 259, 260 e 262 da fila, 23/10/2026): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/brasil-camada-2", _LOTE_BRASIL2_SO_ARQUIVO)

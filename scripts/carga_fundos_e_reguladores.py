@@ -1,5 +1,5 @@
 """Carga das tabelas dos lotes 1 e 2 das 300 pelo CNPJ (linha 904): FIP e FII da CVM, indicadores, agentes e
-fiscalização da ANEEL, IDSS da ANS e o RAPP do IBAMA.
+fiscalização da ANEEL, IDSS da ANS, RAPP do IBAMA e contratos do PNCP.
 
     python -m scripts.carga_fundos_e_reguladores                    (todos os retratos guardados)
     python -m scripts.carga_fundos_e_reguladores --pasta /tmp/base  (outra pasta de saída)
@@ -14,7 +14,8 @@ Lê os arquivos que o arquivista já guardou no acervo (não baixa nada) e grava
 `receita_regime_tributario`, `mte_pat`, `anm_tah`, `anatel_pados`, `anatel_produtos_homologados` e `anp_tancagem`
 (`base/cadastros_conferidos.py`) e, da conferência de 19/11, `comprasgov_sicaf` e `bps_compras`
 (`base/cadastros_conferidos_19_11.py`) e, da linha 1074, as seis `ibama_rapp_*` (`base/ibama_rapp.py`) e, da linha 1123,
-`anp_revendedores` e `anp_revendedores_produtos` (`base/anp_revendedores.py`). Só CNPJ de dígito certo entra; contato,
+`anp_revendedores` e `anp_revendedores_produtos` (`base/anp_revendedores.py`). A linha 1 da fila do montador
+acrescenta `pncp_contratos` (`base/pncp.py`). Só CNPJ de dígito certo entra; contato,
 endereço e nome de pessoa não chegam ao Parquet, e `trata_como_pessoa` marca o MEI e o empresário
 individual (ADR 0075). Feita para o servidor de casa (ADR 0031), depois do arquivista; recusa rodar sem
 a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo guardado.
@@ -39,6 +40,7 @@ from base import (
     cadastros_conferidos_19_11,
     cvm_fip_fii,
     ibama_rapp,
+    pncp,
 )
 from src import acervo
 from src.banco.conexao import obter_engine
@@ -56,6 +58,7 @@ MODULOS = (
     cadastros_conferidos,
     cadastros_conferidos_19_11,
     ibama_rapp,
+    pncp,
     anp_revendedores,
 )
 

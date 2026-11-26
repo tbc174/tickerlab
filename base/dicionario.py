@@ -6412,7 +6412,97 @@ def _tabelas_dos_contratos_estaduais() -> dict[str, Tabela]:
     }
 
 
+def _tabela_do_pncp() -> dict[str, Tabela]:
+    return {
+        "pncp_contratos": Tabela(
+            descricao=(
+                "Versões dos contratos públicos do PNCP ligadas ao CNPJ do fornecedor, com órgão, "
+                "datas e valores. Lotes diários de publicação e atualização; ausência num lote não "
+                "significa exclusão. Não somar versões como contratos distintos. Só PJ com CNPJ "
+                "numérico de 14 dígitos e DV válido; sem nomes, objeto, subcontratados ou texto livre. "
+                "MEI, empresário individual e CNPJ desconhecido da Receita são marcados e retirados pela porta."
+            ),
+            fonte="PNCP, API de consultas: contratos e contratos/atualizacao (`base/pncp.py`)",
+            familia_da_fonte="pncp",
+            frequencia="Semanal, lotes diários dos últimos 14 dias guardados pelo arquivista",
+            atraso=(
+                "Primeira versão: maior data de publicação/atualização da fonte; retificação sem data "
+                "usa a coleta. Mudanças posteriores nunca valem antes da coleta que as observou."
+            ),
+            onde="Parquet em `<acervo>/base/pncp_contratos/contratos.parquet` (`scripts/carga_fundos_e_reguladores.py`)",
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={
+                "numero_controle_pncp": (
+                    "Identificador nacional do contrato no PNCP; repete a cada versão observada",
+                    TEXTO,
+                ),
+                "cnpj": (
+                    "CNPJ do fornecedor: 14 dígitos sem pontuação, com DV válido",
+                    TEXTO,
+                ),
+                "cnpj_basico": ("Raiz do CNPJ do fornecedor, oito dígitos", TEXTO),
+                "cnpj_orgao": (
+                    "CNPJ do órgão contratante, extraído do identificador nacional",
+                    TEXTO,
+                ),
+                "numero_retificacao": (
+                    "Número de retificação informado pelo PNCP; nulo se ausente ou inválido",
+                    NUMERO,
+                ),
+                "assinado_em": (
+                    "Assinatura; usa início da vigência quando a assinatura não vem",
+                    DATA,
+                ),
+                "vigencia_inicio": ("Primeiro dia da vigência contratual", DATA),
+                "vigencia_fim": (
+                    "Último dia previsto da vigência contratual; não é exclusão da versão",
+                    DATA,
+                ),
+                "publicado_em": (
+                    "Dia da publicação original informado pelo PNCP",
+                    DATA,
+                ),
+                "atualizado_em": (
+                    "Dia da atualização do contrato informado pelo PNCP",
+                    DATA,
+                ),
+                "atualizado_global_em": (
+                    "Dia da atualização global informado pelo PNCP",
+                    DATA,
+                ),
+                "valor_inicial": ("Valor inicial do contrato em reais", REAIS_EXATOS),
+                "valor_global": (
+                    "Valor global da versão do contrato em reais",
+                    REAIS_EXATOS,
+                ),
+                "valor_acumulado": (
+                    "Valor acumulado informado nessa versão em reais",
+                    REAIS_EXATOS,
+                ),
+                "receita": (
+                    "Verdadeiro se o contrato é de receita; falso se é de despesa",
+                    SIM_OU_NAO,
+                ),
+                "disponivel_em": (
+                    "Maior data pública da fonte, ou coleta na ausência; mudanças posteriores valem no mínimo desde a coleta",
+                    DATA,
+                ),
+                "visto_em": (
+                    "Momento da coleta que observou esta versão pela primeira vez",
+                    MOMENTO,
+                ),
+                "trata_como_pessoa": (
+                    "MEI, empresário individual, natureza do grupo 4 ou CNPJ desconhecido da Receita: a porta retira",
+                    SIM_OU_NAO,
+                ),
+                **_ORIGEM_SEM_ANO,
+            },
+        )
+    }
+
+
 TABELAS: dict[str, Tabela] = {
+    **_tabela_do_pncp(),
     "demonstracoes_como_era": Tabela(
         descricao=(
             "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, "
@@ -12625,6 +12715,7 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 
 _CONTRATO = {
+    "pncp_contratos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("numero_controle_pncp", "visto_em"), datas={"aconteceu_em": "assinado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-26", granularidade_do_publico_em="dia"),
     # 2.0.0: a série T1 pôs a DFC, a DVA e a DRA na tabela (quem não filtra `demonstracao` muda)
     "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 3.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim` (a DRE do ITR traz o trimestre e o acumulado; sem elas 40.913 linhas só em 2011 repetiam a chave)
     "dmpl_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "grupo", "conta", "coluna", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim`
@@ -13028,6 +13119,7 @@ _CONTRATO = {
 # por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
 _SEM_NEGATIVO = (0.0, None)
 _CONFERENCIA: dict[str, dict[str, object]] = {
+    "pncp_contratos": {"pasta": "pncp_contratos", "nao_nulas": ("numero_controle_pncp", "cnpj", "cnpj_basico", "disponivel_em", "visto_em", "trata_como_pessoa")},
     # DFP/ITR "como eram" (API A3, 03/11/2026): um Parquet por ano; `inicio` é vazio no balanço
     "demonstracoes_como_era": {"pasta": "demonstracoes", "chaves_com_vazio": ("inicio",)},
     "dmpl_como_era": {"pasta": "dmpl", "chaves_com_vazio": ("inicio",)},

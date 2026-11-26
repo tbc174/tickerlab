@@ -41,6 +41,7 @@ from src.banco.coletas import (
 
 # o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
+    (r"^PNCP:", "PNCP"),
     (r"da CVM", "CVM"),
     (r"do Banco Central", "Banco Central"),
     (r"assessorias de M&A", "Assessorias de M&A"),
@@ -720,6 +721,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "financiamentos_finep",
             "mme_reidi",
             "aneel_cde",
+            "pncp_contratos",
             "tce_pe_contratos",
             "tce_pe_aditivos",
             "tce_pe_licitacoes",

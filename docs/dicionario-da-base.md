@@ -5,6 +5,49 @@ Exigência 8 do critério de pronto da base (ADR 0027 do autor): para cada tabel
 frequência, atraso de divulgação, fonte e licença. Exigências 11 e 13 (ADR 0055): se pode
 ser revendida (não é parecer jurídico) e a linhagem até o arquivo original.
 
+## `pncp_contratos`
+
+Versões dos contratos públicos do PNCP ligadas ao CNPJ do fornecedor, com órgão, datas e valores. Lotes diários de publicação e atualização; ausência num lote não significa exclusão. Não somar versões como contratos distintos. Só PJ com CNPJ numérico de 14 dígitos e DV válido; sem nomes, objeto, subcontratados ou texto livre. MEI, empresário individual e CNPJ desconhecido da Receita são marcados e retirados pela porta.
+
+- **Fonte:** PNCP, API de consultas: contratos e contratos/atualizacao (`base/pncp.py`)
+- **Licença:** PNCP: licença não escrita (a confirmar; citar o PNCP)
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Semanal, lotes diários dos últimos 14 dias guardados pelo arquivista
+- **Atraso de divulgação:** Primeira versão: maior data de publicação/atualização da fonte; retificação sem data usa a coleta. Mudanças posteriores nunca valem antes da coleta que as observou.
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `numero_controle_pncp`, `visto_em`
+- **Três datas:** aconteceu_em = `assinado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-26 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/pncp_contratos/contratos.parquet` (`scripts/carga_fundos_e_reguladores.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_controle_pncp` | Identificador nacional do contrato no PNCP; repete a cada versão observada | texto |
+| `cnpj` | CNPJ do fornecedor: 14 dígitos sem pontuação, com DV válido | texto |
+| `cnpj_basico` | Raiz do CNPJ do fornecedor, oito dígitos | texto |
+| `cnpj_orgao` | CNPJ do órgão contratante, extraído do identificador nacional | texto |
+| `numero_retificacao` | Número de retificação informado pelo PNCP; nulo se ausente ou inválido | número inteiro |
+| `assinado_em` | Assinatura; usa início da vigência quando a assinatura não vem | data (dia) |
+| `vigencia_inicio` | Primeiro dia da vigência contratual | data (dia) |
+| `vigencia_fim` | Último dia previsto da vigência contratual; não é exclusão da versão | data (dia) |
+| `publicado_em` | Dia da publicação original informado pelo PNCP | data (dia) |
+| `atualizado_em` | Dia da atualização do contrato informado pelo PNCP | data (dia) |
+| `atualizado_global_em` | Dia da atualização global informado pelo PNCP | data (dia) |
+| `valor_inicial` | Valor inicial do contrato em reais | reais (R$) |
+| `valor_global` | Valor global da versão do contrato em reais | reais (R$) |
+| `valor_acumulado` | Valor acumulado informado nessa versão em reais | reais (R$) |
+| `receita` | Verdadeiro se o contrato é de receita; falso se é de despesa | verdadeiro ou falso |
+| `disponivel_em` | Maior data pública da fonte, ou coleta na ausência; mudanças posteriores valem no mínimo desde a coleta | data (dia) |
+| `visto_em` | Momento da coleta que observou esta versão pela primeira vez | data e hora (UTC) |
+| `trata_como_pessoa` | MEI, empresário individual, natureza do grupo 4 ou CNPJ desconhecido da Receita: a porta retira | verdadeiro ou falso |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `demonstracoes_como_era`
 
 Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior), com o dia em que ficou público e o dia em que foi trocado. `como_era_em(base, data)` dá a foto. **Sem pessoa pela raiz:** toda raiz de CNPJ desta tabela existe na `cnpj_empresas_pj`, que só tem pessoa jurídica; CNPJ que não tem 14 dígitos conta como fora. A prova cobre quem a linha descreve, não o texto livre que ela carrega (o assunto de um evento, por exemplo). A conferência é `scripts/conferir_sem_pessoa.py`, rodada antes de cada concessão do piloto
