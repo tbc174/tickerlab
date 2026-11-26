@@ -12,6 +12,7 @@ from pathlib import Path
 from pesquisa import evidencia, leitores
 from pesquisa.coletor import AVISO_DE_CONTEUDO, Cliente, Coletor, Renderizador
 from pesquisa.memoria import Memoria
+from pesquisa.renderizacao import Mapeador
 from pesquisa.rodada import Limites, Rodada
 
 HASH = re.compile(r"[0-9a-f]{64}")
@@ -30,11 +31,13 @@ class Pesquisador:
         cliente: Cliente,
         *,
         renderizador: Renderizador | None = None,
+        mapeador: Mapeador | None = None,
         limites: Limites | None = None,
     ) -> None:
         self.pasta = pasta
         self.cliente = cliente
         self.renderizador = renderizador
+        self.mapeador = mapeador
         self.limites = limites or Limites()
         self.memoria = Memoria(pasta / "memoria.sqlite")
         self.rodada: Rodada | None = None
@@ -51,6 +54,7 @@ class Pesquisador:
             self.pasta,
             self.rodada,
             renderizador=self.renderizador,
+            mapeador=self.mapeador,
         )
         return {"ok": True, **self.rodada.resumo(), "aviso": AVISO_DE_CONTEUDO}
 
@@ -60,6 +64,11 @@ class Pesquisador:
         if self.coletor is None:
             return dict(SEM_RODADA)
         return self.coletor.buscar_pagina(url, renderizar=renderizar, forcar=forcar)
+
+    def mapear_site(self, url: str, termo: str | None = None) -> dict[str, object]:
+        if self.coletor is None:
+            return dict(SEM_RODADA)
+        return self.coletor.mapear_site(url, termo)
 
     def baixar_documento(self, url: str, forcar: bool = False) -> dict[str, object]:
         if self.coletor is None:

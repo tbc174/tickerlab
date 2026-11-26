@@ -13,7 +13,8 @@ from pesquisa.pesquisador import Pesquisador
 
 INSTRUCOES = (
     "Bot de pesquisa do TickerLab. Fluxo: iniciar_rodada(hipotese) com UMA hipótese; "
-    "buscar_pagina para ler páginas; baixar_documento para PDF, planilha, CSV ou ZIP (devolve o "
+    "buscar_pagina para ler páginas; mapear_site para achar o endereço real em vez de chutar; "
+    "baixar_documento para PDF, planilha, CSV ou ZIP (devolve o "
     "SHA-256); extrair(sha256) para ler texto e tabelas com a página ou a linha; validar_fato para "
     "conferir que o trecho está no original antes de afirmar. Limites por rodada: 12 buscas, 30 "
     "candidatos, profundidade 2, 250 MB, 30 minutos. Respeita robots.txt e não contorna bloqueio. "
@@ -37,6 +38,13 @@ def criar_servidor(pesquisador: Pesquisador) -> MCPServer:
         `renderizar` usa um navegador (Crawl4AI) para páginas que montam o conteúdo com JavaScript;
         `forcar` ignora um negativo lembrado."""
         return pesquisador.buscar_pagina(url, renderizar, forcar)
+
+    @servidor.tool()
+    def mapear_site(url: str, termo: str | None = None) -> dict[str, object]:
+        """Lista os endereços reais de um site (sitemap e índice do Firecrawl), documentos primeiro.
+        `termo` (uma ou duas palavras públicas, nunca nome de pessoa) ordena pela relevância. Use antes
+        de chutar um endereço; custa 1 crédito e há poucos por rodada."""
+        return pesquisador.mapear_site(url, termo)
 
     @servidor.tool()
     def baixar_documento(url: str, forcar: bool = False) -> dict[str, object]:
@@ -102,6 +110,11 @@ def rodar(pasta: Path) -> None:
     from base.arquivo.cliente_http import ClienteHttp
     from pesquisa import renderizacao
 
-    renderizador = renderizacao.escolher_renderizador()
-    pesquisador = Pesquisador(pasta, ClienteHttp(), renderizador=renderizador)
+    creditos = renderizacao.ContadorDeCreditos()
+    pesquisador = Pesquisador(
+        pasta,
+        ClienteHttp(),
+        renderizador=renderizacao.escolher_renderizador(contador=creditos),
+        mapeador=renderizacao.escolher_mapeador(contador=creditos),
+    )
     criar_servidor(pesquisador).run("stdio")

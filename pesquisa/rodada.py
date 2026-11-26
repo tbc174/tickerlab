@@ -21,6 +21,7 @@ class Limites:
     profundidade: int = 2  # quantos links de distância do endereço de partida
     bytes_maximos: int = 250 * MEGABYTE  # baixado numa rodada, no total
     segundos: int = 30 * 60  # relógio da rodada
+    mapas: int = 2  # mapas do site (`mapear_site`), 1 crédito do Firecrawl cada
 
 
 class LimiteExcedido(Exception):
@@ -36,6 +37,7 @@ class Rodada:
     relogio: Callable[[], float] = time.monotonic
     identificador: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     buscas_feitas: int = 0
+    mapas_feitos: int = 0
     bytes_baixados: int = 0
     candidatos: set[str] = field(default_factory=set)
     profundidades: dict[str, int] = field(default_factory=dict)
@@ -80,6 +82,14 @@ class Rodada:
             raise LimiteExcedido(f"a rodada já fez {self.limites.buscas} buscas")
         self.buscas_feitas += 1
 
+    def gastar_mapa(self) -> None:
+        self.conferir_tempo()
+        if self.mapas_feitos >= self.limites.mapas:
+            raise LimiteExcedido(
+                f"a rodada já fez {self.limites.mapas} mapa(s) do site: use os endereços que achou"
+            )
+        self.mapas_feitos += 1
+
     def bytes_restantes(self) -> int:
         return max(self.limites.bytes_maximos - self.bytes_baixados, 0)
 
@@ -100,6 +110,7 @@ class Rodada:
             "rodada": self.identificador,
             "hipotese": self.hipotese,
             "buscas": f"{self.buscas_feitas}/{limites.buscas}",
+            "mapas": f"{self.mapas_feitos}/{limites.mapas}",
             "candidatos": f"{len(self.candidatos)}/{limites.candidatos}",
             "megabytes": f"{self.bytes_baixados / MEGABYTE:.1f}/{limites.bytes_maximos // MEGABYTE}",
             "minutos": f"{self.segundos_gastos() / 60:.1f}/{limites.segundos // 60}",

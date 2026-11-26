@@ -38,12 +38,13 @@ def _chamar(servidor, nome: str, argumentos: dict) -> dict:
     return estruturado.get("result", estruturado)
 
 
-def test_servidor_lista_as_seis_ferramentas(tmp_path: Path):
+def test_servidor_lista_as_sete_ferramentas(tmp_path: Path):
     ferramentas = asyncio.run(_servidor(tmp_path).list_tools())
     nomes = {ferramenta.name for ferramenta in ferramentas}
     assert nomes == {
         "iniciar_rodada",
         "buscar_pagina",
+        "mapear_site",
         "baixar_documento",
         "extrair",
         "validar_fato",

@@ -72,8 +72,12 @@ def principal(argv: list[str]) -> int:
         cota,
     )
     creditos = renderizacao.ContadorDeCreditos()
-    renderizador = renderizacao.escolher_renderizador(contador=creditos)
-    pesquisador = Pesquisador(args.pasta, ClienteHttp(), renderizador=renderizador)
+    pesquisador = Pesquisador(
+        args.pasta,
+        ClienteHttp(),
+        renderizador=renderizacao.escolher_renderizador(contador=creditos),
+        mapeador=renderizacao.escolher_mapeador(contador=creditos),
+    )
     relatorio = agente.rodar_agente(
         args.hipotese,
         pesquisador,
@@ -85,9 +89,10 @@ def principal(argv: list[str]) -> int:
         f"{relatorio.parou_por}: {len(relatorio.confirmados)} confirmado(s), "
         f"{len(relatorio.pendentes)} pendente(s), {relatorio.passos} passo(s)\n{arquivo}"
     )
-    if creditos.paginas:
+    if creditos.paginas or creditos.mapas:
         print(
-            f"Firecrawl hospedado: {creditos.paginas} página(s), {creditos.creditos} crédito(s)"
+            f"Firecrawl hospedado: {creditos.paginas} página(s), {creditos.mapas} mapa(s), "
+            f"{creditos.creditos} crédito(s)"
         )
     return 0
 

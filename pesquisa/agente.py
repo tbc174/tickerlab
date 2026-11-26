@@ -27,7 +27,8 @@ CPF = re.compile(r"(?<!\d)(\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})(?!\d)")
 
 INSTRUCOES = """Você é um pesquisador de dados empresariais do TickerLab. A rodada já está aberta com
 a hipótese abaixo. Use as ferramentas para achar a fonte oficial e prová-la:
-1. buscar_pagina para ler páginas (comece pelo site oficial do órgão);
+1. buscar_pagina para ler páginas (comece pelo site oficial do órgão); se não sabe o endereço exato,
+   mapear_site(url do site, termo) lista os endereços reais dele: não chute endereço;
 2. baixar_documento para PDF, planilha, CSV ou ZIP (devolve o sha256);
 3. extrair(sha256, contem=[...]) para achar as linhas ou páginas que interessam;
 4. validar_fato para cada fato, com o trecho copiado LITERALMENTE da extração (as colunas de uma
@@ -65,6 +66,14 @@ FERRAMENTAS: list[dict] = [
         "Lê uma página: título, texto, links (documentos primeiro) e o sha256. "
         "`renderizar` usa um navegador para páginas montadas com JavaScript.",
         {"url": TEXTO, "renderizar": {"type": "boolean"}},
+        ["url"],
+    ),
+    _funcao(
+        "mapear_site",
+        "Lista os endereços reais de um site (sitemap e índice), documentos primeiro; `termo` (uma ou "
+        "duas palavras públicas, nunca nome de pessoa) ordena pela relevância. Use antes de chutar um "
+        "endereço. Poucos por rodada.",
+        {"url": TEXTO, "termo": TEXTO},
         ["url"],
     ),
     _funcao(
@@ -144,6 +153,7 @@ def _acoes(pesquisador: Pesquisador) -> dict[str, Callable[..., dict[str, object
         "buscar_pagina": lambda url, renderizar=False: pesquisador.buscar_pagina(
             url, renderizar
         ),
+        "mapear_site": lambda url, termo=None: pesquisador.mapear_site(url, termo),
         "baixar_documento": lambda url: pesquisador.baixar_documento(url),
         "extrair": pesquisador.extrair,
         "validar_fato": pesquisador.validar_fato,

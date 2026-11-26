@@ -26,7 +26,7 @@ from base.arquivo import robots
 from base.arquivo.coleta import BloqueioAntiRobo, Resposta
 from pesquisa import leitores
 from pesquisa.memoria import Memoria, Visto, agora
-from pesquisa.renderizacao import BloqueioNaRenderizacao
+from pesquisa.renderizacao import BloqueioNaRenderizacao, Mapeador, TetoDeCreditos
 from pesquisa.rodada import LimiteExcedido, Rodada
 
 log = logging.getLogger(__name__)
@@ -120,11 +120,13 @@ class Coletor:
         rodada: Rodada,
         *,
         renderizador: Renderizador | None = None,
+        mapeador: Mapeador | None = None,
     ) -> None:
         self.cliente = cliente
         self.memoria = memoria
         self.rodada = rodada
         self.renderizador = renderizador
+        self.mapeador = mapeador
         self.documentos = pasta / "documentos"
         self.documentos.mkdir(parents=True, exist_ok=True)
         self._robots: dict[str, str | None] = {}
@@ -267,6 +269,67 @@ class Coletor:
             }
         ordem = sorted(achados.values(), key=lambda link: link["tipo"] == "pagina")
         return ordem[:MAXIMO_DE_LINKS]
+
+    # --- mapear o site -------------------------------------------------------------------
+
+    def mapear_site(self, url: str, termo: str | None = None) -> dict[str, object]:
+        """Os endereços reais do site de `url` (sitemap e índice do Firecrawl), em vez de chutar: só do
+        mesmo endereço, documentos primeiro, ordenados pela relevância a `termo` quando há. Os links
+        ficam a um passo de `url`, como os de uma página lida. Nada fica na memória (não é página)."""
+        try:
+            url = normalizar_url(url)
+            if self.mapeador is None:
+                raise Recusa(
+                    "o mapa do site pede o Firecrawl hospedado, que não está ligado",
+                    lembrar=False,
+                )
+            self.rodada.gastar_mapa()
+            self._conferir_robots(url)
+            achados = self._pedir_mapa(url, termo)
+        except LimiteExcedido as erro:
+            return {"ok": False, "limite": str(erro)}
+        except Recusa as recusa:
+            return self._recusar(url, recusa)
+        links = self._links_do_mesmo_site(url, achados)
+        self.rodada.anotar_links(url, [link["url"] for link in links])
+        return {
+            "ok": True,
+            "url": url,
+            "links": links[:MAXIMO_DE_LINKS],
+            "links_cortados": len(links) > MAXIMO_DE_LINKS,
+            "proximo_passo": "buscar_pagina ou baixar_documento num destes endereços",
+            "aviso": AVISO_DE_CONTEUDO,
+        }
+
+    def _pedir_mapa(self, url: str, termo: str | None) -> list[dict[str, str]]:
+        assert self.mapeador is not None
+        try:
+            return self.mapeador(url, (termo or "").strip() or None)
+        except TetoDeCreditos as erro:
+            raise LimiteExcedido(str(erro)) from erro
+        except Exception as erro:
+            # A mensagem do porteiro não repete o que barrou; a do serviço não leva a chave.
+            raise Recusa(f"o mapa do site falhou: {erro}", lembrar=False) from erro
+
+    @staticmethod
+    def _links_do_mesmo_site(
+        url: str, achados: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
+        host = urlsplit(url).hostname
+        links: dict[str, dict[str, str]] = {}
+        for achado in achados:
+            try:
+                destino = normalizar_url(achado["url"])
+            except Recusa:
+                continue
+            if urlsplit(destino).hostname != host or destino in links:
+                continue
+            links[destino] = {
+                "url": destino,
+                "titulo": leitores.limpar(achado.get("titulo", ""))[:120],
+                "tipo": tipo_do_link(destino),
+            }
+        return sorted(links.values(), key=lambda link: link["tipo"] == "pagina")
 
     # --- baixar documento ----------------------------------------------------------------
 

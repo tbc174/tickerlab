@@ -14,6 +14,10 @@ O Firecrawl entra por HTTP, como ferramenta à parte: é AGPL, e nenhum código 
   `Porteiro` (nunca vai a terceiro endereço com termo barrado) e dentro do teto de créditos.
   Pede `proxy: basic` (o `enhanced` existe para vencer anti-robô, e bloqueio não se contorna) e
   `storeInCache: false`.
+
+O mesmo caminho hospedado faz o mapa do site (`/v2/map`): os endereços reais de uma fonte, para o bot
+não chutar endereço (63 das 73 recusas da linha de base de 26/11/2026 eram 404 de endereço chutado).
+Passa pelo mesmo porteiro e pelo mesmo teto; o termo de busca também é conferido e nunca leva CPF.
 """
 
 import asyncio
@@ -49,6 +53,13 @@ VARIAVEL_DO_TETO = "TICKERLAB_FIRECRAWL_TETO"
 # Por processo: uma rodada do agente ou uma vida do servidor MCP.
 TETO_PADRAO_DE_CREDITOS = 50
 ROTA_DO_FIRECRAWL_HOSPEDADO = "https://api.firecrawl.dev/v2/scrape"
+ROTA_DO_MAPA_HOSPEDADO = "https://api.firecrawl.dev/v2/map"
+# O /map custa 1 crédito por chamada, qualquer que seja o `limit` (docs.firecrawl.dev/features/map e
+# /billing, lidas em 26/11/2026): cabe no CUSTO_MAXIMO_POR_CHAMADA abaixo.
+# Endereços pedidos ao /map; o coletor ainda corta no que cabe na resposta ao modelo.
+LIMITE_DO_MAPA = 500
+TAMANHO_DO_TITULO_DO_MAPA = 120
+TAMANHO_MAXIMO_DO_TERMO = 80  # termo de busca é uma palavra ou duas, nunca um texto
 CREDITOS_POR_PAGINA = 1  # preço da raspagem simples, quando a resposta não diz o gasto
 # Custo máximo de UMA chamada com o pedido que montamos: 1 crédito por página, sem opção paga (só
 # `rawHtml`, sem JSON, resumo, ZDR, PII, lockdown nem checagem de injeção) e com `parsers: []`, que devolve
@@ -66,6 +77,8 @@ MAXIMO_DE_DECODIFICACOES = 4  # URL dentro de URL: decodifica até parar de muda
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parent.parent
 
 Renderizador = Callable[[str], tuple[str, bytes]]
+# (url do site, termo de busca ou None) -> [{"url", "titulo"}]
+Mapeador = Callable[[str, str | None], list[dict[str, str]]]
 
 
 def _apontar_o_navegador_do_ambiente() -> None:
@@ -219,14 +232,18 @@ class ContadorDeCreditos:
         self.teto = teto
         self.creditos = 0
         self.paginas = 0
+        self.mapas = 0
 
     def conferir(self) -> None:
         """Antes do envio: a chamada só sai se, mesmo custando o máximo, o gasto fica no teto."""
         if self.creditos + CUSTO_MAXIMO_POR_CHAMADA > self.teto:
             raise TetoDeCreditos(f"teto de {self.teto} créditos do Firecrawl atingido")
 
-    def registrar(self, creditos: int) -> None:
-        self.paginas += 1
+    def registrar(self, creditos: int, *, mapa: bool = False) -> None:
+        if mapa:
+            self.mapas += 1
+        else:
+            self.paginas += 1
         self.creditos += creditos
 
 
@@ -326,6 +343,89 @@ def renderizador_hospedado(
     return renderizar_pelo_firecrawl_hospedado
 
 
+# CPF no termo de busca, com ou sem pontuação (o porteiro já não barra o número no endereço de página
+# pública, mas termo de busca é outra coisa: regra "GPL e AGPL" do AGENTS.md).
+_CPF_NO_TERMO = re.compile(r"(?<!\d)\d{3}\D{0,2}\d{3}\D{0,2}\d{3}\D{0,2}\d{2}(?!\d)")
+
+
+def _conferir_termo(termo: str, porteiro: Porteiro) -> None:
+    """Termo de busca que vai a terceiro: curto, sem CPF e sem termo barrado. A recusa não o repete."""
+    if len(termo) > TAMANHO_MAXIMO_DO_TERMO:
+        raise EnvioBarrado(
+            f"o termo de busca passa de {TAMANHO_MAXIMO_DO_TERMO} caracteres"
+        )
+    if _CPF_NO_TERMO.search(termo):
+        raise EnvioBarrado("o termo de busca tem uma sequência de CPF")
+    porteiro.conferir(termo)
+
+
+def _links_do_mapa(corpo: object) -> list[dict[str, str]]:
+    """Os links do `/map` (objetos com `url` e, às vezes, `title`); o que vier fora do formato é ignorado."""
+    if not isinstance(corpo, Mapping) or corpo.get("success") is not True:
+        erro = corpo.get("error") if isinstance(corpo, Mapping) else None
+        raise RuntimeError(str(erro or "o Firecrawl não devolveu o mapa"))
+    links = corpo.get("links")
+    if not isinstance(links, list):
+        # resposta de serviço fora do formato, não erro de tipo de quem chamou
+        raise RuntimeError("o Firecrawl devolveu o mapa fora do formato")  # noqa: TRY004
+    achados: list[dict[str, str]] = []
+    for link in links:
+        if not isinstance(link, Mapping) or not isinstance(link.get("url"), str):
+            continue
+        titulo = link.get("title")
+        texto = titulo if isinstance(titulo, str) else ""
+        achados.append(
+            {"url": link["url"], "titulo": texto[:TAMANHO_DO_TITULO_DO_MAPA]}
+        )
+    return achados
+
+
+def mapeador_hospedado(
+    chave: str,
+    porteiro: Porteiro,
+    contador: ContadorDeCreditos,
+    *,
+    post: Callable[..., requests.Response] = requests.post,
+) -> Mapeador:
+    """Mapa do site pelo Firecrawl hospedado. As mesmas conferências da raspagem, mais a do termo, antes
+    de qualquer envio. Sem `location` (escolhe proxy por país) e sem subdomínios: só o site pedido."""
+
+    def mapear_pelo_firecrawl_hospedado(
+        url: str, termo: str | None
+    ) -> list[dict[str, str]]:
+        porteiro.conferir(url)
+        _conferir_parametro_de_cpf(url)
+        _conferir_custo_fixo(url)
+        if termo:
+            _conferir_termo(termo, porteiro)
+        contador.conferir()
+        pedido: dict[str, object] = {
+            "url": url,
+            "includeSubdomains": False,
+            "limit": LIMITE_DO_MAPA,
+            "timeout": TEMPO_DO_SERVICO_EM_MS,
+        }
+        if termo:
+            pedido["search"] = termo
+        resposta = post(
+            ROTA_DO_MAPA_HOSPEDADO,
+            json=pedido,
+            headers={"Authorization": f"Bearer {chave}"},
+            timeout=TEMPO_LIMITE_EM_SEGUNDOS,
+        )
+        # A doc não diz se o /map com erro é cobrado: conta sempre, para o teto nunca ser passado.
+        contador.registrar(CUSTO_MAXIMO_POR_CHAMADA, mapa=True)
+        if resposta.status_code >= PRIMEIRO_STATUS_DE_ERRO:
+            raise RuntimeError(f"o Firecrawl respondeu HTTP {resposta.status_code}")
+        try:
+            corpo = resposta.json()
+        except ValueError:
+            corpo = None
+        return _links_do_mapa(corpo)
+
+    return mapear_pelo_firecrawl_hospedado
+
+
 def em_cascata(*renderizadores: Renderizador) -> Renderizador:
     """Tenta cada renderizador na ordem; o seguinte só roda se o anterior falhou. Bloqueio da página
     para tudo: tentar por outro caminho (outro IP) seria contornar."""
@@ -367,22 +467,45 @@ def escolher_renderizador(
     if endereco:
         return renderizador_pelo_firecrawl(endereco)
     ordem: list[Renderizador] = [renderizar] if crawl4ai_instalado() else []
-    chave = ambiente.get(VARIAVEL_DA_CHAVE)
-    if chave:
-        try:
-            porteiro = porteiro_do_ambiente(ambiente)
-        except ValueError as motivo:
-            print(f"Firecrawl hospedado desligado: {motivo}", file=sys.stderr)
-        else:
-            if porteiro.sem_termos:
-                print(
-                    "Firecrawl hospedado ligado com a lista de termos barrados vazia: "
-                    "nenhum endereço é conferido",
-                    file=sys.stderr,
-                )
-            contador = contador or ContadorDeCreditos()
-            contador.teto = _teto_do_ambiente(ambiente)
-            ordem.append(renderizador_hospedado(chave, porteiro, contador))
+    hospedado = _hospedado_do_ambiente(ambiente, contador)
+    if hospedado is not None:
+        ordem.append(renderizador_hospedado(*hospedado))
     if not ordem:
         return None
     return ordem[0] if len(ordem) == 1 else em_cascata(*ordem)
+
+
+def _hospedado_do_ambiente(
+    ambiente: Mapping[str, str], contador: ContadorDeCreditos | None
+) -> tuple[str, Porteiro, ContadorDeCreditos] | None:
+    """Chave, porteiro e contador (com o teto do ambiente) do Firecrawl hospedado, ou None sem chave ou
+    sem o arquivo de termos barrados. O aviso vai ao stderr (no servidor MCP, o stdout é o protocolo)."""
+    chave = ambiente.get(VARIAVEL_DA_CHAVE)
+    if not chave:
+        return None
+    try:
+        porteiro = porteiro_do_ambiente(ambiente)
+    except ValueError as motivo:
+        print(f"Firecrawl hospedado desligado: {motivo}", file=sys.stderr)
+        return None
+    if porteiro.sem_termos:
+        print(
+            "Firecrawl hospedado ligado com a lista de termos barrados vazia: "
+            "nenhum endereço é conferido",
+            file=sys.stderr,
+        )
+    contador = contador or ContadorDeCreditos()
+    contador.teto = _teto_do_ambiente(ambiente)
+    return chave, porteiro, contador
+
+
+def escolher_mapeador(
+    ambiente: Mapping[str, str] | None = None,
+    *,
+    contador: ContadorDeCreditos | None = None,
+) -> Mapeador | None:
+    """O mapa do site pelo Firecrawl hospedado, nas mesmas condições da raspagem hospedada (chave e
+    arquivo de termos barrados). Passe o mesmo `contador` da raspagem: o teto é um só por processo."""
+    ambiente = os.environ if ambiente is None else ambiente
+    hospedado = _hospedado_do_ambiente(ambiente, contador)
+    return None if hospedado is None else mapeador_hospedado(*hospedado)
