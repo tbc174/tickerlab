@@ -11,6 +11,7 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 VALIDADE_DO_NEGATIVO_DIAS = 7
 STATUS_DE_BLOQUEIO = (401, 403, 429)
@@ -121,20 +122,20 @@ class Memoria:
             return None
         return negativo
 
-    def bloqueio_valido_no_site(self, origem: str) -> Negativo | None:
-        """Um bloqueio lembrado (anti-robô, 401, 403 ou 429) em qualquer endereço de `origem`
-        (`https://host`), ainda na validade. Bloqueio não se contorna: nem por outro caminho do site."""
-        padrao = origem.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    def bloqueio_valido_no_site(self, host: str) -> Negativo | None:
+        """Um bloqueio lembrado (anti-robô, 401, 403 ou 429) em qualquer endereço do `host`, em qualquer
+        esquema, porta ou caixa, ainda na validade. Bloqueio não se contorna: nem por outro caminho."""
         marcas = ",".join("?" * len(STATUS_DE_BLOQUEIO))
         with self._conexao() as conexao:
             linhas = conexao.execute(
-                "SELECT * FROM negativo WHERE (url = ? OR url LIKE ? ESCAPE '\\')"
-                f" AND (status_http IN ({marcas}) OR motivo LIKE 'bloqueio%')",
-                (origem, padrao + "/%", *STATUS_DE_BLOQUEIO),
+                f"SELECT * FROM negativo WHERE status_http IN ({marcas})"
+                " OR motivo LIKE 'bloqueio%'",
+                STATUS_DE_BLOQUEIO,
             ).fetchall()
         for linha in linhas:
             negativo = Negativo(**dict(linha))
-            if self.negativo_valido(negativo.url) is not None:
+            mesmo_host = urlsplit(negativo.url).hostname == host.lower()
+            if mesmo_host and self.negativo_valido(negativo.url) is not None:
                 return negativo
         return None
 

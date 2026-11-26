@@ -25,7 +25,7 @@ from bs4 import BeautifulSoup
 from base.arquivo import robots
 from base.arquivo.coleta import BloqueioAntiRobo, Resposta
 from pesquisa import leitores
-from pesquisa.memoria import Memoria, Visto, agora
+from pesquisa.memoria import STATUS_DE_BLOQUEIO, Memoria, Visto, agora
 from pesquisa.renderizacao import (
     BloqueioNaRenderizacao,
     Mapeador,
@@ -135,6 +135,8 @@ class Coletor:
         self.documentos = pasta / "documentos"
         self.documentos.mkdir(parents=True, exist_ok=True)
         self._robots: dict[str, str | None] = {}
+        # Origens cujo robots.txt respondeu bloqueio (anti-robô, 401, 403, 429).
+        self._bloqueio_no_robots: set[str] = set()
 
     # --- buscar página -------------------------------------------------------------------
 
@@ -293,6 +295,7 @@ class Coletor:
             self.rodada.examinar(url)
             self.rodada.gastar_mapa()
             self._conferir_robots(url)
+            self._conferir_bloqueio_no_robots(url)
             achados = self._pedir_mapa(url)
         except LimiteExcedido as erro:
             return {"ok": False, "limite": str(erro)}
@@ -318,11 +321,19 @@ class Coletor:
 
     def _conferir_bloqueio_no_site(self, url: str) -> None:
         """Site que já bloqueou o bot não vai ao Firecrawl (outro IP): seria contornar o bloqueio."""
-        partes = urlsplit(url)
-        if self.memoria.bloqueio_valido_no_site(f"{partes.scheme}://{partes.netloc}"):
+        if self.memoria.bloqueio_valido_no_site(urlsplit(url).hostname or ""):
             raise Recusa(
                 "o site já bloqueou o bot (anti-robô, 401, 403 ou 429): bloqueio não se contorna",
                 lembrar=False,
+            )
+
+    def _conferir_bloqueio_no_robots(self, url: str) -> None:
+        """O robots.txt que respondeu bloqueio é o site barrando o bot: o mapa não vai ao Firecrawl, e o
+        negativo fica lembrado para a próxima vez."""
+        partes = urlsplit(url)
+        if f"{partes.scheme}://{partes.netloc}" in self._bloqueio_no_robots:
+            raise Recusa(
+                "bloqueio anti-robô ao ler o robots.txt, não se contorna",
             )
 
     def _pedir_mapa(self, url: str) -> list[dict[str, str]]:
@@ -542,7 +553,13 @@ class Coletor:
         """O robots.txt do site; sem ele (404, rede fora), vale a regra de quem não tem robots."""
         try:
             return self.cliente.ler(url).conteudo.decode("utf-8", errors="replace")
-        except (requests.RequestException, BloqueioAntiRobo):
+        except BloqueioAntiRobo:
+            self._bloqueio_no_robots.add(url.removesuffix("/robots.txt"))
+            return None
+        except requests.RequestException as erro:
+            resposta = getattr(erro, "response", None)
+            if resposta is not None and resposta.status_code in STATUS_DE_BLOQUEIO:
+                self._bloqueio_no_robots.add(url.removesuffix("/robots.txt"))
             return None
 
 

@@ -447,3 +447,62 @@ def test_mapa_respeita_o_limite_de_candidatos(tmp_path: Path):
     outro = pesquisador.mapear_site("https://outro.exemplo.gov.br/")
     assert "candidatos" in outro["limite"]  # type: ignore[operator]
     assert mapeador.chamadas == [f"{SITE}/"]
+
+
+# --- P2 da re-revisão de segurança (fdc8f99) -----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "variante",
+    [
+        "http://dados.exemplo.gov.br/",
+        "https://dados.exemplo.gov.br:443/",
+        "https://DADOS.exemplo.gov.br/",
+        "https://alguem@dados.exemplo.gov.br/",
+    ],
+)
+def test_bloqueio_vale_para_o_host_em_qualquer_forma(tmp_path: Path, variante: str):
+    from base.arquivo.coleta import BloqueioAntiRobo
+
+    mapeador = _MapeadorFalso([])
+    pesquisador, _ = _pesquisador(
+        tmp_path, mapeador, {f"{SITE}/painel": BloqueioAntiRobo("desafio")}
+    )
+    pesquisador.buscar_pagina(f"{SITE}/painel")
+    assert pesquisador.mapear_site(variante)["ok"] is False
+    assert mapeador.chamadas == []
+
+
+@pytest.mark.parametrize("status", [401, 403, 429, "desafio"])
+def test_bloqueio_ao_ler_o_robots_impede_o_mapa_e_fica_lembrado(
+    tmp_path: Path, status: object
+):
+    from base.arquivo.coleta import BloqueioAntiRobo, Resposta
+    from tests.ajudantes_da_pesquisa import erro_http
+
+    class _ClienteBloqueadoNoRobots(ClienteFalso):
+        def ler(self, url: str) -> Resposta:
+            if url.endswith("/robots.txt"):
+                if status == "desafio":
+                    raise BloqueioAntiRobo("cf-mitigated: challenge")
+                raise erro_http(status)  # type: ignore[arg-type]
+            return super().ler(url)
+
+    mapeador = _MapeadorFalso([])
+    pesquisador = Pesquisador(
+        tmp_path / "d", _ClienteBloqueadoNoRobots({}), mapeador=mapeador
+    )
+    pesquisador.iniciar_rodada("h")
+    resposta = pesquisador.mapear_site(f"{SITE}/")
+    assert resposta["ok"] is False and "não se contorna" in resposta["motivo"]  # type: ignore[operator]
+    assert mapeador.chamadas == []
+    assert pesquisador.mapear_site(f"{SITE}/")["ok"] is False  # lembrado
+
+
+def test_robots_ausente_404_ainda_deixa_mapear(tmp_path: Path):
+    mapeador = _MapeadorFalso([])
+    pesquisador = Pesquisador(
+        tmp_path / "d", ClienteFalso({}, robots=None), mapeador=mapeador
+    )
+    pesquisador.iniciar_rodada("h")
+    assert pesquisador.mapear_site(f"{SITE}/")["ok"] is True

@@ -105,7 +105,8 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
     sobre até 20 mil endereços, pelo mesmo preço). Sem `location` (escolhe proxy por país) e sem subdomínios; conta
     como candidato da rodada; o `robots.txt` do endereço
     pedido vale antes; volta só o que é do mesmo endereço, a um passo dele na contagem de profundidade.
-    Site com bloqueio lembrado (anti-robô, 401, 403 ou 429, em qualquer caminho) não vai ao mapa; chamada
+    Site com bloqueio lembrado (anti-robô, 401, 403 ou 429, em qualquer caminho, esquema ou porta do mesmo host),
+    ou cujo `robots.txt` respondeu bloqueio, não vai ao mapa; chamada
     que cai no caminho conta o crédito mesmo assim.
 - **Código GPL/AGPL não entra por `import` nem por pin** (PyMuPDF, por exemplo). Firecrawl e semelhantes podem ser
   usados como ferramenta à parte (serviço por HTTP, linha de comando), sem copiar código deles: regra "GPL e AGPL"
