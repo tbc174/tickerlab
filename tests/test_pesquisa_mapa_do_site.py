@@ -81,7 +81,7 @@ def _mapeador(post: _Post, *, termos=(), teto: int = 10) -> tuple:
 def test_pede_o_map_sem_proxy_sem_localizacao_e_sem_subdominio():
     post = _Post(MAPA_PADRAO)
     mapear, contador = _mapeador(post)
-    links = mapear(f"{SITE}/", None)
+    links = mapear(f"{SITE}/")
     assert links == [
         {"url": f"{SITE}/dataset/prouni", "titulo": "ProUni"},
         {"url": f"{SITE}/sobre", "titulo": ""},
@@ -98,13 +98,6 @@ def test_pede_o_map_sem_proxy_sem_localizacao_e_sem_subdominio():
     assert (contador.creditos, contador.mapas, contador.paginas) == (1, 1, 0)
 
 
-def test_termo_publico_vai_como_busca():
-    post = _Post(MAPA_PADRAO)
-    mapear, _ = _mapeador(post)
-    mapear(f"{SITE}/", "prouni")
-    assert post.pedidos[0]["json"]["search"] == "prouni"
-
-
 @pytest.mark.parametrize(
     "corpo, status",
     [
@@ -117,7 +110,7 @@ def test_termo_publico_vai_como_busca():
 def test_mapa_que_falhou_levanta_erro_e_conta_o_credito(corpo: object, status: int):
     mapear, contador = _mapeador(_Post(corpo, status))
     with pytest.raises(RuntimeError):
-        mapear(f"{SITE}/", None)
+        mapear(f"{SITE}/")
     # A doc não diz se o /map com erro é cobrado: conta, para o teto nunca ser passado.
     assert contador.creditos == 1
 
@@ -125,7 +118,7 @@ def test_mapa_que_falhou_levanta_erro_e_conta_o_credito(corpo: object, status: i
 def test_a_chave_nao_aparece_na_mensagem_de_erro():
     mapear, _ = _mapeador(_Post({"success": False, "error": "x"}, 401))
     with pytest.raises(RuntimeError) as erro:
-        mapear(f"{SITE}/", None)
+        mapear(f"{SITE}/")
     assert CHAVE not in str(erro.value)
 
 
@@ -139,7 +132,7 @@ def test_links_fora_do_formato_sao_ignorados():
         )
     )
     mapear, _ = _mapeador(post)
-    (link,) = mapear(f"{SITE}/", None)
+    (link,) = mapear(f"{SITE}/")
     assert link["url"] == f"{SITE}/a"
     assert len(link["titulo"]) <= renderizacao.TAMANHO_DO_TITULO_DO_MAPA
 
@@ -148,54 +141,23 @@ def test_links_fora_do_formato_sao_ignorados():
 
 
 @pytest.mark.parametrize(
-    "url, termo",
-    [
-        ("https://empresa-ficticia.com.br/", None),
-        (f"{SITE}/", "Empresa Fictícia"),
-        (f"{SITE}/", "empresa-ficticia ltda"),
-    ],
+    "url",
+    ["https://empresa-ficticia.com.br/", f"{SITE}/busca/Empresa%20Fict%C3%ADcia"],
 )
-def test_termo_barrado_no_endereco_ou_na_busca_nao_vai(url: str, termo: str | None):
+def test_termo_barrado_no_endereco_nao_vai(url: str):
     post = _Post(MAPA_PADRAO)
     mapear, contador = _mapeador(post, termos=["empresa ficticia"])
     with pytest.raises(EnvioBarrado) as erro:
-        mapear(url, termo)
+        mapear(url)
     assert post.pedidos == [] and contador.creditos == 0
     assert "ficticia" not in str(erro.value).lower()
-
-
-@pytest.mark.parametrize("molde", ["{c}", "{p}", "busca {c}", "{c9}-{c2}"])
-def test_cpf_no_termo_de_busca_nao_vai(molde: str):
-    cpf = _cpf_inventado()
-    pontuado = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-    termo = molde.format(c=cpf, p=pontuado, c9=cpf[:9], c2=cpf[9:])
-    post = _Post(MAPA_PADRAO)
-    mapear, _ = _mapeador(post)
-    with pytest.raises(EnvioBarrado) as erro:
-        mapear(f"{SITE}/", termo)
-    assert post.pedidos == [] and cpf[:9] not in str(erro.value)
-
-
-def test_termo_com_ano_ou_codigo_curto_vai():
-    post = _Post(MAPA_PADRAO)
-    mapear, _ = _mapeador(post)
-    mapear(f"{SITE}/", "bolsas 2024 cnae 0111")
-    assert len(post.pedidos) == 1
-
-
-def test_termo_longo_demais_nao_vai():
-    post = _Post(MAPA_PADRAO)
-    mapear, _ = _mapeador(post)
-    with pytest.raises(EnvioBarrado):
-        mapear(f"{SITE}/", "x" * (renderizacao.TAMANHO_MAXIMO_DO_TERMO + 1))
-    assert post.pedidos == []
 
 
 def test_parametro_cpf_no_endereco_nao_vai():
     post = _Post(MAPA_PADRAO)
     mapear, _ = _mapeador(post)
     with pytest.raises(EnvioBarrado):
-        mapear(f"{SITE}/consulta?cpf={_cpf_inventado()}", None)
+        mapear(f"{SITE}/consulta?cpf={_cpf_inventado()}")
     assert post.pedidos == []
 
 
@@ -203,7 +165,7 @@ def test_provedor_com_preco_proprio_nao_vai():
     post = _Post(MAPA_PADRAO)
     mapear, _ = _mapeador(post)
     with pytest.raises(EnvioBarrado):
-        mapear("https://www.linkedin.com/company/x", None)
+        mapear("https://www.linkedin.com/company/x")
     assert post.pedidos == []
 
 
@@ -212,9 +174,9 @@ def test_teto_vale_para_mapa_e_raspagem_juntos():
     contador.registrar(1)  # uma raspagem já feita
     post = _Post(MAPA_PADRAO)
     mapear = renderizacao.mapeador_hospedado(CHAVE, Porteiro([]), contador, post=post)
-    mapear(f"{SITE}/", None)
+    mapear(f"{SITE}/")
     with pytest.raises(TetoDeCreditos):
-        mapear(f"{SITE}/", None)
+        mapear(f"{SITE}/")
     assert len(post.pedidos) == 1 and contador.creditos == 2
 
 
@@ -251,10 +213,10 @@ def test_com_chave_e_termos_o_mapa_liga_com_o_teto_do_ambiente(tmp_path: Path):
 class _MapeadorFalso:
     def __init__(self, links: list[dict[str, str]] | Exception):
         self.links = links
-        self.chamadas: list[tuple[str, str | None]] = []
+        self.chamadas: list[str] = []
 
-    def __call__(self, url: str, termo: str | None) -> list[dict[str, str]]:
-        self.chamadas.append((url, termo))
+    def __call__(self, url: str) -> list[dict[str, str]]:
+        self.chamadas.append(url)
         if isinstance(self.links, Exception):
             raise self.links
         return self.links
@@ -283,7 +245,8 @@ def test_mapa_devolve_so_links_do_site_e_eles_ficam_a_um_passo(tmp_path: Path):
         [
             {"url": f"{SITE}/dataset/prouni", "titulo": "ProUni"},
             {"url": f"{SITE}/dataset/prouni", "titulo": "repetido"},
-            {"url": f"{SITE}/b.pdf", "titulo": ""},
+            {"url": f"{SITE}/prouni-2024.pdf", "titulo": ""},
+            {"url": f"{SITE}/sobre", "titulo": "Quem somos"},
             {"url": "https://outro.exemplo.com/x", "titulo": "fora"},
             {"url": "http://127.0.0.1/admin", "titulo": "interno"},
             {"url": "ftp://dados.exemplo.gov.br/x", "titulo": "esquema"},
@@ -296,10 +259,10 @@ def test_mapa_devolve_so_links_do_site_e_eles_ficam_a_um_passo(tmp_path: Path):
     resposta = pesquisador.mapear_site(f"{SITE}/", "prouni")
     assert resposta["ok"] is True and "aviso" in resposta
     assert [link["url"] for link in resposta["links"]] == [  # type: ignore[union-attr]
-        f"{SITE}/b.pdf",
+        f"{SITE}/prouni-2024.pdf",
         f"{SITE}/dataset/prouni",
     ]
-    assert mapeador.chamadas == [(f"{SITE}/", "prouni")]
+    assert mapeador.chamadas == [f"{SITE}/"]
     assert pesquisador.rodada is not None
     assert pesquisador.rodada.profundidades[f"{SITE}/dataset/prouni"] == 1
     assert pesquisador.buscar_pagina(f"{SITE}/dataset/prouni")["ok"] is True
@@ -378,7 +341,7 @@ def test_agente_oferece_e_executa_o_mapa(tmp_path: Path):
         '{"url": "https://dados.exemplo.gov.br/", "termo": "bolsas"}',
     )
     assert resposta["ok"] is True
-    assert mapeador.chamadas == [(f"{SITE}/", "bolsas")]
+    assert mapeador.chamadas == [f"{SITE}/"]
 
 
 # --- achados P2 da revisão de segurança (PR 1346) -------------------------------------------------
@@ -419,7 +382,7 @@ def test_mapa_que_caiu_no_caminho_conta_o_credito():
         CHAVE, Porteiro([]), contador, post=post_que_cai
     )
     with pytest.raises(requests.Timeout):
-        mapear(f"{SITE}/", None)
+        mapear(f"{SITE}/")
     assert (contador.creditos, contador.mapas) == (1, 1)
 
 
@@ -436,3 +399,51 @@ def test_raspagem_que_caiu_no_caminho_conta_o_credito():
     with pytest.raises(requests.ConnectionError):
         renderizar(f"{SITE}/painel")
     assert (contador.creditos, contador.paginas) == (1, 1)
+
+
+# --- revisão do Codex (PR 1346) ----------------------------------------------------------------
+
+
+def test_o_termo_nunca_sai_do_pc():
+    """Ao Firecrawl vai só o endereço público do site; o termo filtra aqui (P0 do Revisor)."""
+    post = _Post(MAPA_PADRAO)
+    mapear, _ = _mapeador(post)
+    mapear(f"{SITE}/")
+    assert set(post.pedidos[0]["json"]) == {
+        "url",
+        "includeSubdomains",
+        "limit",
+        "timeout",
+    }
+
+
+def test_termo_filtra_aqui_sem_acento_nem_caixa(tmp_path: Path):
+    mapeador = _MapeadorFalso(
+        [
+            {"url": f"{SITE}/dados/mec-prouni", "titulo": "Bolsas concedidas"},
+            {"url": f"{SITE}/dados/mec-fies", "titulo": "Bolsas do Fies"},
+            {"url": f"{SITE}/dados/prouni-cursos", "titulo": "Cursos"},
+        ]
+    )
+    pesquisador, _ = _pesquisador(tmp_path, mapeador)
+    resposta = pesquisador.mapear_site(f"{SITE}/", "ProUni BOLSAS")
+    assert [link["url"] for link in resposta["links"]] == [f"{SITE}/dados/mec-prouni"]  # type: ignore[union-attr]
+    assert mapeador.chamadas == [f"{SITE}/"]
+
+
+def test_termo_sem_achado_devolve_lista_vazia_com_dica(tmp_path: Path):
+    mapeador = _MapeadorFalso([{"url": f"{SITE}/sobre", "titulo": "Quem somos"}])
+    pesquisador, _ = _pesquisador(tmp_path, mapeador)
+    resposta = pesquisador.mapear_site(f"{SITE}/", "prouni")
+    assert resposta["ok"] is True and resposta["links"] == []
+    assert resposta["no_mapa"] == 1 and "termo" in resposta["dica"]  # type: ignore[operator]
+
+
+def test_mapa_respeita_o_limite_de_candidatos(tmp_path: Path):
+    """O mapa conta o endereço como candidato da rodada, como a busca (P1 do Revisor)."""
+    mapeador = _MapeadorFalso([])
+    pesquisador, _ = _pesquisador(tmp_path, mapeador, limites=Limites(candidatos=1))
+    assert pesquisador.mapear_site(f"{SITE}/")["ok"] is True
+    outro = pesquisador.mapear_site("https://outro.exemplo.gov.br/")
+    assert "candidatos" in outro["limite"]  # type: ignore[operator]
+    assert mapeador.chamadas == [f"{SITE}/"]

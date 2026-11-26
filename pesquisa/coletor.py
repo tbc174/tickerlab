@@ -26,7 +26,12 @@ from base.arquivo import robots
 from base.arquivo.coleta import BloqueioAntiRobo, Resposta
 from pesquisa import leitores
 from pesquisa.memoria import Memoria, Visto, agora
-from pesquisa.renderizacao import BloqueioNaRenderizacao, Mapeador, TetoDeCreditos
+from pesquisa.renderizacao import (
+    BloqueioNaRenderizacao,
+    Mapeador,
+    TetoDeCreditos,
+    so_letras_e_numeros,
+)
 from pesquisa.rodada import LimiteExcedido, Rodada
 
 log = logging.getLogger(__name__)
@@ -274,8 +279,9 @@ class Coletor:
 
     def mapear_site(self, url: str, termo: str | None = None) -> dict[str, object]:
         """Os endereços reais do site de `url` (sitemap e índice do Firecrawl), em vez de chutar: só do
-        mesmo endereço, documentos primeiro, ordenados pela relevância a `termo` quando há. Os links
-        ficam a um passo de `url`, como os de uma página lida. Nada fica na memória (não é página)."""
+        mesmo endereço, documentos primeiro. `termo` filtra aqui, sem acento nem caixa, pelo endereço e
+        pelo título: ao Firecrawl vai só `url`. Os links ficam a um passo de `url`, como os de uma
+        página lida. Nada fica na memória (não é página)."""
         try:
             url = normalizar_url(url)
             if self.mapeador is None:
@@ -284,23 +290,31 @@ class Coletor:
                     lembrar=False,
                 )
             self._conferir_bloqueio_no_site(url)
+            self.rodada.examinar(url)
             self.rodada.gastar_mapa()
             self._conferir_robots(url)
-            achados = self._pedir_mapa(url, termo)
+            achados = self._pedir_mapa(url)
         except LimiteExcedido as erro:
             return {"ok": False, "limite": str(erro)}
         except Recusa as recusa:
             return self._recusar(url, recusa)
-        links = self._links_do_mesmo_site(url, achados)
+        do_site = self._links_do_mesmo_site(url, achados)
+        links = _filtrar_pelo_termo(do_site, termo)
         self.rodada.anotar_links(url, [link["url"] for link in links])
-        return {
+        resposta: dict[str, object] = {
             "ok": True,
             "url": url,
+            "no_mapa": len(do_site),
             "links": links[:MAXIMO_DE_LINKS],
             "links_cortados": len(links) > MAXIMO_DE_LINKS,
             "proximo_passo": "buscar_pagina ou baixar_documento num destes endereços",
             "aviso": AVISO_DE_CONTEUDO,
         }
+        if do_site and not links:
+            resposta["dica"] = (
+                "nenhum endereço do mapa tem todas as palavras do termo: tente outro termo"
+            )
+        return resposta
 
     def _conferir_bloqueio_no_site(self, url: str) -> None:
         """Site que já bloqueou o bot não vai ao Firecrawl (outro IP): seria contornar o bloqueio."""
@@ -311,10 +325,10 @@ class Coletor:
                 lembrar=False,
             )
 
-    def _pedir_mapa(self, url: str, termo: str | None) -> list[dict[str, str]]:
+    def _pedir_mapa(self, url: str) -> list[dict[str, str]]:
         assert self.mapeador is not None
         try:
-            return self.mapeador(url, (termo or "").strip() or None)
+            return self.mapeador(url)
         except TetoDeCreditos as erro:
             raise LimiteExcedido(str(erro)) from erro
         except Exception as erro:
@@ -530,6 +544,25 @@ class Coletor:
             return self.cliente.ler(url).conteudo.decode("utf-8", errors="replace")
         except (requests.RequestException, BloqueioAntiRobo):
             return None
+
+
+def _filtrar_pelo_termo(
+    links: list[dict[str, str]], termo: str | None
+) -> list[dict[str, str]]:
+    """Os links com todas as palavras de `termo` no endereço ou no título, sem acento, caixa nem
+    separador ("ProUni bolsas" acha `.../mec-prouni` com o título "Bolsas concedidas")."""
+    palavras = [so_letras_e_numeros(p) for p in (termo or "").split()]
+    palavras = [p for p in palavras if p]
+    if not palavras:
+        return links
+    return [
+        link
+        for link in links
+        if all(
+            p in so_letras_e_numeros(f"{link['url']} {link['titulo']}")
+            for p in palavras
+        )
+    ]
 
 
 def leitores_tipo(arquivo: Path | None) -> str:

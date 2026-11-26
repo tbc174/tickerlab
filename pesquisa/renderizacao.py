@@ -17,7 +17,8 @@ O Firecrawl entra por HTTP, como ferramenta à parte: é AGPL, e nenhum código 
 
 O mesmo caminho hospedado faz o mapa do site (`/v2/map`): os endereços reais de uma fonte, para o bot
 não chutar endereço (63 das 73 recusas da linha de base de 26/11/2026 eram 404 de endereço chutado).
-Passa pelo mesmo porteiro e pelo mesmo teto; o termo de busca também é conferido e nunca leva CPF.
+Passa pelo mesmo porteiro e pelo mesmo teto. Vai só o endereço do site: o termo de busca do bot nunca
+sai do PC (o filtro pelo termo é feito aqui, no coletor).
 """
 
 import asyncio
@@ -56,10 +57,10 @@ ROTA_DO_FIRECRAWL_HOSPEDADO = "https://api.firecrawl.dev/v2/scrape"
 ROTA_DO_MAPA_HOSPEDADO = "https://api.firecrawl.dev/v2/map"
 # O /map custa 1 crédito por chamada, qualquer que seja o `limit` (docs.firecrawl.dev/features/map e
 # /billing, lidas em 26/11/2026): cabe no CUSTO_MAXIMO_POR_CHAMADA abaixo.
-# Endereços pedidos ao /map; o coletor ainda corta no que cabe na resposta ao modelo.
-LIMITE_DO_MAPA = 500
+# Endereços pedidos ao /map. Sem termo de busca no pedido, vem o site inteiro até este limite, e o
+# coletor filtra pelo termo aqui; o preço não muda com o limite.
+LIMITE_DO_MAPA = 20_000
 TAMANHO_DO_TITULO_DO_MAPA = 120
-TAMANHO_MAXIMO_DO_TERMO = 80  # termo de busca é uma palavra ou duas, nunca um texto
 CREDITOS_POR_PAGINA = 1  # preço da raspagem simples, quando a resposta não diz o gasto
 # Custo máximo de UMA chamada com o pedido que montamos: 1 crédito por página, sem opção paga (só
 # `rawHtml`, sem JSON, resumo, ZDR, PII, lockdown nem checagem de injeção) e com `parsers: []`, que devolve
@@ -77,8 +78,8 @@ MAXIMO_DE_DECODIFICACOES = 4  # URL dentro de URL: decodifica até parar de muda
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parent.parent
 
 Renderizador = Callable[[str], tuple[str, bytes]]
-# (url do site, termo de busca ou None) -> [{"url", "titulo"}]
-Mapeador = Callable[[str, str | None], list[dict[str, str]]]
+# url do site -> [{"url", "titulo"}]
+Mapeador = Callable[[str], list[dict[str, str]]]
 
 
 def _apontar_o_navegador_do_ambiente() -> None:
@@ -165,7 +166,7 @@ class BloqueioNaRenderizacao(RuntimeError):
     """A página respondeu bloqueio (401, 403, 429). Bloqueio não se contorna: a cascata para aqui."""
 
 
-def _so_letras_e_numeros(texto: str) -> str:
+def so_letras_e_numeros(texto: str) -> str:
     """Sem acento, sem caixa e sem separador: "Empresa Fictícia" e "empresa-ficticia" ficam iguais."""
     decomposto = unicodedata.normalize("NFKD", texto)
     sem_acento = "".join(c for c in decomposto if not unicodedata.combining(c))
@@ -179,7 +180,7 @@ class Porteiro:
     AGENTS.md)."""
 
     def __init__(self, termos: Iterable[str]) -> None:
-        self._termos = [t for t in map(_so_letras_e_numeros, termos) if t]
+        self._termos = [t for t in map(so_letras_e_numeros, termos) if t]
 
     @property
     def sem_termos(self) -> bool:
@@ -187,7 +188,7 @@ class Porteiro:
 
     def conferir(self, url: str) -> None:
         for texto in _leituras_do_endereco(url):
-            canonico = _so_letras_e_numeros(texto)
+            canonico = so_letras_e_numeros(texto)
             if any(termo in canonico for termo in self._termos):
                 raise EnvioBarrado("o endereço tem um termo da lista de barrados")
 
@@ -362,22 +363,6 @@ def renderizador_hospedado(
     return renderizar_pelo_firecrawl_hospedado
 
 
-# CPF no termo de busca, com ou sem pontuação (o porteiro já não barra o número no endereço de página
-# pública, mas termo de busca é outra coisa: regra "GPL e AGPL" do AGENTS.md).
-_CPF_NO_TERMO = re.compile(r"(?<!\d)\d{3}\D{0,2}\d{3}\D{0,2}\d{3}\D{0,2}\d{2}(?!\d)")
-
-
-def _conferir_termo(termo: str, porteiro: Porteiro) -> None:
-    """Termo de busca que vai a terceiro: curto, sem CPF e sem termo barrado. A recusa não o repete."""
-    if len(termo) > TAMANHO_MAXIMO_DO_TERMO:
-        raise EnvioBarrado(
-            f"o termo de busca passa de {TAMANHO_MAXIMO_DO_TERMO} caracteres"
-        )
-    if _CPF_NO_TERMO.search(termo):
-        raise EnvioBarrado("o termo de busca tem uma sequência de CPF")
-    porteiro.conferir(termo)
-
-
 def _links_do_mapa(corpo: object) -> list[dict[str, str]]:
     """Os links do `/map` (objetos com `url` e, às vezes, `title`); o que vier fora do formato é ignorado."""
     if not isinstance(corpo, Mapping) or corpo.get("success") is not True:
@@ -406,17 +391,14 @@ def mapeador_hospedado(
     *,
     post: Callable[..., requests.Response] = requests.post,
 ) -> Mapeador:
-    """Mapa do site pelo Firecrawl hospedado. As mesmas conferências da raspagem, mais a do termo, antes
-    de qualquer envio. Sem `location` (escolhe proxy por país) e sem subdomínios: só o site pedido."""
+    """Mapa do site pelo Firecrawl hospedado, com as mesmas conferências da raspagem antes de qualquer
+    envio. Vai só o endereço: sem termo de busca, sem `location` (escolhe proxy por país) e sem
+    subdomínios."""
 
-    def mapear_pelo_firecrawl_hospedado(
-        url: str, termo: str | None
-    ) -> list[dict[str, str]]:
+    def mapear_pelo_firecrawl_hospedado(url: str) -> list[dict[str, str]]:
         porteiro.conferir(url)
         _conferir_parametro_de_cpf(url)
         _conferir_custo_fixo(url)
-        if termo:
-            _conferir_termo(termo, porteiro)
         contador.conferir()
         pedido: dict[str, object] = {
             "url": url,
@@ -424,8 +406,6 @@ def mapeador_hospedado(
             "limit": LIMITE_DO_MAPA,
             "timeout": TEMPO_DO_SERVICO_EM_MS,
         }
-        if termo:
-            pedido["search"] = termo
         resposta = _postar_contando(
             post,
             contador,

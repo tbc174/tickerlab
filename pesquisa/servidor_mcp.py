@@ -42,8 +42,8 @@ def criar_servidor(pesquisador: Pesquisador) -> MCPServer:
     @servidor.tool()
     def mapear_site(url: str, termo: str | None = None) -> dict[str, object]:
         """Lista os endereços reais de um site (sitemap e índice do Firecrawl), documentos primeiro.
-        `termo` (uma ou duas palavras públicas, nunca nome de pessoa) ordena pela relevância. Use antes
-        de chutar um endereço; custa 1 crédito e há poucos por rodada."""
+        `termo` (uma ou duas palavras) filtra pelo endereço e pelo título, aqui: ao Firecrawl vai só o
+        endereço do site. Use antes de chutar um endereço; custa 1 crédito e há poucos por rodada."""
         return pesquisador.mapear_site(url, termo)
 
     @servidor.tool()

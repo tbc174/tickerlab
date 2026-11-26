@@ -71,8 +71,8 @@ FERRAMENTAS: list[dict] = [
     _funcao(
         "mapear_site",
         "Lista os endereços reais de um site (sitemap e índice), documentos primeiro; `termo` (uma ou "
-        "duas palavras públicas, nunca nome de pessoa) ordena pela relevância. Use antes de chutar um "
-        "endereço. Poucos por rodada.",
+        "duas palavras) filtra pelo endereço e pelo título, aqui, sem sair do PC. Use antes de chutar "
+        "um endereço. Poucos por rodada.",
         {"url": TEXTO, "termo": TEXTO},
         ["url"],
     ),
