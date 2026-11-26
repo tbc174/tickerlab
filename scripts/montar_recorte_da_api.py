@@ -208,7 +208,7 @@ DEGRAU_2_ACRESCENTA = (
     "emissores", "eventos", "faostat_cafe", "fca_geral", "fre_capital_social",
     "fre_comites", "fre_conselho", "fre_distribuicao_capital",
     "fre_distribuicao_capital_por_classe", "fre_diversidade",
-    "fre_empregados", "fre_remuneracao", "fre_remuneracao_extremos", "ifdata_valores", "insolvencia", "ma_candidatos", "ma_datas", "ma_regua", "negociacoes",
+    "fre_empregados", "fre_remuneracao", "fre_remuneracao_extremos", "ifdata_valores", "insolvencia", "ma_candidatos", "ma_datas", "ma_receitas_cpc15", "ma_regua", "negociacoes",
     "noticias_fatos", "noticias_numeros", "ons_capacidade", "ons_restricao", "painel_dos_fundos", "pareceres_dfp",
     "pareceres_itr", "pgfn_divida", "processos", "processos_comunicacoes",
     "processos_nas_notas", "ratings", "release_x_oficial",
