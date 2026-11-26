@@ -4,7 +4,8 @@
 
 Lê a memória do bot, grava o arquivo e imprime quantos itens saíram e quantos foram descartados, e por quê. Só
 sai o fato cujo CNPJ está na lista sem pessoa da base do acervo (`--base`, padrão `<acervo>/base`); sem base, para.
-Se achar um CPF num trecho, para com erro (nada é gravado). O envio do arquivo ao servidor é outro passo.
+Item com CPF no texto ou no endereço é descartado e contado ("cara de CPF"), e os outros seguem. O envio do
+arquivo ao servidor é outro passo.
 
 Roda: manual (no PC, depois das rodadas do bot).
 """
@@ -15,7 +16,7 @@ from pathlib import Path
 
 from base import porta
 from pesquisa.memoria import Memoria
-from pesquisa.novidades import DIAS_PADRAO, CpfNoTrechoError, exportar, gravar
+from pesquisa.novidades import DIAS_PADRAO, exportar, gravar
 from src.api_externa.conjuntos.empresas import e_empresa
 
 PASTA_PADRAO = Path.home() / "TickerLab-Pesquisa"
@@ -39,9 +40,6 @@ def main(argv: list[str] | None = None) -> int:
                 dias=argumentos.dias,
                 e_empresa=lambda cnpj: e_empresa(base, cnpj),
             )
-    except CpfNoTrechoError as erro:
-        print(f"PAROU: {erro}", file=sys.stderr)
-        return 2
     except ValueError as erro:  # acervo desligado e sem --base
         print(
             f"PAROU: sem a base do acervo para conferir os CNPJs ({erro})",

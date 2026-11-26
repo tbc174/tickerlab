@@ -138,6 +138,59 @@ def test_endereco_de_pagina_com_cpf_vai_e_a_lista_continua_barrando(molde: str):
 
 
 @pytest.mark.parametrize(
+    "molde",
+    [
+        "?cpf={d}",
+        "?CPF={p}",
+        "?tipo=1&nr_cpf={d}",
+        "?cpfCnpj={d}",
+        "?a=1;cpf={d}",
+        "?Cpf%3D{d}",
+        "?u=https%3A%2F%2Foutro.exemplo.gov.br%2Fc%3Fcpf%3D{d}",
+        "?u=https%253A%252F%252Foutro.exemplo.gov.br%252Fc%253Fcpf%253D{d}",
+        "#cpf={d}",
+        "?a/cpf={d}",
+        "?q=cpf%3A{d}",
+        "?filters=%7B%22cpf%22%3A%22{d}%22%7D",
+        "?filters=%7B%22nr_cpf%22%20%3A%20%22{p}%22%7D",
+        "?filters[cpf][$eq]={d}",
+        "?filters%5Bcpf%5D%5B%24eq%5D={d}",
+        "?filtro|cpf={d}",
+        "?a@cpf={d}",
+        "#!cpf={d}",
+        "?%24filter=cpf%20eq%20%27{d}%27",
+        "?where=cpf%20in%20(%27{d}%27)",
+        "?where=CPF+LIKE+%27{d}%27",
+    ],
+)
+def test_parametro_de_busca_chamado_cpf_nao_vai(molde: str):
+    """O CPF continua fora de termo de busca (regra "GPL e AGPL" do AGENTS.md): consulta montada com um
+    parâmetro chamado cpf não sai, em nenhuma decodificação, e a recusa não repete o endereço."""
+    d = _cpf_inventado()
+    url = PAGINA + molde.format(d=d, p=f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}")
+    post = _Post(_ok())
+    renderizar, _ = _hospedado(post)
+    with pytest.raises(EnvioBarrado) as erro:
+        renderizar(url)
+    assert post.pedidos == []
+    assert d not in str(erro.value) and d[:3] not in str(erro.value)
+
+
+@pytest.mark.parametrize(
+    "molde",
+    ["?q=cpf", "?q=cpf+e+cnpj", "?id={d}", "/cpf-e-cnpj/{d}", "/consulta-cpf/{d}"],
+)
+def test_cpf_so_como_valor_ou_caminho_vai(molde: str):
+    """A trava é só o nome do parâmetro: a palavra "cpf" como valor ou no caminho passa, como o número
+    fora de parâmetro chamado cpf (decisão do Tiago, 26/11/2026)."""
+    url = PAGINA + molde.format(d=_cpf_inventado())
+    post = _Post(_ok())
+    renderizar, _ = _hospedado(post)
+    renderizar(url)
+    assert [p["json"]["url"] for p in post.pedidos] == [url]
+
+
+@pytest.mark.parametrize(
     "url",
     [
         "https://busca.exemplo.com/?q=Empresa+Fict%C3%ADcia+Alfa",

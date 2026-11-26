@@ -137,12 +137,24 @@ def test_fora_da_janela_nao_sai(tmp_path):
         f"JOSE DA SILVA | ***.{no_formato(meio(CPF_DE_TESTE), 'ddd.ddd')}-** | R$ 10.000",
     ],
 )
-def test_cpf_no_trecho_derruba_o_exportador(tmp_path, trecho):
+def test_cpf_no_trecho_descarta_o_item_e_conta(tmp_path, trecho):
     memoria = _memoria(tmp_path)
     _visto(memoria)
     _fato(memoria, trecho=trecho)
-    with pytest.raises(novidades.CpfNoTrechoError):
-        novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert saida.itens == []
+    assert saida.descartados == {novidades.MOTIVO_CPF: 1}
+
+
+def test_item_com_cpf_nao_para_os_outros(tmp_path):
+    memoria = _memoria(tmp_path)
+    _visto(memoria)
+    _fato(memoria)
+    _fato(memoria, trecho=f"Sócio com CPF {CPF_INVENTADO} entrou em 2025")
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert len(saida.itens) == 1
+    assert saida.descartados == {novidades.MOTIVO_CPF: 1}
+    assert not novidades.achar_cpf(json.dumps(saida.para_dict(), ensure_ascii=False))
 
 
 def test_numero_de_cnpj_nao_e_confundido_com_cpf():
@@ -207,12 +219,13 @@ def test_marca_de_pessoa_fora_da_janela_ainda_derruba_o_item(tmp_path):
     assert saida.descartados == {novidades.MOTIVO_PESSOA: 1}
 
 
-def test_cpf_fora_da_janela_ainda_derruba_o_exportador(tmp_path):
+def test_cpf_fora_da_janela_ainda_descarta_o_item(tmp_path):
     memoria = _memoria(tmp_path)
     _visto(memoria)
     _fato(memoria, trecho=_trecho_longo(depois=f" sócio {CPF_INVENTADO}"))
-    with pytest.raises(novidades.CpfNoTrechoError):
-        novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert saida.itens == []
+    assert saida.descartados == {novidades.MOTIVO_CPF: 1}
 
 
 def test_mesmo_original_e_trecho_so_uma_vez(tmp_path):
@@ -244,17 +257,24 @@ def test_script_grava_o_arquivo_e_imprime_a_contagem(tmp_path, capsys, base_de_m
     assert "descartados: 1 (veredito não confirmado)" in texto
 
 
-def test_script_para_e_nao_grava_se_achar_cpf(tmp_path, capsys, base_de_mentira):
+def test_script_pula_o_item_com_cpf_conta_e_grava_o_resto(
+    tmp_path, capsys, base_de_mentira
+):
     memoria = _memoria(tmp_path)
     _visto(memoria)
+    _fato(memoria)
     _fato(memoria, trecho=f"Sócio com CPF {CPF_INVENTADO} entrou em 2025")
     destino = tmp_path / "novidades.json"
     codigo = exportar_novidades.main(
         ["--pasta", str(tmp_path), "--saida", str(destino)]
     )
-    assert codigo == 2
-    assert not destino.exists()
-    assert "PAROU" in capsys.readouterr().err
+    assert codigo == 0
+    gravado = destino.read_text(encoding="utf-8")
+    assert len(json.loads(gravado)["itens"]) == 1
+    assert not novidades.achar_cpf(gravado)
+    saida = capsys.readouterr()
+    assert f"descartados: 1 ({novidades.MOTIVO_CPF})" in saida.out
+    assert not novidades.achar_cpf(saida.out + saida.err)
 
 
 def test_pessoa_fisica_e_url_com_cpf_nao_saem(tmp_path):
@@ -265,8 +285,9 @@ def test_pessoa_fisica_e_url_com_cpf_nao_saem(tmp_path):
         + CPF_DE_TESTE,
     )
     _fato(memoria)
-    with pytest.raises(novidades.CpfNoTrechoError):
-        novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    saida = novidades.exportar(memoria, e_empresa=SEMPRE, agora=datetime.now(UTC))
+    assert saida.itens == []
+    assert saida.descartados == {novidades.MOTIVO_CPF: 1}
 
 
 def test_endereco_com_barra_invertida_ou_sem_http_nao_e_orgao():
