@@ -3456,6 +3456,43 @@ Penalidades aplicadas pela ANS a operadoras de planos de saúde, por CNPJ: o tip
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `sancoes_de_fora`
+
+Entidades (empresas, bancos, órgãos e outras organizações) nas listas de sanção de fora do Brasil: OFAC (SDN e consolidada não SDN), lista consolidada da União Europeia e UK Sanctions List, direto do arquivo da própria fonte, uma linha por entidade, lista e valor diferente. Só entidade pelo tipo que a própria fonte dá: pessoa física, navio, aeronave, registro sem tipo, empresário individual e registro chamado de entidade com sinal de pessoa nunca entram, nem documento, endereço ou observação. Mostra só o que a lista trouxe a partir do 1º arquivo guardado: quem saiu antes não está aqui. A linha com `consta` falso diz que o registro deixou de aparecer, o que não prova, sozinho, que a sanção acabou. Não há CNPJ: ligar um nome a uma empresa brasileira é dedução e pede conferência. A lista da ONU e a consolidada do Comércio dos EUA ficam fora.
+
+- **Fonte:** OFAC (U.S. Department of the Treasury), União Europeia (Comissão Europeia, DG FISMA; só o Jornal Oficial é autêntico) e Reino Unido (FCDO, UK Sanctions List)
+- **Licença:** Obra do governo dos EUA (domínio público); citar a OFAC, só entidades
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** As linhas da União Europeia seguem a Decisão 2011/833/UE da Comissão (citar a UE e dizer que o arquivo foi filtrado) e as do Reino Unido a Open Government Licence (OGL v3.0, citar o FCDO); a coluna `fonte` diz de quem é cada linha.
+- **Frequência:** Diária (o arquivista guarda o arquivo da lista quando ele muda)
+- **Atraso de divulgação:** A linha vale desde o dia em que o arquivo foi visto (`disponivel_em`), também no 1º arquivo: a data da designação é só para ler, porque a lista de hoje não diz o que dizia antes
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `lista`, `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `designado_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-26 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sancoes_de_fora/<cadastro>.parquet` (servidor de casa, `scripts/carga_sancoes_de_fora.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `lista` | Lista em que a entidade está, como a fonte chama | texto |
+| `id_na_fonte` | Identificador do registro na própria fonte | texto |
+| `nome` | Nome principal, como a fonte escreve | texto |
+| `outros_nomes` | Outros nomes que a fonte dá, separados por ` | ` | texto |
+| `paises` | Países dos endereços na fonte, sem o endereço | texto |
+| `programas` | Programas ou regimes de sanção, separados por ` | ` | texto |
+| `designado_em` | Data da designação ou da entrada na lista, quando a fonte diz | data (dia) |
+| `fonte` | Quem publica a lista, com a licença que pede para citar | texto |
+| `url_da_fonte` | Endereço oficial do arquivo da lista | texto |
+| `consta` | Falso: o registro deixou de aparecer no arquivo daquele dia | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `processos_comunicacoes`
 
 Processos judiciais por companhia aberta: as comunicações. Uma linha por comunicação publicada no DJEN (intimação, citação, edital) de um processo em que uma companhia aberta é parte, achada pela razão social do cadastro da CVM ou, depois, pelo número do processo (a que intima só a outra parte). Sem a Justiça do Trabalho (Resolução CNJ 121/2010 proíbe a consulta pública dela pelo nome da parte) e sem nome de pessoa física: as partes que não são companhia nem órgão público entram só na contagem. Só as companhias com registro ativo hoje, pela razão social de hoje: a que saiu da CVM fica sem histórico, e a comunicação com o nome antigo de quem mudou de razão social não entra (viés de sobrevivência).

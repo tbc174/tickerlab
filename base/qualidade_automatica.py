@@ -572,6 +572,7 @@ REGRAS: dict[str, Regra] = {
     # integridade (linha 981): sanções da CGU, embargos do IBAMA e Lista Suja do MTE; a chave é a do contrato (uma linha por
     # valor diferente da fonte, a mudança vira linha nova com outro `visto_em`)
     "sancoes_cgu": Regra(chave=("cadastro", "id_na_fonte", "visto_em")),
+    "sancoes_de_fora": Regra(chave=("lista", "id_na_fonte", "visto_em")),
     "ibama_embargos": Regra(chave=("id_na_fonte", "visto_em")),
     "mte_lista_suja": Regra(chave=("id_na_fonte", "visto_em")),
     # conjunto `extended_sources` da frente 3 (ADR 0122, Emenda 2): a chave é a do contrato de cada tabela

@@ -570,6 +570,11 @@ DESTINOS: dict[str, Destino] = {
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_CADASTROS_SO_ARQUIVO)
         for f in lote_cadastros.fontes()
     },
+    # menos as sanções de fora, que já viram tabela (`base/sancoes_de_fora.py`)
+    **{
+        id_: _tabela("sancoes_de_fora")
+        for id_ in ("ofac-sdn", "eufsf-sancoes", "ofsi-conlist")
+    },
     # lote atenção e texto (rodada 4, linha 289): guardado no acervo, tabelas ainda não escritas
     **{
         f.id: _planejada("dados-escondidos/rodada-4", _LOTE_ATENCAO_SO_ARQUIVO)
