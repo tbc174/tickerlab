@@ -138,6 +138,43 @@ def test_endereco_de_pagina_com_cpf_vai_e_a_lista_continua_barrando(molde: str):
 
 
 @pytest.mark.parametrize(
+    "molde",
+    [
+        "?cpf={d}",
+        "?CPF={p}",
+        "?tipo=1&nr_cpf={d}",
+        "?cpfCnpj={d}",
+        "?a=1;cpf={d}",
+        "?Cpf%3D{d}",
+        "?u=https%3A%2F%2Foutro.exemplo.gov.br%2Fc%3Fcpf%3D{d}",
+        "?u=https%253A%252F%252Foutro.exemplo.gov.br%252Fc%253Fcpf%253D{d}",
+    ],
+)
+def test_parametro_de_busca_chamado_cpf_nao_vai(molde: str):
+    """O CPF continua fora de termo de busca (regra "GPL e AGPL" do AGENTS.md): consulta montada com um
+    parâmetro chamado cpf não sai, em nenhuma decodificação, e a recusa não repete o endereço."""
+    d = _cpf_inventado()
+    url = PAGINA + molde.format(d=d, p=f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}")
+    post = _Post(_ok())
+    renderizar, _ = _hospedado(post)
+    with pytest.raises(EnvioBarrado) as erro:
+        renderizar(url)
+    assert post.pedidos == []
+    assert d not in str(erro.value) and d[:3] not in str(erro.value)
+
+
+@pytest.mark.parametrize("molde", ["?q=cpf", "?id={d}", "/cpf-e-cnpj/{d}"])
+def test_cpf_so_como_valor_ou_caminho_vai(molde: str):
+    """A trava é só o nome do parâmetro: a palavra "cpf" como valor ou no caminho passa, como o número
+    fora de parâmetro chamado cpf (decisão do Tiago, 26/11/2026)."""
+    url = PAGINA + molde.format(d=_cpf_inventado())
+    post = _Post(_ok())
+    renderizar, _ = _hospedado(post)
+    renderizar(url)
+    assert [p["json"]["url"] for p in post.pedidos] == [url]
+
+
+@pytest.mark.parametrize(
     "url",
     [
         "https://busca.exemplo.com/?q=Empresa+Fict%C3%ADcia+Alfa",

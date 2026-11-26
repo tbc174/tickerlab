@@ -93,7 +93,8 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
     do repositório, um termo por linha (`#` comenta), em `TICKERLAB_PESQUISA_TERMOS_BARRADOS` ou, sem a variável,
     em `~/TickerLab-Pesquisa/termos-barrados.txt`. **Sem o arquivo, o hospedado não liga**; com o arquivo vazio, ele
     liga sem conferir nada e avisa no stderr. O endereço de uma página pública com número de CPF pode ir (decisão
-    do Tiago em 26/11/2026, regra "GPL e AGPL" do `AGENTS.md`); o CPF continua fora de termo de busca e de log;
+    do Tiago em 26/11/2026, regra "GPL e AGPL" do `AGENTS.md`); o CPF continua fora de termo de busca e de log:
+    consulta com parâmetro de busca chamado cpf (`?cpf=`, `nr_cpf=`, `cpfCnpj=`, em qualquer decodificação) não sai;
   - página que responde 401, 403 ou 429 é bloqueio: vira recusa "não se contorna" e não passa ao Firecrawl;
   - teto de créditos por processo em `TICKERLAB_FIRECRAWL_TETO` (padrão 50); a rodada diz quanto gastou;
   - `proxy: basic` (sem o proxy que vence anti-robô: bloqueio não se contorna) e `storeInCache: false`.

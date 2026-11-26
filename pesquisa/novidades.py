@@ -3,8 +3,9 @@
 Lê a memória do bot (`Memoria`, tabela `fato`) e monta o `novidades.json`: cada item com o órgão, a data, o
 trecho literal e o sha256 do original. Só sai o que tem **prova gravada** (veredito `confirmado`, trecho, hash e
 o endereço de onde o original veio) e só de **conjunto público da lista `CONJUNTOS`** (domínio e caminho; os dois endereços, o pedido e o final). O trecho é uma citação curta
-(`TRECHO_MAXIMO`). Pessoa física: CPF no texto **derruba o exportador** (não descarta calado); marca de pessoa
-(tratamento, documento), e-mail ou telefone descarta o item e conta o motivo. O envio do arquivo ao servidor é outro passo.
+(`TRECHO_MAXIMO`). Pessoa física: CPF no texto ou no endereço, marca de pessoa (tratamento, documento), e-mail ou
+telefone descarta o item e conta o motivo; os outros itens seguem (Diretoria, 26/11/2026: um item com CPF não para a
+exportação inteira). O envio do arquivo ao servidor é outro passo.
 """
 
 import json
@@ -41,10 +42,7 @@ MOTIVO_TRECHO_LONGO = "trecho acima do máximo e sem janela em volta do valor"
 MOTIVO_SEM_CNPJ = "sem CNPJ válido no trecho servido"
 MOTIVO_CNPJ_FORA_DA_LISTA = "CNPJ fora da lista sem pessoa do acervo"
 MOTIVO_SEM_REVENDA = "fonte sem licença ou sem revenda liberada"
-
-
-class CpfNoTrechoError(Exception):
-    """Achou algo com cara de CPF: o exportador para, em vez de descartar calado."""
+MOTIVO_CPF = "cara de CPF no texto ou no endereço"
 
 
 @dataclass
@@ -123,9 +121,7 @@ def _por_que_nao(
     )
     enderecos = f"{url} {url_final}"
     if achar_cpf(f"{textos} {enderecos}"):
-        raise CpfNoTrechoError(
-            "um trecho confirmado tem cara de CPF: revise a memória do bot antes de exportar"
-        )
+        return MOTIVO_CPF
     if sinal_de_contato(f"{textos} {enderecos}"):
         return MOTIVO_CONTATO
     if MARCAS_DE_PESSOA.search(textos):
@@ -149,7 +145,7 @@ def exportar(
     dias: int = DIAS_PADRAO,
     agora: datetime | None = None,
 ) -> Exportacao:
-    """Os itens provados nos últimos `dias`, mais novos primeiro. CPF no texto levanta `CpfNoTrechoError`.
+    """Os itens provados nos últimos `dias`, mais novos primeiro. Item com CPF é descartado e contado.
 
     `e_empresa(cnpj)` diz se o CNPJ (14 caracteres) está na lista sem pessoa do acervo; só sai o fato cujos
     CNPJs estão todos nela (sem CNPJ válido, não sai). Sem acervo não há como responder: quem chama não exporta."""

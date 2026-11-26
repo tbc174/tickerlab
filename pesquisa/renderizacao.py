@@ -256,6 +256,18 @@ def _creditos_gastos(corpo: Mapping[str, object]) -> int:
     return gasto if isinstance(gasto, int) and gasto >= 0 else CREDITOS_POR_PAGINA
 
 
+# parâmetro de busca cujo nome tem "cpf" (cpf, CPF, nr_cpf, cpfCnpj), depois de ?, & ou ;
+_PARAMETRO_CPF = re.compile(r"[?&;][^=&;?#/]*cpf[^=&;?#/]*=", re.IGNORECASE)
+
+
+def _conferir_parametro_de_cpf(url: str) -> None:
+    """O CPF fica fora de termo de busca (regra "GPL e AGPL" do AGENTS.md): consulta com parâmetro chamado
+    cpf não vai ao Firecrawl, em nenhuma decodificação. O número em outro lugar do endereço de página
+    pública pode ir (decisão do Tiago, 26/11/2026). A recusa não repete o endereço."""
+    if any(_PARAMETRO_CPF.search(texto) for texto in _leituras_do_endereco(url)):
+        raise EnvioBarrado("o endereço tem um parâmetro de busca chamado cpf")
+
+
 def _conferir_custo_fixo(url: str) -> None:
     host = (urlsplit(url).hostname or "").lower()
     if any(host == d or host.endswith("." + d) for d in DOMINIOS_COM_PRECO_PROPRIO):
@@ -276,6 +288,7 @@ def renderizador_hospedado(
 
     def renderizar_pelo_firecrawl_hospedado(url: str) -> tuple[str, bytes]:
         porteiro.conferir(url)
+        _conferir_parametro_de_cpf(url)
         _conferir_custo_fixo(url)
         contador.conferir()
         resposta = post(
