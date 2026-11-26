@@ -412,6 +412,7 @@ DESTINOS: dict[str, Destino] = {
         "cnpj_empresas_historico",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
+        "cnpj_nomes_pj",
     ),
     "pgfn-divida": _tabela("pgfn_divida"),
     # setoriais
