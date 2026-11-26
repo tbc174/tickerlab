@@ -706,3 +706,38 @@ def test_o_pro_forma_de_um_trimestre_nao_vira_o_do_ano():
 
     assert leituras == []
     assert recusadas[cpc15.OUTRO_ANO] == 1
+
+
+@pytest.mark.parametrize(
+    "periodo",
+    [
+        "No exercício de 2024",
+        "No ano de 2024",
+        "Em 2024",
+        "Desde a aquisição, até 31/12/2024",
+        "No exercício corrente",  # nota comparativa: sem o ano, pode ser a parcela do exercício novo
+    ],
+)
+def test_a_parcela_de_outro_exercicio_nao_entra_no_ano_do_pro_forma(periodo):
+    resultado = (
+        f"{periodo}, a Alfa contribuiu desde a aquisição com R$ 150.000 de receita líquida. Se a aquisição "
+        "da empresa tivesse ocorrido em 1 de janeiro de 2023, a receita líquida consolidada da Companhia "
+        "seria aumentada em R$ 64.456."
+    )
+
+    leituras, recusadas = cpc15.ler_notas(
+        _paginas(AQUISICAO_ALFA, resultado), date(2024, 12, 31)
+    )
+
+    assert leituras == []
+    assert recusadas[cpc15.SEM_O_DESDE_A_COMPRA] == 1
+
+
+def test_a_nota_comparativa_com_o_ano_escrito_continua_valendo():
+    leituras, recusadas = cpc15.ler_notas(
+        _paginas(AQUISICAO_ALFA, RESULTADO_ALFA), date(2024, 12, 31)
+    )
+
+    assert [cpc15.receita_do_ano(leitura) for leitura in leituras] == [121_620_000], (
+        recusadas
+    )

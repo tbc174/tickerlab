@@ -527,6 +527,9 @@ PEDACO_DO_PERIODO = re.compile(
     r"( de \d{4})? (a|ate) "
 )
 
+# todo ano escrito na frase, de qualquer jeito ("de 2024", "em 2024", "31/12/2024")
+ANO_CITADO = re.compile(r"(?<![\d.,])(?:19|20)\d\d(?!\d|[.,]\d)")
+
 
 def _e_pro_forma(frase: str) -> bool:
     return bool(
@@ -580,6 +583,7 @@ def _desde_a_compra(
     alvos: list[_Alvo],
     alvo: _Alvo,
     ano: int,
+    comparativa: bool,
 ) -> tuple[float | None, tuple[int, int] | None]:
     """A receita que a nota diz ter entrado no consolidado desde a compra, na seção da mesma alvo."""
     achadas: dict[float, tuple[int, int]] = {}
@@ -589,10 +593,11 @@ def _desde_a_compra(
             continue
         if PEDACO_DO_PERIODO.search(frase) or not DESDE_A_COMPRA.search(frase):
             continue
-        anos = {int(a) for a in re.findall(r"de dezembro de (\d{4})", frase)}
-        if (anos and ano not in anos) or _alvo_da_frase(
-            alvos, inicio, fim, frase
-        ) != alvo:
+        anos = {int(a) for a in ANO_CITADO.findall(frase)}
+        # outro ano escrito, ou nota comparativa sem ano: a parcela pode ser de outro exercício
+        if anos - {ano} or (comparativa and not anos):
+            continue
+        if _alvo_da_frase(alvos, inicio, fim, frase) != alvo:
             continue
         if _cita_outra_empresa(documento, alvo, fim):
             continue
@@ -633,7 +638,9 @@ def _ler_frase(
     forma = _forma_por_modelo(frase)
     if forma != _forma_por_palavra(frase):
         return LEITURAS_DIVERGEM
-    desde, onde = _desde_a_compra(documento, frases, alvos, alvo, ano)
+    desde, onde = _desde_a_compra(
+        documento, frases, alvos, alvo, ano, ano != referencia.year
+    )
     if desde is None and forma != SO_DA_ADQUIRIDA:
         return SEM_O_DESDE_A_COMPRA
     if (
