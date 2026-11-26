@@ -29,8 +29,8 @@ from base.arquivo.coleta import ErroDeDescoberta
 # inglês, as formas russa, ucraniana e bielorrussa, em cirílico e transliteradas
 _PALAVRAS_DE_EMPRESARIO_INDIVIDUAL = re.compile(
     r"individual entrepreneur|sole propriet|sole trader|private entrepreneur"
-    r"|individualn\w* predprinimatel|fizychn\w* osoba|fizichesk\w* lico"
-    r"|индивидуальный предприниматель|фізична особа",
+    r"|individual'?n\w*'? predprinimatel|fizychn\w* osoba|fizichesk\w* li(?:ts|c)"
+    r"|индивидуальн\w* предпринимател|физическ\w* лиц|фізична особа",
     re.IGNORECASE,
 )
 _PREFIXO_DE_EMPRESARIO_INDIVIDUAL = re.compile(r"^(IP|ИП|ІП|ЧП|FOP|ФОП)\s")

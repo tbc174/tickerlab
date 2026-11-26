@@ -88,6 +88,10 @@ def test_lgpd_a_leitura_sozinha_tambem_barra_pessoa(formato, duble, ids):
         "ЧП ИНВЕНТАДО",
         "ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ ИНВЕНТАДО",
         "ФІЗИЧНА ОСОБА-ПІДПРИЄМЕЦЬ ІНВЕНТАДО",
+        "FIZICHESKOE LITSO INVENTADO",
+        "INDIVIDUAL'NYY PREDPRINIMATEL' INVENTADO",
+        "ФИЗИЧЕСКОЕ ЛИЦО ИНВЕНТАДО",
+        "ИНДИВИДУАЛЬНОГО ПРЕДПРИНИМАТЕЛЯ ИНВЕНТАДО",
     ],
 )
 def test_empresario_individual_pelo_nome_nao_passa(nome):
@@ -101,6 +105,7 @@ def test_empresario_individual_pelo_nome_nao_passa(nome):
         "IPANEMA EXEMPLO SA",
         "EXEMPLO ENTERPRISES",
         "FOPEXEMPLO SA",
+        "ЮРИДИЧЕСКОЕ ЛИЦО ПРИМЕР",  # "pessoa jurídica" em russo
     ],
 )
 def test_empresa_com_ip_no_nome_passa(nome):
