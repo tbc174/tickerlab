@@ -146,3 +146,96 @@ def test_estado_conta_as_renderizacoes(tmp_path: Path):
     pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": CASCA}, _Renderizador())
     pesquisador.buscar_pagina(f"{SITE}/painel")
     assert pesquisador.estado()["memoria"]["renderizacao"] == 1  # type: ignore[index]
+
+
+# --- achados das revisões do PR 2 (b339160) --------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "desafio",
+    [
+        b"<html><head><script src='/challenge.js'></script></head><body><noscript>verifique o navegador</noscript></body></html>",
+        b"<html><head><title>Just a moment...</title><script>x()</script></head><body></body></html>",
+        b"<html><body><script src='https://x.awswaf.com/c.js'></script></body></html>",
+        b"<html><body><div class='g-recaptcha'></div><script>r()</script></body></html>",
+        b"<html><body><h1>Request Rejected</h1><script>z()</script></body></html>",
+    ],
+)
+def test_pagina_de_desafio_anti_robo_nao_e_renderizada_sozinha(
+    tmp_path: Path, desafio: bytes
+):
+    """P1 da revisão de segurança: desafio servido com 2xx não pode ser resolvido por um navegador."""
+    renderizador = _Renderizador()
+    pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": desafio}, renderizador)
+    resposta = pesquisador.buscar_pagina(f"{SITE}/painel")
+    assert resposta["ok"] is True and resposta["renderizada_sozinha"] is False
+    assert renderizador.chamadas == []
+    (evento,) = _eventos(tmp_path)
+    assert (evento["resultado"], evento["erro"]) == ("pulada", "desafio")
+
+
+@pytest.mark.parametrize("status", [403, 429])
+def test_host_com_bloqueio_lembrado_nao_e_renderizado_sozinho(
+    tmp_path: Path, status: int
+):
+    """P1 da revisão cruzada: outro caminho do mesmo host já bloqueou o bot."""
+    renderizador = _Renderizador()
+    pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": CASCA}, renderizador)
+    pesquisador.memoria.anotar_negativo(
+        f"{SITE}/api", f"a fonte respondeu HTTP {status}", status, "r0"
+    )
+    resposta = pesquisador.buscar_pagina(f"{SITE}/painel")
+    assert resposta["ok"] is True and resposta["renderizada_sozinha"] is False
+    assert renderizador.chamadas == []
+    (evento,) = _eventos(tmp_path)
+    assert (evento["resultado"], evento["erro"]) == ("pulada", "bloqueio no site")
+
+
+def test_robots_bloqueado_impede_renderizar_sozinho(tmp_path: Path):
+    from base.arquivo.coleta import Resposta
+    from tests.ajudantes_da_pesquisa import erro_http
+
+    class _RobotsBloqueado(ClienteFalso):
+        def ler(self, url: str) -> Resposta:
+            if url.endswith("/robots.txt"):
+                raise erro_http(403)
+            return super().ler(url)
+
+    renderizador = _Renderizador()
+    pesquisador = Pesquisador(
+        tmp_path / "d",
+        _RobotsBloqueado({f"{SITE}/painel": CASCA}),
+        renderizador=renderizador,
+    )
+    pesquisador.iniciar_rodada("h")
+    resposta = pesquisador.buscar_pagina(f"{SITE}/painel")
+    assert resposta["ok"] is True and renderizador.chamadas == []
+
+
+def test_bloqueio_recebido_ao_renderizar_vale_para_o_host(tmp_path: Path):
+    """O bloqueio que o renderizador recebe fica lembrado para o host: a próxima casca e o mapa param."""
+    renderizador = _Renderizador(BloqueioNaRenderizacao("a página respondeu HTTP 403"))
+    paginas = {f"{SITE}/painel": CASCA, f"{SITE}/outro": CASCA}
+    pesquisador = _pesquisador(tmp_path, paginas, renderizador)
+    pesquisador.buscar_pagina(f"{SITE}/painel")
+    pesquisador.buscar_pagina(f"{SITE}/outro")
+    assert renderizador.chamadas == [f"{SITE}/painel"]
+    assert pesquisador.memoria.bloqueio_valido_no_site("dados.exemplo.gov.br")
+
+
+def test_renderizar_pedido_em_host_com_bloqueio_lembrado_recusa(tmp_path: Path):
+    renderizador = _Renderizador()
+    pesquisador = _pesquisador(tmp_path, {}, renderizador)
+    pesquisador.memoria.anotar_negativo(
+        f"{SITE}/api", "a fonte respondeu HTTP 403", 403, "r0"
+    )
+    resposta = pesquisador.buscar_pagina(f"{SITE}/app", renderizar=True)
+    assert resposta["ok"] is False and "não se contorna" in resposta["motivo"]  # type: ignore[operator]
+    assert renderizador.chamadas == []
+
+
+def test_casca_com_meta_robots_ainda_e_renderizada(tmp_path: Path):
+    casca = CASCA.replace(b"<head>", b"<head><meta name='robots' content='index'>")
+    renderizador = _Renderizador()
+    pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": casca}, renderizador)
+    assert pesquisador.buscar_pagina(f"{SITE}/painel")["renderizada_sozinha"] is True

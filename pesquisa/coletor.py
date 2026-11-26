@@ -57,6 +57,31 @@ TAMANHO_DA_LEITURA = 1024 * 1024
 # Página com menos texto que isto e com <script> é casca de JavaScript: renderiza sozinha. Na linha de
 # base de 26/11/2026, as cascas vieram com 4, 21 e 82 caracteres; página de verdade passa de centenas.
 TEXTO_MINIMO_DE_PAGINA = 200
+# Marcas de página de desafio anti-robô ou de rejeição de WAF que vêm com status 2xx (o `ClienteHttp` só
+# reconhece o desafio da Cloudflare pelo cabeçalho). Casca com uma delas não vai a navegador nenhum: um
+# navegador resolveria o desafio, e bloqueio não se contorna. Na dúvida, não renderiza.
+MARCAS_DE_DESAFIO = (
+    b"challenge",
+    b"captcha",
+    b"cf-chl",
+    b"awswaf",
+    b"aws-waf",
+    b"just a moment",
+    b"checking your browser",
+    b"verify you are human",
+    b"are you a robot",
+    b"verifique o navegador",
+    b"verificando o navegador",
+    "não sou um robô".encode(),
+    "você é um robô".encode(),
+    b"incapsula",
+    b"perimeterx",
+    b"datadome",
+    b"request rejected",
+    b"access denied",
+    b"acesso negado",
+    b"ddos",
+)
 
 
 class Cliente(Protocol):
@@ -216,6 +241,11 @@ class Coletor:
                     "renderização pede o Crawl4AI, que não está instalado",
                     lembrar=False,
                 )
+            if self._site_bloqueado(url):
+                raise Recusa(
+                    "o site já bloqueou o bot (anti-robô, 401, 403 ou 429): bloqueio não se contorna",
+                    lembrar=False,
+                )
             self.cliente_espera_a_vez(url)
             try:
                 url_final, html = self.renderizador(url)
@@ -251,10 +281,17 @@ class Coletor:
     def _renderizar_sozinho(
         self, url: str, lida: tuple[str, bytes, Mapping[str, str]]
     ) -> tuple[str, bytes, Mapping[str, str], bool]:
-        """Renderiza a casca pelo mesmo renderizador do `renderizar=true` (porteiro e teto valem). Se
-        não der, a página lida volta como veio: a busca já deu certo, e a falha fica só anotada (um
-        bloqueio aqui não vira negativo, porque a página abriu sem navegador)."""
+        """Renderiza a casca pelo mesmo renderizador do `renderizar=true` (porteiro e teto valem). Não
+        renderiza se o site já bloqueou o bot ou se a casca tem cara de desafio anti-robô. Se não der, a
+        página lida volta como veio: a busca já deu certo, e a falha fica anotada (o bloqueio recebido
+        aqui vale para o host na memória)."""
         assert self.renderizador is not None
+        if self._site_bloqueado(url):
+            self._anotar_pulada(url, "bloqueio no site")
+            return (*lida, False)
+        if any(marca in lida[1].lower() for marca in MARCAS_DE_DESAFIO):
+            self._anotar_pulada(url, "desafio")
+            return (*lida, False)
         self.cliente_espera_a_vez(url)
         try:
             url_final, html = self.renderizador(url)
@@ -263,6 +300,24 @@ class Coletor:
             return (*lida, False)
         self._anotar_renderizacao(url, True, None)
         return url_final, html, {"Content-Type": "text/html"}, True
+
+    def _site_bloqueado(self, url: str) -> bool:
+        """O host já bloqueou o bot (lembrado na memória, inclusive ao renderizar) ou o robots.txt dele
+        respondeu bloqueio nesta rodada."""
+        partes = urlsplit(url)
+        return (
+            self.memoria.bloqueio_valido_no_site(partes.hostname or "") is not None
+            or f"{partes.scheme}://{partes.netloc}" in self._bloqueio_no_robots
+        )
+
+    def _anotar_pulada(self, url: str, motivo: str) -> None:
+        self.memoria.anotar_renderizacao(
+            url,
+            self.rodada.identificador,
+            sozinha=True,
+            resultado="pulada",
+            erro=motivo,
+        )
 
     def _anotar_renderizacao(
         self, url: str, sozinha: bool, erro: Exception | None

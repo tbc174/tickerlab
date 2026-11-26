@@ -143,6 +143,21 @@ class Memoria:
             mesmo_host = urlsplit(negativo.url).hostname == host.lower()
             if mesmo_host and self.negativo_valido(negativo.url) is not None:
                 return negativo
+        return self._bloqueio_ao_renderizar(host)
+
+    def _bloqueio_ao_renderizar(self, host: str) -> Negativo | None:
+        """O bloqueio que o renderizador recebeu (401, 403, 429) vale para o host como um negativo: a
+        página lida sem navegador fica guardada, e o bloqueio não pode sumir com ela."""
+        limite = (agora() - timedelta(days=VALIDADE_DO_NEGATIVO_DIAS)).isoformat()
+        with self._conexao() as conexao:
+            linhas = conexao.execute(
+                "SELECT url, rodada, quando FROM renderizacao"
+                " WHERE resultado = 'bloqueio' AND quando >= ?",
+                (limite,),
+            ).fetchall()
+        for url, rodada, quando in linhas:
+            if urlsplit(url).hostname == host.lower():
+                return Negativo(url, "bloqueio ao renderizar", None, quando, rodada)
         return None
 
     def anotar_renderizacao(
