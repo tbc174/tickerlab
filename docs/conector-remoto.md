@@ -168,7 +168,7 @@ com as ferramentas que existem.
 | `catalogo` e `consumo` | `o_que_posso_ver` |
 | `vinculos` | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
 | `ativos` | `ativos` (a data; conjunto `assets`: contratos de E&P da ANP e, quando a chave os vê, barragens e royalties de mineração da ANM; `tipo_de_ativo`, `uf`, `somente_operador` e `limite`, filtros do conector que não vão à API; o que passa do teto da conversa fica de fora, com `truncated` e a contagem em `limits`) |
-| `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
+| `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50, `ordem` (`entradas` ou `rede`) e a data) |
 | `novidades` | `novidades` (`dias` de 1 a 30; lista vazia vem com `limits` dizendo se o arquivo da pesquisa não chegou ao servidor ou a data da última geração) |
 
 Ferramentas do analista, que só compõem o que a API já devolve (linha 980, onda 1; código em

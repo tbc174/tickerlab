@@ -141,7 +141,7 @@
   "paths": {
     "/data/v1/buyers": {
       "get": {
-        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas\ncom controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por\nsinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal\nque não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em\n`unavailable_signals`: a lista não diz nada sobre ele.",
+        "description": "Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa\ncom estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se\ndada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas, as companhias abertas\ncom controlada no setor, as empresas de outra UF com filial ativa do setor na UF pedida e as que abriram\n3 ou mais filiais do setor no mesmo dia na janela, como era em `known_at`. Cada comprador traz os sinais,\naté 5 exemplos por sinal e a rede no setor (`network_in_sector`: estabelecimentos ativos do CNAE, por UF),\ncom fonte e data; `limit` (padrão 20, até 50); `order` (`entries`, o padrão, ou `network`, pelo tamanho\nda rede). Movimento passado, não intenção de compra. O sinal que não foi consultado (o portão não o\nlibera para a organização ou a base não tem a tabela) vem em `unavailable_signals`: a lista não diz nada\nsobre ele.",
         "operationId": "compradores_do_setor_data_v1_buyers_get",
         "parameters": [
           {
@@ -216,6 +216,22 @@
                 }
               ],
               "title": "Known At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order"
             }
           },
           {

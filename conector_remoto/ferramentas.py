@@ -889,6 +889,15 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
                 description="Quantos compradores trazer (1 a 50). Vazio = 20.",
             ),
         ] = None,
+        ordem: Annotated[
+            Literal["entradas", "rede"] | None,
+            Field(
+                description=(
+                    "A ordem: 'entradas' (como sócia, a de sempre) ou 'rede' (pelo tamanho da rede no setor, "
+                    "útil para achar a rede de outra UF que já opera na UF do alvo). Vazio = entradas."
+                ),
+            ),
+        ] = None,
         como_era_em: ComoEraEm = None,
     ) -> str:
         return await pedidos.pedir("compradores_do_setor", "/buyers", {
@@ -896,6 +905,7 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             "state": uf,
             "years": None if anos is None else str(anos),
             "limit": None if limite is None else str(limite),
+            "order": "network" if ordem == "rede" else None,
             "known_at": _dia(como_era_em),
         })  # fmt: skip
 

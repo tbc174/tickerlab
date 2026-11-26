@@ -375,12 +375,14 @@ class ApiDoTickerlab:
         anos: int,
         limite: int,
         como_era: str | None,
+        pela_rede: bool = False,
     ) -> dict:
         parametros = {
             "cnae": cnae,
             "years": str(anos),
             "limit": str(limite),
             **_datas(state=uf, known_at=como_era),
+            **({"order": "network"} if pela_rede else {}),
         }
         return self.pedir("/buyers", parametros)
 
