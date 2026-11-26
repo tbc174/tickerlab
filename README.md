@@ -35,7 +35,7 @@ original.
 | Parte | O que é | Para quem |
 |---|---|---|
 | **Base de dados por CNPJ** | os arquivos oficiais guardados com o hash de cada um, em tabelas "como eram na data": uma consulta a um dia nunca enxerga o que só foi publicado depois | a origem de tudo o que vem abaixo |
-| **API e CLI de dados** (TickerLab Data) | a mesma base por HTTP (`/data/v1`) e no terminal (`tickerlab empresa <cnpj>`), para sistemas e agentes de IA: perfil, demonstrações, setor, fundos e busca de empresas (e, só pela API, os comparáveis) | quem integra dados ou faz prospecção e análise por CNPJ |
+| **API, CLI e conector MCP** (TickerLab Data) | a mesma base por HTTP (`/data/v1`), no terminal (`tickerlab empresa <cnpj>`) e em assistentes de IA: perfil, demonstrações, setores, fundos, busca de empresas e comparáveis, conforme o acesso e a interface | quem integra dados ou faz prospecção e análise por CNPJ |
 | **App de análise e backtest** | relatório da empresa e do setor, Research com os fatos da CVM e da SEC, carteira, relatórios em PDF e teste de estratégias com dados do passado | quem analisa empresas e ativos |
 | **Site público** | o produto, as fontes da base uma a uma, 14 ferramentas grátis, o pregão do dia e os estudos abertos | qualquer pessoa, sem login |
 
@@ -55,6 +55,7 @@ tickerlab login                                    # pede a chave da organizaç�
 tickerlab empresa <cnpj>                           # perfil: cadastro na Receita e as entregas à CVM
 tickerlab empresa <cnpj> --como-era 2024-12-31     # o que a base sabia naquele dia
 tickerlab demonstracoes <cnpj>                     # demonstrações financeiras
+tickerlab comparaveis <cnpj>                       # pares de uma companhia aberta
 tickerlab setor eletricas                          # tamanho, concentração e companhias do setor
 tickerlab fundo <cnpj>                             # taxas, carteira e custo da taxa de um fundo
 ```
@@ -64,7 +65,21 @@ Cada resposta sai numa tabela, para a pessoa, ou no envelope JSON inteiro, para 
 **beta fechado, por chave e sem cobrança**, e ainda **desligada em produção** (ver o estado abaixo).
 Guia completo: [`docs/cli.md`](docs/cli.md) e [`docs/api/README.md`](docs/api/README.md).
 
-## O que está no ar hoje (10/11/2026)
+## Um exemplo: pesquisa de M&A com o conector MCP
+
+O conector permite pesquisar empresas brasileiras pelo CNPJ no Claude ou no ChatGPT. Ele consulta
+as rotas da TickerLab Data e só mostra as ferramentas liberadas para a organização. Com o conector
+configurado e o acesso habilitado, um pedido típico é:
+
+> Busque empresas por CNAE e UF. Para um CNPJ selecionado, reúna a ficha, os eventos da CVM e os
+> vínculos societários. Se for companhia aberta, mostre também os comparáveis. Cite a fonte e a
+> data de cada bloco e diga o que não foi possível consultar.
+
+O parâmetro `como_era_em` limita a análise ao que já era público na data escolhida. O conector
+não estima faturamento de empresa fechada. A [tabela de consultas por interface](docs/cli.md#uma-base-três-portas)
+mostra o que está implementado no MCP, na CLI e na API; implementação não implica liberação pública.
+
+## Estado registrado em 10/11/2026
 
 | Parte | Estado |
 |---|---|
@@ -77,18 +92,6 @@ Guia completo: [`docs/cli.md`](docs/cli.md) e [`docs/api/README.md`](docs/api/RE
 | Cobrança | Stripe **só em modo de teste**: nenhum pagamento real é feito |
 | Base de dados | em construção contínua, com coletas diárias e âncora no Bitcoin toda noite |
 | TickerLab Trade (pesquisa de trading) | nenhum modelo aprovado até aqui; não há operação com dinheiro real |
-
-## Em números
-
-Contados no repositório em 13/11/2026 (tabelas e fontes em uso, em 16/11/2026).
-
-| 143 tabelas | 133 fontes públicas | 584 arquivos oficiais | 46 páginas no app | 14 ferramentas grátis |
-|:---:|:---:|:---:|:---:|:---:|
-| no catálogo da base, com contrato versionado | na página Dados do site, 43 já em uso numa tela, relatório ou API | acompanhados pelo arquivista | no mapa de `src/paginas.py` | calculadoras e simuladores no site |
-
-| 12 estratégias | ~1.700 ativos | mais de 800 arquivos de teste | 45 migrações | mais de 940 pull requests mesclados |
-|:---:|:---:|:---:|:---:|:---:|
-| tendência e reversão, com custos e stops | na busca: B3, S&P 500, índices, cripto e câmbio | mais de 11 mil funções de teste (mais de 14 mil casos, contados em 05/11/2026) | do banco, de 0001 a 0047 (Alembic) | desde 11/10/2026; hoje nada entra sem CI verde |
 
 ## A base de dados
 
@@ -115,7 +118,7 @@ cada original e responde como os dados **eram** em qualquer data.
 - **Qualidade sem maquiagem:** as regras apontam problemas e nunca corrigem em silêncio; empresas
   que saíram da bolsa continuam na base (contra o viés de sobrevivência).
 
-## API e CLI de dados (TickerLab Data)
+## API, CLI e conector MCP (TickerLab Data)
 
 Um serviço FastAPI (`src/api.py`) com duas APIs: a de leitura está no ar, servindo o app; a
 externa fica desligada em produção até a decisão do autor.
@@ -138,6 +141,8 @@ externa fica desligada em produção até a decisão do autor.
   | `GET /catalog` e `/usage` | o que a chave pode consultar e o consumo do mês |
 
   As rotas de dado aceitam `known_at` ("como era em"): a resposta é a que a base daria naquele dia.
+  Se a API detectar que a base mudou durante a consulta, ela pode responder `503 base_updating`,
+  com `Retry-After: 30`, sem debitar a quota. Consulte o [guia da API](docs/api/README.md) para os detalhes.
 - **API de leitura (`/api/v1`)**, para o app novo e o site: a conta entra pelo navegador, e as rotas
   chamam as mesmas funções de `src/` que as telas usam. Entrega números calculados, nunca preço bruto.
 - **CLI `tickerlab`** (`cli/`): um cliente fino da API externa, num pacote à parte que depende só de
@@ -311,6 +316,7 @@ base/             a base de dados: arquivista, ponto no tempo, linhagem, contrat
   arquivo/        o arquivista das fontes oficiais
   contratos/      catálogo e contratos versionados das tabelas
 cli/              a CLI `tickerlab` (pacote à parte, só click e httpx)
+conector_remoto/  o conector MCP, que consulta a API de dados
 web/              React + TypeScript: o site, as ferramentas e o app novo
 site/             site público estático (gerado)
 novo/             app novo em React, servido na raiz de app.tickerlab.com.br (gerado)
