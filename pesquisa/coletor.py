@@ -92,14 +92,18 @@ MARCAS_DE_DESAFIO = (
     "perfdrive",  # Radware (ShieldSquare)
     "shieldsquare",
 )
-AVISO_DE_DESAFIO = (
-    "a página tem cara de desafio anti-robô: não foi renderizada, e o site fica bloqueado para o bot"
-    " (bloqueio não se contorna; procure outra fonte)"
+# Trechos inofensivos que contêm uma marca e saem do texto antes da busca (PKCE do login OIDC de SPA).
+TRECHOS_SEM_DESAFIO = ("code_challenge",)
+ALERTA_DE_DESAFIO = (
+    "a página tem cara de desafio anti-robô: não foi renderizada, e renderizar ou mapear este site fica"
+    " barrado por 7 dias (bloqueio não se contorna; o texto acima é só o que veio sem navegador)"
 )
 
 
 def _tem_marca_de_desafio(conteudo: bytes) -> bool:
     texto = conteudo.decode("utf-8", errors="replace").casefold()
+    for trecho in TRECHOS_SEM_DESAFIO:
+        texto = texto.replace(trecho, "")
     return any(marca in texto for marca in MARCAS_DE_DESAFIO)
 
 
@@ -203,16 +207,18 @@ class Coletor:
             self.rodada.gastar_busca()
             self._conferir_robots(url)
             url_final, conteudo, cabecalhos = self._pedir_pagina(url, renderizar)
-            sozinha, aviso = None, None
+            sozinha, alerta = None, None
             if not renderizar and self._e_casca_de_javascript(conteudo, cabecalhos):
-                url_final, conteudo, cabecalhos, sozinha, aviso = (
+                url_final, conteudo, cabecalhos, sozinha, alerta = (
                     self._renderizar_sozinho(url, (url_final, conteudo, cabecalhos))
                 )
             resposta = self._responder_pagina(url, url_final, conteudo, cabecalhos)
             if sozinha is not None and resposta.get("tipo") == "html":
                 resposta["renderizada_sozinha"] = sozinha
-                if aviso is not None:
-                    resposta["aviso"] = aviso
+                if (
+                    alerta is not None
+                ):  # chave própria: o aviso de conteúdo de terceiros fica
+                    resposta["alerta"] = alerta
             return resposta
         except LimiteExcedido as erro:
             return {"ok": False, "limite": str(erro)}
@@ -305,7 +311,7 @@ class Coletor:
         """Renderiza a casca pelo mesmo renderizador do `renderizar=true` (porteiro e teto valem). Não
         renderiza se o site já bloqueou o bot ou se a casca tem cara de desafio anti-robô. Se não der, a
         página lida volta como veio: a busca já deu certo, e a falha fica anotada (o bloqueio recebido
-        aqui, e o desafio reconhecido, valem para o host na memória). O último item é o aviso ao modelo."""
+        aqui, e o desafio reconhecido, valem para o host na memória). O último item é o alerta ao modelo."""
         assert self.renderizador is not None
         if self._site_bloqueado(url):
             self._anotar_pulada(url, "bloqueio no site")
@@ -314,7 +320,7 @@ class Coletor:
             self.memoria.anotar_renderizacao(
                 url, self.rodada.identificador, sozinha=True, resultado="desafio"
             )
-            return (*lida, False, AVISO_DE_DESAFIO)
+            return (*lida, False, ALERTA_DE_DESAFIO)
         self.cliente_espera_a_vez(url)
         try:
             url_final, html = self.renderizador(url)

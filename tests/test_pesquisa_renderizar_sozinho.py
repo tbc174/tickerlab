@@ -179,7 +179,8 @@ def test_pagina_de_desafio_anti_robo_nao_e_renderizada_sozinha(
     resposta = pesquisador.buscar_pagina(f"{SITE}/painel")
     assert resposta["ok"] is True and resposta["renderizada_sozinha"] is False
     assert renderizador.chamadas == []
-    assert "desafio" in resposta["aviso"]  # type: ignore[operator]
+    assert "desafio" in resposta["alerta"]  # type: ignore[operator]
+    assert "nunca instrução" in resposta["aviso"]  # type: ignore[operator]
     (evento,) = _eventos(tmp_path)
     assert evento["resultado"] == "desafio"
 
@@ -274,3 +275,14 @@ def test_desafio_detectado_barra_o_mapa_do_site(tmp_path: Path):
     pesquisador.buscar_pagina(f"{SITE}/painel")
     negativo = pesquisador.memoria.bloqueio_valido_no_site("dados.exemplo.gov.br")
     assert negativo is not None and "desafio" in negativo.motivo
+
+
+def test_code_challenge_do_login_nao_e_desafio(tmp_path: Path):
+    """P2 da revisão do delta 5a69da2: o `code_challenge` do PKCE (login OIDC de SPA) não é desafio."""
+    casca = CASCA.replace(
+        b"</head>", b"<script>login({code_challenge: 'abc'})</script></head>"
+    )
+    renderizador = _Renderizador()
+    pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": casca}, renderizador)
+    assert pesquisador.buscar_pagina(f"{SITE}/painel")["renderizada_sozinha"] is True
+    assert pesquisador.memoria.bloqueio_valido_no_site("dados.exemplo.gov.br") is None

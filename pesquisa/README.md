@@ -92,7 +92,9 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
   (lembrado na memória, inclusive o bloqueio recebido ao renderizar, ou `robots.txt` que respondeu bloqueio), e não
   renderiza a casca com marca de desafio anti-robô ou de WAF (captcha, "just a moment", awswaf, F5, Akamai,
   Kasada...): um navegador resolveria o desafio, e bloqueio não se contorna. O desafio reconhecido vale para o host
-  inteiro por 7 dias, como um bloqueio: `renderizar=true` e o mapa do site param ali, e a resposta leva um `aviso`.
+  inteiro por 7 dias, como um bloqueio: `renderizar=true` e o mapa do site param ali, e a resposta leva um `alerta`
+  (além do aviso de conteúdo de terceiros). Marca genérica ("captcha") pode barrar um portal que só tem captcha num
+  formulário: é o preço de "na dúvida, não renderiza".
   Cada tentativa de renderizar, pedida ou sozinha, fica na tabela `renderizacao` da memória (url, resultado: ok,
   falhou, bloqueio, desafio, barrado ou pulada, e só o tipo do erro ou o motivo do pulo), para medir o antes e o depois.
 - **Firecrawl** (AGPL), só por HTTP. Com `TICKERLAB_PESQUISA_FIRECRAWL` apontando para um Firecrawl do próprio PC,
