@@ -302,6 +302,7 @@
         "anp-concessionarios",
         "anp-tancagem",
         "anp-revendedores",
+        "anp-revendedores-api",
         "anp-precos-ultimas-semanas",
         "anp-precos-semestral",
         "anp-precos-mensal"
@@ -6128,6 +6129,13 @@
     },
     {
       "id": "anp-revendedores",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "marca": "vendavel",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
+    },
+    {
+      "id": "anp-revendedores-api",
       "licenca": "API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)",
       "marca": "a_confirmar",
       "ritmo": "mensal",

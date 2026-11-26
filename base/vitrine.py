@@ -25,7 +25,12 @@ import pandas as pd
 
 from base import cruzamentos_das_fechadas as fechadas
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar_aberto
+from base.dossie import (
+    CONTAS_DA_DRE,
+    SO_NO_MODO_DONO,
+    exigir_que_pode_mostrar,
+    pode_consultar_aberto,
+)
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import (
     FONTES_SO_INTERNAS,
@@ -229,7 +234,8 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
 
 # Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
 # por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
-TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
+# E as que só o modo dono vê (`dossie.SO_NO_MODO_DONO`).
+TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"}) | SO_NO_MODO_DONO
 # Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
 # mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.
 COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})

@@ -12,14 +12,6 @@
       "descricao": "Raiz do CNPJ (8 caracteres)",
       "unidade": "texto"
     },
-    "codigo_simp": {
-      "descricao": "Código da revenda no SIMP, o sistema da ANP",
-      "unidade": "texto"
-    },
-    "autorizacao": {
-      "descricao": "Número da autorização da revenda na ANP",
-      "unidade": "texto"
-    },
     "uf": {
       "descricao": "Sigla da unidade da federação do posto",
       "unidade": "texto"
@@ -32,10 +24,6 @@
       "descricao": "Distribuidora a que o posto está vinculado, ou bandeira branca, como a ANP escreve",
       "unidade": "texto"
     },
-    "produto": {
-      "descricao": "Combustível que o posto vende, como a ANP escreve (vazio no posto sem produto na fonte)",
-      "unidade": "texto"
-    },
     "data_da_autorizacao": {
       "descricao": "Dia em que a ANP publicou a autorização",
       "unidade": "data (dia)"
@@ -43,14 +31,6 @@
     "data_da_vinculacao": {
       "descricao": "Dia da vinculação do posto à bandeira atual",
       "unidade": "data (dia)"
-    },
-    "tancagem_m3": {
-      "descricao": "Capacidade de armazenamento do produto no posto, em metros cúbicos",
-      "unidade": "número com decimais, na unidade da fonte"
-    },
-    "bicos": {
-      "descricao": "Número de bicos de abastecimento do produto",
-      "unidade": "número inteiro"
     },
     "id_na_fonte": {
       "descricao": "Identificador da linha no arquivo da fonte",
@@ -108,10 +88,10 @@
   },
   "historico_desde": "2026-11-26",
   "granularidade_do_publico_em": "dia",
-  "licenca": "API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)",
-  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+  "revenda": "vendável com atribuição à fonte",
   "pessoa": false,
   "frequencia": "A ANP atualiza todo dia; o arquivista guarda um retrato por mês",
-  "atraso": "A fonte não escreve a data de publicação; a linha vale desde o dia da coleta em que a vimos",
+  "atraso": "A fonte não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos",
   "linhas_de_pessoa": "trata_como_pessoa"
 }

@@ -153,8 +153,8 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     "rj_contratos", "rj_sancoes_fornecedores", "rj_fornecedores",
     # linha 1075, PR 2: compras diretas do RJ e contratos e empenhos do ES
     "rj_compras_diretas", "es_contratos", "es_empenhos",
-    # linha 1123: postos da ANP, só CNPJ e licença a confirmar; em casa até o pode do envio
-    "anp_revendedores",
+    # linha 1123: postos da ANP (cadastro e detalhe por produto), só CNPJ; em casa até o pode do envio
+    "anp_revendedores", "anp_revendedores_produtos",
     # linha 1074 (PR 1): RAPP do IBAMA, só CNPJ; em casa até o pode do envio
     "ibama_rapp_emissoes_atmosfericas", "ibama_rapp_efluentes_liquidos", "ibama_rapp_fontes_de_energia",
     "ibama_rapp_residuos_destinados", "ibama_rapp_residuos_transportados", "ibama_rapp_residuos_armazenados",
@@ -208,13 +208,20 @@ class PessoaNaFichaError(ValueError):
     """A ficha montada tem CPF, nome de pessoa ou coluna de pessoa: não sai do servidor de casa."""
 
 
+# Só o modo dono vê (lê o Parquet pela porta): nunca no app, na consulta aberta, no CSV, no site nem para uma
+# organização, mesmo com prontidão. O detalhe por produto dos postos da ANP (linha 1123) tem licença a confirmar
+# (leitura mais estreita da Diretoria, 26/11/2026).
+SO_NO_MODO_DONO: frozenset[str] = frozenset({"anp_revendedores_produtos"})
+
+
 # --- a regra de mostrar --------------------------------------------------------------------------
 
 
 def pode_mostrar(nome_da_tabela: str) -> bool:
-    """A tabela pode aparecer no app? (está no dicionário, não guarda pessoa e a trava deixa mostrar)"""
+    """A tabela pode aparecer no app? (está no dicionário, não guarda pessoa, não é só do modo dono e a trava
+    deixa mostrar)"""
     tabela = TABELAS.get(nome_da_tabela)
-    if tabela is None or tabela.pessoa:
+    if tabela is None or tabela.pessoa or nome_da_tabela in SO_NO_MODO_DONO:
         return False
     return pode_usar(MOSTRAR, tabela.familia_da_fonte)
 

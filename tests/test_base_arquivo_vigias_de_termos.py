@@ -184,6 +184,8 @@ _SEM_VIGIA = {
     # não há página de termos de terceiro a vigiar
     "btc": "nó próprio, sem terceiro",
     "rfb": "a página da Receita pede login",
+    # linha 1123: a API de Revendedores da ANP, a confirmar e só no modo dono
+    "anp-revendedores-api": "a API não publica licença nem termos próprios (lido em 26/11/2026): nada a vigiar",
     "wiki": "a documentação da API deu 502 e as páginas lidas não dizem a licença",
     "termos": "são as próprias cópias das páginas vigiadas",
     "contrapartes": "páginas de terceiros guardadas como prova, sem coleta recorrente do termo",
