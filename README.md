@@ -75,6 +75,10 @@ configurado e o acesso habilitado, um pedido típico é:
 > vínculos societários. Se for companhia aberta, mostre também os comparáveis. Cite a fonte e a
 > data de cada bloco e diga o que não foi possível consultar.
 
+Para mapear potenciais compradores, `compradores_do_setor` também pode mostrar a rede de
+estabelecimentos ativos por UF, conforme o acesso da organização. Aberturas de filiais no mesmo
+dia são um indício para investigar, não prova de aquisição nem de intenção de compra.
+
 O parâmetro `como_era_em` limita a análise ao que já era público na data escolhida. O conector
 não estima faturamento de empresa fechada. A [tabela de consultas por interface](docs/cli.md#uma-base-três-portas)
 mostra o que está implementado no MCP, na CLI e na API; implementação não implica liberação pública.
