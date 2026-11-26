@@ -77,18 +77,12 @@
   },
   "credit": {
     "fontes": {
-      "cvm-cra": "ODbL (dados abertos da CVM; citar a fonte)",
-      "cvm-cri": "ODbL (dados abertos da CVM; citar a fonte)",
       "cvm-fidc": "ODbL (dados abertos da CVM; citar a fonte)",
       "cvm-hist-ipe": "ODbL (dados abertos da CVM; citar a fonte)",
-      "cvm-securitizadoras-ots": "ODbL (dados abertos da CVM; citar a fonte)",
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
       "carteira_dos_fundos_em_que_cede",
-      "certificados_cra",
-      "certificados_cri",
-      "certificados_ots",
       "fatos_relevantes_12_meses",
       "fundos_em_que_cede",
       "lista_dos_fundos_em_que_cede",

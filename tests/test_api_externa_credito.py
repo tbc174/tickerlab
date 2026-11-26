@@ -291,6 +291,8 @@ def test_os_fatos_servidos_sao_as_linhas_de_direito_do_conjunto():
         *(
             (origem.fonte, chave, origem.tabelas)
             for chave, origem in divida_de_mercado.CAMPOS.items()
+            # as listas de CRA, CRI e OTS ganham linha com a prontidão das tabelas (linha 1132)
+            if not chave.startswith("certificados_")
         ),
     }
     assert {linha.finalidade for linha in linhas} == {Finalidade.CREDITO}

@@ -506,26 +506,11 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         _PROVA_CVM,
         Finalidade.CREDITO,
     ),
-    # a dívida de mercado (linha 1126, `conjuntos/divida_de_mercado.py`): os certificados de securitização em que
-    # a empresa é cedente ou devedora, uma lista por produto e pela fonte dele, e os FIDC em que cede, com a
-    # instituição administradora (pessoa jurídica). Contas nossas sobre os informes da CVM; saem só quando as
-    # tabelas tiverem a prontidão do D10 (linhas 1132 e 1133 da fila).
-    *(
-        linha
-        for fonte, campo in (
-            ("cvm-cra", "certificados_cra"),
-            ("cvm-cri", "certificados_cri"),
-            ("cvm-securitizadoras-ots", "certificados_ots"),
-        )
-        for linha in _campos(
-            (fonte,),
-            "credit",
-            ("securitizacao_cedente_devedor", "securitizacao_certificados"),
-            (campo,),
-            _PROVA_CVM,
-            Finalidade.CREDITO,
-        )
-    ),
+    # a dívida de mercado (linha 1126, `conjuntos/divida_de_mercado.py`): os FIDC em que a empresa cede, com a
+    # instituição administradora (pessoa jurídica), conta nossa sobre o informe da CVM; sai quando a `fidc_informe`
+    # tiver a prontidão do D10. As listas de CRA, CRI e OTS ganham linha de direito junto com a prontidão das
+    # tabelas de securitização, em PR próprio (linha 1132 da fila; Diretoria, 26/11/2026): até lá o site não as
+    # anuncia, e o leitor não as serve.
     *_campos(
         ("cvm-fidc",),
         "credit",

@@ -210,9 +210,30 @@ def test_o_ultimo_informe_e_o_do_proprio_certificado_nao_o_da_securitizadora(tmp
     (cra,) = bloco["certificados_cra"]["valor"]
     assert cra["ultimo_mes_com_a_empresa"] == "2026-09"
     assert cra["ultimo_informe_do_certificado"] == "2026-10"
+    # achado P1 do Revisor: o quadro geral de outubro (sem a empresa) foi publicado depois das linhas dela; o
+    # item e o envelope levam o dia da publicação mais nova que usaram
+    assert cra["publico_em"] == "2026-10-25"
+    assert bloco["certificados_cra"]["publico_em"] == "2026-10-25"
     (cri,) = bloco["certificados_cri"]["valor"]
     assert cri["ultimo_informe_do_certificado"] == "2025-01"
     assert "no_ultimo_informe" not in str(bloco)
+
+
+def test_informe_de_produto_negado_nao_entra_no_certificado_liberado(tmp_path):
+    # achado P0 do Revisor: com o CRA liberado e o CRI negado, um informe de CRI (mesma securitizadora, mesmo
+    # código, publicado depois) não muda nada no item do CRA
+    extras = _extras()
+    extras["securitizacao_certificados"] = pd.concat([
+        extras["securitizacao_certificados"],
+        pd.DataFrame([_certificado("2026-10-01", "CRA001", "CRI", "2026-10-30")]),
+    ])  # fmt: skip
+    so_o_cra, _ = _divida(
+        tmp_path, permitido=lambda fonte, *_: fonte == "cvm-cra", extras=extras
+    )
+    assert set(so_o_cra) == {"certificados_cra"}
+    (cra,) = so_o_cra["certificados_cra"]["valor"]
+    assert cra["ultimo_informe_do_certificado"] == "2026-09"
+    assert cra["publico_em"] == "2026-10-12"
 
 
 def test_as_listas_respeitam_o_teto_de_linhas_e_contam_os_itens(tmp_path):
@@ -387,9 +408,27 @@ def test_toda_chave_nova_tem_nome_de_fora_sem_palavra_de_pessoa(tmp_path):
     assert NOMES_DE_FORA["instituicao_administradora"] == "administering_institution"
 
 
+# as listas de CRA, CRI e OTS ganham linha de direito com a prontidão das tabelas de securitização, em PR próprio
+# (linha 1132; Diretoria, 26/11/2026): até lá, nem o portão nem o site as anunciam
+CERTIFICADOS = frozenset({"certificados_cra", "certificados_cri", "certificados_ots"})
+COM_DIREITO_HOJE = {
+    nome: origem
+    for nome, origem in divida_de_mercado.CAMPOS.items()
+    if nome not in CERTIFICADOS
+}
+
+
+def test_os_certificados_ainda_nao_tem_linha_de_direito():
+    campos = {l.campo for l in DIREITOS_DA_API_EXTERNA}
+    fontes = {l.fonte for l in DIREITOS_DA_API_EXTERNA}
+    assert not CERTIFICADOS & campos
+    assert not {"cvm-cra", "cvm-cri", "cvm-securitizadoras-ots"} & fontes
+    assert set(divida_de_mercado.CAMPOS) == CERTIFICADOS | set(COM_DIREITO_HOJE)
+
+
 def test_os_campos_novos_sao_linhas_de_direito():
     for conjunto, campos in (
-        (credito.CONJUNTO, divida_de_mercado.CAMPOS),
+        (credito.CONJUNTO, COM_DIREITO_HOJE),
         (ficha_.CONJUNTO, sinais_de_tamanho.CAMPOS),
     ):
         linhas = {
@@ -415,11 +454,26 @@ def test_pat_e_porte_do_bndes_nao_tem_linha_de_direito():
 # ---------------------------------------------------------------- a rota de crédito, nos dois estados do portão
 
 
-def _regras(tabelas: set[str]) -> portao.Regras:
+def _linhas_dos_certificados() -> tuple[portao.LinhaDeDireito, ...]:
+    """As linhas de direito que o PR da prontidão (linha 1132) vai acrescentar, só para o teste do estado ligado."""
+    return tuple(
+        linha
+        for nome in sorted(CERTIFICADOS)
+        for linha in portao._campos(
+            (divida_de_mercado.CAMPOS[nome].fonte,), credito.CONJUNTO,
+            divida_de_mercado.CAMPOS[nome].tabelas, (nome,), "linha de teste", portao.Finalidade.CREDITO,
+        )
+    )  # fmt: skip
+
+
+def _regras(tabelas: set[str], com_os_certificados: bool = False) -> portao.Regras:
     prova = Prova(AGORA.date(), "conferida no teste", "teste")
     versoes = prontidao.versoes_maiores()
+    vigentes = portao.regras_vigentes()
+    extras = _linhas_dos_certificados() if com_os_certificados else ()
     return dataclasses.replace(
-        portao.regras_vigentes(),
+        vigentes,
+        linhas=(*vigentes.linhas, *extras),
         prontidao={t: Prontidao(versoes[t], prova, prova, prova) for t in tabelas},
     )
 
@@ -428,12 +482,14 @@ DO_CREDITO = {origem.tabela for origem in credito.FATOS.values()}
 DA_SECURITIZACAO = {"securitizacao_cedente_devedor", "securitizacao_certificados"}
 
 
-def _rota(banco, monkeypatch, pasta, tabelas):
+def _rota(banco, monkeypatch, pasta, tabelas, com_os_certificados=False):
     ator = aj.admin(banco)
     org = aj.organizacao(banco, ator)
     chave = aj.chave(banco, ator, org)
     aj.contrato(banco, ator, org, conjunto="credit", finalidade="credito")
-    monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(tabelas))
+    monkeypatch.setattr(
+        rotas, "regras_da_api", lambda: _regras(tabelas, com_os_certificados)
+    )
     monkeypatch.setattr(rotas, "abrir_porta", lambda _banco: _porta(pasta))
     cliente = aj.cliente_da_api(monkeypatch, AGORA)
     return cliente.get(f"/data/v1/credit/{EMPRESA}", headers=aj.bearer(chave.valor))
@@ -447,10 +503,25 @@ def test_sem_a_prontidao_da_securitizacao_a_divida_nao_sai_nem_o_texto_dela(
     assert credito.LIMITE_DA_DIVIDA not in corpo["limits"]
 
 
+def test_com_a_prontidao_mas_sem_a_linha_de_direito_os_certificados_nao_saem(
+    banco, monkeypatch, tmp_path
+):
+    # o estado de hoje depois da prontidão e antes do PR das linhas: só a lista dos FIDC
+    corpo = _rota(banco, monkeypatch, tmp_path, DO_CREDITO | DA_SECURITIZACAO).json()
+    assert set(corpo["market_debt"]) == {"fidcs_as_assignor_list"}
+    assert not {"cvm-cra", "cvm-cri"} & {fonte["source"] for fonte in corpo["sources"]}
+
+
 def test_com_a_prontidao_a_divida_sai_em_ingles_com_o_texto(
     banco, monkeypatch, tmp_path
 ):
-    corpo = _rota(banco, monkeypatch, tmp_path, DO_CREDITO | DA_SECURITIZACAO).json()
+    corpo = _rota(
+        banco,
+        monkeypatch,
+        tmp_path,
+        DO_CREDITO | DA_SECURITIZACAO,
+        com_os_certificados=True,
+    ).json()
     divida = corpo["market_debt"]
     assert set(divida) == {
         "cra_certificates",

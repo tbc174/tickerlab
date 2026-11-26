@@ -141,20 +141,29 @@ class LeitorDaDivida:
         )
 
     def _dos_certificados(
-        self, codigos: list[str], securitizadoras: list[str], dia: str
-    ) -> dict[tuple[str, str], dict]:
-        """O informe mais novo de cada certificado já público no dia (nome da securitizadora, emissão, mês)."""
+        self,
+        codigos: list[str],
+        securitizadoras: list[str],
+        produtos: list[str],
+        dia: str,
+    ) -> dict[tuple[str, str, str], dict]:
+        """O informe mais novo de cada certificado já público no dia (nome da securitizadora, emissão, mês), só
+        dos produtos que o portão liberou: um informe de produto negado nunca entra (achado P0 do Revisor)."""
         if CERTIFICADOS not in views(self.porta.con):
             return {}
         dados = self._consulta(
             CERTIFICADOS,
-            "list_contains($codigos, codigo_certificado)",
-            {"dia": dia, "codigos": codigos},
-            "QUALIFY row_number() OVER (PARTITION BY cnpj_securitizadora, codigo_certificado "
-            "ORDER BY competencia DESC, versao DESC) = 1",
+            "list_contains($codigos, codigo_certificado) AND list_contains($produtos, produto)",
+            {"dia": dia, "codigos": codigos, "produtos": produtos},
+            "QUALIFY row_number() OVER (PARTITION BY cnpj_securitizadora, codigo_certificado, produto "
+            "ORDER BY competencia DESC, versao DESC, publico_em DESC) = 1",
         )
         return {
-            (str(linha["cnpj_securitizadora"]), str(linha["codigo_certificado"])): linha
+            (
+                str(linha["cnpj_securitizadora"]),
+                str(linha["codigo_certificado"]),
+                str(linha["produto"]),
+            ): linha
             for linha in dados.to_dict(orient="records")
             if str(linha["cnpj_securitizadora"]) in securitizadoras
         }
@@ -180,7 +189,11 @@ class LeitorDaDivida:
             # o último mês em que o próprio certificado foi informado (com ou sem a empresa): mais novo que
             # `ultimo_mes_com_a_empresa` quer dizer que ele seguiu no informe sem ela; fato, sem conclusão nossa
             "ultimo_informe_do_certificado": _mes(dados.get("competencia")),
-            "publico_em": _dia(linhas["publico_em"].max()),
+            # o dia em que o item inteiro ficou público: o das linhas da empresa ou o do quadro geral usado, o mais
+            # novo (achado P1 do Revisor: o nome e a emissão podem vir de um informe publicado depois)
+            "publico_em": max(
+                d for d in (_dia(linhas["publico_em"].max()), _dia(dados.get("publico_em"))) if d is not None
+            ),
         })  # fmt: skip
 
     def _certificados(
@@ -197,13 +210,14 @@ class LeitorDaDivida:
         dados = self._dos_certificados(
             sorted({str(c) for c in linhas["codigo_certificado"]}),
             sorted({str(s) for s in linhas["cnpj_securitizadora"]}),
+            produtos,
             dia,
         )
         listas: dict[str, list[dict]] = {}
         for (securitizadora, codigo, produto), grupo in linhas.groupby(
             ["cnpj_securitizadora", "codigo_certificado", "produto"], sort=False
         ):
-            chave = (str(securitizadora), str(codigo))
+            chave = (str(securitizadora), str(codigo), str(produto))
             listas.setdefault(str(produto), []).append(
                 self._um_certificado(grupo, dados.get(chave, {}))
             )

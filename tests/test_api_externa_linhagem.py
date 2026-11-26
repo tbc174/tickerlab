@@ -20,10 +20,12 @@ from src.api_externa.conjuntos import (
     comparaveis,
     compradores,
     credito,
+    divida_de_mercado,
     empresas,
     ficha,
     prospeccao,
     setores,
+    sinais_de_tamanho,
     vinculos,
 )
 from src.api_externa.tabelas_por_cnpj import REGISTRO, TRATA_COMO_PESSOA
@@ -245,7 +247,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
     for linha in DIREITOS_DA_API_EXTERNA:
         if linha.conjunto == credito.CONJUNTO:
             # fato da ficha: conta nossa sobre a tabela (`test_api_externa_credito` confere a origem)
-            assert linha.tabelas == (credito.FATOS[linha.campo].tabela,), linha
+            if linha.campo in credito.FATOS:
+                assert linha.tabelas == (credito.FATOS[linha.campo].tabela,), linha
+            else:
+                # lista da dívida de mercado (linha 1126): as tabelas que o leitor lê
+                origem = divida_de_mercado.CAMPOS[linha.campo]
+                assert linha.tabelas == origem.tabelas, linha
+                assert linha.fonte == origem.fonte, linha
             continue
         if linha.conjunto == setores.CONJUNTO:
             # coluna da ficha da noite (`test_api_externa_setores` confere que a ficha a traz)
@@ -278,6 +286,13 @@ def test_todo_campo_existe_na_tabela_ou_no_raio_x_do_cadastro_do_fundo():
             }
             assert {f"{t}_{sufixo}" for t in tipos} <= colunas, linha
             continue
+        if (linha.fonte, linha.campo) == (
+            sinais_de_tamanho.FONTE_DA_ANATEL,
+            "acessos_na_anatel",
+        ):
+            # soma nossa dos acessos do último mês por serviço (linha 1130, `sinais_de_tamanho.acessos_por_servico`)
+            assert {"competencia", "servico", "acessos", "cnpj"} <= colunas, linha
+            continue
         if linha.tabelas == (CADASTRO,):
             colunas |= do_raio_x
         if (linha.tabelas, linha.campo) == (
@@ -300,6 +315,9 @@ def test_do_cnpj_so_tem_direito_o_que_a_rota_que_tira_quem_e_pessoa_serve():
         empresas.LISTA_DE_EMPRESAS: (
             *empresas.CAMPOS_DO_RETRATO_PJ,
             empresas.RETRATO_DO_CADASTRO,
+            # os sinais de tamanho do perfil (linha 1130): `sinais_de_tamanho` lê o mesmo retrato pela
+            # `retratos_de_empresa`, e o perfil só chega lá depois do cadastro, que já barrou quem é pessoa
+            *sinais_de_tamanho.DA_RECEITA,
         ),
     }
     # a ficha de crédito tira pessoa com a mesma trava (`empresas.e_empresa`)
