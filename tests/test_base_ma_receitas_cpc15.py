@@ -211,7 +211,7 @@ def test_frase_com_nome_de_pessoa_nao_entra():
     [
         "de FULANO EXEMPLAR e de Beltrano de Tal",
         "do Dr. Fulano Exemplar e da Dra. Beltrana de Tal",
-        "dos Srs. Fulano Exemplar e Beltrano de Tal, inscritos sob o 11144477735,",
+        "dos Srs. Fulano Exemplar e Beltrano de Tal, inscritos sob o 88800000046,",
     ],
 )
 def test_o_trecho_nao_leva_nome_proprio_que_nao_seja_o_da_alvo(vendedores):
@@ -230,7 +230,7 @@ def test_o_trecho_nao_leva_nome_proprio_que_nao_seja_o_da_alvo(vendedores):
             "EXEMPLAR",
             "Beltran",
             "Tal",
-            "11144477735",
+            "88800000046",
         ):
             assert pedaco not in lida.trecho
         assert "R$ 12.000" in lida.trecho
