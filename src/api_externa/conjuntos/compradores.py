@@ -1017,13 +1017,23 @@ def _passagens(historico: pd.DataFrame) -> dict[tuple[str, str], list[Passagem]]
                 None,
             )
         elif movimento == "data_corrigida" and par in abertas:
-            abertas[par] = (entrada, _mais_tarde(abertas[par][1], publico), None)
+            abertas[par] = _corrigida(abertas[par], entrada, publico)
         elif movimento == "saiu" and par in abertas:
             inicio, publicada, _ = abertas.pop(par)
             passagens[par].append((inicio, publicada, str(linha["mes"])))
     for par, aberta in abertas.items():
         passagens[par].append(aberta)
     return passagens
+
+
+def _corrigida(aberta: Passagem, nova: date | None, publico: date | None) -> Passagem:
+    """A data corrigida pela Receita é de quem continuou (não é entrada nova): a passagem começa na mais antiga das
+    duas datas, para a correção a uma data mais nova não apagar o tempo em que a sócia já estava (revisão cruzada do
+    PR 1347). Só a data que muda o início leva o dia em que a correção ficou pública."""
+    inicio, publicada, _ = aberta
+    if nova is None or (inicio is not None and inicio <= nova):
+        return aberta
+    return (nova, _mais_tarde(publicada, publico), None)
 
 
 def _inicio_da_volta(

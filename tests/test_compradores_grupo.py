@@ -391,6 +391,29 @@ def test_a_socia_que_sai_e_volta_com_a_mesma_data_segue_no_grupo(tmp_path):
     assert {e["raiz_do_cnpj"] for e in _linha(corpo, a)["grupo"]["empresas"]} == {b}
 
 
+def test_a_data_corrigida_para_mais_nova_nao_apaga_o_tempo_em_que_ja_estava(tmp_path):
+    """Revisão cruzada do PR 1347 (P1): a holding H é sócia do alvo desde 2015 e do comprador desde 2019; o comprador
+    entra no alvo em 2022 (reorganização). Em 2025 a Receita corrige a data de H no alvo para 2024: H continuou, então
+    a entrada segue reorganização."""
+    mundo = Mundo(montar=False)
+    holding, comprador, alvo = (
+        mundo.comprador("33"),
+        mundo.comprador(),
+        mundo.empresa("20"),
+    )
+    mundo.entrar(holding, comprador, "2019-01-01")
+    mundo.entrar(holding, alvo, "2015-01-01")
+    mundo.entrar(comprador, alvo, "2022-05-10")
+    comprada = mundo.empresa("20")
+    mundo.entrar(
+        comprador, comprada, "2025-02-10"
+    )  # uma compra real, para ele estar na lista
+    _corrigir_data(mundo, holding, alvo, "2024-11-20", "2025-01")
+    corpo = _corpo(mundo, tmp_path)
+    assert _entradas_de(_linha(corpo, comprador)) == {comprada}
+    assert corpo["entradas_intragrupo"] == 1
+
+
 def test_a_volta_com_a_data_antiga_nao_vale_para_o_tempo_fora(tmp_path):
     """Revisão de segurança do PR 1347 (P2): a holding X saiu do alvo em 2023 e voltou em 2025 com a data de 2015. O
     comprador do grupo de X entrou no alvo em 2024, quando X estava fora: é compra, não reorganização."""
