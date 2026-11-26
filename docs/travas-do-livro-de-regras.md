@@ -57,7 +57,7 @@ Regra nova com trava entra aqui, com o nome do teste.
 | Nenhum e-mail pessoal versionado | `test_nenhum_email_pessoal_versionado` (provedores de e-mail pessoal; não roda nos PRs só de texto) | em parte |
 | Nenhum CPF que confere em teste ou exemplo | `tests/test_exemplos_sem_cpf.py` | máquina |
 | Logs sem e-mail nem nome | `hide_parameters` acima; o texto de cada log não é conferido | em parte |
-| Sem `LICENSE` e sem dependência GPL/AGPL | `test_repositorio_sem_arquivo_de_licenca_aberta`, `test_nenhuma_biblioteca_instalada_e_gpl` e o passo do CI "Licenças permitidas" (pacotes do `web/`) | máquina |
+| Sem `LICENSE` e sem biblioteca GPL/AGPL no produto (ferramenta à parte e pesquisa são liberadas) | `test_repositorio_sem_arquivo_de_licenca_aberta`, `test_nenhuma_biblioteca_instalada_e_gpl` e o passo do CI "Licenças permitidas" (pacotes do `web/`) | máquina |
 | Endereço de servidor ou IP fora do código | `tests/test_travas_endereco_de_servidor.py`: nome de máquina e número da rede privada (faixa CGNAT); a faixa do Docker e os números inventados dos testes passam; IP público e nome de servidor fora da rede privada não são conferidos | em parte |
 | Nome de pessoa em código, log ou teste | nada | só texto |
 

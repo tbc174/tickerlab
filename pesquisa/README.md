@@ -85,7 +85,9 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
   Sem ele, PDF vai por `pypdf` e planilha por `openpyxl`.
 - **Crawl4AI** (Apache-2.0) para página que monta o conteúdo com JavaScript: `renderizar=true`. Pede o navegador
   do Playwright (`playwright install chromium`); sem ele a ferramenta avisa.
-- **Proibidos:** Firecrawl, PyMuPDF (AGPL) e qualquer dependência GPL/AGPL.
+- **Código GPL/AGPL não entra por `import` nem por pin** (PyMuPDF, por exemplo). Firecrawl e semelhantes podem ser
+  usados como ferramenta à parte (serviço por HTTP, linha de comando), sem copiar código deles: regra "GPL e AGPL"
+  em "Segurança e privacidade" do `AGENTS.md` da raiz.
 
 ## Testes
 

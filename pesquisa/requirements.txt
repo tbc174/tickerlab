@@ -2,7 +2,8 @@
 # O núcleo roda só com o requirements.txt da raiz (requests, bs4, lxml, openpyxl, pypdf).
 # O que está aqui é o que o servidor MCP e os motores opcionais pedem.
 #
-# Proibido neste projeto: Firecrawl, PyMuPDF e qualquer dependência GPL/AGPL.
+# Não entra aqui, por pin, nenhuma biblioteca GPL/AGPL (PyMuPDF, por exemplo); Firecrawl e semelhantes só como
+# ferramenta à parte, por HTTP (regra "GPL e AGPL" no AGENTS.md da raiz).
 #
 #   python -m venv C:\Users\<voce>\ambientes\bot-pesquisa
 #   C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -m pip install -r requirements.txt -r pesquisa\requirements.txt

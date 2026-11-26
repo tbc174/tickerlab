@@ -199,8 +199,14 @@ O Tiago trabalha com mais de uma IA (decisão na pasta privada, ADR 0110). Para 
 - Logs em JSON sem e-mail nem nome; auditoria só com ids.
 - LGPD: exportar e apagar a conta já existem (`src/conformidade.py`); não guardar dado pessoal novo
   sem pensar em exportação e exclusão.
-- O repositório não tem licença de código aberto (todos os direitos reservados): não adicionar
-  `LICENSE` nem dependência GPL/AGPL.
+- O repositório não tem licença de código aberto (todos os direitos reservados): não adicionar `LICENSE`.
+- **GPL e AGPL** (regra de 26/11/2026, pedido do Tiago: a proibição larga fazia a pesquisa perder informação): o que
+  continua proibido é o código entrar no produto, ou seja, `import`, pin nos `requirements*.txt`, trecho copiado ou
+  biblioteca GPL/AGPL na imagem Docker, no app, na API, no conector, no site, na base ou no `trader/`. Fora disso a
+  licença do programa não barra nada: pode-se ler e citar projeto GPL/AGPL em pesquisa, usar a informação, a
+  documentação e o dado que ele publica (a licença do dado é a do dado, não a do programa) e usar um programa GPL/AGPL
+  como ferramenta à parte (serviço chamado por HTTP ou MCP, linha de comando, no PC ou hospedado), sem copiar código
+  dele para cá. Serviço de terceiro recebe só página e termo público: nunca CPF, nome de pessoa nem dado de cliente.
 
 ## Padrões de código
 
