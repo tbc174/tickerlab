@@ -1,7 +1,7 @@
 """A análise completa de um CNPJ numa chamada: cada bloco que a chave pode ver, com fonte e data (frente 3, 18/11/2026).
 
 `montar_analise` junta, para um CNPJ e um dia (`known_at`), os blocos das rotas por CNPJ que já existem (cadastro,
-sócios PJ, vínculos, eventos, crédito, ativos, comparáveis e as vizinhas do mesmo ramo) e os das tabelas ligadas pelo CNPJ do registro
+sócios PJ, vínculos, eventos, crédito, ativos e comparáveis) e os das tabelas ligadas pelo CNPJ do registro
 `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, para a organização com o
 conjunto de integridade no contrato, sanções da CGU, embargos do IBAMA e lista suja do MTE), na ordem de
 `docs/padrao-de-analise.md`: uma frase no topo (só com o que o cadastro serviu), os blocos, a linha do tempo (só
@@ -12,15 +12,13 @@ análise não traz e os limites.
 chamar a rota do bloco, e a análise não libera nada novo. Se o bloco está aberto decide-se **antes de ler a
 empresa**, pelas linhas que o portão libera hoje para a organização (contrato, linha de direito, prontidão, coleta
 e guarda): bloco fechado não é lido, não aparece em lugar nenhum da resposta e não muda o tempo nem o tamanho dela
-conforme a empresa (a exceção são as vizinhas, que fechadas vêm só com o aviso, igual para toda empresa). Tabela
-que ganha prontidão num conjunto lido aqui entra sozinha, sem mudar este arquivo; o bloco de uma entrada do
-registro abre quando o portão libera um campo dela (não o conjunto inteiro: o `profiles` tem também o cadastro).
+conforme a empresa. Tabela que ganha prontidão num conjunto lido aqui entra sozinha, sem mudar este arquivo; o
+bloco de uma entrada do registro abre quando o portão libera um campo dela (não o conjunto inteiro: o `profiles`
+tem também o cadastro).
 
 **Prazo:** depois do cadastro, os outros blocos correm ao mesmo tempo, cada um no próprio cursor da porta; o que
-passa do prazo tem a consulta interrompida e sai em `nao_respondeu_a_tempo`. O bloco cortado não faz consulta nova.
-As vizinhas têm um teto próprio, menor que o prazo (`TETO_DAS_VIZINHAS_EM_SEGUNDOS`): cortadas, saem no lugar delas
-só com o aviso (`nao_coube_no_tempo`). A conexão do banco (o portão) é usada por um bloco de cada vez e fecha para
-todos quando o prazo acaba.
+passa do prazo tem a consulta interrompida e sai em `nao_respondeu_a_tempo`. A conexão do banco (o portão) é usada
+por um bloco de cada vez e fecha para todos quando o prazo acaba.
 
 **Tempo por bloco:** cada pedido deixa no log uma linha por bloco (quando começou, quanto durou, quanto ficou no
 portão e na fila da trava dele, e se respondeu, atrasou ou quebrou) e uma do total, com um id do pedido feito na
@@ -61,7 +59,6 @@ from src.api_externa.conjuntos import (
     por_tabela,
     socios_pj,
     vinculos,
-    vizinhas,
 )
 from src.api_externa.nomes import para_fora
 from src.portao_externo import Finalidade
@@ -86,13 +83,6 @@ log = logging.getLogger(__name__)
 ANALISE = Finalidade.ANALISE.value
 CREDITO = Finalidade.CREDITO.value
 PRAZO_EM_SEGUNDOS = 20.0  # abaixo dos 30 s do conector, com folga para a resposta
-# o teto só das vizinhas do mesmo ramo, contado de quando os blocos são soltos. Medido em 26/11/2026 na base que
-# vai para produção, com os limites da API (1536 MB, meio núcleo): dentro da análise o bloco levou de 7,9 a 11,1 s
-# (de 5,5 a 9,2 s sozinho) e os outros 14 acabaram em até 5,6 s. Sem teto, ele sozinho podia segurar a resposta
-# até o prazo; em série, depois dos outros, o total ficava maior
-TETO_DAS_VIZINHAS_EM_SEGUNDOS = 12.0
-# o que a consulta pedida depois do corte recebe (o mesmo erro do DuckDB para a interrompida)
-CONSULTA_RECUSADA = "o bloco passou do tempo: consulta recusada"
 # a análise é um resumo: a lista inteira de cada bloco está na rota dele. Com 20, a da Vale no ensaio de 18/11
 # deu ~100 mil caracteres, perto do teto do conector (120 mil); com 10, cabe com folga um grupo maior
 LINHAS_POR_BLOCO = 10
@@ -109,11 +99,7 @@ class Bloco:
     """Um bloco da análise: a chave dele na resposta, o conjunto e a finalidade do contrato, a leitura e o que
     o portão tem de liberar para ele abrir (`exige`: todos estes pares fonte e campo; `algum`: ao menos um
     destes; os dois vazios: qualquer linha do conjunto fora das tabelas do registro). `listas`: as listas do corpo que, todas vazias, querem
-    dizer que o bloco não achou nada; `vazio`, a mesma pergunta para o corpo que não é de listas. `conta_pedido`:
-    se o bloco conta um pedido no conjunto dele; `aviso_se_fechado`: o que o bloco fechado diz na resposta (sem
-    ele, bloco fechado não aparece). `teto`: os segundos que o bloco tem, menos que o prazo da análise;
-    `aviso_no_corte`: o que o bloco cortado (pelo teto ou pelo prazo) diz no lugar do corpo, em vez de sair em
-    `nao_respondeu_a_tempo`."""
+    dizer que o bloco não achou nada; `vazio`, a mesma pergunta para o corpo que não é de listas."""
 
     nome: str
     conjunto: str
@@ -123,10 +109,6 @@ class Bloco:
     listas: tuple[str, ...] = ()
     algum: tuple[tuple[str, str], ...] = ()
     vazio: Callable[[dict], bool] | None = None
-    conta_pedido: bool = True
-    aviso_se_fechado: str | None = None
-    teto: float | None = None
-    aviso_no_corte: str | None = None
 
 
 def _perfil(
@@ -187,12 +169,6 @@ def _comparaveis(
     )
 
 
-def _vizinhas(
-    porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
-) -> Servido | None:
-    return vizinhas.LeitorDeVizinhas(porta, permitido, linhas).vizinhas(cnpj, dia)
-
-
 def _do_registro(nome: str) -> Bloco:
     """Um bloco do registro de tabelas ligadas pelo CNPJ (`tabelas_por_cnpj`): abre quando o portão libera um
     campo de uma das tabelas dele (o conjunto, como `profiles`, também tem as linhas de outros blocos)."""
@@ -239,24 +215,6 @@ BLOCOS = (
     Bloco("ativos", ativos.CONJUNTO, ANALISE, _ativos),
     Bloco(
         "comparaveis", comparaveis.CONJUNTO, ANALISE, _comparaveis, listas=("pares",)
-    ),
-    # ao lado das abertas, as empresas do mesmo ramo no município e na UF (linha 1038), pelo conjunto da busca
-    Bloco(
-        vizinhas.BLOCO,
-        vizinhas.CONJUNTO,
-        ANALISE,
-        _vizinhas,
-        vizinhas.EXIGE,
-        ("no_municipio", "na_uf"),
-        vazio=vizinhas.sem_vizinhas,
-        # EXCEÇÃO à regra "um pedido por conjunto lido" (Diretoria, 26/11/2026): as vizinhas não contam pedido,
-        # nem na quota nem no consumo, para a análise custar o mesmo de antes a quem já tem a busca de empresas
-        # no contrato (cobrar mais mudaria a conta de quem não pediu; cobrar por elas é decisão comercial). A
-        # permissão do conjunto é conferida como a de qualquer bloco, e o teto do leitor limita o que sai
-        conta_pedido=False,
-        aviso_se_fechado=vizinhas.NAO_HABILITADO,
-        teto=TETO_DAS_VIZINHAS_EM_SEGUNDOS,
-        aviso_no_corte=vizinhas.NAO_COUBE,
     ),
     # as tabelas do registro entram sozinhas: entrada nova em `tabelas_por_cnpj` com ONDE_SAI = ANALISE
     *(_do_registro(nome) for nome in tabelas_por_cnpj.blocos(tabelas_por_cnpj.ANALISE)),
@@ -551,7 +509,6 @@ class _Consultas:
         self._con = con
         self.vezes = 0
         self.segundos = 0.0
-        self.cortada = False
 
     def _cronometrado[T](self, fazer: Callable[[], T]) -> T:
         inicio = time.monotonic()
@@ -560,15 +517,7 @@ class _Consultas:
         finally:
             self.segundos += time.monotonic() - inicio
 
-    def interrupt(self) -> None:
-        """Interrompe a consulta em curso e recusa as próximas: a interrupção que chega entre duas consultas o
-        DuckDB esquece, e o bloco cortado seguia lendo e gastando CPU."""
-        self.cortada = True  # antes de interromper: quem pede depois já vê a marca
-        self._con.interrupt()
-
     def execute(self, sql: str, parametros: object = None) -> "_Consultas":
-        if self.cortada:
-            raise duckdb.InterruptException(CONSULTA_RECUSADA)
         # devolve o contador, não a conexão: o `df` ou o `fetchall` de quem pede passam por ele
         try:
             self._cronometrado(lambda: self._con.execute(sql, parametros))
@@ -613,7 +562,6 @@ class _Tarefa:
     # time.monotonic() do começo e do fim da leitura, gravados pela linha de execução do bloco
     comecou: float | None = None
     acabou: float | None = None
-    cortada: bool = False  # passou do teto próprio e foi interrompida antes do prazo
 
 
 def _ler_no_cursor(
@@ -637,8 +585,8 @@ def _ler_ao_mesmo_tempo(
     prazo: float,
     relogio: _Relogio,
 ) -> tuple[dict[str, Servido | None], list[str]]:
-    """Cada bloco no próprio cursor e na própria linha de execução; o que passa do prazo, ou do teto próprio,
-    é interrompido. O tempo de cada um vai para o `relogio`, também quando um bloco quebra."""
+    """Cada bloco no próprio cursor e na própria linha de execução; o que passa do prazo é interrompido. O tempo
+    de cada um vai para o `relogio`, também quando um bloco quebra."""
     limite = time.monotonic() + prazo
     tarefas = [_Tarefa(bloco, _cursor(porta)) for bloco in blocos]
     # os portões de todos antes do primeiro bloco: montar um pergunta ao banco, e com blocos já correndo cada
@@ -654,17 +602,16 @@ def _ler_ao_mesmo_tempo(
             tarefa.futuro = executor.submit(
                 contexto.run, _ler_no_cursor, tarefa, permitido, linhas, cnpj, dia
             )
-        _cortar_nos_tetos(tarefas, time.monotonic(), limite)
         wait(
-            [t.futuro for t in tarefas if t.futuro and not t.cortada],
+            [t.futuro for t in tarefas if t.futuro],
             timeout=max(limite - time.monotonic(), 0.0),
         )
     finally:
         portoes.encerrar()
         executor.shutdown(wait=False, cancel_futures=True)
-    # todas antes do erro: as atrasadas são interrompidas. A cortada no teto fica de fora mesmo que a linha dela
-    # já tenha acabado, com o erro da interrupção, que não é erro do bloco
-    terminadas = [t for t in tarefas if not t.cortada and _terminou(t)]
+    terminadas = [
+        t for t in tarefas if _terminou(t)
+    ]  # todas antes do erro: as atrasadas são interrompidas
     for tarefa in tarefas:
         relogio.anotar(
             tarefa.bloco,
@@ -686,19 +633,6 @@ def _ler_ao_mesmo_tempo(
         else:
             atrasados.append(tarefa.bloco.nome)
     return lidos, atrasados
-
-
-def _cortar_nos_tetos(tarefas: list[_Tarefa], soltas: float, limite: float) -> None:
-    """Espera cada bloco com teto próprio até o teto (contado de `soltas`, nunca além do prazo) e interrompe o
-    que não acabou; os outros blocos seguem lendo."""
-    com_teto = sorted(
-        (t for t in tarefas if t.bloco.teto is not None),
-        key=lambda t: t.bloco.teto or 0,
-    )
-    for tarefa in com_teto:
-        fim = min(soltas + (tarefa.bloco.teto or 0), limite)
-        wait([tarefa.futuro], timeout=max(fim - time.monotonic(), 0.0))  # type: ignore[list-item]
-        tarefa.cortada = not _terminou(tarefa)
 
 
 def _estado(tarefa: _Tarefa, terminou: bool, portoes: _PortaoDividido) -> str:
@@ -801,7 +735,7 @@ def _montar(
     lidos, atrasados = _ler_ao_mesmo_tempo(
         porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante, relogio
     )
-    for bloco in (bloco for bloco in outros if bloco.conta_pedido):
+    for bloco in outros:
         servido = lidos.get(bloco.nome)
         # dois blocos do mesmo conjunto (o cadastro e os regulados, em `profiles`) somam as linhas, e o conjunto
         # só conta como negado se nenhum dos dois saiu
@@ -964,16 +898,6 @@ MARCOS = {
 }
 
 
-def _fechados_com_aviso(abertos: tuple[Bloco, ...]) -> dict[str, dict]:
-    """O bloco que avisa quando está fechado para a chave, com o aviso no lugar do corpo: nada foi lido."""
-    nomes = {bloco.nome for bloco in abertos}
-    return {
-        bloco.nome: {"nao_habilitado": bloco.aviso_se_fechado}
-        for bloco in BLOCOS
-        if bloco.aviso_se_fechado and bloco.nome not in nomes
-    }
-
-
 def _vazio(bloco: Bloco, corpo: dict) -> bool:
     if bloco.vazio is not None:
         return bloco.vazio(corpo)
@@ -1006,14 +930,6 @@ class _Montagem:
             if servido is not None:
                 servidos[bloco.nome] = servido
         return servidos
-
-    def _cortados_com_aviso(self) -> dict[str, dict]:
-        """O bloco que não respondeu a tempo e tem aviso próprio: sai no lugar dele, não na lista dos atrasados."""
-        return {
-            bloco.nome: {"nao_coube_no_tempo": bloco.aviso_no_corte}
-            for bloco in self.outros
-            if bloco.aviso_no_corte and bloco.nome in self.atrasados
-        }
 
     def _nao_encontrado(self) -> list[dict]:
         nao = []
@@ -1051,7 +967,6 @@ class _Montagem:
             limites.append(
                 f"A linha do tempo traz os {LINHAS_DA_LINHA_DO_TEMPO} marcos mais novos dos blocos desta resposta."
             )
-        cortados = self._cortados_com_aviso()
         corpo = {
             "cnpj": self.lido.corpo.get("cnpj"),
             "como_era_em": self.dia.isoformat(),
@@ -1059,16 +974,13 @@ class _Montagem:
             "blocos": {
                 nome: {k: v for k, v in servido.corpo.items() if k not in REPETIDOS}
                 for nome, servido in servidos.items()
-            }
-            | _fechados_com_aviso(self.outros)
-            | cortados,
+            },
             "linha_do_tempo": linha_do_tempo,
             "leituras": self._leituras(servidos),
             "nao_encontrado": self._nao_encontrado(),
             "nao_respondeu_a_tempo": [
                 {"bloco": para_fora(nome), "por_que": NAO_RESPONDEU}
                 for nome in self.atrasados
-                if nome not in cortados
             ],
             "ainda_nao_traz": ainda_nao_traz(bloco.nome for bloco in self.outros),
             "pedidos_usados": len(consumo),

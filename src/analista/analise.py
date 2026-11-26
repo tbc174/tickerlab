@@ -27,7 +27,7 @@ from base import cnpj as cnpj_
 from base.porta import Porta
 from src.analista import leitura, vinculos
 from src.api_externa import tabelas_por_cnpj
-from src.api_externa.conjuntos import Permitido, vizinhas
+from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos import analise as analise_
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import para_fora
@@ -51,10 +51,6 @@ CONJUNTOS_FORA_DA_TELA = frozenset(
         tabelas_por_cnpj.CONJUNTO_DE_COMPRAS_PUBLICAS,
     }
 )
-# conjuntos de bloco que a tela ainda não desenha: o das vizinhas do mesmo ramo (linha 1038), que saem na API e no
-# conector; faltam os nomes das colunas no app novo. Vale só para a análise: a busca de empresas da tela segue
-CONJUNTOS_AINDA_SEM_TELA = frozenset({vizinhas.CONJUNTO})
-VIZINHAS_NAO_DISPONIVEIS = "Vizinhas do mesmo ramo: não disponível nesta tela"
 CREDITO_NAO_DISPONIVEL = (
     "Fatos de crédito (dívida e pagamentos ao poder público): não disponível nesta tela"
 )
@@ -85,11 +81,6 @@ TITULOS: dict[str, tuple[str, str]] = {
     "comparaveis": (
         "Comparáveis",
         "CVM: companhias do mesmo grupo de setores.",
-    ),
-    # fora da tela por enquanto (BLOCOS_FORA_DA_TELA); o título fica para quando entrar
-    "vizinhas": (
-        "Vizinhas do mesmo ramo",
-        "Receita Federal: empresas ativas com a mesma atividade principal no município e na UF.",
     ),
     "regulados": (
         "Atividades reguladas",
@@ -166,7 +157,7 @@ def liberadas_na_tela(
         for linha in regras.linhas
         if linha.canal == Canal.API_EXTERNA
         and linha.finalidade == Finalidade.ANALISE
-        and linha.conjunto not in CONJUNTOS_FORA_DA_TELA | CONJUNTOS_AINDA_SEM_TELA
+        and linha.conjunto not in CONJUNTOS_FORA_DA_TELA
         and decidir(
             Pedido(
                 fonte=linha.fonte,
@@ -261,22 +252,17 @@ def _com_bloco_da_tela(itens: Iterable[dict], chave_do_titulo: str) -> list[dict
     return lista
 
 
-def _ainda_nao_traz(textos: Iterable[str], fora_da_tela: list[str]) -> list[str]:
+def _ainda_nao_traz(textos: Iterable[str]) -> list[str]:
     na_tela = [
         texto.replace(analise_.NAO_DISPONIVEL_NESTA_CHAVE, NAO_DISPONIVEL_NA_TELA)
         for texto in textos
     ]
-    return [CREDITO_NAO_DISPONIVEL, *fora_da_tela, *na_tela]
+    return [CREDITO_NAO_DISPONIVEL, *na_tela]
 
 
 def corpo_da_tela(corpo: dict) -> dict:
     """O corpo da montagem na voz da tela: blocos em lista, na ordem, com título; nomes de bloco da tela nas
     listas; o que a análise não consulta dito para a tela; limites sem nome de campo da API."""
-    # o aviso de "não habilitado" fala da chave da API: na tela, o bloco vira uma linha do que ela não traz
-    avisados = {
-        n for n, dentro in corpo["blocos"].items() if "nao_habilitado" in dentro
-    }
-    fora_da_tela = [VIZINHAS_NAO_DISPONIVEIS] if vizinhas.BLOCO in avisados else []
     blocos = [
         {
             "nome": nome,
@@ -285,7 +271,6 @@ def corpo_da_tela(corpo: dict) -> dict:
             "corpo": dentro,
         }
         for nome, dentro in corpo["blocos"].items()
-        if nome not in avisados
     ]
     return {
         "cnpj": corpo["cnpj"],
@@ -306,6 +291,6 @@ def corpo_da_tela(corpo: dict) -> dict:
         "nao_respondeu_a_tempo": _com_bloco_da_tela(
             corpo["nao_respondeu_a_tempo"], "titulo"
         ),
-        "ainda_nao_traz": _ainda_nao_traz(corpo["ainda_nao_traz"], fora_da_tela),
+        "ainda_nao_traz": _ainda_nao_traz(corpo["ainda_nao_traz"]),
         "limites": list(leitura.limites_da_tela(corpo["limites"], AVISOS_DA_TELA)),
     }
