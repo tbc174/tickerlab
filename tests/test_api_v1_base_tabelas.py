@@ -739,6 +739,7 @@ def test_so_e_consultavel_a_tabela_que_diz_o_dia_publico_e_separa_a_pessoa(clien
     "nome",
     [
         "entradas_de_socio_pj",
+        "participacoes_de_socio_pj",
         "cnpj_situacao_cadastral",
         "controladas_pj",
         "anvisa_por_empresa",
@@ -756,6 +757,7 @@ def test_a_que_so_a_api_externa_serve_nao_sai_na_consulta_aberta(cliente, nome):
     portão e da prontidão; a consulta aberta dá o mesmo 404 e nem a lista as mostra."""
     assert {
         "entradas_de_socio_pj",
+        "participacoes_de_socio_pj",
         "cnpj_situacao_cadastral",
         "controladas_pj",
         "anvisa_por_empresa",

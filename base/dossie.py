@@ -107,7 +107,13 @@ ESPERAM_A_MARCA_DE_PESSOA: frozenset[str] = frozenset()
 # (`base/prontidao.py::PRONTIDAO`, ADR 0108) está em dia; sem ela, a mesma recusa de tabela inexistente (Tiago,
 # 11/11/2026: "Sim, fecha"). A API por chave já exige a prontidão no portão; a tela com login não passa por aqui.
 DERIVADAS_DO_CNPJ = frozenset(
-    {"entidades", "identificadores", "ligacoes", "entradas_de_socio_pj"}
+    {
+        "entidades",
+        "identificadores",
+        "ligacoes",
+        "entradas_de_socio_pj",
+        "participacoes_de_socio_pj",
+    }
 )
 PREFIXO_DO_CNPJ = "cnpj_"
 
@@ -173,6 +179,8 @@ def exige_prontidao_na_consulta_aberta(nome_da_tabela: str) -> bool:
 SO_PELA_API_EXTERNA = frozenset(
     {
         "entradas_de_socio_pj",
+        # linha 1032: o quadro de sócios virado, só sócia PJ; em casa, nada o serve de fora ainda
+        "participacoes_de_socio_pj",
         "cnpj_situacao_cadastral",
         "controladas_pj",
         "anvisa_por_empresa",

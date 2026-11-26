@@ -2923,6 +2923,35 @@ Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: q
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `participacoes_de_socio_pj`
+
+O quadro de sócios da Receita visto pela sócia pessoa jurídica: de quais empresas ela é sócia no retrato do mês mais recente, e desde quando (a data de entrada que a Receita dá). Filtre por `raiz_socio_pj`. É só o quadro de hoje: quem entrou e já saiu está em `entradas_de_socio_pj`. Ser sócia não é mandar, e na S.A. o quadro lista administradores, não acionistas: acionista de S.A. não aparece. **Sem pessoa:** só sócio do tipo 1 e só raízes de `cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, mesmo com CNPJ). A empresa sócia de si mesma não conta. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, quadro de sócios vigente (`scripts/montar_entradas_de_socio_pj.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `raiz_socio_pj`, `cnpj_basico`
+- **Três datas:** publico_em = `disponivel_em`; aconteceu_em = `data_entrada`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/participacoes_de_socio_pj/<2 primeiros caracteres da raiz da sócia>.parquet` (servidor de casa)
+- **Linhagem:** Derivada de `cnpj_qsa` e `cnpj_estabelecimentos_pj`; o manifesto de cada Parquet lista o SHA-256 dos ZIPs de sócios da Receita. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `raiz_socio_pj` | Raiz do CNPJ (8 caracteres) da pessoa jurídica que é sócia | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) da empresa de que ela é sócia | texto |
+| `data_entrada` | Data de entrada na sociedade, como a Receita publica (a mais antiga, se a sócia se repete) | data (dia) |
+| `qualificacao` | Código da qualificação da sócia no retrato | texto |
+| `mes_do_retrato` | Mês do arquivo da Receita de onde o quadro saiu | AAAA-MM |
+| `disponivel_em` | Desde quando este quadro era público: o dia 21 do mês do retrato (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês; antes disso a tabela não responde | data (dia) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `anvisa_por_empresa`
 
 Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas práticas): o total e os que estão em vigor, uma linha por raiz de CNPJ e por retrato do arquivo da Anvisa. **É um sinal de porte, uma aproximação, não faturamento:** um registro não diz quanto a empresa vende, e empresa pequena pode ter muitos produtos. **Sem pessoa:** só pessoa jurídica; a raiz que tem qualquer linha de empresário individual, MEI, natureza do grupo 4 ou CNPJ que a Receita guardada não tem sai inteira, nos totais e nos ativos. Cada registro conta uma vez (a versão mais nova vista até o retrato), o que saiu do arquivo não conta, e situação vazia ou fora do vocabulário nunca conta como ativa. Medicamento com apresentações de situações diferentes ('Ativo / Inativo') conta como ativo. O retrato mais antigo é de 2026-10-29 (o arquivista começou ali): antes disso a base não viu a Anvisa.
