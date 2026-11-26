@@ -279,6 +279,7 @@ def test_pedido_leva_chave_modelo_e_ferramentas(tmp_path: Path):
     nomes = {f["function"]["name"] for f in pedido["json"]["tools"]}
     assert nomes == {
         "buscar_pagina",
+        "mapear_site",
         "baixar_documento",
         "extrair",
         "validar_fato",

@@ -8,6 +8,7 @@ documento com prova**.
 |---|---|
 | `iniciar_rodada(hipotese)` | abre uma rodada: UMA hipótese, limites e relógio zerados |
 | `buscar_pagina(url, renderizar?, forcar?)` | título, texto, links (documentos primeiro) e SHA-256 do original; `renderizar` usa o Crawl4AI |
+| `mapear_site(url, termo?)` | os endereços reais do site (sitemap e índice do Firecrawl hospedado), documentos primeiro, em vez de chutar; `termo` filtra aqui, pelo endereço e pelo título |
 | `baixar_documento(url, forcar?)` | PDF, planilha, CSV ou ZIP; guarda o original com proveniência (URL, data, cabeçalhos) e SHA-256 |
 | `extrair(sha256, motor?, pagina_*, linha_inicial?, planilha?, contem?)` | texto por página e tabelas por planilha e linha; `contem` filtra linhas e páginas |
 | `validar_fato(afirmacao, valor, trecho, sha256, posicao?, exigir_no_trecho?)` | o trecho tem de estar **literalmente** no original, e o valor e os itens exigidos (CNPJ, CEG, ano) dentro do trecho: `confirmado` ou `pendente` |
@@ -15,7 +16,7 @@ documento com prova**.
 
 ## Limites por rodada
 
-1 hipótese, 12 buscas, 30 candidatos, profundidade 2, 250 MB, 30 minutos (`pesquisa/rodada.py`). Estourou, a
+1 hipótese, 12 buscas, 2 mapas do site, 30 candidatos, profundidade 2, 250 MB, 30 minutos (`pesquisa/rodada.py`). Estourou, a
 ferramenta recusa e diz qual limite.
 
 ## Regras que o bot cumpre sozinho
@@ -98,7 +99,18 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
     `filters[cpf][$eq]=`, `cpf eq`, `cpf in`, `cpf like`, em qualquer decodificação) não sai;
   - página que responde 401, 403 ou 429 é bloqueio: vira recusa "não se contorna" e não passa ao Firecrawl;
   - teto de créditos por processo em `TICKERLAB_FIRECRAWL_TETO` (padrão 50); a rodada diz quanto gastou;
-  - `proxy: basic` (sem o proxy que vence anti-robô: bloqueio não se contorna) e `storeInCache: false`.
+  - `proxy: basic` (sem o proxy que vence anti-robô: bloqueio não se contorna) e `storeInCache: false`;
+  - **mapa do site** (`mapear_site`, `/v2/map`, 1 crédito por chamada): o mesmo porteiro, a mesma trava de
+    parâmetro cpf e o mesmo teto. Vai só o endereço do site: o termo nunca sai do PC (o filtro é feito aqui,
+    sobre até 20 mil endereços, pelo mesmo preço). Sem `location` (escolhe proxy por país) e sem subdomínios; conta
+    como candidato da rodada; o `robots.txt` do endereço
+    pedido vale antes; volta só o que é do mesmo endereço, a um passo dele na contagem de profundidade.
+    Link com sequência de CPF no endereço ou no título não volta ao modelo nem fica anotado na rodada: a resposta
+    conta `omitidos_por_cpf` (a conferência é uma só, em `pesquisa/pessoa.py`: formatado, mascarado, com qualquer
+    pontuação ou codificado; 11 dígitos seguidos também contam).
+    Site com bloqueio lembrado (anti-robô, 401, 403 ou 429, em qualquer caminho, esquema ou porta do mesmo host),
+    ou cujo `robots.txt` respondeu bloqueio, não vai ao mapa; chamada
+    que cai no caminho conta o crédito mesmo assim.
 - **Código GPL/AGPL não entra por `import` nem por pin** (PyMuPDF, por exemplo). Firecrawl e semelhantes podem ser
   usados como ferramenta à parte (serviço por HTTP, linha de comando), sem copiar código deles: regra "GPL e AGPL"
   em "Segurança e privacidade" do `AGENTS.md` da raiz.
