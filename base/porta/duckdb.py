@@ -173,6 +173,8 @@ ARQUIVOS: dict[str, str] = {
     "anatel_pados": "anatel_pados/*.parquet",
     "anatel_produtos_homologados": "anatel_produtos_homologados/*.parquet",
     "anp_tancagem": "anp_tancagem/*.parquet",
+    "anp_revendedores": "anp_revendedores/*.parquet",
+    "anp_revendedores_produtos": "anp_revendedores_produtos/*.parquet",
     "comprasgov_sicaf": "comprasgov_sicaf/*.parquet",
     "bps_compras": "bps_compras/*.parquet",
     "ibama_rapp_emissoes_atmosfericas": "ibama_rapp_emissoes_atmosfericas/*.parquet",

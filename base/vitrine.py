@@ -25,7 +25,12 @@ import pandas as pd
 
 from base import cruzamentos_das_fechadas as fechadas
 from base.cnpj import normalizar_cnpj
-from base.dossie import CONTAS_DA_DRE, exigir_que_pode_mostrar, pode_consultar_aberto
+from base.dossie import (
+    CONTAS_DA_DRE,
+    SO_NO_MODO_DONO,
+    exigir_que_pode_mostrar,
+    pode_consultar_aberto,
+)
 from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import (
     FONTES_SO_INTERNAS,
@@ -229,7 +234,8 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
 
 # Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
 # por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
-TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"})
+# E as que só o modo dono vê (`dossie.SO_NO_MODO_DONO`).
+TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"}) | SO_NO_MODO_DONO
 # Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
 # mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.
 COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
@@ -640,7 +646,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "licencas",
         "Licenças e registros nas agências",
-        "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
+        "Autorizações da Anvisa, concessões, tanques e postos de combustíveis na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
         "os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, "
         "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
         "patentes, desenhos e programas de computador no INPI.",
@@ -652,6 +658,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "anvisa_por_empresa",
             "anp_concessionarios",
             "anp_tancagem",
+            "anp_revendedores",
             "antt_rntrc",
             "antt_operadores_multimodais",
             "antt_seguros_de_transportadores",

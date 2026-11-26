@@ -419,6 +419,8 @@ DESTINOS: dict[str, Destino] = {
     "anp-vendas-distribuidora": _tabela("anp_vendas"),
     "anp-producao-poco": _planejada("serie-5/PR3", "produção por poço, com o operador"),
     "anp-concessionarios": _tabela("anp_concessionarios"),
+    "anp-revendedores": _tabela("anp_revendedores"),
+    "anp-revendedores-api": _tabela("anp_revendedores_produtos"),
     "ons-geracao-usina": _tabela("ons_geracao"),
     "ons-capacidade-geracao": _tabela("ons_capacidade"),
     "ons-restricao-eolica-solar": _tabela("ons_restricao"),

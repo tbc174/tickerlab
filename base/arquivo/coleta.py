@@ -174,6 +174,14 @@ class Resultado:
     falhas: list[str] = field(default_factory=list)
     bloqueadas: list[str] = field(default_factory=list)
     mudaram: list[str] = field(default_factory=list)
+    sem_nova_tentativa: bool = (
+        False  # uma falha pediu para não insistir (`FalhaSemNovaTentativa`)
+    )
+
+
+class FalhaSemNovaTentativa(ValueError):
+    """A resposta não vale e insistir na mesma rodada não é o certo: a lista mudou no meio da leitura, a fonte
+    recusou ou respondeu outra coisa (pedido de cadastro, teste de robô). Falha, e fica para a próxima rodada."""
 
 
 class ErroDeDescoberta(Exception):
@@ -421,6 +429,7 @@ def arquivar(
                 resultado.bloqueadas.append(alvo.url)
             else:
                 resultado.falhas.append(alvo.url)
+            resultado.sem_nova_tentativa |= isinstance(erro, FalhaSemNovaTentativa)
             detalhe = f"{type(erro).__name__}: {erro}"
             _registrar(fonte.id, alvo.url, None, None, "falhou", detalhe, agora)
     if len(alvos) > 1 and resultado.sem_arquivo == len(alvos):

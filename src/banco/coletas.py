@@ -154,6 +154,10 @@ LICENCAS = {
     "anatel-pados": "PADOs da Anatel: licença a confirmar (página recusou em 14/11/2026)",
     "anatel-homologados": "Homologados da Anatel: licença a confirmar (página recusou em 14/11/2026)",
     "anp-tancagem": "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+    # linha 1123: a tancagem e os bicos só saem da API de Revendedores, que não declara licença, e os termos do
+    # portal da ANP vedam o uso comercial do conteúdo do site (o Decreto 8.777/2016, art. 4º, é a favor). Leitura mais
+    # estreita. O cadastro em CSV ("anp-revendedores") é CC BY e cai na família "anp"
+    "anp-revendedores-api": "API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)",
     # conferência de 19/11/2026: o Banco de Preços em Saúde não declara licença (o S3 do CKAN não tem página, e o
     # portal do SUS não a mostra); a resposta do Fala.BR do "ms" cobriu só CNES, SIH, SIA, CIHA e oncologia.
     # Leitura mais estreita (ADR 0102): a confirmar, sem perguntar à fonte
@@ -458,6 +462,7 @@ REVENDA = {
     "anatel-pados": A_CONFIRMAR,
     "anatel-homologados": A_CONFIRMAR,
     "anp-tancagem": A_CONFIRMAR,
+    "anp-revendedores-api": A_CONFIRMAR,
     "bps": A_CONFIRMAR,  # conferência de 19/11/2026 (ver `LICENCAS`)
     "mme": VENDAVEL_RISCO_ASSUMIDO,
     "finep": VENDAVEL_RISCO_ASSUMIDO,
@@ -894,6 +899,8 @@ COLETA_E_GUARDA: dict[str, ColetaEGuarda] = {
             "anatel-pados",
             "anatel-homologados",
             "anp-tancagem",
+            # linha 1123 (26/11): API de Revendedores sem termos próprios; os do portal da ANP vedam o uso comercial
+            "anp-revendedores-api",
             # conferência de 19/11: o Banco de Preços em Saúde não tem página de licença nem de termos
             "bps",
         ),

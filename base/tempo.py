@@ -146,6 +146,9 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     ("anatel_produtos_homologados", "data_do_certificado"): "aconteceu_em",
     ("anatel_produtos_homologados", "validade_do_certificado"): "ate",
     ("anp_tancagem", "data_da_posicao"): "referencia",
+    # linha 1123: a autorização e a vinculação à bandeira são fatos do posto
+    ("anp_revendedores", "data_da_autorizacao"): "aconteceu_em",
+    ("anp_revendedores", "data_da_vinculacao"): "aconteceu_em",
     # linha 770 (planos da ANS): o registro do plano é um fato; a situação vale desde o dia que a ANS diz
     ("ans_produtos", "registrado_em"): "aconteceu_em",
     ("ans_produtos", "situacao_desde"): "aconteceu_em",

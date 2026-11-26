@@ -579,6 +579,8 @@ REGRAS: dict[str, Regra] = {
     "anatel_produtos_homologados": Regra(chave=("id_na_fonte", "visto_em")),
     "anm_tah": Regra(chave=("id_na_fonte", "visto_em")),
     "anp_tancagem": Regra(chave=("id_na_fonte", "visto_em")),
+    "anp_revendedores": Regra(chave=("id_na_fonte", "visto_em")),
+    "anp_revendedores_produtos": Regra(chave=("id_na_fonte", "visto_em")),
     "mte_pat": Regra(chave=("id_na_fonte", "visto_em")),
     # compras públicas (linha 988): o cadastro do SICAF é um retrato (sem data de fato, uma linha por CNPJ); no BPS
     # cada compra tem o dia e o preço, então o salto de linhas e a escala do preço entre os anos contam

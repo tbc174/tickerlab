@@ -6408,6 +6408,79 @@ Os tanques das instalações autorizadas pela ANP no abastecimento de combustív
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `anp_revendedores`
+
+Os postos de combustíveis automotivos que a ANP tem autorizados e em operação, pelo CNPJ do estabelecimento: município, bandeira (a distribuidora, ou bandeira branca) e desde quando, e o dia da autorização. Mostra o tamanho da rede de postos de uma empresa e a troca de bandeira desde a primeira coleta. Só CNPJ de dígito certo; a razão social e o endereço ficam de fora. Licença Creative Commons Attribution na página do conjunto no dados.gov.br, lida em 26/11/2026: cite a ANP
+
+- **Fonte:** ANP: dados abertos, cadastro dos revendedores varejistas de combustíveis automotivos (`base/anp_revendedores.py`)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** A ANP atualiza todo dia; o arquivista guarda um retrato por mês
+- **Atraso de divulgação:** A fonte não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-26 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anp_revendedores/cadastro.parquet` (servidor de casa, `base/anp_revendedores.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da empresa (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `uf` | Sigla da unidade da federação do posto | texto |
+| `municipio` | Município do posto, como a ANP escreve | texto |
+| `bandeira` | Distribuidora a que o posto está vinculado, ou bandeira branca, como a ANP escreve | texto |
+| `data_da_autorizacao` | Dia em que a ANP publicou a autorização | data (dia) |
+| `data_da_vinculacao` | Dia da vinculação do posto à bandeira atual | data (dia) |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `anp_revendedores_produtos`
+
+O detalhe dos postos de combustíveis da ANP por produto: capacidade de tancagem em m³, número de bicos e interdição, pelo CNPJ do estabelecimento (junte com `anp_revendedores` pelo CNPJ). Uso interno: licença a confirmar. Só CNPJ de dígito certo
+
+- **Fonte:** ANP: API de Revendedores (`base/anp_revendedores.py`)
+- **Licença:** API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Sem calendário fixo: a coleta da API não é agendada e roda à mão
+- **Atraso de divulgação:** A fonte não escreve a data de publicação; a linha vale desde o dia da coleta em que a vimos
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
+- **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)
+- **Chaves:** `id_na_fonte`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-11-26 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/anp_revendedores_produtos/produtos.parquet` (servidor de casa, `base/anp_revendedores.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da empresa (14 dígitos com máscara) | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres) | texto |
+| `produto` | Combustível que o posto vende, como a ANP escreve (vazio no posto sem produto na fonte) | texto |
+| `interdicao` | Situação de interdição do posto, como a API escreve (vazia na coleta conferida em 26/11/2026) | texto |
+| `tancagem_m3` | Capacidade de armazenamento do produto no posto, em metros cúbicos | número com decimais, na unidade da fonte |
+| `bicos` | Número de bicos de abastecimento do produto | número inteiro |
+| `id_na_fonte` | Identificador da linha no arquivo da fonte | texto |
+| `consta` | Verdadeiro enquanto a linha está no arquivo; falso na linha do dia em que saiu dele | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): a porta não serve a linha | verdadeiro ou falso |
+| `visto_em` | Dia do arquivo em que esta versão da linha foi vista | data (dia) |
+| `disponivel_em` | Desde quando a linha vale para a base: o dia do arquivo em que ela (ou a mudança) apareceu; o arquivo não diz quando cada linha saiu | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `comprasgov_sicaf`
 
 O cadastro de fornecedores do governo federal (SICAF): se a empresa está ativa no cadastro e habilitada a licitar, o CNAE, a natureza jurídica, o porte e o município. Mostra quem já se preparou para vender ao governo. Uma linha por CNPJ, das listas de ativos e de inativos. Só CNPJ de dígito certo (o CPF, inteiro ou mascarado, sai e é contado); o nome do titular fica de fora (a razão social sai pelo CNPJ, na Receita)
