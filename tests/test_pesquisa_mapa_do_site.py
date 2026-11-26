@@ -379,3 +379,60 @@ def test_agente_oferece_e_executa_o_mapa(tmp_path: Path):
     )
     assert resposta["ok"] is True
     assert mapeador.chamadas == [(f"{SITE}/", "bolsas")]
+
+
+# --- achados P2 da revisão de segurança (PR 1346) -------------------------------------------------
+
+
+@pytest.mark.parametrize("caminho", ["/", "/outra/pagina"])
+def test_site_que_bloqueou_o_bot_nao_vai_ao_mapa(tmp_path: Path, caminho: str):
+    from base.arquivo.coleta import BloqueioAntiRobo
+
+    mapeador = _MapeadorFalso([])
+    pesquisador, _ = _pesquisador(
+        tmp_path, mapeador, {f"{SITE}{caminho}": BloqueioAntiRobo("desafio")}
+    )
+    assert pesquisador.buscar_pagina(f"{SITE}{caminho}")["ok"] is False
+    resposta = pesquisador.mapear_site(f"{SITE}/", "prouni")
+    assert resposta["ok"] is False and "bloque" in resposta["motivo"]  # type: ignore[operator]
+    assert mapeador.chamadas == []
+
+
+def test_site_com_404_lembrado_ainda_pode_ser_mapeado(tmp_path: Path):
+    from tests.ajudantes_da_pesquisa import erro_http
+
+    mapeador = _MapeadorFalso([])
+    pesquisador, _ = _pesquisador(tmp_path, mapeador, {f"{SITE}/chute": erro_http(404)})
+    assert pesquisador.buscar_pagina(f"{SITE}/chute")["ok"] is False
+    assert pesquisador.mapear_site(f"{SITE}/")["ok"] is True
+    assert len(mapeador.chamadas) == 1
+
+
+def test_mapa_que_caiu_no_caminho_conta_o_credito():
+    import requests
+
+    def post_que_cai(*args: object, **kwargs: object) -> None:
+        raise requests.Timeout("sem resposta")
+
+    contador = ContadorDeCreditos(5)
+    mapear = renderizacao.mapeador_hospedado(
+        CHAVE, Porteiro([]), contador, post=post_que_cai
+    )
+    with pytest.raises(requests.Timeout):
+        mapear(f"{SITE}/", None)
+    assert (contador.creditos, contador.mapas) == (1, 1)
+
+
+def test_raspagem_que_caiu_no_caminho_conta_o_credito():
+    import requests
+
+    def post_que_cai(*args: object, **kwargs: object) -> None:
+        raise requests.ConnectionError("caiu")
+
+    contador = ContadorDeCreditos(5)
+    renderizar = renderizacao.renderizador_hospedado(
+        CHAVE, Porteiro([]), contador, post=post_que_cai
+    )
+    with pytest.raises(requests.ConnectionError):
+        renderizar(f"{SITE}/painel")
+    assert (contador.creditos, contador.paginas) == (1, 1)

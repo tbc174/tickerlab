@@ -301,6 +301,23 @@ def _conferir_custo_fixo(url: str) -> None:
         )
 
 
+def _postar_contando(
+    post: Callable[..., requests.Response],
+    contador: ContadorDeCreditos,
+    rota: str,
+    *,
+    mapa: bool = False,
+    **pedido: object,
+) -> requests.Response:
+    """O envio ao Firecrawl. Se a resposta não chega (tempo esgotado, conexão caída), o pedido pode ter
+    sido cobrado: conta o máximo de uma chamada, para o teto nunca ser passado."""
+    try:
+        return post(rota, **pedido)
+    except requests.RequestException:
+        contador.registrar(CUSTO_MAXIMO_POR_CHAMADA, mapa=mapa)
+        raise
+
+
 def renderizador_hospedado(
     chave: str,
     porteiro: Porteiro,
@@ -316,7 +333,9 @@ def renderizador_hospedado(
         _conferir_parametro_de_cpf(url)
         _conferir_custo_fixo(url)
         contador.conferir()
-        resposta = post(
+        resposta = _postar_contando(
+            post,
+            contador,
             ROTA_DO_FIRECRAWL_HOSPEDADO,
             json={
                 "url": url,
@@ -407,8 +426,11 @@ def mapeador_hospedado(
         }
         if termo:
             pedido["search"] = termo
-        resposta = post(
+        resposta = _postar_contando(
+            post,
+            contador,
             ROTA_DO_MAPA_HOSPEDADO,
+            mapa=True,
             json=pedido,
             headers={"Authorization": f"Bearer {chave}"},
             timeout=TEMPO_LIMITE_EM_SEGUNDOS,

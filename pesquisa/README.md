@@ -104,6 +104,8 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
     parâmetro cpf e o mesmo teto. O termo de busca também passa pelo porteiro, tem até 80 caracteres e é recusado
     com sequência de CPF. Sem `location` (escolhe proxy por país) e sem subdomínios; o `robots.txt` do endereço
     pedido vale antes; volta só o que é do mesmo endereço, a um passo dele na contagem de profundidade.
+    Site com bloqueio lembrado (anti-robô, 401, 403 ou 429, em qualquer caminho) não vai ao mapa; chamada
+    que cai no caminho conta o crédito mesmo assim.
 - **Código GPL/AGPL não entra por `import` nem por pin** (PyMuPDF, por exemplo). Firecrawl e semelhantes podem ser
   usados como ferramenta à parte (serviço por HTTP, linha de comando), sem copiar código deles: regra "GPL e AGPL"
   em "Segurança e privacidade" do `AGENTS.md` da raiz.

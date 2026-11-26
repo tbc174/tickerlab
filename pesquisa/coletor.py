@@ -283,6 +283,7 @@ class Coletor:
                     "o mapa do site pede o Firecrawl hospedado, que não está ligado",
                     lembrar=False,
                 )
+            self._conferir_bloqueio_no_site(url)
             self.rodada.gastar_mapa()
             self._conferir_robots(url)
             achados = self._pedir_mapa(url, termo)
@@ -300,6 +301,15 @@ class Coletor:
             "proximo_passo": "buscar_pagina ou baixar_documento num destes endereços",
             "aviso": AVISO_DE_CONTEUDO,
         }
+
+    def _conferir_bloqueio_no_site(self, url: str) -> None:
+        """Site que já bloqueou o bot não vai ao Firecrawl (outro IP): seria contornar o bloqueio."""
+        partes = urlsplit(url)
+        if self.memoria.bloqueio_valido_no_site(f"{partes.scheme}://{partes.netloc}"):
+            raise Recusa(
+                "o site já bloqueou o bot (anti-robô, 401, 403 ou 429): bloqueio não se contorna",
+                lembrar=False,
+            )
 
     def _pedir_mapa(self, url: str, termo: str | None) -> list[dict[str, str]]:
         assert self.mapeador is not None

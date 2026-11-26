@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 VALIDADE_DO_NEGATIVO_DIAS = 7
+STATUS_DE_BLOQUEIO = (401, 403, 429)
 TABELAS = ("visto", "negativo", "fato")
 
 ESQUEMA = """
@@ -119,6 +120,23 @@ class Memoria:
         if idade > timedelta(days=VALIDADE_DO_NEGATIVO_DIAS):
             return None
         return negativo
+
+    def bloqueio_valido_no_site(self, origem: str) -> Negativo | None:
+        """Um bloqueio lembrado (anti-robô, 401, 403 ou 429) em qualquer endereço de `origem`
+        (`https://host`), ainda na validade. Bloqueio não se contorna: nem por outro caminho do site."""
+        padrao = origem.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        marcas = ",".join("?" * len(STATUS_DE_BLOQUEIO))
+        with self._conexao() as conexao:
+            linhas = conexao.execute(
+                "SELECT * FROM negativo WHERE (url = ? OR url LIKE ? ESCAPE '\\')"
+                f" AND (status_http IN ({marcas}) OR motivo LIKE 'bloqueio%')",
+                (origem, padrao + "/%", *STATUS_DE_BLOQUEIO),
+            ).fetchall()
+        for linha in linhas:
+            negativo = Negativo(**dict(linha))
+            if self.negativo_valido(negativo.url) is not None:
+                return negativo
+        return None
 
     def registrar_fato(
         self,
