@@ -53,7 +53,7 @@ NUMERO_COMPRIDO_DE_PESSOA = re.compile(
 ESPACOS = re.compile(r"\s{2,}")
 
 
-def _sem_numero_de_pessoa(razao: pd.Series) -> pd.Series:
+def sem_numero_de_pessoa(razao: pd.Series) -> pd.Series:
     """Tira 11 ou 12 dígitos soltos da razão social (CPF mal escrito); CNPJ (14) não é tocado."""
     limpo = razao.str.replace(NUMERO_COMPRIDO_DE_PESSOA, "", regex=True)
     return limpo.str.replace(ESPACOS, " ", regex=True).str.strip(" -")
@@ -73,7 +73,7 @@ def _empresas_pj(parte: pd.DataFrame) -> pd.DataFrame:
     saida = pd.DataFrame(
         {
             "cnpj_basico": parte["cnpj_basico"].str.strip(),
-            "razao_social": _sem_numero_de_pessoa(
+            "razao_social": sem_numero_de_pessoa(
                 tirar_cpf_da_coluna(parte["razao_social"].str.strip())
             ),
             "natureza_juridica": natureza,
