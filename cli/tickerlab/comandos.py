@@ -475,6 +475,13 @@ def _um_codigo(
     show_default=True,
     help="Quantos compradores trazer (1 a 50; o plano pode cortar antes).",
 )
+@click.option(
+    "--ordem",
+    type=click.Choice(["entradas", "rede"]),
+    default="entradas",
+    show_default=True,
+    help="A ordem: entradas como sócia (a de sempre) ou o tamanho da rede no setor.",
+)
 @opcao_como_era
 @opcao_planilha
 @opcao_json
@@ -485,17 +492,21 @@ def compradores(
     uf: str | None,
     anos: int,
     limite: int,
+    ordem: str,
     como_era: datetime | None,
     como_json: bool,
     destino: Path | None,
 ) -> None:
     """Quem comprou ou entrou como sócio no setor nos últimos anos: candidatos a comprador.
 
-    Só pessoa jurídica. Cada comprador traz os sinais (entrou como sócio, fundo sócio, controla empresa do setor)
-    e as evidências, com exemplos da empresa do setor, a UF e a data. Movimento passado não é intenção de compra:
-    leia os `limits`.
+    Só pessoa jurídica. Cada comprador traz os sinais (entrou como sócio, fundo sócio, controla empresa do setor,
+    filial na UF com a matriz em outra, lote de filiais abertas no mesmo dia), as evidências, com exemplos, a UF e
+    a data, e a rede no setor (estabelecimentos ativos por UF). Movimento passado não é intenção de compra: leia os
+    `limits`.
     """
-    corpo = _api(contexto).compradores(cnae, uf, anos, limite, _dia(como_era))
+    corpo = _api(contexto).compradores(
+        cnae, uf, anos, limite, _dia(como_era), ordem == "rede"
+    )
     _mostrar(corpo, como_json, formato.resposta_de_dado, destino)
 
 

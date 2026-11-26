@@ -126,6 +126,15 @@
         "maximo": 50,
         "minimo_aberto": false,
         "valores": []
+      },
+      "--ordem": {
+        "minimo": null,
+        "maximo": null,
+        "minimo_aberto": false,
+        "valores": [
+          "entradas",
+          "rede"
+        ]
       }
     },
     "fundo": {
