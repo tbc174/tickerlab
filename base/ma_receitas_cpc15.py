@@ -28,7 +28,6 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
-from pathlib import Path
 
 import pandas as pd
 
@@ -81,9 +80,6 @@ COLUNAS_DA_DRE = ["cnpj", "referencia", "versao", "exercicio_fim", "receita"]
 
 FOLGA_DE_ARREDONDAMENTO = 1.005
 ALCANCE_DA_SECAO = 15_000  # caracteres entre o nome da alvo e a frase da receita
-ALCANCE_DO_VERBO = (
-    200  # caracteres depois de "adquiriu" em que o nome da comprada aparece
-)
 PAGINAS_PARA_SER_CABECALHO = 3
 FRACAO_PARA_SER_CABECALHO = 0.3
 MIL, MILHAO, BILHAO = 1_000.0, 1_000_000.0, 1_000_000_000.0
@@ -248,6 +244,26 @@ _GATILHO = (
     r"|(?i:adquiri)\w+[^.]{0,200}?\b(?:da|na)\s+(?i:empresa|sociedade|companhia)\s+)"
 )
 ANCORA = re.compile(rf"{_GATILHO}(?P<nome>{_NOME}){_APELIDO}")
+NOME_COM_APELIDO = re.compile(rf"(?P<nome>{_NOME}){_APELIDO.removesuffix('?')}")
+# os jeitos de a nota citar uma empresa, para saber se passou a falar de outra
+_UMA_PALAVRA = r"(?P<nome>[A-ZÀ-Ú][\wÀ-ÿ&\-]*)"
+_ARTIGO_DE_EMPRESA = r"(?:(?i:empresa|sociedade|companhia)\s+)?"
+OBJETO_DE_COMPRA = re.compile(
+    r"(?i:controle|aquisi[çc][ãa]o|compra|quotas|cotas|a[çc][õo]es|capital(?:\s+social)?"
+    r"|participa[çc][ãa]o(?:\s+societ[áa]ria)?)\s+(?i:da|do|de|na|no)\s+"
+    rf"{_ARTIGO_DE_EMPRESA}{_UMA_PALAVRA}"
+)
+SUJEITO = re.compile(
+    rf"\b(?i:a)\s+{_ARTIGO_DE_EMPRESA}{_UMA_PALAVRA}\s+(?:(?i:teria)\s+)?(?i:contribu)"
+)
+RAZAO_SOCIAL_CITADA = re.compile(_NOME)
+ACAO_DE_COMPRA = re.compile(
+    r"(adquiri(u|ram|mos)|comprou|compramos|incorporou|incorporacao d[ae]|controle d[aeo]|aquisicao d[aeo])"
+    r"[^.;:]{0,50}$"
+)
+INTERPOSTA = re.compile(
+    r"(controlada|subsidiaria|atraves d\w*|por meio d\w*|intermedio d\w*)[\s\w]{0,20}$"
+)
 
 
 @dataclass(frozen=True)
@@ -255,17 +271,27 @@ class _Alvo:
     posicao: int
     nome: str
     apelido: str | None
+    outros: frozenset[str] = frozenset()  # apelidos que a nota define em outro lugar
 
     def chaves(self) -> set[str]:
         """Como a nota chama a alvo, para reconhecer a menção a outra."""
-        return {c for c in (normalizar(self.nome), normalizar(self.apelido)) if c}
+        nomes = (self.nome, self.apelido, *self.outros)
+        return {c for c in (normalizar(n) for n in nomes) if c}
 
 
 def _alvos(documento: _Documento) -> list[_Alvo]:
-    return [
-        _Alvo(m.start("nome"), m.group("nome"), m.group("apelido"))
-        for m in ANCORA.finditer(documento.texto)
+    definidos = [
+        (normalizar(m["nome"]) or "", m["apelido"])
+        for m in NOME_COM_APELIDO.finditer(documento.texto)
     ]
+    alvos = []
+    for m in ANCORA.finditer(documento.texto):
+        chave = normalizar(m["nome"])
+        outros = {
+            apelido for nome, apelido in definidos if chave and nome.endswith(chave)
+        }
+        alvos.append(_Alvo(m.start("nome"), m["nome"], m["apelido"], frozenset(outros)))
+    return alvos
 
 
 def _alvo_da_frase(
@@ -488,11 +514,6 @@ VARIAS = re.compile(
     r"(empresas|sociedades|companhias|aquisicoes|negocios)|\bempresas adquiridas\b|\badquiridas\b"
 )
 PESSOA = re.compile(r"\b(sr|sra|srta|senhor|senhora|cpf)\b|\d{3}\.\d{3}\.\d{3}-\d{2}")
-# o verbo de uma compra: se a frase com ele não cita a alvo, a nota passou a falar de outra empresa
-COMPROU = re.compile(
-    r"\b(adquiri(u|ram|mos)|comprou|compramos)\b"
-    r"|\b(conclui\w*|realizou o fechamento d)\w? a (aquisicao|compra)\b"
-)
 
 
 def _e_pro_forma(frase: str) -> bool:
@@ -518,15 +539,25 @@ def _forma_por_palavra(frase: str) -> str:
     return CONSOLIDADO if "consolidad" in frase else SO_DA_ADQUIRIDA
 
 
-def _outra_compra_no_meio(documento: _Documento, alvo: _Alvo, fim: int) -> bool:
-    """Entre o nome da alvo e `fim` há um verbo de compra seguido de outro nome que não o dela.
+def _cita_outra_empresa(documento: _Documento, alvo: _Alvo, fim: int) -> bool:
+    """Entre o nome da alvo e `fim` a nota cita outra empresa: pelo objeto de uma compra ("o controle
+    da Gama"), pelo sujeito ("a Gama teria contribuído") ou pela razão social. Na dúvida, é outra.
 
-    Olha o trecho depois do verbo, e não a frase: "Ltda." não termina frase e juntaria as duas compras.
+    Exigir que todo nome seja o da alvo vale para qualquer redação; uma lista de verbos não valeria.
+    A empresa do grupo que faz a compra ("através de sua controlada Vetor S.A.") não conta.
     """
-    for verbo in COMPROU.finditer(documento.dobrado, alvo.posicao, fim):
-        depois = documento.dobrado[verbo.end() : verbo.end() + ALCANCE_DO_VERBO]
-        limpa = f" {normalizar(depois) or ''} "
-        if not any(f" {c} " in limpa for c in alvo.chaves()):
+    palavras = {p for c in alvo.chaves() for p in c.split()} | DE_NOTA
+    trecho = documento.texto[:fim]
+    for padrao in (OBJETO_DE_COMPRA, SUJEITO):
+        for achado in padrao.finditer(trecho, alvo.posicao):
+            if _dobrar(achado["nome"]) not in palavras:
+                return True
+    for achado in RAZAO_SOCIAL_CITADA.finditer(trecho, alvo.posicao):
+        chave = normalizar(achado[0]) or ""
+        if any(c in chave for c in alvo.chaves()):
+            continue
+        antes = documento.dobrado[max(0, achado.start() - 60) : achado.start()]
+        if ACAO_DE_COMPRA.search(antes) and not INTERPOSTA.search(antes):
             return True
     return False
 
@@ -549,7 +580,7 @@ def _desde_a_compra(
             alvos, inicio, fim, frase
         ) != alvo:
             continue
-        if _outra_compra_no_meio(documento, alvo, fim):
+        if _cita_outra_empresa(documento, alvo, fim):
             continue
         valor, _, _ = _valor(documento, inicio, fim)
         if valor is not None:
@@ -578,7 +609,7 @@ def _ler_frase(
     if referencia.month != 12 or ano not in (referencia.year, referencia.year - 1):
         return OUTRO_ANO
     alvo = _alvo_da_frase(alvos, inicio, fim, frase)
-    if alvo is None or _outra_compra_no_meio(documento, alvo, fim):
+    if alvo is None or _cita_outra_empresa(documento, alvo, fim):
         return SEM_ALVO
     valor, posicao, motivo = _valor(documento, inicio, fim)
     if valor is None:
@@ -875,14 +906,15 @@ COLUNAS_DAS_NOTAS = [
 ]  # fmt: skip
 
 
-def montar_dos_arquivos(
-    anos_das_notas: Sequence[Path],
+def montar_dos_anos(
+    anos_das_notas: Iterable[pd.DataFrame],
     controladas: pd.DataFrame,
     ler_receita: Callable[[set[str]], pd.DataFrame],
     ler_demonstracoes: Callable[[set[str]], pd.DataFrame],
     ler_empresas: Callable[[set[str]], set[str]],
 ) -> tuple[pd.DataFrame, Counter[str]]:
-    """A tabela a partir de `notas_dfp`, um ano por vez (o texto de um ano é grande).
+    """A tabela a partir de `notas_dfp`, um ano por vez (o texto de um ano é grande): quem chama lê o
+    Parquet (`COLUNAS_DAS_NOTAS`) e entrega um ano de cada vez.
 
     `ler_receita(nomes normalizados)`: `base.ma_ligacao.ler_receita`; `ler_demonstracoes(cnpjs)`: as
     linhas da DRE (conta 3.01) das compradoras, para conferir o valor contra a receita delas;
@@ -891,8 +923,8 @@ def montar_dos_arquivos(
     """
     achadas: list[tuple[dict, Leitura]] = []
     recusadas: Counter[str] = Counter()
-    for arquivo in anos_das_notas:
-        do_ano, nao = extrair(pd.read_parquet(arquivo, columns=COLUNAS_DAS_NOTAS))
+    for notas in anos_das_notas:
+        do_ano, nao = extrair(notas)
         achadas.extend(do_ano)
         recusadas.update(nao)
     nomes = {chave for _, lida in achadas if (chave := normalizar(lida.nome))}

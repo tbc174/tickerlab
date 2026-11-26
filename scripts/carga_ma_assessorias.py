@@ -294,8 +294,11 @@ def montar_receitas_cpc15(
         return todas[todas["cnpj"].isin(cnpjs)]
 
     def montar_receitas() -> pd.DataFrame:
-        saida, recusadas = ma_receitas_cpc15.montar_dos_arquivos(
-            notas,
+        saida, recusadas = ma_receitas_cpc15.montar_dos_anos(
+            (
+                pd.read_parquet(t, columns=ma_receitas_cpc15.COLUNAS_DAS_NOTAS)
+                for t in notas
+            ),
             pd.concat([ler_tabela(t) for t in controladas], ignore_index=True),
             lambda nomes: ma_ligacao.ler_receita(
                 receita["Empresas"],

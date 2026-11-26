@@ -502,13 +502,12 @@ def test_so_raiz_de_empresa_entra_na_tabela(tmp_path, natureza, opcao_mei, entra
     assert achadas == ({"22222222"} if entra else set())
 
 
-def test_a_montagem_tira_a_raiz_que_nao_e_de_empresa(tmp_path, monkeypatch):
+def test_a_montagem_tira_a_raiz_que_nao_e_de_empresa(monkeypatch):
     monkeypatch.setattr(cpc15, "dre_consolidada", lambda _: _dre())
     notas = _notas(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA))
-    notas.to_parquet(tmp_path / "2023.parquet")
 
-    tabela, recusadas = cpc15.montar_dos_arquivos(
-        [tmp_path / "2023.parquet"],
+    tabela, recusadas = cpc15.montar_dos_anos(
+        [notas],
         _controladas(*CONTROLADAS_ALFA),
         lambda _: _receita(),
         lambda _: pd.DataFrame({"cnpj": [COMPRADORA]}),
@@ -555,17 +554,35 @@ def test_sem_a_dre_ou_do_tamanho_da_compradora_nao_entra(dre):
     assert recusadas[cpc15.SEM_DRE if dre is None else cpc15.INCONSISTENTE] == 1
 
 
-def test_a_compra_de_outra_empresa_no_meio_nao_leva_o_nome_da_anterior():
+@pytest.mark.parametrize(
+    "compra",
+    [
+        "a Companhia adquiriu 100% das quotas da Gama Comércio Ltda.",
+        "a Companhia obteve o controle da Gama Comércio Ltda., mediante a compra de 100% das quotas.",
+        "a Companhia assumiu o controle da Gama.",
+        "a Companhia incorporou a Gama Comércio Ltda.",
+        "passaram a integrar o grupo os negócios que a Gama conduzia.",
+    ],
+)
+def test_a_compra_de_outra_empresa_no_meio_nao_leva_o_nome_da_anterior(compra):
     antiga = "Em 2021, a Companhia concluiu a aquisição da Zeta Logística Ltda."
     nova = (
-        "Em 1º de outubro de 2023, a Companhia adquiriu 100% das quotas da Gama Comércio Ltda. Se a aquisição "
-        "tivesse ocorrido em 1 de janeiro de 2023, a Gama teria contribuído com R$ 241.958 de receita líquida."
+        f"Em 1º de outubro de 2023, {compra} Se a aquisição tivesse ocorrido em 1 de janeiro de 2023, "
+        "a Gama teria contribuído com R$ 241.958 de receita líquida."
     )
 
     leituras, recusadas = cpc15.ler_notas(_paginas(antiga, nova), DEZ_2023)
 
     assert leituras == []
     assert recusadas[cpc15.SEM_ALVO] == 1
+
+
+def test_a_controlada_que_faz_a_compra_nao_conta_como_outra_empresa():
+    # "através de sua controlada Vetor S.A." está no meio e não é a comprada
+    assert (
+        _unica(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA)).nome
+        == "Alfa Distribuidora de Peças Ltda."
+    )
 
 
 @pytest.mark.parametrize(
