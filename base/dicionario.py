@@ -12184,12 +12184,15 @@ TABELAS: dict[str, Tabela] = {
                 TEXTO,
             ),
             "pagina": (
-                "Página do PDF da frase da receita, a partir de 1 (a de `notas_dfp`)",
+                "Página do PDF em que está a frase da receita, a partir de 1 (a de `notas_dfp`)",
                 NUMERO,
             ),
             "pagina_impressa": ("Número impresso nessa página, quando há", NUMERO),
             "pagina_da_secao": (
-                "Página do PDF em que a nota daquela compra começa",
+                (
+                    "Página do PDF em que a nota daquela compra começa (pode vir antes da de `pagina`; o número "
+                    "impresso no rodapé pode ser outro)"
+                ),
                 NUMERO,
             ),
             "trecho": (
@@ -12198,7 +12201,13 @@ TABELAS: dict[str, Tabela] = {
             ),
             "ligacao_por": ("controladas ou razao_social_da_receita", TEXTO),
             "resumo": ("O número, o ano, o documento e a página numa frase", TEXTO),
-            "disponivel_em": ("Data em que a versão da DFP ficou pública", DATA),
+            "disponivel_em": (
+                (
+                    "Desde quando a linha podia ser sabida: a entrega da versão da DFP ou, se só um FRE "
+                    "posterior identifica o CNPJ, a desse FRE"
+                ),
+                DATA,
+            ),
             "link": ("Endereço do pacote no ENET de onde o texto saiu", TEXTO),
             "origem_sha256": ("SHA-256 do texto da DFP guardado no acervo", TEXTO),
             "origem_coletada_em": ("Quando o texto foi coletado", MOMENTO),

@@ -15,7 +15,9 @@ conceito mais próximo do número); se discordam, se a unidade não está escrit
 uma empresa ou se o nome não leva a um CNPJ só, não há linha. Nunca se estima.
 
 **Sem olhar o futuro:** cada linha sai de uma versão de DFP e vale a partir da entrega dela
-(`disponivel_em`); a DRE usada na conta é a da mesma versão.
+(`disponivel_em`); a DRE usada na conta é a da mesma versão. Se só um FRE entregue depois identifica o
+CNPJ da comprada, a linha vale a partir desse FRE (`ligar_desde`). O cadastro da Receita é o de hoje.
+Parcela "desde a compra" que não diz o que cobre, ou que cobre só um pedaço do período, não serve.
 
 **Pessoa:** a linha só leva a razão social da empresa comprada, como a compradora a escreveu, e as frases
 da receita (frase com tratamento de pessoa ou CPF é recusada). CNPJ de pessoa (MEI, empresário
@@ -515,6 +517,16 @@ VARIAS = re.compile(
 )
 PESSOA = re.compile(r"\b(sr|sra|srta|senhor|senhora|cpf)\b|\d{3}\.\d{3}\.\d{3}-\d{2}")
 
+# a parcela "desde a compra" tem de dizer que cobre desde a compra (ou o exercício); um pedaço não serve
+DESDE_A_COMPRA = re.compile(
+    r"\bdesde\b|\ba partir d|\bexercicio\b|\bano de \d{4}\b|\bdata d[ae] aquisicao\b"
+)
+PEDACO_DO_PERIODO = re.compile(
+    r"trimestre|semestre|bimestre|(?<!12 )(?<!doze )\bmeses\b|\bmes de\b"
+    r"|\bde (fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)"
+    r"( de \d{4})? (a|ate) "
+)
+
 
 def _e_pro_forma(frase: str) -> bool:
     return bool(
@@ -575,6 +587,8 @@ def _desde_a_compra(
         frase = documento.dobrado[inicio:fim]
         if "contribu" not in frase or "receita" not in frase or _e_pro_forma(frase):
             continue
+        if PEDACO_DO_PERIODO.search(frase) or not DESDE_A_COMPRA.search(frase):
+            continue
         anos = {int(a) for a in re.findall(r"de dezembro de (\d{4})", frase)}
         if (anos and ano not in anos) or _alvo_da_frase(
             alvos, inicio, fim, frase
@@ -603,6 +617,8 @@ def _ler_frase(
     frase = documento.dobrado[inicio:fim]
     if VARIAS.search(frase):
         return VARIAS_ALVOS
+    if PEDACO_DO_PERIODO.search(frase):
+        return OUTRO_ANO
     casado = JANEIRO.search(frase)
     assert casado is not None
     ano = int(casado.group(1))
@@ -680,19 +696,20 @@ def ler_notas(
 
 
 # --- o nome até o CNPJ -------------------------------------------------------------------------------
+def _nome_da_controlada(razao: pd.Series) -> pd.Series:
+    """A razão social do FRE sem o apelido entre parênteses, normalizada como o nome da nota."""
+    sem_apelido = razao.fillna("").str.replace(r"\([^)]*\)", " ", regex=True)
+    return sem_apelido.map(normalizar)
+
+
 def _das_controladas(controladas: pd.DataFrame) -> dict[str, set[str]]:
     """nome normalizado → raízes, pelas controladas que as companhias informam no FRE."""
-    razao = (
-        controladas["razao_social"]
-        .fillna("")
-        .str.replace(r"\([^)]*\)", " ", regex=True)
-    )
     digitos = (
         controladas["cnpj"].fillna("").astype(str).str.replace(r"\D", "", regex=True)
     )
     saida: dict[str, set[str]] = {}
-    for nome, cnpj in zip(razao, digitos, strict=True):
-        chave = normalizar(nome)
+    chaves = _nome_da_controlada(controladas["razao_social"])
+    for chave, cnpj in zip(chaves, digitos, strict=True):
         if chave and len(cnpj) == 14 and cnpj.strip("0"):
             saida.setdefault(chave, set()).add(cnpj[:8])
     return saida
@@ -758,6 +775,28 @@ def ligar_nomes(
             if unica:
                 saida[nome] = (unica, PELA_RECEITA)
     return saida
+
+
+def ligar_desde(
+    nome: str,
+    controladas: pd.DataFrame,
+    receita: pd.DataFrame,
+    publico_em: date,
+    compradora: str = "",
+) -> tuple[str, str, date] | None:
+    """(raiz, por onde, desde quando) da ligação de `nome`, sem olhar o futuro.
+
+    Vale a data da DFP (`publico_em`) quando o que era público nela já identifica o CNPJ. Quando só um
+    FRE entregue depois identifica, a data é a desse FRE: antes dele ninguém ligaria a receita à empresa.
+    """
+    entregues = pd.to_datetime(controladas["conhecido_em"], utc=True)
+    depois = sorted(set(entregues[entregues > pd.Timestamp(publico_em, tz="UTC")]))
+    for desde in [publico_em, *(d.date() for d in depois)]:
+        sabidas = controladas[entregues <= pd.Timestamp(desde, tz="UTC")]
+        ligada = ligar_nomes([nome], sabidas, receita, publico_em, compradora).get(nome)
+        if ligada:
+            return (*ligada, desde)
+    return None
 
 
 # --- a tabela ----------------------------------------------------------------------------------------
@@ -863,11 +902,16 @@ def tabela_das_leituras(
 ) -> pd.DataFrame:
     """Uma linha por alvo, exercício e versão de DFP, só com CNPJ e conta completos."""
     linhas = []
+    # só as controladas com o nome de alguma alvo: a busca da data se repete por leitura
+    chaves = {normalizar(lida.nome) for _, lida in achadas}
+    das_alvos = controladas[
+        _nome_da_controlada(controladas["razao_social"]).isin(chaves)
+    ]
     for documento, lida in achadas:
         publico_em = pd.Timestamp(documento["disponivel_em"]).date()
-        ligada = ligar_nomes(
-            [lida.nome], controladas, receita, publico_em, documento["cnpj"]
-        ).get(lida.nome)
+        ligada = ligar_desde(
+            lida.nome, das_alvos, receita, publico_em, documento["cnpj"]
+        )
         if ligada is None or ligada[0] == re.sub(r"\D", "", documento["cnpj"])[:8]:
             recusadas[SEM_CNPJ] += 1
             continue
@@ -880,7 +924,9 @@ def tabela_das_leituras(
         if do_ano is None or not 0 < do_ano < da_compradora:
             recusadas[INCONSISTENTE] += 1
             continue
-        linhas.append(_linha(documento, lida, do_ano, *ligada))
+        raiz, como, desde = ligada
+        linha = _linha(documento, lida, do_ano, raiz, como)
+        linhas.append(linha | {"disponivel_em": desde})
     tabela = pd.DataFrame(linhas, columns=list(COLUNAS)).astype(
         {c: object for c in COLUNAS}
     )

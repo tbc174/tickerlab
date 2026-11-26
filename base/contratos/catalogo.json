@@ -22412,7 +22412,7 @@
           "unidade": "texto"
         },
         "pagina": {
-          "descricao": "Página do PDF da frase da receita, a partir de 1 (a de `notas_dfp`)",
+          "descricao": "Página do PDF em que está a frase da receita, a partir de 1 (a de `notas_dfp`)",
           "unidade": "número inteiro"
         },
         "pagina_impressa": {
@@ -22420,7 +22420,7 @@
           "unidade": "número inteiro"
         },
         "pagina_da_secao": {
-          "descricao": "Página do PDF em que a nota daquela compra começa",
+          "descricao": "Página do PDF em que a nota daquela compra começa (pode vir antes da de `pagina`; o número impresso no rodapé pode ser outro)",
           "unidade": "número inteiro"
         },
         "trecho": {
@@ -22436,7 +22436,7 @@
           "unidade": "texto"
         },
         "disponivel_em": {
-          "descricao": "Data em que a versão da DFP ficou pública",
+          "descricao": "Desde quando a linha podia ser sabida: a entrega da versão da DFP ou, se só um FRE posterior identifica o CNPJ, a desse FRE",
           "unidade": "data (dia)"
         },
         "link": {

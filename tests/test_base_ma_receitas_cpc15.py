@@ -239,9 +239,10 @@ def test_o_trecho_nao_leva_nome_proprio_que_nao_seja_o_da_alvo(vendedores):
 
 
 # --- a ligação do nome ao CNPJ ---------------------------------------------------------------------
-def _controladas(*linhas):
+def _controladas(*linhas, entregue=date(2023, 5, 31)):
     quadro = pd.DataFrame(linhas, columns=["cnpj", "razao_social"])
-    return quadro.assign(cnpj_companhia="11111111000111")  # as da própria compradora
+    # as da própria compradora, num FRE entregue antes da DFP
+    return quadro.assign(cnpj_companhia="11111111000111", conhecido_em=entregue)
 
 
 def _dre(receita=5_000_000_000, versoes=(1, 2, 3)):
@@ -365,7 +366,7 @@ def test_a_alvo_sem_ligacao_nao_vira_linha():
 
 def test_consolidado_usa_a_dre_da_mesma_versao_e_nao_de_outra():
     corpo = (
-        "Aquisição Alfa Distribuidora de Peças Ltda.\r\nA Alfa contribuiu com R$ 10.000 de receita líquida. "
+        "Aquisição Alfa Distribuidora de Peças Ltda.\r\nA Alfa contribuiu desde a aquisição com R$ 10.000 de receita líquida. "
         "Se a aquisição tivesse ocorrido em 1 de janeiro de 2023, a receita líquida consolidada da Companhia "
         "seria de R$ 530.000."
     )
@@ -605,6 +606,7 @@ def test_controlada_de_outra_companhia_so_liga_se_a_receita_confirma(
         [(dona, "22222222000122", "Beta S.A.")],
         columns=["cnpj_companhia", "cnpj", "razao_social"],
     )
+    controladas["conhecido_em"] = date(2023, 5, 31)
     receita = _receita(*[_da_receita(raiz, "beta") for raiz in homonimas])
 
     achada = cpc15.ligar_nomes(
@@ -617,3 +619,90 @@ def test_controlada_de_outra_companhia_so_liga_se_a_receita_confirma(
 def test_a_tabela_fica_em_casa_porque_leva_trecho_de_nota():
     assert "ma_receitas_cpc15" in envio.FICAM_EM_CASA
     assert "ma_receitas_cpc15" not in envio.tabelas_do_degrau(7)
+
+
+# --- achados da revisão do Codex: o FRE posterior e a parcela de um trimestre ------------------------
+def test_o_cnpj_que_so_um_fre_posterior_identifica_data_a_linha():
+    # DFP de março, FRE de agosto, negócio de junho: em junho a ligação ainda não era pública
+    tabela = cpc15.montar_tabela(
+        _notas(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA)),
+        _controladas(*CONTROLADAS_ALFA, entregue=date(2024, 8, 5)),
+        _receita(),
+        _dre(),
+    )[0]
+    assert list(tabela["disponivel_em"]) == [date(2024, 8, 5)]
+    datas = pd.DataFrame(
+        {
+            "assessoria": "x",
+            "url": ["junho", "setembro"],
+            "id_negocio": ["N1", "N2"],
+            "conhecido_em_do_negocio": pd.to_datetime(
+                ["2024-06-10", "2024-09-10"], utc=True
+            ),
+            "fechamento_em": [None, None],
+        }
+    )
+    partes = pd.DataFrame(
+        {
+            "assessoria": "x",
+            "url": ["junho", "setembro"],
+            "papel": "alvo",
+            "cnpj_raiz": "22222222",
+        }
+    )
+    regua = ma_regua.medir(
+        datas,
+        partes,
+        cpc15.receitas_para_a_regua(tabela),
+        ma_regua.portes_do_cnpj([], set()),
+    ).set_index("url")
+    assert pd.isna(regua.loc["junho", "receita"])
+    assert regua.loc["setembro", "receita"] == 121_620_000
+
+
+def test_o_fre_posterior_nao_muda_a_data_de_quem_a_receita_ja_identificava():
+    receita = _receita(_da_receita("22222222", "alfa distribuidora de pecas"))
+    tabela = cpc15.montar_tabela(
+        _notas(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA)),
+        _controladas(*CONTROLADAS_ALFA, entregue=date(2024, 8, 5)),
+        receita,
+        _dre(),
+    )[0]
+    assert list(tabela["disponivel_em"]) == [date(2024, 3, 18)]
+    assert list(tabela["ligacao_por"]) == [cpc15.PELA_RECEITA]
+
+
+@pytest.mark.parametrize(
+    "periodo",
+    [
+        "no quarto trimestre",
+        "no segundo semestre do exercício",
+        "nos últimos três meses",
+        "em dezembro",
+        "de outubro a dezembro de 2023",
+        "para o Grupo",
+    ],
+)
+def test_a_parcela_de_um_pedaco_do_periodo_nao_vira_o_desde_a_compra(periodo):
+    resultado = (
+        f"Esta combinação de negócios contribuiu {periodo} com R$ 8.000 de receita líquida. Se a aquisição "
+        "da empresa tivesse ocorrido em 1 de janeiro de 2023, a receita líquida consolidada da Companhia "
+        "seria aumentada em R$ 15.000."
+    )
+
+    leituras, recusadas = cpc15.ler_notas(_paginas(AQUISICAO_ALFA, resultado), DEZ_2023)
+
+    assert leituras == []
+    assert recusadas[cpc15.SEM_O_DESDE_A_COMPRA] == 1
+
+
+def test_o_pro_forma_de_um_trimestre_nao_vira_o_do_ano():
+    resultado = RESULTADO_ALFA.replace(
+        "Se a ", "Considerado só o quarto trimestre, se a "
+    )
+    assert resultado != RESULTADO_ALFA
+
+    leituras, recusadas = cpc15.ler_notas(_paginas(AQUISICAO_ALFA, resultado), DEZ_2023)
+
+    assert leituras == []
+    assert recusadas[cpc15.OUTRO_ANO] == 1

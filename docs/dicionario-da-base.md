@@ -8278,13 +8278,13 @@ Receita anual de empresa comprada, tirada da nota de combinação de negócios (
 | `receita` | Receita anual da comprada no ano cheio | reais (R$), já multiplicado pela escala informada |
 | `receita_desde_a_compra` | A parte que a nota diz ter entrado no consolidado desde a compra; vazio se não diz | reais (R$), já multiplicado pela escala informada |
 | `forma` | so_da_adquirida, aumento_do_consolidado (desde a compra mais o aumento) ou consolidado_inteiro (consolidado da nota menos o da DRE, mais desde a compra) | texto |
-| `pagina` | Página do PDF da frase da receita, a partir de 1 (a de `notas_dfp`) | número inteiro |
+| `pagina` | Página do PDF em que está a frase da receita, a partir de 1 (a de `notas_dfp`) | número inteiro |
 | `pagina_impressa` | Número impresso nessa página, quando há | número inteiro |
-| `pagina_da_secao` | Página do PDF em que a nota daquela compra começa | número inteiro |
+| `pagina_da_secao` | Página do PDF em que a nota daquela compra começa (pode vir antes da de `pagina`; o número impresso no rodapé pode ser outro) | número inteiro |
 | `trecho` | As frases da nota que provam o valor; de nome próprio, só o da comprada (o resto vira […]) | texto |
 | `ligacao_por` | controladas ou razao_social_da_receita | texto |
 | `resumo` | O número, o ano, o documento e a página numa frase | texto |
-| `disponivel_em` | Data em que a versão da DFP ficou pública | data (dia) |
+| `disponivel_em` | Desde quando a linha podia ser sabida: a entrega da versão da DFP ou, se só um FRE posterior identifica o CNPJ, a desse FRE | data (dia) |
 | `link` | Endereço do pacote no ENET de onde o texto saiu | texto |
 | `origem_sha256` | SHA-256 do texto da DFP guardado no acervo | texto |
 | `origem_coletada_em` | Quando o texto foi coletado | data e hora (UTC) |
