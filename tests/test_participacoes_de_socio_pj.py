@@ -1,6 +1,7 @@
 """O quadro de sócios virado (linha 1032): de quais empresas uma PJ é sócia, e desde quando. Monta junto com as
 entradas de sócio PJ (`scripts/montar_entradas_de_socio_pj.py`), só sócia pessoa jurídica. Dados de mentira."""
 
+import shutil
 from datetime import date
 from pathlib import Path
 
@@ -182,3 +183,51 @@ def test_o_quadro_nao_sai_na_consulta_aberta():
     """Linha 1032: tabela nova com CNPJ fica fora da API aberta e da página Dados."""
     assert dossie.e_do_cnpj(socios_pj.QUADRO_INVERTIDO)
     assert not dossie.pode_consultar(socios_pj.QUADRO_INVERTIDO)
+
+
+def _observar_o_disco(monkeypatch, conferir) -> None:
+    """Chama `conferir` depois de cada troca, remoção ou renomeação: é parar a montagem em cada ponto dela."""
+    for dono, nome in (
+        (Path, "rename"),
+        (Path, "replace"),
+        (Path, "unlink"),
+        (Path, "rmdir"),
+        (shutil, "rmtree"),
+    ):
+        original = getattr(dono, nome)
+
+        def observada(*args, _original=original, **kwargs):
+            resultado = _original(*args, **kwargs)
+            conferir()
+            return resultado
+
+        monkeypatch.setattr(dono, nome, observada)
+
+
+def test_quem_le_no_meio_da_troca_nunca_ve_a_socia_sem_as_participacoes(
+    tmp_path, monkeypatch
+):
+    """Regressão (Revisor, PR 1333): apagar a pasta em uso antes de renomear a nova fazia a leitura de um
+    prefixo ausente responder que a holding não tinha participação nenhuma."""
+    cnpj, destino = _acervo(tmp_path)
+    assert _rodar(cnpj, destino) == 0
+    vigente = cnpj / "vigente" / "qsa" / "11.parquet"
+    antes = pd.read_parquet(vigente)
+    depois = [antes[antes["raiz_socio_pj"] != FUNDO]]  # o fundo deixa de ser sócio
+    depois.append(pd.DataFrame([_linha(FUNDO, "1", HOLDING, "", "2023-06-05")]))
+    pd.concat(depois, ignore_index=True).to_parquet(vigente, index=False)
+    vistas = []
+
+    def conferir() -> None:
+        achadas = vista_do_cnpj.participacoes_da_raiz(cnpj, HOLDING)
+        vistas.append(tuple(sorted(achadas["cnpj_basico"])))
+
+    _observar_o_disco(monkeypatch, conferir)
+    assert _rodar(cnpj, destino) == 0
+    monkeypatch.undo()
+    assert vistas and set(vistas) <= {(EMPRESA,), (EMPRESA, FUNDO)}
+    assert sorted(
+        vista_do_cnpj.participacoes_da_raiz(cnpj, HOLDING)["cnpj_basico"]
+    ) == [EMPRESA, FUNDO]
+    # quem deixou de ser sócia não continua no arquivo do mês anterior
+    assert vista_do_cnpj.participacoes_da_raiz(cnpj, FUNDO).empty

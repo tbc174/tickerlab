@@ -36,6 +36,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 from base import socios_pj
 from base.parquet import gravar_se_mudou
@@ -258,15 +259,27 @@ def _gravar_quadro(
 
 
 def _virar_o_qsa(cnpj: Path) -> None:
-    """Refaz `vigente/participacoes` da base do CNPJ numa pasta ao lado e só então troca: quem lê nunca vê a
-    pasta pela metade (ela existir é o que diz à ficha e ao grupo para confiar nela)."""
+    """Refaz `vigente/participacoes` da base do CNPJ sem nunca apagar o que alguém está lendo.
+
+    Monta numa pasta ao lado. Se a pasta em uso não existe, a nova entra inteira, numa renomeação. Se existe,
+    cada arquivo é trocado por renomeação (atômica): ela não some em nenhum instante e cada prefixo é lido
+    inteiro, o anterior ou o novo; o prefixo que ficou sem sócia vira arquivo vazio. Apagar a pasta antes
+    faria `participacoes_da_raiz` responder que a sócia não tem participação nenhuma.
+    """
     pasta = cnpj / "vigente" / PARTICIPACOES
     nova = pasta.with_name(f"{PARTICIPACOES}.nova")
     shutil.rmtree(nova, ignore_errors=True)
+    nova.mkdir(parents=True)
     montar_participacoes(cnpj, nova)
-    shutil.rmtree(pasta, ignore_errors=True)
-    if nova.is_dir():
+    if not pasta.is_dir():
         nova.rename(pasta)
+        return
+    for em_uso in pasta.glob("*.parquet"):
+        if not (nova / em_uso.name).exists():
+            pq.write_table(pq.read_schema(em_uso).empty_table(), nova / em_uso.name)
+    for arquivo in nova.glob("*.parquet"):
+        arquivo.replace(pasta / arquivo.name)
+    nova.rmdir()
 
 
 def main(
