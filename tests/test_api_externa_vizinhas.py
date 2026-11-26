@@ -3,7 +3,7 @@
 Empresas ativas com a mesma atividade principal no município e, fora dele, na mesma UF, no retrato da Receita do
 dia. Base de mentira, sem internet; os CNPJs são de ninguém. Riscos: pessoa (só as duas listas sem pessoa; razão
 social com cara de CPF sai), olhar o futuro (o retrato só vale desde que ficou público), filtro por campo que o
-portão nega (viraria oráculo) e uma UF grande demais para montar a lista dentro do prazo.
+portão nega (viraria oráculo) e o prazo da análise (o nome só se lê das candidatas).
 """
 
 import dataclasses
@@ -270,15 +270,37 @@ def test_os_limites_dizem_o_que_a_lista_e_e_o_que_nao_e(pasta):
     assert "dono" in texto and "risco" in texto
 
 
-def test_uf_grande_demais_nao_monta_a_lista_de_fora_mas_diz_quantas_sao(
-    pasta, monkeypatch
+def test_a_razao_social_se_le_so_das_candidatas_nunca_do_ramo_inteiro(
+    tmp_path, monkeypatch
 ):
-    monkeypatch.setattr(vizinhas, "TETO_NA_UF", 2)
-    corpo = _ler(pasta).corpo
-    assert corpo["na_uf"] == []
-    assert corpo["total_na_uf"] == 5
-    assert len(corpo["no_municipio"]) == 3
-    assert vizinhas.LIMITE_DA_UF_GRANDE in corpo["limites"]
+    """Em produção, ler o nome do ramo inteiro levava de 10 a 14 s: o ramo se ordena só com a raiz e o capital."""
+    muitas = [
+        (f"{10_000_000 + n}000191", True, "02", "2010-01-01", CNAE, "SP", cidade)
+        for n, cidade in enumerate([CIDADE] * 40 + [OUTRA_CIDADE] * 40)
+    ]
+    empresas_ = [
+        (cnpj[:8], f"EMPRESA {cnpj[:8]} LTDA", "2062", "micro", float(n), 1)
+        for n, (cnpj, *_) in enumerate(muitas)
+    ]
+    gravar(
+        tmp_path / "base",
+        _estabelecimentos([ESTABELECIMENTOS[0], *muitas]),
+        _empresas([EMPRESAS[0], *empresas_]),
+    )
+    pedidas: list[int] = []
+    original = vizinhas.LeitorDeVizinhas._empresas_de
+
+    def espiao(self, raizes, mes):
+        pedidas.append(len(raizes))
+        return original(self, raizes, mes)
+
+    monkeypatch.setattr(vizinhas.LeitorDeVizinhas, "_empresas_de", espiao)
+    corpo = _ler(tmp_path / "base").corpo
+    assert pedidas == [2 * (vizinhas.TETO_DE_VIZINHAS + vizinhas.FOLGA_DA_TRAVA)]
+    # as dez de maior capital de cada recorte, na ordem, e os totais do ramo inteiro
+    assert _cnpjs(corpo["no_municipio"]) == [muitas[n][0] for n in range(39, 29, -1)]
+    assert _cnpjs(corpo["na_uf"]) == [muitas[n][0] for n in range(79, 69, -1)]
+    assert corpo["total_no_municipio"] == 40 and corpo["total_na_uf"] == 80
 
 
 def test_ramo_sem_vizinha_sai_com_listas_vazias_e_total_zero(pasta):

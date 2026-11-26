@@ -51,8 +51,6 @@ EXIGE = tuple(
 )
 ATIVA = prospeccao.SITUACOES["ativa"]
 TAMANHO_DA_RAIZ = 8
-# a UF com mais empresas que isto no ramo não é ordenada aqui (não caberia no prazo da análise): sai o total
-TETO_NA_UF = prospeccao.TETO_DE_RAIZES
 # quantas vizinhas cada recorte (município e resto da UF) devolve, no máximo, seja qual for o plano: o bloco não
 # conta pedido, então este teto é o que se leva da busca de empresas numa análise (Diretoria, 26/11/2026)
 TETO_DE_VIZINHAS = 10
@@ -81,10 +79,6 @@ LIMITES = (
         "A lista não diz quem é o dono (no exterior ou no Brasil) nem traz sinal de risco de cada vizinha: "
         "consulte o CNPJ dela. Estar na lista não quer dizer que a empresa compra ou está à venda."
     ),
-)
-LIMITE_DA_UF_GRANDE = (
-    "O ramo tem empresas demais na UF para montar aqui a lista do resto dela: sai o total; a busca de empresas "
-    "(atividade, UF e ordem pelo capital) traz a lista."
 )
 LIMITE_SEM_CAPITAL = "Sem o capital social liberado, as vizinhas vêm na ordem do CNPJ."
 
@@ -152,61 +146,71 @@ class LeitorDeVizinhas(prospeccao.LeitorDeProspeccao):
             return None
         return linha
 
-    def _estabelecimentos_do_ramo(
-        self, pedido: pd.Series, raiz: str, mes: str
-    ) -> pd.DataFrame:
-        """Um estabelecimento por empresa ativa do ramo na UF (menos a pedida): o do município, se houver, e
-        entre eles a matriz e o menor CNPJ. `na_cidade` diz se é do município."""
-        achados = self.porta.con.execute(
-            "SELECT cnpj_basico, cnpj, matriz, municipio, data_inicio_atividade, publico_em "
-            f"FROM {_view(ESTABELECIMENTOS)} WHERE mes_do_retrato = $mes AND cnae_principal = $cnae "
-            "AND uf = $uf AND situacao_cadastral = $ativa AND cnpj_basico <> $raiz",
-            {
-                "mes": mes,
-                "cnae": str(pedido["cnae_principal"]),
-                "uf": str(pedido["uf"]),
-                "ativa": ATIVA,
-                "raiz": raiz,
-            },
-        ).df()
-        achados["na_cidade"] = achados["municipio"] == str(pedido["municipio"])
-        achados["filial"] = ~achados["matriz"].fillna(False).astype(bool)
-        achados = achados.sort_values(
-            ["na_cidade", "filial", "cnpj"], ascending=[False, True, True]
-        )
-        return achados.drop_duplicates("cnpj_basico").drop(columns="filial")
-
-    def _empresas_de(self, raizes: list[str], mes: str) -> pd.DataFrame:
-        """As linhas de `cnpj_empresas_pj` das raízes no retrato; a coluna que a base não tem fica de fora."""
-        existentes = set(self.porta.colunas(EMPRESAS))
-        colunas = [nome for nome in _DA_EMPRESA if nome in existentes]
-        return self.porta.con.execute(
-            f"SELECT cnpj_basico, publico_em AS publico_em_da_empresa, {', '.join(colunas)} "
-            f"FROM {_view(EMPRESAS)} WHERE mes_do_retrato = $mes "
-            "AND cnpj_basico BETWEEN $de AND $ate AND cnpj_basico IN (SELECT unnest($raizes))",
-            {"mes": mes, "de": min(raizes), "ate": max(raizes), "raizes": raizes},
-        ).df()
-
     def _por_capital(self) -> bool:
         return self.permitido(FONTE, "capital_social", False) and (
             "capital_social" in self.porta.colunas(EMPRESAS)
         )
 
-    def _ordenadas(self, juntas: pd.DataFrame) -> pd.DataFrame:
-        """Da maior para a menor pelo capital (sem capital vale 0), com o CNPJ no desempate; sem o capital
-        liberado, só pelo CNPJ."""
-        if not self._por_capital():
-            return juntas.sort_values("cnpj")
-        ordem = juntas.assign(capital_da_ordem=juntas["capital_social"].fillna(0))
-        return ordem.sort_values(["capital_da_ordem", "cnpj"], ascending=[False, True])
+    def _candidatas(
+        self, pedido: pd.Series, raiz: str, mes: str, quantas: int
+    ) -> pd.DataFrame:
+        """As primeiras `quantas` de cada recorte (`na_cidade`), já na ordem, cada uma com o total do recorte.
 
-    def _listadas(self, ordenadas: pd.DataFrame, quantas: int) -> list[pd.Series]:
+        Um estabelecimento por empresa ativa do ramo na UF (menos a pedida): o do município, se houver, e entre
+        eles a matriz e o menor CNPJ. A ordem é a do capital (sem capital vale 0), com o CNPJ no desempate; sem o
+        capital liberado, a do CNPJ. Tudo numa consulta só, e de `cnpj_empresas_pj` só a raiz e o capital: ler a
+        razão social e a data de publicação do ramo inteiro levava de 10 a 14 s em produção (26/11/2026)."""
+        juncao, ordem = "", "cnpj"
+        if self._por_capital():
+            juncao = (
+                f"JOIN (SELECT cnpj_basico, capital_social FROM {_view(EMPRESAS)} "
+                "WHERE mes_do_retrato = $mes) AS empresa USING (cnpj_basico)"
+            )
+            ordem = "coalesce(capital_social, 0) DESC, cnpj"
+        return self.porta.con.execute(
+            "WITH ramo AS ("
+            "SELECT cnpj_basico, cnpj, matriz, municipio, data_inicio_atividade, publico_em, "
+            "coalesce(municipio = $municipio, false) AS na_cidade "
+            f"FROM {_view(ESTABELECIMENTOS)} WHERE mes_do_retrato = $mes AND cnae_principal = $cnae "
+            "AND uf = $uf AND situacao_cadastral = $ativa AND cnpj_basico <> $raiz "
+            "QUALIFY row_number() OVER (PARTITION BY cnpj_basico "
+            "ORDER BY na_cidade DESC, coalesce(matriz, false) DESC, cnpj) = 1) "
+            "SELECT ramo.*, count(*) OVER (PARTITION BY na_cidade) AS total_do_recorte "
+            f"FROM ramo {juncao} "
+            f"QUALIFY row_number() OVER (PARTITION BY na_cidade ORDER BY {ordem}) <= $quantas "
+            f"ORDER BY na_cidade DESC, {ordem}",
+            {
+                "mes": mes,
+                "cnae": str(pedido["cnae_principal"]),
+                "uf": str(pedido["uf"]),
+                "municipio": str(pedido["municipio"]),
+                "ativa": ATIVA,
+                "raiz": raiz,
+                "quantas": quantas,
+            },
+        ).df()
+
+    def _empresas_de(self, raizes: list[str], mes: str) -> pd.DataFrame:
+        """As linhas de `cnpj_empresas_pj` das raízes no retrato; a coluna que a base não tem fica de fora.
+
+        As raízes vão como parâmetros de um `IN`, que o DuckDB empurra para a leitura dos arquivos (com uma
+        lista só, ele leria a tabela inteira e juntaria depois). São poucas: só as candidatas."""
+        existentes = set(self.porta.colunas(EMPRESAS))
+        colunas = [nome for nome in _DA_EMPRESA if nome in existentes]
+        parametros = {f"r{i}": valor for i, valor in enumerate(raizes)}
+        marcas = ", ".join(f"${nome}" for nome in parametros)
+        return self.porta.con.execute(
+            f"SELECT cnpj_basico, publico_em AS publico_em_da_empresa, {', '.join(colunas)} "
+            f"FROM {_view(EMPRESAS)} WHERE mes_do_retrato = $mes AND cnpj_basico IN ({marcas})",
+            {"mes": mes, **parametros},
+        ).df()
+
+    def _listadas(self, candidatas: pd.DataFrame, quantas: int) -> list[pd.Series]:
         """As primeiras `quantas` que passam pela trava de pessoa e não têm CPF ou e-mail na razão social."""
-        primeiras = ordenadas.head(quantas * 2 + FOLGA_DA_TRAVA)
-        empresa = e_empresas(self.porta, [str(c) for c in primeiras["cnpj"]])
+        empresa = e_empresas(self.porta, [str(c) for c in candidatas["cnpj"]])
         passam = [
             linha
-            for _, linha in primeiras.iterrows()
+            for _, linha in candidatas.iterrows()
             if empresa.get(str(linha["cnpj"]), False)
             and not texto_de_pessoa(str(linha["razao_social"] or ""))
         ]
@@ -246,24 +250,19 @@ class LeitorDeVizinhas(prospeccao.LeitorDeProspeccao):
         }
 
     def _listas(
-        self, ramo: pd.DataFrame, mes: str
-    ) -> tuple[list[dict], list[dict], list[str]]:
-        """(as do município, as do resto da UF, os limites a mais)."""
-        extras = [] if self._por_capital() else [LIMITE_SEM_CAPITAL]
-        if len(ramo) > TETO_NA_UF:
-            ramo = ramo[ramo["na_cidade"]]
-            extras.append(LIMITE_DA_UF_GRANDE)
-        if ramo.empty:
-            return [], [], extras
-        empresas = self._empresas_de([str(r) for r in ramo["cnpj_basico"]], mes)
-        juntas = self._ordenadas(ramo.merge(empresas, on="cnpj_basico"))
-        quantas = max(min(self.linhas_maximas, TETO_DE_VIZINHAS), 1)
+        self, candidatas: pd.DataFrame, mes: str, quantas: int
+    ) -> tuple[list[dict], list[dict]]:
+        """(as do município, as do resto da UF)."""
+        if candidatas.empty:
+            return [], []
+        empresas = self._empresas_de([str(r) for r in candidatas["cnpj_basico"]], mes)
+        # `merge` à esquerda mantém a ordem das candidatas
+        juntas = candidatas.merge(empresas, on="cnpj_basico", how="left")
         cidade = self._listadas(juntas[juntas["na_cidade"]], quantas)
         resto = self._listadas(juntas[~juntas["na_cidade"]], quantas)
         return (
             [self._item(linha, com_municipio=False) for linha in cidade],
             [self._item(linha, com_municipio=True) for linha in resto],
-            extras,
         )
 
     def vizinhas(self, cnpj: str, como_era_em: date) -> VizinhasServidas | None:
@@ -281,10 +280,16 @@ class LeitorDeVizinhas(prospeccao.LeitorDeProspeccao):
         pedido = None if mes is None else self._do_pedido(normal, mes)
         if mes is None or pedido is None:
             return None
-        ramo = self._estabelecimentos_do_ramo(pedido, normal[:TAMANHO_DA_RAIZ], mes)
-        # o total conta antes de ordenar: é quantas empresas do ramo há, listadas ou não
-        total_na_cidade, total_na_uf = int(ramo["na_cidade"].sum()), len(ramo)
-        no_municipio, na_uf, extras = self._listas(ramo, mes)
+        quantas = max(min(self.linhas_maximas, TETO_DE_VIZINHAS), 1)
+        candidatas = self._candidatas(
+            pedido, normal[:TAMANHO_DA_RAIZ], mes, quantas + FOLGA_DA_TRAVA
+        )
+        # o total é de quantas empresas do ramo há, listadas ou não
+        totais = candidatas.drop_duplicates("na_cidade")
+        total_na_cidade = int(totais[totais["na_cidade"]]["total_do_recorte"].sum())
+        total_na_uf = int(totais["total_do_recorte"].sum())
+        no_municipio, na_uf = self._listas(candidatas, mes, quantas)
+        extras = [] if self._por_capital() else [LIMITE_SEM_CAPITAL]
         corpo = {
             "como_era_em": como_era_em.isoformat(),
             **self._cabecalho(pedido, mes),
