@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 from fastapi import HTTPException
 
+from base.porta import Porta
 from src.api_externa import porta_compartilhada as compartilhada
 from src.api_externa import rotas
 from src.api_externa.conjuntos import empresas
@@ -201,9 +202,17 @@ def trava_listas(tmp_path, monkeypatch):
     guardado._gravar_listas(pasta)
     compartilhada.zerar()
     monkeypatch.setattr(compartilhada, "_pasta_da_base", lambda: pasta)
+    monkeypatch.setattr(
+        compartilhada, "abrir_a_base", lambda versao=None: Porta(versao or pasta)
+    )
     monkeypatch.setattr(rotas, "abrir_porta", compartilhada.porta_do_pedido)
     yield pasta
     compartilhada.zerar()
+
+
+def test_no_formato_antigo_sem_troca_o_pedido_responde(trava_listas):
+    with rotas._porta(None) as porta:
+        assert empresas.e_empresa(porta, listas_de_mentira.EMPRESA)
 
 
 # ---------------------------------------------------------------- com link de verdade (onde o sistema deixa)
@@ -255,3 +264,66 @@ def test_com_link_de_verdade_a_troca_no_meio_do_pedido_nao_mistura(com_link):
     with rotas._porta(None) as porta:
         assert Path(porta.pasta) == Path(os.path.realpath(nova))
         assert empresas.e_empresa(porta, NOVA)
+
+
+# ---------------------------------------------------------------- a transição e o link errado
+
+
+@pytest.fixture
+def transicao(tmp_path, monkeypatch):
+    """A virada do formato: `base` começa pasta de verdade e vira link (e volta)."""
+    raiz = tmp_path / "acervo_api"
+    velha, nova = _versoes(raiz)
+    antiga = raiz / "base"
+    shutil.copytree(velha, antiga)
+    link = _Link(None)
+    compartilhada.zerar()
+    monkeypatch.setattr(compartilhada, "_pasta_da_base", lambda: antiga)
+    monkeypatch.setattr(compartilhada, "_versao_da_base", link)
+    monkeypatch.setattr(
+        compartilhada, "abrir_a_base", lambda versao=None: Porta(versao or antiga)
+    )
+    monkeypatch.setattr(rotas, "abrir_porta", compartilhada.porta_do_pedido)
+    yield link, antiga, nova
+    compartilhada.zerar()
+
+
+def test_a_virada_de_pasta_para_link_e_de_volta_reabre_a_porta(transicao):
+    link, antiga, nova = transicao
+    with rotas._porta(None) as porta:
+        assert Path(porta.pasta) == antiga
+        assert not empresas.e_empresa(porta, NOVA)
+    link.destino = nova  # a virada: `base` passa a ser link para a versão nova
+    with rotas._porta(None) as porta:
+        assert Path(porta.pasta) == nova
+        assert empresas.e_empresa(porta, NOVA)
+    link.destino = None  # o desfazer do formato: pasta de verdade de novo
+    with rotas._porta(None) as porta:
+        assert Path(porta.pasta) == antiga
+        assert not empresas.e_empresa(porta, NOVA)
+
+
+@pytest.mark.parametrize("fora", ["acervo_pessoa/atual", "versoes/../outra"])
+def test_versao_fora_de_versoes_responde_fora_do_ar(versionada, fora):
+    """Um link que resolve fora de `<acervo>/versoes` (absoluto, com `..`, ou para o acervo de pessoa) não abre
+    porta: 503 sem dizer onde, como a base ausente."""
+    link, velha, _ = versionada
+    destino = velha.parent.parent / fora
+    destino.mkdir(parents=True)
+    link.destino = destino
+    with pytest.raises(HTTPException) as erro, rotas._porta(None):
+        pass
+    assert (erro.value.status_code, erro.value.detail) == (503, "service_unavailable")
+
+
+def test_link_pendurado_responde_fora_do_ar_e_nao_guarda_porta_vazia(versionada):
+    """O link aponta para uma versão que não existe (o recebedor quebrou): 503, e nenhuma porta vazia fica como
+    dona; quando o link volta a uma versão de verdade, o pedido seguinte abre nela."""
+    link, velha, _ = versionada
+    link.destino = velha.parent / "20261127-0830"  # não existe
+    with pytest.raises(HTTPException) as erro, rotas._porta(None):
+        pass
+    assert (erro.value.status_code, erro.value.detail) == (503, "service_unavailable")
+    link.destino = velha
+    with rotas._porta(None) as porta:
+        assert empresas.e_empresa(porta, listas_de_mentira.EMPRESA)

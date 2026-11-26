@@ -47,6 +47,8 @@ THREADS_DA_PORTA = 1
 def abrir_a_base(pasta: Path | None = None) -> Porta:
     """Abre a porta da base em `pasta` (a versão resolvida, no formato versionado) ou na do acervo (os testes
     trocam esta função)."""
+    if pasta is None:
+        return porta_da_base.abrir(threads=THREADS_DA_PORTA)
     return porta_da_base.abrir(pasta, threads=THREADS_DA_PORTA)
 
 
@@ -100,6 +102,16 @@ def _versao_da_base(pasta: Path) -> Path | None:
     if not os.path.islink(pasta):
         return None
     return Path(os.path.realpath(pasta))
+
+
+def _conferir_a_versao(pasta: Path, versao: Path) -> None:
+    """A versão tem de ser uma pasta que existe, filha direta de `<acervo>/versoes`. Um link pendurado (o recebedor
+    quebrou) ou que resolve em outro lugar do contêiner (absoluto, com `..`, o acervo de pessoa) não abre porta: o
+    `ValueError` vira o 503 da base fora do ar, sem dizer onde, e nenhuma porta vazia fica como dona."""
+    versoes = Path(os.path.realpath(pasta.parent / "versoes"))
+    resolvida = Path(os.path.realpath(versao))
+    if resolvida.parent != versoes or not resolvida.is_dir():
+        raise ValueError("a base versionada não aponta para uma versão de versoes/")
 
 
 def _impressao(pasta: Path, arquivos: dict[str, str]) -> tuple:
@@ -213,6 +225,7 @@ def porta_do_pedido(banco: sa.Connection | None = None) -> Porta:
         pasta = _pasta_da_base()
         versao = None if pasta is None else _versao_da_base(pasta)
         if versao is not None:
+            _conferir_a_versao(pasta, versao)
             # versionado: a troca se vê pelo destino do link, sem ler os arquivos; a porta abre no caminho
             # resolvido, e um link trocado durante a abertura só faz o pedido seguinte abrir de novo
             if (
