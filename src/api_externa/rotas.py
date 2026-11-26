@@ -856,7 +856,10 @@ def analise_da_empresa(
     conjunto `extended_sources`, `additional_records` (Anatel, ANM, ANP e PAT), só da pessoa jurídica), lido como na rota dele e pelo portão do conjunto dele, com a frase do topo (`summary`), a linha do tempo (`timeline`),
     as deduções marcadas (`inferences`), o bloco aberto que não achou nada (`not_found`), o que passou do
     prazo (`timed_out`) e o que a análise não consulta (`not_included`). Bloco que não aparece não foi
-    consultado. Cada bloco aberto conta um pedido no conjunto dele (`requests_used`). Sem `profiles` nem
+    consultado. As vizinhas do mesmo ramo (`same_industry_neighbors`: empresas ativas com a mesma atividade
+    principal no município do CNPJ e no resto da UF) vêm com o conjunto `prospecting`; sem ele, o bloco traz só o
+    aviso (`not_enabled`) e, se não couberem no tempo, só `did_not_fit_in_time`. Cada bloco aberto conta um pedido
+    no conjunto dele (`requests_used`), menos o das vizinhas, que não conta. Sem `profiles` nem
     `companies`, MEI, empresário individual e o que não é empresa saem `not_available`."""
     numeros = _cnpj_pedido(cnpj)
     dia = _dia_pedido(known_at)
@@ -890,9 +893,8 @@ def _analise_contada(
             conexao, contexto, acesso.agora().date(), regras_da_api()
         )
         cadastro, outros = analise.blocos_abertos(liberadas)
-        acesso.exigir_quota(
-            conexao, contexto, 1 + len(outros) if cadastro else 1, acesso.agora()
-        )
+        pedidos = 1 + sum(bloco.conta_pedido for bloco in outros) if cadastro else 1
+        acesso.exigir_quota(conexao, contexto, pedidos, acesso.agora())
         servida = None
         if cadastro is not None:
             with _porta(conexao) as porta:

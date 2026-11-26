@@ -150,6 +150,8 @@ def test_cada_rota_por_cnpj_da_analise_tem_um_bloco_com_o_conjunto_dela():
         "credit",
         "assets",
         "comparables",
+        # as vizinhas do mesmo ramo, pelo conjunto da busca de empresas (linha 1038)
+        "prospecting",
         # as tabelas do registro ligadas pelo CNPJ (linha 978, lote 1)
         "financials",
         "funds",
@@ -309,6 +311,85 @@ def test_erro_de_um_bloco_nao_deixa_o_atrasado_sem_interromper(porta, blocos):
     with pytest.raises(RuntimeError, match="bloco quebrou"):
         _montar(porta, conjuntos=("profiles", "vinculos", "eventos"), prazo=0.5)
     assert acabou.wait(10), "a consulta do bloco atrasado não foi interrompida"
+
+
+# --- o bloco com teto próprio ----------------------------------------------------------------------
+
+CONSULTA_SEM_FIM = "SELECT count(*) FROM range(100000000000) a"
+AVISO = "as vizinhas não couberam no tempo"
+
+
+def _sem_fim(porta_do_bloco, *_):
+    porta_do_bloco.con.execute(CONSULTA_SEM_FIM).fetchall()
+
+
+def _com_teto(ler, teto: float) -> analise.Bloco:
+    return _bloco("eventos", ler, teto=teto, aviso_no_corte=AVISO)
+
+
+def test_bloco_cortado_no_teto_sai_com_o_aviso_e_os_outros_seguem(porta, blocos):
+    def devagar(*_):  # termina depois do teto do outro e dentro do prazo
+        time.sleep(0.8)
+        return _Servido({"vinculos": [{}]})
+
+    blocos(_com_teto(_sem_fim, 0.2), _bloco("vinculos", devagar))
+    montada = _montar(porta, conjuntos=("profiles", "eventos", "vinculos"), prazo=10.0)
+    assert montada is not None
+    assert montada.corpo["blocos"]["eventos"] == {"nao_coube_no_tempo": AVISO}
+    assert montada.corpo["blocos"]["vinculos"] == {"vinculos": [{}]}
+    assert montada.corpo["nao_respondeu_a_tempo"] == []
+    assert montada.corpo["nao_encontrado"] == []
+    assert {t.bloco: t.estado for t in montada.tempos}["events"] == "atrasado"
+    assert montada.consumo[("eventos", A)] == (0, True)
+
+
+def test_a_analise_com_o_bloco_cortado_volta_no_teto_e_nao_no_prazo(porta, blocos):
+    blocos(_com_teto(_sem_fim, 0.2))
+    inicio = time.monotonic()
+    montada = _montar(porta, conjuntos=("profiles", "eventos"), prazo=30.0)
+    assert time.monotonic() - inicio < 0.2 + 3.0
+    assert montada.corpo["blocos"]["eventos"] == {"nao_coube_no_tempo": AVISO}  # type: ignore[union-attr]
+
+
+def test_o_teto_nunca_passa_do_prazo_da_analise(porta, blocos):
+    blocos(_com_teto(_sem_fim, 30.0))
+    inicio = time.monotonic()
+    montada = _montar(porta, conjuntos=("profiles", "eventos"), prazo=0.5)
+    assert time.monotonic() - inicio < 5
+    assert montada.corpo["blocos"]["eventos"] == {"nao_coube_no_tempo": AVISO}  # type: ignore[union-attr]
+    assert montada.corpo["nao_respondeu_a_tempo"] == []  # type: ignore[union-attr]
+
+
+def test_bloco_com_teto_que_acaba_a_tempo_sai_normal(porta, blocos):
+    blocos(_com_teto(lambda *_: _Servido({"eventos": [{}]}), 5.0))
+    montada = _montar(porta, conjuntos=("profiles", "eventos"))
+    assert montada.corpo["blocos"]["eventos"] == {"eventos": [{}]}  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(("teto", "prazo"), [(0.2, 10.0), (None, 0.3)])
+def test_bloco_cortado_entre_duas_consultas_nao_faz_a_seguinte(
+    porta, blocos, teto, prazo
+):
+    """A interrupção que chega sem consulta em curso o DuckDB esquece: o bloco cortado seguia gastando CPU."""
+    cortou, acabou, desfecho = threading.Event(), threading.Event(), []
+
+    def entre_consultas(porta_do_bloco, *_):
+        try:
+            porta_do_bloco.con.execute("SELECT 1").fetchall()
+            cortou.wait(10)
+            porta_do_bloco.con.execute("SELECT 2").fetchall()
+            desfecho.append("rodou")
+        except duckdb.InterruptException:
+            desfecho.append("recusada")
+        finally:
+            acabou.set()
+
+    blocos(_bloco("eventos", entre_consultas, teto=teto))
+    montada = _montar(porta, conjuntos=("profiles", "eventos"), prazo=prazo)
+    cortou.set()
+    assert acabou.wait(10)
+    assert desfecho == ["recusada"]
+    assert [n["bloco"] for n in montada.corpo["nao_respondeu_a_tempo"]] == ["events"]  # type: ignore[union-attr]
 
 
 def test_cada_bloco_le_no_proprio_cursor_e_o_fecha(porta, blocos):
