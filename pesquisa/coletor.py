@@ -59,29 +59,48 @@ TAMANHO_DA_LEITURA = 1024 * 1024
 TEXTO_MINIMO_DE_PAGINA = 200
 # Marcas de página de desafio anti-robô ou de rejeição de WAF que vêm com status 2xx (o `ClienteHttp` só
 # reconhece o desafio da Cloudflare pelo cabeçalho). Casca com uma delas não vai a navegador nenhum: um
-# navegador resolveria o desafio, e bloqueio não se contorna. Na dúvida, não renderiza.
+# navegador resolveria o desafio, e bloqueio não se contorna. Na dúvida, não renderiza. O desafio
+# reconhecido vale para o host inteiro, como o bloqueio por status (ver `Memoria.bloqueio_valido_no_site`).
+# Comparadas sem caixa (casefold), inclusive nas letras acentuadas.
 MARCAS_DE_DESAFIO = (
-    b"challenge",
-    b"captcha",
-    b"cf-chl",
-    b"awswaf",
-    b"aws-waf",
-    b"just a moment",
-    b"checking your browser",
-    b"verify you are human",
-    b"are you a robot",
-    b"verifique o navegador",
-    b"verificando o navegador",
-    "não sou um robô".encode(),
-    "você é um robô".encode(),
-    b"incapsula",
-    b"perimeterx",
-    b"datadome",
-    b"request rejected",
-    b"access denied",
-    b"acesso negado",
-    b"ddos",
+    "challenge",
+    "captcha",
+    "cf-chl",
+    "awswaf",
+    "aws-waf",
+    "just a moment",
+    "checking your browser",
+    "verify you are human",
+    "are you a robot",
+    "verifique o navegador",
+    "verificando o navegador",
+    "não sou um robô",
+    "você é um robô",
+    "incapsula",
+    "perimeterx",
+    "datadome",
+    "request rejected",
+    "access denied",
+    "acesso negado",
+    "ddos",
+    "tspd",  # F5 Bot Defense
+    "bobcmn",  # F5 ASM
+    "sucuri",
+    "bm-verify",  # Akamai Bot Manager
+    "_abck",  # Akamai Bot Manager
+    "kpsdk",  # Kasada
+    "perfdrive",  # Radware (ShieldSquare)
+    "shieldsquare",
 )
+AVISO_DE_DESAFIO = (
+    "a página tem cara de desafio anti-robô: não foi renderizada, e o site fica bloqueado para o bot"
+    " (bloqueio não se contorna; procure outra fonte)"
+)
+
+
+def _tem_marca_de_desafio(conteudo: bytes) -> bool:
+    texto = conteudo.decode("utf-8", errors="replace").casefold()
+    return any(marca in texto for marca in MARCAS_DE_DESAFIO)
 
 
 class Cliente(Protocol):
@@ -184,14 +203,16 @@ class Coletor:
             self.rodada.gastar_busca()
             self._conferir_robots(url)
             url_final, conteudo, cabecalhos = self._pedir_pagina(url, renderizar)
-            sozinha = None
+            sozinha, aviso = None, None
             if not renderizar and self._e_casca_de_javascript(conteudo, cabecalhos):
-                url_final, conteudo, cabecalhos, sozinha = self._renderizar_sozinho(
-                    url, (url_final, conteudo, cabecalhos)
+                url_final, conteudo, cabecalhos, sozinha, aviso = (
+                    self._renderizar_sozinho(url, (url_final, conteudo, cabecalhos))
                 )
             resposta = self._responder_pagina(url, url_final, conteudo, cabecalhos)
             if sozinha is not None and resposta.get("tipo") == "html":
                 resposta["renderizada_sozinha"] = sozinha
+                if aviso is not None:
+                    resposta["aviso"] = aviso
             return resposta
         except LimiteExcedido as erro:
             return {"ok": False, "limite": str(erro)}
@@ -280,26 +301,28 @@ class Coletor:
 
     def _renderizar_sozinho(
         self, url: str, lida: tuple[str, bytes, Mapping[str, str]]
-    ) -> tuple[str, bytes, Mapping[str, str], bool]:
+    ) -> tuple[str, bytes, Mapping[str, str], bool, str | None]:
         """Renderiza a casca pelo mesmo renderizador do `renderizar=true` (porteiro e teto valem). Não
         renderiza se o site já bloqueou o bot ou se a casca tem cara de desafio anti-robô. Se não der, a
         página lida volta como veio: a busca já deu certo, e a falha fica anotada (o bloqueio recebido
-        aqui vale para o host na memória)."""
+        aqui, e o desafio reconhecido, valem para o host na memória). O último item é o aviso ao modelo."""
         assert self.renderizador is not None
         if self._site_bloqueado(url):
             self._anotar_pulada(url, "bloqueio no site")
-            return (*lida, False)
-        if any(marca in lida[1].lower() for marca in MARCAS_DE_DESAFIO):
-            self._anotar_pulada(url, "desafio")
-            return (*lida, False)
+            return (*lida, False, None)
+        if _tem_marca_de_desafio(lida[1]):
+            self.memoria.anotar_renderizacao(
+                url, self.rodada.identificador, sozinha=True, resultado="desafio"
+            )
+            return (*lida, False, AVISO_DE_DESAFIO)
         self.cliente_espera_a_vez(url)
         try:
             url_final, html = self.renderizador(url)
         except Exception as erro:  # noqa: BLE001 (qualquer falha devolve a página lida)
             self._anotar_renderizacao(url, True, erro)
-            return (*lida, False)
+            return (*lida, False, None)
         self._anotar_renderizacao(url, True, None)
-        return url_final, html, {"Content-Type": "text/html"}, True
+        return url_final, html, {"Content-Type": "text/html"}, True, None
 
     def _site_bloqueado(self, url: str) -> bool:
         """O host já bloqueou o bot (lembrado na memória, inclusive ao renderizar) ou o robots.txt dele

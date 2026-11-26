@@ -159,6 +159,15 @@ def test_estado_conta_as_renderizacoes(tmp_path: Path):
         b"<html><body><script src='https://x.awswaf.com/c.js'></script></body></html>",
         b"<html><body><div class='g-recaptcha'></div><script>r()</script></body></html>",
         b"<html><body><h1>Request Rejected</h1><script>z()</script></body></html>",
+        # F5, Sucuri, Akamai, Kasada e Radware: só um script externo e um noscript genérico (P2 da re-revisão)
+        b"<html><head><script src='/TSPD/08a1?type=9'></script></head><body><noscript>x</noscript></body></html>",
+        b"<html><body><script>var bobcmn = 1;</script></body></html>",
+        b"<html><body><script src='/sucuri_cloudproxy.js'></script></body></html>",
+        b"<html><body><script src='/bm-verify/a.js'></script></body></html>",
+        b"<html><body><script>document.cookie='_abck=1'</script></body></html>",
+        b"<html><body><script src='/149e9513-01fa-4fb0-aad4-566afd725d1b/2d206a39/ips.js?KPSDK'></script></body></html>",
+        b"<html><body><script src='https://perfdrive.com/a.js'></script></body></html>",
+        "<html><body><h1>NÃO SOU UM ROBÔ</h1><script>q()</script></body></html>".encode(),
     ],
 )
 def test_pagina_de_desafio_anti_robo_nao_e_renderizada_sozinha(
@@ -170,8 +179,9 @@ def test_pagina_de_desafio_anti_robo_nao_e_renderizada_sozinha(
     resposta = pesquisador.buscar_pagina(f"{SITE}/painel")
     assert resposta["ok"] is True and resposta["renderizada_sozinha"] is False
     assert renderizador.chamadas == []
+    assert "desafio" in resposta["aviso"]  # type: ignore[operator]
     (evento,) = _eventos(tmp_path)
-    assert (evento["resultado"], evento["erro"]) == ("pulada", "desafio")
+    assert evento["resultado"] == "desafio"
 
 
 @pytest.mark.parametrize("status", [403, 429])
@@ -239,3 +249,28 @@ def test_casca_com_meta_robots_ainda_e_renderizada(tmp_path: Path):
     renderizador = _Renderizador()
     pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": casca}, renderizador)
     assert pesquisador.buscar_pagina(f"{SITE}/painel")["renderizada_sozinha"] is True
+
+
+def test_desafio_detectado_vale_para_o_host_e_barra_o_renderizar_pedido(tmp_path: Path):
+    """P1 da re-revisão de segurança (82265fa): o desafio que o bot reconhece na casca vira bloqueio do
+    host. Outro endereço do mesmo site com `renderizar=true` não pode passar por ele no navegador."""
+    desafio = (
+        b"<html><body><script src='https://x.awswaf.com/c.js'></script></body></html>"
+    )
+    renderizador = _Renderizador()
+    pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": desafio}, renderizador)
+    pesquisador.buscar_pagina(f"{SITE}/painel")
+    resposta = pesquisador.buscar_pagina(f"{SITE}/outro", renderizar=True)
+    assert resposta["ok"] is False and "não se contorna" in resposta["motivo"]  # type: ignore[operator]
+    assert renderizador.chamadas == []
+    assert pesquisador.memoria.bloqueio_valido_no_site("dados.exemplo.gov.br")
+
+
+def test_desafio_detectado_barra_o_mapa_do_site(tmp_path: Path):
+    desafio = (
+        b"<html><body><div class='g-recaptcha'></div><script>r()</script></body></html>"
+    )
+    pesquisador = _pesquisador(tmp_path, {f"{SITE}/painel": desafio}, _Renderizador())
+    pesquisador.buscar_pagina(f"{SITE}/painel")
+    negativo = pesquisador.memoria.bloqueio_valido_no_site("dados.exemplo.gov.br")
+    assert negativo is not None and "desafio" in negativo.motivo

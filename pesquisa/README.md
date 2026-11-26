@@ -90,9 +90,11 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
   JavaScript), pelo mesmo renderizador e com as mesmas travas; se não der, devolve a página como veio. A resposta
   diz `renderizada_sozinha`. Não renderiza (nem sozinho nem com `renderizar=true`) host que já bloqueou o bot
   (lembrado na memória, inclusive o bloqueio recebido ao renderizar, ou `robots.txt` que respondeu bloqueio), e não
-  renderiza sozinho a casca com marca de desafio anti-robô ou de WAF (captcha, "just a moment", awswaf...): um
-  navegador resolveria o desafio, e bloqueio não se contorna. Cada tentativa de renderizar, pedida ou sozinha, fica na tabela `renderizacao` da
-  memória (url, resultado: ok, falhou, bloqueio, barrado ou pulada, e só o tipo do erro ou o motivo do pulo), para medir o antes e o depois.
+  renderiza a casca com marca de desafio anti-robô ou de WAF (captcha, "just a moment", awswaf, F5, Akamai,
+  Kasada...): um navegador resolveria o desafio, e bloqueio não se contorna. O desafio reconhecido vale para o host
+  inteiro por 7 dias, como um bloqueio: `renderizar=true` e o mapa do site param ali, e a resposta leva um `aviso`.
+  Cada tentativa de renderizar, pedida ou sozinha, fica na tabela `renderizacao` da memória (url, resultado: ok,
+  falhou, bloqueio, desafio, barrado ou pulada, e só o tipo do erro ou o motivo do pulo), para medir o antes e o depois.
 - **Firecrawl** (AGPL), só por HTTP. Com `TICKERLAB_PESQUISA_FIRECRAWL` apontando para um Firecrawl do próprio PC,
   ele renderiza no lugar do Crawl4AI. Com a chave em `FIRECRAWL_API_KEY`, o serviço hospedado entra **depois** do
   Crawl4AI, só quando ele falta ou falha, com:
