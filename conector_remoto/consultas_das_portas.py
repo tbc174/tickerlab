@@ -203,11 +203,7 @@ _ANALISE_COMPLETA = Ferramenta(
     descricao=(
         "A análise de uma empresa pelo CNPJ numa resposta só, com cada bloco que a chave pode ver: o cadastro\n"
         "(a ficha, com os sinais de tamanho), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o\n"
-        "auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, as vizinhas do mesmo\n"
-        "ramo (empresas ativas com a mesma atividade principal no município do CNPJ e, à parte, no resto da UF, com\n"
-        "capital social, porte, estabelecimentos e abertura, até 10 em cada recorte, para a organização com a busca de\n"
-        "empresas, sem contar pedido a mais; sem ela, o bloco diz que não está habilitada; se não couberem no tempo, o\n"
-        "bloco vem só com esse aviso; não diz quem é o dono nem traz sinal de risco de cada uma), os indicadores das\n"
+        "auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das\n"
         "agências reguladoras (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de\n"
         "fundo imobiliário na CVM. Para a organização com o conjunto de integridade no contrato, traz também as\n"
         "sanções da CGU (CEIS, CNEP, CEPIM e acordos de leniência), os termos de embargo do IBAMA e o Cadastro de\n"
