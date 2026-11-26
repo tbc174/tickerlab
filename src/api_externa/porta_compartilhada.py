@@ -6,15 +6,22 @@ de qualquer consulta: era a maior parte da busca simples e um quarto do `comprad
 abre uma vez por processo e cada pedido leva um cursor dela (`cursor()` do DuckDB: outra conexão, as mesmas
 views, sem dividir resultado nem tabela registrada com os outros pedidos).
 
-**Quando a base muda:** o recebedor do servidor troca a pasta `base/` (ou arquivos dela); as views guardam a
-lista de arquivos de quando foram criadas. A cada pedido a porta compara a impressão dos arquivos (caminho, data
-e tamanho) com a de quando abriu e, se mudou, abre outra (os pedidos em curso terminam na antiga). Só um pedido
-abre por vez: os outros esperam a porta nova em vez de abrir uma cada um.
+**Quando a base muda**, há dois formatos (o código lê os dois; linha 1099):
+- **versionado** (parte a): `base` é um link simbólico relativo para `versoes/<carimbo>`, que o recebedor troca numa
+  operação só e nunca regrava depois de apontar. A porta dona abre no caminho resolvido; a cada pedido compara o
+  destino do link (uma leitura de link) com o da abertura e, se mudou, abre outra. O pedido que cruza a troca termina
+  inteiro na versão em que começou, que o recebedor guarda como `anterior`.
+- **antigo**: `base` é pasta de verdade, trocada no lugar; as views guardam a lista de arquivos de quando foram
+  criadas. A cada pedido a porta compara a impressão dos arquivos (caminho, data e tamanho) com a de quando abriu e,
+  se mudou, abre outra; no fim do pedido confere de novo (`conferir_no_fim`, parte b) e, se mudou, a resposta não sai.
+
+Só um pedido abre por vez: os outros esperam a porta nova em vez de abrir uma cada um.
 
 **O registro de coletas (`banco`) é de cada pedido:** a porta emprestada leva a conexão do banco do pedido, não
 a de quem abriu a dona.
 """
 
+import os
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -37,9 +44,10 @@ from src import acervo
 THREADS_DA_PORTA = 1
 
 
-def abrir_a_base() -> Porta:
-    """Abre a porta da base do acervo (os testes trocam esta função)."""
-    return porta_da_base.abrir(threads=THREADS_DA_PORTA)
+def abrir_a_base(pasta: Path | None = None) -> Porta:
+    """Abre a porta da base em `pasta` (a versão resolvida, no formato versionado) ou na do acervo (os testes
+    trocam esta função)."""
+    return porta_da_base.abrir(pasta, threads=THREADS_DA_PORTA)
 
 
 class PortaEmprestada(Porta):
@@ -72,7 +80,8 @@ class PortaEmprestada(Porta):
 class _Dona:
     porta: Porta
     pasta: Path | None
-    impressao: tuple
+    # a impressão dos arquivos (formato antigo) ou None (versionado: a versão aberta nunca é regravada)
+    impressao: tuple | None
     memoria: dict[Any, Any] = field(default_factory=dict)
 
 
@@ -83,6 +92,14 @@ _DONA: _Dona | None = None
 def _pasta_da_base() -> Path | None:
     raiz = acervo.pasta_do_acervo()
     return None if raiz is None else raiz / "base"
+
+
+def _versao_da_base(pasta: Path) -> Path | None:
+    """O formato versionado (linha 1099, parte a): `base` é um link para `versoes/<carimbo>`, e a versão é o caminho
+    resolvido. Pasta de verdade (o formato antigo): None."""
+    if not os.path.islink(pasta):
+        return None
+    return Path(os.path.realpath(pasta))
 
 
 def _impressao(pasta: Path, arquivos: dict[str, str]) -> tuple:
@@ -194,9 +211,22 @@ def porta_do_pedido(banco: sa.Connection | None = None) -> Porta:
     with _TRAVA:
         dona = _DONA
         pasta = _pasta_da_base()
-        if (
+        versao = None if pasta is None else _versao_da_base(pasta)
+        if versao is not None:
+            # versionado: a troca se vê pelo destino do link, sem ler os arquivos; a porta abre no caminho
+            # resolvido, e um link trocado durante a abertura só faz o pedido seguinte abrir de novo
+            if (
+                dona is None
+                or dona.pasta != pasta
+                or dona.impressao is not None
+                or Path(dona.porta.pasta) != versao
+            ):
+                dona = _Dona(abrir_a_base(versao), pasta, None)
+                _DONA = dona
+        elif (
             dona is None
             or dona.pasta != pasta
+            or dona.impressao is None
             or dona.impressao != impressao_da_base(dona.porta)
         ):
             # a impressão é tirada ANTES de abrir (a abertura leva segundos): se a base mudar durante ela, a
@@ -216,7 +246,8 @@ def conferir_no_fim(porta: Porta) -> None:
     """No fim do pedido, a mesma conferência de `porta_do_pedido`: se os arquivos que as views leem mudaram desde a
     abertura da porta dona, levanta `BaseEmAtualizacao` e a resposta não sai (linha 1099, parte b, trava
     provisória). Só vê troca que muda o caminho, a data ou o tamanho de algum arquivo: a que preserva os três passa
-    (o conserto de raiz é a pasta versionada, parte a). Porta sem impressão da abertura (os testes) não confere."""
+    (o conserto de raiz é a pasta versionada, parte a). Porta sem impressão da abertura não confere: a do formato
+    versionado (lê uma versão que ninguém regrava) e a dos testes."""
     abertura = getattr(porta, "impressao_da_abertura", None)
     if abertura is None:
         return
