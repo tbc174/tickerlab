@@ -2923,6 +2923,37 @@ Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: q
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `cnpj_nomes_pj`
+
+Os nomes pelos quais se acha uma empresa: a razão social, o nome fantasia dos estabelecimentos e as razões sociais antigas, uma linha por empresa e nome. Serve a busca por nome. **Sem pessoa:** só raízes de `cnpj_estabelecimentos_pj` (fora MEI, empresário individual e grupo 4); CPF escrito no nome sai, nome com e-mail ou endereço de site não entra, e telefone e endereço nem são lidos. O nome antigo só aparece desde o primeiro mês do `cnpj_empresas_historico` (2023-05). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_nomes_pj.py`)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `tipo_de_nome`, `nome_para_busca`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_nomes_pj/<2 primeiros caracteres da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 de um ZIP de estabelecimentos da Receita do mês (`origem_sha256`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `tipo_de_nome` | razao_social, nome_fantasia ou razao_social_anterior | texto |
+| `nome_de_empresa` | O nome como a Receita publica | texto |
+| `nome_para_busca` | O nome sem acento, maiúsculo, só letras e números, com as letras soltas juntas | texto |
+| `trocado_em_mes` | Na razão social antiga, o mês do retrato em que ela mudou; vazio nos outros | AAAA-MM |
+| `mes_do_retrato` | Mês do arquivo da Receita de onde a tabela foi montada | AAAA-MM |
+| `disponivel_em` | Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `anvisa_por_empresa`
 
 Quantos registros a empresa tem na Anvisa, por tipo (cosméticos, produtos para saúde, saneantes, alimentos, medicamentos, autorização de funcionamento e certificado de boas práticas): o total e os que estão em vigor, uma linha por raiz de CNPJ e por retrato do arquivo da Anvisa. **É um sinal de porte, uma aproximação, não faturamento:** um registro não diz quanto a empresa vende, e empresa pequena pode ter muitos produtos. **Sem pessoa:** só pessoa jurídica; a raiz que tem qualquer linha de empresário individual, MEI, natureza do grupo 4 ou CNPJ que a Receita guardada não tem sai inteira, nos totais e nos ativos. Cada registro conta uma vez (a versão mais nova vista até o retrato), o que saiu do arquivo não conta, e situação vazia ou fora do vocabulário nunca conta como ativa. Medicamento com apresentações de situações diferentes ('Ativo / Inativo') conta como ativo. O retrato mais antigo é de 2026-10-29 (o arquivista começou ali): antes disso a base não viu a Anvisa.
