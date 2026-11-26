@@ -12119,10 +12119,10 @@ TABELAS: dict[str, Tabela] = {
             "Sem receita conhecida, `desconhecido`: o valor nunca é estimado"
         ),
         fonte=(
-            "`ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), as "
-            "receitas lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de "
-            "negócios da compradora, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ "
-            "aberto da Receita (só raiz e porte são lidos)"
+            "`ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), a "
+            "receita da nota CPC 15 das compradoras (`ma_receitas_cpc15`), as lidas à mão em "
+            "`base/conferidas/ma_receitas.csv` (nota de combinação de negócios, balanço publicado "
+            "da alvo, faixa do CADE) e o porte do CNPJ aberto da Receita (só raiz e porte são lidos)"
         ),
         familia_da_fonte="assessoria",
         frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
@@ -12192,6 +12192,93 @@ TABELAS: dict[str, Tabela] = {
             "porte_publico_em": ("Quando o arquivista baixou esse ZIP", MOMENTO),
             "porte_prova_url": ("Endereço do ZIP `Empresas` da Receita", TEXTO),
             "porte_prova_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
+        },
+    ),
+    "ma_receitas_cpc15": Tabela(
+        descricao=(
+            "Receita anual de empresa comprada, tirada da nota de combinação de negócios (CPC 15) da "
+            "DFP da compradora aberta: uma linha por empresa comprada, exercício e versão da DFP (linha "
+            "1129). É a receita de empresa fechada vendida: o ano cheio, em reais, como a nota o dá "
+            "(só a da adquirida) ou pela conta que a nota permite (`forma`). Só entra o número em que "
+            "duas leituras independentes concordam, que fica abaixo da receita da própria compradora e cujo "
+            "nome leva a um CNPJ só (pela controlada que a compradora informa ou pela razão social única "
+            "na Receita); sem isso não há "
+            'linha, e nada é estimado. **Limites:** só entra a nota escrita em frase ("se a aquisição '
+            'tivesse ocorrido em 1º de janeiro"), não em quadro; a nota que soma várias compradas não '
+            "dá a receita de cada uma; e a mesma compra pode aparecer na DFP de mais de uma "
+            "companhia do grupo"
+        ),
+        fonte=(
+            "CVM: ENET, PDF do pacote da DFP, pela tabela `notas_dfp`; o CNPJ da comprada pelas "
+            "`controladas` do FRE ou pela razão social única no CNPJ aberto da Receita; a receita "
+            "consolidada da compradora pela DRE (`base/ma_receitas_cpc15.py`)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Semanal, junto da extração de M&A; versão nova só quando uma entrada muda",
+        atraso="O da DFP: cada linha vale a partir da entrega daquela versão à CVM",
+        onde=(
+            "Parquet em `<acervo>/base/ma/receitas_cpc15/dfp.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada linha diz o documento (compradora, referência, versão, página e endereço do pacote) e "
+            "leva o `origem_sha256` e o `origem_coletada_em` do texto no acervo; o `.json` guarda as "
+            "tabelas e os arquivos de entrada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj_raiz": ("Raiz (8 dígitos) do CNPJ da empresa comprada", TEXTO),
+            "empresa": (
+                "Razão social da comprada, como a compradora a escreveu na nota",
+                TEXTO,
+            ),
+            "cnpj_compradora": ("CNPJ da companhia que escreveu a nota", TEXTO),
+            "compradora": ("Nome da companhia que escreveu a nota", TEXTO),
+            "referencia": ("Data a que a DFP se refere (fim do exercício)", DATA),
+            "versao": ("Versão da DFP (cada reapresentação é um documento)", NUMERO),
+            "exercicio_fim": (
+                "Fim do exercício da receita (31 de dezembro do ano da frase)",
+                DATA,
+            ),
+            "receita": ("Receita anual da comprada no ano cheio", REAIS),
+            "receita_desde_a_compra": (
+                "A parte que a nota diz ter entrado no consolidado desde a compra; vazio se não diz",
+                REAIS,
+            ),
+            "forma": (
+                (
+                    "so_da_adquirida, aumento_do_consolidado (desde a compra mais o aumento) ou "
+                    "consolidado_inteiro (consolidado da nota menos o da DRE, mais desde a compra)"
+                ),
+                TEXTO,
+            ),
+            "pagina": (
+                "Página do PDF em que está a frase da receita, a partir de 1 (a de `notas_dfp`)",
+                NUMERO,
+            ),
+            "pagina_impressa": ("Número impresso nessa página, quando há", NUMERO),
+            "pagina_da_secao": (
+                (
+                    "Página do PDF em que a nota daquela compra começa (pode vir antes da de `pagina`; o número "
+                    "impresso no rodapé pode ser outro)"
+                ),
+                NUMERO,
+            ),
+            "trecho": (
+                "As frases da nota que provam o valor; de nome próprio, só o da comprada (o resto vira […])",
+                TEXTO,
+            ),
+            "ligacao_por": ("controladas ou razao_social_da_receita", TEXTO),
+            "resumo": ("O número, o ano, o documento e a página numa frase", TEXTO),
+            "disponivel_em": (
+                (
+                    "Desde quando a linha podia ser sabida: a entrega da versão da DFP ou, se só um FRE "
+                    "posterior identifica o CNPJ, a desse FRE"
+                ),
+                DATA,
+            ),
+            "link": ("Endereço do pacote no ENET de onde o texto saiu", TEXTO),
+            "origem_sha256": ("SHA-256 do texto da DFP guardado no acervo", TEXTO),
+            "origem_coletada_em": ("Quando o texto foi coletado", MOMENTO),
         },
     ),
     "cftc_cot_agro": Tabela(
@@ -13014,6 +13101,7 @@ _CONTRATO = {
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
     "conab_cafe": _contrato(modulo="macro", chaves=("safra", "levantamento", "tipo", "uf", "divulgado_em"), datas={"publico_em": "divulgado_em"}, historico_desde="2026-02-05", versao_do_contrato="1.1.0"),
+    "ma_receitas_cpc15": _contrato(modulo="ma", chaves=("cnpj_raiz", "exercicio_fim", "cnpj_compradora", "referencia", "versao"), datas={"aconteceu_em": "exercicio_fim", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
     "cftc_cot_agro": _contrato(modulo=_ME, chaves=("relatorio", "contrato"), datas={"aconteceu_em": "relatorio", "publico_em": "disponivel_em"}, historico_desde="2006-06-13"),
     "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),

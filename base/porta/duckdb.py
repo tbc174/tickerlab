@@ -246,6 +246,7 @@ ARQUIVOS: dict[str, str] = {
     "ma_negocios": "ma/ligacao/negocios.parquet",
     "ma_datas": "ma/datas/negocios.parquet",
     "ma_regua": "ma/regua/negocios.parquet",
+    "ma_receitas_cpc15": "ma/receitas_cpc15/dfp.parquet",
     "usda_psd_cafe": "commodities/usda_psd/*.parquet",
     "faostat_cafe": "commodities/faostat_cafe/*.parquet",
 }

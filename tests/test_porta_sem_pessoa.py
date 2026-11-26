@@ -145,6 +145,7 @@ FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
 # sem pessoa por desenho (aneel_samp e anp_concessionarios: pela raiz do CNPJ, medida à parte): o filtro é na montagem, com teste próprio (zero pessoa dos dois lados, linha 810)
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
+        "ma_receitas_cpc15",  # linha 1129: só raiz que a Receita diz ser de empresa (tests/test_base_ma_receitas_cpc15.py)
         # linha 1033: só raízes da vista sem MEI, sem EI e sem grupo 4; CPF e contato no nome saem na montagem
         # (tests/test_montar_nomes_pj.py)
         "cnpj_nomes_pj",

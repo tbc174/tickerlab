@@ -257,6 +257,23 @@ def _das_raizes(
     return valores[~valores.index.duplicated()]
 
 
+def raizes_de_empresa(
+    empresas: Sequence[Arquivo], simples: Sequence[Arquivo], raizes: set[str]
+) -> set[str]:
+    """As raízes que o CNPJ da Receita diz serem de empresa, para a tabela que não pode ter pessoa.
+
+    Ficam fora o empresário individual, o grupo 4, o MEI e a raiz sem natureza na Receita (na dúvida, fora).
+    """
+    naturezas = _das_raizes(empresas, [NATUREZA], raizes)[NATUREZA]
+    opcao_mei = _das_raizes(simples, [MEI], raizes)[MEI]
+    meis = {raiz for raiz, opcao in opcao_mei.items() if opcao.strip() == OPTANTE}
+    return {
+        str(raiz)
+        for raiz, natureza in naturezas.items()
+        if natureza.strip() and not natureza_de_pessoa(natureza) and raiz not in meis
+    }
+
+
 def _abertura_da_matriz(
     estabelecimentos: Sequence[Arquivo], raizes: set[str]
 ) -> pd.Series:

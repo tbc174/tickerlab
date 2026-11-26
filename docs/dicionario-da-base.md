@@ -8288,7 +8288,7 @@ Quando cada negócio de M&A das assessorias ficou público, provado, e a confirm
 
 Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página (ADR 0082, item 2; série 5 do plano de M&A, passo 5). Só vale o que era público antes do `conhecido_em` do negócio (documento entregue no mesmo dia ou depois não entra). Sem receita conhecida, `desconhecido`: o valor nunca é estimado
 
-- **Fonte:** `ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), as receitas lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de negócios da compradora, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ aberto da Receita (só raiz e porte são lidos)
+- **Fonte:** `ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), a receita da nota CPC 15 das compradoras (`ma_receitas_cpc15`), as lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de negócios, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ aberto da Receita (só raiz e porte são lidos)
 - **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
@@ -8321,6 +8321,46 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 | `porte_publico_em` | Quando o arquivista baixou esse ZIP | data e hora (UTC) |
 | `porte_prova_url` | Endereço do ZIP `Empresas` da Receita | texto |
 | `porte_prova_sha256` | SHA-256 do ZIP guardado no acervo | texto |
+
+## `ma_receitas_cpc15`
+
+Receita anual de empresa comprada, tirada da nota de combinação de negócios (CPC 15) da DFP da compradora aberta: uma linha por empresa comprada, exercício e versão da DFP (linha 1129). É a receita de empresa fechada vendida: o ano cheio, em reais, como a nota o dá (só a da adquirida) ou pela conta que a nota permite (`forma`). Só entra o número em que duas leituras independentes concordam, que fica abaixo da receita da própria compradora e cujo nome leva a um CNPJ só (pela controlada que a compradora informa ou pela razão social única na Receita); sem isso não há linha, e nada é estimado. **Limites:** só entra a nota escrita em frase ("se a aquisição tivesse ocorrido em 1º de janeiro"), não em quadro; a nota que soma várias compradas não dá a receita de cada uma; e a mesma compra pode aparecer na DFP de mais de uma companhia do grupo
+
+- **Fonte:** CVM: ENET, PDF do pacote da DFP, pela tabela `notas_dfp`; o CNPJ da comprada pelas `controladas` do FRE ou pela razão social única no CNPJ aberto da Receita; a receita consolidada da compradora pela DRE (`base/ma_receitas_cpc15.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Semanal, junto da extração de M&A; versão nova só quando uma entrada muda
+- **Atraso de divulgação:** O da DFP: cada linha vale a partir da entrega daquela versão à CVM
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_raiz`, `exercicio_fim`, `cnpj_compradora`, `referencia`, `versao`
+- **Três datas:** aconteceu_em = `exercicio_fim`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/receitas_cpc15/dfp.parquet` (servidor de casa, `scripts/carga_ma_assessorias.py`)
+- **Linhagem:** Cada linha diz o documento (compradora, referência, versão, página e endereço do pacote) e leva o `origem_sha256` e o `origem_coletada_em` do texto no acervo; o `.json` guarda as tabelas e os arquivos de entrada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_raiz` | Raiz (8 dígitos) do CNPJ da empresa comprada | texto |
+| `empresa` | Razão social da comprada, como a compradora a escreveu na nota | texto |
+| `cnpj_compradora` | CNPJ da companhia que escreveu a nota | texto |
+| `compradora` | Nome da companhia que escreveu a nota | texto |
+| `referencia` | Data a que a DFP se refere (fim do exercício) | data (dia) |
+| `versao` | Versão da DFP (cada reapresentação é um documento) | número inteiro |
+| `exercicio_fim` | Fim do exercício da receita (31 de dezembro do ano da frase) | data (dia) |
+| `receita` | Receita anual da comprada no ano cheio | reais (R$), já multiplicado pela escala informada |
+| `receita_desde_a_compra` | A parte que a nota diz ter entrado no consolidado desde a compra; vazio se não diz | reais (R$), já multiplicado pela escala informada |
+| `forma` | so_da_adquirida, aumento_do_consolidado (desde a compra mais o aumento) ou consolidado_inteiro (consolidado da nota menos o da DRE, mais desde a compra) | texto |
+| `pagina` | Página do PDF em que está a frase da receita, a partir de 1 (a de `notas_dfp`) | número inteiro |
+| `pagina_impressa` | Número impresso nessa página, quando há | número inteiro |
+| `pagina_da_secao` | Página do PDF em que a nota daquela compra começa (pode vir antes da de `pagina`; o número impresso no rodapé pode ser outro) | número inteiro |
+| `trecho` | As frases da nota que provam o valor; de nome próprio, só o da comprada (o resto vira […]) | texto |
+| `ligacao_por` | controladas ou razao_social_da_receita | texto |
+| `resumo` | O número, o ano, o documento e a página numa frase | texto |
+| `disponivel_em` | Desde quando a linha podia ser sabida: a entrega da versão da DFP ou, se só um FRE posterior identifica o CNPJ, a desse FRE | data (dia) |
+| `link` | Endereço do pacote no ENET de onde o texto saiu | texto |
+| `origem_sha256` | SHA-256 do texto da DFP guardado no acervo | texto |
+| `origem_coletada_em` | Quando o texto foi coletado | data e hora (UTC) |
 
 ## `cftc_cot_agro`
 

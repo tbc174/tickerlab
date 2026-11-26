@@ -21,6 +21,10 @@ com o `conhecido_em` de cada página (a prova mais antiga: a cópia no Wayback q
 na fonte `wayback-<id>`, os sócios PJ do CNPJ do mês mais recente ou a nossa coleta). Sem a ligação, não
 data.
 
+Antes da régua, a receita das empresas compradas pelas notas CPC 15 (linha 1129,
+`base/ma_receitas_cpc15.py`): lê `<base>/notas_dfp`, `<base>/controladas` e o CNPJ da Receita e grava
+`<base>/ma/receitas_cpc15/dfp.parquet`. Sem as notas, as controladas ou a Receita, não monta.
+
 E a régua do middle market (passo 5, `base/ma_regua.py`): grava `<base>/ma/regua/negocios.parquet` com a
 receita anual da alvo de antes do negócio (a DRE da CVM já montada em `<base>/demonstracoes` e as lidas à
 mão em `base/conferidas/ma_receitas.csv`) e o porte do CNPJ do mês mais recente. Sem as datas, não mede.
@@ -39,7 +43,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import ma_assessorias, ma_datas, ma_ligacao, ma_regua
+from base import ma_assessorias, ma_datas, ma_ligacao, ma_receitas_cpc15, ma_regua
 from base.arquivo.assessorias import ASSESSORIAS, Assessoria
 from base.parquet import (
     GRAVADO,
@@ -266,6 +270,57 @@ def datar(conexao: sa.Connection, base: Path, forcar: bool = False) -> None:
     log.info("datas dos negócios: %s", resultado)
 
 
+def montar_receitas_cpc15(
+    conexao: sa.Connection, base: Path, forcar: bool = False
+) -> None:
+    """A receita das alvos pelas notas CPC 15 das DFPs (`base/ma_receitas_cpc15.py`, linha 1129)."""
+    notas = arquivos_atuais(base / "notas_dfp")
+    controladas = arquivos_atuais(base / "controladas")
+    receita, da_receita = _receita(conexao)
+    if not (notas and controladas and receita["Empresas"]):
+        log.warning(
+            "receitas das compradas: sem as notas, as controladas ou a Receita; fica para depois"
+        )
+        return
+    demonstracoes = arquivos_atuais(base / "demonstracoes")
+    entradas = [*notas, *controladas, *demonstracoes]
+    origens = [origem_de_tabela(t, base) for t in entradas] + da_receita
+
+    def ler_demonstracoes(cnpjs: set[str]) -> pd.DataFrame:
+        partes = [pd.read_parquet(t, filters=DA_REGUA) for t in demonstracoes]
+        if not partes:
+            return pd.DataFrame()
+        todas = pd.concat(partes, ignore_index=True)
+        return todas[todas["cnpj"].isin(cnpjs)]
+
+    def montar_receitas() -> pd.DataFrame:
+        saida, recusadas = ma_receitas_cpc15.montar_dos_anos(
+            (
+                pd.read_parquet(t, columns=ma_receitas_cpc15.COLUNAS_DAS_NOTAS)
+                for t in notas
+            ),
+            pd.concat([ler_tabela(t) for t in controladas], ignore_index=True),
+            lambda nomes: ma_ligacao.ler_receita(
+                receita["Empresas"],
+                receita["Estabelecimentos"],
+                receita["Simples"],
+                nomes,
+            ),
+            ler_demonstracoes,
+            lambda raizes: ma_ligacao.raizes_de_empresa(
+                receita["Empresas"], receita["Simples"], raizes
+            ),
+        )
+        print("receitas das compradas: " + ma_receitas_cpc15.resumo(saida, recusadas))
+        return saida
+
+    destino = base / "ma" / "receitas_cpc15" / "dfp"
+    resultado = gravar_com_versoes(
+        montar_receitas, destino, origens, ma_receitas_cpc15.ORDEM, forcar=forcar
+    )
+    log.info("receitas das compradas: %s", resultado)
+
+
 def medir_regua(conexao: sa.Connection, base: Path, forcar: bool = False) -> None:
     """A régua do middle market de cada página (`base/ma_regua.py`), se as datas já existem."""
     datas = base / "ma" / "datas" / "negocios.parquet"
@@ -276,8 +331,10 @@ def medir_regua(conexao: sa.Connection, base: Path, forcar: bool = False) -> Non
     demonstracoes = arquivos_atuais(base / "demonstracoes")
     empresas = [(c, o) for t, c, o in _do_mes_mais_recente(conexao) if t == EMPRESAS]
     conferidas = ma_regua.CONFERIDAS
+    das_notas = base / "ma" / "receitas_cpc15" / "dfp.parquet"
+    lidas = [das_notas] if das_notas.exists() else []
     origens = (
-        [origem_de_tabela(t, base) for t in [datas, partes, *demonstracoes]]
+        [origem_de_tabela(t, base) for t in [datas, partes, *demonstracoes, *lidas]]
         + [{"url": o.url, "sha256": o.sha256} for _, o in empresas]
         + [
             {
@@ -292,6 +349,9 @@ def medir_regua(conexao: sa.Connection, base: Path, forcar: bool = False) -> Non
         alvos = set(ligadas.loc[ligadas["papel"] == "alvo", "cnpj_raiz"].dropna())
         dre = [pd.read_parquet(t, filters=DA_REGUA) for t in demonstracoes]
         receitas = [ma_regua.receitas_conferidas()]
+        receitas += [
+            ma_receitas_cpc15.receitas_para_a_regua(ler_tabela(t)) for t in lidas
+        ]
         if dre:
             receitas.append(
                 ma_regua.receitas_da_cvm(pd.concat(dre, ignore_index=True), alvos)
@@ -336,6 +396,7 @@ def main(argv: list[str] | None = None) -> int:
             carregar(conexao, base, opcoes.forcar)
             ligar(conexao, base, opcoes.forcar)
             datar(conexao, base, opcoes.forcar)
+            montar_receitas_cpc15(conexao, base, opcoes.forcar)
             medir_regua(conexao, base, opcoes.forcar)
     finally:
         motor.dispose()
