@@ -89,7 +89,9 @@ def test_a_mundial_sai_com_os_fatos_do_fidc_e_da_receita(tmp_path):
     # a Mundial cede a FIDCs: a lista dos fundos (dívida de mercado, linha 1126) sai, e o aviso dela junto
     assert corpo["limites"] == [*credito.LIMITES, credito.LIMITE_DA_DIVIDA]
     assert servida.fontes == {"cvm-fidc", "rfb-cnpj", "cvm-hist-ipe"}
-    assert servida.linhas == 1
+    assert servida.linhas == 1 + len(
+        corpo["divida_de_mercado"]["lista_dos_fundos_em_que_cede"]["valor"]
+    )
 
 
 def test_mesmo_com_o_portao_aberto_so_saem_os_fatos_com_linha_de_direito(tmp_path):

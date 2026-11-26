@@ -26,7 +26,7 @@ from base import cnpj as cnpj_
 from base.porta import Porta
 from src.api_externa.conjuntos import Permitido
 from src.api_externa.conjuntos.divida_de_mercado import LIMITE as LIMITE_DA_DIVIDA
-from src.api_externa.conjuntos.divida_de_mercado import LeitorDaDivida
+from src.api_externa.conjuntos.divida_de_mercado import LeitorDaDivida, itens
 from src.api_externa.conjuntos.empresas import e_empresa
 from src.api_externa.envelope import campo
 from src.credito.elegibilidade import CEDENTE
@@ -95,9 +95,13 @@ def _servivel(fato: Feature) -> bool:
 class LeitorDeCredito:
     """Lê a ficha de crédito de uma empresa de uma porta para um pedido."""
 
-    def __init__(self, porta: Porta, permitido: Permitido) -> None:
+    def __init__(
+        self, porta: Porta, permitido: Permitido, linhas_maximas: int | None = None
+    ) -> None:
         self.porta = porta
         self.permitido = permitido
+        # o teto das listas da dívida de mercado (o do plano na rota, o da análise no bloco)
+        self.linhas_maximas = linhas_maximas
 
     def _liberados(self, fatos: tuple[Feature, ...]) -> list[Feature]:
         """Os fatos que o portão libera; todos são contas nossas sobre a fonte (derivados)."""
@@ -120,9 +124,9 @@ class LeitorDeCredito:
         fatos = fatos_da_ficha(self.porta, normal, como_era_em, frozenset(FATOS))
         liberados = self._liberados(fatos)
         # a dívida de mercado (linha 1126) sai só pelo portão, e o aviso dela só junto com ela
-        divida, fontes_da_divida = LeitorDaDivida(self.porta, self.permitido).bloco(
-            normal, como_era_em
-        )
+        divida, fontes_da_divida = LeitorDaDivida(
+            self.porta, self.permitido, self.linhas_maximas
+        ).bloco(normal, como_era_em)
         if not liberados and not divida:
             return None
         servidos = {
@@ -142,4 +146,5 @@ class LeitorDeCredito:
             "limites": [*LIMITES, *([LIMITE_DA_DIVIDA] if divida else [])],
         }
         fontes = {FATOS[fato.chave].fonte for fato in liberados} | fontes_da_divida
-        return FichaServida(corpo, fontes, 1)
+        # a ficha conta uma linha, e cada item da dívida de mercado mais uma
+        return FichaServida(corpo, fontes, 1 + itens(divida))

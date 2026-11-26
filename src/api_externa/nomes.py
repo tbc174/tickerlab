@@ -479,7 +479,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "percentual": "percentage",
     "primeiro_mes_com_a_empresa": "first_month_listed",
     "ultimo_mes_com_a_empresa": "last_month_listed",
-    "no_ultimo_informe": "in_latest_report",
+    "ultimo_informe_do_certificado": "certificate_last_report_month",
     "cnpj_fundo": "fund_cnpj",
     "instituicao_administradora": "administering_institution",
     "cnpj_da_instituicao_administradora": "administering_institution_cnpj",

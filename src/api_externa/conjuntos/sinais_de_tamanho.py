@@ -161,7 +161,13 @@ class LeitorDeTamanho:
         }
 
     def _da_receita(self, normal: str, como_era_em: date) -> dict[str, dict]:
-        liberados = [nome for nome in DA_RECEITA if self._liberado(nome)]
+        if empresas.LISTA_DE_EMPRESAS not in views(self.porta.con):
+            return {}
+        # as duas colunas entraram na versão 1.1.0 da lista (10/11/2026): retrato sem elas não derruba o perfil
+        existem = set(self.porta.colunas(empresas.LISTA_DE_EMPRESAS))
+        liberados = [
+            nome for nome in DA_RECEITA if nome in existem and self._liberado(nome)
+        ]
         if not liberados:
             return {}
         raiz = normal[: empresas.TAMANHO_DA_RAIZ]

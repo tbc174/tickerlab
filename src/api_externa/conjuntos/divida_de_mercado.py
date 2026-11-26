@@ -5,7 +5,7 @@ ficou público, o que os informes mensais da CVM diziam da empresa no dia:
 
 - `certificados_cra`, `certificados_cri` e `certificados_ots`: um certificado por item, com a securitizadora, os
   papéis da empresa (cedente, devedora) e o percentual do informe mais novo, o primeiro e o último mês em que ela
-  aparece e se o certificado ainda estava no último informe que a securitizadora entregou;
+  aparece e o último mês em que o próprio certificado foi informado;
 - `lista_dos_fundos_em_que_cede`: cada FIDC que a lista entre os maiores cedentes nos 12 meses, pelo informe mais
   novo, com a instituição administradora (pessoa jurídica), a participação, a carteira e o crédito inadimplente.
 
@@ -101,9 +101,13 @@ def _sem_vazios(item: dict[str, object]) -> dict[str, object]:
 class LeitorDaDivida:
     """Lê a dívida de mercado de uma empresa de uma porta para um pedido."""
 
-    def __init__(self, porta: Porta, permitido: Permitido) -> None:
+    def __init__(
+        self, porta: Porta, permitido: Permitido, linhas_maximas: int | None = None
+    ) -> None:
         self.porta = porta
         self.permitido = permitido
+        # o teto de itens da resposta inteira (o do plano na rota, o da análise no bloco); None: sem teto
+        self.linhas_maximas = linhas_maximas
 
     def _liberados(self) -> set[str]:
         existem = views(self.porta.con)
@@ -138,11 +142,10 @@ class LeitorDaDivida:
 
     def _dos_certificados(
         self, codigos: list[str], securitizadoras: list[str], dia: str
-    ) -> tuple[dict[tuple[str, str], dict], dict[str, str | None]]:
-        """O informe mais novo de cada certificado (nome da securitizadora, emissão) e o último mês que cada
-        securitizadora informou no dia."""
+    ) -> dict[tuple[str, str], dict]:
+        """O informe mais novo de cada certificado já público no dia (nome da securitizadora, emissão, mês)."""
         if CERTIFICADOS not in views(self.porta.con):
-            return {}, {}
+            return {}
         dados = self._consulta(
             CERTIFICADOS,
             "list_contains($codigos, codigo_certificado)",
@@ -150,20 +153,14 @@ class LeitorDaDivida:
             "QUALIFY row_number() OVER (PARTITION BY cnpj_securitizadora, codigo_certificado "
             "ORDER BY competencia DESC, versao DESC) = 1",
         )
-        ultimos = self._consulta(
-            CERTIFICADOS, "list_contains($securitizadoras, cnpj_securitizadora)",
-            {"dia": dia, "securitizadoras": securitizadoras},
-        ).groupby("cnpj_securitizadora")["competencia"].max()  # fmt: skip
-        por_certificado = {
+        return {
             (str(linha["cnpj_securitizadora"]), str(linha["codigo_certificado"])): linha
             for linha in dados.to_dict(orient="records")
+            if str(linha["cnpj_securitizadora"]) in securitizadoras
         }
-        return por_certificado, {str(s): _mes(m) for s, m in ultimos.items()}
 
     @staticmethod
-    def _um_certificado(
-        linhas: pd.DataFrame, dados: dict, ultimo: str | None
-    ) -> dict[str, object]:
+    def _um_certificado(linhas: pd.DataFrame, dados: dict) -> dict[str, object]:
         ultima = linhas["competencia"].max()
         do_ultimo_mes = linhas[linhas["competencia"] == ultima].sort_values("papel")
         primeira = linhas.iloc[0]
@@ -180,7 +177,9 @@ class LeitorDaDivida:
             "primeiro_mes_com_a_empresa": _mes(linhas["competencia"].min()),
             "ultimo_mes_com_a_empresa": ultimo_mes,
             "meses": int(linhas["competencia"].nunique()),
-            "no_ultimo_informe": None if ultimo is None else ultimo_mes == ultimo,
+            # o último mês em que o próprio certificado foi informado (com ou sem a empresa): mais novo que
+            # `ultimo_mes_com_a_empresa` quer dizer que ele seguiu no informe sem ela; fato, sem conclusão nossa
+            "ultimo_informe_do_certificado": _mes(dados.get("competencia")),
             "publico_em": _dia(linhas["publico_em"].max()),
         })  # fmt: skip
 
@@ -195,7 +194,7 @@ class LeitorDaDivida:
         linhas = self._linhas_da_empresa(formatado, dia, produtos)
         if linhas.empty:
             return {}
-        dados, ultimos = self._dos_certificados(
+        dados = self._dos_certificados(
             sorted({str(c) for c in linhas["codigo_certificado"]}),
             sorted({str(s) for s in linhas["cnpj_securitizadora"]}),
             dia,
@@ -206,7 +205,7 @@ class LeitorDaDivida:
         ):
             chave = (str(securitizadora), str(codigo))
             listas.setdefault(str(produto), []).append(
-                self._um_certificado(grupo, dados.get(chave, {}), ultimos.get(chave[0]))
+                self._um_certificado(grupo, dados.get(chave, {}))
             )
         return {
             f"certificados_{produto.lower()}": _envelope(
@@ -282,8 +281,31 @@ class LeitorDaDivida:
         servidas = self._certificados(
             formatado, dia_de(como_era_em), liberados
         ) | self._fundos(formatado, como_era_em, liberados)
-        ordenadas = {nome: servidas[nome] for nome in CAMPOS if nome in servidas}
+        ordenadas = self._cortadas(
+            {nome: servidas[nome] for nome in CAMPOS if nome in servidas}
+        )
         return ordenadas, {envelope["fonte"] for envelope in ordenadas.values()}
+
+    def _cortadas(self, listas: dict[str, dict]) -> dict[str, dict]:
+        """As listas dentro do teto de itens, na ordem de `CAMPOS`: a lista que não coube inteira sai com os
+        primeiros itens e `cortada`; a que não coube nada sai vazia e `cortada` (sumir diria "nenhum")."""
+        if self.linhas_maximas is None:
+            return listas
+        cabem = max(self.linhas_maximas, 1)
+        saida = {}
+        for nome, envelope in listas.items():
+            itens = envelope["valor"]
+            if len(itens) <= cabem:
+                saida[nome] = envelope
+            else:
+                saida[nome] = {**envelope, "valor": itens[:cabem], "cortada": True}
+            cabem -= len(saida[nome]["valor"])
+        return saida
+
+
+def itens(bloco: dict[str, dict]) -> int:
+    """Quantos itens o bloco serve (as linhas que contam no consumo)."""
+    return sum(len(envelope["valor"]) for envelope in bloco.values())
 
 
 def _envelope(lista: list[dict], fonte: str) -> dict:

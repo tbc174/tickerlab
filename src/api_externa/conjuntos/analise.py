@@ -150,9 +150,9 @@ def _eventos(
 
 
 def _credito(
-    porta: Porta, permitido: Permitido, _: int, cnpj: str, dia: date
+    porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
 ) -> Servido | None:
-    return credito.LeitorDeCredito(porta, permitido).ficha(cnpj, dia)
+    return credito.LeitorDeCredito(porta, permitido, linhas).ficha(cnpj, dia)
 
 
 def _ativos(

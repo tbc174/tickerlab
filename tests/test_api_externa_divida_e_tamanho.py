@@ -157,10 +157,10 @@ def _porta(pasta, extras=None) -> Porta:
     return Porta(pasta, arquivos={}, conferidas={}, extras=extras or _extras())
 
 
-def _divida(pasta, permitido=None, dia=DIA, extras=None):
+def _divida(pasta, permitido=None, dia=DIA, extras=None, linhas_maximas=None):
     with _porta(pasta, extras) as porta:
         return divida_de_mercado.LeitorDaDivida(
-            porta, permitido or (lambda *_: True)
+            porta, permitido or (lambda *_: True), linhas_maximas
         ).bloco(EMPRESA, dia)
 
 
@@ -185,16 +185,50 @@ def test_certificados_da_empresa_por_produto_com_a_versao_mais_nova(tmp_path):
     assert certificado["primeiro_mes_com_a_empresa"] == "2026-08"
     assert certificado["ultimo_mes_com_a_empresa"] == "2026-09"
     assert certificado["meses"] == 2
-    assert certificado["no_ultimo_informe"] is True
+    assert certificado["ultimo_informe_do_certificado"] == "2026-09"
     (cri,) = bloco["certificados_cri"]["valor"]
     assert cri["papeis"] == [{"papel": "devedor", "percentual": 1.0}]
-    assert (
-        cri["no_ultimo_informe"] is False
-    )  # a securitizadora entregou informe depois sem ele
+    assert cri["ultimo_informe_do_certificado"] == "2025-01"
     assert (
         "certificados_ots" not in bloco
     )  # nenhum OTS: a lista vazia não sai por produto
     assert {"cvm-cra", "cvm-cri", "cvm-fidc"} <= fontes
+
+
+def test_o_ultimo_informe_e_o_do_proprio_certificado_nao_o_da_securitizadora(tmp_path):
+    # revisão cruzada (P1): outro certificado da mesma securitizadora, informado depois, não diz nada do CRA001;
+    # e o CRA001 informado em outubro sem a empresa mostra que ele seguiu no informe sem ela
+    extras = _extras()
+    extras["securitizacao_certificados"] = pd.concat([
+        extras["securitizacao_certificados"],
+        pd.DataFrame([
+            _certificado("2026-10-01", "CRA002", "CRA", "2026-10-20"),
+            _certificado("2026-10-01", "CRA001", "CRA", "2026-10-25"),
+        ]),
+    ])  # fmt: skip
+    bloco, _ = _divida(tmp_path, extras=extras)
+    (cra,) = bloco["certificados_cra"]["valor"]
+    assert cra["ultimo_mes_com_a_empresa"] == "2026-09"
+    assert cra["ultimo_informe_do_certificado"] == "2026-10"
+    (cri,) = bloco["certificados_cri"]["valor"]
+    assert cri["ultimo_informe_do_certificado"] == "2025-01"
+    assert "no_ultimo_informe" not in str(bloco)
+
+
+def test_as_listas_respeitam_o_teto_de_linhas_e_contam_os_itens(tmp_path):
+    # revisão cruzada (P1): a lista sem teto estourava o plano e o corte da análise
+    bloco, _ = _divida(tmp_path, linhas_maximas=1)
+    assert len(bloco["certificados_cra"]["valor"]) == 1
+    assert "cortada" not in bloco["certificados_cra"]
+    assert bloco["certificados_cri"]["valor"] == []
+    assert bloco["certificados_cri"]["cortada"] is True
+    assert bloco["lista_dos_fundos_em_que_cede"]["cortada"] is True
+    assert divida_de_mercado.itens(bloco) == 1
+    inteiro, _ = _divida(tmp_path)
+    assert divida_de_mercado.itens(inteiro) == 3
+    with _porta(tmp_path) as porta:
+        servida = credito.LeitorDeCredito(porta, lambda *_: True, 2).ficha(EMPRESA, DIA)
+    assert servida is not None and servida.linhas == 1 + 2
 
 
 def test_fundo_em_que_cede_com_a_instituicao_e_o_alerta_sem_o_documento_das_outras(
@@ -317,6 +351,20 @@ def test_o_perfil_sem_os_sinais_liberados_fica_como_era(tmp_path):
         servida = ficha_.LeitorDeFicha(porta, sem_os_sinais).ficha(EMPRESA, DIA)
     assert servida is not None
     assert "sinais_de_tamanho" not in servida.corpo
+    assert sinais_de_tamanho.AVISO_DO_CAPITAL not in servida.corpo["limites"]
+
+
+def test_retrato_sem_as_colunas_novas_nao_derruba_o_perfil(tmp_path):
+    # regressão do CI: a `cnpj_empresas_pj` anterior à versão 1.1.0 não tem capital nem estabelecimentos
+    extras = _extras()
+    extras["cnpj_empresas_pj"] = extras["cnpj_empresas_pj"].drop(
+        columns=["capital_social", "n_estabelecimentos"]
+    )
+    with _porta(tmp_path, extras) as porta:
+        servida = ficha_.LeitorDeFicha(porta, lambda *_: True).ficha(EMPRESA, DIA)
+    assert servida is not None
+    sinais = servida.corpo["sinais_de_tamanho"]
+    assert set(sinais) == {"acessos_na_anatel"}
     assert sinais_de_tamanho.AVISO_DO_CAPITAL not in servida.corpo["limites"]
 
 
