@@ -150,6 +150,8 @@ def test_cada_rota_por_cnpj_da_analise_tem_um_bloco_com_o_conjunto_dela():
         "credit",
         "assets",
         "comparables",
+        # as vizinhas do mesmo ramo, pelo conjunto da busca de empresas (linha 1038)
+        "prospecting",
         # as tabelas do registro ligadas pelo CNPJ (linha 978, lote 1)
         "financials",
         "funds",

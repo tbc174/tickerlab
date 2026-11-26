@@ -1,7 +1,7 @@
 """A análise completa de um CNPJ numa chamada: cada bloco que a chave pode ver, com fonte e data (frente 3, 18/11/2026).
 
 `montar_analise` junta, para um CNPJ e um dia (`known_at`), os blocos das rotas por CNPJ que já existem (cadastro,
-sócios PJ, vínculos, eventos, crédito, ativos e comparáveis) e os das tabelas ligadas pelo CNPJ do registro
+sócios PJ, vínculos, eventos, crédito, ativos, comparáveis e as vizinhas do mesmo ramo) e os das tabelas ligadas pelo CNPJ do registro
 `src/api_externa/tabelas_por_cnpj.py` (regulados, balanço no BC, administradora de FII e, para a organização com o
 conjunto de integridade no contrato, sanções da CGU, embargos do IBAMA e lista suja do MTE), na ordem de
 `docs/padrao-de-analise.md`: uma frase no topo (só com o que o cadastro serviu), os blocos, a linha do tempo (só
@@ -59,6 +59,7 @@ from src.api_externa.conjuntos import (
     por_tabela,
     socios_pj,
     vinculos,
+    vizinhas,
 )
 from src.api_externa.nomes import para_fora
 from src.portao_externo import Finalidade
@@ -169,6 +170,12 @@ def _comparaveis(
     )
 
 
+def _vizinhas(
+    porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
+) -> Servido | None:
+    return vizinhas.LeitorDeVizinhas(porta, permitido, linhas).vizinhas(cnpj, dia)
+
+
 def _do_registro(nome: str) -> Bloco:
     """Um bloco do registro de tabelas ligadas pelo CNPJ (`tabelas_por_cnpj`): abre quando o portão libera um
     campo de uma das tabelas dele (o conjunto, como `profiles`, também tem as linhas de outros blocos)."""
@@ -215,6 +222,15 @@ BLOCOS = (
     Bloco("ativos", ativos.CONJUNTO, ANALISE, _ativos),
     Bloco(
         "comparaveis", comparaveis.CONJUNTO, ANALISE, _comparaveis, listas=("pares",)
+    ),
+    # ao lado das abertas, as empresas do mesmo ramo no município e na UF (linha 1038), pelo conjunto da busca
+    Bloco(
+        vizinhas.BLOCO,
+        vizinhas.CONJUNTO,
+        ANALISE,
+        _vizinhas,
+        vizinhas.EXIGE,
+        ("no_municipio", "na_uf"),
     ),
     # as tabelas do registro entram sozinhas: entrada nova em `tabelas_por_cnpj` com ONDE_SAI = ANALISE
     *(_do_registro(nome) for nome in tabelas_por_cnpj.blocos(tabelas_por_cnpj.ANALISE)),

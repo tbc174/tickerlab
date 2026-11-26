@@ -493,6 +493,7 @@ FERRAMENTA_DO_BLOCO_DA_ANALISE = {
     "links": "vinculos",
     "events": "eventos",
     "assets": "ativos",
+    "same_industry_neighbors": "buscar_empresas",
 }
 TOPO = ""  # o "bloco" das listas que ficam no topo da análise
 # `blocks.<bloco>.<lista>` e `blocks.<bloco>.<grupo>.<lista>` (os ativos e as tabelas por CNPJ guardam os itens

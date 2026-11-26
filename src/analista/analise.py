@@ -27,7 +27,7 @@ from base import cnpj as cnpj_
 from base.porta import Porta
 from src.analista import leitura, vinculos
 from src.api_externa import tabelas_por_cnpj
-from src.api_externa.conjuntos import Permitido
+from src.api_externa.conjuntos import Permitido, vizinhas
 from src.api_externa.conjuntos import analise as analise_
 from src.api_externa.envelope import fontes_da_resposta
 from src.api_externa.nomes import para_fora
@@ -51,6 +51,9 @@ CONJUNTOS_FORA_DA_TELA = frozenset(
         tabelas_por_cnpj.CONJUNTO_DE_COMPRAS_PUBLICAS,
     }
 )
+# conjuntos de bloco que a tela ainda não desenha: o das vizinhas do mesmo ramo (linha 1038), que saem na API e no
+# conector; faltam os nomes das colunas no app novo. Vale só para a análise: a busca de empresas da tela segue
+CONJUNTOS_AINDA_SEM_TELA = frozenset({vizinhas.CONJUNTO})
 CREDITO_NAO_DISPONIVEL = (
     "Fatos de crédito (dívida e pagamentos ao poder público): não disponível nesta tela"
 )
@@ -81,6 +84,11 @@ TITULOS: dict[str, tuple[str, str]] = {
     "comparaveis": (
         "Comparáveis",
         "CVM: companhias do mesmo grupo de setores.",
+    ),
+    # fora da tela por enquanto (BLOCOS_FORA_DA_TELA); o título fica para quando entrar
+    "vizinhas": (
+        "Vizinhas do mesmo ramo",
+        "Receita Federal: empresas ativas com a mesma atividade principal no município e na UF.",
     ),
     "regulados": (
         "Atividades reguladas",
@@ -157,7 +165,7 @@ def liberadas_na_tela(
         for linha in regras.linhas
         if linha.canal == Canal.API_EXTERNA
         and linha.finalidade == Finalidade.ANALISE
-        and linha.conjunto not in CONJUNTOS_FORA_DA_TELA
+        and linha.conjunto not in CONJUNTOS_FORA_DA_TELA | CONJUNTOS_AINDA_SEM_TELA
         and decidir(
             Pedido(
                 fonte=linha.fonte,
