@@ -295,6 +295,46 @@ def test_as_socias_acima_saem_em_lote(tmp_path, monkeypatch):
     assert poucos == muitos
 
 
+def test_o_grupo_nao_e_em_cadeia(tmp_path):
+    """Revisão cruzada (P1): B é sócia-filha de P e de Q (um JV); A só de P, C só de Q. A e C não têm sócia em comum:
+    o grupo de A é só B, e não soma as entradas de C."""
+    mundo = Mundo(montar=False)
+    p, q = mundo.comprador("33"), mundo.comprador("33")
+    a, b, c = mundo.comprador(), mundo.comprador(), mundo.comprador()
+    for socia, empresa in ((p, a), (p, b), (q, b), (q, c)):
+        mundo.entrar(socia, empresa, "2019-01-01")
+    for raiz in (a, b, c):
+        mundo.entrar(raiz, mundo.empresa("20"), "2024-03-10")
+    corpo = _corpo(mundo, tmp_path)
+    grupo_de_a = _linha(corpo, a)["grupo"]
+    assert {e["raiz_do_cnpj"] for e in grupo_de_a["empresas"]} == {b}
+    assert grupo_de_a["ligada_por"]["raiz_do_cnpj"] == p
+    assert grupo_de_a["empresas_do_setor_com_entrada"] == 2
+    assert {e["raiz_do_cnpj"] for e in _linha(corpo, b)["grupo"]["empresas"]} == {a, c}
+
+
+def test_o_comprador_grande_que_recebe_da_controlada_e_reorganizacao(tmp_path):
+    """Revisão cruzada (P1): o teto da ponte não vale para o próprio comprador. O consolidador com mais empresas que o
+    teto recebe a empresa do setor de uma controlada dele: é reorganização, não compra."""
+    mundo = Mundo(montar=False)
+    consolidador, controlada = mundo.comprador(), mundo.comprador("34")
+    for _ in range(compradores.PARTICIPACOES_MAXIMAS_DA_PONTE + 2):
+        mundo.entrar(consolidador, mundo.comprador("36"), "2019-01-01")
+    mundo.entrar(consolidador, controlada, "2015-01-01")
+    empresa, comprada = mundo.empresa("20"), mundo.empresa("20")
+    mundo.entrar(controlada, empresa, "2015-01-01")
+    mundo.entrar(consolidador, empresa, "2024-05-10")
+    mundo.sair(controlada, empresa, "2015-01-01", "2024-05-10")
+    mundo.entrar(consolidador, comprada, "2025-02-10")
+    corpo = _corpo(mundo, tmp_path)
+    linha = _linha(corpo, consolidador)
+    assert _entradas_de(linha) == {comprada}
+    assert (
+        linha["entradas_no_grupo"]["exemplos"][0]["ligada_por"]["raiz_do_cnpj"]
+        == controlada
+    )
+
+
 def test_a_api_traduz_os_nomes_novos():
     for nome in (
         "grupo",

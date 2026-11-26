@@ -161,14 +161,17 @@ LIMITES_GERAIS = (
 )
 # só quando a entrada foi consultada: a ligação e o grupo vêm do mesmo quadro de sócios
 LIMITE_DO_GRUPO = (
-    "group: compradores da lista ligados por uma sócia PJ em comum, até "
+    "group: os outros compradores da lista que têm uma sócia PJ em comum com este, até "
     f"{NIVEIS_DO_GRUPO} níveis acima, no quadro de sócios do dia (shareholder_board_as_of). Ligação por sócia PJ "
-    "em comum não prova controle: o quadro da Receita não traz o percentual. A sócia PJ de mais de "
+    "em comum não prova controle: o quadro da Receita não traz o percentual. Não é em cadeia: duas empresas ligadas "
+    "à mesma terceira não ficam juntas entre si. A sócia PJ de mais de "
     f"{PARTICIPACOES_MAXIMAS_DA_PONTE} empresas (fundo, banco, veículo de investimento) não serve de ponte, nem "
-    "para juntar compradores nem para tirar uma entrada da conta. A ordem é pelas empresas do setor em que o "
+    "para juntar compradores nem para tirar uma entrada da conta, salvo quando ela é o próprio comprador. A ordem é "
+    "pelas empresas do setor em que o "
     "grupo entrou, depois pelas do próprio comprador. Ficam de fora: a reorganização feita por pessoa física (uma "
     "holding nova dos mesmos donos), porque a lista é só de pessoa jurídica; a sócia que saiu antes do primeiro "
-    "retrato guardado; e a sócia estrangeira sem CNPJ."
+    "retrato guardado; a sócia que já saiu do quadro no dia pedido, mesmo que estivesse lá na data da entrada; e a "
+    "sócia estrangeira sem CNPJ."
 )
 # só quando o portão libera os campos da baixa e a porta tem a situação cadastral: sem eles a frase não vale
 LIMITE_DA_BAIXA = (
@@ -185,7 +188,7 @@ LIMITES_DO_SINAL = {
         "baixada (uma incorporação, por exemplo). Não contam quem entrou até a abertura da empresa nem a entrada "
         "ligada ao comprador, julgada na data da entrada: a empresa do setor estava acima do comprador, ou uma "
         "sócia PJ que ela tinha antes da entrada (inclusive a que saiu nela) e o comprador tinham, até "
-        f"{NIVEIS_DO_GRUPO} níveis acima, uma sócia PJ em comum que já estava lá naquela data. Essas entradas saem "
+        f"{NIVEIS_DO_GRUPO} níveis acima, uma sócia PJ em comum que já estava lá naquela data e segue no quadro do dia pedido. Essas entradas saem "
         "à parte, em intragroup_stakes, com a empresa que liga as duas, e não contam na ordem. Quem entrou junto "
         "com o comprador ou depois dele não liga nada."
     ),
@@ -1029,11 +1032,18 @@ class _Quadro:
     empresas: ser sócia das duas não prova grupo quando se é sócia de todo mundo (fundo, banco)."""
 
     def __init__(
-        self, acima_de: Mapping[str, list[Aresta]], nomes: dict[str, tuple[str, date]]
+        self,
+        acima_de: Mapping[str, list[Aresta]],
+        nomes: dict[str, tuple[str, date]],
+        grandes: set[str] | None = None,
     ) -> None:
         self.acima_de = acima_de
         self.nomes = nomes  # as pontes, com a razão social: as únicas sócias que podem sair na resposta
-        self._lembradas: dict[tuple[str, date | None], dict[str, date | None]] = {}
+        # as sócias da lista que passam do teto: não servem de ponte, salvo quando são o próprio comprador
+        self.grandes = grandes or set()
+        self._lembradas: dict[
+            tuple[str, date | None, str | None], dict[str, date | None]
+        ] = {}
 
     @classmethod
     def do_dia(cls, consulta: "_Consulta", raizes: set[str]) -> "_Quadro":
@@ -1058,16 +1068,19 @@ class _Quadro:
         for nivel in niveis:
             for linha in nivel.to_dict("records"):
                 filha, socia = str(linha["raiz"]), str(linha["socia"])
-                if socia in pontes and socia != filha:
+                if socia in nomes and socia != filha:
                     acima_de[filha].append(
                         (socia, _dia(linha["data_entrada"]), _dia(linha[PUBLICADO_EM]))
                     )
-        return cls(acima_de, {s: nomes[s] for s in pontes})
+        return cls(acima_de, {s: nomes[s] for s in pontes}, set(nomes) - pontes)
 
-    def acima(self, raiz: str, ate: date | None = None) -> dict[str, date | None]:
+    def acima(
+        self, raiz: str, ate: date | None = None, liberada: str | None = None
+    ) -> dict[str, date | None]:
         """As sócias PJ acima da `raiz`, até `NIVEIS_DO_GRUPO` níveis, com o dia mais novo em que o caminho ficou
-        público. Com `ate`, só as que já tinham entrado até esse dia (a data sem entrada não conta)."""
-        chave = (raiz, ate)
+        público. Com `ate`, só as que já tinham entrado até esse dia (a data sem entrada não conta). A sócia acima do
+        teto não entra, salvo a `liberada` (o próprio comprador: ali ela não é ponte, é uma das pontas)."""
+        chave = (raiz, ate, liberada)
         if chave not in self._lembradas:
             achadas: dict[str, date | None] = {}
             fronteira: dict[str, date | None] = {raiz: None}
@@ -1080,6 +1093,8 @@ class _Quadro:
                         if ate is not None and (entrada is None or entrada > ate):
                             continue
                         if socia == raiz or socia in achadas:
+                            continue
+                        if socia in self.grandes and socia != liberada:
                             continue
                         achadas[socia] = nova[socia] = _mais_tarde(
                             publico, publico_da_aresta
@@ -1098,7 +1113,7 @@ class _Quadro:
         if alvo in do_comprador:
             return alvo
         for socia in anteriores:
-            da_socia = {socia, *self.acima(socia, entrada)}
+            da_socia = {socia, *self.acima(socia, entrada, liberada=comprador)}
             comum = do_comprador & da_socia
             if comum:
                 return (
@@ -1107,23 +1122,6 @@ class _Quadro:
                     else min(comum)
                 )
         return None
-
-
-class _UniaoDeGrupos:
-    """Junta os compradores que têm uma empresa em comum no grupo (union-find)."""
-
-    def __init__(self) -> None:
-        self.pai: dict[str, str] = {}
-
-    def raiz(self, x: str) -> str:
-        self.pai.setdefault(x, x)
-        while self.pai[x] != x:
-            self.pai[x] = self.pai[self.pai[x]]
-            x = self.pai[x]
-        return x
-
-    def juntar(self, a: str, b: str) -> None:
-        self.pai[self.raiz(a)] = self.raiz(b)
 
 
 class _Lista:
@@ -1154,7 +1152,12 @@ class _Lista:
                 for lista in sinais.values()
                 for p in lista
             }
-            | {str(p["_alvo"]) for lista in self.intragrupo.values() for p in lista}
+            | {
+                str(p[chave])
+                for lista in self.intragrupo.values()
+                for p in lista
+                for chave in ("_alvo", "_ligada_por")
+            }
         )
 
     def total_intragrupo(self) -> int:
@@ -1217,44 +1220,41 @@ class _Lista:
     def agrupar(
         self, quadro: _Quadro, nomes: dict[str, tuple[str, date]], dia: date
     ) -> None:
-        """Junta os compradores da lista que têm uma sócia PJ em comum no quadro de hoje (ou um é sócio do outro) e
-        guarda, para cada um, as outras empresas do grupo, a sócia que mais liga (a menor raiz no empate) e o dia
-        público mais novo do quadro usado."""
+        """Para cada comprador da lista, os outros que têm com ele uma sócia PJ em comum no quadro de hoje (ou um é
+        sócio do outro), sem fechar em cadeia: o JV de P e Q fica junto de quem é de P e de quem é de Q, mas estes dois
+        não ficam juntos entre si (revisão cruzada do PR 1347). Guarda as outras empresas, a sócia dele que liga mais delas (a menor raiz
+        no empate) e o dia público mais novo do quadro usado."""
         self.dia_do_quadro = dia.isoformat()
         # só quem tem sinal de sempre: o comprador só da rede (linha 1121) não muda o grupo de quem já estava na lista
         validos = sorted(
             c for c in self._validos(nomes) if any(s in SINAIS for s in self.provas[c])
         )
-        uniao, dona = _UniaoDeGrupos(), {}
         acima = {c: quadro.acima(c) for c in validos}
+        do_grupo = {c: {c, *acima[c]} for c in validos}
+        quem_tem: dict[str, set[str]] = defaultdict(set)
+        for comprador, empresas in do_grupo.items():
+            for empresa in empresas:
+                quem_tem[empresa].add(comprador)
         for comprador in validos:
-            uniao.raiz(comprador)
-            for empresa in (comprador, *acima[comprador]):
-                if empresa in dona:
-                    uniao.juntar(comprador, dona[empresa])
-                else:
-                    dona[empresa] = comprador
-        membros: dict[str, list[str]] = defaultdict(list)
-        for comprador in validos:
-            membros[uniao.raiz(comprador)].append(comprador)
-        for grupo in membros.values():
-            if len(grupo) < 2:
+            outras = sorted(
+                {m for e in do_grupo[comprador] for m in quem_tem[e]} - {comprador}
+            )
+            if not outras:
                 continue
-            contagem: dict[str, int] = defaultdict(int)
-            for membro in grupo:
-                for empresa in (membro, *acima[membro]):
-                    contagem[empresa] += 1
-            ligada_por = min(contagem, key=lambda e: (-contagem[e], e))
+            ligada_por = min(
+                do_grupo[comprador],
+                key=lambda e: (-len(quem_tem[e] & set(outras)), e),
+            )
             publico = max(
-                (d for m in grupo for d in acima[m].values() if d is not None),
+                (
+                    d
+                    for m in (comprador, *outras)
+                    for d in acima[m].values()
+                    if d is not None
+                ),
                 default=None,
             )
-            for membro in grupo:
-                self.grupos[membro] = (
-                    [m for m in grupo if m != membro],
-                    ligada_por,
-                    publico,
-                )
+            self.grupos[comprador] = (outras, ligada_por, publico)
 
     def _alvos_do_grupo(self, comprador: str) -> int:
         """Em quantas empresas do setor o grupo do comprador entrou (de terceiros; a mesma empresa conta uma vez)."""
