@@ -162,7 +162,7 @@ LIMITES_GERAIS = (
 # só quando a entrada foi consultada: a ligação e o grupo vêm do mesmo quadro de sócios
 LIMITE_DO_GRUPO = (
     "group: os outros compradores da lista que têm uma sócia PJ em comum com este, até "
-    f"{NIVEIS_DO_GRUPO} níveis acima, no quadro de sócios do dia (shareholder_board_as_of). Ligação por sócia PJ "
+    f"{NIVEIS_DO_GRUPO} níveis acima, no quadro de sócios do dia (ownership_board_as_of). Ligação por sócia PJ "
     "em comum não prova controle: o quadro da Receita não traz o percentual. Não é em cadeia: duas empresas ligadas "
     "à mesma terceira não ficam juntas entre si. A sócia PJ de mais de "
     f"{PARTICIPACOES_MAXIMAS_DA_PONTE} empresas (fundo, banco, veículo de investimento) não serve de ponte, nem "

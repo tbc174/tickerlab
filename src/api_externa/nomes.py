@@ -243,7 +243,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "ligada_por": "linked_by",
     "empresas_do_setor_com_entrada": "sector_companies_entered",
     "entradas_de_terceiros": "third_party_stakes",
-    "quadro_de_socios_em": "shareholder_board_as_of",
+    "quadro_de_socios_em": "ownership_board_as_of",
     "entradas_no_grupo": "intragroup_stakes",
     "entradas_intragrupo": "intragroup_stakes_excluded",
     # research: as fontes que a pesquisa provou (linha 830), só órgão público
