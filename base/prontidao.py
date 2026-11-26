@@ -523,7 +523,7 @@ PRONTIDAO_DE_PILOTO: dict[str, ProntidaoDePiloto] = {
 TABELAS_DA_REDE = frozenset({"entidades", "ligacoes", "identificadores"})
 # sem pessoa por construção: a montagem nem deixa entrar o empresário individual nem o grupo 4 (linha 584)
 # ans_beneficiarios, ifdata_valores e susep_seguros (linha 904, lote 4): o CNPJ só vem da ponte da fonte, e a linha da ponte marcada como pessoa ou fora da fonte deixa o CNPJ vazio (tests/test_cnpj_pela_ponte.py)
-# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, cnpj_situacao_cadastral, cvm_fiagro (pela raiz separada cnpj_basico), demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras três (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj) não têm CNPJ de pessoa na montagem
+# sem pessoa pela raiz (linha 789): as de CNPJ ou raiz (aneel_samp, anp_concessionarios, carteiras_dos_fundos, cnpj_situacao_cadastral, cvm_fiagro (pela raiz separada cnpj_basico), demonstracoes_como_era, eventos, fca_geral, fips_registrados, rotulos_atraso) têm todo CNPJ dentro da cnpj_empresas_pj, medido por scripts.conferir_sem_pessoa antes de cada concessão de piloto; as outras (cnpj_empresas_pj, cnpj_estabelecimentos_pj, entradas_de_socio_pj, participacoes_de_socio_pj) não têm CNPJ de pessoa na montagem
 SEM_PESSOA_NA_MONTAGEM = frozenset(
     {
         "controladas_primeiro_fre",  # linha 1045: só a sociedade com CNPJ que confere e não é CPF completado com zeros (`cnpj_de_empresa`), sem nome
@@ -539,6 +539,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "demonstracoes_como_era",
         "emissores",
         "entradas_de_socio_pj",
+        "participacoes_de_socio_pj",
         "eventos",
         "fca_geral",
         "fips_registrados",

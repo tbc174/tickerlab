@@ -10,6 +10,10 @@ Lê o retrato vigente do QSA e as mudanças de cada mês (ADR 0106) e devolve um
 - `saiu`: uma linha por saída, no mês em que ela apareceu;
 - `data_corrigida`: a Receita trocou a data de entrada de um sócio que continuou (não é entrada nova).
 
+O mesmo módulo faz o **quadro virado** (`quadro_invertido`, linha 1032): o retrato vigente visto pela sócia,
+uma linha por sócia PJ e empresa, para responder "de quais empresas esta PJ é sócia, e desde quando". É só o
+quadro de hoje, público desde o retrato dele; quem já saiu está nas entradas e saídas.
+
 Três regras:
 - **sem pessoa:** só sócio do tipo 1 e só raízes da lista sem pessoa do CNPJ (`cnpj_estabelecimentos_pj`:
   fora MEI, empresário individual e grupo 4, mesmo com CNPJ), dos dois lados; na dúvida, fora;
@@ -35,6 +39,7 @@ from base.receita_diff import ENTROU, MUDOU, SAIU, TIPO_PESSOA_JURIDICA, disponi
 DATA_CORRIGIDA = "data_corrigida"
 
 TABELA = "entradas_de_socio_pj"
+QUADRO_INVERTIDO = "participacoes_de_socio_pj"
 EMPRESA, SOCIO, ENTRADA = "cnpj_basico", "raiz_socio_pj", "data_entrada"
 IDENTIDADE = [
     EMPRESA,
@@ -43,6 +48,7 @@ IDENTIDADE = [
 ]  # uma entrada: quem, onde e a data que a Receita dá
 MES, QUALIFICACAO = "mes_do_retrato", "qualificacao"
 COLUNAS = ["movimento", *IDENTIDADE, QUALIFICACAO, MES, "disponivel_em"]
+COLUNAS_DO_QUADRO = [SOCIO, EMPRESA, ENTRADA, QUALIFICACAO, MES, "disponivel_em"]
 # no mesmo mês, a prova de que já estava (saiu ou mudou) vem antes da notícia nova (entrou ou data corrigida)
 _JA_ESTAVA, _NOVA = 0, 1
 _DEPOIS_DE_TODO_MES = (
@@ -210,3 +216,29 @@ def entradas_e_saidas(
         .sort_values([EMPRESA, SOCIO, MES, "movimento"], kind="stable")
         .reset_index(drop=True)
     )
+
+
+def quadro_invertido(
+    vigente: pd.DataFrame, mes: str, pessoas_juridicas: Collection[str]
+) -> pd.DataFrame:
+    """O QSA `vigente` (do retrato de `mes`, AAAA-MM) visto pela sócia PJ (as colunas de `COLUNAS_DO_QUADRO`).
+
+    Só sócia PJ entre raízes de `pessoas_juridicas`, dos dois lados, e nunca a empresa sócia de si mesma. A
+    mesma sócia duas vezes na mesma empresa fica uma vez, com a entrada mais antiga.
+    """
+    socias = _so_pessoa_juridica(vigente)[[*IDENTIDADE, QUALIFICACAO]]
+    lista = set(pessoas_juridicas)
+    dentro = socias[
+        socias[EMPRESA].isin(lista)
+        & socias[SOCIO].isin(lista)
+        & socias[SOCIO].ne(socias[EMPRESA])
+    ]
+    quadro = (
+        dentro.assign(**{ENTRADA: pd.to_datetime(dentro[ENTRADA])})
+        .sort_values([SOCIO, EMPRESA, ENTRADA], kind="stable", na_position="last")
+        .drop_duplicates([SOCIO, EMPRESA], keep="first")
+    )
+    quadro = quadro.assign(
+        **{MES: mes, "disponivel_em": pd.Timestamp(disponivel_em(mes))}
+    )
+    return quadro[COLUNAS_DO_QUADRO].reset_index(drop=True)
