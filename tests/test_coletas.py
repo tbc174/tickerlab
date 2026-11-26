@@ -269,6 +269,27 @@ def test_versoes_guardadas_sem_ler_e_ausencia_antes_da_primeira(banco):
         assert coletas.versoes_guardadas(conexao, URL + "x") == []
 
 
+def test_versoes_com_voltas_so_tiram_o_repetido_em_seguida(banco):
+    """Uma lista que sai e volta igual (A, B, A) são três observações, não duas."""
+    from src import acervo
+
+    dia = datetime(2026, 11, 1, 5, 0, tzinfo=UTC)
+    with banco.begin() as conexao:
+        for n, conteudo in enumerate((b"a", b"a", b"b", b"a", b"a")):
+            quando = dia + timedelta(days=n)
+            caminho = acervo.guardar_original("cvm-fidc-recente", URL, conteudo, quando)
+            registrar(
+                conexao, "cvm-fidc-recente", URL, conteudo, "ok", None, quando, caminho
+            )
+    a, b = (hashlib.sha256(c).hexdigest() for c in (b"a", b"b"))
+    with banco.connect() as conexao:
+        voltas = coletas.versoes_guardadas(conexao, URL, com_voltas=True)
+        assert [v.sha256 for v in voltas] == [a, b, a]
+        assert [v.baixado_em.day for v in voltas] == [1, 3, 4]  # o dia em que apareceu
+        sem = coletas.versoes_guardadas(conexao, URL)
+        assert [v.sha256 for v in sem] == [a, b]  # o padrão não muda
+
+
 def test_marca_do_tce_pr_e_vendavel_com_atribuicao():
     # regras de utilização do PIT: "livre para qualquer finalidade ou atividade" (lidas em 16/10/2026)
     for fonte in ("tce-pr", "tce-pr-pit", "tce-pr-despesa"):

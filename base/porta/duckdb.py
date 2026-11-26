@@ -121,6 +121,7 @@ ARQUIVOS: dict[str, str] = {
     "participacoes_de_socio_pj": "participacoes_de_socio_pj/*.parquet",
     "pgfn_divida": "pgfn_divida/*/*.parquet",
     "sancoes_cgu": "sancoes_cgu/*.parquet",
+    "sancoes_de_fora": "sancoes_de_fora/*.parquet",
     "ans_penalidades": "ans_penalidades/*.parquet",
     "processos_comunicacoes": "processos_comunicacoes/*.parquet",
     "processos": "processos/*.parquet",

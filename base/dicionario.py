@@ -1570,6 +1570,88 @@ def _tabelas_das_sancoes() -> dict[str, Tabela]:
     }
 
 
+def _tabelas_das_sancoes_de_fora() -> dict[str, Tabela]:
+    """Sanções internacionais de entidades (`base/sancoes_de_fora.py`): OFAC, União Europeia e Reino
+    Unido, cada uma do arquivo da própria fonte. Sem pessoa física, navio nem aeronave."""
+    return {
+        "sancoes_de_fora": Tabela(
+            descricao=(
+                "Entidades (empresas, bancos, órgãos e outras organizações) nas listas de sanção de "
+                "fora do Brasil: OFAC (SDN e consolidada não SDN), lista consolidada da União "
+                "Europeia e UK Sanctions List, direto do arquivo da própria fonte, uma linha por "
+                "entidade, lista e valor diferente. Só entidade pelo tipo que a própria fonte dá: "
+                "pessoa física, navio, aeronave, registro sem tipo, empresário individual e "
+                "registro chamado de entidade com sinal de pessoa nunca entram, nem documento, "
+                "endereço ou observação. Mostra só o que a lista trouxe a partir do 1º arquivo "
+                "guardado: quem saiu antes não está aqui. A linha com `consta` falso diz que o "
+                "registro deixou de aparecer, o que não prova, sozinho, que a sanção acabou. Não há "
+                "CNPJ: ligar um nome a uma empresa brasileira é dedução e pede conferência. A lista "
+                "da ONU e a consolidada do Comércio dos EUA ficam fora. Estar ou não estar na lista "
+                "não é determinação de conformidade: confira sempre na própria fonte."
+            ),
+            fonte=(
+                "OFAC, U.S. Department of the Treasury (sem endosso do órgão); Comissão Europeia "
+                "(DG FISMA), lista consolidada com só as entidades mantidas (só o Jornal Oficial da UE "
+                "é autêntico); e Reino Unido (FCDO, UK Sanctions List), OGL v3.0"
+            ),
+            familia_da_fonte="ofac",
+            ressalva_de_revenda=(
+                "OFAC: sem licença declarada na página; obra do governo dos EUA (17 U.S.C. 105); citar "
+                "a fonte, sem sugerir endosso. As linhas da União Europeia seguem a Decisão 2011/833/UE da Comissão (citar a UE e "
+                "dizer que o arquivo foi filtrado) e as do Reino Unido a Open Government Licence "
+                "(OGL v3.0, citar o FCDO); a coluna `fonte` diz de quem é cada linha."
+            ),
+            frequencia="Diária (o arquivista guarda o arquivo da lista quando ele muda)",
+            atraso=(
+                "A linha vale desde o dia em que o arquivo foi visto (`disponivel_em`), também no "
+                "1º arquivo: a data da designação é só para ler, porque a lista de hoje não diz o "
+                "que dizia antes"
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/sancoes_de_fora/<cadastro>.parquet` (servidor de casa, "
+                "`scripts/carga_sancoes_de_fora.py`)"
+            ),
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            colunas={
+                "lista": ("Lista em que a entidade está, como a fonte chama", TEXTO),
+                "id_na_fonte": ("Identificador do registro na própria fonte", TEXTO),
+                "nome": ("Nome principal, como a fonte escreve", TEXTO),
+                "outros_nomes": (
+                    "Outros nomes que a fonte dá, separados por ` | `",
+                    TEXTO,
+                ),
+                "paises": ("Países dos endereços na fonte, sem o endereço", TEXTO),
+                "programas": (
+                    "Programas ou regimes de sanção, separados por ` | `",
+                    TEXTO,
+                ),
+                "designado_em": (
+                    "Data da designação ou da entrada na lista, quando a fonte diz",
+                    DATA,
+                ),
+                "fonte": (
+                    "Quem publica a lista, com a licença que pede para citar",
+                    TEXTO,
+                ),
+                "url_da_fonte": ("Endereço oficial do arquivo da lista", TEXTO),
+                "consta": (
+                    "Falso: o registro deixou de aparecer no arquivo daquele dia",
+                    SIM_OU_NAO,
+                ),
+                "visto_em": (
+                    "Dia do arquivo em que esta versão da linha foi vista",
+                    DATA,
+                ),
+                "disponivel_em": (
+                    "Desde quando a linha vale para a base: o dia do arquivo",
+                    DATA,
+                ),
+                **_ORIGEM_SEM_ANO,
+            },
+        ),
+    }
+
+
 def _tabelas_dos_processos() -> dict[str, Tabela]:
     """Os processos judiciais por CNPJ (`base/processos.py`): as comunicações do DJEN dos processos em
     que uma companhia aberta é parte, as partes de cada uma que não são pessoa física e os processos."""
@@ -10366,6 +10448,7 @@ TABELAS: dict[str, Tabela] = {
         },
     ),
     **_tabelas_das_sancoes(),
+    **_tabelas_das_sancoes_de_fora(),
     **_tabelas_dos_processos(),
     **_tabelas_do_datajud(),
     **_tabelas_das_licencas(),
@@ -12747,6 +12830,9 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_SANCOES_DE_FORA = (
+    "2026-11-26"  # o XML das listas de fora passou a ser guardado neste dia
+)
 _PROCESSOS = (
     "2025-01-01"  # o histórico do DJEN que a coleta busca (`djen.HISTORICO_DESDE`)
 )
@@ -12892,6 +12978,7 @@ _CONTRATO = {
     "cnpj_qsa": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa"), datas={"aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_qsa_mudancas": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("mes", "cnpj_basico", "tipo_socio", "raiz_socio_pj", "id_pessoa", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "sancoes_cgu": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cadastro", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "inicio", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", linhas_de_pessoa="trata_como_pessoa", versao_do_contrato="1.1.0"),  # 1.1.0 (19/11/2026): `linhas_de_pessoa`; a porta só serve a linha de empresa (ADR 0108, Emenda 3)
+    "sancoes_de_fora": _contrato(modulo="governo_e_sancoes", chaves=("lista", "id_na_fonte", "visto_em"), datas={"aconteceu_em": "designado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_SANCOES_DE_FORA, granularidade_do_publico_em="dia"),  # só entidade, sem CNPJ
     "processos_comunicacoes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte",), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS, versao_do_contrato="1.2.0"),  # 1.1.0 (03/11/2026): `achada_por` e `disponibilizada_em` (o segundo passo, pelo número do processo); 1.2.0 (04/11/2026): o teor conferido (`tipo_de_ato`, `resultado`, `resultado_trecho`, `valor_citado`, `teor_conferido_em`)
     "processos_partes": _contrato(modulo="governo_e_sancoes", chaves=("id_na_fonte", "polo", "parte"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_PROCESSOS),
     "processos_nas_notas": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "referencia", "versao", "pagina", "numero_processo"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -13249,6 +13336,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "faixas": {"valor_multa": _SEM_NEGATIVO},
         "nao_nulas": ("cadastro", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
         "anuncia_o_futuro": True,  # a sanção publicada pode começar a valer depois
+    },
+    "sancoes_de_fora": {
+        "pasta": "sancoes_de_fora",
+        "nao_nulas": ("lista", "id_na_fonte", "nome", "fonte", "url_da_fonte", "consta", "visto_em", "disponivel_em"),
     },
     "processos_comunicacoes": {
         "pasta": "processos_comunicacoes",

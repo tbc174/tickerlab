@@ -9060,6 +9060,102 @@
       "frequencia": "Mensal (a ANS recarrega o arquivo inteiro; `NR_COMPETENCIA_CARGA` diz o mês)",
       "atraso": "A fonte não diz quando cada linha entrou no arquivo: no 1º arquivo guardado vale a data de publicação ou de informação (o que a fonte diz), e depois o dia em que o arquivista viu a mudança (o conservador; a história guardada começa em 14/10/2026)"
     },
+    "sancoes_de_fora": {
+      "tabela": "sancoes_de_fora",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "lista": {
+          "descricao": "Lista em que a entidade está, como a fonte chama",
+          "unidade": "texto"
+        },
+        "id_na_fonte": {
+          "descricao": "Identificador do registro na própria fonte",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome principal, como a fonte escreve",
+          "unidade": "texto"
+        },
+        "outros_nomes": {
+          "descricao": "Outros nomes que a fonte dá, separados por ` | `",
+          "unidade": "texto"
+        },
+        "paises": {
+          "descricao": "Países dos endereços na fonte, sem o endereço",
+          "unidade": "texto"
+        },
+        "programas": {
+          "descricao": "Programas ou regimes de sanção, separados por ` | `",
+          "unidade": "texto"
+        },
+        "designado_em": {
+          "descricao": "Data da designação ou da entrada na lista, quando a fonte diz",
+          "unidade": "data (dia)"
+        },
+        "fonte": {
+          "descricao": "Quem publica a lista, com a licença que pede para citar",
+          "unidade": "texto"
+        },
+        "url_da_fonte": {
+          "descricao": "Endereço oficial do arquivo da lista",
+          "unidade": "texto"
+        },
+        "consta": {
+          "descricao": "Falso: o registro deixou de aparecer no arquivo daquele dia",
+          "unidade": "verdadeiro ou falso"
+        },
+        "visto_em": {
+          "descricao": "Dia do arquivo em que esta versão da linha foi vista",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha vale para a base: o dia do arquivo",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "lista",
+        "id_na_fonte",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "designado_em",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "designado_em": "aconteceu_em",
+        "visto_em": "visto_em",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-11-26",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Sem licença declarada; obra do governo dos EUA (17 U.S.C. 105); citar a fonte",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Diária (o arquivista guarda o arquivo da lista quando ele muda)",
+      "atraso": "A linha vale desde o dia em que o arquivo foi visto (`disponivel_em`), também no 1º arquivo: a data da designação é só para ler, porque a lista de hoje não diz o que dizia antes"
+    },
     "processos_comunicacoes": {
       "tabela": "processos_comunicacoes",
       "modulo": "governo_e_sancoes",

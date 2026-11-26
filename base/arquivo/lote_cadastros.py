@@ -11,9 +11,10 @@ Fontes (ADR 0102: coleta com ritmo, uso citando a fonte; ADR 0088: **só pessoa 
 - **Wikidata** (CC0), pelo SPARQL: LEI, ISIN, CNPJ, CIK e os itens listados na B3 (Q796297), sem os
   itens que são gente (Q5). Um pedido por vez, com o agente do TickerLab;
 - **SEC `company_tickers.json`** (domínio público): ticker → CIK de quem arquiva na SEC;
-- **sanções** (só **entidades**, nunca pessoas): OFAC SDN (`sdn.csv`), a lista consolidada da União
-  Europeia (CSV com o token público do próprio site) e a UK Sanctions List do FCDO, que substituiu a
-  ConList do OFSI (OGL v3). A lista da ONU fica de fora (termos pessoais, não comerciais).
+- **sanções** (só **entidades**, nunca pessoas): OFAC SDN e consolidada não SDN (XML), a lista
+  consolidada da União Europeia (XML com o token público do próprio site) e a UK Sanctions List do FCDO,
+  que substituiu a ConList do OFSI (XML, OGL v3). O filtro e a leitura estão em `base/arquivo/sancoes_xml.py`
+  e a tabela é a `sancoes_de_fora`. A lista da ONU fica de fora (termos pessoais, não comerciais).
 
 Fora daqui, de propósito: OpenSanctions, Open Ownership, ICIJ, ONU, OpenCorporates, OpenFIGI, EU BRIS e
 Companies House (licença não comercial, pessoas físicas ou agregador pago; `licencas-por-fonte.md`).
@@ -34,9 +35,11 @@ import json
 import zipfile
 from collections.abc import Callable, Mapping
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from urllib.parse import urlencode
 
+from base.arquivo import sancoes_xml
 from base.arquivo.coleta import (
     Alvo,
     Cliente,
@@ -80,121 +83,8 @@ IDENTIFICADORES_DO_WIKIDATA = {
 # ---- SEC -------------------------------------------------------------------------------------
 TICKERS_DA_SEC = "https://www.sec.gov/files/company_tickers.json"
 
-# ---- sanções (só entidades) ------------------------------------------------------------------
-OFAC_SDN = "https://www.treasury.gov/ofac/downloads/sdn.csv"
-COLUNA_DO_TIPO_NO_SDN = 2  # sem cabeçalho: número, nome, tipo, programa...
-TIPO_DE_ENTIDADE_NO_SDN = (
-    "-0-"  # pessoa é "individual"; "vessel" e "aircraft" também saem
-)
-# o token é público (está no endereço de download do próprio site da Comissão Europeia)
-UE_SANCOES = (
-    "https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content"
-    "?token=dG9rZW4tMjAxNw"
-)
-COLUNA_DO_TIPO_NA_UE = "Entity_SubjectType_ClassificationCode"
-TIPO_DE_EMPRESA_NA_UE = "enterprise"
-# a ConList do OFSI (`ofsistorage.blob.core.windows.net/.../ConList.csv`) saiu do ar (409 em
-# 28/10/2026): as designações do OFSI estão na UK Sanctions List do FCDO, também OGL v3. A fonte
-# segue com o id `ofsi-conlist` (o catálogo e a licença são os mesmos)
-SANCOES_DO_REINO_UNIDO = "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.csv"
-COLUNA_DO_TIPO_NO_REINO_UNIDO = "Designation Type"
-TIPO_DE_ENTIDADE_NO_REINO_UNIDO = "Entity"  # "Individual" e "Ship" saem
-# a lista começa com uma linha "Report Date: data" antes do cabeçalho
-LINHAS_ANTES_DO_CABECALHO_DO_REINO_UNIDO = 1
 
-
-# ---- filtros de LGPD (arquivo para arquivo) --------------------------------------------------
-def _csv_filtrado(
-    bruto: Path,
-    destino: Path,
-    manter: Callable[[list[str]], bool],
-    *,
-    codificacao: str,
-    delimitador: str = ",",
-    linhas_de_cabecalho: int = 0,
-    cabecalho: Callable[[list[str]], None] | None = None,
-) -> None:
-    """Copia o CSV para `destino` mantendo as primeiras `linhas_de_cabecalho` linhas e só as
-    linhas seguintes para as quais `manter` diz sim. `cabecalho` recebe a última linha de
-    cabeçalho (para conferir que a coluna que decide a LGPD existe)."""
-    with (
-        bruto.open(encoding=codificacao, newline="") as entrada,
-        destino.open("w", encoding=codificacao, newline="") as saida,
-    ):
-        leitor = csv.reader(entrada, delimiter=delimitador)
-        escritor = csv.writer(saida, delimiter=delimitador, lineterminator="\r\n")
-        for numero, linha in enumerate(leitor):
-            if numero < linhas_de_cabecalho:
-                escritor.writerow(linha)
-                if numero == linhas_de_cabecalho - 1 and cabecalho is not None:
-                    cabecalho(linha)
-            elif manter(linha):
-                escritor.writerow(linha)
-
-
-def sdn_so_com_entidades(bruto: Path, destino: Path) -> None:
-    """A lista SDN da OFAC só com as entidades (tipo "-0-"): pessoa, navio e avião saem."""
-    _csv_filtrado(
-        bruto,
-        destino,
-        lambda linha: (
-            len(linha) > COLUNA_DO_TIPO_NO_SDN
-            and linha[COLUNA_DO_TIPO_NO_SDN].strip() == TIPO_DE_ENTIDADE_NO_SDN
-        ),
-        codificacao="latin-1",  # não perde byte nenhum na ida e na volta
-    )
-
-
-def sancoes_da_ue_so_com_empresas(bruto: Path, destino: Path) -> None:
-    """A lista consolidada da UE (CSV com ";" e BOM) só com as linhas de empresa."""
-    posicao: list[int] = []
-
-    def achar_coluna(cabecalho: list[str]) -> None:
-        nomes = [c.lstrip("﻿") for c in cabecalho]
-        if COLUNA_DO_TIPO_NA_UE not in nomes:
-            raise ErroDeDescoberta(
-                f"lista da UE sem a coluna {COLUNA_DO_TIPO_NA_UE} (formato mudou)"
-            )
-        posicao.append(nomes.index(COLUNA_DO_TIPO_NA_UE))
-
-    _csv_filtrado(
-        bruto,
-        destino,
-        lambda linha: (
-            len(linha) > posicao[0] and linha[posicao[0]] == TIPO_DE_EMPRESA_NA_UE
-        ),
-        codificacao="utf-8-sig",
-        delimitador=";",
-        linhas_de_cabecalho=1,
-        cabecalho=achar_coluna,
-    )
-
-
-def sancoes_do_reino_unido_so_com_entidades(bruto: Path, destino: Path) -> None:
-    """A UK Sanctions List só com as linhas "Entity" (indivíduo e navio saem)."""
-    posicao: list[int] = []
-
-    def achar_coluna(cabecalho: list[str]) -> None:
-        if COLUNA_DO_TIPO_NO_REINO_UNIDO not in cabecalho:
-            raise ErroDeDescoberta(
-                f"lista do Reino Unido sem a coluna {COLUNA_DO_TIPO_NO_REINO_UNIDO} "
-                "(formato mudou)"
-            )
-        posicao.append(cabecalho.index(COLUNA_DO_TIPO_NO_REINO_UNIDO))
-
-    _csv_filtrado(
-        bruto,
-        destino,
-        lambda linha: (
-            len(linha) > posicao[0]
-            and linha[posicao[0]] == TIPO_DE_ENTIDADE_NO_REINO_UNIDO
-        ),
-        codificacao="utf-8-sig",
-        linhas_de_cabecalho=LINHAS_ANTES_DO_CABECALHO_DO_REINO_UNIDO + 1,
-        cabecalho=achar_coluna,
-    )
-
-
+# ---- filtro de LGPD do GLEIF (arquivo para arquivo; o das sanções está em `sancoes_xml`) ----
 def lei2_so_com_pessoa_juridica(bruto: Path, destino: Path) -> int:
     """Regrava o ZIP da golden copy do `lei2` sem as firmas individuais (`SOLE_PROPRIETOR`, pessoa
     física). Devolve quantas linhas saíram. Lê e escreve em fluxo: o CSV tem ~3,5 milhões de linhas."""
@@ -239,9 +129,18 @@ def _filtrado(url: str, filtro: Callable[[Path, Path], object]) -> Obter:
     return obter
 
 
-def _csv_de_sancoes(url: str, filtro: Callable[[Path, Path], None]) -> Descobrir:
+def _xml_de_sancoes(*formatos: sancoes_xml.Formato) -> Descobrir:
+    """Um alvo por arquivo da lista, sempre pelo filtro que só guarda entidade."""
+
     def _descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
-        return [Alvo(url, ".csv", _filtrado(url, filtro))]
+        return [
+            Alvo(
+                f.url,
+                ".xml",
+                _filtrado(f.url, partial(sancoes_xml.so_entidades, formato=f)),
+            )
+            for f in formatos
+        ]
 
     return _descobrir
 
@@ -359,29 +258,13 @@ def fontes() -> list[Fonte]:
         ),
     ]
     das_sancoes = [
-        Fonte(
-            "ofac-sdn",
-            "diaria",
-            _csv_de_sancoes(OFAC_SDN, sdn_so_com_entidades),
-            "arquivo",
-            pausa_minima=pausa,
-        ),
-        Fonte(
-            "eufsf-sancoes",
-            "diaria",
-            _csv_de_sancoes(UE_SANCOES, sancoes_da_ue_so_com_empresas),
-            "arquivo",
-            pausa_minima=pausa,
-        ),
-        Fonte(
-            "ofsi-conlist",
-            "diaria",
-            _csv_de_sancoes(
-                SANCOES_DO_REINO_UNIDO, sancoes_do_reino_unido_so_com_entidades
-            ),
-            "arquivo",
-            pausa_minima=pausa,
-        ),
+        Fonte(id_, "diaria", _xml_de_sancoes(*formatos), "arquivo", pausa_minima=pausa)
+        # o id `ofsi-conlist` é o de antes: o catálogo e a licença são os mesmos
+        for id_, formatos in (
+            ("ofac-sdn", (sancoes_xml.OFAC_SDN, sancoes_xml.OFAC_CONSOLIDADA)),
+            ("eufsf-sancoes", (sancoes_xml.UNIAO_EUROPEIA,)),
+            ("ofsi-conlist", (sancoes_xml.REINO_UNIDO,)),
+        )
     ]
     return [
         *da_golden_copy,

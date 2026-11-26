@@ -220,8 +220,11 @@ class PessoaNaFichaError(ValueError):
 
 # Só o modo dono vê (lê o Parquet pela porta): nunca no app, na consulta aberta, no CSV, no site nem para uma
 # organização, mesmo com prontidão. O detalhe por produto dos postos da ANP (linha 1123) tem licença a confirmar
-# (leitura mais estreita da Diretoria, 26/11/2026).
-SO_NO_MODO_DONO: frozenset[str] = frozenset({"anp_revendedores_produtos"})
+# (leitura mais estreita da Diretoria, 26/11/2026). As sanções de fora nascem aqui: o conector e a análise
+# completa são passo à parte, com a decisão de mostrar a tabela.
+SO_NO_MODO_DONO: frozenset[str] = frozenset(
+    {"anp_revendedores_produtos", "sancoes_de_fora"}
+)
 
 
 # --- a regra de mostrar --------------------------------------------------------------------------

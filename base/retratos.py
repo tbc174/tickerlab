@@ -99,11 +99,17 @@ def chave(tabela: pd.DataFrame, colunas: Sequence[str]) -> pd.Series:
 
 
 def retratos(
-    conexao: sa.Connection, fonte: str, url_termina_em: str | None = None
+    conexao: sa.Connection,
+    fonte: str,
+    url_termina_em: str | None = None,
+    *,
+    com_voltas: bool = False,
 ) -> list[Retrato]:
     """Os arquivos da fonte guardados no acervo, do mais antigo ao mais novo.
 
     `url_termina_em`: só os endereços que terminam assim (a fonte guarda outros arquivos além deste).
+    `com_voltas`: o conteúdo que volta depois de outro (A, B, A) é um retrato de novo; só o repetido
+    em seguida sai. Para lista em que sair e voltar muda a resposta (`base/sancoes_de_fora.py`).
     """
     pasta = acervo.pasta_do_acervo()
     if pasta is None:
@@ -112,7 +118,7 @@ def retratos(
         Retrato(original.url, versao.sha256, pasta / versao.caminho, versao.baixado_em)
         for original in originais_mais_recentes(conexao, fonte)
         if not url_termina_em or original.url.endswith(url_termina_em)
-        for versao in versoes_guardadas(conexao, original.url)
+        for versao in versoes_guardadas(conexao, original.url, com_voltas=com_voltas)
         if (pasta / versao.caminho).is_file()
     ]
     return sorted(achados, key=lambda r: (pd.Timestamp(r.baixado_em), r.url))
@@ -242,17 +248,20 @@ def montar_cadastros[C: CadastroDeRetratos](
     ordem: Sequence[str],
     pessoas: Pessoas | None = None,
     refazer: bool = False,
+    com_voltas: bool = False,
 ) -> dict[str, dict[str, int]]:
     """`<pasta>/<tabela>/<cadastro>.parquet` para cada cadastro com arquivo guardado.
 
     Cadastro sem arquivo guardado fica de fora do resumo; sem retrato novo desde a última montagem, é
     pulado (`refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já sabidas, ou
     a função que, com as raízes do cadastro montado, diz quais são de pessoa; sem elas, pergunta à Receita
-    guardada (`base/pgfn.py`) para cada cadastro.
+    guardada (`base/pgfn.py`) para cada cadastro. `com_voltas`: como em `retratos`.
     """
     resumo: dict[str, dict[str, int]] = {}
     for cadastro in cadastros:
-        achados = retratos(conexao, cadastro.fonte, cadastro.url_termina_em)
+        achados = retratos(
+            conexao, cadastro.fonte, cadastro.url_termina_em, com_voltas=com_voltas
+        )
         if not achados:
             continue
         destino = pasta / cadastro.tabela / cadastro.nome

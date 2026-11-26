@@ -49,6 +49,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "assinado_em", "efetivada_em", "cadastrado_em",  # contratos, sanções e fornecedores do RJ (linha 1075)
         "aprovado_em", "celebrado_em",  # compras diretas do RJ e contratos do ES (linha 1075, PR 2)
         "autorizada_em", "incluida_em", "embargada_em", "registrada_em",
+        "designado_em",  # sanções de fora: o dia da designação é o fato; a base soube no dia do arquivo
         "registrado_em", "funciona_desde",  # linha 904: registro do administrador de FII; início do FII
         "ajuizado_em", "atualizado_na_fonte_em", "ultimo_movimento_em",  # o DataJud
         # linha 440: carimbo do arquivo na fonte, dia do fato e prazo (o `datas` já os tem assim)

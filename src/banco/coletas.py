@@ -258,9 +258,10 @@ LICENCAS = {
     # jurídica; o `gleif` e o `sec` já existiam (a lista de tickers da SEC é obra da agência)
     "sec-company-tickers": "Domínio público (lista de tickers da SEC; citar a SEC)",
     "wikidata": "CC0 (Wikidata; citar Wikidata)",
-    "ofac": "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades",
-    "eufsf": "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas",
-    "ofsi": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
+    # sanções (condições da licença em 26/11/2026); a frase completa de cada uma está na tabela
+    "ofac": "Sem licença declarada; obra do governo dos EUA (17 U.S.C. 105); citar a fonte",
+    "eufsf": "Reuso 2011/833/UE; citar a Comissão Europeia (DG FISMA); só entidades mantidas",
+    "ofsi": "OGL v3.0 (FCDO, Reino Unido; citar a fonte), só entidades",
     # lote setoriais Brasil (termos lidos em 22/10/2026, licencas-por-fonte.md): EPE é CC BY 4.0;
     # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
     # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)
@@ -1390,14 +1391,20 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
 
 
 class Versao(NamedTuple):
-    baixado_em: datetime  # a primeira vez que este conteúdo foi baixado
+    baixado_em: datetime  # a primeira vez que o conteúdo foi baixado (com voltas: nesta sequência)
     sha256: str
     caminho: str  # no acervo (`acervo.ler_original`)
 
 
-def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
+def versoes_guardadas(
+    conexao: sa.Connection, url: str, *, com_voltas: bool = False
+) -> list[Versao]:
     """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo, sem ler os
-    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez)."""
+    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez).
+
+    O conteúdo que volta depois de outro (A, B, A) só aparece de novo com `com_voltas`; sem ele, a
+    volta se perde, o que serve a quem quer a primeira vez que cada conteúdo apareceu.
+    """
     linhas = conexao.execute(
         sa.select(coletas.c.baixado_em, coletas.c.sha256, coletas.c.caminho_do_original)
         .where(
@@ -1410,9 +1417,12 @@ def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
     vistos: set[str] = set()
     versoes = []
     for baixado_em, sha256, caminho in linhas:
-        if sha256 not in vistos:
-            vistos.add(sha256)
-            versoes.append(Versao(baixado_em, sha256, caminho))
+        if sha256 in vistos:
+            continue
+        if com_voltas:
+            vistos.clear()  # só o repetido em seguida sai: a volta ao de antes conta
+        vistos.add(sha256)
+        versoes.append(Versao(baixado_em, sha256, caminho))
     return versoes
 
 
