@@ -335,6 +335,24 @@ def test_o_comprador_grande_que_recebe_da_controlada_e_reorganizacao(tmp_path):
     )
 
 
+def test_a_reorganizacao_segue_reorganizacao_depois_que_a_socia_sai_do_comprador(
+    tmp_path,
+):
+    """Revisor do PR 1347 (P1): a sócia comum estava acima do comprador na data da reorganização (2024) e saiu dele em
+    2025. Pelo quadro de hoje a ligação some e a entrada viraria compra; pelo histórico ela segue intragrupo."""
+    mundo = Mundo(montar=False)
+    comprador, controladora, reorganizada, _comprada = _reorganizacao(mundo)
+    mundo.sair(controladora, comprador, "2015-01-01", "2025-03-01")
+    corpo = _corpo(mundo, tmp_path)
+    linha = _linha(corpo, comprador)
+    assert reorganizada not in _entradas_de(linha)
+    assert (
+        linha["entradas_no_grupo"]["exemplos"][0]["ligada_por"]["raiz_do_cnpj"]
+        == controladora
+    )
+    assert "grupo" not in linha  # o bloco do grupo é o do quadro do dia: ela já saiu
+
+
 def test_a_api_traduz_os_nomes_novos():
     for nome in (
         "grupo",

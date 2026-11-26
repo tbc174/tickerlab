@@ -170,8 +170,7 @@ LIMITE_DO_GRUPO = (
     "pelas empresas do setor em que o "
     "grupo entrou, depois pelas do próprio comprador. Ficam de fora: a reorganização feita por pessoa física (uma "
     "holding nova dos mesmos donos), porque a lista é só de pessoa jurídica; a sócia que saiu antes do primeiro "
-    "retrato guardado; a sócia que já saiu do quadro no dia pedido, mesmo que estivesse lá na data da entrada; e a "
-    "sócia estrangeira sem CNPJ."
+    "retrato guardado; e a sócia estrangeira sem CNPJ."
 )
 # só quando o portão libera os campos da baixa e a porta tem a situação cadastral: sem eles a frase não vale
 LIMITE_DA_BAIXA = (
@@ -188,7 +187,7 @@ LIMITES_DO_SINAL = {
         "baixada (uma incorporação, por exemplo). Não contam quem entrou até a abertura da empresa nem a entrada "
         "ligada ao comprador, julgada na data da entrada: a empresa do setor estava acima do comprador, ou uma "
         "sócia PJ que ela tinha antes da entrada (inclusive a que saiu nela) e o comprador tinham, até "
-        f"{NIVEIS_DO_GRUPO} níveis acima, uma sócia PJ em comum que já estava lá naquela data e segue no quadro do dia pedido. Essas entradas saem "
+        f"{NIVEIS_DO_GRUPO} níveis acima, uma sócia PJ em comum que já estava lá naquela data (pelo histórico de entradas e saídas). Essas entradas saem "
         "à parte, em intragroup_stakes, com a empresa que liga as duas, e não contam na ordem. Quem entrou junto "
         "com o comprador ou depois dele não liga nada."
     ),
@@ -762,7 +761,8 @@ class _Consulta:
         """Todas as entradas e saídas de sócia PJ já públicas no dia das `raizes` (as empresas onde se entrou): de
         onde sai quem era sócia antes de cada entrada, inclusive a que saiu nela (linha 1043)."""
         return self._df(
-            f"SELECT cnpj_basico AS alvo, raiz_socio_pj AS socia, data_entrada, {MES} AS mes, movimento "
+            f"SELECT cnpj_basico AS alvo, raiz_socio_pj AS socia, data_entrada, {MES} AS mes, movimento, "
+            f"{PUBLICADO_EM} "
             f"FROM {_view(ENTRADAS)} WHERE movimento IN ('entrou', 'saiu') "
             "AND cnpj_basico IN (SELECT raiz FROM raizes) "
             f"AND {PUBLICADO_EM} <= CAST($dia AS DATE)",
@@ -1022,8 +1022,48 @@ class _Anteriores:
         )
 
 
-# uma sócia PJ acima de uma empresa: (a sócia, a data de entrada dela na empresa, o dia em que ficou pública)
-Aresta = tuple[str, date | None, date | None]
+# uma sócia PJ acima de uma empresa: (a sócia, a data de entrada dela, o dia em que ficou pública, o primeiro mês em que
+# a base viu a saída, ou None se não saiu)
+Aresta = tuple[str, date | None, date | None, str | None]
+
+
+def _arestas(historico: pd.DataFrame) -> dict[str, list[Aresta]]:
+    """As sócias de cada empresa pelo histórico de entradas e saídas: cada entrada vira uma aresta com o mês em que
+    saiu (a saída traz a data da entrada que encerra)."""
+    saidas: dict[tuple[str, str, date | None], str] = {}
+    for linha in historico.to_dict("records"):
+        if linha["movimento"] == "saiu":
+            chave = (
+                str(linha["alvo"]),
+                str(linha["socia"]),
+                _dia(linha["data_entrada"]),
+            )
+            saidas[chave] = min(saidas.get(chave, str(linha["mes"])), str(linha["mes"]))
+    arestas: dict[str, list[Aresta]] = defaultdict(list)
+    for linha in historico.to_dict("records"):
+        filha, socia = str(linha["alvo"]), str(linha["socia"])
+        if linha["movimento"] != "entrou" or socia == filha:
+            continue
+        entrada = _dia(linha["data_entrada"])
+        arestas[filha].append(
+            (
+                socia,
+                entrada,
+                _dia(linha[PUBLICADO_EM]),
+                saidas.get((filha, socia, entrada)),
+            )
+        )
+    return arestas
+
+
+def _valia(entrada: date | None, saiu: str | None, ate: date | None) -> bool:
+    """A aresta valia no dia `ate` (entrou até ele e não tinha saído num retrato anterior ao mês dele) ou, sem `ate`,
+    vale no quadro do dia pedido (não saiu)."""
+    if ate is None:
+        return saiu is None
+    return (
+        entrada is not None and entrada <= ate and (saiu is None or saiu >= _mes(ate))
+    )
 
 
 class _Quadro:
@@ -1055,7 +1095,9 @@ class _Quadro:
             if not fronteira:
                 break
             vistas |= fronteira
-            nivel = consulta.socias_no_dia(fronteira)
+            # o histórico, e não só o quadro do dia: a sócia que estava lá na data da entrada e saiu depois ainda liga
+            # (Revisor do PR 1347)
+            nivel = consulta.historico_de_socias(fronteira)
             niveis.append(nivel)
             fronteira = set(nivel["socia"].astype(str))
         achadas = {str(s) for nivel in niveis for s in nivel["socia"]}
@@ -1066,19 +1108,16 @@ class _Quadro:
         }
         acima_de: dict[str, list[Aresta]] = defaultdict(list)
         for nivel in niveis:
-            for linha in nivel.to_dict("records"):
-                filha, socia = str(linha["raiz"]), str(linha["socia"])
-                if socia in nomes and socia != filha:
-                    acima_de[filha].append(
-                        (socia, _dia(linha["data_entrada"]), _dia(linha[PUBLICADO_EM]))
-                    )
+            for filha, arestas in _arestas(nivel).items():
+                acima_de[filha].extend(a for a in arestas if a[0] in nomes)
         return cls(acima_de, {s: nomes[s] for s in pontes}, set(nomes) - pontes)
 
     def acima(
         self, raiz: str, ate: date | None = None, liberada: str | None = None
     ) -> dict[str, date | None]:
         """As sócias PJ acima da `raiz`, até `NIVEIS_DO_GRUPO` níveis, com o dia mais novo em que o caminho ficou
-        público. Com `ate`, só as que já tinham entrado até esse dia (a data sem entrada não conta). A sócia acima do
+        público. Com `ate`, as que eram sócias nesse dia (entraram até ele e ainda não tinham saído; a data sem entrada não
+        conta); sem `ate`, as do quadro do dia pedido. A sócia acima do
         teto não entra, salvo a `liberada` (o próprio comprador: ali ela não é ponte, é uma das pontas)."""
         chave = (raiz, ate, liberada)
         if chave not in self._lembradas:
@@ -1087,10 +1126,10 @@ class _Quadro:
             for _ in range(NIVEIS_DO_GRUPO):
                 nova: dict[str, date | None] = {}
                 for filha, publico in fronteira.items():
-                    for socia, entrada, publico_da_aresta in self.acima_de.get(
+                    for socia, entrada, publico_da_aresta, saiu in self.acima_de.get(
                         filha, ()
                     ):
-                        if ate is not None and (entrada is None or entrada > ate):
+                        if not _valia(entrada, saiu, ate):
                             continue
                         if socia == raiz or socia in achadas:
                             continue
