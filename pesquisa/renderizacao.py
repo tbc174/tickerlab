@@ -4,19 +4,28 @@ O Crawl4AI é opcional: sem ele instalado, `buscar_pagina(renderizar=true)` recu
 navegador do Crawl4AI não passa pelo `ClienteHttp`; por isso o `Coletor` confere o `robots.txt` e
 espera a vez do domínio antes de chamar `renderizar`.
 
-Em teste (11/11/2026): com `TICKERLAB_PESQUISA_FIRECRAWL` apontando para um Firecrawl que roda no
-próprio PC, quem renderiza é ele, por HTTP. O Firecrawl é AGPL: nenhum código dele entra aqui, só a
-chamada à porta local; endereço que não seja do próprio PC é recusado (a página pedida não sai de casa).
+O Firecrawl entra por HTTP, como ferramenta à parte: é AGPL, e nenhum código dele entra aqui (sem
+`import`, sem pin, sem trecho copiado). Dois caminhos:
+
+- do próprio PC: `TICKERLAB_PESQUISA_FIRECRAWL` aponta para a porta local; endereço que não seja do
+  próprio PC é recusado. Tem preferência (não gasta crédito);
+- hospedado: com a chave em `FIRECRAWL_API_KEY`, o serviço de `api.firecrawl.dev` (endereço fixo, para a
+  chave não ir a outro lugar). Só roda depois do Crawl4AI, quando ele falta ou falha, e só depois do
+  `Porteiro` (nunca vai a terceiro endereço com CPF ou com termo barrado) e dentro do teto de créditos.
+  Pede `proxy: basic` (o `enhanced` existe para vencer anti-robô, e bloqueio não se contorna) e
+  `storeInCache: false`.
 """
 
 import asyncio
 import contextlib
 import os
+import re
 import sys
-from collections.abc import Callable, Mapping
+import unicodedata
+from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote_plus, urlsplit
 
 import requests
 
@@ -29,6 +38,21 @@ PASTA_DO_NAVEGADOR = (
 VARIAVEL_DO_FIRECRAWL = "TICKERLAB_PESQUISA_FIRECRAWL"
 ENDERECOS_DO_PROPRIO_PC = frozenset({"127.0.0.1", "localhost", "::1"})
 ROTA_DO_FIRECRAWL = "/v1/scrape"
+
+VARIAVEL_DA_CHAVE = (
+    "FIRECRAWL_API_KEY"  # o mesmo nome que o programa oficial e o conector usam
+)
+VARIAVEL_DOS_TERMOS_BARRADOS = "TICKERLAB_PESQUISA_TERMOS_BARRADOS"
+VARIAVEL_DO_TETO = "TICKERLAB_FIRECRAWL_TETO"
+TETO_PADRAO_DE_CREDITOS = (
+    50  # por processo (uma rodada do agente ou uma vida do servidor MCP)
+)
+ROTA_DO_FIRECRAWL_HOSPEDADO = "https://api.firecrawl.dev/v2/scrape"
+CREDITOS_POR_PAGINA = 1  # preço da raspagem simples, quando a resposta não diz o gasto
+TEMPO_DO_SERVICO_EM_MS = 60_000
+PRIMEIRO_STATUS_DE_ERRO = 400
+RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parent.parent
+_CPF_NO_TEXTO = re.compile(r"(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)")
 
 Renderizador = Callable[[str], tuple[str, bytes]]
 
@@ -100,11 +124,189 @@ def renderizador_pelo_firecrawl(endereco: str) -> Renderizador:
     return renderizar_pelo_firecrawl
 
 
+# --- Firecrawl hospedado -----------------------------------------------------------------------
+
+
+class EnvioBarrado(Exception):
+    """O porteiro não deixa o endereço ir a terceiro. A mensagem nunca repete o que barrou."""
+
+
+class TetoDeCreditos(Exception):
+    """O teto de créditos do Firecrawl hospedado deste processo acabou."""
+
+
+def _cpf_valido(digitos: str) -> bool:
+    if len(set(digitos)) == 1:
+        return False
+    numeros = [int(d) for d in digitos]
+    for tamanho in (9, 10):
+        soma = sum(n * (tamanho + 1 - i) for i, n in enumerate(numeros[:tamanho]))
+        if (soma * 10 % 11) % 10 != numeros[tamanho]:
+            return False
+    return True
+
+
+def _so_letras_e_numeros(texto: str) -> str:
+    """Sem acento, sem caixa e sem separador: "Empresa Fictícia" e "empresa-ficticia" ficam iguais."""
+    decomposto = unicodedata.normalize("NFKD", texto)
+    sem_acento = "".join(c for c in decomposto if not unicodedata.combining(c))
+    return re.sub(r"[^0-9a-z]", "", sem_acento.casefold())
+
+
+class Porteiro:
+    """Confere o endereço antes de ele ir a um serviço de terceiro: nada com CPF, nada com termo barrado
+    (nome de cliente, alvo de mandato, pessoa). Na dúvida, barra: a comparação ignora separadores."""
+
+    def __init__(self, termos: Iterable[str]) -> None:
+        self._termos = [t for t in map(_so_letras_e_numeros, termos) if t]
+
+    def conferir(self, url: str) -> None:
+        texto = unquote_plus(url)
+        numeros = (re.sub(r"\D", "", achado) for achado in _CPF_NO_TEXTO.findall(texto))
+        if any(_cpf_valido(n) for n in numeros):
+            raise EnvioBarrado("o endereço tem um número que confere como CPF")
+        canonico = _so_letras_e_numeros(texto)
+        if any(termo in canonico for termo in self._termos):
+            raise EnvioBarrado("o endereço tem um termo da lista de barrados")
+
+
+def porteiro_do_ambiente(ambiente: Mapping[str, str]) -> Porteiro:
+    """Porteiro com os termos do arquivo apontado pela variável (um por linha; `#` comenta). O arquivo
+    fica fora do repositório, que é público; se a variável aponta para um arquivo que não existe, para."""
+    caminho = ambiente.get(VARIAVEL_DOS_TERMOS_BARRADOS)
+    if not caminho:
+        return Porteiro(())
+    arquivo = Path(caminho).resolve()
+    if arquivo.is_relative_to(RAIZ_DO_REPOSITORIO):
+        raise ValueError(
+            f"{VARIAVEL_DOS_TERMOS_BARRADOS}: o arquivo fica fora do repositório"
+        )
+    if not arquivo.is_file():
+        raise ValueError(f"{VARIAVEL_DOS_TERMOS_BARRADOS}: o arquivo não existe")
+    linhas = arquivo.read_text(encoding="utf-8").splitlines()
+    return Porteiro(linha for linha in linhas if not linha.strip().startswith("#"))
+
+
+class ContadorDeCreditos:
+    """Créditos do Firecrawl hospedado gastos neste processo, com teto."""
+
+    def __init__(self, teto: int = TETO_PADRAO_DE_CREDITOS) -> None:
+        self.teto = teto
+        self.creditos = 0
+        self.paginas = 0
+
+    def conferir(self) -> None:
+        if self.creditos >= self.teto:
+            raise TetoDeCreditos(f"teto de {self.teto} créditos do Firecrawl atingido")
+
+    def registrar(self, creditos: int) -> None:
+        self.paginas += 1
+        self.creditos += creditos
+
+
+def _metadados(corpo: Mapping[str, object]) -> Mapping[str, object]:
+    dados = corpo.get("data")
+    metadados = dados.get("metadata") if isinstance(dados, Mapping) else None
+    return metadados if isinstance(metadados, Mapping) else {}
+
+
+def _html_da_resposta(corpo: Mapping[str, object], url: str) -> tuple[str, bytes]:
+    """(endereço final, HTML) da resposta do `/scrape`; página que respondeu com erro não serve."""
+    dados = corpo.get("data")
+    html = dados.get("rawHtml") if isinstance(dados, Mapping) else None
+    if not corpo.get("success") or not html:
+        raise RuntimeError(str(corpo.get("error") or "o Firecrawl não devolveu o HTML"))
+    metadados = _metadados(corpo)
+    status = metadados.get("statusCode")
+    if isinstance(status, int) and status >= PRIMEIRO_STATUS_DE_ERRO:
+        raise RuntimeError(f"a página respondeu HTTP {status}")
+    return str(metadados.get("url") or url), str(html).encode("utf-8")
+
+
+def _creditos_gastos(corpo: Mapping[str, object]) -> int:
+    gasto = _metadados(corpo).get("creditsUsed")
+    return gasto if isinstance(gasto, int) and gasto >= 0 else CREDITOS_POR_PAGINA
+
+
+def renderizador_hospedado(
+    chave: str,
+    porteiro: Porteiro,
+    contador: ContadorDeCreditos,
+    *,
+    post: Callable[..., requests.Response] = requests.post,
+) -> Renderizador:
+    """Renderizador pelo Firecrawl hospedado. Porteiro e teto antes de qualquer envio; a chave vai só no
+    cabeçalho, nunca em mensagem de erro."""
+
+    def renderizar_pelo_firecrawl_hospedado(url: str) -> tuple[str, bytes]:
+        porteiro.conferir(url)
+        contador.conferir()
+        resposta = post(
+            ROTA_DO_FIRECRAWL_HOSPEDADO,
+            json={
+                "url": url,
+                "formats": ["rawHtml"],
+                "onlyMainContent": False,
+                "proxy": "basic",
+                "storeInCache": False,
+                "timeout": TEMPO_DO_SERVICO_EM_MS,
+            },
+            headers={"Authorization": f"Bearer {chave}"},
+            timeout=TEMPO_LIMITE_EM_SEGUNDOS,
+        )
+        if resposta.status_code >= PRIMEIRO_STATUS_DE_ERRO:
+            raise RuntimeError(f"o Firecrawl respondeu HTTP {resposta.status_code}")
+        corpo = resposta.json()
+        pagina = _html_da_resposta(corpo, url)
+        contador.registrar(_creditos_gastos(corpo))
+        return pagina
+
+    return renderizar_pelo_firecrawl_hospedado
+
+
+def em_cascata(*renderizadores: Renderizador) -> Renderizador:
+    """Tenta cada renderizador na ordem; o seguinte só roda se o anterior falhou."""
+
+    def renderizar_em_cascata(url: str) -> tuple[str, bytes]:
+        erro: Exception = RuntimeError("nenhum renderizador")
+        for renderizador in renderizadores:
+            try:
+                return renderizador(url)
+            except Exception as falha:  # noqa: BLE001 (qualquer falha passa ao seguinte; a última sobe)
+                erro = falha
+        raise erro
+
+    return renderizar_em_cascata
+
+
+def _teto_do_ambiente(ambiente: Mapping[str, str]) -> int:
+    valor = ambiente.get(VARIAVEL_DO_TETO)
+    if not valor:
+        return TETO_PADRAO_DE_CREDITOS
+    try:
+        return int(valor)
+    except ValueError:
+        raise ValueError(f"{VARIAVEL_DO_TETO} precisa ser um número inteiro") from None
+
+
 def escolher_renderizador(
     ambiente: Mapping[str, str] | None = None,
+    *,
+    contador: ContadorDeCreditos | None = None,
 ) -> Renderizador | None:
-    """O Firecrawl local, se a variável aponta para ele; senão o Crawl4AI, se instalado; senão nenhum."""
-    endereco = (os.environ if ambiente is None else ambiente).get(VARIAVEL_DO_FIRECRAWL)
+    """O Firecrawl local, se a variável aponta para ele. Senão, na ordem: o Crawl4AI, se instalado, e o
+    Firecrawl hospedado, se há chave. Nenhum dos dois: nenhum renderizador."""
+    ambiente = os.environ if ambiente is None else ambiente
+    endereco = ambiente.get(VARIAVEL_DO_FIRECRAWL)
     if endereco:
         return renderizador_pelo_firecrawl(endereco)
-    return renderizar if crawl4ai_instalado() else None
+    ordem: list[Renderizador] = [renderizar] if crawl4ai_instalado() else []
+    chave = ambiente.get(VARIAVEL_DA_CHAVE)
+    if chave:
+        contador = contador or ContadorDeCreditos()
+        contador.teto = _teto_do_ambiente(ambiente)
+        porteiro = porteiro_do_ambiente(ambiente)
+        ordem.append(renderizador_hospedado(chave, porteiro, contador))
+    if not ordem:
+        return None
+    return ordem[0] if len(ordem) == 1 else em_cascata(*ordem)
