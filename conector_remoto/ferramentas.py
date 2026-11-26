@@ -893,7 +893,7 @@ def _registrar_eventos_rede_e_fundo(servidor: MCPServer, pedidos: Pedidos) -> No
             Literal["entradas", "rede"] | None,
             Field(
                 description=(
-                    "A ordem: 'entradas' (como sócia, a de sempre) ou 'rede' (pelo tamanho da rede no setor, "
+                    "A ordem: 'entradas' (como sócia, a padrão) ou 'rede' (pelo tamanho da rede no setor, "
                     "útil para achar a rede de outra UF que já opera na UF do alvo). Vazio = entradas."
                 ),
             ),

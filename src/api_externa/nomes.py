@@ -231,7 +231,6 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "controla_no_setor": "controls_in_sector",
     # buyers: a rede do comprador no setor (linha 1121): o bloco por UF e os sinais da filial na UF e do lote
     "rede_no_setor": "network_in_sector",
-    "estabelecimentos_ativos": "active_establishments",
     "por_uf": "by_state",
     "estabelecimentos": "establishments",
     "filial_na_uf": "branch_in_state",

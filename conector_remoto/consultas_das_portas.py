@@ -783,7 +783,7 @@ CONSULTAS: tuple[Consulta, ...] = (
         "compradores",
         nome="Quem já se mexeu no setor",
         resumo=(
-            "quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra"
+            "quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos, e a rede de cada um no setor (filiais por UF e lote aberto no mesmo dia); só pessoa jurídica, e movimento passado não é intenção de compra"
         ),
         rotas=("GET /buyers",),
         ferramentas=(_COMPRADORES_DO_SETOR,),

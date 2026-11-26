@@ -759,8 +759,12 @@ class _Consulta:
         )
 
     def _ativos_do_cnae(self) -> str:
-        """O filtro dos estabelecimentos ativos do CNAE no retrato do dia (parâmetros `mes`, `ativa` e `cnae`)."""
-        return f"{MES} = $mes AND situacao_cadastral = $ativa AND starts_with(cnae_principal, $cnae)"
+        """O filtro dos estabelecimentos ativos do CNAE no retrato do dia, abertos até o dia (parâmetros `mes`,
+        `ativa`, `cnae` e `dia`)."""
+        return (
+            f"{MES} = $mes AND situacao_cadastral = $ativa AND starts_with(cnae_principal, $cnae) "
+            "AND coalesce(data_inicio_atividade <= CAST($dia AS DATE), true)"
+        )
 
     def rede(self, cnae: str, raizes: set[str]) -> "Rede":
         """A rede de cada raiz no setor, no país todo: (UF, estabelecimentos ativos do CNAE, dia em que o retrato
@@ -771,7 +775,7 @@ class _Consulta:
             f"SELECT cnpj_basico AS raiz, uf, count(*) AS n, max({PUBLICADO_EM}) AS publico_em "
             f"FROM {_view(ESTABELECIMENTOS)} WHERE {self._ativos_do_cnae()} "
             "AND cnpj_basico IN (SELECT raiz FROM raizes) GROUP BY 1, 2",
-            {"mes": self.mes, "ativa": ATIVA, "cnae": cnae},
+            {"mes": self.mes, "ativa": ATIVA, "cnae": cnae, "dia": dia_de(self.dia)},
             raizes=pd.DataFrame({"raiz": pd.Series(sorted(raizes), dtype="string")}),
         )
         rede: Rede = defaultdict(list)
@@ -792,7 +796,7 @@ class _Consulta:
         return self._df(
             f"WITH f AS (SELECT cnpj_basico AS raiz, data_inicio_atividade AS aberta, {PUBLICADO_EM} AS publico_em "
             f"FROM {estab} WHERE {self._ativos_do_cnae()} AND uf = $uf "
-            "AND NOT coalesce(matriz, true) AND data_inicio_atividade <= CAST($dia AS DATE)), "
+            "AND NOT coalesce(matriz, true)), "
             f"m AS (SELECT cnpj_basico AS raiz, min(uf) AS uf_da_matriz, max({PUBLICADO_EM}) AS publico_em "
             f"FROM {estab} WHERE {MES} = $mes AND coalesce(matriz, false) "
             "AND cnpj_basico IN (SELECT raiz FROM f) GROUP BY 1) "
@@ -870,7 +874,7 @@ def _bloco_da_rede(
     lista vazia, com o dia do retrato (o mesmo da razão social)."""
     publico_em = max((d for _uf, _n, d in rede), default=publico_do_retrato)
     return {
-        "estabelecimentos_ativos": campo(_tamanho(rede), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+        "n_estabelecimentos": campo(_tamanho(rede), fonte=RECEITA, publico_em=publico_em, visto_em=None),
         "por_uf": [
             {"uf": uf, "estabelecimentos": campo(n, fonte=RECEITA, publico_em=d, visto_em=None)}
             for uf, n, d in sorted(rede, key=lambda r: (-r[1], r[0]))
@@ -1010,7 +1014,9 @@ class _Lista:
         `pela_rede`, a ordem é pelo tamanho dela antes da de sempre."""
 
         def chave(comprador: str) -> tuple[int, int, int, str]:
-            sinais = self.provas[comprador]
+            # só os sinais de sempre: na ordem padrão a rede (linha 1121) não mexe em quem já estava na lista, e
+            # quem só tem sinal da rede vem depois de todos eles
+            sinais = {s: p for s, p in self.provas[comprador].items() if s in SINAIS}
             provas = sum(len(lista) for lista in sinais.values())
             return (
                 -len(sinais.get(ENTROU, [])),

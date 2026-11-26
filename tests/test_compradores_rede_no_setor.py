@@ -13,6 +13,7 @@ baixada, filial da própria UF da matriz, lote fora da janela).
 """
 
 import dataclasses
+import re
 from datetime import UTC, date, datetime
 
 import pandas as pd
@@ -44,6 +45,9 @@ REDE, PEQUENA, LOCAL, VELHA, HOLDING, ALVO, SEM_LISTA, FORA = (
     "31000007",  # filial em SC, mas fora da lista sem pessoa
     "31000008",  # matriz no PR com filial em SC de outro CNAE
 )
+OUTRA_HOLDING = (
+    "31000009"  # entrou como sócia da REDE: comprador de sempre, empata com a HOLDING
+)
 LOTE = "2024-04-04"
 NOMES = {
     REDE: "REDE DE POSTOS DE FORA LTDA",
@@ -51,6 +55,7 @@ NOMES = {
     LOCAL: "REDE LOCAL LTDA",
     VELHA: "REDE ANTIGA LTDA",
     HOLDING: "HOLDING PARTICIPACOES LTDA",
+    OUTRA_HOLDING: "OUTRA HOLDING LTDA",
     ALVO: "ALVO POSTOS LTDA",
     FORA: "OUTRO RAMO LTDA",
 }  # SEM_LISTA fica fora: não está na lista sem pessoa
@@ -75,6 +80,13 @@ ESTABELECIMENTOS = [
     *_rede(),
     (PEQUENA, "02", "2016-01-01", "PR", True),
     (PEQUENA, "02", "2025-02-01", "SC", False),
+    (
+        PEQUENA,
+        "02",
+        "2026-11-20",
+        "SC",
+        False,
+    ),  # abertura depois do dia pedido: não conta
     (LOCAL, "02", "2010-01-01", "SC", True),
     (LOCAL, "02", "2024-06-01", "SC", False),
     (LOCAL, "02", "2024-07-01", "SC", False),
@@ -137,12 +149,12 @@ def _empresas() -> pd.DataFrame:
 
 def _entradas() -> pd.DataFrame:
     return pd.DataFrame({
-        "raiz_socio_pj": [HOLDING],
-        "cnpj_basico": [ALVO],
-        "data_entrada": [date(2025, 5, 1)],
-        "mes_do_retrato": ["2025-05"],
-        "disponivel_em": [date(2025, 6, 30)],
-        "movimento": ["entrou"],
+        "raiz_socio_pj": [HOLDING, OUTRA_HOLDING],
+        "cnpj_basico": [ALVO, REDE],
+        "data_entrada": [date(2025, 5, 1), date(2025, 7, 1)],
+        "mes_do_retrato": ["2025-05", "2025-07"],
+        "disponivel_em": [date(2025, 6, 30), date(2025, 8, 31)],
+        "movimento": ["entrou", "entrou"],
     }).assign(qualificacao="22", **CARIMBOS)  # fmt: skip
 
 
@@ -258,7 +270,7 @@ def test_a_ordem_padrao_segue_a_de_hoje_e_os_sinais_novos_vem_depois_das_entrada
     cliente, cenario
 ):
     corpo = _get(cliente, cenario, state="SC")
-    assert _raizes(corpo) == [HOLDING, REDE, PEQUENA]
+    assert _raizes(corpo) == [HOLDING, OUTRA_HOLDING, REDE, PEQUENA]
     # a holding não tem posto: a rede dela no setor é zero, dito com todas as letras
     holding = _comprador(corpo, HOLDING)["network_in_sector"]
     assert holding["active_establishments"]["value"] == 0
@@ -270,6 +282,7 @@ def test_pela_rede_quem_tem_mais_postos_vem_antes(cliente, cenario):
         REDE,
         PEQUENA,
         HOLDING,
+        OUTRA_HOLDING,
     ]
 
 
@@ -304,15 +317,15 @@ def test_sem_uf_a_filial_na_uf_nao_se_aplica_e_o_lote_ainda_acha_a_rede(
 
 
 def test_abertura_depois_do_dia_nao_conta(cliente, cenario):
-    """Pedido como era antes do lote: o retrato de outubro ainda não era público, e não há retrato antes; a
-    resposta não inventa a rede de amanhã (o dia anterior ao primeiro retrato cai no erro de sempre)."""
-    _ator, _org, chave = cenario
-    resposta = cliente.get(
-        ROTA,
-        params={"cnae": POSTOS, "state": "SC", "known_at": "2024-04-03"},
-        headers=aj.bearer(chave.valor),
-    )
-    assert resposta.status_code != 200 or REDE not in _raizes(resposta.json())
+    """A filial da PEQUENA aberta em 20/11 está no retrato (base de mentira), mas o pedido é de 10/11: não entra na
+    rede nem na prova da filial na UF."""
+    pequena = _comprador(_get(cliente, cenario, state="SC"), PEQUENA)
+    assert pequena["network_in_sector"]["active_establishments"]["value"] == 2
+    assert pequena["evidence"]["branch_in_state"]["count"] == 1
+    assert [
+        e["opened_on"]["value"]
+        for e in pequena["evidence"]["branch_in_state"]["examples"]
+    ] == ["2025-02-01"]
 
 
 def test_os_limites_dizem_que_rede_e_lote_sao_deducao(cliente, cenario):
@@ -331,7 +344,7 @@ def test_sem_o_campo_matriz_no_portao_os_dois_sinais_ficam_de_fora_e_dizem_isso(
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(sem_campo="matriz"))
     corpo = _get(cliente, cenario, state="SC")
     assert set(corpo["unavailable_signals"]) >= {"branch_in_state", "same_day_branches"}
-    assert _raizes(corpo) == [HOLDING]
+    assert _raizes(corpo) == [HOLDING, OUTRA_HOLDING]
 
 
 def test_ordem_desconhecida_e_recusada(cliente, cenario):
@@ -367,5 +380,66 @@ def test_a_tela_do_analista_nao_recebe_a_rede(pasta):
         compradores.PedidoDeCompradores(POSTOS, "SC"), AGORA.date()
     )
     assert servido is not None
-    assert [c["raiz_do_cnpj"] for c in servido.corpo["compradores"]] == [HOLDING]
+    assert [c["raiz_do_cnpj"] for c in servido.corpo["compradores"]] == [
+        HOLDING,
+        OUTRA_HOLDING,
+    ]
     assert "rede_no_setor" not in servido.corpo["compradores"][0]
+
+
+def _leitor(pasta, rede: bool) -> compradores.LeitorDeCompradores:
+    return compradores.LeitorDeCompradores(
+        Porta(pasta, None), lambda *_: True, compradores.LIMITE_MAXIMO, rede=rede
+    )
+
+
+@pytest.mark.parametrize("limite", [1, 2, 50])
+def test_so_acrescimo_quem_ja_estava_na_lista_sai_igual_e_no_mesmo_lugar(pasta, limite):
+    """Condição da Diretoria (26/11): sem o parâmetro novo, quem já aparecia sai igual (mesmos sinais, provas e
+    lugar), só com o bloco da rede a mais; os compradores só da rede vêm depois de todos eles, inclusive no corte."""
+    pedido = compradores.PedidoDeCompradores(POSTOS, "SC", limite=limite)
+    antes = _leitor(pasta, rede=False).compradores(pedido, AGORA.date())
+    agora = _leitor(pasta, rede=True).compradores(pedido, AGORA.date())
+    assert antes is not None and agora is not None
+    de_antes = antes.corpo["compradores"]
+    de_agora = agora.corpo["compradores"]
+    assert len(de_agora) >= len(de_antes)
+    for velho, novo in zip(de_antes, de_agora, strict=False):
+        assert {k: v for k, v in novo.items() if k != "rede_no_setor"} == velho
+    # os limites de antes seguem lá, na mesma ordem
+    assert [
+        lim for lim in agora.corpo["limites"] if lim in antes.corpo["limites"]
+    ] == antes.corpo["limites"]
+
+
+def _varrer(valor):
+    """Toda chave ("chave", nome) e todo texto ("texto", valor) da resposta, em qualquer profundidade."""
+    if isinstance(valor, dict):
+        for chave, dentro in valor.items():
+            yield "chave", chave
+            yield from _varrer(dentro)
+    elif isinstance(valor, list):
+        for item in valor:
+            yield from _varrer(item)
+    elif isinstance(valor, str):
+        yield "texto", valor
+
+
+@pytest.mark.parametrize(
+    "parametros", [{"state": "SC", "order": "network"}, {"years": 10}]
+)
+def test_varredura_sem_municipio_cnpj_de_filial_nem_quem_esta_fora_da_lista(
+    cliente, cenario, parametros
+):
+    """Condição da Diretoria (26/11): nada de município, CNPJ (de filial ou inteiro), CPF, nem empresa fora da lista
+    sem pessoa (MEI e empresário individual ficam fora dela) em lugar nenhum da resposta."""
+    corpo = _get(cliente, cenario, **parametros)
+    for tipo, texto in _varrer(corpo):
+        baixo = texto.lower()
+        assert "munic" not in baixo and "city" not in baixo, texto
+        assert not re.search(r"\d{11,}", texto), texto  # CNPJ inteiro (14) ou CPF (11)
+        assert SEM_LISTA not in texto, texto
+        if tipo == "chave" and "cnpj" in baixo:
+            assert texto == "cnpj_root", (
+                texto
+            )  # só a raiz, nunca o CNPJ do estabelecimento

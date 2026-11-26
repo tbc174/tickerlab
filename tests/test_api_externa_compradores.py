@@ -538,7 +538,11 @@ def test_sem_contrato_do_conjunto_e_404(banco, monkeypatch, pasta):
 def test_com_todos_os_sinais_a_lista_de_fora_sai_vazia(cliente, cenario):
     corpo = _get(cliente, cenario).json()
     assert corpo["unavailable_signals"] == []
-    assert corpo["limits"] == list(compradores.LIMITES)
+    # a rota traz a rede (linha 1121): o lote de filiais (sem UF, a filial na UF não se aplica) e a frase da rede
+    assert corpo["limits"] == [
+        *compradores.limites((*compradores.SINAIS, compradores.LOTE)),
+        compradores.LIMITE_DA_REDE,
+    ]
     assert compradores.LIMITE_DO_SINAL_NAO_DISPONIVEL not in corpo["limits"]
 
 
@@ -583,7 +587,10 @@ def test_o_sinal_barrado_vem_como_nao_disponivel_e_os_limites_nao_falam_dele(dua
     assert compradores.LIMITES_DO_SINAL[compradores.CONTROLA] not in corpo["limits"]
     assert compradores.LIMITES_DO_SINAL[compradores.ENTROU] in corpo["limits"]
     assert corpo["limits"][0] == compradores.LIMITES_GERAIS[0]
-    assert corpo["limits"][-1] == compradores.LIMITES_GERAIS[-1]
+    assert corpo["limits"][-2] == compradores.LIMITES_GERAIS[-1]
+    assert (
+        corpo["limits"][-1] == compradores.LIMITE_DA_REDE
+    )  # a rede (linha 1121) fecha a lista
 
 
 def test_a_organizacao_sem_o_contrato_recebe_404_e_nao_a_lista(duas):
