@@ -533,8 +533,8 @@ def compradores_do_setor(
     com controlada no setor, as empresas de outra UF com filial ativa do setor na UF pedida e as que abriram
     3 ou mais filiais do setor no mesmo dia na janela, como era em `known_at`. Cada comprador traz os sinais,
     até 5 exemplos por sinal e a rede no setor (`network_in_sector`: estabelecimentos ativos do CNAE, por UF),
-    com fonte e data; `limit` (padrão 20, até 50); `order` (`entries`, o padrão, ou `network`, pelo tamanho
-    da rede). Movimento passado, não intenção de compra. O sinal que não foi consultado (o portão não o
+    com fonte e data; `limit` (padrão 20, até 50); `order` (`entries`, o padrão, em que os dois sinais da
+    rede não contam e quem só os tem vem depois, ou `network`, pelo tamanho da rede). Movimento passado, não intenção de compra. O sinal que não foi consultado (o portão não o
     libera para a organização ou a base não tem a tabela) vem em `unavailable_signals`: a lista não diz nada
     sobre ele."""
     dia = _dia_pedido(known_at)

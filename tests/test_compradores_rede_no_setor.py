@@ -362,6 +362,10 @@ def test_os_limites_dizem_que_rede_e_lote_sao_deducao(cliente, cenario):
     assert "network_in_sector" in limites
     assert "dedução" in limites
     assert "mesmo grupo" in limites  # a rede é só da raiz: não soma o grupo
+    # a ordem padrão não conta os dois sinais da rede, e o texto diz isso (P2 da revisão cruzada no #1336)
+    assert (
+        "branch_in_state e same_day_branches não entram na conta dos sinais" in limites
+    )
 
 
 # ---------------------------------------------------------------- portão e pedido

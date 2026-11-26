@@ -189,8 +189,9 @@ LIMITES_DO_SINAL = {
 LIMITE_DA_REDE = (
     "network_in_sector: os estabelecimentos ativos da própria raiz no CNAE pedido, no país todo e por UF, no "
     "retrato da Receita que valia em known_at; não soma as empresas do mesmo grupo (raízes irmãs) nem conta "
-    "estabelecimento de outro CNAE. Com order=network a lista vem pelo tamanho dessa rede e, no empate, pela "
-    "ordem de sempre."
+    "estabelecimento de outro CNAE. Na ordem padrão, branch_in_state e same_day_branches não entram na conta dos "
+    "sinais: quem só tem esses dois vem depois dos demais. Com order=network a lista vem pelo tamanho dessa rede "
+    "e, no empate, pela ordem padrão."
 )
 # o nome de dentro da lista dos sinais que o portão não libera (ou cuja tabela a base não tem)
 NAO_DISPONIVEIS = "sinais_nao_disponiveis"
