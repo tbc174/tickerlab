@@ -86,6 +86,11 @@ Quando a organização tem acesso aos sinais do piloto, a ficha pode mostrar est
 ativos, capital social e, para telecomunicações, acessos por serviço na Anatel. Cada dado traz
 fonte e data. Capital social não mede o tamanho da empresa e não é uma estimativa de faturamento.
 
+A implementação de `analise_completa` também pode listar empresas ativas com o mesmo CNAE
+principal, separando o município do CNPJ do restante do estado. Esse bloco exige acesso à busca
+de empresas (`prospecting`) e não consome pedido adicional na quota. Se o bloco atingir o limite
+de tempo, ele traz um aviso em vez da lista; isso não significa que não haja empresas no recorte.
+
 O parâmetro `como_era_em` limita a análise ao que já era público na data escolhida. O conector
 não estima faturamento de empresa fechada. A [tabela de consultas por interface](docs/cli.md#uma-base-três-portas)
 mostra o que está implementado no MCP, na CLI e na API; implementação não implica liberação pública.
