@@ -1,4 +1,4 @@
-"""Monta a tabela de entradas e saídas de sócio PJ (linha 810, PR 2; `base/socios_pj.py`). Roda no servidor de casa.
+"""Monta as tabelas de sócio PJ (linhas 810 e 1032; `base/socios_pj.py`). Roda no servidor de casa.
 
     python -m scripts.montar_entradas_de_socio_pj --cnpj <base do CNPJ> --destino <acervo>/base [--ensaio]
 
@@ -7,10 +7,16 @@ sem pessoa do CNPJ (`cnpj_estabelecimentos_pj`, que `scripts/montar_empresas_pj.
 `entradas_de_socio_pj/<2 primeiros caracteres da raiz>.parquet` em `--destino`. A lista sem pessoa tem de
 ser do mesmo mês do QSA vigente: senão, para (rode antes o `montar_empresas_pj`).
 
-**Só acrescenta uma tabela nova:** não toca nas outras pastas de `--destino`. Remontar o mesmo mês não regrava
-nada (`gravar_se_mudou`). `--ensaio` monta e conta, sem gravar. Saída 0 tudo certo; 1 falha (última linha
-`FALHAS:`). `--se-houver-mes-novo` (o do cron diário) sai com 0 sem montar nada se a tabela já tem o último mês
-do QSA ou se a lista sem pessoa ainda é de outro mês: assim a montagem roda logo depois do `montar_empresas_pj`.
+Grava também o quadro virado (linha 1032): `participacoes_de_socio_pj/<2 primeiros caracteres da raiz da
+sócia>.parquet` em `--destino`, só o quadro de hoje, e `vigente/participacoes/` dentro da base do CNPJ (o QSA
+virado que a ficha e o grupo leem, `base/porta/vista_do_cnpj.py`; a carga mensal troca o `vigente/` e o leva
+junto, e a rodada seguinte o refaz).
+
+**Só escreve nessas três pastas:** não toca nas outras de `--destino` nem no resto da base do CNPJ. Remontar o
+mesmo mês não regrava as tabelas (`gravar_se_mudou`). `--ensaio` monta e conta, sem gravar. Saída 0 tudo certo;
+1 falha (última linha `FALHAS:`). `--se-houver-mes-novo` (o do cron diário) sai com 0 sem montar nada se as
+três já são do último mês do QSA ou se a lista sem pessoa ainda é de outro mês: assim a montagem roda logo
+depois do `montar_empresas_pj`.
 
 **Guarda de faixa:** um mês que ainda não está na tabela gravada (fora o primeiro da série, que traz as sócias
 que já estavam) com mais entradas ou saídas que `MAXIMO_POR_MES` não substitui a tabela: a saída é de falha,
@@ -23,6 +29,7 @@ da Diretoria de 11/11/2026), e manual; coberto por test_montar_entradas_de_socio
 import argparse
 import json
 import logging
+import shutil
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -33,11 +40,13 @@ import pandas as pd
 from base import socios_pj
 from base.parquet import gravar_se_mudou
 from base.porta.duckdb import arquivos_da_tabela
+from base.porta.vista_do_cnpj import PARTICIPACOES
 from base.receita_diff import ENTROU, SAIU, TIPO_PESSOA_JURIDICA
 from base.receita_retrato import ErroDeLayout
 from scripts import carga_receita_mes as carga
 from scripts.montar_empresas_pj import ESTABELECIMENTOS
 from scripts.montar_historico_do_cnpj import CARIMBOS, PREFIXO, _origens, _zips_do_mes
+from scripts.montar_vista_do_cnpj import montar_participacoes
 from src.versao_do_codigo import versao_do_codigo
 
 log = logging.getLogger("tickerlab.montar_entradas_de_socio_pj")
@@ -122,32 +131,48 @@ def _raizes(*tabelas: pd.DataFrame) -> set[str]:
 def montar(
     cnpj: Path, destino: Path, agora: datetime, gravar: bool = True
 ) -> dict[str, int]:
-    """Monta a tabela com o QSA de `cnpj` e devolve as linhas de cada movimento."""
+    """Monta as tabelas com o QSA de `cnpj` e devolve as linhas de cada movimento."""
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     meses = sorted(manifesto["meses"])
     vigente = _ler_socios_pj(cnpj / "vigente" / "qsa", COLUNAS_DO_QSA)
     mudancas = _ler_socios_pj(cnpj / "mudancas" / "qsa", COLUNAS_DAS_MUDANCAS)
-    tabela = socios_pj.entradas_e_saidas(
-        vigente,
-        mudancas,
-        meses[0],
-        _pessoas_juridicas(destino, meses[-1], _raizes(vigente, mudancas)),
+    pessoas_juridicas = _pessoas_juridicas(
+        destino, meses[-1], _raizes(vigente, mudancas)
     )
+    tabela = socios_pj.entradas_e_saidas(vigente, mudancas, meses[0], pessoas_juridicas)
     contagem = {str(k): int(v) for k, v in tabela["movimento"].value_counts().items()}
     log.info("entradas_de_socio_pj até %s: %s", meses[-1], contagem)
     _conferir_faixa(tabela, meses[0], _meses_gravados(destino))
+    quadro = socios_pj.quadro_invertido(vigente, meses[-1], pessoas_juridicas)
+    log.info("%s de %s: %d linhas", socios_pj.QUADRO_INVERTIDO, meses[-1], len(quadro))
     if gravar:
-        _gravar(tabela, destino, manifesto, meses, agora)
+        zips = {m: _zips_do_mes(manifesto, m, ZIPS_DE_SOCIOS) for m in meses}
+        origens = _origens(zips)
+        ordem = ["movimento", *socios_pj.IDENTIDADE, socios_pj.MES]
+        _gravar(
+            tabela,
+            destino / socios_pj.TABELA,
+            socios_pj.EMPRESA,
+            ordem,
+            origens,
+            agora,
+        )
+        _gravar_quadro(quadro, destino / socios_pj.QUADRO_INVERTIDO, origens, agora)
+        _virar_o_qsa(cnpj)
     return contagem
 
 
 def _sem_mes_novo(cnpj: Path, destino: Path) -> str | None:
-    """Por que não há o que montar (a tabela já tem o último mês, ou a lista sem pessoa ainda é de outro), ou None.
+    """Por que não há o que montar (as três já são do último mês, ou a lista sem pessoa ainda é de outro), ou None.
 
     Para o cron diário: a montagem só roda depois que o `montar_empresas_pj` gravou a lista do retrato novo."""
     manifesto = json.loads((cnpj / carga.MANIFESTO).read_text(encoding="utf-8"))
     ultimo = max(manifesto["meses"])
-    if ultimo in _meses_gravados(destino):
+    em_dia = all(
+        ultimo in _meses_gravados(destino, tabela)
+        for tabela in (socios_pj.TABELA, socios_pj.QUADRO_INVERTIDO)
+    )
+    if em_dia and (cnpj / "vigente" / PARTICIPACOES).is_dir():
         return f"a tabela já tem {ultimo}"
     lista = {
         str(mes)
@@ -161,11 +186,11 @@ def _sem_mes_novo(cnpj: Path, destino: Path) -> str | None:
     return None
 
 
-def _meses_gravados(destino: Path) -> set[str]:
-    """Os meses que a tabela gravada em `destino` já tem (nenhum, se ainda não foi montada)."""
+def _meses_gravados(destino: Path, tabela: str = socios_pj.TABELA) -> set[str]:
+    """Os meses que a `tabela` gravada em `destino` já tem (nenhum, se ainda não foi montada)."""
     return {
         str(mes)
-        for arquivo in arquivos_da_tabela(destino / socios_pj.TABELA, "*.parquet")
+        for arquivo in arquivos_da_tabela(destino / tabela, "*.parquet")
         for mes in pd.read_parquet(arquivo, columns=[socios_pj.MES])[
             socios_pj.MES
         ].unique()
@@ -193,19 +218,20 @@ def _conferir_faixa(
 
 def _gravar(
     tabela: pd.DataFrame,
-    destino: Path,
-    manifesto: dict,
-    meses: list[str],
+    pasta: Path,
+    repartida_por: str,
+    ordem: list[str],
+    origens: list[dict[str, str]],
     agora: datetime,
-) -> None:
-    origens = _origens({m: _zips_do_mes(manifesto, m, ZIPS_DE_SOCIOS) for m in meses})
+) -> set[str]:
+    """Grava a `tabela` em `pasta`, um Parquet por prefixo da raiz da coluna `repartida_por`; devolve os prefixos."""
     carimbada = tabela.assign(
         montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
     )
-    pasta = destino / socios_pj.TABELA
     pasta.mkdir(parents=True, exist_ok=True)
-    ordem = ["movimento", *socios_pj.IDENTIDADE, socios_pj.MES]
-    for prefixo, parte in carimbada.groupby(carimbada["cnpj_basico"].str[:PREFIXO]):
+    prefixos = set()
+    for prefixo, parte in carimbada.groupby(carimbada[repartida_por].str[:PREFIXO]):
+        prefixos.add(str(prefixo))
         gravar_se_mudou(
             parte.reset_index(drop=True),
             pasta / str(prefixo),
@@ -213,6 +239,34 @@ def _gravar(
             ordem,
             carimbos=CARIMBOS,
         )
+    return prefixos
+
+
+def _gravar_quadro(
+    quadro: pd.DataFrame, pasta: Path, origens: list[dict[str, str]], agora: datetime
+) -> None:
+    """O quadro virado é um retrato: o prefixo que ficou sem sócia nenhuma é regravado vazio, para não
+    continuar mostrando o mês passado (a versão anterior fica guardada, ADR 0078)."""
+    ordem = [socios_pj.SOCIO, socios_pj.EMPRESA]
+    gravados = _gravar(quadro, pasta, socios_pj.SOCIO, ordem, origens, agora)
+    vazio = quadro.iloc[0:0].assign(
+        montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
+    )
+    for arquivo in arquivos_da_tabela(pasta, "*.parquet"):
+        if arquivo.stem not in gravados:
+            gravar_se_mudou(vazio, arquivo, origens, ordem, carimbos=CARIMBOS)
+
+
+def _virar_o_qsa(cnpj: Path) -> None:
+    """Refaz `vigente/participacoes` da base do CNPJ numa pasta ao lado e só então troca: quem lê nunca vê a
+    pasta pela metade (ela existir é o que diz à ficha e ao grupo para confiar nela)."""
+    pasta = cnpj / "vigente" / PARTICIPACOES
+    nova = pasta.with_name(f"{PARTICIPACOES}.nova")
+    shutil.rmtree(nova, ignore_errors=True)
+    montar_participacoes(cnpj, nova)
+    shutil.rmtree(pasta, ignore_errors=True)
+    if nova.is_dir():
+        nova.rename(pasta)
 
 
 def main(
