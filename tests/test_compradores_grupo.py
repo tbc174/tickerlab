@@ -15,6 +15,7 @@ O que se confere:
 import json
 from datetime import date
 
+import pandas as pd
 import pytest
 
 from base.porta import Porta
@@ -351,6 +352,43 @@ def test_a_reorganizacao_segue_reorganizacao_depois_que_a_socia_sai_do_comprador
         == controladora
     )
     assert "grupo" not in linha  # o bloco do grupo é o do quadro do dia: ela já saiu
+
+
+def _corrigir_data(mundo: Mundo, socia: str, empresa: str, nova: str, mes: str) -> None:
+    """A Receita trocou a data de entrada da sócia na empresa; a base vê a troca no retrato de `mes` (AAAA-MM)."""
+    publico = (pd.Timestamp(mes + "-01") + pd.offsets.MonthEnd(0)).strftime("%Y-%m-%d")
+    mundo.entradas.append((socia, empresa, nova, mes, publico, "data_corrigida"))
+
+
+def test_a_saida_depois_da_data_corrigida_desfaz_o_grupo(tmp_path):
+    """Revisão de segurança do PR 1347 (P1): a Receita corrigiu a data de entrada da controladora num veículo e depois
+    ela saiu (a saída traz a data corrigida). Casar a saída pela data deixava a controladora no veículo para sempre."""
+    mundo = Mundo(montar=False)
+    controladora = mundo.comprador("33")
+    a, b = mundo.comprador(), mundo.comprador()
+    for veiculo in (a, b):
+        mundo.entrar(controladora, veiculo, "2019-01-01")
+        mundo.entrar(veiculo, mundo.empresa("20"), "2024-03-10")
+    _corrigir_data(mundo, controladora, a, "2018-06-01", "2020-05")
+    mundo.sair(controladora, a, "2018-06-01", "2025-03-01")
+    corpo = _corpo(mundo, tmp_path)
+    assert all("grupo" not in c for c in corpo["compradores"])
+
+
+def test_a_socia_que_sai_e_volta_com_a_mesma_data_segue_no_grupo(tmp_path):
+    """Revisão de segurança do PR 1347 (P1): a controladora sai de um veículo e volta com a mesma data de entrada
+    (a Receita reabre o vínculo). A volta vale: os dois veículos seguem no mesmo grupo."""
+    mundo = Mundo(montar=False)
+    controladora = mundo.comprador("33")
+    a, b = mundo.comprador(), mundo.comprador()
+    for veiculo in (a, b):
+        mundo.entrar(controladora, veiculo, "2019-01-01")
+        mundo.entrar(veiculo, mundo.empresa("20"), "2024-03-10")
+    mundo.sair(controladora, a, "2019-01-01", "2025-03-01")
+    mundo.entrar(controladora, a, "2019-01-01")
+    mundo.entradas[-1] = (*mundo.entradas[-1][:3], "2025-08", "2025-08-31", "entrou")
+    corpo = _corpo(mundo, tmp_path)
+    assert {e["raiz_do_cnpj"] for e in _linha(corpo, a)["grupo"]["empresas"]} == {b}
 
 
 def test_a_api_traduz_os_nomes_novos():

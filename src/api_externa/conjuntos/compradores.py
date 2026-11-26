@@ -763,7 +763,7 @@ class _Consulta:
         return self._df(
             f"SELECT cnpj_basico AS alvo, raiz_socio_pj AS socia, data_entrada, {MES} AS mes, movimento, "
             f"{PUBLICADO_EM} "
-            f"FROM {_view(ENTRADAS)} WHERE movimento IN ('entrou', 'saiu') "
+            f"FROM {_view(ENTRADAS)} WHERE movimento IN ('entrou', 'saiu', 'data_corrigida') "
             "AND cnpj_basico IN (SELECT raiz FROM raizes) "
             f"AND {PUBLICADO_EM} <= CAST($dia AS DATE)",
             {"dia": dia_de(self.dia)},
@@ -979,80 +979,88 @@ def _mais_tarde(a: date | None, b: date | None) -> date | None:
     return max((d for d in (a, b) if d is not None), default=None)
 
 
+# uma passagem de uma sócia PJ por uma empresa: (a data de entrada, o dia em que ficou pública, o primeiro mês em que a
+# base viu a saída, ou None se não saiu)
+Passagem = tuple[date | None, date | None, str | None]
+# no mesmo mês, a prova de que já estava (saiu ou data corrigida) vem antes da notícia nova (entrou), como na base
+_ORDEM_NO_MES = {"saiu": 0, "data_corrigida": 0, "entrou": 1}
+
+
+def _passagens(historico: pd.DataFrame) -> dict[tuple[str, str], list[Passagem]]:
+    """Cada par (empresa, sócia) do histórico, seguido em ordem de mês, vira as passagens da sócia pela empresa: a
+    entrada abre, a data corrigida pela Receita troca a data da passagem aberta, a saída fecha. Seguir o par (e não
+    casar a saída pela data) é o que acerta a saída depois de uma data corrigida e a volta com a mesma data (revisão
+    de segurança do PR 1347)."""
+    linhas = sorted(
+        historico.to_dict("records"),
+        key=lambda r: (
+            str(r["alvo"]),
+            str(r["socia"]),
+            str(r["mes"]),
+            _ORDEM_NO_MES.get(str(r["movimento"]), 1),
+        ),
+    )
+    passagens: dict[tuple[str, str], list[Passagem]] = defaultdict(list)
+    abertas: dict[tuple[str, str], Passagem] = {}
+    for linha in linhas:
+        par, movimento = (
+            (str(linha["alvo"]), str(linha["socia"])),
+            str(linha["movimento"]),
+        )
+        entrada, publico = _dia(linha["data_entrada"]), _dia(linha[PUBLICADO_EM])
+        if movimento == "entrou":
+            if par in abertas:  # entrou de novo sem saída vista: a anterior acabou ali
+                passagens[par].append(abertas.pop(par)[:2] + (str(linha["mes"]),))
+            abertas[par] = (entrada, publico, None)
+        elif movimento == "data_corrigida" and par in abertas:
+            abertas[par] = (entrada, _mais_tarde(abertas[par][1], publico), None)
+        elif movimento == "saiu" and par in abertas:
+            inicio, publicada, _ = abertas.pop(par)
+            passagens[par].append((inicio, publicada, str(linha["mes"])))
+    for par, aberta in abertas.items():
+        passagens[par].append(aberta)
+    return passagens
+
+
 class _Anteriores:
     """Quem era sócia PJ de cada empresa onde se entrou, na data de uma entrada (linha 1043): entrou antes dela e
     não tinha saído num retrato anterior ao mês dela. A que sai no mesmo movimento (a reorganização) conta; a que
     entra junto ou depois (a controladora do comprador que entra com ele), não."""
 
     def __init__(self, historico: pd.DataFrame) -> None:
-        # (empresa, sócia) -> datas de entrada; (empresa, sócia, data de entrada) -> o primeiro mês em que saiu
-        self.entradas: dict[tuple[str, str], list[date]] = defaultdict(list)
-        self.saidas: dict[tuple[str, str, date], str] = {}
-        for linha in historico.to_dict("records"):
-            alvo, socia, entrada = (
-                str(linha["alvo"]),
-                str(linha["socia"]),
-                _dia(linha["data_entrada"]),
-            )
-            if entrada is None:  # sem a data não dá para dizer se era antes
-                continue
-            if linha["movimento"] == "entrou":
-                self.entradas[(alvo, socia)].append(entrada)
-            else:
-                chave, mes = (alvo, socia, entrada), str(linha["mes"])
-                self.saidas[chave] = min(self.saidas.get(chave, mes), mes)
+        self.passagens = _passagens(historico)
         self.por_empresa: dict[str, set[str]] = defaultdict(set)
-        for alvo, socia in self.entradas:
+        for alvo, socia in self.passagens:
             self.por_empresa[alvo].add(socia)
 
     def socias(self) -> set[str]:
-        return {socia for _alvo, socia in self.entradas}
+        return {socia for _alvo, socia in self.passagens}
 
     def de(self, alvo: str, comprador: str, entrada: date) -> list[str]:
-        """As sócias do `alvo` na data da `entrada` do `comprador` (fora ele mesmo)."""
+        """As sócias do `alvo` na data da `entrada` do `comprador` (fora ele mesmo; sem a data de entrada, não conta)."""
         return sorted(
             socia
             for socia in self.por_empresa.get(alvo, ())
             if socia != comprador
             and any(
-                dia < entrada
-                and self.saidas.get((alvo, socia, dia), "9999-12") >= _mes(entrada)
-                for dia in self.entradas[(alvo, socia)]
+                inicio is not None
+                and inicio < entrada
+                and (saiu is None or saiu >= _mes(entrada))
+                for inicio, _publico, saiu in self.passagens[(alvo, socia)]
             )
         )
 
 
-# uma sócia PJ acima de uma empresa: (a sócia, a data de entrada dela, o dia em que ficou pública, o primeiro mês em que
-# a base viu a saída, ou None se não saiu)
+# uma sócia PJ acima de uma empresa: a sócia e a passagem dela pela empresa
 Aresta = tuple[str, date | None, date | None, str | None]
 
 
 def _arestas(historico: pd.DataFrame) -> dict[str, list[Aresta]]:
-    """As sócias de cada empresa pelo histórico de entradas e saídas: cada entrada vira uma aresta com o mês em que
-    saiu (a saída traz a data da entrada que encerra)."""
-    saidas: dict[tuple[str, str, date | None], str] = {}
-    for linha in historico.to_dict("records"):
-        if linha["movimento"] == "saiu":
-            chave = (
-                str(linha["alvo"]),
-                str(linha["socia"]),
-                _dia(linha["data_entrada"]),
-            )
-            saidas[chave] = min(saidas.get(chave, str(linha["mes"])), str(linha["mes"]))
+    """As sócias de cada empresa pelo histórico de entradas, datas corrigidas e saídas, uma aresta por passagem."""
     arestas: dict[str, list[Aresta]] = defaultdict(list)
-    for linha in historico.to_dict("records"):
-        filha, socia = str(linha["alvo"]), str(linha["socia"])
-        if linha["movimento"] != "entrou" or socia == filha:
-            continue
-        entrada = _dia(linha["data_entrada"])
-        arestas[filha].append(
-            (
-                socia,
-                entrada,
-                _dia(linha[PUBLICADO_EM]),
-                saidas.get((filha, socia, entrada)),
-            )
-        )
+    for (filha, socia), passagens in _passagens(historico).items():
+        if socia != filha:
+            arestas[filha].extend((socia, *passagem) for passagem in passagens)
     return arestas
 
 
