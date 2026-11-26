@@ -548,3 +548,37 @@ def test_a_expressao_de_cpf_e_uma_so():
     from pesquisa import pessoa
 
     assert agente.CPF is pessoa.CPF
+
+
+@pytest.mark.parametrize(
+    "molde",
+    [
+        "ddddddddd-dd",
+        "ddd ddd ddd dd",
+        "ddd.ddd.ddd.dd",
+        "ddd%252Eddd%252Eddd-dd",  # codificado duas vezes
+        "ddd．ddd．ddd‐dd",  # ponto de largura total e hífen Unicode
+    ],
+)
+def test_outras_formas_de_cpf_tambem_sao_omitidas(tmp_path: Path, molde: str):
+    """P2 da re-revisão de segurança (e339a78): o detector largo do repositório também vale no mapa."""
+    from tests.ajudantes_de_cpf import cpf_que_confere, no_formato
+
+    forma = no_formato(cpf_que_confere("888246813"), molde)
+    mapeador = _MapeadorFalso(
+        [
+            {"url": f"{SITE}/c/{forma}", "titulo": ""},
+            {"url": f"{SITE}/d", "titulo": f"Registro {forma}"},
+        ]
+    )
+    pesquisador, _ = _pesquisador(tmp_path, mapeador)
+    resposta = pesquisador.mapear_site(f"{SITE}/")
+    assert resposta["links"] == [] and resposta["omitidos_por_cpf"] == 2
+
+
+def test_cpf_mascarado_no_titulo_e_omitido(tmp_path: Path):
+    mapeador = _MapeadorFalso(
+        [{"url": f"{SITE}/d", "titulo": "Servidor ***.246.813-** lotado"}]
+    )
+    pesquisador, _ = _pesquisador(tmp_path, mapeador)
+    assert pesquisador.mapear_site(f"{SITE}/")["omitidos_por_cpf"] == 1
