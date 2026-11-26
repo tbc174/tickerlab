@@ -303,3 +303,101 @@ def test_com_chave_e_crawl4ai_a_ordem_e_crawl4ai_depois_firecrawl(
     )
     assert escolhido is not None and escolhido.__name__ == "renderizar_em_cascata"
     assert escolhido(PAGINA) == (PAGINA, b"<p>local</p>")
+
+
+# --- correções da revisão de segurança (#1343) ------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _termos_padrao_vazio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """O arquivo padrão de termos (na pasta do bot) existe e está vazio, sem depender do PC."""
+    arquivo = tmp_path / "termos-padrao.txt"
+    arquivo.write_text("", encoding="utf-8")
+    monkeypatch.setattr(renderizacao, "TERMOS_BARRADOS_PADRAO", arquivo)
+    return arquivo
+
+
+def _formas_do_cpf(d: str) -> list[str]:
+    return [
+        f"/edital/fulano-{d[:3]}-{d[3:6]}-{d[6:9]}-{d[9:]}",
+        f"?q={d[:3]}+{d[3:6]}+{d[6:9]}+{d[9:]}",
+        f"?q={d[:3]}%20{d[3:6]}%20{d[6:9]}%20{d[9:]}",
+        f"?q={d[:3]}%252E{d[3:6]}%252E{d[6:9]}-{d[9:]}",
+        f"?q={d[:3]},{d[3:6]},{d[6:9]},{d[9:]}",
+        f"/{d[:3]}/{d[3:6]}/{d[6:9]}/{d[9:]}",
+    ]
+
+
+@pytest.mark.parametrize("indice", range(6))
+def test_porteiro_acha_cpf_com_qualquer_separador_e_codificacao(indice: int):
+    trecho = _formas_do_cpf(_cpf_inventado())[indice]
+    with pytest.raises(EnvioBarrado):
+        Porteiro(()).conferir("https://x.gov.br" + trecho)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://x.gov.br/consulta.asp?razao=EMPRESA+FICT%CDCIA+ALFA",  # Latin-1
+        "https://x.gov.br/ir?url=https%3A%2F%2Fy%2Fb%3Fq%3DEmpresa%2520Fict%25C3%25ADcia%2520Alfa",
+        "https://x.gov.br/ir?u=Empresa%252BFict%2525C3%2525ADcia%252BAlfa",  # três vezes
+    ],
+)
+def test_porteiro_acha_termo_em_latin1_e_em_codificacao_repetida(url: str):
+    with pytest.raises(EnvioBarrado):
+        Porteiro(["Empresa Fictícia Alfa"]).conferir(url)
+
+
+def test_com_chave_mas_sem_arquivo_de_termos_o_hospedado_nao_liga(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+):
+    _sem_crawl4ai(monkeypatch)
+    monkeypatch.setattr(renderizacao, "TERMOS_BARRADOS_PADRAO", tmp_path / "nao-ha.txt")
+    assert (
+        renderizacao.escolher_renderizador({renderizacao.VARIAVEL_DA_CHAVE: CHAVE})
+        is None
+    )
+    assert "desligado" in capsys.readouterr().err
+    dentro = Path(renderizacao.__file__).resolve()
+    ambiente = {
+        renderizacao.VARIAVEL_DA_CHAVE: CHAVE,
+        renderizacao.VARIAVEL_DOS_TERMOS_BARRADOS: str(dentro),
+    }
+    assert renderizacao.escolher_renderizador(ambiente) is None
+
+
+@pytest.mark.parametrize(
+    ("corpo", "status_code"),
+    [(_ok(creditos=1, status=404), 200), ({"success": False}, 500), ({}, 429)],
+)
+def test_resposta_com_erro_tambem_conta_credito(corpo: dict, status_code: int):
+    renderizar, contador = _hospedado(_Post(corpo, status_code), teto=2)
+    for _ in range(2):
+        with pytest.raises(RuntimeError):
+            renderizar(PAGINA)
+    assert contador.creditos == 2
+    with pytest.raises(TetoDeCreditos):
+        renderizar(PAGINA)
+
+
+@pytest.mark.parametrize("status", [401, 403, 429])
+def test_pagina_bloqueada_no_firecrawl_e_bloqueio(status: int):
+    renderizar, _ = _hospedado(_Post(_ok(status=status)))
+    with pytest.raises(renderizacao.BloqueioNaRenderizacao):
+        renderizar(PAGINA)
+
+
+def test_bloqueio_no_crawl4ai_nao_passa_ao_firecrawl():
+    chamados: list[str] = []
+
+    def crawl4ai_bloqueado(url: str) -> tuple[str, bytes]:
+        chamados.append("crawl4ai")
+        raise renderizacao.BloqueioNaRenderizacao("a página respondeu HTTP 403")
+
+    def firecrawl(url: str) -> tuple[str, bytes]:
+        chamados.append("firecrawl")
+        return url, b"<p>contornado</p>"
+
+    with pytest.raises(renderizacao.BloqueioNaRenderizacao):
+        renderizacao.em_cascata(crawl4ai_bloqueado, firecrawl)(PAGINA)
+    assert chamados == ["crawl4ai"]

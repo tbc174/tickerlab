@@ -178,6 +178,21 @@ def test_navegador_que_falha_vira_recusa_e_nao_derruba_a_ferramenta(tmp_path: Pa
     )  # falha do ambiente
 
 
+def test_bloqueio_na_renderizacao_e_bloqueio_anti_robo_lembrado(tmp_path: Path):
+    from pesquisa.renderizacao import BloqueioNaRenderizacao
+
+    def renderizador(url: str) -> tuple[str, bytes]:
+        raise BloqueioNaRenderizacao("a página respondeu HTTP 403")
+
+    pesquisador = Pesquisador(
+        tmp_path / "d", ClienteFalso({}), renderizador=renderizador
+    )
+    pesquisador.iniciar_rodada("h")
+    resposta = pesquisador.buscar_pagina(f"{SITE}/app", renderizar=True)
+    assert resposta["ok"] is False and "não se contorna" in resposta["motivo"]  # type: ignore[operator]
+    assert pesquisador.memoria.negativo_valido(f"{SITE}/app") is not None
+
+
 def test_endereco_interno_nao_chega_a_rede(tmp_path: Path):
     pesquisador, falso = _pesquisador(tmp_path, {})
     assert pesquisador.buscar_pagina("http://127.0.0.1:8080/admin")["ok"] is False
