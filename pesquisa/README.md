@@ -88,11 +88,12 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
 - **Firecrawl** (AGPL), só por HTTP. Com `TICKERLAB_PESQUISA_FIRECRAWL` apontando para um Firecrawl do próprio PC,
   ele renderiza no lugar do Crawl4AI. Com a chave em `FIRECRAWL_API_KEY`, o serviço hospedado entra **depois** do
   Crawl4AI, só quando ele falta ou falha, com:
-  - porteiro: endereço com número que confere como CPF (qualquer separador), ou com termo da lista local de
-    barrados, não sai; o endereço é conferido em todas as decodificações (UTF-8, Latin-1, URL dentro de URL). A
-    lista é um arquivo fora do repositório, um termo por linha (`#` comenta), em
-    `TICKERLAB_PESQUISA_TERMOS_BARRADOS` ou, sem a variável, em `~/TickerLab-Pesquisa/termos-barrados.txt`. **Sem
-    o arquivo (pode ser vazio), o hospedado não liga**, e o aviso sai no stderr;
+  - porteiro: endereço com termo da lista local de barrados (nome de cliente, alvo de mandato, pessoa) não sai; o
+    endereço é conferido em todas as decodificações (UTF-8, Latin-1, URL dentro de URL). A lista é um arquivo fora
+    do repositório, um termo por linha (`#` comenta), em `TICKERLAB_PESQUISA_TERMOS_BARRADOS` ou, sem a variável,
+    em `~/TickerLab-Pesquisa/termos-barrados.txt`. **Sem o arquivo, o hospedado não liga**; com o arquivo vazio, ele
+    liga sem conferir nada e avisa no stderr. O endereço de uma página pública com número de CPF pode ir (decisão
+    do Tiago em 26/11/2026, regra "GPL e AGPL" do `AGENTS.md`); o CPF continua fora de termo de busca e de log;
   - página que responde 401, 403 ou 429 é bloqueio: vira recusa "não se contorna" e não passa ao Firecrawl;
   - teto de créditos por processo em `TICKERLAB_FIRECRAWL_TETO` (padrão 50); a rodada diz quanto gastou;
   - `proxy: basic` (sem o proxy que vence anti-robô: bloqueio não se contorna) e `storeInCache: false`.
