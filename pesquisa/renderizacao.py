@@ -50,6 +50,14 @@ VARIAVEL_DO_TETO = "TICKERLAB_FIRECRAWL_TETO"
 TETO_PADRAO_DE_CREDITOS = 50
 ROTA_DO_FIRECRAWL_HOSPEDADO = "https://api.firecrawl.dev/v2/scrape"
 CREDITOS_POR_PAGINA = 1  # preço da raspagem simples, quando a resposta não diz o gasto
+# Custo máximo de UMA chamada com o pedido que montamos: 1 crédito por página, sem opção paga (só
+# `rawHtml`, sem JSON, resumo, ZDR, PII, lockdown nem checagem de injeção) e com `parsers: []`, que devolve
+# o PDF inteiro por 1 crédito fixo em vez de 1 por página. Fonte: docs.firecrawl.dev/billing e
+# /api-reference/endpoint/scrape, lidas em 26/11/2026. O contador confere o teto com este máximo antes
+# de cada envio, então o gasto do processo não passa do teto.
+CUSTO_MAXIMO_POR_CHAMADA = 1
+# Endereços que o Firecrawl repassa a provedores com preço próprio (fora do custo acima): não vão.
+DOMINIOS_COM_PRECO_PROPRIO = ("x.com", "twitter.com", "linkedin.com")
 TEMPO_DO_SERVICO_EM_MS = 60_000
 PRIMEIRO_STATUS_DE_ERRO = 400
 # Página que respondeu assim foi bloqueada: não se tenta por outro caminho.
@@ -173,6 +181,10 @@ class Porteiro:
     def __init__(self, termos: Iterable[str]) -> None:
         self._termos = [t for t in map(_so_letras_e_numeros, termos) if t]
 
+    @property
+    def sem_termos(self) -> bool:
+        return not self._termos
+
     def conferir(self, url: str) -> None:
         for texto in _leituras_do_endereco(url):
             achados = _CPF_NO_TEXTO.findall(texto)
@@ -225,7 +237,8 @@ class ContadorDeCreditos:
         self.paginas = 0
 
     def conferir(self) -> None:
-        if self.creditos >= self.teto:
+        """Antes do envio: a chamada só sai se, mesmo custando o máximo, o gasto fica no teto."""
+        if self.creditos + CUSTO_MAXIMO_POR_CHAMADA > self.teto:
             raise TetoDeCreditos(f"teto de {self.teto} créditos do Firecrawl atingido")
 
     def registrar(self, creditos: int) -> None:
@@ -259,6 +272,14 @@ def _creditos_gastos(corpo: Mapping[str, object]) -> int:
     return gasto if isinstance(gasto, int) and gasto >= 0 else CREDITOS_POR_PAGINA
 
 
+def _conferir_custo_fixo(url: str) -> None:
+    host = (urlsplit(url).hostname or "").lower()
+    if any(host == d or host.endswith("." + d) for d in DOMINIOS_COM_PRECO_PROPRIO):
+        raise EnvioBarrado(
+            "endereço que o Firecrawl repassa a provedor com preço próprio"
+        )
+
+
 def renderizador_hospedado(
     chave: str,
     porteiro: Porteiro,
@@ -271,6 +292,7 @@ def renderizador_hospedado(
 
     def renderizar_pelo_firecrawl_hospedado(url: str) -> tuple[str, bytes]:
         porteiro.conferir(url)
+        _conferir_custo_fixo(url)
         contador.conferir()
         resposta = post(
             ROTA_DO_FIRECRAWL_HOSPEDADO,
@@ -281,6 +303,7 @@ def renderizador_hospedado(
                 "proxy": "basic",
                 "storeInCache": False,
                 "timeout": TEMPO_DO_SERVICO_EM_MS,
+                "parsers": [],  # PDF por 1 crédito fixo, não 1 por página
             },
             headers={"Authorization": f"Bearer {chave}"},
             timeout=TEMPO_LIMITE_EM_SEGUNDOS,
@@ -346,6 +369,12 @@ def escolher_renderizador(
         except ValueError as motivo:
             print(f"Firecrawl hospedado desligado: {motivo}", file=sys.stderr)
         else:
+            if porteiro.sem_termos:
+                print(
+                    "Firecrawl hospedado ligado com a lista de termos barrados vazia: "
+                    "só o CPF é conferido",
+                    file=sys.stderr,
+                )
             contador = contador or ContadorDeCreditos()
             contador.teto = _teto_do_ambiente(ambiente)
             ordem.append(renderizador_hospedado(chave, porteiro, contador))

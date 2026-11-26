@@ -78,10 +78,18 @@ def test_hospedado_pede_so_o_html_sem_proxy_anti_robo_e_sem_guardar_no_indice():
     (pedido,) = post.pedidos
     assert pedido["rota"] == "https://api.firecrawl.dev/v2/scrape"
     assert pedido["headers"] == {"Authorization": f"Bearer {CHAVE}"}
-    assert pedido["json"]["url"] == PAGINA
-    assert pedido["json"]["formats"] == ["rawHtml"]
-    assert pedido["json"]["proxy"] == "basic"
-    assert pedido["json"]["storeInCache"] is False
+    # Formato travado: qualquer opção nova (formato com LLM, PDF por página, ZDR, PII...) muda o custo
+    # máximo de uma chamada e tem de passar por CUSTO_MAXIMO_POR_CHAMADA.
+    assert pedido["json"] == {
+        "url": PAGINA,
+        "formats": ["rawHtml"],
+        "onlyMainContent": False,
+        "proxy": "basic",
+        "storeInCache": False,
+        "timeout": renderizacao.TEMPO_DO_SERVICO_EM_MS,
+        "parsers": [],
+    }
+    assert renderizacao.CUSTO_MAXIMO_POR_CHAMADA == 1
 
 
 @pytest.mark.parametrize(
@@ -191,14 +199,63 @@ def test_contador_soma_o_que_a_resposta_diz_e_um_por_pagina_sem_a_informacao():
 
 
 def test_no_teto_recusa_sem_chamar_o_servico():
-    post = _Post(_ok(creditos=2))
+    post = _Post(_ok(creditos=1))
     renderizar, contador = _hospedado(post, teto=3)
-    renderizar(PAGINA)
-    renderizar(PAGINA)
+    for _ in range(3):
+        renderizar(PAGINA)
     with pytest.raises(TetoDeCreditos):
         renderizar(PAGINA)
-    assert len(post.pedidos) == 2
-    assert contador.creditos == 4
+    assert len(post.pedidos) == 3
+    assert contador.creditos == 3
+
+
+@pytest.mark.parametrize("teto", range(8))
+@pytest.mark.parametrize("pagina_com_erro", [False, True])
+def test_gasto_do_processo_nunca_passa_do_teto(teto: int, pagina_com_erro: bool):
+    """Com cada chamada custando até o máximo conhecido, o gasto nunca passa do teto, nem com
+    página que volta com erro (que também é cobrada)."""
+    corpo = _ok(
+        creditos=renderizacao.CUSTO_MAXIMO_POR_CHAMADA,
+        status=404 if pagina_com_erro else 200,
+    )
+    post = _Post(corpo)
+    renderizar, contador = _hospedado(post, teto=teto)
+    for _ in range(teto + 5):
+        try:
+            renderizar(PAGINA)
+        except TetoDeCreditos:
+            break
+        except RuntimeError:
+            continue
+    assert contador.creditos <= teto
+    assert len(post.pedidos) * renderizacao.CUSTO_MAXIMO_POR_CHAMADA <= teto
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://x.com/alguem",
+        "https://www.linkedin.com/company/y",
+        "https://mobile.twitter.com/z",
+    ],
+)
+def test_endereco_de_provedor_com_preco_proprio_nao_vai(url: str):
+    post = _Post(_ok())
+    renderizar, _ = _hospedado(post)
+    with pytest.raises(EnvioBarrado):
+        renderizar(url)
+    assert post.pedidos == []
+
+
+def test_lista_de_termos_vazia_liga_com_aviso(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+):
+    monkeypatch.setattr(renderizacao, "crawl4ai_instalado", lambda: False)
+    escolhido = renderizacao.escolher_renderizador(
+        {renderizacao.VARIAVEL_DA_CHAVE: CHAVE}
+    )
+    assert escolhido is not None
+    assert "vazia" in capsys.readouterr().err
 
 
 # --- escolha e cascata ------------------------------------------------------------------------
