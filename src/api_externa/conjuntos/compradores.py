@@ -547,7 +547,7 @@ class LeitorDeCompradores:
         if FILIAL in sinais and pedido.uf:
             lista.anotar_filiais(consulta.filiais_na_uf(pedido.cnae, pedido.uf))
         if LOTE in sinais:
-            lista.anotar_lotes(consulta.lotes(pedido.cnae, setor))
+            lista.anotar_lotes(consulta.lotes(pedido.cnae, pedido.uf))
         nomes = consulta.nomes(lista.raizes())
         compradores = lista.montar(
             nomes,
@@ -811,25 +811,30 @@ class _Consulta:
             },
         )
 
-    def lotes(self, cnae: str, setor: pd.DataFrame) -> pd.DataFrame:
+    def lotes(self, cnae: str, uf: str | None) -> pd.DataFrame:
         """Os dias em que uma empresa do setor abriu `FILIAIS_NO_LOTE` ou mais filiais ativas do CNAE, no país todo,
-        dentro da janela: o dia, quantas e as UFs."""
+        dentro da janela: o dia, quantas e as UFs. A empresa só entra se, no dia pedido, já tinha estabelecimento
+        ativo do CNAE aberto (na UF, se pedida): o recorte do setor (`alvos`) não olha a abertura, e uma raiz cujo
+        único posto na UF abre depois do dia não pode ganhar o sinal ali (achado do Revisor no #1336)."""
+        estab = _view(ESTABELECIMENTOS)
         return self._df(
             "SELECT cnpj_basico AS raiz, data_inicio_atividade AS aberta, count(*) AS n, "
             f"list_sort(list(DISTINCT uf)) AS ufs, max({PUBLICADO_EM}) AS publico_em "
-            f"FROM {_view(ESTABELECIMENTOS)} WHERE {self._ativos_do_cnae()} "
-            "AND NOT coalesce(matriz, true) AND cnpj_basico IN (SELECT raiz FROM setor) "
-            "AND data_inicio_atividade >= CAST($desde AS DATE) AND data_inicio_atividade <= CAST($dia AS DATE) "
+            f"FROM {estab} WHERE {self._ativos_do_cnae()} "
+            "AND NOT coalesce(matriz, true) "
+            f"AND cnpj_basico IN (SELECT cnpj_basico FROM {estab} WHERE {self._ativos_do_cnae()} "
+            "AND ($uf IS NULL OR uf = $uf)) "
+            "AND data_inicio_atividade >= CAST($desde AS DATE) "
             "GROUP BY 1, 2 HAVING count(*) >= $lote",
             {
                 "mes": self.mes,
                 "ativa": ATIVA,
                 "cnae": cnae,
+                "uf": uf,
                 "desde": dia_de(self.desde),
                 "dia": dia_de(self.dia),
                 "lote": FILIAIS_NO_LOTE,
             },
-            setor=setor[["raiz"]],
         )
 
     def nomes(self, raizes: set[str]) -> dict[str, tuple[str, date]]:
