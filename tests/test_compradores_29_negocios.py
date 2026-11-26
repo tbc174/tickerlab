@@ -11,7 +11,13 @@ UF do alvo ou a da classe sem UF (o bot olhava as duas).
 
 O placar de partida, 5, é uma trava: cada conserto da fila (1042: empresa baixada; 1044: ordem e corte) sobe o placar, e
 o teste diz quanto. O que continua fora (alvo S.A., negócio antes da janela, comprador acima do alvo) fica como
-"fora de alcance" de propósito: é de outras linhas (1031, 1032, 1043).
+"fora de alcance" de propósito: é de outras linhas (1031, 1032).
+
+Linha 1043 (somar pelo grupo, separar compra de reorganização): 6 dos 12 "só pelo próprio negócio" viraram os três
+jeitos de o grupo enganar a lista, nas proporções que a simulação descreve sem dizer quais negócios: 3 com uma
+reorganização antes (o acerto falso, que nunca pode acertar), 2 feitos por um veículo novo de um grupo que já comprou
+e 1 cuja compra anterior foi feita junto com a controladora. A régua aceita a prova de uma empresa que a lista diz ser
+do grupo do comprador (bloco `grupo`).
 """
 
 from dataclasses import dataclass
@@ -55,7 +61,20 @@ SO_O_PROPRIO_NEGOCIO = "só pelo próprio negócio"
 CORTADO_PELOS_50 = "entrada antiga empurrada para fora dos 50"
 EMPRESA_BAIXADA = "entrou em empresa depois baixada"
 FORA_DE_ALCANCE = "fora de alcance destas linhas"
-GRUPOS_QUE_ERRAM_PARA_SEMPRE = (FRACO, SO_O_PROPRIO_NEGOCIO, FORA_DE_ALCANCE)
+# linha 1043: os três jeitos de o grupo enganar a lista
+REORGANIZACAO = (
+    "só reorganização antes do negócio"  # o acerto falso: a prova era intragrupo
+)
+VEICULO_IRMAO = "veículo novo de um grupo que já comprou"  # as compras estão nos irmãos
+COM_A_CONTROLADORA = (
+    "compra anterior com a controladora junto"  # a compra real saía como mesmo grupo
+)
+GRUPOS_QUE_ERRAM_PARA_SEMPRE = (
+    FRACO,
+    SO_O_PROPRIO_NEGOCIO,
+    FORA_DE_ALCANCE,
+    REORGANIZACAO,
+)
 
 
 class _Contador:
@@ -73,14 +92,15 @@ class _Contador:
 class Mundo:
     """A base de mentira: o setor com as empresas ativas, as baixadas, as entradas e as controladas."""
 
-    def __init__(self) -> None:
+    def __init__(self, montar: bool = True) -> None:
         self.c = _Contador()
         self.estabelecimentos: list[tuple] = []
         self.entradas: list[tuple] = []
         self.controladas: list[tuple] = []
         self.nomes: dict[str, str] = {}
         self.casos: list[Caso] = []
-        self._montar()
+        if montar:  # sem montar, a base vazia para um teste montar o seu pedaço
+            self._montar()
 
     # -- peças ---------------------------------------------------------------------------------
     def empresa(self, faixa: str, uf: str = SP, situacao: str = "02") -> str:
@@ -108,6 +128,16 @@ class Mundo:
         )
         self.entradas.append((comprador, alvo, quando, mes_da_base, publico, "entrou"))
 
+    def sair(self, socia: str, empresa: str, entrou_em: str, quando: str) -> None:
+        """A sócia (que tinha entrado em `entrou_em`) saiu em `quando`; a base vê a saída no retrato seguinte."""
+        mes_da_base = (pd.Timestamp(quando) + pd.offsets.MonthBegin(1)).strftime(
+            "%Y-%m"
+        )
+        publico = (pd.Timestamp(mes_da_base + "-01") + pd.offsets.MonthEnd(0)).strftime(
+            "%Y-%m-%d"
+        )
+        self.entradas.append((socia, empresa, entrou_em, mes_da_base, publico, "saiu"))
+
     def controlar(self, aberta: str, alvo: str, referencia: str) -> None:
         self.controladas.append((aberta, alvo, referencia))
 
@@ -123,6 +153,9 @@ class Mundo:
         self._ruido()
         self._acertos()
         self._so_o_proprio_negocio()
+        self._reorganizacoes()
+        self._veiculos_irmaos()
+        self._compra_com_a_controladora()
         self._fracos()
         self._cortados_pelos_50()
         self._empresas_baixadas()
@@ -162,8 +195,10 @@ class Mundo:
             )
 
     def _so_o_proprio_negocio(self) -> None:
-        """12 negócios em que o comprador só aparece por ter entrado no próprio alvo (e depois dele, o teste fica inflado)."""
-        for i in range(12):
+        """6 negócios em que o comprador só aparece por ter entrado no próprio alvo (e depois dele, o teste fica inflado).
+        Os outros 6 dos 12 da simulação viram os casos do grupo (linha 1043): reorganização, veículo irmão e compra com
+        a controladora junto."""
+        for i in range(6):
             comprador, alvo = self.comprador(), self.empresa("21")
             self.entrar(comprador, alvo, f"2026-10-0{1 + i % 9}")
             self.caso(
@@ -173,6 +208,76 @@ class Mundo:
                 comprador,
                 f"2026-10-0{1 + i % 9}",
             )
+
+    def _reorganizacoes(self) -> None:
+        """3 negócios em que a única prova anterior é uma reorganização (o acerto falso da simulação): em 2024 o
+        comprador entra numa empresa do setor e, no mesmo dia, sai dela uma sócia do mesmo grupo. Uma de cada jeito:
+        a controladora passa a empresa ao comprador, uma irmã passa ao comprador, a controlada passa à controladora.
+        Com o quadro de hoje a sócia que saiu não aparece e a entrada contava como compra de terceiro."""
+        for jeito in ("da controladora", "da irmã", "da controlada"):
+            comprador, alvo, empresa = (
+                self.comprador(),
+                self.empresa("21"),
+                self.empresa("20"),
+            )
+            if jeito == "da controladora":
+                quem_passa = self.comprador("33")
+                self.entrar(quem_passa, comprador, "2015-01-01")
+            elif jeito == "da irmã":
+                controladora, quem_passa = self.comprador("33"), self.comprador("34")
+                self.entrar(controladora, comprador, "2015-01-01")
+                self.entrar(controladora, quem_passa, "2015-01-01")
+            else:
+                quem_passa = self.comprador("34")
+                self.entrar(comprador, quem_passa, "2015-01-01")
+            self.entrar(quem_passa, empresa, "2015-01-01")
+            self.entrar(comprador, empresa, "2024-05-10")
+            self.sair(quem_passa, empresa, "2015-01-01", "2024-05-10")
+            self.entrar(comprador, alvo, "2026-10-05")
+            self.caso(
+                f"reorganização {jeito}", REORGANIZACAO, alvo, comprador, "2026-10-05"
+            )
+
+    def _veiculos_irmaos(self) -> None:
+        """2 negócios feitos por um veículo novo de um grupo cujo outro veículo já entrou em duas empresas do setor
+        (o jeito de um consolidador estrangeiro comprar): só somando pelo grupo a compra anterior aparece."""
+        for i in range(2):
+            controladora = self.comprador("33")
+            veterano, novo, alvo = (
+                self.comprador(),
+                self.comprador(),
+                self.empresa("21"),
+            )
+            self.entrar(controladora, veterano, "2019-01-01")
+            self.entrar(controladora, novo, "2019-01-01")
+            for mes in (3, 4):
+                self.entrar(veterano, self.empresa("20"), f"2024-0{mes + i}-10")
+            self.entrar(novo, alvo, "2026-08-20")
+            self.caso(f"veículo irmão {i + 1}", VEICULO_IRMAO, alvo, novo, "2026-08-20")
+
+    def _compra_com_a_controladora(self) -> None:
+        """1 negócio de um comprador cuja compra anterior foi feita junto com a controladora (as duas entram no
+        mesmo dia e a vendedora sai): o quadro de hoje tem a controladora nos dois lados e a compra real saía como
+        mesmo grupo."""
+        controladora, comprador = self.comprador("33"), self.comprador()
+        vendedora, empresa, alvo = (
+            self.comprador("34"),
+            self.empresa("20"),
+            self.empresa("21"),
+        )
+        self.entrar(controladora, comprador, "2018-01-01")
+        self.entrar(vendedora, empresa, "2015-01-01")
+        for quem in (comprador, controladora):
+            self.entrar(quem, empresa, "2024-04-10")
+        self.sair(vendedora, empresa, "2015-01-01", "2024-04-10")
+        self.entrar(comprador, alvo, "2026-08-20")
+        self.caso(
+            "compra com a controladora junto",
+            COM_A_CONTROLADORA,
+            alvo,
+            comprador,
+            "2026-08-20",
+        )
 
     def _fracos(self) -> None:
         """2 acertos fracos: a companhia aberta aparece por uma controlada cuja data (a do FRE) é depois do negócio."""
@@ -286,13 +391,14 @@ class Mundo:
     def _tabela_de_controladas(self) -> pd.DataFrame:
         companhias = [(aberta, alvo, ref) for aberta, alvo, ref in self.controladas]
         return pd.DataFrame({
-            "cnpj_companhia": [a + "000199" for a, _, _ in companhias],
+            # o tipo explícito: o mundo vazio (testes do grupo) grava a tabela sem linhas
+            "cnpj_companhia": pd.Series([a + "000199" for a, _, _ in companhias], dtype="string"),
             "referencia": pd.to_datetime([r for _, _, r in companhias]).date,
             "versao": [1] * len(companhias),
             "conhecido_em": pd.to_datetime(["2026-05-30"] * len(companhias)).date,
             "origem_coletada_em": pd.to_datetime(["2026-06-01"] * len(companhias)).date,
-            "cnpj": [al + "000100" for _, al, _ in companhias],
-            "tipo": ["controlada"] * len(companhias),
+            "cnpj": pd.Series([al + "000100" for _, al, _ in companhias], dtype="string"),
+            "tipo": pd.Series(["controlada"] * len(companhias), dtype="string"),
             "participacao": [100.0] * len(companhias),
         }).assign(**CARIMBOS)  # fmt: skip
 
@@ -306,10 +412,21 @@ def _dia_da_prova(sinal: str, exemplo: dict) -> date | None:
     return date.fromisoformat(valor) if valor else None
 
 
-def acertou(lista: list[dict], caso: Caso) -> bool:
-    """O comprador do caso está na lista com uma prova de antes do negócio numa empresa do setor que não é o alvo."""
+def _do_grupo(lista: list[dict], raiz: str) -> set[str]:
+    """A raiz e as empresas que a lista diz serem do grupo dela (bloco `grupo`, linha 1043)."""
+    grupo = {raiz}
     for comprador in lista:
-        if comprador["raiz_do_cnpj"] != caso.comprador:
+        if comprador["raiz_do_cnpj"] == raiz and "grupo" in comprador:
+            grupo |= {e["raiz_do_cnpj"] for e in comprador["grupo"]["empresas"]}
+    return grupo
+
+
+def acertou(lista: list[dict], caso: Caso) -> bool:
+    """O comprador do caso (ou uma empresa que a lista diz ser do grupo dele) está na lista com uma prova de antes
+    do negócio numa empresa do setor que não é o alvo."""
+    grupo = _do_grupo(lista, caso.comprador)
+    for comprador in lista:
+        if comprador["raiz_do_cnpj"] not in grupo:
             continue
         for sinal, prova in comprador["provas"].items():
             for exemplo in prova["exemplos"]:
@@ -360,14 +477,30 @@ def total(acertos: dict[str, list[str]]) -> int:
 
 
 PLACAR_DE_PARTIDA = 5  # a simulação 1, antes de qualquer conserto
+DA_1042 = 5  # as empresas baixadas
+DA_1043 = 3  # os dois veículos irmãos e a compra com a controladora junto
 
 
 def test_o_placar_conta_as_empresas_baixadas_e_sobe_de_5_para_10(pasta):
     """Linha 1042: o comprador que entrou em empresa depois baixada passa a aparecer; os 5 de partida seguem."""
     acertos = placar(pasta)
     assert len(acertos[ACERTA_COM_UF]) == 2 and len(acertos[ACERTA_SEM_UF]) == 3
-    assert len(acertos[EMPRESA_BAIXADA]) == 5
-    assert total(acertos) == PLACAR_DE_PARTIDA + 5
+    assert len(acertos[EMPRESA_BAIXADA]) == DA_1042
+
+
+def test_nenhum_acerto_falso_por_reorganizacao(pasta):
+    """Linha 1043, o pronto: a entrada que é reorganização (a sócia que sai é do grupo do comprador) não conta como
+    prova. Antes, com o quadro de hoje, a sócia que saiu sumia e as 3 reorganizações acertavam."""
+    assert REORGANIZACAO not in placar(pasta)
+
+
+def test_o_grupo_soma_os_veiculos_irmaos_e_a_compra_com_a_controladora_volta(pasta):
+    """Linha 1043: o veículo novo aparece pelas compras do irmão, e a compra feita junto com a controladora deixa de
+    sair como mesmo grupo. O placar vai de 10 para 13, todos de compra de terceiro."""
+    acertos = placar(pasta)
+    assert len(acertos[VEICULO_IRMAO]) == 2
+    assert len(acertos[COM_A_CONTROLADORA]) == 1
+    assert total(acertos) == PLACAR_DE_PARTIDA + DA_1042 + DA_1043
 
 
 def test_a_ordem_nova_da_1044_nao_muda_o_placar_e_diz_porque(pasta):
@@ -377,7 +510,6 @@ def test_a_ordem_nova_da_1044_nao_muda_o_placar_e_diz_porque(pasta):
     "também fora da UF"), que mexe no contrato da ferramenta e espera o ok da Diretoria."""
     acertos = placar(pasta)
     assert CORTADO_PELOS_50 not in acertos
-    assert total(acertos) == PLACAR_DE_PARTIDA + 5
 
 
 def test_o_teste_tem_29_negocios_nas_proporcoes_do_pedido():
@@ -385,7 +517,8 @@ def test_o_teste_tem_29_negocios_nas_proporcoes_do_pedido():
     por_grupo = {g: sum(c.grupo == g for c in casos) for g in {c.grupo for c in casos}}
     assert len(casos) == 29
     assert por_grupo == {
-        ACERTA_COM_UF: 2, ACERTA_SEM_UF: 3, FRACO: 2, SO_O_PROPRIO_NEGOCIO: 12,
+        ACERTA_COM_UF: 2, ACERTA_SEM_UF: 3, FRACO: 2, SO_O_PROPRIO_NEGOCIO: 6,
+        REORGANIZACAO: 3, VEICULO_IRMAO: 2, COM_A_CONTROLADORA: 1,
         CORTADO_PELOS_50: 2, EMPRESA_BAIXADA: 5, FORA_DE_ALCANCE: 3,
     }  # fmt: skip
 
