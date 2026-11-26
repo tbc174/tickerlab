@@ -6392,7 +6392,7 @@ O detalhe dos postos de combustíveis da ANP por produto: capacidade de tancagem
 - **Fonte:** ANP: API de Revendedores (`base/anp_revendedores.py`)
 - **Licença:** API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
-- **Frequência:** O arquivista guarda um retrato por mês
+- **Frequência:** Sem calendário fixo: a coleta da API não é agendada e roda à mão
 - **Atraso de divulgação:** A fonte não escreve a data de publicação; a linha vale desde o dia da coleta em que a vimos
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** sim em casa (linhas com `trata_como_pessoa`); o recorte da API e a porta as tiram
 - **Linhas de pessoa:** a porta esconde as marcadas em `trata_como_pessoa` (ADR 0075)

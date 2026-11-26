@@ -5,7 +5,6 @@ coordenada), o MEI é marcado e nada usa o dado antes do dia em que o vimos. Res
 conferido em 26/11/2026; nenhum documento nem nome real."""
 
 import csv
-import hashlib
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -22,6 +21,7 @@ from base.arquivo import anp_revendedores as arquivista
 from base.arquivo.coleta import Resposta
 from base.arquivo.fontes import POR_ID
 from base.parquet import LINHAGEM
+from scripts import arquivar_fontes
 from src.banco import coletas
 from src.banco.coletas import Marca, com_registro, licenca_da_fonte, marca_da_fonte
 from tests.ajudantes_de_cpf import CPF_DE_TESTE
@@ -125,6 +125,7 @@ def test_o_cadastro_chega_ao_acervo_so_com_as_colunas_da_lista_e_so_de_cnpj(tmp_
         "MUNICIPIO": "ITAJAI",
         "BANDEIRA": "BANDEIRA A",
         "DATAVINCULACAO": "04/04/2024",
+        "coletado_em": AGORA.date().isoformat(),
     }
     guardado = destino.read_text(encoding="utf-8")
     assert not [p for p in PROIBIDOS if p in guardado]
@@ -199,7 +200,8 @@ def test_o_detalhe_le_as_paginas_uma_por_vez_com_pausa_e_grava_posto_e_produto(
     assert esperas == [arquivista.PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS]
     assert arquivista.PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS >= 10
     linhas = _linhas(destino)
-    assert tuple(linhas[0]) == arquivista.COLUNAS_DOS_PRODUTOS
+    assert tuple(linhas[0]) == (*arquivista.COLUNAS_DOS_PRODUTOS, "coletado_em")
+    assert {x["coletado_em"] for x in linhas} == {AGORA.date().isoformat()}
     assert [(x["cnpj"], x["produto"], x["tancagem"], x["bicos"]) for x in linhas] == [
         (EMPRESA, "ETANOL HIDRATADO COMUM", "15.5", "2"),
         (EMPRESA, "GASOLINA C COMUM", "30", "4"),
@@ -339,12 +341,20 @@ def acervo_do_teste(tmp_path, monkeypatch):
     monkeypatch.setenv("TICKERLAB_ACERVO", str(tmp_path / "acervo"))
 
 
+def _ids_das_coletas(banco) -> set:
+    with banco.connect() as conexao:
+        return set(conexao.execute(sa.select(coletas.coletas.c.id)).scalars())
+
+
 def _coletar(banco, fonte: str, url: str, conteudo: bytes, dia: date) -> None:
+    """Registra uma coleta e põe nela o dia pedido (só na linha nova, mesmo com conteúdo repetido)."""
+    antes = _ids_das_coletas(banco)
     com_registro(fonte, lambda _url: conteudo)(url)
+    novas = _ids_das_coletas(banco) - antes
     with banco.begin() as conexao:
         conexao.execute(
             sa.update(coletas.coletas)
-            .where(coletas.coletas.c.sha256 == hashlib.sha256(conteudo).hexdigest())
+            .where(coletas.coletas.c.id.in_(novas))
             .values(baixado_em=datetime(dia.year, dia.month, dia.day, 3, tzinfo=UTC))
         )
 
@@ -420,3 +430,115 @@ def test_os_produtos_montam_na_tabela_deles(banco, tmp_path):
     ]
     assert set(tabela["disponivel_em"]) == {DIA}
     assert int(tabela["trata_como_pessoa"].sum()) == 1
+
+
+# --- a volta a um estado anterior (revisão do Codex, P1) --------------------------------------------------
+DIA_TERCEIRO = date(DIA_SEGUINTE.year, DIA_SEGUINTE.month, DIA_SEGUINTE.day + 1)
+
+
+def _coletar_pela_fonte(banco, tmp_path, fonte, descobrir, servidor, dia: date) -> None:
+    """A coleta de verdade (`obter`) num dia, registrada no banco como o arquivista faz."""
+    destino = tmp_path / f"{fonte}-{dia}.csv"
+    quando = datetime(dia.year, dia.month, dia.day, 3, tzinfo=UTC)
+    (alvo,) = descobrir(servidor, quando)
+    alvo.obter(servidor, destino)
+    _coletar(banco, fonte, alvo.url, destino.read_bytes(), dia)
+
+
+@pytest.mark.usefixtures("acervo_do_teste")
+def test_o_produto_que_volta_ao_valor_de_antes_entra_no_historico(banco, tmp_path):
+    for dia, bicos in ((DIA, 4), (DIA_SEGUINTE, 3), (DIA_TERCEIRO, 4)):
+        posto = _posto(EMPRESA, [_produto("GASOLINA C COMUM", 30, bicos)])
+        _coletar_pela_fonte(
+            banco,
+            tmp_path,
+            revendedores.FONTE_DOS_PRODUTOS,
+            arquivista.descobrir_produtos,
+            Servidor([_resposta([posto], 1, 1)]),
+            dia,
+        )
+
+    tabela = _montada(
+        banco, tmp_path / "base", revendedores.TABELA_DOS_PRODUTOS, "produtos"
+    )
+
+    assert list(tabela["bicos"]) == [4, 3, 4]
+    assert list(tabela["disponivel_em"]) == [DIA, DIA_SEGUINTE, DIA_TERCEIRO]
+
+
+@pytest.mark.usefixtures("acervo_do_teste")
+def test_o_posto_que_sai_e_volta_com_o_mesmo_arquivo_volta_a_constar(banco, tmp_path):
+    dos_dois = (EMPRESA, FILIAL)
+    for dia, presentes in (
+        (DIA, dos_dois),
+        (DIA_SEGUINTE, (FILIAL,)),
+        (DIA_TERCEIRO, dos_dois),
+    ):
+        linhas = [CABECALHO_DA_ANP, *(_linha_da_anp(c) for c in presentes)]
+        _coletar_pela_fonte(
+            banco,
+            tmp_path,
+            revendedores.FONTE_DO_CADASTRO,
+            arquivista.descobrir_cadastro,
+            Servidor(arquivo="\n".join(linhas).encode("utf-8-sig")),
+            dia,
+        )
+
+    tabela = _montado_o_cadastro(banco, tmp_path / "base")
+
+    da_empresa = tabela[tabela["cnpj"].str.contains("11.222.333/0001-")]
+    assert list(da_empresa["consta"]) == [True, False, True]
+
+
+# --- a lista que muda no meio da leitura (revisão do Codex, P1) ---------------------------------------------
+A, B, C, D, E = (_cnpj(f"7000000{n}") for n in range(1, 6))
+
+
+def _lista_que_muda(total: int, paginas: int) -> Servidor:
+    """A e B de 4 postos; na 2ª página a ANP já diz outro total ou outro número de páginas."""
+    return Servidor(
+        [
+            _resposta([_posto(A), _posto(B)], total=4, paginas=2),
+            _resposta([_posto(D), _posto(E)], total=total, paginas=paginas),
+        ]
+    )
+
+
+@pytest.mark.parametrize(("total", "paginas"), [(5, 3), (5, 2), (4, 3)])
+def test_total_ou_paginas_que_mudam_no_meio_descartam_a_coleta(
+    tmp_path, total, paginas
+):
+    destino = tmp_path / "r.csv"
+    with pytest.raises(ValueError, match="mudou no meio"):
+        _obter(arquivista.descobrir_produtos, _lista_que_muda(total, paginas), destino)
+    assert not destino.exists()
+
+
+@pytest.mark.usefixtures("acervo_do_teste")
+def test_a_coleta_descartada_nao_se_repete_na_mesma_rodada(
+    banco, tmp_path, monkeypatch
+):
+    esperas_do_arquivista: list[float] = []
+    monkeypatch.setattr(arquivar_fontes, "esperar", esperas_do_arquivista.append)
+    servidor = _lista_que_muda(5, 3)
+
+    resultado = arquivar_fontes._arquivar_com_nova_tentativa(
+        POR_ID[revendedores.FONTE_DOS_PRODUTOS],
+        servidor,  # type: ignore[arg-type]
+        tmp_path / "temporaria",
+        {False: arquivar_fontes._Orcamento(), True: arquivar_fontes._Orcamento()},
+    )
+
+    assert resultado.falhas == [arquivista.ENDERECO_DA_API]  # type: ignore[union-attr]
+    assert esperas_do_arquivista == []
+    assert len(servidor.pedidos) == 2  # as duas páginas, uma vez só
+    with banco.connect() as conexao:
+        situacoes = conexao.execute(sa.select(coletas.coletas.c.situacao)).scalars()
+        assert list(situacoes) == ["falhou"]
+
+
+# --- o agendamento ------------------------------------------------------------------------------------------
+def test_o_cadastro_e_mensal_e_a_api_so_roda_a_mao_pelo_id():
+    """A 1ª coleta da API é da Diretoria e a licença é a confirmar: nenhum cron a pega."""
+    assert POR_ID[revendedores.FONTE_DO_CADASTRO].grupo == "mensal"
+    assert POR_ID[revendedores.FONTE_DOS_PRODUTOS].grupo == "carga-unica"

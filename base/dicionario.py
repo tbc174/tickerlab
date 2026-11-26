@@ -4385,7 +4385,7 @@ def _tabelas_dos_cadastros_conferidos() -> dict[str, Tabela]:
                 **carimbos,
             },
             linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
-            frequencia="O arquivista guarda um retrato por mês",
+            frequencia="Sem calendário fixo: a coleta da API não é agendada e roda à mão",
         ),
     }
 

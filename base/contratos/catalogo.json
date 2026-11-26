@@ -17524,7 +17524,7 @@
       "licenca": "API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)",
       "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
-      "frequencia": "O arquivista guarda um retrato por mês",
+      "frequencia": "Sem calendário fixo: a coleta da API não é agendada e roda à mão",
       "atraso": "A fonte não escreve a data de publicação; a linha vale desde o dia da coleta em que a vimos",
       "linhas_de_pessoa": "trata_como_pessoa"
     },

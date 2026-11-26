@@ -10,8 +10,12 @@ própria ANP:
 
 Chega ao acervo só um CSV (";", UTF-8) com as colunas das listas, e só de CNPJ inteiro. A razão social (que no
 empresário individual traz o nome e o CPF do titular), o endereço, as coordenadas e a observação livre **nunca são
-gravados**: o endereço do estabelecimento a Receita já tem pelo CNPJ. A resposta incompleta ou repetida é erro: um
-retrato pela metade faria os postos que faltaram "saírem" da tabela.
+gravados**: o endereço do estabelecimento a Receita já tem pelo CNPJ. A resposta incompleta, repetida ou que muda
+de total no meio da leitura é erro, sem nova tentativa na rodada: um retrato pela metade faria os postos que
+faltaram "saírem" da tabela. Cada linha guardada leva o dia da coleta (`COLUNA_DO_DIA`).
+
+O cadastro é do grupo mensal; a API **não tem agendamento** (a 1ª coleta é da Diretoria e a licença é a
+confirmar): `python -m scripts.arquivar_fontes anp-revendedores-api`.
 
 O GLP (`/v1/glp`) é outro cadastro e fica de fora.
 """
@@ -24,12 +28,22 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from base.arquivo.coleta import Alvo, Cliente, Fonte
+from base.arquivo.coleta import (
+    Alvo,
+    Cliente,
+    FalhaSemNovaTentativa,
+    Fonte,
+    Obter,
+)
 from base.arquivo.obter import csv_so_com_colunas, tem_cnpj_inteiro
 
 FONTE_DO_CADASTRO = "anp-revendedores"
 FONTE_DOS_PRODUTOS = "anp-revendedores-api"
 MENSAL = "mensal"
+SO_PELO_ID = "carga-unica"  # nenhum cron roda: a coleta é `arquivar_fontes <id>`
+# o dia vai em cada linha do arquivo guardado: o acervo conta uma vez cada conteúdo diferente
+# (`coletas.versoes_guardadas`), e a volta ao estado de antes (A, B, A) repetiria o SHA do 1º retrato
+COLUNA_DO_DIA = "coletado_em"
 
 # --- o cadastro: CSV dos dados abertos -------------------------------------------------------------------
 CSV_DO_CADASTRO = (
@@ -80,22 +94,33 @@ def _pagina(cliente: Cliente, numero: int) -> tuple[list[dict[str, Any]], int, i
             filtro = resposta["searchPageFilter"]
             return resposta["data"], filtro["totalRegistro"], filtro["totalPagina"]
     except (ValueError, KeyError, TypeError) as erro:
-        raise ValueError(f"{endereco}: resposta fora do formato da API") from erro
-    raise ValueError(f"{endereco}: a API recusou o pedido")
+        raise FalhaSemNovaTentativa(
+            f"{endereco}: resposta fora do formato da API"
+        ) from erro
+    raise FalhaSemNovaTentativa(f"{endereco}: a API recusou o pedido")
 
 
 def _todos_os_postos(cliente: Cliente) -> list[dict[str, Any]]:
+    """Todas as páginas, ou erro: o total e o número de páginas têm de ser os mesmos do começo ao fim."""
     postos, total, paginas = _pagina(cliente, 1)
     if not total or not 0 < paginas <= MAXIMO_DE_PAGINAS:
-        raise ValueError(
+        raise FalhaSemNovaTentativa(
             f"{ENDERECO_DA_API}: nenhum posto, ou páginas demais ({paginas})"
         )
     for numero in range(2, paginas + 1):
         esperar(PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS)
-        postos = postos + _pagina(cliente, numero)[0]
+        da_pagina, total_agora, paginas_agora = _pagina(cliente, numero)
+        if (total_agora, paginas_agora) != (total, paginas):
+            raise FalhaSemNovaTentativa(
+                f"{ENDERECO_DA_API}: a lista mudou no meio da leitura (de {total} postos em {paginas} "
+                f"páginas para {total_agora} em {paginas_agora}, na página {numero})"
+            )
+        postos = postos + da_pagina
     diferentes = len({posto.get("cnpj") for posto in postos})
-    if diferentes < total:
-        raise ValueError(f"{ENDERECO_DA_API}: vieram {diferentes} de {total} postos")
+    if diferentes != total:
+        raise FalhaSemNovaTentativa(
+            f"{ENDERECO_DA_API}: vieram {diferentes} de {total} postos"
+        )
     return postos
 
 
@@ -135,6 +160,23 @@ def obter_produtos(cliente: Cliente, destino: Path) -> Mapping[str, str]:
     return {}
 
 
+def _com_o_dia(obter: Obter, agora: datetime) -> Obter:
+    """`obter`, e depois o dia da coleta em cada linha do CSV gravado (`COLUNA_DO_DIA`)."""
+    dia = agora.date().isoformat()
+
+    def com_o_dia(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        cabecalhos = obter(cliente, destino)
+        with destino.open(encoding="utf-8", newline="") as entrada:
+            cabecalho, *linhas = list(csv.reader(entrada, delimiter=";"))
+        with destino.open("w", encoding="utf-8", newline="") as saida:
+            escritor = csv.writer(saida, delimiter=";")
+            escritor.writerow([*cabecalho, COLUNA_DO_DIA])
+            escritor.writerows([*linha, dia] for linha in linhas)
+        return cabecalhos
+
+    return com_o_dia
+
+
 # --- as fontes -------------------------------------------------------------------------------------------
 def descobrir_cadastro(cliente: Cliente, agora: datetime) -> list[Alvo]:
     obter = csv_so_com_colunas(
@@ -143,17 +185,17 @@ def descobrir_cadastro(cliente: Cliente, agora: datetime) -> list[Alvo]:
         CODIFICACAO_DO_CADASTRO,
         so_com_cnpj_em="CNPJ",
     )
-    return [Alvo(CSV_DO_CADASTRO, ".csv", obter)]
+    return [Alvo(CSV_DO_CADASTRO, ".csv", _com_o_dia(obter, agora))]
 
 
 def descobrir_produtos(cliente: Cliente, agora: datetime) -> list[Alvo]:
     """Um endereço só: a coleta é que percorre as páginas."""
-    return [Alvo(ENDERECO_DA_API, ".csv", obter_produtos)]
+    return [Alvo(ENDERECO_DA_API, ".csv", _com_o_dia(obter_produtos, agora))]
 
 
 def fontes() -> list[Fonte]:
     """As duas fontes, para a lista `FONTES` (o id decide a família da licença)."""
     return [
         Fonte(FONTE_DO_CADASTRO, MENSAL, descobrir_cadastro),
-        Fonte(FONTE_DOS_PRODUTOS, MENSAL, descobrir_produtos),
+        Fonte(FONTE_DOS_PRODUTOS, SO_PELO_ID, descobrir_produtos),
     ]
