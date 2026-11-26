@@ -506,6 +506,19 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         _PROVA_CVM,
         Finalidade.CREDITO,
     ),
+    # a dívida de mercado (linha 1126, `conjuntos/divida_de_mercado.py`): os FIDC em que a empresa cede, com a
+    # instituição administradora (pessoa jurídica), conta nossa sobre o informe da CVM; sai quando a `fidc_informe`
+    # tiver a prontidão do D10. As listas de CRA, CRI e OTS ganham linha de direito junto com a prontidão das
+    # tabelas de securitização, em PR próprio (linha 1132 da fila; Diretoria, 26/11/2026): até lá o site não as
+    # anuncia, e o leitor não as serve.
+    *_campos(
+        ("cvm-fidc",),
+        "credit",
+        ("fidc_informe",),
+        ("lista_dos_fundos_em_que_cede",),
+        _PROVA_CVM,
+        Finalidade.CREDITO,
+    ),
     # profiles (linha 736, PR 2): o perfil por CNPJ. O cadastro é o de `companies`, pelo mesmo leitor, que
     # tira quem é pessoa linha a linha (`conjuntos/ficha.py`); as entregas de DFP e ITR saem de
     # `rotulos_atraso`, montada dos arquivos anuais da DFP e do ITR da CVM (o índice das entregas), com a
@@ -559,6 +572,22 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
             "municipio_texto",
         ),
         _PROVA_RECEITA,
+    ),
+    # os sinais de tamanho (linha 1130, `conjuntos/sinais_de_tamanho.py`): o capital e os estabelecimentos ativos
+    # da lista sem pessoa, e os acessos na Anatel somados por serviço. Sem conta de receita, porte do BNDES nem PAT.
+    *_campos(
+        ("rfb-cnpj",),
+        "profiles",
+        ("cnpj_empresas_pj",),
+        ("capital_social", "n_estabelecimentos"),
+        _PROVA_RECEITA,
+    ),
+    *_campos(
+        ("anatel-acessos",),
+        "profiles",
+        ("anatel_acessos",),
+        ("acessos_na_anatel",),
+        _PROVA_DAS_AGENCIAS,
     ),
     *_campos(
         ("cvm-hist-dfp", "cvm-hist-itr"),

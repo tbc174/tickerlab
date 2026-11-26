@@ -22678,6 +22678,119 @@
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"
     },
+    "ma_receitas_cpc15": {
+      "tabela": "ma_receitas_cpc15",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj_raiz": {
+          "descricao": "Raiz (8 dígitos) do CNPJ da empresa comprada",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Razão social da comprada, como a compradora a escreveu na nota",
+          "unidade": "texto"
+        },
+        "cnpj_compradora": {
+          "descricao": "CNPJ da companhia que escreveu a nota",
+          "unidade": "texto"
+        },
+        "compradora": {
+          "descricao": "Nome da companhia que escreveu a nota",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data a que a DFP se refere (fim do exercício)",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão da DFP (cada reapresentação é um documento)",
+          "unidade": "número inteiro"
+        },
+        "exercicio_fim": {
+          "descricao": "Fim do exercício da receita (31 de dezembro do ano da frase)",
+          "unidade": "data (dia)"
+        },
+        "receita": {
+          "descricao": "Receita anual da comprada no ano cheio",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "receita_desde_a_compra": {
+          "descricao": "A parte que a nota diz ter entrado no consolidado desde a compra; vazio se não diz",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "forma": {
+          "descricao": "so_da_adquirida, aumento_do_consolidado (desde a compra mais o aumento) ou consolidado_inteiro (consolidado da nota menos o da DRE, mais desde a compra)",
+          "unidade": "texto"
+        },
+        "pagina": {
+          "descricao": "Página do PDF em que está a frase da receita, a partir de 1 (a de `notas_dfp`)",
+          "unidade": "número inteiro"
+        },
+        "pagina_impressa": {
+          "descricao": "Número impresso nessa página, quando há",
+          "unidade": "número inteiro"
+        },
+        "pagina_da_secao": {
+          "descricao": "Página do PDF em que a nota daquela compra começa (pode vir antes da de `pagina`; o número impresso no rodapé pode ser outro)",
+          "unidade": "número inteiro"
+        },
+        "trecho": {
+          "descricao": "As frases da nota que provam o valor; de nome próprio, só o da comprada (o resto vira […])",
+          "unidade": "texto"
+        },
+        "ligacao_por": {
+          "descricao": "controladas ou razao_social_da_receita",
+          "unidade": "texto"
+        },
+        "resumo": {
+          "descricao": "O número, o ano, o documento e a página numa frase",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a linha podia ser sabida: a entrega da versão da DFP ou, se só um FRE posterior identifica o CNPJ, a desse FRE",
+          "unidade": "data (dia)"
+        },
+        "link": {
+          "descricao": "Endereço do pacote no ENET de onde o texto saiu",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do texto da DFP guardado no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o texto foi coletado",
+          "unidade": "data e hora (UTC)"
+        }
+      },
+      "chaves": [
+        "cnpj_raiz",
+        "exercicio_fim",
+        "cnpj_compradora",
+        "referencia",
+        "versao"
+      ],
+      "datas": {
+        "aconteceu_em": "exercicio_fim",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "sinonimos_de_tempo": {
+        "referencia": "referencia",
+        "exercicio_fim": "referencia",
+        "disponivel_em": "publico_em",
+        "origem_coletada_em": "coletado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração de M&A; versão nova só quando uma entrada muda",
+      "atraso": "O da DFP: cada linha vale a partir da entrega daquela versão à CVM"
+    },
     "cftc_cot_agro": {
       "tabela": "cftc_cot_agro",
       "modulo": "mercado_e_empresas",

@@ -16,7 +16,8 @@ não informa a hora da entrega), e o porte só vale de um arquivo da Receita bai
 
 **De onde vem a receita** (cada linha diz a fonte e o documento): o exercício mais novo ganha; no mesmo
 exercício, a ordem da ADR 0082:
-1. `cpc15-compradora`: nota de combinação de negócios da compradora aberta (CPC 15), lida à mão;
+1. `cpc15-compradora`: nota de combinação de negócios da compradora aberta (CPC 15), tirada de
+   `notas_dfp` por `base/ma_receitas_cpc15.py` (linha 1129) ou lida à mão;
 2. `dfp-alvo`: a DRE anual da própria alvo na CVM (`demonstracoes_como_era`), quando ela tem registro;
 3. `balanco-alvo`: balanço publicado da alvo fechada (jornal, Diário Oficial ou o site dela), lido à mão;
 4. `cade`: a faixa de faturamento do ato de concentração, lida à mão.

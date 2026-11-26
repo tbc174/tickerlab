@@ -123,6 +123,8 @@ FICAM_EM_CASA = (
     "comex_preco_medio",
     "fidc_informe",
     "processos_partes",
+    # linha 1129: leva o trecho da nota da DFP (texto de área restrita, sem nome próprio, mas texto livre)
+    "ma_receitas_cpc15",
     # Situação especial tem pessoa (falência de MEI): só vai ao VPS filtrada, depois da linha 787 (Diretoria,
     # 10/11/2026). A rede saiu daqui para `REDE_SO_PJ` (linha 843).
     "cnpj_situacao_especial",

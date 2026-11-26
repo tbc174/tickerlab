@@ -22,7 +22,7 @@ from base.porta import Porta
 from base.prontidao import Prontidao, Prova
 from src import portao_externo as portao
 from src.api_externa import rotas
-from src.api_externa.conjuntos import credito
+from src.api_externa.conjuntos import credito, divida_de_mercado
 from src.banco.modelo import consumo_da_api
 from src.credito import features_da_base, sinais
 from src.credito.dicionario import DA_BASE, DA_FICHA
@@ -86,9 +86,12 @@ def test_a_mundial_sai_com_os_fatos_do_fidc_e_da_receita(tmp_path):
     }
     assert corpo["situacao_cadastral_na_receita"]["valor"] == "Ativa"
     assert corpo["situacao_cadastral_na_receita"]["fonte"] == "rfb-cnpj"
-    assert corpo["limites"] == list(credito.LIMITES)
+    # a Mundial cede a FIDCs: a lista dos fundos (dívida de mercado, linha 1126) sai, e o aviso dela junto
+    assert corpo["limites"] == [*credito.LIMITES, credito.LIMITE_DA_DIVIDA]
     assert servida.fontes == {"cvm-fidc", "rfb-cnpj", "cvm-hist-ipe"}
-    assert servida.linhas == 1
+    assert servida.linhas == 1 + len(
+        corpo["divida_de_mercado"]["lista_dos_fundos_em_que_cede"]["valor"]
+    )
 
 
 def test_mesmo_com_o_portao_aberto_so_saem_os_fatos_com_linha_de_direito(tmp_path):
@@ -96,8 +99,16 @@ def test_mesmo_com_o_portao_aberto_so_saem_os_fatos_com_linha_de_direito(tmp_pat
     for cnpj in (GPA, MUNDIAL):
         servida = _ficha(tmp_path, cnpj)
         assert servida is not None
-        fatos = set(servida.corpo) - {"cnpj", "como_era_em", "limites"}
+        fatos = set(servida.corpo) - {
+            "cnpj",
+            "como_era_em",
+            "limites",
+            credito.BLOCO_DA_DIVIDA,
+        }
         assert fatos <= set(credito.FATOS), cnpj
+        assert set(servida.corpo.get(credito.BLOCO_DA_DIVIDA, {})) <= set(
+            divida_de_mercado.CAMPOS
+        )
         for chave in fatos:
             assert not PALAVRAS_QUE_NUNCA_SAEM & set(chave.split("_")), chave
 
@@ -133,7 +144,8 @@ def test_o_portao_recebe_a_fonte_do_acervo_e_o_campo_como_derivado(tmp_path):
     _ficha(tmp_path, MUNDIAL, permitido=anota)
     assert perguntas
     for fonte, campo, derivado in perguntas:
-        assert credito.FATOS[campo].fonte == fonte
+        origem = credito.FATOS.get(campo) or divida_de_mercado.CAMPOS[campo]
+        assert origem.fonte == fonte
         assert derivado is True
 
 
@@ -162,8 +174,10 @@ def test_nenhum_fato_e_de_depois_do_dia_pedido(tmp_path, dias):
     servida = _ficha(tmp_path, MUNDIAL, dia=dia)
     if servida is None:
         return
-    for chave, valor in servida.corpo.items():
-        if isinstance(valor, dict):
+    divida = servida.corpo.get(credito.BLOCO_DA_DIVIDA, {})
+    envelopes = {**servida.corpo, **divida}
+    for chave, valor in envelopes.items():
+        if isinstance(valor, dict) and chave != credito.BLOCO_DA_DIVIDA:
             assert valor["publico_em"] <= dia.isoformat(), chave
 
 
@@ -270,8 +284,16 @@ def _linhas_de_credito():
 def test_os_fatos_servidos_sao_as_linhas_de_direito_do_conjunto():
     linhas = _linhas_de_credito()
     assert {(linha.fonte, linha.campo, linha.tabelas) for linha in linhas} == {
-        (origem.fonte, chave, (origem.tabela,))
-        for chave, origem in credito.FATOS.items()
+        *(
+            (origem.fonte, chave, (origem.tabela,))
+            for chave, origem in credito.FATOS.items()
+        ),
+        *(
+            (origem.fonte, chave, origem.tabelas)
+            for chave, origem in divida_de_mercado.CAMPOS.items()
+            # as listas de CRA, CRI e OTS ganham linha com a prontidão das tabelas (linha 1132)
+            if not chave.startswith("certificados_")
+        ),
     }
     assert {linha.finalidade for linha in linhas} == {Finalidade.CREDITO}
 
@@ -344,7 +366,8 @@ def test_a_ficha_sai_em_ingles_com_fonte_e_atribuicao(cliente, cenario, banco):
         "observed_at": None,
     }
     assert corpo["rfb_registration_status"]["value"] == "Ativa"
-    assert corpo["limits"] == list(credito.LIMITES)
+    assert corpo["limits"] == [*credito.LIMITES, credito.LIMITE_DA_DIVIDA]
+    assert set(corpo["market_debt"]) == {"fidcs_as_assignor_list"}
     fontes = {fonte["source"]: fonte for fonte in corpo["sources"]}
     assert set(fontes) == {"cvm-fidc", "cvm-hist-ipe", "rfb-cnpj"}
     assert "CVM" in fontes["cvm-fidc"]["attribution"]

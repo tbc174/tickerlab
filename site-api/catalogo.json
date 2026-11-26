@@ -86,6 +86,7 @@
       "carteira_dos_fundos_em_que_cede",
       "fatos_relevantes_12_meses",
       "fundos_em_que_cede",
+      "lista_dos_fundos_em_que_cede",
       "maior_inadimplencia_dos_fundos_em_que_cede",
       "maior_participacao_como_cedente",
       "situacao_cadastral_na_receita",
@@ -316,6 +317,7 @@
   },
   "profiles": {
     "fontes": {
+      "anatel-acessos": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
       "aneel-fiscalizacao": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
       "ans-qualidade": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
       "cvm-hist-dfp": "ODbL (dados abertos da CVM; citar a fonte)",
@@ -323,8 +325,10 @@
       "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)"
     },
     "campos": [
+      "acessos_na_anatel",
       "ano_avaliacao",
       "ano_base",
+      "capital_social",
       "cnae_principal",
       "cnae_principal_texto",
       "data_exclusao_simples",
@@ -344,6 +348,7 @@
       "municipio",
       "municipio_ibge",
       "municipio_texto",
+      "n_estabelecimentos",
       "natureza_juridica",
       "optante_simples",
       "pedidos_de_ressarcimento_de_dano",

@@ -67,7 +67,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
         "inicio_do_exercicio", "fim_do_exercicio", "DT_INI_EXERC", "DT_FIM_EXERC",
         "Data_Inicio_Exercicio_Social", "Data_Fim_Exercicio_Social", "Data_Patrimonio_Liquido",
         "DT_PATRIM_LIQ", "acumulado_inicio", "acumulado_fim", "anual_fim", "balanco_fim",
-        "receita_exercicio_fim", "composicao_em", "data_do_retrato", "relatorio",
+        "receita_exercicio_fim", "exercicio_fim", "composicao_em", "data_do_retrato", "relatorio",
         "ultima_referencia",
         # linha 440: data-base, meses de primeira e última aparição e o mês do dado
         "data_de_corte", "data_da_previsao", "primeira", "ultima", "primeiro_no_cda",

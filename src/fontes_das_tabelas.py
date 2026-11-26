@@ -42,6 +42,7 @@ COLETAS_PROPRIAS: dict[str, tuple[str, ...]] = {
     "debentures_assembleias": ("cvm-hist-ipe",),
     "ratings": ("cvm-hist-ipe", "cvm-ipe-rating"),
     "processos_nas_notas": ("cvm-enet-notas",),
+    "ma_receitas_cpc15": ("cvm-enet-notas",),  # linha 1129: as notas CPC 15 das DFPs
 }
 
 # tabela montada a partir de outra: o frescor dela é o da tabela de origem
