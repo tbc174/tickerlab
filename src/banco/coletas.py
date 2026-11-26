@@ -1391,14 +1391,20 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
 
 
 class Versao(NamedTuple):
-    baixado_em: datetime  # a primeira vez que este conteúdo foi baixado
+    baixado_em: datetime  # a primeira vez que o conteúdo foi baixado (com voltas: nesta sequência)
     sha256: str
     caminho: str  # no acervo (`acervo.ler_original`)
 
 
-def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
+def versoes_guardadas(
+    conexao: sa.Connection, url: str, *, com_voltas: bool = False
+) -> list[Versao]:
     """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo, sem ler os
-    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez)."""
+    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez).
+
+    O conteúdo que volta depois de outro (A, B, A) só aparece de novo com `com_voltas`; sem ele, a
+    volta se perde, o que serve a quem quer a primeira vez que cada conteúdo apareceu.
+    """
     linhas = conexao.execute(
         sa.select(coletas.c.baixado_em, coletas.c.sha256, coletas.c.caminho_do_original)
         .where(
@@ -1411,9 +1417,12 @@ def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
     vistos: set[str] = set()
     versoes = []
     for baixado_em, sha256, caminho in linhas:
-        if sha256 not in vistos:
-            vistos.add(sha256)
-            versoes.append(Versao(baixado_em, sha256, caminho))
+        if sha256 in vistos:
+            continue
+        if com_voltas:
+            vistos.clear()  # só o repetido em seguida sai: a volta ao de antes conta
+        vistos.add(sha256)
+        versoes.append(Versao(baixado_em, sha256, caminho))
     return versoes
 
 

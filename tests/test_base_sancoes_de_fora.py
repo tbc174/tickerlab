@@ -4,7 +4,6 @@ O que não pode faltar aqui é a LGPD: pessoa, navio, aeronave e registro sem ti
 acervo nem para a tabela. Os XML são inventados (`tests/arquivos/sancoes_de_fora/dubles.py`).
 """
 
-import hashlib
 import importlib.util
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -201,14 +200,14 @@ def versao(monkeypatch):
 
 
 def _coletar(banco, fonte: str, url: str, conteudo: bytes, dia: date) -> None:
+    tabela = coletas.coletas
+    with banco.connect() as conexao:
+        antes = list(conexao.execute(sa.select(tabela.c.id)).scalars())
     com_registro(fonte, lambda _url: conteudo)(url)
     with banco.begin() as conexao:
-        conexao.execute(
-            sa.update(coletas.coletas)
-            .where(
-                coletas.coletas.c.url == url,
-                coletas.coletas.c.sha256 == hashlib.sha256(conteudo).hexdigest(),
-            )
+        conexao.execute(  # só a linha desta coleta: o mesmo conteúdo pode voltar noutro dia
+            sa.update(tabela)
+            .where(tabela.c.id.not_in(antes))
             .values(baixado_em=datetime(dia.year, dia.month, dia.day, 3, tzinfo=UTC))
         )
 
@@ -307,6 +306,34 @@ def test_sem_olhar_o_futuro_a_linha_vale_do_dia_em_que_o_arquivo_foi_visto(
     saida = depois[(depois["id_na_fonte"] == "INV0003") & ~depois["consta"]]
     assert saida["disponivel_em"].tolist() == [terceiro]
     assert (depois["disponivel_em"] == depois["visto_em"]).all()
+
+
+def test_entidade_que_sai_e_volta_igual_consta_de_novo(banco, tmp_path):
+    """Lista A, B, A: o guardado só depende do conteúdo, então a volta tem o SHA do primeiro dia.
+
+    Se o retrato da volta se perdesse, a entidade ficaria como fora da lista para sempre."""
+    primeiro, segundo, terceiro, quarto = (date(2026, 11, d) for d in (20, 21, 22, 23))
+    nova = dubles.uk_entidade("INV0002", "EXEMPLO NOVA SA")
+    outra = dubles.uk_entidade("INV0003", "EXEMPLO OUTRA SA")
+    _coletar_uk(banco, primeiro, nova, outra)
+    _coletar_uk(banco, segundo, nova)  # a "outra" saiu
+    _montar(banco, tmp_path)
+    _coletar_uk(banco, terceiro, nova, outra)  # e voltou, igual ao primeiro dia
+    assert _montar(banco, tmp_path)["reino_unido"]["retratos"] == 3
+
+    tabela = _tabela(tmp_path, "reino_unido")
+    historico = tabela[tabela["id_na_fonte"] == "INV0003"].sort_values("visto_em")
+    assert list(zip(historico["consta"], historico["disponivel_em"], strict=True)) == [
+        (True, primeiro),
+        (False, segundo),
+        (True, terceiro),
+    ]
+    assert "INV0003" in set(_como_era(tabela, primeiro)["id_na_fonte"])
+    assert "INV0003" not in set(_como_era(tabela, segundo)["id_na_fonte"])
+    assert "INV0003" in set(_como_era(tabela, terceiro)["id_na_fonte"])
+
+    _coletar_uk(banco, quarto, nova, outra)  # o mesmo arquivo no dia seguinte não conta
+    assert _montar(banco, tmp_path)["reino_unido"] == sancoes_de_fora.JA_MONTADO
 
 
 # os endereços do CSV que o arquivista guardou até o XML: o da União Europeia termina igual ao do XML

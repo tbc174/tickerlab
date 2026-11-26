@@ -9,6 +9,7 @@ no dia em que foi baixado, e o motor de `base/retratos.py` os junta numa tabela 
 - **Sem olhar o futuro** (`disponivel_em` = `visto_em`): a linha vale a partir do dia em que o arquivo
   foi visto, também no primeiro. A data da designação (`designado_em`) é para ler, nunca a data em que
   a base soube: a lista de hoje não diz o que dizia antes.
+- O que sai e volta ganha as duas linhas, mesmo que o arquivo da volta seja igual a um de antes.
 - O que sai da lista ganha uma linha `consta=False` no dia em que sumiu (retirada da designação, ou a
   fonte passou a tratar o registro de outro jeito: não é, sozinho, prova de que a sanção acabou).
 - **Não há CNPJ aqui.** Ligar a uma empresa brasileira ou ao grupo dela é por nome, é dedução e sai
@@ -195,4 +196,5 @@ def montar(
         ordem=ORDEM,
         pessoas=set(),  # não há CNPJ aqui: nada a perguntar à Receita
         refazer=refazer,
+        com_voltas=True,  # saiu e voltou igual: o arquivo repetido conta de novo
     )
