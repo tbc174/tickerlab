@@ -302,6 +302,13 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "nao_respondeu_a_tempo": "timed_out",
     "ainda_nao_traz": "not_included",
     "pedidos_usados": "requests_used",
+    # as vizinhas do mesmo ramo (`conjuntos/vizinhas.py`, linha 1038)
+    "vizinhas": "same_industry_neighbors",
+    "no_municipio": "in_municipality",
+    "na_uf": "elsewhere_in_state",
+    "total_no_municipio": "total_in_municipality",
+    "total_na_uf": "total_in_state",
+    "nao_habilitado": "not_enabled",
     # as tabelas ligadas pelo CNPJ do registro (`src/api_externa/tabelas_por_cnpj.py`, linha 978): os blocos e as
     # chaves de cada tabela
     "regulados": "regulated_activities",

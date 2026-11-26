@@ -890,9 +890,8 @@ def _analise_contada(
             conexao, contexto, acesso.agora().date(), regras_da_api()
         )
         cadastro, outros = analise.blocos_abertos(liberadas)
-        acesso.exigir_quota(
-            conexao, contexto, 1 + len(outros) if cadastro else 1, acesso.agora()
-        )
+        pedidos = 1 + sum(bloco.conta_pedido for bloco in outros) if cadastro else 1
+        acesso.exigir_quota(conexao, contexto, pedidos, acesso.agora())
         servida = None
         if cadastro is not None:
             with _porta(conexao) as porta:

@@ -53,6 +53,14 @@ ATIVA = prospeccao.SITUACOES["ativa"]
 TAMANHO_DA_RAIZ = 8
 # a UF com mais empresas que isto no ramo não é ordenada aqui (não caberia no prazo da análise): sai o total
 TETO_NA_UF = prospeccao.TETO_DE_RAIZES
+# quantas vizinhas cada recorte (município e resto da UF) devolve, no máximo, seja qual for o plano: o bloco não
+# conta pedido, então este teto é o que se leva da busca de empresas numa análise (Diretoria, 26/11/2026)
+TETO_DE_VIZINHAS = 10
+# o que o bloco diz à chave que não tem as linhas da busca de empresas (não depende do CNPJ pedido)
+NAO_HABILITADO = (
+    "As vizinhas do mesmo ramo não vieram: a busca de empresas (conjunto prospecting) não está habilitada "
+    "para esta chave hoje. Isso não diz nada sobre a empresa."
+)
 # quantas candidatas a mais são conferidas, para a lista continuar cheia quando a trava de pessoa tira alguma
 FOLGA_DA_TRAVA = 5
 
@@ -61,7 +69,9 @@ LIMITES = (
         "Vizinhas do mesmo ramo: empresas ativas com a mesma atividade principal (CNAE de 7 dígitos) no retrato "
         "da Receita do dia, no município do estabelecimento pedido e, à parte, no resto da UF; atividade "
         "secundária não conta. Uma linha por empresa, da maior para a menor pelo capital social declarado, que "
-        "não é faturamento nem valor da empresa."
+        "não é faturamento nem valor da empresa. "
+        f"São no máximo {TETO_DE_VIZINHAS} em cada recorte (a busca de empresas traz a lista inteira), e as "
+        "vizinhas não contam pedido."
     ),
     (
         "A lista só tem pessoa jurídica: MEI e empresário individual não entram, nem nos totais; empresa com "
@@ -242,7 +252,7 @@ class LeitorDeVizinhas(prospeccao.LeitorDeProspeccao):
             return [], [], extras
         empresas = self._empresas_de([str(r) for r in ramo["cnpj_basico"]], mes)
         juntas = self._ordenadas(ramo.merge(empresas, on="cnpj_basico"))
-        quantas = max(self.linhas_maximas, 1)
+        quantas = max(min(self.linhas_maximas, TETO_DE_VIZINHAS), 1)
         cidade = self._listadas(juntas[juntas["na_cidade"]], quantas)
         resto = self._listadas(juntas[~juntas["na_cidade"]], quantas)
         return (

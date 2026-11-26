@@ -12,6 +12,7 @@ from datetime import date
 
 import pandas as pd
 import pytest
+import sqlalchemy as sa
 
 from base import prontidao
 from base.porta import Porta
@@ -19,8 +20,9 @@ from base.prontidao import Prontidao, Prova
 from conector_remoto import enxugar
 from src import portao_externo as portao
 from src.analista import analise as analise_da_tela
-from src.api_externa import rotas
+from src.api_externa import acesso, rotas
 from src.api_externa.conjuntos import analise, empresas, vizinhas
+from src.banco.modelo import consumo_da_api
 from tests import ajudantes_da_api_externa as aj
 from tests import test_api_externa_empresas as empresas_de_mentira
 
@@ -103,6 +105,33 @@ def gravar(base, estabelecimentos: pd.DataFrame, empresas: pd.DataFrame) -> None
         tabela.to_parquet(base / nome / "00.parquet", index=False)
 
 
+def _gravar_a_rede(base, raiz_tratada_como_pessoa: str) -> None:
+    """A rede com uma entidade que ela manda tratar como pessoa."""
+    (base / "rede").mkdir()
+    chave = "E" + "1" * 20
+    pd.DataFrame(
+        [(chave, "empresa", False, True)],
+        columns=["id_entidade", "tipo", "mei", "trata_como_pessoa"],
+    ).assign(
+        nome=None,
+        natureza_juridica="2062",
+        natureza_fonte="receita",
+        fontes="cvm-cadastro",
+        publico_em=date(2020, 1, 1),
+    ).to_parquet(base / "rede" / "entidades.parquet", index=False)
+    pd.DataFrame(
+        [(chave, "cnpj_raiz", raiz_tratada_como_pessoa)],
+        columns=["id_entidade", "sistema", "valor"],
+    ).assign(
+        desde=None,
+        ate=None,
+        publico_em=date(2020, 1, 1),
+        regra=2,
+        conferido_por="regra",
+        fontes="cvm-cadastro",
+    ).to_parquet(base / "rede" / "identificadores.parquet", index=False)
+
+
 @pytest.fixture
 def pasta(tmp_path):
     base = tmp_path / "base"
@@ -167,6 +196,57 @@ def test_empresa_com_filial_na_cidade_conta_uma_vez_e_diz_que_nao_e_a_matriz(pas
     delta = next(i for i in corpo["no_municipio"] if i["cnpj"] == "44444444000272")
     assert delta["matriz"]["valor"] is False
     assert not [i for i in corpo["na_uf"] if i["cnpj"].startswith("44444444")]
+
+
+def test_teto_proprio_de_vizinhas_por_recorte_mesmo_com_plano_que_da_mais(tmp_path):
+    """A análise custa o mesmo com ou sem as vizinhas: o teto limita o que sai de graça (Diretoria, 26/11)."""
+    muitas = [
+        (f"{10_000_000 + n}000191", True, "02", "2010-01-01", CNAE, "SP", cidade)
+        for n, cidade in enumerate([CIDADE] * 15 + [OUTRA_CIDADE] * 15)
+    ]
+    empresas_ = [
+        (cnpj[:8], f"EMPRESA {cnpj[:8]} LTDA", "2062", "micro", 1000.0, 1)
+        for cnpj, *_ in muitas
+    ]
+    gravar(
+        tmp_path / "base",
+        _estabelecimentos([ESTABELECIMENTOS[0], *muitas]),
+        _empresas([EMPRESAS[0], *empresas_]),
+    )
+    corpo = _ler(tmp_path / "base", linhas=500).corpo
+    assert vizinhas.TETO_DE_VIZINHAS == 10
+    assert len(corpo["no_municipio"]) == len(corpo["na_uf"]) == 10
+    assert corpo["total_no_municipio"] == 15 and corpo["total_na_uf"] == 30
+    assert corpo["cortada"] is True
+    assert "no máximo 10" in " ".join(corpo["limites"])
+
+
+def test_empresario_individual_e_quem_a_rede_trata_como_pessoa_nao_sao_listados(
+    tmp_path,
+):
+    """As listas da Receita já nascem sem MEI e empresário individual; a trava das outras leituras confirma."""
+    individual = ("12121212000191", True, "02", "2012-01-01", CNAE, "SP", CIDADE)
+    pessoa_da_rede = ("13131313000191", True, "02", "2013-01-01", CNAE, "SP", CIDADE)
+    base = tmp_path / "base"
+    gravar(
+        base,
+        _estabelecimentos([*ESTABELECIMENTOS, individual, pessoa_da_rede]),
+        _empresas(
+            [
+                *EMPRESAS,
+                ("12121212", "FULANO DE MENTIRA", "2135", "micro", 9e7, 1),
+                ("13131313", "BELTRANO DE MENTIRA", "2062", "micro", 8e7, 1),
+            ]
+        ),
+    )
+    _gravar_a_rede(base, "13131313")
+    corpo = _ler(base).corpo
+    assert _cnpjs(corpo["no_municipio"]) == [
+        "33333333000191",
+        "44444444000272",
+        "22222222000191",
+    ]
+    assert "DE MENTIRA" not in str(corpo)
 
 
 def test_conta_o_ramo_no_municipio_e_na_uf_e_diz_quando_a_lista_foi_cortada(pasta):
@@ -278,14 +358,36 @@ def test_o_bloco_esta_registrado_na_analise_com_as_listas_dele():
     assert bloco.finalidade == analise.ANALISE
     assert bloco.exige == vizinhas.EXIGE
     assert bloco.listas == ("no_municipio", "na_uf")
+    assert bloco.aviso_se_fechado == vizinhas.NAO_HABILITADO
+    # a análise custa o mesmo com ou sem as vizinhas; os outros blocos contam como antes
+    assert [b.nome for b in analise.BLOCOS if not b.conta_pedido] == [vizinhas.BLOCO]
     nomes = [b.nome for b in analise.BLOCOS]
     assert nomes.index(vizinhas.BLOCO) == nomes.index("comparaveis") + 1
 
 
-def test_a_tela_do_analista_ainda_nao_traz_o_bloco(monkeypatch):
-    """Com todas as linhas da busca liberadas, a análise da tela não as usa: faltam os nomes no app novo."""
+def test_a_tela_do_analista_ainda_nao_traz_o_bloco_e_diz_isso():
+    """A tela não fala de chave nem de conjunto: diz que as vizinhas não estão disponíveis nela."""
     assert vizinhas.CONJUNTO in analise_da_tela.CONJUNTOS_AINDA_SEM_TELA
     assert vizinhas.BLOCO in analise_da_tela.TITULOS
+    corpo = analise_da_tela.corpo_da_tela(
+        {
+            "cnpj": ALVO,
+            "como_era_em": DIA.isoformat(),
+            "frase": {"texto": "ALVO."},
+            "blocos": {
+                analise.CADASTRO: {},
+                vizinhas.BLOCO: {"nao_habilitado": vizinhas.NAO_HABILITADO},
+            },
+            "linha_do_tempo": [],
+            "leituras": [],
+            "nao_encontrado": [],
+            "nao_respondeu_a_tempo": [],
+            "ainda_nao_traz": [],
+            "limites": [],
+        }
+    )
+    assert [b["nome"] for b in corpo["blocos"]] == [analise.CADASTRO]
+    assert analise_da_tela.VIZINHAS_NAO_DISPONIVEIS in corpo["ainda_nao_traz"]
 
 
 # ---------------------------------------------------------------- pela rota, com o contrato de cada organização
@@ -320,18 +422,29 @@ def cliente(monkeypatch, tmp_path):
     return aj.cliente_da_api(monkeypatch, AGORA)
 
 
-def _chave_de(banco, ator, nome: str, *conjuntos: str):
+def _organizacao_com(banco, ator, nome: str, *conjuntos: str):
     org = aj.organizacao(banco, ator, nome)
     chave = aj.chave(banco, ator, org)
     for conjunto in conjuntos:
         aj.contrato(banco, ator, org, conjunto=conjunto)
-    return chave
+    return org, chave
+
+
+def _por_conjunto(banco, org) -> dict[str, int]:
+    """Os pedidos do mês, por conjunto."""
+    with banco.connect() as conexao:
+        linhas = conexao.execute(
+            sa.select(consumo_da_api.c.conjunto, sa.func.sum(consumo_da_api.c.pedidos))
+            .where(consumo_da_api.c.organizacao_id == org.id)
+            .group_by(consumo_da_api.c.conjunto)
+        ).all()
+    return {conjunto: int(pedidos) for conjunto, pedidos in linhas}
 
 
 def test_so_a_organizacao_com_a_busca_no_contrato_ve_as_vizinhas(banco, cliente):
     ator = aj.admin(banco)
-    com = _chave_de(banco, ator, "Alfa", "companies", vizinhas.CONJUNTO)
-    sem = _chave_de(banco, ator, "Beta", "companies")
+    org_com, com = _organizacao_com(banco, ator, "Alfa", "companies", vizinhas.CONJUNTO)
+    org_sem, sem = _organizacao_com(banco, ator, "Beta", "companies")
     parametros = {"known_at": DIA.isoformat()}
     resposta = cliente.get(ROTA, params=parametros, headers=aj.bearer(com.valor))
     assert resposta.status_code == 200
@@ -349,8 +462,74 @@ def test_so_a_organizacao_com_a_busca_no_contrato_ve_as_vizinhas(banco, cliente)
 
     outra = cliente.get(ROTA, params=parametros, headers=aj.bearer(sem.valor))
     assert outra.status_code == 200
-    assert "same_industry_neighbors" not in outra.text
-    assert "LABORATORIO" not in outra.text
+    # não some em silêncio: o bloco diz que o conjunto não está habilitado, sem nada da base
+    assert outra.json()["blocks"]["same_industry_neighbors"] == {
+        "not_enabled": vizinhas.NAO_HABILITADO
+    }
+    assert "LABORATORIO" not in outra.text and "prospecting" in outra.text
+
+    # as vizinhas não somam pedido: as duas organizações gastam o mesmo, só o do cadastro
+    assert resposta.json()["requests_used"] == outra.json()["requests_used"] == 1
+    assert (
+        _por_conjunto(banco, org_com)
+        == _por_conjunto(banco, org_sem)
+        == {"companies": 1}
+    )
+
+
+def test_os_limites_da_resposta_dizem_que_as_vizinhas_nao_contam_pedido(pasta):
+    assert "as vizinhas não contam pedido" in " ".join(_ler(pasta).corpo["limites"])
+
+
+def test_com_ou_sem_o_bloco_a_analise_custa_o_mesmo_na_quota_e_no_consumo(
+    banco, cliente, monkeypatch
+):
+    """A exceção à regra de um pedido por conjunto lido: com uma quota em que só cabe a análise de antes, quem tem
+    a busca de empresas não toma 429, e o consumo por conjunto é o mesmo de uma análise sem o bloco."""
+    ator = aj.admin(banco)
+    org_com, com = _organizacao_com(banco, ator, "Alfa", "companies", vizinhas.CONJUNTO)
+    org_antes, antes = _organizacao_com(
+        banco, ator, "Gama", "companies", vizinhas.CONJUNTO
+    )
+    limites = acesso.limites_da_api
+    monkeypatch.setattr(
+        acesso,
+        "limites_da_api",
+        lambda plano: dataclasses.replace(limites(plano), pedidos_por_mes=1),
+    )
+    parametros = {"known_at": DIA.isoformat()}
+    agora_ = cliente.get(ROTA, params=parametros, headers=aj.bearer(com.valor))
+    assert agora_.status_code == 200
+    assert "in_municipality" in agora_.json()["blocks"]["same_industry_neighbors"]
+
+    # a mesma análise como era antes do bloco existir
+    monkeypatch.setattr(
+        analise,
+        "BLOCOS",
+        tuple(b for b in analise.BLOCOS if b.nome != vizinhas.BLOCO),
+    )
+    antiga = cliente.get(ROTA, params=parametros, headers=aj.bearer(antes.valor))
+    assert antiga.status_code == 200
+    assert "same_industry_neighbors" not in antiga.text
+    assert agora_.json()["requests_used"] == antiga.json()["requests_used"] == 1
+    assert _por_conjunto(banco, org_com) == _por_conjunto(banco, org_antes)
+    assert _por_conjunto(banco, org_com) == {"companies": 1}
+
+
+def test_sem_a_busca_no_contrato_nada_das_vizinhas_e_lido(banco, cliente, monkeypatch):
+    def ler(*_):
+        raise AssertionError("o leitor das vizinhas não pode rodar sem o conjunto")
+
+    monkeypatch.setattr(vizinhas.LeitorDeVizinhas, "vizinhas", ler)
+    _org, sem = _organizacao_com(banco, aj.admin(banco), "Beta", "companies")
+    resposta = cliente.get(
+        ROTA, params={"known_at": DIA.isoformat()}, headers=aj.bearer(sem.valor)
+    )
+    assert resposta.status_code == 200
+    assert resposta.json()["blocks"]["same_industry_neighbors"] == {
+        "not_enabled": vizinhas.NAO_HABILITADO
+    }
+    assert resposta.json()["timed_out"] == []
 
 
 # ---------------------------------------------------------------- no conector
@@ -371,4 +550,7 @@ def test_o_conector_corta_as_listas_do_bloco_e_diz_de_onde_pedir_o_resto():
     bloco = curto["blocks"]["same_industry_neighbors"]
     assert len(bloco["in_municipality"]) == 2 and len(bloco["elsewhere_in_state"]) == 2
     assert bloco["truncated"] is True
-    assert "buscar_empresas" in " ".join(curto["limits"])
+    # atrasado, o aviso diz a ferramenta que traz a lista sozinha
+    corpo["timed_out"] = [{"block": "same_industry_neighbors"}]
+    atrasada = enxugar.enxugar_analise(corpo)
+    assert "`buscar_empresas`" in " ".join(atrasada["limits"])

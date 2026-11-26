@@ -12,9 +12,9 @@ análise não traz e os limites.
 chamar a rota do bloco, e a análise não libera nada novo. Se o bloco está aberto decide-se **antes de ler a
 empresa**, pelas linhas que o portão libera hoje para a organização (contrato, linha de direito, prontidão, coleta
 e guarda): bloco fechado não é lido, não aparece em lugar nenhum da resposta e não muda o tempo nem o tamanho dela
-conforme a empresa. Tabela que ganha prontidão num conjunto lido aqui entra sozinha, sem mudar este arquivo; o
-bloco de uma entrada do registro abre quando o portão libera um campo dela (não o conjunto inteiro: o `profiles`
-tem também o cadastro).
+conforme a empresa (a exceção são as vizinhas, que fechadas vêm só com o aviso, igual para toda empresa). Tabela
+que ganha prontidão num conjunto lido aqui entra sozinha, sem mudar este arquivo; o bloco de uma entrada do
+registro abre quando o portão libera um campo dela (não o conjunto inteiro: o `profiles` tem também o cadastro).
 
 **Prazo:** depois do cadastro, os outros blocos correm ao mesmo tempo, cada um no próprio cursor da porta; o que
 passa do prazo tem a consulta interrompida e sai em `nao_respondeu_a_tempo`. A conexão do banco (o portão) é usada
@@ -100,7 +100,9 @@ class Bloco:
     """Um bloco da análise: a chave dele na resposta, o conjunto e a finalidade do contrato, a leitura e o que
     o portão tem de liberar para ele abrir (`exige`: todos estes pares fonte e campo; `algum`: ao menos um
     destes; os dois vazios: qualquer linha do conjunto fora das tabelas do registro). `listas`: as listas do corpo que, todas vazias, querem
-    dizer que o bloco não achou nada; `vazio`, a mesma pergunta para o corpo que não é de listas."""
+    dizer que o bloco não achou nada; `vazio`, a mesma pergunta para o corpo que não é de listas. `conta_pedido`:
+    se o bloco conta um pedido no conjunto dele; `aviso_se_fechado`: o que o bloco fechado diz na resposta (sem
+    ele, bloco fechado não aparece)."""
 
     nome: str
     conjunto: str
@@ -110,6 +112,8 @@ class Bloco:
     listas: tuple[str, ...] = ()
     algum: tuple[tuple[str, str], ...] = ()
     vazio: Callable[[dict], bool] | None = None
+    conta_pedido: bool = True
+    aviso_se_fechado: str | None = None
 
 
 def _perfil(
@@ -231,6 +235,12 @@ BLOCOS = (
         _vizinhas,
         vizinhas.EXIGE,
         ("no_municipio", "na_uf"),
+        # EXCEÇÃO à regra "um pedido por conjunto lido" (Diretoria, 26/11/2026): as vizinhas não contam pedido,
+        # nem na quota nem no consumo, para a análise custar o mesmo de antes a quem já tem a busca de empresas
+        # no contrato (cobrar mais mudaria a conta de quem não pediu; cobrar por elas é decisão comercial). A
+        # permissão do conjunto é conferida como a de qualquer bloco, e o teto do leitor limita o que sai
+        conta_pedido=False,
+        aviso_se_fechado=vizinhas.NAO_HABILITADO,
     ),
     # as tabelas do registro entram sozinhas: entrada nova em `tabelas_por_cnpj` com ONDE_SAI = ANALISE
     *(_do_registro(nome) for nome in tabelas_por_cnpj.blocos(tabelas_por_cnpj.ANALISE)),
@@ -751,7 +761,7 @@ def _montar(
     lidos, atrasados = _ler_ao_mesmo_tempo(
         porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante, relogio
     )
-    for bloco in outros:
+    for bloco in (bloco for bloco in outros if bloco.conta_pedido):
         servido = lidos.get(bloco.nome)
         # dois blocos do mesmo conjunto (o cadastro e os regulados, em `profiles`) somam as linhas, e o conjunto
         # só conta como negado se nenhum dos dois saiu
@@ -914,6 +924,16 @@ MARCOS = {
 }
 
 
+def _fechados_com_aviso(abertos: tuple[Bloco, ...]) -> dict[str, dict]:
+    """O bloco que avisa quando está fechado para a chave, com o aviso no lugar do corpo: nada foi lido."""
+    nomes = {bloco.nome for bloco in abertos}
+    return {
+        bloco.nome: {"nao_habilitado": bloco.aviso_se_fechado}
+        for bloco in BLOCOS
+        if bloco.aviso_se_fechado and bloco.nome not in nomes
+    }
+
+
 def _vazio(bloco: Bloco, corpo: dict) -> bool:
     if bloco.vazio is not None:
         return bloco.vazio(corpo)
@@ -990,7 +1010,8 @@ class _Montagem:
             "blocos": {
                 nome: {k: v for k, v in servido.corpo.items() if k not in REPETIDOS}
                 for nome, servido in servidos.items()
-            },
+            }
+            | _fechados_com_aviso(self.outros),
             "linha_do_tempo": linha_do_tempo,
             "leituras": self._leituras(servidos),
             "nao_encontrado": self._nao_encontrado(),

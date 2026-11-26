@@ -36,6 +36,8 @@ DO_PERFIL = (
 TUDO_PRONTO = (*DO_PERFIL, compradores.ENTRADAS)
 # o que só o bloco de sócios PJ põe na resposta: nome de fora e dado da empresa
 DO_BLOCO_DE_SOCIOS = ("corporate_ownership", "equity_holders", "equity_stakes")
+# a exceção: fechado para a chave, o bloco das vizinhas vem só com o aviso (test_api_externa_vizinhas.py)
+VIZINHAS = "same_industry_neighbors"
 
 
 def _rota(cnpj: str = EMPRESA) -> str:
@@ -111,7 +113,7 @@ def test_analise_junta_o_perfil_e_os_socios_com_fonte_data_e_nomes_de_fora(
     corpo = resposta.json()
     assert corpo["cnpj"] == EMPRESA
     assert corpo["known_at"] == "2025-06-30"
-    assert set(corpo["blocks"]) == {"profile", "corporate_ownership"}
+    assert set(corpo["blocks"]) == {"profile", "corporate_ownership", VIZINHAS}
     socias = corpo["blocks"]["corporate_ownership"]["equity_holders"]
     assert [s["cnpj_root"] for s in socias] == [socios_de_mentira.HOLDING]
     assert socias[0]["legal_name"]["source"] == "rfb-cnpj"
@@ -159,7 +161,7 @@ def test_bloco_sem_prontidao_nao_aparece_nem_conta(cliente, banco, ator, monkeyp
     org, chave = _organizacao(banco, ator, "Alfa", ficha.CONJUNTO, compradores.CONJUNTO)
     monkeypatch.setattr(rotas, "regras_da_api", lambda: _regras(DO_PERFIL))
     corpo = _get(cliente, chave).json()
-    assert set(corpo["blocks"]) == {"profile"}
+    assert set(corpo["blocks"]) == {"profile", VIZINHAS}
     assert not aj.chaves_de(corpo) & set(DO_BLOCO_DE_SOCIOS)
     assert "corporate_ownership" not in str(corpo)
     assert socios_de_mentira.HOLDING not in str(corpo)
@@ -175,9 +177,8 @@ def test_duas_organizacoes_cada_uma_ve_so_os_blocos_dela(cliente, banco, ator):
     da_alfa = _get(cliente, chave_alfa).json()
     da_beta = _get(cliente, chave_beta).json()
     assert "corporate_ownership" in da_alfa["blocks"]
-    assert set(da_beta["blocks"]) == {
-        "profile"
-    }  # o cadastro da Beta é a situação na Receita
+    # o cadastro da Beta é a situação na Receita
+    assert set(da_beta["blocks"]) == {"profile", VIZINHAS}
     assert "periodic_filings" not in str(da_beta)
     assert not aj.chaves_de(da_beta) & set(DO_BLOCO_DE_SOCIOS)
     assert {f["source"] for f in da_beta["sources"]} == {"rfb-cnpj"}
