@@ -20,6 +20,7 @@ import sqlalchemy as sa
 
 from base import indices_b3, intradiario_b3, tce_pr
 from base.arquivo import (
+    anp_revendedores,
     assessorias,
     chirps_v3,
     cnj_tpu,
@@ -1679,6 +1680,8 @@ FONTES: list[Fonte] = [
     *lote_conferidas_14_11.fontes(),
     # conferência de 19/11: SICAF (compras.gov.br) e Banco de Preços em Saúde, só pessoa jurídica
     *lote_conferidas_19_11.fontes(),
+    # linha 1123: revendedores de combustíveis da ANP (API da própria agência, com tancagem e bicos)
+    *anp_revendedores.fontes(),
     *lote_selic.fontes(),
     # lote setoriais Brasil (22/10/2026): CCEE, EPE, ONS, ANEEL, ANS, Anatel, ANAC, INEP, Senatran,
     # ANP e INPI (linha 245 da fila)

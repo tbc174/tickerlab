@@ -301,6 +301,7 @@
         "anp-producao-poco",
         "anp-concessionarios",
         "anp-tancagem",
+        "anp-revendedores",
         "anp-precos-ultimas-semanas",
         "anp-precos-semestral",
         "anp-precos-mensal"
@@ -308,7 +309,8 @@
       "familia": "anp",
       "licencas": [
         "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
-        "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)"
+        "Tancagem da ANP: sem licença do conjunto, só o rodapé do gov.br (14/11/2026)",
+        "API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)"
       ],
       "link": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos",
       "marca": "a_confirmar",
@@ -3100,7 +3102,7 @@
           "INPI"
         ],
         "tabelas": 31,
-        "texto": "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 31 de 32 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
+        "texto": "Autorizações da Anvisa, concessões, tanques e postos de combustíveis na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, patentes, desenhos e programas de computador no INPI. Hoje estão montadas 31 de 33 tabelas deste tema; o texto acima descreve o que o tema prevê, não só o que já está na base.",
         "titulo": "Licenças e registros nas agências"
       },
       {
@@ -6123,6 +6125,13 @@
       "marca": "a_confirmar",
       "ritmo": "mensal",
       "termos_lidos_em": null
+    },
+    {
+      "id": "anp-revendedores",
+      "licenca": "API de Revendedores da ANP: licença a confirmar (lido em 26/11/2026)",
+      "marca": "a_confirmar",
+      "ritmo": "mensal",
+      "termos_lidos_em": "2026-10-14"
     },
     {
       "id": "bcb-sgs-selic-meta",

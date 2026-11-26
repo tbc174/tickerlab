@@ -638,7 +638,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
     TemaDoCnpj(
         "licencas",
         "Licenças e registros nas agências",
-        "Autorizações da Anvisa, concessões e tanques de combustível na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
+        "Autorizações da Anvisa, concessões, tanques e postos de combustíveis na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
         "os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, "
         "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
         "patentes, desenhos e programas de computador no INPI.",
@@ -650,6 +650,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "anvisa_por_empresa",
             "anp_concessionarios",
             "anp_tancagem",
+            "anp_revendedores",
             "antt_rntrc",
             "antt_operadores_multimodais",
             "antt_seguros_de_transportadores",

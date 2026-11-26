@@ -185,6 +185,8 @@ FICAM_EM_CASA = (
     "rj_compras_diretas",
     "es_contratos",
     "es_empenhos",
+    # linha 1123: postos da ANP (licença a confirmar), só CNPJ; o envio ao VPS pede o "pode" da Diretoria
+    "anp_revendedores",
     # linha 1074 (PR 1): RAPP do IBAMA (família `ibama`, integridade sob contrato), só CNPJ; o envio ao VPS pede o
     # "pode" da Diretoria com a prova de zero pessoa da 1ª carga
     "ibama_rapp_emissoes_atmosfericas",

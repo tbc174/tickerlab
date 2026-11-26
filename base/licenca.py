@@ -80,6 +80,8 @@ FAMILIA_DO_ENDERECO = {
     "dadosabertos.ccee.org.br/": "ccee",
     "dados.antt.gov.br/": "antt",
     "www.gov.br/anp/": "anp",
+    # linha 1123: a API de Revendedores não é o conjunto CC BY do dados.gov.br, a confirmar
+    "revendedoresapi.anp.gov.br/": "anp-revendedores",
     # conferência de 14/11/2026 (linha 904): conjuntos sem licença própria lida, a confirmar
     "www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-tancagem-do-abastecimento-nacional-de-combustiveis/": "anp-tancagem",
     "dadosabertos.anm.gov.br/TAH/": "anm-tah",

@@ -13,7 +13,8 @@ Lê os arquivos que o arquivista já guardou no acervo (não baixa nada) e grava
 `bcb_*` (`base/bcb_cadastros.py`) e as duas `antt_*` (`base/antt_cadastros.py`) e, da conferência de 14/11,
 `receita_regime_tributario`, `mte_pat`, `anm_tah`, `anatel_pados`, `anatel_produtos_homologados` e `anp_tancagem`
 (`base/cadastros_conferidos.py`) e, da conferência de 19/11, `comprasgov_sicaf` e `bps_compras`
-(`base/cadastros_conferidos_19_11.py`) e, da linha 1074, as seis `ibama_rapp_*` (`base/ibama_rapp.py`). Só CNPJ de dígito certo entra; contato,
+(`base/cadastros_conferidos_19_11.py`) e, da linha 1074, as seis `ibama_rapp_*` (`base/ibama_rapp.py`) e, da linha 1123, `anp_revendedores`
+(`base/anp_revendedores.py`). Só CNPJ de dígito certo entra; contato,
 endereço e nome de pessoa não chegam ao Parquet, e `trata_como_pessoa` marca o MEI e o empresário
 individual (ADR 0075). Feita para o servidor de casa (ADR 0031), depois do arquivista; recusa rodar sem
 a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo; 1 nenhum arquivo guardado.
@@ -30,6 +31,7 @@ from pathlib import Path
 from base import (
     aneel_fiscalizacao,
     aneel_indicadores,
+    anp_revendedores,
     ans_idss,
     antt_cadastros,
     bcb_cadastros,
@@ -54,6 +56,7 @@ MODULOS = (
     cadastros_conferidos,
     cadastros_conferidos_19_11,
     ibama_rapp,
+    anp_revendedores,
 )
 
 
