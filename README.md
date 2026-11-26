@@ -8,7 +8,6 @@
   <img src="https://img.shields.io/badge/FastAPI-API%20de%20dados-2962FF?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/React-TypeScript-2962FF?logo=react&logoColor=white" alt="React e TypeScript">
   <img src="https://img.shields.io/badge/PostgreSQL-16-2962FF?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
-  <img src="https://img.shields.io/badge/testes-14.000%2B-2EBD85" alt="Mais de 14.000 testes">
   <img src="https://img.shields.io/badge/cobertura-m%C3%ADnimo%2085%25-2EBD85" alt="Cobertura mínima de 85%">
   <img src="https://img.shields.io/badge/direitos-reservados-93A0B8" alt="Todos os direitos reservados">
 </p>
@@ -37,7 +36,7 @@ original.
 | **Base de dados por CNPJ** | os arquivos oficiais guardados com o hash de cada um, em tabelas "como eram na data": uma consulta a um dia nunca enxerga o que só foi publicado depois | a origem de tudo o que vem abaixo |
 | **API, CLI e conector MCP** (TickerLab Data) | a mesma base por HTTP (`/data/v1`), no terminal (`tickerlab empresa <cnpj>`) e em assistentes de IA: perfil, demonstrações, setores, fundos, busca de empresas e comparáveis, conforme o acesso e a interface | quem integra dados ou faz prospecção e análise por CNPJ |
 | **App de análise e backtest** | relatório da empresa e do setor, Research com os fatos da CVM e da SEC, carteira, relatórios em PDF e teste de estratégias com dados do passado | quem analisa empresas e ativos |
-| **Site público** | o produto, as fontes da base uma a uma, 14 ferramentas grátis, o pregão do dia e os estudos abertos | qualquer pessoa, sem login |
+| **Site público** | o produto, as fontes da base uma a uma, calculadoras e simuladores gratuitos, o pregão do dia e os estudos abertos | qualquer pessoa, sem login |
 
 Três regras atravessam tudo: **origem de cada número** (fonte, data e documento), **sem olhar o
 futuro** (cada dado vale só a partir do dia em que ficou público) e **honestidade com os números** (o
@@ -79,6 +78,10 @@ Para mapear potenciais compradores, `compradores_do_setor` também pode mostrar 
 estabelecimentos ativos por UF, conforme o acesso da organização. Aberturas de filiais no mesmo
 dia são um indício para investigar, não prova de aquisição nem de intenção de compra.
 
+Quando a organização tem acesso aos sinais do piloto, a ficha pode mostrar estabelecimentos
+ativos, capital social e, para telecomunicações, acessos por serviço na Anatel. Cada dado traz
+fonte e data. Capital social não mede o tamanho da empresa e não é uma estimativa de faturamento.
+
 O parâmetro `como_era_em` limita a análise ao que já era público na data escolhida. O conector
 não estima faturamento de empresa fechada. A [tabela de consultas por interface](docs/cli.md#uma-base-três-portas)
 mostra o que está implementado no MCP, na CLI e na API; implementação não implica liberação pública.
@@ -87,7 +90,7 @@ mostra o que está implementado no MCP, na CLI e na API; implementação não im
 
 | Parte | Estado |
 |---|---|
-| Site público (`tickerlab.com.br`) | no ar: produto, página Dados com as fontes, 14 ferramentas grátis, pregão do dia, estudos e novidades |
+| Site público (`tickerlab.com.br`) | no ar: produto, página Dados com as fontes, ferramentas grátis, pregão do dia, estudos e novidades |
 | App (`app.tickerlab.com.br`) | no ar, em fase de testes, com beta por convite: as telas novas em React na raiz e as demais na versão clássica (Streamlit), em `/classico/` |
 | Site e documentação da API (`api.tickerlab.com.br`) | no ar: a página da TickerLab Data e a documentação das rotas |
 | API externa de dados (`/data/v1`) | pronta no código e **desligada em produção**; liga com `TICKERLAB_API_EXTERNA=1` |
@@ -199,7 +202,7 @@ que o app lê (páginas, planos, marca e catálogo da base).
 
 - **Dados** ([dados.html](https://tickerlab.com.br/dados.html)): todas as fontes da base, por
   órgão, com a licença e o uso de cada uma.
-- **Ferramentas grátis** ([ferramentas.html](https://tickerlab.com.br/ferramentas.html)): 14
+- **Ferramentas grátis** ([ferramentas.html](https://tickerlab.com.br/ferramentas.html)):
   calculadoras e simuladores sem login (juros compostos, renda fixa, DARF, preço médio,
   financiamento, correção pela inflação e outras). As contas de referência estão em Python
   (`src/ferramentas/`) e rodam no navegador em TypeScript; um teste confere que as duas dão o mesmo
@@ -227,7 +230,7 @@ tendência, depois de custos e descontando a sorte de testar muitas ideias?**
 
 ## Qualidade e testes
 
-- **Mais de 14 mil testes** (pytest) em mais de 800 arquivos, com **PostgreSQL 16 de verdade**, repartidos
+- **Testes automatizados** (pytest) com **PostgreSQL 16 de verdade**, repartidos
   em 5 máquinas no GitHub Actions. O CI falha se a cobertura ficar abaixo de **85%** (`.coveragerc`).
 - **Estilo, tipos e código morto:** `ruff`, `pyright` e `vulture` em todo commit.
 - **Testes "golden":** guardam os números da análise, das estratégias e da carteira; um número que
