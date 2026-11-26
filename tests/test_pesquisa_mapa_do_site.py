@@ -506,3 +506,45 @@ def test_robots_ausente_404_ainda_deixa_mapear(tmp_path: Path):
     )
     pesquisador.iniciar_rodada("h")
     assert pesquisador.mapear_site(f"{SITE}/")["ok"] is True
+
+
+# --- ponto da Diretoria (ponta 2133d11): o mapa não devolve link com sequência de CPF ao modelo ----
+
+
+def test_link_com_sequencia_de_cpf_nao_volta_ao_modelo(tmp_path: Path):
+    from tests.ajudantes_de_cpf import cpf_que_confere, no_formato
+
+    cpf = cpf_que_confere("888123456")
+    pontuado = no_formato(cpf, "ddd.ddd.ddd-dd")
+    mapeador = _MapeadorFalso(
+        [
+            {"url": f"{SITE}/consulta/{pontuado}", "titulo": "Ficha"},
+            {"url": f"{SITE}/cadastro", "titulo": f"Registro {cpf}"},
+            {"url": f"{SITE}/dataset/empresas", "titulo": "Empresas"},
+        ]
+    )
+    pesquisador, _ = _pesquisador(tmp_path, mapeador)
+    resposta = pesquisador.mapear_site(f"{SITE}/")
+    assert [link["url"] for link in resposta["links"]] == [f"{SITE}/dataset/empresas"]  # type: ignore[union-attr]
+    assert resposta["omitidos_por_cpf"] == 2
+    assert cpf not in str(resposta) and pontuado not in str(resposta)
+    assert pesquisador.rodada is not None
+    anotados = str(pesquisador.rodada.profundidades)
+    assert cpf not in anotados and pontuado not in anotados
+    assert f"{SITE}/cadastro" not in pesquisador.rodada.profundidades
+
+
+def test_cpf_codificado_no_endereco_tambem_e_omitido(tmp_path: Path):
+    from tests.ajudantes_de_cpf import cpf_que_confere, no_formato
+
+    codificado = no_formato(cpf_que_confere("888654321"), "ddd%2Eddd%2Eddd-dd")
+    mapeador = _MapeadorFalso([{"url": f"{SITE}/c/{codificado}", "titulo": ""}])
+    pesquisador, _ = _pesquisador(tmp_path, mapeador)
+    resposta = pesquisador.mapear_site(f"{SITE}/")
+    assert resposta["links"] == [] and resposta["omitidos_por_cpf"] == 1
+
+
+def test_a_expressao_de_cpf_e_uma_so():
+    from pesquisa import pessoa
+
+    assert agente.CPF is pessoa.CPF

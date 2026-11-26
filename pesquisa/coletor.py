@@ -26,6 +26,7 @@ from base.arquivo import robots
 from base.arquivo.coleta import BloqueioAntiRobo, Resposta
 from pesquisa import leitores
 from pesquisa.memoria import STATUS_DE_BLOQUEIO, Memoria, Visto, agora
+from pesquisa.pessoa import tem_sequencia_de_cpf
 from pesquisa.renderizacao import (
     BloqueioNaRenderizacao,
     Mapeador,
@@ -302,18 +303,26 @@ class Coletor:
         except Recusa as recusa:
             return self._recusar(url, recusa)
         do_site = self._links_do_mesmo_site(url, achados)
-        links = _filtrar_pelo_termo(do_site, termo)
+        # Canal novo de volta ao modelo (terceiro): link com cara de CPF não volta, nem fica anotado na
+        # rodada (Diretoria, 26/11/2026). O que `buscar_pagina` devolve espera a decisão do Tiago.
+        sem_cpf = [
+            link
+            for link in do_site
+            if not tem_sequencia_de_cpf(link["url"], link["titulo"])
+        ]
+        links = _filtrar_pelo_termo(sem_cpf, termo)
         self.rodada.anotar_links(url, [link["url"] for link in links])
         resposta: dict[str, object] = {
             "ok": True,
             "url": url,
             "no_mapa": len(do_site),
+            "omitidos_por_cpf": len(do_site) - len(sem_cpf),
             "links": links[:MAXIMO_DE_LINKS],
             "links_cortados": len(links) > MAXIMO_DE_LINKS,
             "proximo_passo": "buscar_pagina ou baixar_documento num destes endereços",
             "aviso": AVISO_DE_CONTEUDO,
         }
-        if do_site and not links:
+        if sem_cpf and not links:
             resposta["dica"] = (
                 "nenhum endereço do mapa tem todas as palavras do termo: tente outro termo"
             )

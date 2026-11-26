@@ -17,13 +17,13 @@ from pathlib import Path
 from typing import Protocol
 
 from pesquisa.pesquisador import Pesquisador
+from pesquisa.pessoa import CPF
 
 MAXIMO_DE_PASSOS = 30  # respostas do modelo por rodada; cada uma gasta 1 pedido da cota
 MAXIMO_DA_RESPOSTA_DA_FERRAMENTA = 12_000  # caracteres devolvidos ao modelo por chamada
 FORA_DO_NOME_DE_ARQUIVO = re.compile(
     r"[^A-Za-z0-9._-]"
 )  # ":" no Windows abre um fluxo NTFS escondido
-CPF = re.compile(r"(?<!\d)(\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})(?!\d)")
 
 INSTRUCOES = """Você é um pesquisador de dados empresariais do TickerLab. A rodada já está aberta com
 a hipótese abaixo. Use as ferramentas para achar a fonte oficial e prová-la:
