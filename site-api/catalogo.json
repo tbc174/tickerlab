@@ -26,6 +26,7 @@
       "data_entrada",
       "data_inicio_atividade",
       "data_situacao_cadastral",
+      "matriz",
       "motivo_situacao",
       "participacao",
       "razao_social",

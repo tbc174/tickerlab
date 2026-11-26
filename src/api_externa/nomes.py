@@ -229,6 +229,16 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "entrou_como_socio": "took_stake",
     "fundo_socio": "fund_stake",
     "controla_no_setor": "controls_in_sector",
+    # buyers: a rede do comprador no setor (linha 1121): o bloco por UF e os sinais da filial na UF e do lote
+    "rede_no_setor": "network_in_sector",
+    "por_uf": "by_state",
+    "estabelecimentos": "establishments",
+    "filial_na_uf": "branch_in_state",
+    "lote_de_filiais": "same_day_branches",
+    "aberta_em": "opened_on",
+    "uf_da_matriz": "head_office_state",
+    "filiais": "branches",
+    "ufs": "states",
     # research: as fontes que a pesquisa provou (linha 830), só órgão público
     "gerado_em": "generated_at",
     "dias": "days",

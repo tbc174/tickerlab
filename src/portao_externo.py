@@ -682,8 +682,9 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
     # o FIP, do registro de fundos da CVM; a controlada, do FRE. A linha vale para o campo inteiro. O FIP confere
     # a cópia `fips_registrados` (linha 844), a única tabela de onde a lista lê o FIP: o registro inteiro tem
     # CNPJ_Fundo fora da lista sem pessoa e não tem a marca (Diretoria, 12/11, ADR 0108 D11).
-    # O início de atividade só sai contado (linha 903): as aberturas por ano do perfil do setor
-    # (`conjuntos/perfil_do_setor.py`), sem nenhuma empresa.
+    # O início de atividade sai contado nas aberturas por ano do perfil do setor (linha 903) e, com a marca de
+    # matriz, na rede do comprador (linha 1121): a filial na UF com a matriz em outra e o lote de filiais abertas no
+    # mesmo dia, de empresa da lista sem pessoa; nenhum CNPJ de filial nem município sai.
     *_campos(
         ("rfb-cnpj",),
         "buyers",
@@ -695,7 +696,7 @@ DIREITOS_DA_API_EXTERNA: tuple[LinhaDeDireito, ...] = (
         ("rfb-cnpj",),
         "buyers",
         ("cnpj_estabelecimentos_pj",),
-        ("cnae_principal", "uf", "data_inicio_atividade"),
+        ("cnae_principal", "uf", "data_inicio_atividade", "matriz"),
         _PROVA_RECEITA,
     ),
     # a baixa da empresa onde a entrada aconteceu (linha 1042): a situação, o dia e o código do motivo da versão

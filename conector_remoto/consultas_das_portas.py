@@ -459,10 +459,15 @@ _COMPRADORES_DO_SETOR = Ferramenta(
     titulo="Quem já se mexeu no setor",
     descricao=(
         "Quem já se mexeu num setor (CNAE, na UF se dada) nos últimos `anos`, como era no dia: as\n"
-        "empresas que entraram como sócias de empresas ativas do setor, os fundos (FIP) sócios delas e as companhias\n"
-        "abertas com controlada ou coligada no setor. Cada comprador traz os sinais e até 5 exemplos por sinal, com\n"
-        "fonte e data, na ordem do número de entradas como sócia e, depois, do de sinais. Serve para a lista de quem compraria uma empresa do setor.\n"
-        "Fonte: quadro de sócios da Receita Federal (só sócio pessoa jurídica); registro de fundos e FRE da CVM.\n"
+        "empresas que entraram como sócias de empresas ativas do setor, os fundos (FIP) sócios delas, as companhias\n"
+        "abertas com controlada ou coligada no setor, as empresas de outra UF com filial ativa do setor na UF pedida e\n"
+        "as que abriram 3 ou mais filiais do setor no mesmo dia (dedução: compra incorporada). Cada comprador traz os\n"
+        "sinais, até 5 exemplos por sinal e a rede no setor (estabelecimentos ativos por UF), com fonte e data, na\n"
+        "ordem do número de entradas como sócia e, depois, do de sinais (os dois da rede não contam: quem só os tem vem\n"
+        "depois); com `ordem` 'rede', pelo tamanho da rede.\n"
+        "Serve para a lista de quem compraria uma empresa do setor.\n"
+        "Fonte: quadro de sócios e cadastro de estabelecimentos da Receita Federal (só pessoa jurídica); registro de\n"
+        "fundos e FRE da CVM.\n"
         "Não traz: sócio pessoa física, nem intenção de compra: é movimento passado, como dizem os `limits`."
     ),
     conjuntos=frozenset({"buyers"}),
@@ -471,6 +476,7 @@ _COMPRADORES_DO_SETOR = Ferramenta(
         Parametro("uf", cli="--uf"),
         Parametro("anos", cli="--anos", minimo=1, maximo=10),
         Parametro("limite", cli="--limite", minimo=1, maximo=50),
+        Parametro("ordem", cli="--ordem", valores=("entradas", "rede")),
         Parametro("como_era_em", cli="--como-era"),
     ),
     dica_se_grande="Peça menos compradores (`limite`), menos anos (`anos`) ou uma UF (`uf`).",
@@ -781,7 +787,7 @@ CONSULTAS: tuple[Consulta, ...] = (
         "compradores",
         nome="Quem já se mexeu no setor",
         resumo=(
-            "quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra"
+            "quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos, e a rede de cada um no setor (filiais por UF e lote aberto no mesmo dia); só pessoa jurídica, e movimento passado não é intenção de compra"
         ),
         rotas=("GET /buyers",),
         ferramentas=(_COMPRADORES_DO_SETOR,),

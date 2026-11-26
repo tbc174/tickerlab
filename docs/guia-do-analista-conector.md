@@ -64,7 +64,7 @@ O conector só lê. Ele não muda nada na base nem na sua conta. A IA escolhe so
 | Ativos físicos | os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM |
 | Registros nas agências reguladoras | os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira |
 | Compras públicas | com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira |
-| Quem já se mexeu no setor | quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra |
+| Quem já se mexeu no setor | quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos, e a rede de cada um no setor (filiais por UF e lote aberto no mesmo dia); só pessoa jurídica, e movimento passado não é intenção de compra |
 | Fundo | o raio-x de um fundo na CVM: cadastro, taxas e carteira |
 | Setores | os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta |
 | Novidades da pesquisa | as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original |

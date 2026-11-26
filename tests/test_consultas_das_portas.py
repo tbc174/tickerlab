@@ -500,9 +500,10 @@ def test_a_pagina_inicial_tem_uma_secao_so_das_portas():
 
 # a impressão digital do texto da lista da página inicial (texto público, nível 1): o aprovado em 24/11/2026, com as
 # quatro versões longas que a Diretoria decidiu manter em 25/11 (as mesmas do guia do analista desde o #1281) e, da
-# onda 2 do conector (linha 980), a consulta "Acompanhar uma lista de empresas"
+# onda 2 do conector (linha 980), a consulta "Acompanhar uma lista de empresas"; da linha 1121 (pode da Diretoria,
+# 26/11), o resumo de "Quem já se mexeu no setor" com a rede de cada comprador
 IMPRESSAO_DA_LISTA_DA_PAGINA = (
-    "2caa990fba6ce78a2fae6c8898673539ad2be0af71c25cef1bb10ea5dc7265fd"
+    "9017df3c45565597c74e1c39ebcdcb1047142be62bf53a6a0b5a40b1f8f02099"
 )
 
 

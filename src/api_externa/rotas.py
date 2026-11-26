@@ -525,17 +525,21 @@ def compradores_do_setor(
     years: int | None = None,
     limit: int | None = None,
     known_at: date | None = None,
+    order: str | None = None,
 ) -> object:
     """Quem já se mexeu num setor (só pessoa jurídica): as empresas que entraram como sócias de uma empresa
     com estabelecimento ativo do CNAE (`cnae`, classe de 5 ou subclasse de 7 dígitos; na UF `state`, se
-    dada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas e as companhias abertas
-    com controlada no setor, como era em `known_at`. Cada comprador traz os sinais e até 5 exemplos por
-    sinal, com fonte e data; `limit` (padrão 20, até 50). Movimento passado, não intenção de compra. O sinal
-    que não foi consultado (o portão não o libera para a organização ou a base não tem a tabela) vem em
-    `unavailable_signals`: a lista não diz nada sobre ele."""
+    dada) nos últimos `years` anos (padrão 3, até 10), os FIPs sócios dessas empresas, as companhias abertas
+    com controlada no setor, as empresas de outra UF com filial ativa do setor na UF pedida e as que abriram
+    3 ou mais filiais do setor no mesmo dia na janela, como era em `known_at`. Cada comprador traz os sinais,
+    até 5 exemplos por sinal e a rede no setor (`network_in_sector`: estabelecimentos ativos do CNAE, por UF),
+    com fonte e data; `limit` (padrão 20, até 50); `order` (`entries`, o padrão, em que os dois sinais da
+    rede não contam e quem só os tem vem depois, ou `network`, pelo tamanho da rede). Movimento passado, não intenção de compra. O sinal que não foi consultado (o portão não o
+    libera para a organização ou a base não tem a tabela) vem em `unavailable_signals`: a lista não diz nada
+    sobre ele."""
     dia = _dia_pedido(known_at)
     try:
-        pedido = compradores.pedido_dos_parametros(cnae, state, years, limit)
+        pedido = compradores.pedido_dos_parametros(cnae, state, years, limit, order)
     except compradores.PedidoInvalido as erro:
         raise _recusa(erro.codigo) from erro
 
@@ -544,6 +548,7 @@ def compradores_do_setor(
             porta,
             _portao(conexao, contexto, compradores.CONJUNTO),
             acesso.linhas_por_resposta(contexto),
+            rede=True,
         )
         servido = leitor.compradores(pedido, dia)
         if servido is None and leitor.primeira_data is not None:

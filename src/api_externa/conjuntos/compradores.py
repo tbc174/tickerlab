@@ -102,16 +102,23 @@ Baixa = tuple[date, str, date]
 
 # o sinal: a chave das provas (traduzida em `nomes.py`) e o nome que sai na lista `sinais` (já de fora)
 ENTROU, FUNDO, CONTROLA = "entrou_como_socio", "fundo_socio", "controla_no_setor"
+# os sinais da rede no setor (linha 1121): filial ativa do CNAE na UF pedida com a matriz em outra UF, e o lote de
+# filiais abertas no mesmo dia (compra incorporada vira filial); só na API e no conector (`rede=True`)
+FILIAL, LOTE = "filial_na_uf", "lote_de_filiais"
 NOME_DE_FORA = {
     ENTROU: "took_stake",
     FUNDO: "fund_stake",
     CONTROLA: "controls_in_sector",
+    FILIAL: "branch_in_state",
+    LOTE: "same_day_branches",
 }
 # o que o portão tem de liberar para o sinal sair: (fonte, campo da base)
 CAMPOS_DO_SINAL = {
     ENTROU: ((RECEITA, "data_entrada"),),
     FUNDO: ((RECEITA, "data_entrada"), (REGISTRO, "Tipo_Fundo")),
     CONTROLA: ((FRE, "tipo"), (FRE, "participacao"), (FRE, "referencia")),
+    FILIAL: ((RECEITA, "matriz"), (RECEITA, "data_inicio_atividade")),
+    LOTE: ((RECEITA, "matriz"), (RECEITA, "data_inicio_atividade")),
 }
 CAMPOS_DO_SETOR = (
     (RECEITA, "razao_social"),
@@ -120,6 +127,12 @@ CAMPOS_DO_SETOR = (
 )
 
 SINAIS = (ENTROU, FUNDO, CONTROLA)
+SINAIS_DA_REDE = (FILIAL, LOTE)
+# quantas filiais abertas no mesmo dia fazem um lote: duas no mesmo dia acontecem por acaso; três já pedem explicação
+FILIAIS_NO_LOTE = 3
+# a ordem pedida (`order`): a de sempre (entradas, depois sinais) ou pelo tamanho da rede no setor
+ORDEM_PADRAO, ORDEM_PELA_REDE = "entries", "network"
+ORDENS = (ORDEM_PADRAO, ORDEM_PELA_REDE)
 
 # os limites que valem para toda resposta; os de cada sinal só entram quando o sinal foi consultado
 LIMITES_GERAIS = (
@@ -162,7 +175,24 @@ LIMITES_DO_SINAL = {
         "Controlada no setor: o FRE mais recente da companhia aberta já entregue no dia, com o tipo e a "
         "participação que ela informou, sem correção nossa."
     ),
+    FILIAL: (
+        "Filial na UF: o comprador tem filial ativa do CNAE na UF pedida e a matriz em outra UF, no retrato da "
+        "Receita que valia em known_at; opened_on é o início de atividade da filial e head_office_state, a UF da "
+        "matriz. Já operar na UF não é intenção de compra."
+    ),
+    LOTE: (
+        f"Lote de filiais: {FILIAIS_NO_LOTE} ou mais filiais ativas do CNAE com o mesmo início de atividade, dentro "
+        "da janela de anos. É dedução nossa, não fato publicado: costuma ser compra incorporada (a empresa comprada "
+        "vira filial), mas pode ser abertura em lote ou reorganização."
+    ),
 }
+LIMITE_DA_REDE = (
+    "network_in_sector: os estabelecimentos ativos da própria raiz no CNAE pedido, no país todo e por UF, no "
+    "retrato da Receita que valia em known_at; não soma as empresas do mesmo grupo (raízes irmãs) nem conta "
+    "estabelecimento de outro CNAE. Na ordem padrão, branch_in_state e same_day_branches não entram na conta dos "
+    "sinais: quem só tem esses dois vem depois dos demais. Com order=network a lista vem pelo tamanho dessa rede "
+    "e, no empate, pela ordem padrão."
+)
 # o nome de dentro da lista dos sinais que o portão não libera (ou cuja tabela a base não tem)
 NAO_DISPONIVEIS = "sinais_nao_disponiveis"
 LIMITE_DO_SINAL_NAO_DISPONIVEL = nao_disponivel.aviso(
@@ -245,6 +275,7 @@ class PedidoDeCompradores:
     uf: str | None = None
     anos: int = ANOS_PADRAO
     limite: int = LIMITE_PADRAO
+    ordem: str = ORDEM_PADRAO
 
 
 @dataclass(frozen=True)
@@ -313,7 +344,11 @@ def _ler_o_mes_do_retrato(porta: Porta, como_era_em: date) -> str | None:
 
 
 def pedido_dos_parametros(
-    cnae: str, state: str | None, years: int | None, limit: int | None
+    cnae: str,
+    state: str | None,
+    years: int | None,
+    limit: int | None,
+    order: str | None = None,
 ) -> PedidoDeCompradores:
     """Os parâmetros da rota (como o cliente escreve) viram o pedido; `PedidoInvalido` fora da forma."""
     digitos = cnae_do_parametro(cnae)
@@ -326,7 +361,10 @@ def pedido_dos_parametros(
     limite = LIMITE_PADRAO if limit is None else limit
     if not 1 <= limite <= LIMITE_MAXIMO:
         raise PedidoInvalido("invalid_limit")
-    return PedidoDeCompradores(digitos, uf, anos, limite)
+    ordem = (order or "").strip().lower() or ORDEM_PADRAO
+    if ordem not in ORDENS:
+        raise PedidoInvalido("invalid_order")
+    return PedidoDeCompradores(digitos, uf, anos, limite, ordem)
 
 
 def _aspas(nome: str) -> str:
@@ -358,10 +396,20 @@ def _texto(valor: object) -> str | None:
 class LeitorDeCompradores:
     """Lê os compradores de um setor de uma porta para um pedido."""
 
-    def __init__(self, porta: Porta, permitido: Permitido, linhas_maximas: int) -> None:
+    def __init__(
+        self,
+        porta: Porta,
+        permitido: Permitido,
+        linhas_maximas: int,
+        rede: bool = False,
+    ) -> None:
         self.porta = porta
         self.permitido = permitido
         self.linhas_maximas = linhas_maximas
+        # a rede no setor (linha 1121): o bloco e os dois sinais novos, só na API e no conector; a tela do analista
+        # segue sem eles até ganhar as frases
+        self.rede = rede
+        self.possiveis = SINAIS + (SINAIS_DA_REDE if rede else ())
         self.tabelas = set(views(porta.con))
         # a tabela que cada sinal lê: a primeira das opções de `LEITURAS` que a porta tem; sem nenhuma, a primeira
         # (fora da porta, o sinal fica de fora: o FIP nunca cai na tabela inteira)
@@ -380,16 +428,22 @@ class LeitorDeCompradores:
         """Os campos da baixa saem quando o portão libera os três e a porta tem a situação cadastral."""
         return SITUACAO in self.tabelas and self._libera(CAMPOS_DA_BAIXA)
 
-    def _sinais_liberados(self) -> tuple[str, ...]:
-        """Os sinais com todos os campos liberados pelo portão e as tabelas na porta."""
+    def _aplicaveis(self, pedido: PedidoDeCompradores) -> tuple[str, ...]:
+        """Os sinais que fazem sentido no pedido: a filial na UF só quando a UF foi pedida."""
+        return tuple(s for s in self.possiveis if s != FILIAL or pedido.uf)
+
+    def _sinais_liberados(self, pedido: PedidoDeCompradores) -> tuple[str, ...]:
+        """Os sinais aplicáveis com todos os campos liberados pelo portão e as tabelas na porta."""
         precisa = {
             ENTROU: (ENTRADAS,),
             FUNDO: (ENTRADAS, self.lida[FUNDOS]),
             CONTROLA: (self.lida[CONTROLADAS],),
+            FILIAL: (ESTABELECIMENTOS,),
+            LOTE: (ESTABELECIMENTOS,),
         }
         return tuple(
             s
-            for s in SINAIS
+            for s in self._aplicaveis(pedido)
             if self._libera(CAMPOS_DO_SINAL[s]) and set(precisa[s]) <= self.tabelas
         )
 
@@ -405,7 +459,7 @@ class LeitorDeCompradores:
             or not {ESTABELECIMENTOS, EMPRESAS} <= self.tabelas
         ):
             return None
-        sinais = self._sinais_liberados()
+        sinais = self._sinais_liberados(pedido)
         if not sinais:
             return None
         impressao = _impressao_da_base(self.porta)
@@ -415,6 +469,7 @@ class LeitorDeCompradores:
             pedido,
             como_era_em,
             self.linhas_maximas,
+            self.rede,
             sinais,
             self._le_a_baixa(),
             impressao,
@@ -463,7 +518,7 @@ class LeitorDeCompradores:
             if primeira is not None and como_era_em < primeira:
                 self.primeira_data = primeira
             return None
-        nao_disponiveis = [s for s in SINAIS if s not in sinais]
+        nao_disponiveis = [s for s in self._aplicaveis(pedido) if s not in sinais]
         desde = (
             pd.Timestamp(como_era_em)
             - pd.Timedelta(days=round(pedido.anos * DIAS_POR_ANO))
@@ -490,11 +545,17 @@ class LeitorDeCompradores:
         if CONTROLA in sinais:
             lista.anotar_controladas(consulta.controladas(setor))
             fontes.add(FRE)
+        if FILIAL in sinais and pedido.uf:
+            lista.anotar_filiais(consulta.filiais_na_uf(pedido.cnae, pedido.uf))
+        if LOTE in sinais:
+            lista.anotar_lotes(consulta.lotes(pedido.cnae, pedido.uf))
         nomes = consulta.nomes(lista.raizes())
         compradores = lista.montar(
             nomes,
             min(pedido.limite, max(self.linhas_maximas, 1)),
             consulta.baixas if self._le_a_baixa() else None,
+            (lambda raizes: consulta.rede(pedido.cnae, raizes)) if self.rede else None,
+            pela_rede=self.rede and pedido.ordem == ORDEM_PELA_REDE,
         )
         corpo: dict[str, object] = {
             "como_era_em": como_era_em.isoformat(),
@@ -512,6 +573,7 @@ class LeitorDeCompradores:
             "limites": [
                 *limites(sinais, nao_disponiveis),
                 *([LIMITE_DA_BAIXA] if ENTROU in sinais and self._le_a_baixa() else []),
+                *([LIMITE_DA_REDE] if self.rede else []),
             ],
         }
         return CompradoresServidos(corpo, fontes, len(compradores))
@@ -697,6 +759,85 @@ class _Consulta:
             setor=setor[["raiz"]],
         )
 
+    def _ativos_do_cnae(self) -> str:
+        """O filtro dos estabelecimentos ativos do CNAE no retrato do dia, abertos até o dia (parâmetros `mes`,
+        `ativa`, `cnae` e `dia`)."""
+        return (
+            f"{MES} = $mes AND situacao_cadastral = $ativa AND starts_with(cnae_principal, $cnae) "
+            "AND coalesce(data_inicio_atividade <= CAST($dia AS DATE), true)"
+        )
+
+    def rede(self, cnae: str, raizes: set[str]) -> "Rede":
+        """A rede de cada raiz no setor, no país todo: (UF, estabelecimentos ativos do CNAE, dia em que o retrato
+        ficou público). Raiz sem estabelecimento do CNAE não vem."""
+        if not raizes:
+            return {}
+        tabela = self._df(
+            f"SELECT cnpj_basico AS raiz, uf, count(*) AS n, max({PUBLICADO_EM}) AS publico_em "
+            f"FROM {_view(ESTABELECIMENTOS)} WHERE {self._ativos_do_cnae()} "
+            "AND cnpj_basico IN (SELECT raiz FROM raizes) GROUP BY 1, 2",
+            {"mes": self.mes, "ativa": ATIVA, "cnae": cnae, "dia": dia_de(self.dia)},
+            raizes=pd.DataFrame({"raiz": pd.Series(sorted(raizes), dtype="string")}),
+        )
+        rede: Rede = defaultdict(list)
+        for linha in tabela.to_dict("records"):
+            rede[str(linha["raiz"])].append(
+                (
+                    str(linha["uf"]),
+                    int(linha["n"]),
+                    pd.Timestamp(linha["publico_em"]).date(),
+                )
+            )
+        return dict(rede)
+
+    def filiais_na_uf(self, cnae: str, uf: str) -> pd.DataFrame:
+        """As filiais ativas do CNAE na UF cuja matriz (de qualquer CNAE, no mesmo retrato) fica em outra UF: a
+        empresa de fora que já opera na UF. Estabelecimento sem a marca de matriz não conta como filial."""
+        estab = _view(ESTABELECIMENTOS)
+        return self._df(
+            f"WITH f AS (SELECT cnpj_basico AS raiz, data_inicio_atividade AS aberta, {PUBLICADO_EM} AS publico_em "
+            f"FROM {estab} WHERE {self._ativos_do_cnae()} AND uf = $uf "
+            "AND NOT coalesce(matriz, true)), "
+            f"m AS (SELECT cnpj_basico AS raiz, min(uf) AS uf_da_matriz, max({PUBLICADO_EM}) AS publico_em "
+            f"FROM {estab} WHERE {MES} = $mes AND coalesce(matriz, false) "
+            "AND cnpj_basico IN (SELECT raiz FROM f) GROUP BY 1) "
+            "SELECT f.raiz, f.aberta, m.uf_da_matriz, greatest(f.publico_em, m.publico_em) AS publico_em "
+            "FROM f JOIN m USING (raiz) WHERE m.uf_da_matriz <> $uf",
+            {
+                "mes": self.mes,
+                "ativa": ATIVA,
+                "cnae": cnae,
+                "uf": uf,
+                "dia": dia_de(self.dia),
+            },
+        )
+
+    def lotes(self, cnae: str, uf: str | None) -> pd.DataFrame:
+        """Os dias em que uma empresa do setor abriu `FILIAIS_NO_LOTE` ou mais filiais ativas do CNAE, no país todo,
+        dentro da janela: o dia, quantas e as UFs. A empresa só entra se, no dia pedido, já tinha estabelecimento
+        ativo do CNAE aberto (na UF, se pedida): o recorte do setor (`alvos`) não olha a abertura, e uma raiz cujo
+        único posto na UF abre depois do dia não pode ganhar o sinal ali (achado do Revisor no #1336)."""
+        estab = _view(ESTABELECIMENTOS)
+        return self._df(
+            "SELECT cnpj_basico AS raiz, data_inicio_atividade AS aberta, count(*) AS n, "
+            f"list_sort(list(DISTINCT uf)) AS ufs, max({PUBLICADO_EM}) AS publico_em "
+            f"FROM {estab} WHERE {self._ativos_do_cnae()} "
+            "AND NOT coalesce(matriz, true) "
+            f"AND cnpj_basico IN (SELECT cnpj_basico FROM {estab} WHERE {self._ativos_do_cnae()} "
+            "AND ($uf IS NULL OR uf = $uf)) "
+            "AND data_inicio_atividade >= CAST($desde AS DATE) "
+            "GROUP BY 1, 2 HAVING count(*) >= $lote",
+            {
+                "mes": self.mes,
+                "ativa": ATIVA,
+                "cnae": cnae,
+                "uf": uf,
+                "desde": dia_de(self.desde),
+                "dia": dia_de(self.dia),
+                "lote": FILIAIS_NO_LOTE,
+            },
+        )
+
     def nomes(self, raizes: set[str]) -> dict[str, tuple[str, date]]:
         """A razão social e o dia em que ficou pública, no retrato do dia; quem não está ali não é PJ aqui."""
         if not raizes:
@@ -722,6 +863,29 @@ class _Consulta:
             )
             for linha in tabela.to_dict("records")
         }
+
+
+# a rede de cada raiz no setor: (UF, estabelecimentos ativos do CNAE, dia em que o retrato ficou público)
+Rede = dict[str, list[tuple[str, int, date]]]
+
+
+def _tamanho(rede: list[tuple[str, int, date]]) -> int:
+    return sum(n for _uf, n, _publico in rede)
+
+
+def _bloco_da_rede(
+    rede: list[tuple[str, int, date]], publico_do_retrato: date
+) -> dict[str, object]:
+    """O bloco `rede_no_setor`: o total e cada UF, da maior para a menor. Sem estabelecimento do CNAE, zero e a
+    lista vazia, com o dia do retrato (o mesmo da razão social)."""
+    publico_em = max((d for _uf, _n, d in rede), default=publico_do_retrato)
+    return {
+        "n_estabelecimentos": campo(_tamanho(rede), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+        "por_uf": [
+            {"uf": uf, "estabelecimentos": campo(n, fonte=RECEITA, publico_em=d, visto_em=None)}
+            for uf, n, d in sorted(rede, key=lambda r: (-r[1], r[0]))
+        ],
+    }  # fmt: skip
 
 
 def _mais_novas(provas: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -804,6 +968,35 @@ class _Lista:
                 referencia=campo(referencia and referencia.isoformat(), fonte=FRE, publico_em=publico_em, visto_em=None),
             )  # fmt: skip
 
+    def anotar_filiais(self, filiais: pd.DataFrame) -> None:
+        """A empresa de fora que já opera na UF: cada filial é uma prova, na própria empresa."""
+        for linha in filiais.to_dict("records"):
+            raiz, publico_em, aberta = (
+                str(linha["raiz"]),
+                _dia(linha[PUBLICADO_EM]),
+                _dia(linha["aberta"]),
+            )
+            self._anotar(
+                raiz, FILIAL, raiz, aberta,
+                aberta_em=campo(aberta and aberta.isoformat(), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+                uf_da_matriz=campo(_texto(linha["uf_da_matriz"]), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+            )  # fmt: skip
+
+    def anotar_lotes(self, lotes: pd.DataFrame) -> None:
+        """Cada lote de filiais abertas no mesmo dia é uma prova; vale o país todo, então o exemplo não leva UF."""
+        for linha in lotes.to_dict("records"):
+            raiz, publico_em, aberta = (
+                str(linha["raiz"]),
+                _dia(linha[PUBLICADO_EM]),
+                _dia(linha["aberta"]),
+            )
+            self._anotar(
+                raiz, LOTE, raiz, aberta, _sem_uf=True,
+                aberta_em=campo(aberta and aberta.isoformat(), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+                filiais=campo(int(linha["n"]), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+                ufs=campo([str(u) for u in linha["ufs"]], fonte=RECEITA, publico_em=publico_em, visto_em=None),
+            )  # fmt: skip
+
     def _validos(self, nomes: dict[str, tuple[str, date]]) -> list[str]:
         """Os compradores da lista sem pessoa (o comprador fora dela não sai)."""
         return [c for c in self.provas if c in nomes]
@@ -816,14 +1009,20 @@ class _Lista:
         nomes: dict[str, tuple[str, date]],
         limite: int,
         baixas_de: Callable[[set[str]], dict[str, Baixa]] | None = None,
+        rede_de: Callable[[set[str]], "Rede"] | None = None,
+        pela_rede: bool = False,
     ) -> list[dict[str, object]]:
         """Os `limite` primeiros: mais entradas de terceiros, depois mais sinais, depois mais provas e, no fim, a
         raiz. A data da prova não desempata (linha 1044): desempatar pela mais nova fazia o negócio de ontem subir o
         comprador e jogava para fora dos 50 quem comprou há mais tempo. `baixas_de` diz quando e por que baixou cada
-        empresa baixada **que aparece num exemplo**: só estas são lidas, e só elas ganham os campos da baixa."""
+        empresa baixada **que aparece num exemplo**: só estas são lidas, e só elas ganham os campos da baixa.
+        `rede_de` diz a rede no setor dos compradores (linha 1121): com ela, cada um ganha o bloco da rede e, com
+        `pela_rede`, a ordem é pelo tamanho dela antes da de sempre."""
 
         def chave(comprador: str) -> tuple[int, int, int, str]:
-            sinais = self.provas[comprador]
+            # só os sinais de sempre: na ordem padrão a rede (linha 1121) não mexe em quem já estava na lista, e
+            # quem só tem sinal da rede vem depois de todos eles
+            sinais = {s: p for s, p in self.provas[comprador].items() if s in SINAIS}
             provas = sum(len(lista) for lista in sinais.values())
             return (
                 -len(sinais.get(ENTROU, [])),
@@ -832,7 +1031,13 @@ class _Lista:
                 comprador,
             )
 
-        escolhidos = sorted(self._validos(nomes), key=chave)[:limite]
+        validos = self._validos(nomes)
+        rede = rede_de(set(validos)) if rede_de else None
+
+        def chave_da_rede(comprador: str) -> tuple[int, int, int, int, str]:
+            return (-_tamanho((rede or {}).get(comprador, [])), *chave(comprador))
+
+        escolhidos = sorted(validos, key=chave_da_rede if pela_rede else chave)[:limite]
         mostradas = {
             str(p["_alvo"])
             for c in escolhidos
@@ -840,7 +1045,17 @@ class _Lista:
             for p in _mais_novas(lista)
         } & self.baixadas
         baixas = baixas_de(mostradas) if baixas_de and mostradas else {}
-        return [self._comprador(c, nomes, baixas) for c in escolhidos]
+        return [
+            {
+                **self._comprador(c, nomes, baixas),
+                **(
+                    {"rede_no_setor": _bloco_da_rede(rede.get(c, []), nomes[c][1])}
+                    if rede is not None
+                    else {}
+                ),
+            }
+            for c in escolhidos
+        ]
 
     def _empresa(
         self,
@@ -874,7 +1089,7 @@ class _Lista:
         baixas: Mapping[str, Baixa],
     ) -> dict[str, object]:
         sinais = self.provas[comprador]
-        ordem = [s for s in (ENTROU, FUNDO, CONTROLA) if s in sinais]
+        ordem = [s for s in (*SINAIS, *SINAIS_DA_REDE) if s in sinais]
         provas = {}
         for sinal in ordem:
             lista = sinais[sinal]
@@ -885,7 +1100,11 @@ class _Lista:
                         "empresa_do_setor": self._empresa(
                             str(p["_alvo"]), nomes, baixas
                         ),
-                        "uf": self.ufs.get(str(p["_alvo"])),
+                        **(
+                            {}
+                            if p.get("_sem_uf")
+                            else {"uf": self.ufs.get(str(p["_alvo"]))}
+                        ),
                         **{k: v for k, v in p.items() if not k.startswith("_")},
                     }
                     for p in _mais_novas(lista)

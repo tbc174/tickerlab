@@ -144,6 +144,9 @@ FICAM_EM_CASA = (
     # raízes de MEI e EI (pessoa física) sem marca por linha: esperam a decisão da Diretoria (revisão cruzada, 10/11)
     "cnpj_empresas_historico",
     "cnpj_simples_historico",
+    # linha 1033: sem pessoa na montagem, mas com nome fantasia, que ainda não sai para o VPS; a busca por nome no
+    # conector (linha 1037) é que pede o envio, com o "pode" da Diretoria
+    "cnpj_nomes_pj",
     # linha 904 (lote 2): titulares do INPI só com empresa; o envio ao VPS pede o "pode" da Diretoria e a leitura da
     # licença (CC Atribuição-SemDerivações 3.0, a confirmar para tabela derivada)
     "inpi_marcas_titulares",

@@ -129,7 +129,7 @@ Cada consulta do TickerLab Data e o nome dela em cada porta (o conector MCP, a C
 | **Ativos físicos**: os contratos de exploração e produção de petróleo e gás da ANP e, quando a chave os vê, as barragens e os royalties de mineração da ANM | `ativos` | `tickerlab ativos` | `GET /companies/{cnpj}/assets` |
 | **Registros nas agências reguladoras**: os indicadores da ANEEL e o IDSS da ANS e, com as fontes ampliadas no contrato, Anatel, ANM, ANP e PAT, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira | `registros_nas_agencias` | `tickerlab registros` | `GET /companies/{cnpj}/registrations` |
 | **Compras públicas**: com o conjunto de compras públicas no contrato, o cadastro de fornecedor no SICAF e as compras de saúde do BPS em que a empresa é a fornecedora, quando a chave os vê; cada valor com a fonte e o dia em que ficou público, sem abrir a análise inteira | `compras_publicas` | `tickerlab compras` | `GET /companies/{cnpj}/public-procurement` |
-| **Quem já se mexeu no setor**: quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos; só pessoa jurídica, e movimento passado não é intenção de compra | `compradores_do_setor` | `tickerlab compradores` | `GET /buyers` |
+| **Quem já se mexeu no setor**: quem entrou como sócio, fundo sócio ou controla empresa do setor nos últimos anos, e a rede de cada um no setor (filiais por UF e lote aberto no mesmo dia); só pessoa jurídica, e movimento passado não é intenção de compra | `compradores_do_setor` | `tickerlab compradores` | `GET /buyers` |
 | **Fundo**: o raio-x de um fundo na CVM: cadastro, taxas e carteira | `fundo` | `tickerlab fundo` | `GET /funds/{cnpj}` |
 | **Setores**: os setores acompanhados e, de cada um, o tamanho do mercado, a concentração (CR4 e HHI) e a fatia de cada companhia aberta | `setores`, `setor` | `tickerlab setor` | `GET /sectors`, `GET /sectors/{key}` |
 | **Novidades da pesquisa**: as fontes públicas de órgão que a pesquisa provou na semana, com o trecho literal e o hash do original | `novidades` | `tickerlab novidades` | `GET /research/news` |
@@ -168,7 +168,7 @@ com as ferramentas que existem.
 | `catalogo` e `consumo` | `o_que_posso_ver` |
 | `vinculos` | `vinculos` (tipos, `profundidade` de 1 a 3 e a data) |
 | `ativos` | `ativos` (a data; conjunto `assets`: contratos de E&P da ANP e, quando a chave os vê, barragens e royalties de mineração da ANM; `tipo_de_ativo`, `uf`, `somente_operador` e `limite`, filtros do conector que não vão à API; o que passa do teto da conversa fica de fora, com `truncated` e a contagem em `limits`) |
-| `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50 e a data) |
+| `compradores` | `compradores_do_setor` (`cnae`, `uf`, `anos` de 1 a 10, `limite` de 1 a 50, `ordem` (`entradas` ou `rede`) e a data) |
 | `novidades` | `novidades` (`dias` de 1 a 30; lista vazia vem com `limits` dizendo se o arquivo da pesquisa não chegou ao servidor ou a data da última geração) |
 
 Ferramentas do analista, que só compõem o que a API já devolve (linha 980, onda 1; código em
