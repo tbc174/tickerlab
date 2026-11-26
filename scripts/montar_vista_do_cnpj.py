@@ -18,7 +18,7 @@ não sai de casa). A coluna `id_pessoa` vai vazia, para `base.pessoas.consulta.s
 como lê a base.
 
 Roda: manual (python -m scripts.montar_vista_do_cnpj); coberto por test_busca_por_cnpj_fechadas.py;
-citado em vista_do_cnpj.py.
+citado em vista_do_cnpj.py; o `montar_participacoes` também roda pelo montar_entradas_de_socio_pj.py.
 """
 
 import argparse
@@ -115,10 +115,11 @@ def montar_vigente(base: Path, destino: Path) -> None:
             )
 
 
-def montar_participacoes(destino: Path) -> None:
+def montar_participacoes(destino: Path, saida: Path | None = None) -> None:
     """O QSA vigente da vista virado: uma linha por sócia pessoa jurídica e empresa, pela raiz da sócia.
 
-    Lido da própria vista (já sem o pseudônimo), um prefixo por vez e só as linhas de sócio pessoa jurídica.
+    Lido do `vigente/qsa` de `destino` (a vista pronta ou a base de casa), só as quatro colunas e só as linhas
+    de sócio pessoa jurídica. Grava em `saida`; sem ela, em `vigente/participacoes` de `destino`.
     """
     pasta = destino / "vigente" / "qsa"
     filtro = [("tipo_socio", "==", SOCIO_PESSOA_JURIDICA)]
@@ -134,11 +135,12 @@ def montar_participacoes(destino: Path) -> None:
         socias["raiz_socio_pj"].fillna("").str.len().eq(TAMANHO_DA_RAIZ)
         & socias["raiz_socio_pj"].ne(socias["cnpj_basico"])
     ]
+    saida = saida or destino / "vigente" / PARTICIPACOES
     for prefixo, parte in socias.groupby(socias["raiz_socio_pj"].str[:PREFIXO]):
         ordenada = parte.sort_values(["raiz_socio_pj", "cnpj_basico"])
         _gravar(
             pa.Table.from_pandas(ordenada, preserve_index=False),
-            destino / "vigente" / PARTICIPACOES / f"{prefixo}.parquet",
+            saida / f"{prefixo}.parquet",
         )
 
 

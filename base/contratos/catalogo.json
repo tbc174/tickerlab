@@ -7588,6 +7588,66 @@
       "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
       "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
     },
+    "participacoes_de_socio_pj": {
+      "tabela": "participacoes_de_socio_pj",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "raiz_socio_pj": {
+          "descricao": "Raiz do CNPJ (8 caracteres) da pessoa jurídica que é sócia",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres) da empresa de que ela é sócia",
+          "unidade": "texto"
+        },
+        "data_entrada": {
+          "descricao": "Data de entrada na sociedade, como a Receita publica (a mais antiga, se a sócia se repete)",
+          "unidade": "data (dia)"
+        },
+        "qualificacao": {
+          "descricao": "Código da qualificação da sócia no retrato",
+          "unidade": "texto"
+        },
+        "mes_do_retrato": {
+          "descricao": "Mês do arquivo da Receita de onde o quadro saiu",
+          "unidade": "AAAA-MM"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando este quadro era público: o dia 21 do mês do retrato (`base/receita_diff.disponivel_em`). A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês; antes disso a tabela não responde",
+          "unidade": "data (dia)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "raiz_socio_pj",
+        "cnpj_basico"
+      ],
+      "datas": {
+        "publico_em": "disponivel_em",
+        "aconteceu_em": "data_entrada"
+      },
+      "sinonimos_de_tempo": {
+        "data_entrada": "aconteceu_em",
+        "disponivel_em": "publico_em",
+        "montado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)",
+      "atraso": "A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)"
+    },
     "anvisa_por_empresa": {
       "tabela": "anvisa_por_empresa",
       "modulo": "governo_e_sancoes",
