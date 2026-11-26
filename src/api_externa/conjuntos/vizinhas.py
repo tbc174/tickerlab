@@ -163,15 +163,17 @@ class LeitorDeVizinhas(prospeccao.LeitorDeProspeccao):
 
         Um estabelecimento por empresa ativa do ramo na UF (menos a pedida): o do município, se houver, e entre
         eles a matriz e o menor CNPJ. A ordem é a do capital (sem capital vale 0), com o CNPJ no desempate; sem o
-        capital liberado, a do CNPJ. Tudo numa consulta só, e de `cnpj_empresas_pj` só a raiz e o capital: ler a
-        razão social e a data de publicação do ramo inteiro levava de 10 a 14 s em produção (26/11/2026)."""
-        juncao, ordem = "", "cnpj"
+        capital liberado, a do CNPJ. Quem não tem a linha em `cnpj_empresas_pj` no retrato (a lista sem pessoa) não
+        entra nem conta, com ou sem o capital. Tudo numa consulta só, e de `cnpj_empresas_pj` só a raiz e o capital:
+        ler a razão social e a data de publicação do ramo inteiro levava de 10 a 14 s em produção (26/11/2026)."""
+        coluna_da_empresa, ordem = "cnpj_basico", "cnpj"
         if self._por_capital():
-            juncao = (
-                f"JOIN (SELECT cnpj_basico, capital_social FROM {_view(EMPRESAS)} "
-                "WHERE mes_do_retrato = $mes) AS empresa USING (cnpj_basico)"
-            )
+            coluna_da_empresa = "cnpj_basico, capital_social"
             ordem = "coalesce(capital_social, 0) DESC, cnpj"
+        juncao = (
+            f"JOIN (SELECT {coluna_da_empresa} FROM {_view(EMPRESAS)} "
+            "WHERE mes_do_retrato = $mes) AS empresa USING (cnpj_basico)"
+        )
         return self.porta.con.execute(
             "WITH ramo AS ("
             "SELECT cnpj_basico, cnpj, matriz, municipio, data_inicio_atividade, publico_em, "

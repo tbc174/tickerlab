@@ -334,6 +334,22 @@ def test_sem_o_capital_a_ordem_e_pelo_cnpj_e_o_capital_nao_sai(pasta):
 # ---------------------------------------------------------------- quem pede
 
 
+def test_estabelecimento_sem_a_linha_da_empresa_no_retrato_nao_conta_nem_com_o_capital_negado(
+    tmp_path,
+):
+    """Sem a linha na lista sem pessoa de empresas do mês, não há razão social: a vizinha não existe aqui, com ou
+    sem o capital liberado (sem a junção, o total mudava conforme o campo)."""
+    solto = ("12121212000191", True, "02", "2010-01-01", CNAE, "SP", CIDADE)
+    gravar(
+        tmp_path / "base", _estabelecimentos([*ESTABELECIMENTOS, solto]), _empresas()
+    )
+    com = _ler(tmp_path / "base").corpo
+    sem = _ler(tmp_path / "base", permitido=_sem("capital_social")).corpo
+    assert sem["total_no_municipio"] == com["total_no_municipio"]
+    assert sem["total_na_uf"] == com["total_na_uf"]
+    assert solto[0] not in _cnpjs(sem["no_municipio"])
+
+
 def test_cnpj_que_nao_e_empresa_ou_nao_esta_no_retrato_nao_tem_bloco(pasta):
     assert _ler(pasta, cnpj="00000000000191") is None
 
