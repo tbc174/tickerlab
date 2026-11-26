@@ -391,6 +391,26 @@ def test_a_socia_que_sai_e_volta_com_a_mesma_data_segue_no_grupo(tmp_path):
     assert {e["raiz_do_cnpj"] for e in _linha(corpo, a)["grupo"]["empresas"]} == {b}
 
 
+def test_a_volta_com_a_data_antiga_nao_vale_para_o_tempo_fora(tmp_path):
+    """Revisão de segurança do PR 1347 (P2): a holding X saiu do alvo em 2023 e voltou em 2025 com a data de 2015. O
+    comprador do grupo de X entrou no alvo em 2024, quando X estava fora: é compra, não reorganização."""
+    mundo = Mundo(montar=False)
+    holding, comprador, alvo = (
+        mundo.comprador("33"),
+        mundo.comprador(),
+        mundo.empresa("20"),
+    )
+    mundo.entrar(holding, comprador, "2019-01-01")
+    mundo.entrar(holding, alvo, "2015-01-01")
+    mundo.sair(holding, alvo, "2015-01-01", "2023-03-01")
+    mundo.entrar(comprador, alvo, "2024-05-10")
+    mundo.entrar(holding, alvo, "2015-01-01")
+    mundo.entradas[-1] = (*mundo.entradas[-1][:3], "2025-08", "2025-08-31", "entrou")
+    corpo = _corpo(mundo, tmp_path)
+    assert _entradas_de(_linha(corpo, comprador)) == {alvo}
+    assert corpo["entradas_intragrupo"] == 0
+
+
 def test_a_api_traduz_os_nomes_novos():
     for nome in (
         "grupo",

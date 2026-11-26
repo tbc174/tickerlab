@@ -1011,7 +1011,11 @@ def _passagens(historico: pd.DataFrame) -> dict[tuple[str, str], list[Passagem]]
         if movimento == "entrou":
             if par in abertas:  # entrou de novo sem saída vista: a anterior acabou ali
                 passagens[par].append(abertas.pop(par)[:2] + (str(linha["mes"]),))
-            abertas[par] = (entrada, publico, None)
+            abertas[par] = (
+                _inicio_da_volta(entrada, passagens[par], str(linha["mes"])),
+                publico,
+                None,
+            )
         elif movimento == "data_corrigida" and par in abertas:
             abertas[par] = (entrada, _mais_tarde(abertas[par][1], publico), None)
         elif movimento == "saiu" and par in abertas:
@@ -1020,6 +1024,18 @@ def _passagens(historico: pd.DataFrame) -> dict[tuple[str, str], list[Passagem]]
     for par, aberta in abertas.items():
         passagens[par].append(aberta)
     return passagens
+
+
+def _inicio_da_volta(
+    entrada: date | None, anteriores: list[Passagem], mes: str
+) -> date | None:
+    """A sócia que volta com uma data de entrada de antes da saída (a Receita reabre o vínculo com a data antiga) não
+    era sócia no tempo em que esteve fora: a volta conta do primeiro dia do retrato em que a base a viu (revisão de
+    segurança do PR 1347, P2)."""
+    saidas = [saiu for _inicio, _publico, saiu in anteriores if saiu is not None]
+    if entrada is None or not saidas or _mes(entrada) > max(saidas):
+        return entrada
+    return date.fromisoformat(mes + "-01")
 
 
 class _Anteriores:
