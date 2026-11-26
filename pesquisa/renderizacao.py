@@ -256,8 +256,12 @@ def _creditos_gastos(corpo: Mapping[str, object]) -> int:
     return gasto if isinstance(gasto, int) and gasto >= 0 else CREDITOS_POR_PAGINA
 
 
-# parâmetro de busca cujo nome tem "cpf" (cpf, CPF, nr_cpf, cpfCnpj), depois de ?, & ou ;
-_PARAMETRO_CPF = re.compile(r"[?&;][^=&;?#/]*cpf[^=&;?#/]*=", re.IGNORECASE)
+# nome com "cpf" (cpf, CPF, nr_cpf, cpfCnpj) seguido de = ou :, depois de ?, &, ;, #, /, = ou de um filtro
+# em JSON: ?cpf=, #cpf=, ?a/cpf=, ?q=cpf:<n>, filters={"cpf":"<n>"}. A palavra solta (?q=cpf) e o
+# caminho (/cpf-e-cnpj/) passam.
+_PARAMETRO_CPF = re.compile(
+    r"""(?:^|[?&;#/={,"'(\s])[\w.\-\[\]]*cpf[\w.\-\[\]]*["']?\s*[=:]""", re.IGNORECASE
+)
 
 
 def _conferir_parametro_de_cpf(url: str) -> None:

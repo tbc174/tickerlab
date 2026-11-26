@@ -148,6 +148,11 @@ def test_endereco_de_pagina_com_cpf_vai_e_a_lista_continua_barrando(molde: str):
         "?Cpf%3D{d}",
         "?u=https%3A%2F%2Foutro.exemplo.gov.br%2Fc%3Fcpf%3D{d}",
         "?u=https%253A%252F%252Foutro.exemplo.gov.br%252Fc%253Fcpf%253D{d}",
+        "#cpf={d}",
+        "?a/cpf={d}",
+        "?q=cpf%3A{d}",
+        "?filters=%7B%22cpf%22%3A%22{d}%22%7D",
+        "?filters=%7B%22nr_cpf%22%20%3A%20%22{p}%22%7D",
     ],
 )
 def test_parametro_de_busca_chamado_cpf_nao_vai(molde: str):
@@ -163,7 +168,10 @@ def test_parametro_de_busca_chamado_cpf_nao_vai(molde: str):
     assert d not in str(erro.value) and d[:3] not in str(erro.value)
 
 
-@pytest.mark.parametrize("molde", ["?q=cpf", "?id={d}", "/cpf-e-cnpj/{d}"])
+@pytest.mark.parametrize(
+    "molde",
+    ["?q=cpf", "?q=cpf+e+cnpj", "?id={d}", "/cpf-e-cnpj/{d}", "/consulta-cpf/{d}"],
+)
 def test_cpf_so_como_valor_ou_caminho_vai(molde: str):
     """A trava é só o nome do parâmetro: a palavra "cpf" como valor ou no caminho passa, como o número
     fora de parâmetro chamado cpf (decisão do Tiago, 26/11/2026)."""
