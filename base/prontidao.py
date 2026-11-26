@@ -533,6 +533,8 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "carteiras_dos_fundos",
         "cnpj_empresas_pj",
         "cnpj_estabelecimentos_pj",
+        # linha 1033: só raízes da vista sem MEI, sem EI e sem grupo 4; CPF e contato no nome saem na montagem
+        "cnpj_nomes_pj",
         "cnpj_situacao_cadastral",
         "cvm_fiagro",
         "debentures_assembleias",

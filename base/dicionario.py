@@ -812,6 +812,70 @@ def _tabela_de_participacoes_de_socio_pj() -> dict[str, Tabela]:
     }
 
 
+def _tabela_de_nomes_de_empresa() -> dict[str, Tabela]:
+    """Os nomes pelos quais se acha uma empresa (linha 1033, `base/nomes_de_empresa.py`): só empresa, para a
+    busca por nome."""
+    return {
+        "cnpj_nomes_pj": Tabela(
+            descricao=(
+                "Os nomes pelos quais se acha uma empresa: a razão social, o nome fantasia dos "
+                "estabelecimentos e as razões sociais antigas, uma linha por empresa e nome. Serve a busca "
+                "por nome. **Sem pessoa:** só raízes de `cnpj_estabelecimentos_pj` (fora MEI, empresário "
+                "individual e grupo 4); CPF escrito no nome sai, nome com e-mail ou endereço de site não "
+                "entra, nem nome fantasia com telefone ou endereço escrito dentro; o telefone e o endereço do "
+                "cadastro nem são lidos. O nome antigo só aparece desde o primeiro mês "
+                "do `cnpj_empresas_historico` (2023-05). " + _FINALIDADE_DO_CNPJ
+            ),
+            onde=(
+                "Parquet em `<acervo>/base/cnpj_nomes_pj/<2 primeiros caracteres da raiz>.parquet` "
+                "(servidor de casa)"
+            ),
+            colunas={
+                "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+                "tipo_de_nome": (
+                    "razao_social, nome_fantasia ou razao_social_anterior",
+                    TEXTO,
+                ),
+                "nome_de_empresa": ("O nome como a Receita publica", TEXTO),
+                "nome_para_busca": (
+                    "O nome sem acento, maiúsculo, só letras e números, com as letras soltas juntas",
+                    TEXTO,
+                ),
+                "trocado_em_mes": (
+                    "Na razão social antiga, o mês do retrato em que ela mudou; vazio nos outros",
+                    "AAAA-MM",
+                ),
+                "mes_do_retrato": (
+                    "Mês do arquivo da Receita de onde a tabela foi montada",
+                    "AAAA-MM",
+                ),
+                "disponivel_em": (
+                    (
+                        "Desde quando o retrato era público: o dia 21 do mês dele (`base/receita_diff.disponivel_em`). "
+                        "A porta, como nas outras fontes de governo, só o mostra a partir do último dia do mês"
+                    ),
+                    DATA,
+                ),
+                **{
+                    c: v
+                    for c, v in _ORIGEM_SEM_ANO.items()
+                    if c != "origem_coletada_em"
+                },
+            },
+            fonte="Receita Federal: dados abertos do CNPJ (`scripts/montar_nomes_pj.py`)",
+            familia_da_fonte="rfb-cnpj",
+            frequencia=_FREQUENCIA_DO_CNPJ,
+            atraso=_ATRASO_DO_CNPJ,
+            linhagem=(
+                "Cada linha guarda o SHA-256 de um ZIP de estabelecimentos da Receita do mês "
+                "(`origem_sha256`); `montado_em` diz quando a tabela foi montada. "
+                + COM_VERSAO_DO_CODIGO
+            ),
+            ressalva_de_revenda=_RESSALVA_DO_CNPJ,
+        ),
+    }
+
+
 def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
     """Quem entrou como sócio PJ de quem, e quando (linha 810, `base/socios_pj.py`): a matéria-prima da lista de
     compradores por setor, só entre pessoas jurídicas."""
@@ -10063,6 +10127,7 @@ TABELAS: dict[str, Tabela] = {
     **_tabelas_sem_pessoa_do_cnpj(),
     **_tabela_de_entradas_de_socio_pj(),
     **_tabela_de_participacoes_de_socio_pj(),
+    **_tabela_de_nomes_de_empresa(),
     **_tabela_da_anvisa_por_empresa(),
     **_tabelas_de_renuncia_da_receita(),
     **_tabela_do_sigsif_habilitados(),
@@ -12571,6 +12636,7 @@ _CONTRATO = {
     "cnpj_simples_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico",), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="1.1.0"),  # 1.1.0 (10/11/2026): colunas `capital_social` e `n_estabelecimentos` (linha 794)
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "cnpj_nomes_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "tipo_de_nome", "nome_para_busca"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "entradas_de_socio_pj": _contrato(modulo="governo_e_sancoes", chaves=("movimento", "cnpj_basico", "raiz_socio_pj", "data_entrada", "mes_do_retrato"), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "participacoes_de_socio_pj": _contrato(modulo="governo_e_sancoes", chaves=("raiz_socio_pj", "cnpj_basico"), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
