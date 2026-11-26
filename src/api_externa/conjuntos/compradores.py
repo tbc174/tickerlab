@@ -6,7 +6,8 @@ tipos simples e com as chaves em português (a rota traduz na saída), as empres
 
 - `took_stake`: entrou como sócia PJ de uma empresa do setor na janela de `anos` (a tabela
   `entradas_de_socio_pj`, fonte `rfb-cnpj`). Não conta quem entrou até a abertura da empresa (fundador) nem a
-  entrada dentro do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum no dia). Conta
+  entrada ligada ao comprador, julgada na data dela (linha 1043, `_Quadro.ligacao`): reorganização sai à parte, em
+  `entradas_no_grupo`, e os compradores com uma sócia PJ em comum ganham o bloco `grupo` e a ordem somada. Conta
   também a entrada em empresa do setor que hoje está baixada (linha 1042): consolidador que incorpora o que compra
   faz a empresa sumir do retrato ativo, e era o histórico dele que sumia junto. A empresa baixada só entra na
   conta como lugar onde alguém entrou: `empresas_ativas` segue contando só as ativas;
@@ -97,6 +98,12 @@ UFS = frozenset({
     "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 })  # fmt: skip
 DIAS_POR_ANO = 365.25
+# O grupo (linha 1043): a empresa e as sócias PJ acima dela, até estes níveis, no quadro de sócios da Receita.
+NIVEIS_DO_GRUPO = 3
+# A sócia PJ que é sócia de mais empresas que isto (fundo, banco, veículo de investimento) não serve de ponte entre
+# duas empresas: ser sócia das duas não prova que são do mesmo grupo. Valor inicial escolhido pelo dublê dos 29 (as
+# sócias que ligam grupo ali têm até 3 participações); o final sai da medida na base real (Diretoria, 26/11).
+PARTICIPACOES_MAXIMAS_DA_PONTE = 20
 # a baixa de uma empresa: o dia da baixa, o código do motivo como a Receita publica e o dia em que a versão ficou pública
 Baixa = tuple[date, str, date]
 
@@ -139,8 +146,8 @@ LIMITES_GERAIS = (
     (
         "Isto mostra movimentos passados, não intenção de compra: holding de família, reorganização e aumento "
         "de capital também entram, e entrar como sócio não é aquisição. A ordem é pelo número de entradas como "
-        "sócia, depois pelo de sinais, e não por chance de compra nem por quão recente é a entrada. Nada aqui é "
-        "recomendação de investimento."
+        "sócia (somadas pelo grupo, quando há group), depois pelo de sinais, e não por chance de compra nem por "
+        "quão recente é a entrada. Nada aqui é recomendação de investimento."
     ),
     (
         "O setor é o das empresas com estabelecimento ativo do CNAE principal pedido (e na UF, se pedida) no "
@@ -151,6 +158,19 @@ LIMITES_GERAIS = (
         "Ainda fora: os atos de concentração do CADE e o fôlego do comprador (caixa, dívida, ofertas). Cada "
         "campo traz a fonte e o dia em que ficou público: nada publicado depois de known_at entra."
     ),
+)
+# só quando a entrada foi consultada: a ligação e o grupo vêm do mesmo quadro de sócios
+LIMITE_DO_GRUPO = (
+    "group: os outros compradores da lista que têm uma sócia PJ em comum com este, até "
+    f"{NIVEIS_DO_GRUPO} níveis acima, no quadro de sócios do dia (ownership_board_as_of). Ligação por sócia PJ "
+    "em comum não prova controle: o quadro da Receita não traz o percentual. Não é em cadeia: duas empresas ligadas "
+    "à mesma terceira não ficam juntas entre si. A sócia PJ de mais de "
+    f"{PARTICIPACOES_MAXIMAS_DA_PONTE} empresas (fundo, banco, veículo de investimento) não serve de ponte, nem "
+    "para juntar compradores nem para tirar uma entrada da conta, salvo quando ela é o próprio comprador. A ordem é "
+    "pelas empresas do setor em que o "
+    "grupo entrou, depois pelas do próprio comprador. Ficam de fora: a reorganização feita por pessoa física (uma "
+    "holding nova dos mesmos donos), porque a lista é só de pessoa jurídica; a sócia que saiu antes do primeiro "
+    "retrato guardado; e a sócia estrangeira sem CNPJ."
 )
 # só quando o portão libera os campos da baixa e a porta tem a situação cadastral: sem eles a frase não vale
 LIMITE_DA_BAIXA = (
@@ -165,7 +185,11 @@ LIMITES_DO_SINAL = {
         "Entradas como sócio: do quadro de sócios da Receita, que a base acompanha desde 05/2023 (antes disso, "
         "só quem ainda era sócio naquele mês). Contam também as entradas em empresa do setor que depois foi "
         "baixada (uma incorporação, por exemplo). Não contam quem entrou até a abertura da empresa nem a entrada "
-        "entre empresas do mesmo grupo (uma era sócia da outra, ou as duas tinham uma sócia PJ em comum)."
+        "ligada ao comprador, julgada na data da entrada: a empresa do setor estava acima do comprador, ou uma "
+        "sócia PJ que ela tinha antes da entrada (inclusive a que saiu nela) e o comprador tinham, até "
+        f"{NIVEIS_DO_GRUPO} níveis acima, uma sócia PJ em comum que já estava lá naquela data (pelo histórico de entradas e saídas). Essas entradas saem "
+        "à parte, em intragroup_stakes, com a empresa que liga as duas, e não contam na ordem. Quem entrou junto "
+        "com o comprador ou depois dele não liga nada."
     ),
     FUNDO: (
         "Fundo sócio: FIP registrado na CVM e não cancelado no dia, sócio de uma empresa do setor no quadro de "
@@ -530,15 +554,14 @@ class LeitorDeCompradores:
         setor = alvos[~alvos["baixada"]]
         lista = _Lista(alvos)
         fontes = {RECEITA}
+        entradas = consulta.entradas(alvos) if ENTROU in sinais else None
+        socias = pd.DataFrame()
         if ENTROU in sinais or FUNDO in sinais:
-            entradas = consulta.entradas(alvos) if ENTROU in sinais else None
             # só o quadro de sócios de quem pesa na conta: as empresas do setor e quem entrou nelas
             relevantes = set(alvos["raiz"].astype(str))
             if entradas is not None:
                 relevantes |= set(entradas["comprador"].astype(str))
             socias = consulta.socias_no_dia(relevantes)
-            if entradas is not None:
-                lista.anotar_entradas(entradas, socias)
             if FUNDO in sinais:
                 lista.anotar_fundos(consulta.fundos_socios(setor, socias))
                 fontes.add(REGISTRO)
@@ -549,7 +572,23 @@ class LeitorDeCompradores:
             lista.anotar_filiais(consulta.filiais_na_uf(pedido.cnae, pedido.uf))
         if LOTE in sinais:
             lista.anotar_lotes(consulta.lotes(pedido.cnae, pedido.uf))
-        nomes = consulta.nomes(lista.raizes())
+        quadro = None
+        if entradas is not None:
+            # o grupo (linha 1043): as sócias de antes de cada empresa onde se entrou e, em lote, as sócias PJ acima
+            # dos compradores e delas, até NIVEIS_DO_GRUPO níveis
+            anteriores = _Anteriores(
+                consulta.historico_de_socias(set(entradas["alvo"].astype(str)))
+            )
+            quadro = _Quadro.do_dia(
+                consulta,
+                set(lista.provas)
+                | set(entradas["comprador"].astype(str))
+                | anteriores.socias(),
+            )
+            lista.anotar_entradas(entradas, socias, anteriores, quadro)
+        nomes = {**(quadro.nomes if quadro else {}), **consulta.nomes(lista.raizes())}
+        if quadro is not None:
+            lista.agrupar(quadro, nomes, como_era_em)
         compradores = lista.montar(
             nomes,
             min(pedido.limite, max(self.linhas_maximas, 1)),
@@ -570,8 +609,14 @@ class LeitorDeCompradores:
             "total_de_compradores": lista.total(nomes),
             "cortada": lista.total(nomes) > len(compradores),
             NAO_DISPONIVEIS: [NOME_DE_FORA[s] for s in nao_disponiveis],
+            **(
+                {"entradas_intragrupo": lista.total_intragrupo()}
+                if ENTROU in sinais
+                else {}
+            ),
             "limites": [
                 *limites(sinais, nao_disponiveis),
+                *([LIMITE_DO_GRUPO] if ENTROU in sinais else []),
                 *([LIMITE_DA_BAIXA] if ENTROU in sinais and self._le_a_baixa() else []),
                 *([LIMITE_DA_REDE] if self.rede else []),
             ],
@@ -711,6 +756,37 @@ class _Consulta:
                 {"raiz": pd.Series(sorted(raizes), dtype="string")}
             ),
         )
+
+    def historico_de_socias(self, raizes: set[str]) -> pd.DataFrame:
+        """Todas as entradas e saídas de sócia PJ já públicas no dia das `raizes` (as empresas onde se entrou): de
+        onde sai quem era sócia antes de cada entrada, inclusive a que saiu nela (linha 1043)."""
+        return self._df(
+            f"SELECT cnpj_basico AS alvo, raiz_socio_pj AS socia, data_entrada, {MES} AS mes, movimento, "
+            f"{PUBLICADO_EM} "
+            f"FROM {_view(ENTRADAS)} WHERE movimento IN ('entrou', 'saiu', 'data_corrigida') "
+            "AND cnpj_basico IN (SELECT raiz FROM raizes) "
+            f"AND {PUBLICADO_EM} <= CAST($dia AS DATE)",
+            {"dia": dia_de(self.dia)},
+            raizes=pd.DataFrame({"raiz": pd.Series(sorted(raizes), dtype="string")}),
+        )
+
+    def participacoes(self, socias: set[str]) -> dict[str, int]:
+        """Em quantas empresas cada sócia PJ é sócia no quadro do dia: a que passa do teto não serve de ponte."""
+        if not socias:
+            return {}
+        tabela = self._df(
+            "SELECT socia, count(DISTINCT empresa) AS n FROM ("
+            f"SELECT cnpj_basico AS empresa, raiz_socio_pj AS socia, movimento FROM {_view(ENTRADAS)} "
+            "WHERE movimento IN ('entrou', 'saiu') AND raiz_socio_pj IN (SELECT raiz FROM socias) "
+            f"AND {PUBLICADO_EM} <= CAST($dia AS DATE) "
+            f"QUALIFY row_number() OVER (PARTITION BY cnpj_basico, raiz_socio_pj "
+            f"ORDER BY {MES} DESC, movimento = 'saiu' DESC) = 1) WHERE movimento = 'entrou' GROUP BY 1",
+            {"dia": dia_de(self.dia)},
+            socias=pd.DataFrame({"raiz": pd.Series(sorted(socias), dtype="string")}),
+        )
+        return {
+            str(s): int(n) for s, n in zip(tabela["socia"], tabela["n"], strict=True)
+        }
 
     def entradas(self, alvos: pd.DataFrame) -> pd.DataFrame:
         """Quem entrou como sócio PJ de empresa do setor (ativa ou baixada) na janela, depois da abertura; a mais nova por par."""
@@ -895,11 +971,230 @@ def _mais_novas(provas: list[dict[str, object]]) -> list[dict[str, object]]:
     )[:EXEMPLOS_POR_SINAL]
 
 
-def _mesmo_grupo(alvo: str, comprador: str, socias: dict[str, set[str]]) -> bool:
-    """Uma era sócia da outra (fora a entrada que se olha) ou as duas tinham uma sócia PJ em comum."""
-    do_alvo = socias.get(alvo, set()) - {comprador}
-    do_comprador = socias.get(comprador, set())
-    return alvo in do_comprador or bool(do_alvo & do_comprador)
+def _mes(dia: date) -> str:
+    return dia.strftime("%Y-%m")
+
+
+def _mais_tarde(a: date | None, b: date | None) -> date | None:
+    return max((d for d in (a, b) if d is not None), default=None)
+
+
+# uma passagem de uma sócia PJ por uma empresa: (a data de entrada, o dia em que ficou pública, o primeiro mês em que a
+# base viu a saída, ou None se não saiu)
+Passagem = tuple[date | None, date | None, str | None]
+# no mesmo mês, a prova de que já estava (saiu ou data corrigida) vem antes da notícia nova (entrou), como na base
+_ORDEM_NO_MES = {"saiu": 0, "data_corrigida": 0, "entrou": 1}
+
+
+def _passagens(historico: pd.DataFrame) -> dict[tuple[str, str], list[Passagem]]:
+    """Cada par (empresa, sócia) do histórico, seguido em ordem de mês, vira as passagens da sócia pela empresa: a
+    entrada abre, a data corrigida pela Receita troca a data da passagem aberta, a saída fecha. Seguir o par (e não
+    casar a saída pela data) é o que acerta a saída depois de uma data corrigida e a volta com a mesma data (revisão
+    de segurança do PR 1347)."""
+    linhas = sorted(
+        historico.to_dict("records"),
+        key=lambda r: (
+            str(r["alvo"]),
+            str(r["socia"]),
+            str(r["mes"]),
+            _ORDEM_NO_MES.get(str(r["movimento"]), 1),
+        ),
+    )
+    passagens: dict[tuple[str, str], list[Passagem]] = defaultdict(list)
+    abertas: dict[tuple[str, str], Passagem] = {}
+    for linha in linhas:
+        par, movimento = (
+            (str(linha["alvo"]), str(linha["socia"])),
+            str(linha["movimento"]),
+        )
+        entrada, publico = _dia(linha["data_entrada"]), _dia(linha[PUBLICADO_EM])
+        if movimento == "entrou":
+            if par in abertas:  # entrou de novo sem saída vista: a anterior acabou ali
+                passagens[par].append(abertas.pop(par)[:2] + (str(linha["mes"]),))
+            abertas[par] = (
+                _inicio_da_volta(entrada, passagens[par], str(linha["mes"])),
+                publico,
+                None,
+            )
+        elif movimento == "data_corrigida" and par in abertas:
+            abertas[par] = _corrigida(abertas[par], entrada, publico)
+        elif movimento == "saiu" and par in abertas:
+            inicio, publicada, _ = abertas.pop(par)
+            passagens[par].append((inicio, publicada, str(linha["mes"])))
+    for par, aberta in abertas.items():
+        passagens[par].append(aberta)
+    return passagens
+
+
+def _corrigida(aberta: Passagem, nova: date | None, publico: date | None) -> Passagem:
+    """A data corrigida pela Receita é de quem continuou (não é entrada nova): a passagem começa na mais antiga das
+    duas datas, para a correção a uma data mais nova não apagar o tempo em que a sócia já estava (revisão cruzada do
+    PR 1347). Só a data que muda o início leva o dia em que a correção ficou pública."""
+    inicio, publicada, _ = aberta
+    if nova is None or (inicio is not None and inicio <= nova):
+        return aberta
+    return (nova, _mais_tarde(publicada, publico), None)
+
+
+def _inicio_da_volta(
+    entrada: date | None, anteriores: list[Passagem], mes: str
+) -> date | None:
+    """A sócia que volta com uma data de entrada de antes da saída (a Receita reabre o vínculo com a data antiga) não
+    era sócia no tempo em que esteve fora: a volta conta do primeiro dia do retrato em que a base a viu (revisão de
+    segurança do PR 1347, P2)."""
+    saidas = [saiu for _inicio, _publico, saiu in anteriores if saiu is not None]
+    if entrada is None or not saidas or _mes(entrada) > max(saidas):
+        return entrada
+    return date.fromisoformat(mes + "-01")
+
+
+class _Anteriores:
+    """Quem era sócia PJ de cada empresa onde se entrou, na data de uma entrada (linha 1043): entrou antes dela e
+    não tinha saído num retrato anterior ao mês dela. A que sai no mesmo movimento (a reorganização) conta; a que
+    entra junto ou depois (a controladora do comprador que entra com ele), não."""
+
+    def __init__(self, historico: pd.DataFrame) -> None:
+        self.passagens = _passagens(historico)
+        self.por_empresa: dict[str, set[str]] = defaultdict(set)
+        for alvo, socia in self.passagens:
+            self.por_empresa[alvo].add(socia)
+
+    def socias(self) -> set[str]:
+        return {socia for _alvo, socia in self.passagens}
+
+    def de(self, alvo: str, comprador: str, entrada: date) -> list[str]:
+        """As sócias do `alvo` na data da `entrada` do `comprador` (fora ele mesmo; sem a data de entrada, não conta)."""
+        return sorted(
+            socia
+            for socia in self.por_empresa.get(alvo, ())
+            if socia != comprador
+            and any(
+                inicio is not None
+                and inicio < entrada
+                and (saiu is None or saiu >= _mes(entrada))
+                for inicio, _publico, saiu in self.passagens[(alvo, socia)]
+            )
+        )
+
+
+# uma sócia PJ acima de uma empresa: a sócia e a passagem dela pela empresa
+Aresta = tuple[str, date | None, date | None, str | None]
+
+
+def _arestas(historico: pd.DataFrame) -> dict[str, list[Aresta]]:
+    """As sócias de cada empresa pelo histórico de entradas, datas corrigidas e saídas, uma aresta por passagem."""
+    arestas: dict[str, list[Aresta]] = defaultdict(list)
+    for (filha, socia), passagens in _passagens(historico).items():
+        if socia != filha:
+            arestas[filha].extend((socia, *passagem) for passagem in passagens)
+    return arestas
+
+
+def _valia(entrada: date | None, saiu: str | None, ate: date | None) -> bool:
+    """A aresta valia no dia `ate` (entrou até ele e não tinha saído num retrato anterior ao mês dele) ou, sem `ate`,
+    vale no quadro do dia pedido (não saiu)."""
+    if ate is None:
+        return saiu is None
+    return (
+        entrada is not None and entrada <= ate and (saiu is None or saiu >= _mes(ate))
+    )
+
+
+class _Quadro:
+    """As sócias PJ acima das empresas da lista, até `NIVEIS_DO_GRUPO` níveis, no quadro de sócios do dia (linha
+    1043). Só serve de ponte a sócia da lista sem pessoa e que não passa de `PARTICIPACOES_MAXIMAS_DA_PONTE`
+    empresas: ser sócia das duas não prova grupo quando se é sócia de todo mundo (fundo, banco)."""
+
+    def __init__(
+        self,
+        acima_de: Mapping[str, list[Aresta]],
+        nomes: dict[str, tuple[str, date]],
+        grandes: set[str] | None = None,
+    ) -> None:
+        self.acima_de = acima_de
+        self.nomes = nomes  # as pontes, com a razão social: as únicas sócias que podem sair na resposta
+        # as sócias da lista que passam do teto: não servem de ponte, salvo quando são o próprio comprador
+        self.grandes = grandes or set()
+        self._lembradas: dict[
+            tuple[str, date | None, str | None], dict[str, date | None]
+        ] = {}
+
+    @classmethod
+    def do_dia(cls, consulta: "_Consulta", raizes: set[str]) -> "_Quadro":
+        """Sobe o quadro em lote: uma consulta por nível para a lista inteira, mais uma para o nome e uma para o
+        tamanho de cada sócia achada (o custo não cresce com o número de compradores)."""
+        niveis, fronteira, vistas = [], set(raizes), set()
+        for _ in range(NIVEIS_DO_GRUPO):
+            fronteira -= vistas
+            if not fronteira:
+                break
+            vistas |= fronteira
+            # o histórico, e não só o quadro do dia: a sócia que estava lá na data da entrada e saiu depois ainda liga
+            # (Revisor do PR 1347)
+            nivel = consulta.historico_de_socias(fronteira)
+            niveis.append(nivel)
+            fronteira = set(nivel["socia"].astype(str))
+        achadas = {str(s) for nivel in niveis for s in nivel["socia"]}
+        nomes = consulta.nomes(achadas)
+        tamanhos = consulta.participacoes(set(nomes))
+        pontes = {
+            s for s in nomes if tamanhos.get(s, 0) <= PARTICIPACOES_MAXIMAS_DA_PONTE
+        }
+        acima_de: dict[str, list[Aresta]] = defaultdict(list)
+        for nivel in niveis:
+            for filha, arestas in _arestas(nivel).items():
+                acima_de[filha].extend(a for a in arestas if a[0] in nomes)
+        return cls(acima_de, {s: nomes[s] for s in pontes}, set(nomes) - pontes)
+
+    def acima(
+        self, raiz: str, ate: date | None = None, liberada: str | None = None
+    ) -> dict[str, date | None]:
+        """As sócias PJ acima da `raiz`, até `NIVEIS_DO_GRUPO` níveis, com o dia mais novo em que o caminho ficou
+        público. Com `ate`, as que eram sócias nesse dia (entraram até ele e ainda não tinham saído; a data sem entrada não
+        conta); sem `ate`, as do quadro do dia pedido. A sócia acima do
+        teto não entra, salvo a `liberada` (o próprio comprador: ali ela não é ponte, é uma das pontas)."""
+        chave = (raiz, ate, liberada)
+        if chave not in self._lembradas:
+            achadas: dict[str, date | None] = {}
+            fronteira: dict[str, date | None] = {raiz: None}
+            for _ in range(NIVEIS_DO_GRUPO):
+                nova: dict[str, date | None] = {}
+                for filha, publico in fronteira.items():
+                    for socia, entrada, publico_da_aresta, saiu in self.acima_de.get(
+                        filha, ()
+                    ):
+                        if not _valia(entrada, saiu, ate):
+                            continue
+                        if socia == raiz or socia in achadas:
+                            continue
+                        if socia in self.grandes and socia != liberada:
+                            continue
+                        achadas[socia] = nova[socia] = _mais_tarde(
+                            publico, publico_da_aresta
+                        )
+                fronteira = nova
+            self._lembradas[chave] = achadas
+        return self._lembradas[chave]
+
+    def ligacao(
+        self, alvo: str, comprador: str, entrada: date, anteriores: list[str]
+    ) -> str | None:
+        """A empresa que liga a entrada ao comprador na data dela, ou None (compra de terceiro): o alvo estava acima
+        do comprador; ou uma sócia anterior do alvo era do grupo do comprador (acima dele, abaixo dele ou com uma
+        sócia em comum). Os dois grupos são os da data da entrada."""
+        do_comprador = {comprador, *self.acima(comprador, entrada)}
+        if alvo in do_comprador:
+            return alvo
+        for socia in anteriores:
+            da_socia = {socia, *self.acima(socia, entrada, liberada=comprador)}
+            comum = do_comprador & da_socia
+            if comum:
+                return (
+                    socia
+                    if socia in do_comprador or comprador in da_socia
+                    else min(comum)
+                )
+        return None
 
 
 class _Lista:
@@ -915,14 +1210,31 @@ class _Lista:
         self.provas: dict[str, dict[str, list[dict[str, object]]]] = defaultdict(
             lambda: defaultdict(list)
         )
+        # as entradas ligadas ao comprador (linha 1043): fora da conta e da ordem, com a empresa que liga
+        self.intragrupo: dict[str, list[dict[str, object]]] = defaultdict(list)
+        # o grupo de cada comprador da lista: (as outras empresas, quem liga, o dia público do quadro)
+        self.grupos: dict[str, tuple[list[str], str | None, date | None]] = {}
+        self.dia_do_quadro = ""
 
     def raizes(self) -> set[str]:
-        return set(self.provas) | {
-            str(p["_alvo"])
-            for sinais in self.provas.values()
-            for lista in sinais.values()
-            for p in lista
-        }
+        return (
+            set(self.provas)
+            | {
+                str(p["_alvo"])
+                for sinais in self.provas.values()
+                for lista in sinais.values()
+                for p in lista
+            }
+            | {
+                str(p[chave])
+                for lista in self.intragrupo.values()
+                for p in lista
+                for chave in ("_alvo", "_ligada_por")
+            }
+        )
+
+    def total_intragrupo(self) -> int:
+        return sum(len(lista) for lista in self.intragrupo.values())
 
     def _anotar(
         self, comprador: str, sinal: str, alvo: str, ordem: object, **campos: object
@@ -931,21 +1243,100 @@ class _Lista:
             {"_alvo": alvo, "_ordem": str(ordem or ""), **campos}
         )
 
-    def anotar_entradas(self, entradas: pd.DataFrame, socias: pd.DataFrame) -> None:
+    def anotar_entradas(
+        self,
+        entradas: pd.DataFrame,
+        socias: pd.DataFrame,
+        anteriores: _Anteriores | None = None,
+        quadro: _Quadro | None = None,
+    ) -> None:
+        """Cada entrada julgada na data dela (linha 1043): a de terceiro conta; a ligada ao comprador vai para
+        `intragrupo`, com a empresa que liga. Sem o histórico e o quadro, toda entrada conta (os testes da ordem)."""
         por_raiz: dict[str, set[str]] = defaultdict(set)
-        for raiz, socia in zip(socias["raiz"], socias["socia"], strict=True):
+        for raiz, socia in zip(
+            socias.get("raiz", []), socias.get("socia", []), strict=True
+        ):
             por_raiz[str(raiz)].add(str(socia))
         for linha in entradas.to_dict("records"):
             alvo, comprador = str(linha["alvo"]), str(linha["comprador"])
-            if _mesmo_grupo(alvo, comprador, por_raiz):
-                continue
             publico_em = _dia(linha[PUBLICADO_EM])
             entrada = _dia(linha["data_entrada"])
+            data_entrada = campo(
+                entrada and entrada.isoformat(),
+                fonte=RECEITA,
+                publico_em=publico_em,
+                visto_em=None,
+            )
+            ligada_por = (
+                quadro.ligacao(
+                    alvo, comprador, entrada, anteriores.de(alvo, comprador, entrada)
+                )
+                if entrada is not None and quadro is not None and anteriores is not None
+                else None
+            )
+            if ligada_por is not None:
+                self.intragrupo[comprador].append(
+                    {
+                        "_alvo": alvo,
+                        "_ordem": str(entrada),
+                        "_ligada_por": ligada_por,
+                        "data_entrada": data_entrada,
+                    }
+                )
+                continue
             self._anotar(
                 comprador, ENTROU, alvo, entrada,
-                data_entrada=campo(entrada and entrada.isoformat(), fonte=RECEITA, publico_em=publico_em, visto_em=None),
+                data_entrada=data_entrada,
                 ainda_socio=comprador in por_raiz.get(alvo, set()),
             )  # fmt: skip
+
+    def agrupar(
+        self, quadro: _Quadro, nomes: dict[str, tuple[str, date]], dia: date
+    ) -> None:
+        """Para cada comprador da lista, os outros que têm com ele uma sócia PJ em comum no quadro de hoje (ou um é
+        sócio do outro), sem fechar em cadeia: o JV de P e Q fica junto de quem é de P e de quem é de Q, mas estes dois
+        não ficam juntos entre si (revisão cruzada do PR 1347). Guarda as outras empresas, a sócia dele que liga mais delas (a menor raiz
+        no empate) e o dia público mais novo do quadro usado."""
+        self.dia_do_quadro = dia.isoformat()
+        # só quem tem sinal de sempre: o comprador só da rede (linha 1121) não muda o grupo de quem já estava na lista
+        validos = sorted(
+            c for c in self._validos(nomes) if any(s in SINAIS for s in self.provas[c])
+        )
+        acima = {c: quadro.acima(c) for c in validos}
+        do_grupo = {c: {c, *acima[c]} for c in validos}
+        quem_tem: dict[str, set[str]] = defaultdict(set)
+        for comprador, empresas in do_grupo.items():
+            for empresa in empresas:
+                quem_tem[empresa].add(comprador)
+        for comprador in validos:
+            outras = sorted(
+                {m for e in do_grupo[comprador] for m in quem_tem[e]} - {comprador}
+            )
+            if not outras:
+                continue
+            ligada_por = min(
+                do_grupo[comprador],
+                key=lambda e: (-len(quem_tem[e] & set(outras)), e),
+            )
+            publico = max(
+                (
+                    d
+                    for m in (comprador, *outras)
+                    for d in acima[m].values()
+                    if d is not None
+                ),
+                default=None,
+            )
+            self.grupos[comprador] = (outras, ligada_por, publico)
+
+    def _alvos_do_grupo(self, comprador: str) -> int:
+        """Em quantas empresas do setor o grupo do comprador entrou (de terceiros; a mesma empresa conta uma vez)."""
+        outras = self.grupos.get(comprador, ([], None, None))[0]
+        return len({
+            str(p["_alvo"])
+            for membro in (comprador, *outras)
+            for p in self.provas.get(membro, {}).get(ENTROU, [])
+        })  # fmt: skip
 
     def anotar_fundos(self, fundos: pd.DataFrame) -> None:
         for linha in fundos.to_dict("records"):
@@ -1019,12 +1410,14 @@ class _Lista:
         `rede_de` diz a rede no setor dos compradores (linha 1121): com ela, cada um ganha o bloco da rede e, com
         `pela_rede`, a ordem é pelo tamanho dela antes da de sempre."""
 
-        def chave(comprador: str) -> tuple[int, int, int, str]:
+        def chave(comprador: str) -> tuple[int, int, int, int, str]:
             # só os sinais de sempre: na ordem padrão a rede (linha 1121) não mexe em quem já estava na lista, e
-            # quem só tem sinal da rede vem depois de todos eles
+            # quem só tem sinal da rede vem depois de todos eles. Primeiro as empresas do setor em que o grupo
+            # entrou (linha 1043; sem grupo, as do próprio comprador)
             sinais = {s: p for s, p in self.provas[comprador].items() if s in SINAIS}
             provas = sum(len(lista) for lista in sinais.values())
             return (
+                -self._alvos_do_grupo(comprador),
                 -len(sinais.get(ENTROU, [])),
                 -len(sinais),
                 -provas,
@@ -1034,14 +1427,14 @@ class _Lista:
         validos = self._validos(nomes)
         rede = rede_de(set(validos)) if rede_de else None
 
-        def chave_da_rede(comprador: str) -> tuple[int, int, int, int, str]:
+        def chave_da_rede(comprador: str) -> tuple[int, int, int, int, int, str]:
             return (-_tamanho((rede or {}).get(comprador, [])), *chave(comprador))
 
         escolhidos = sorted(validos, key=chave_da_rede if pela_rede else chave)[:limite]
         mostradas = {
             str(p["_alvo"])
             for c in escolhidos
-            for lista in self.provas[c].values()
+            for lista in (*self.provas[c].values(), self.intragrupo.get(c, []))
             for p in _mais_novas(lista)
         } & self.baixadas
         baixas = baixas_de(mostradas) if baixas_de and mostradas else {}
@@ -1114,4 +1507,67 @@ class _Lista:
             **self._empresa(comprador, nomes),
             "sinais": [NOME_DE_FORA[s] for s in ordem],
             "provas": provas,
+            **self._bloco_do_grupo(comprador, nomes),
+            **self._bloco_intragrupo(comprador, nomes, baixas),
+        }
+
+    def _ligada_por(
+        self, raiz: str | None, nomes: dict[str, tuple[str, date]]
+    ) -> dict[str, object]:
+        """A empresa que liga, só quando está na lista sem pessoa (a que não está nunca sai, nem a raiz)."""
+        return {"ligada_por": self._empresa(raiz, nomes)} if raiz in nomes else {}
+
+    def _bloco_do_grupo(
+        self, comprador: str, nomes: dict[str, tuple[str, date]]
+    ) -> dict[str, object]:
+        """O bloco `grupo` (linha 1043): as outras empresas do grupo na lista, com as entradas de cada uma, a sócia
+        que liga, quantas empresas do setor o grupo inteiro tem de entrada e o quadro de sócios usado."""
+        if comprador not in self.grupos:
+            return {}
+        outras, ligada_por, publico = self.grupos[comprador]
+        por_entradas = sorted(
+            outras, key=lambda m: (-len(self.provas[m].get(ENTROU, [])), m)
+        )
+        return {
+            "grupo": {
+                **self._ligada_por(ligada_por, nomes),
+                "empresas": [
+                    {
+                        **self._empresa(m, nomes),
+                        "entradas_de_terceiros": len(self.provas[m].get(ENTROU, [])),
+                    }
+                    for m in por_entradas
+                ],
+                "empresas_do_setor_com_entrada": self._alvos_do_grupo(comprador),
+                "quadro_de_socios_em": campo(
+                    self.dia_do_quadro, fonte=RECEITA, publico_em=publico, visto_em=None
+                ),
+            }
+        }
+
+    def _bloco_intragrupo(
+        self,
+        comprador: str,
+        nomes: dict[str, tuple[str, date]],
+        baixas: Mapping[str, Baixa],
+    ) -> dict[str, object]:
+        """As entradas ligadas ao comprador (fora da conta e da ordem), até `EXEMPLOS_POR_SINAL` exemplos."""
+        lista = self.intragrupo.get(comprador)
+        if not lista:
+            return {}
+        return {
+            "entradas_no_grupo": {
+                "quantas": len(lista),
+                "exemplos": [
+                    {
+                        "empresa_do_setor": self._empresa(
+                            str(p["_alvo"]), nomes, baixas
+                        ),
+                        "uf": self.ufs.get(str(p["_alvo"])),
+                        "data_entrada": p["data_entrada"],
+                        **self._ligada_por(str(p["_ligada_por"]), nomes),
+                    }
+                    for p in _mais_novas(lista)
+                ],
+            }
         }
