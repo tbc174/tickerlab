@@ -161,6 +161,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "demonstracoes_como_era",
         "emissores",
         "entradas_de_socio_pj",
+        "participacoes_de_socio_pj",
         "eventos",
         "fca_geral",
         "fips_registrados",
