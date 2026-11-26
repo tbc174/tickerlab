@@ -123,6 +123,8 @@ FICAM_EM_CASA = (
     "comex_preco_medio",
     "fidc_informe",
     "processos_partes",
+    # linha 1129: leva o trecho da nota da DFP (texto de área restrita, sem nome próprio, mas texto livre)
+    "ma_receitas_cpc15",
     # Situação especial tem pessoa (falência de MEI): só vai ao VPS filtrada, depois da linha 787 (Diretoria,
     # 10/11/2026). A rede saiu daqui para `REDE_SO_PJ` (linha 843).
     "cnpj_situacao_especial",
@@ -208,7 +210,7 @@ DEGRAU_2_ACRESCENTA = (
     "emissores", "eventos", "faostat_cafe", "fca_geral", "fre_capital_social",
     "fre_comites", "fre_conselho", "fre_distribuicao_capital",
     "fre_distribuicao_capital_por_classe", "fre_diversidade",
-    "fre_empregados", "fre_remuneracao", "fre_remuneracao_extremos", "ifdata_valores", "insolvencia", "ma_candidatos", "ma_datas", "ma_receitas_cpc15", "ma_regua", "negociacoes",
+    "fre_empregados", "fre_remuneracao", "fre_remuneracao_extremos", "ifdata_valores", "insolvencia", "ma_candidatos", "ma_datas", "ma_regua", "negociacoes",
     "noticias_fatos", "noticias_numeros", "ons_capacidade", "ons_restricao", "painel_dos_fundos", "pareceres_dfp",
     "pareceres_itr", "pgfn_divida", "processos", "processos_comunicacoes",
     "processos_nas_notas", "ratings", "release_x_oficial",

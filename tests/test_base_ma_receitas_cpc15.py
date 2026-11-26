@@ -11,6 +11,7 @@ from base import ma_receitas_cpc15 as cpc15
 from base import ma_regua
 from base.parquet import ler_tabela
 from scripts import carga_ma_assessorias as carga
+from scripts import montar_recorte_da_api as envio
 
 DEZ_2023 = date(2023, 12, 31)
 COMPRADORA = "11.111.111/0001-11"
@@ -205,9 +206,48 @@ def test_frase_com_nome_de_pessoa_nao_entra():
     assert cpc15.COM_PESSOA in recusadas
 
 
+@pytest.mark.parametrize(
+    "vendedores",
+    [
+        "de FULANO EXEMPLAR e de Beltrano de Tal",
+        "do Dr. Fulano Exemplar e da Dra. Beltrana de Tal",
+        "dos Srs. Fulano Exemplar e Beltrano de Tal, inscritos sob o 11144477735,",
+    ],
+)
+def test_o_trecho_nao_leva_nome_proprio_que_nao_seja_o_da_alvo(vendedores):
+    # a nota que cita o vendedor na mesma frase: o número prova, o nome não vai à tabela
+    corpo = (
+        "Aquisição Alfa Distribuidora de Peças Ltda.\r\nEm 8 de agosto de 2023, a Companhia adquiriu "
+        f"{vendedores} as quotas da empresa Alfa Distribuidora de Peças Ltda. Se a aquisição tivesse "
+        "ocorrido em 1 de janeiro de 2023, representaria uma receita líquida de R$ 12.000."
+    )
+    leituras, _ = cpc15.ler_notas(_paginas(corpo), DEZ_2023)
+    for lida in leituras:
+        for pedaco in (
+            "Fulan",
+            "FULANO",
+            "Exemplar",
+            "EXEMPLAR",
+            "Beltran",
+            "Tal",
+            "11144477735",
+        ):
+            assert pedaco not in lida.trecho
+        assert "R$ 12.000" in lida.trecho
+    if "Srs." not in vendedores:
+        assert len(leituras) == 1
+
+
 # --- a ligação do nome ao CNPJ ---------------------------------------------------------------------
 def _controladas(*linhas):
-    return pd.DataFrame(linhas, columns=["cnpj", "razao_social"])
+    quadro = pd.DataFrame(linhas, columns=["cnpj", "razao_social"])
+    return quadro.assign(cnpj_companhia="11111111000111")  # as da própria compradora
+
+
+def _dre(receita=5_000_000_000, versoes=(1, 2, 3)):
+    colunas = ["cnpj", "referencia", "versao", "exercicio_fim", "receita"]
+    linhas = [(COMPRADORA, DEZ_2023, v, DEZ_2023, receita) for v in versoes]
+    return pd.DataFrame(linhas, columns=colunas)
 
 
 def _receita(*linhas):
@@ -227,6 +267,7 @@ def test_ligacao_pelas_controladas_ignora_o_apelido_entre_parenteses():
         ),
         _receita(),
         publico_em=DEZ_2023,
+        compradora=COMPRADORA,
     )
     assert ligada["Alfa Distribuidora de Peças Ltda."] == (
         "22222222",
@@ -294,13 +335,7 @@ CONTROLADAS_ALFA = [("22222222000122", "Alfa Distribuidora de Peças Ltda.")]
 
 
 def _tabela(notas, controladas=CONTROLADAS_ALFA, dre=None):
-    dre = (
-        pd.DataFrame(
-            columns=["cnpj", "referencia", "versao", "exercicio_fim", "receita"]
-        )
-        if dre is None
-        else dre
-    )
+    dre = _dre() if dre is None else dre
     return cpc15.montar_tabela(notas, _controladas(*controladas), _receita(), dre)[0]
 
 
@@ -380,6 +415,11 @@ def test_receitas_para_a_regua_sao_cpc15_com_a_data_do_documento():
 def test_a_carga_grava_a_tabela_e_a_regua_a_le(tmp_path, monkeypatch, capsys):
     (tmp_path / "notas_dfp").mkdir()
     (tmp_path / "controladas").mkdir()
+    (tmp_path / "demonstracoes").mkdir()
+    pd.DataFrame(
+        {"cnpj": [COMPRADORA], "demonstracao": ["DRE"], "conta": ["3.01"]}
+    ).to_parquet(tmp_path / "demonstracoes" / "2023.parquet")
+    monkeypatch.setattr(cpc15, "dre_consolidada", lambda _: _dre())
     notas = _notas(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA))
     notas.to_parquet(tmp_path / "notas_dfp" / "2023.parquet")
     _controladas(*CONTROLADAS_ALFA).to_parquet(
@@ -462,7 +502,8 @@ def test_so_raiz_de_empresa_entra_na_tabela(tmp_path, natureza, opcao_mei, entra
     assert achadas == ({"22222222"} if entra else set())
 
 
-def test_a_montagem_tira_a_raiz_que_nao_e_de_empresa(tmp_path):
+def test_a_montagem_tira_a_raiz_que_nao_e_de_empresa(tmp_path, monkeypatch):
+    monkeypatch.setattr(cpc15, "dre_consolidada", lambda _: _dre())
     notas = _notas(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA))
     notas.to_parquet(tmp_path / "2023.parquet")
 
@@ -470,9 +511,92 @@ def test_a_montagem_tira_a_raiz_que_nao_e_de_empresa(tmp_path):
         [tmp_path / "2023.parquet"],
         _controladas(*CONTROLADAS_ALFA),
         lambda _: _receita(),
-        lambda _: pd.DataFrame(),
+        lambda _: pd.DataFrame({"cnpj": [COMPRADORA]}),
         lambda _: set(),
     )
 
     assert tabela.empty
     assert recusadas[cpc15.SEM_CNPJ] == 1
+
+
+# --- achados da revisão cruzada: número do grupo, de outra empresa ou de outro CNPJ -------------------
+CABECA_ALFA = "Aquisição Alfa Distribuidora de Peças Ltda.\r\nSe a aquisição tivesse ocorrido em 1 de janeiro de 2023, "
+
+
+@pytest.mark.parametrize(
+    "resto",
+    [
+        "a receita líquida consolidada da Companhia, incluindo a contribuição da adquirida, seria de R$ 5.123.456.",
+        "a Companhia teria apresentado receita líquida consolidada de R$ 5.123.456.",
+        "a receita líquida consolidada representaria R$ 5.123.456.",
+        "a adquirida teria contribuído com receita líquida adicional de R$ 5.000.",
+    ],
+)
+def test_receita_do_grupo_ou_de_parte_do_ano_nao_vira_a_da_adquirida(resto):
+    leituras, _ = cpc15.ler_notas(_paginas(CABECA_ALFA + resto), DEZ_2023)
+    assert leituras == []
+
+
+@pytest.mark.parametrize("dre", [None, 100_000_000])
+def test_sem_a_dre_ou_do_tamanho_da_compradora_nao_entra(dre):
+    # sem a receita da compradora não há como conferir; um valor do tamanho dela é o do grupo
+    notas = _notas(_paginas(AQUISICAO_ALFA, RESULTADO_ALFA))
+    colunas = ["cnpj", "referencia", "versao", "exercicio_fim", "receita"]
+    linhas = [] if dre is None else [(COMPRADORA, DEZ_2023, 1, DEZ_2023, dre)]
+
+    tabela, recusadas = cpc15.montar_tabela(
+        notas,
+        _controladas(*CONTROLADAS_ALFA),
+        _receita(),
+        pd.DataFrame(linhas, columns=colunas),
+    )
+
+    assert tabela.empty
+    assert recusadas[cpc15.SEM_DRE if dre is None else cpc15.INCONSISTENTE] == 1
+
+
+def test_a_compra_de_outra_empresa_no_meio_nao_leva_o_nome_da_anterior():
+    antiga = "Em 2021, a Companhia concluiu a aquisição da Zeta Logística Ltda."
+    nova = (
+        "Em 1º de outubro de 2023, a Companhia adquiriu 100% das quotas da Gama Comércio Ltda. Se a aquisição "
+        "tivesse ocorrido em 1 de janeiro de 2023, a Gama teria contribuído com R$ 241.958 de receita líquida."
+    )
+
+    leituras, recusadas = cpc15.ler_notas(_paginas(antiga, nova), DEZ_2023)
+
+    assert leituras == []
+    assert recusadas[cpc15.SEM_ALVO] == 1
+
+
+@pytest.mark.parametrize(
+    ("dona", "homonimas", "ligada"),
+    [
+        # a controlada é de outra companhia e a Receita tem duas empresas com o nome: não liga
+        ("99.999.999/0001-99", ["22222222", "33333333"], None),
+        # a controlada é de outra companhia e a Receita não tem o nome: não liga
+        ("99.999.999/0001-99", [], None),
+        # é da própria compradora: desempata os homônimos
+        (COMPRADORA, ["22222222", "33333333"], "22222222"),
+        # de outra companhia, mas a Receita tem uma só e é a mesma raiz: liga
+        ("99.999.999/0001-99", ["22222222"], "22222222"),
+    ],
+)
+def test_controlada_de_outra_companhia_so_liga_se_a_receita_confirma(
+    dona, homonimas, ligada
+):
+    controladas = pd.DataFrame(
+        [(dona, "22222222000122", "Beta S.A.")],
+        columns=["cnpj_companhia", "cnpj", "razao_social"],
+    )
+    receita = _receita(*[_da_receita(raiz, "beta") for raiz in homonimas])
+
+    achada = cpc15.ligar_nomes(
+        ["Beta S.A."], controladas, receita, DEZ_2023, COMPRADORA
+    )
+
+    assert achada.get("Beta S.A.", (None,))[0] == ligada
+
+
+def test_a_tabela_fica_em_casa_porque_leva_trecho_de_nota():
+    assert "ma_receitas_cpc15" in envio.FICAM_EM_CASA
+    assert "ma_receitas_cpc15" not in envio.tabelas_do_degrau(7)

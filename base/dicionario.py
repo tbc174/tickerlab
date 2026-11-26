@@ -12002,7 +12002,9 @@ TABELAS: dict[str, Tabela] = {
             "DFP da compradora aberta: uma linha por empresa comprada, exercício e versão da DFP (linha "
             "1129). É a receita de empresa fechada vendida: o ano cheio, em reais, como a nota o dá "
             "(só a da adquirida) ou pela conta que a nota permite (`forma`). Só entra o número em que "
-            "duas leituras independentes concordam e cujo nome leva a um CNPJ só; sem isso não há "
+            "duas leituras independentes concordam, que fica abaixo da receita da própria compradora e cujo "
+            "nome leva a um CNPJ só (pela controlada que a compradora informa ou pela razão social única "
+            "na Receita); sem isso não há "
             'linha, e nada é estimado. **Limites:** só entra a nota escrita em frase ("se a aquisição '
             'tivesse ocorrido em 1º de janeiro"), não em quadro; a nota que soma várias compradas não '
             "dá a receita de cada uma; e a mesma compra pode aparecer na DFP de mais de uma "
@@ -12060,7 +12062,10 @@ TABELAS: dict[str, Tabela] = {
                 "Página do PDF em que a nota daquela compra começa",
                 NUMERO,
             ),
-            "trecho": ("As frases da nota que provam o valor", TEXTO),
+            "trecho": (
+                "As frases da nota que provam o valor; de nome próprio, só o da comprada (o resto vira […])",
+                TEXTO,
+            ),
             "ligacao_por": ("controladas ou razao_social_da_receita", TEXTO),
             "resumo": ("O número, o ano, o documento e a página numa frase", TEXTO),
             "disponivel_em": ("Data em que a versão da DFP ficou pública", DATA),

@@ -81,6 +81,9 @@ COLUNAS_DA_DRE = ["cnpj", "referencia", "versao", "exercicio_fim", "receita"]
 
 FOLGA_DE_ARREDONDAMENTO = 1.005
 ALCANCE_DA_SECAO = 15_000  # caracteres entre o nome da alvo e a frase da receita
+ALCANCE_DO_VERBO = (
+    200  # caracteres depois de "adquiriu" em que o nome da comprada aparece
+)
 PAGINAS_PARA_SER_CABECALHO = 3
 FRACAO_PARA_SER_CABECALHO = 0.3
 MIL, MILHAO, BILHAO = 1_000.0, 1_000_000.0, 1_000_000_000.0
@@ -383,6 +386,99 @@ def _valor(
     return round(_numero(achado) * fator, 2), posicao, ""
 
 
+# --- o trecho sem nome próprio ----------------------------------------------------------------------
+# O trecho é a prova do número, não o texto da nota (que fica em área restrita e pode citar pessoa): de nome
+# próprio só passa o da alvo; palavra com maiúscula fora desta lista vira "[…]".
+DE_NOTA = frozenset(
+    [
+        "a",
+        "as",
+        "o",
+        "os",
+        "e",
+        "em",
+        "no",
+        "na",
+        "nos",
+        "nas",
+        "de",
+        "da",
+        "do",
+        "das",
+        "dos",
+        "se",
+        "caso",
+        "para",
+        "por",
+        "esta",
+        "este",
+        "essa",
+        "esse",
+        "desta",
+        "deste",
+        "nesta",
+        "neste",
+        "desde",
+        "durante",
+        "apos",
+        "adicionalmente",
+        "ainda",
+        "assim",
+        "companhia",
+        "grupo",
+        "controlada",
+        "controladora",
+        "adquirida",
+        "empresa",
+        "sociedade",
+        "receita",
+        "resultado",
+        "combinacao",
+        "combinacoes",
+        "negocios",
+        "aquisicao",
+        "transacao",
+        "operacao",
+        "consolidado",
+        "consolidada",
+        "exercicio",
+        "nota",
+        "r",
+        "cpc",
+        "ifrs",
+        "s",
+        "janeiro",
+        "fevereiro",
+        "marco",
+        "abril",
+        "maio",
+        "junho",
+        "julho",
+        "agosto",
+        "setembro",
+        "outubro",
+        "novembro",
+        "dezembro",
+    ]
+)
+PALAVRA_COM_MAIUSCULA = re.compile(r"[^\W\d_]*[A-ZÀ-ÖØ-Þ][^\W\d_]*")
+NUMERO_DE_DOCUMENTO = re.compile(r"\b\d{9}-?\d{2}\b|\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
+OMITIDO = "[…]"
+
+
+def _mascarar(palavra: re.Match[str]) -> str:
+    return palavra[0] if _dobrar(palavra[0]) in DE_NOTA else OMITIDO
+
+
+def _sem_nomes(trecho: str, da_alvo: Sequence[str | None]) -> str:
+    """O trecho com o nome da alvo (e o apelido) e, de resto, sem nome próprio e sem número de documento."""
+    nomes = "|".join(re.escape(n) for n in da_alvo if n)
+    partes = re.split(f"({nomes})", trecho)  # os ímpares são o nome da alvo
+    partes[::2] = [PALAVRA_COM_MAIUSCULA.sub(_mascarar, p) for p in partes[::2]]
+    limpo = NUMERO_DE_DOCUMENTO.sub(OMITIDO, "".join(partes))
+    return re.sub(r"\[…\](?:[ .,]*\[…\])+", OMITIDO, limpo)
+
+
 # --- as frases da nota -------------------------------------------------------------------------------
 CONDICAO = re.compile(r"\b(se|caso)\b.*\b(tivess|houvess|ocorress|fosse)")
 JANEIRO = re.compile(r"\b(?:0?1[o°]?|primeiro)\s+de\s+janeiro\s+de\s+(\d{4})")
@@ -392,6 +488,11 @@ VARIAS = re.compile(
     r"(empresas|sociedades|companhias|aquisicoes|negocios)|\bempresas adquiridas\b|\badquiridas\b"
 )
 PESSOA = re.compile(r"\b(sr|sra|srta|senhor|senhora|cpf)\b|\d{3}\.\d{3}\.\d{3}-\d{2}")
+# o verbo de uma compra: se a frase com ele não cita a alvo, a nota passou a falar de outra empresa
+COMPROU = re.compile(
+    r"\b(adquiri(u|ram|mos)|comprou|compramos)\b"
+    r"|\b(conclui\w*|realizou o fechamento d)\w? a (aquisicao|compra)\b"
+)
 
 
 def _e_pro_forma(frase: str) -> bool:
@@ -412,12 +513,22 @@ def _forma_por_modelo(frase: str) -> str | None:
 
 
 def _forma_por_palavra(frase: str) -> str:
-    if re.search(r"\b(aument|acresc|increment)", frase):
+    if re.search(r"\b(aument|acresc|increment|adicion)", frase):
         return AUMENTO
-    consolidado = "consolidad" in frase and not re.search(
-        r"contribu|representar", frase
-    )
-    return CONSOLIDADO if consolidado else SO_DA_ADQUIRIDA
+    return CONSOLIDADO if "consolidad" in frase else SO_DA_ADQUIRIDA
+
+
+def _outra_compra_no_meio(documento: _Documento, alvo: _Alvo, fim: int) -> bool:
+    """Entre o nome da alvo e `fim` há um verbo de compra seguido de outro nome que não o dela.
+
+    Olha o trecho depois do verbo, e não a frase: "Ltda." não termina frase e juntaria as duas compras.
+    """
+    for verbo in COMPROU.finditer(documento.dobrado, alvo.posicao, fim):
+        depois = documento.dobrado[verbo.end() : verbo.end() + ALCANCE_DO_VERBO]
+        limpa = f" {normalizar(depois) or ''} "
+        if not any(f" {c} " in limpa for c in alvo.chaves()):
+            return True
+    return False
 
 
 def _desde_a_compra(
@@ -437,6 +548,8 @@ def _desde_a_compra(
         if (anos and ano not in anos) or _alvo_da_frase(
             alvos, inicio, fim, frase
         ) != alvo:
+            continue
+        if _outra_compra_no_meio(documento, alvo, fim):
             continue
         valor, _, _ = _valor(documento, inicio, fim)
         if valor is not None:
@@ -465,7 +578,7 @@ def _ler_frase(
     if referencia.month != 12 or ano not in (referencia.year, referencia.year - 1):
         return OUTRO_ANO
     alvo = _alvo_da_frase(alvos, inicio, fim, frase)
-    if alvo is None:
+    if alvo is None or _outra_compra_no_meio(documento, alvo, fim):
         return SEM_ALVO
     valor, posicao, motivo = _valor(documento, inicio, fim)
     if valor is None:
@@ -495,7 +608,9 @@ def _ler_frase(
         pagina=pagina,
         pagina_impressa=documento.impressas[pagina],
         pagina_da_secao=documento.pagina(alvo.posicao),
-        trecho=" ".join(documento.texto[a:b] for a, b in provas),
+        trecho=_sem_nomes(
+            " ".join(documento.texto[a:b] for a, b in provas), (alvo.nome, alvo.apelido)
+        ),
     )
 
 
@@ -573,31 +688,44 @@ def ligar_nomes(
     controladas: pd.DataFrame,
     receita: pd.DataFrame,
     publico_em: date,
+    compradora: str = "",
 ) -> dict[str, tuple[str, str]]:
     """nome da nota → (raiz, por onde ligou). Só liga com um candidato; na dúvida, não liga.
 
+    A controlada que a própria `compradora` informa vale sozinha. A de outra companhia só confirma a
+    razão social única da Receita: com homônimos, ou sem o nome na Receita, ela pode ser outra empresa.
     `receita`: o que `base.ma_ligacao.ler_receita` devolve para os nomes normalizados.
     """
-    pelas_controladas = _das_controladas(controladas)
+    cnpj = re.sub(r"\D", "", compradora)
+    da_companhia = controladas["cnpj_companhia"].fillna("").astype(str)
+    proprias = _das_controladas(
+        controladas[da_companhia.str.replace(r"\D", "", regex=True) == cnpj]
+    )
+    de_todas = _das_controladas(controladas)
     pela_razao = receita[receita["por"] == "razao_social"]
     saida = {}
     for nome in nomes:
         chave = normalizar(nome)
         if not chave:
             continue
-        das_controladas = pelas_controladas.get(chave, set())
         homonimas = pela_razao[pela_razao["nome_normalizado"] == chave]
-        if len(das_controladas) == 1:
-            (raiz,) = das_controladas
-            contradiz = (
-                homonimas["raiz"].nunique() == 1 and raiz != homonimas["raiz"].iloc[0]
-            )
-            if not contradiz:
+        na_receita = set(homonimas["raiz"])
+        da_propria = proprias.get(chave, set())
+        informadas = da_propria or de_todas.get(chave, set())
+        if len(informadas) > 1:
+            continue
+        if da_propria:
+            (raiz,) = da_propria
+            if len(na_receita) != 1 or na_receita == da_propria:
                 saida[nome] = (raiz, PELAS_CONTROLADAS)
-        elif not das_controladas:
-            raiz = _unica_da_receita(chave, homonimas, publico_em)
-            if raiz:
-                saida[nome] = (raiz, PELA_RECEITA)
+        elif informadas:
+            if na_receita == informadas:
+                (raiz,) = informadas
+                saida[nome] = (raiz, PELAS_CONTROLADAS)
+        else:
+            unica = _unica_da_receita(chave, homonimas, publico_em)
+            if unica:
+                saida[nome] = (unica, PELA_RECEITA)
     return saida
 
 
@@ -706,15 +834,20 @@ def tabela_das_leituras(
     linhas = []
     for documento, lida in achadas:
         publico_em = pd.Timestamp(documento["disponivel_em"]).date()
-        ligada = ligar_nomes([lida.nome], controladas, receita, publico_em).get(
-            lida.nome
-        )
+        ligada = ligar_nomes(
+            [lida.nome], controladas, receita, publico_em, documento["cnpj"]
+        ).get(lida.nome)
         if ligada is None or ligada[0] == re.sub(r"\D", "", documento["cnpj"])[:8]:
             recusadas[SEM_CNPJ] += 1
             continue
-        do_ano = receita_do_ano(lida, _da_dre(dre, documento, lida.exercicio_fim))
-        if do_ano is None:
+        da_compradora = _da_dre(dre, documento, lida.exercicio_fim)
+        if da_compradora is None:
             recusadas[SEM_DRE] += 1
+            continue
+        do_ano = receita_do_ano(lida, da_compradora)
+        # do tamanho da compradora (ou nada) não é a receita da comprada: é a do grupo ou conta errada
+        if do_ano is None or not 0 < do_ano < da_compradora:
+            recusadas[INCONSISTENTE] += 1
             continue
         linhas.append(_linha(documento, lida, do_ano, *ligada))
     tabela = pd.DataFrame(linhas, columns=list(COLUNAS)).astype(
@@ -752,7 +885,7 @@ def montar_dos_arquivos(
     """A tabela a partir de `notas_dfp`, um ano por vez (o texto de um ano é grande).
 
     `ler_receita(nomes normalizados)`: `base.ma_ligacao.ler_receita`; `ler_demonstracoes(cnpjs)`: as
-    linhas da DRE (conta 3.01) das compradoras que escreveram o consolidado inteiro;
+    linhas da DRE (conta 3.01) das compradoras, para conferir o valor contra a receita delas;
     `ler_empresas(raízes)`: `base.ma_ligacao.raizes_de_empresa`. A tabela não tem pessoa: sai a
     raiz que não for de empresa, mesmo a que veio das controladas.
     """
@@ -763,10 +896,8 @@ def montar_dos_arquivos(
         achadas.extend(do_ano)
         recusadas.update(nao)
     nomes = {chave for _, lida in achadas if (chave := normalizar(lida.nome))}
-    do_consolidado = {d["cnpj"] for d, lida in achadas if lida.forma == CONSOLIDADO}
-    demonstracoes = (
-        ler_demonstracoes(do_consolidado) if do_consolidado else pd.DataFrame()
-    )
+    compradoras = {d["cnpj"] for d, _ in achadas}
+    demonstracoes = ler_demonstracoes(compradoras) if compradoras else pd.DataFrame()
     dre = pd.DataFrame(columns=COLUNAS_DA_DRE)
     if not demonstracoes.empty:
         dre = dre_consolidada(demonstracoes)

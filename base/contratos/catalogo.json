@@ -22297,7 +22297,7 @@
           "unidade": "número inteiro"
         },
         "trecho": {
-          "descricao": "As frases da nota que provam o valor",
+          "descricao": "As frases da nota que provam o valor; de nome próprio, só o da comprada (o resto vira […])",
           "unidade": "texto"
         },
         "ligacao_por": {
