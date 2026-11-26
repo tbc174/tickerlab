@@ -12,6 +12,7 @@ O que se confere:
 - a API traduz todos os nomes novos.
 """
 
+import json
 from datetime import date
 
 import pytest
@@ -19,6 +20,7 @@ import pytest
 from base.porta import Porta
 from src.api_externa import nomes
 from src.api_externa.conjuntos import compradores
+from src.novidades_da_pesquisa import achar_cpf
 from tests.test_compradores_29_negocios import CLASSE, Mundo
 
 HOJE = date(2026, 11, 10)
@@ -169,6 +171,130 @@ def test_a_socia_que_ainda_nao_era_publica_nao_liga_o_grupo(tmp_path):
     assert all("grupo" not in c for c in corpo["compradores"])
 
 
+def test_o_grupo_do_comprador_tambem_e_datado_na_entrada(tmp_path):
+    """Diretoria, condição 1: B compra T de S em 2022; só em 2024 a sócia de S entra em B. Pelo quadro de hoje B e S
+    têm a mesma sócia e a compra viraria reorganização; na data da compra não tinham: é compra de terceiro."""
+    mundo = Mundo(montar=False)
+    socia_de_s, b, s = (
+        mundo.comprador("33"),
+        mundo.comprador(),
+        mundo.comprador("34"),
+    )
+    t = mundo.empresa("20")
+    mundo.entrar(socia_de_s, s, "2015-01-01")
+    mundo.entrar(s, t, "2015-01-01")
+    mundo.entrar(b, t, "2022-06-10")
+    mundo.sair(s, t, "2015-01-01", "2022-06-10")
+    mundo.entrar(socia_de_s, b, "2024-03-01")
+    corpo = _corpo(mundo, tmp_path)
+    assert _entradas_de(_linha(corpo, b)) == {t}
+    assert corpo["entradas_intragrupo"] == 0
+
+
+def _socia_de_muita_gente(mundo: Mundo, *raizes: str) -> str:
+    """Uma sócia PJ (um fundo, um banco) nas `raizes` e em tantas outras que passa do teto da ponte."""
+    fundo = mundo.comprador("35")
+    # uma acima do teto mesmo depois de sair de uma delas (o teto conta o quadro do dia)
+    outras = compradores.PARTICIPACOES_MAXIMAS_DA_PONTE + 2 - len(raizes)
+    for raiz in (*raizes, *(mundo.comprador("36") for _ in range(outras))):
+        mundo.entrar(fundo, raiz, "2019-01-01")
+    return fundo
+
+
+def test_socia_de_muita_gente_nao_junta_compradores_sem_relacao(tmp_path):
+    """Diretoria, condição 2: a sócia em comum não prova controle; a que é sócia de mais empresas que o teto não
+    serve de ponte."""
+    mundo = Mundo(montar=False)
+    a, b = mundo.comprador(), mundo.comprador()
+    _socia_de_muita_gente(mundo, a, b)
+    for raiz in (a, b):
+        mundo.entrar(raiz, mundo.empresa("20"), "2024-03-10")
+    corpo = _corpo(mundo, tmp_path)
+    assert all("grupo" not in c for c in corpo["compradores"])
+
+
+def test_socia_de_muita_gente_nao_tira_compra_real_da_conta(tmp_path):
+    """O fundo vende ao comprador uma empresa do setor e também é sócio do comprador: não é reorganização."""
+    mundo = Mundo(montar=False)
+    comprador, empresa = mundo.comprador(), mundo.empresa("20")
+    fundo = _socia_de_muita_gente(mundo, comprador, empresa)
+    mundo.entrar(comprador, empresa, "2024-03-10")
+    mundo.sair(fundo, empresa, "2019-01-01", "2024-03-10")
+    corpo = _corpo(mundo, tmp_path)
+    assert _entradas_de(_linha(corpo, comprador)) == {empresa}
+
+
+def test_a_socia_fora_da_lista_sem_pessoa_nao_liga_nem_aparece(tmp_path):
+    """A sócia que não está na lista sem pessoa (MEI, empresário individual) não serve de ponte nem sai na resposta."""
+    mundo = Mundo(montar=False)
+    fora_da_lista = "37000000"  # sem nome: não está em `cnpj_empresas_pj`
+    veiculos = [mundo.comprador() for _ in range(2)]
+    for veiculo in veiculos:
+        mundo.entrar(fora_da_lista, veiculo, "2019-01-01")
+        mundo.entrar(veiculo, mundo.empresa("20"), "2024-03-10")
+    corpo = _corpo(mundo, tmp_path)
+    assert all("grupo" not in c for c in corpo["compradores"])
+    assert fora_da_lista not in json.dumps(corpo)
+
+
+def test_nenhum_cpf_sai_na_resposta(tmp_path):
+    mundo = Mundo(montar=False)
+    _reorganizacao(mundo)
+    controladora = mundo.comprador("33")
+    for _ in range(2):
+        veiculo = mundo.comprador()
+        mundo.entrar(controladora, veiculo, "2019-01-01")
+        mundo.entrar(veiculo, mundo.empresa("20"), "2024-03-10")
+    texto = json.dumps(_corpo(mundo, tmp_path), default=str)
+    assert not achar_cpf(texto)
+
+
+def test_os_limites_dizem_o_que_o_grupo_nao_ve(tmp_path):
+    """Diretoria, condição 3: ligação não prova controle; reorganização por pessoa física, sócia que saiu antes do
+    primeiro retrato e sócia estrangeira sem CNPJ ficam de fora."""
+    mundo = Mundo(montar=False)
+    _reorganizacao(mundo)
+    limites = " ".join(_corpo(mundo, tmp_path)["limites"])
+    assert "não prova controle" in limites
+    assert "pessoa física" in limites and "primeiro retrato" in limites
+    assert "sem CNPJ" in limites
+    assert "controladora" not in limites
+
+
+def _consultas(mundo: Mundo, tmp_path, monkeypatch) -> int:
+    contadas = []
+    original = compradores._Consulta._df
+
+    def contar(self, *args, **kwargs):
+        contadas.append(1)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(compradores._Consulta, "_df", contar)
+    _corpo(mundo, tmp_path)
+    compradores.zerar_o_cache()
+    return len(contadas)
+
+
+def _grupos(quantos: int) -> Mundo:
+    mundo = Mundo(montar=False)
+    for _ in range(quantos):
+        avo, meio = mundo.comprador("33"), mundo.comprador("34")
+        mundo.entrar(avo, meio, "2015-01-01")
+        for _ in range(2):
+            veiculo = mundo.comprador()
+            mundo.entrar(meio, veiculo, "2019-01-01")
+            mundo.entrar(veiculo, mundo.empresa("20"), "2024-03-10")
+        _reorganizacao(mundo)
+    return mundo
+
+
+def test_as_socias_acima_saem_em_lote(tmp_path, monkeypatch):
+    """Diretoria, condição 4: uma consulta por nível para a lista inteira; 2 ou 12 grupos, o mesmo número."""
+    poucos = _consultas(_grupos(2), tmp_path / "poucos", monkeypatch)
+    muitos = _consultas(_grupos(12), tmp_path / "muitos", monkeypatch)
+    assert poucos == muitos
+
+
 def test_a_api_traduz_os_nomes_novos():
     for nome in (
         "grupo",
@@ -177,5 +303,6 @@ def test_a_api_traduz_os_nomes_novos():
         "empresas_do_setor_com_entrada",
         "entradas_no_grupo",
         "entradas_intragrupo",
+        "quadro_de_socios_em",
     ):
         assert nomes.para_fora(nome)
