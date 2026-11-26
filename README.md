@@ -74,9 +74,13 @@ configurado e o acesso habilitado, um pedido típico é:
 > vínculos societários. Se for companhia aberta, mostre também os comparáveis. Cite a fonte e a
 > data de cada bloco e diga o que não foi possível consultar.
 
-Para mapear potenciais compradores, `compradores_do_setor` também pode mostrar a rede de
-estabelecimentos ativos por UF, conforme o acesso da organização. Aberturas de filiais no mesmo
-dia são um indício para investigar, não prova de aquisição nem de intenção de compra.
+Para mapear potenciais compradores, a implementação de `compradores_do_setor` (MCP e
+`GET /data/v1/buyers`) pode agrupar compradores ligados por uma sócia pessoa jurídica em comum e
+separa as reorganizações internas identificadas da contagem de entradas em empresas de terceiros.
+A classificação usa os vínculos conhecidos na data de cada entrada. Uma sócia em comum é indício,
+não prova de controle, e uma entrada societária não comprova, por si só, uma aquisição.
+Conforme o acesso da organização, a consulta também pode mostrar a rede de estabelecimentos ativos
+por UF. Filiais abertas no mesmo dia são um sinal para investigar, não prova de intenção de compra.
 
 Quando a organização tem acesso aos sinais do piloto, a ficha pode mostrar estabelecimentos
 ativos, capital social e, para telecomunicações, acessos por serviço na Anatel. Cada dado traz
