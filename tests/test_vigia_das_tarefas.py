@@ -165,6 +165,26 @@ def test_escreve_um_resumo_valido_por_falha_ou_atraso_e_apaga_o_das_que_voltaram
         validar(resumo)
 
 
+def test_tarefa_que_saiu_do_crontab_perde_o_resumo_da_falha(tmp_path):
+    # 26/11/2026: o IEX saiu do crontab ainda falhando; o resumo não pode ficar em `falhas/`
+    crontab, marcas, resumos = _preparar_com_logs(tmp_path)
+    (marcas / "iex-carga.falha").write_text(
+        "2026-11-25T00:30:09-03:00 saída 1\n", "utf-8"
+    )
+    (resumos / "iex-carga.json").write_text("{}", "utf-8")
+    argumentos = ["--crontab", str(crontab), "--marcas", str(marcas)]
+    argumentos += ["--saida", str(tmp_path / "estado.json"), "--agora", AGORA]
+
+    assert (
+        vigia.main([*argumentos, "--servidor", "vps", "--resumos", str(resumos)]) == 0
+    )
+
+    assert not (resumos / "iex-carga.json").exists()
+    estado = json.loads((tmp_path / "estado.json").read_text(encoding="utf-8"))
+    situacoes = {t["nome"]: t["situacao"] for t in estado["tarefas"]}
+    assert situacoes["iex-carga"] == "fora_da_agenda"
+
+
 def test_resumo_usa_o_erro_mais_recente_do_log_e_o_codigo_da_marca(tmp_path):
     resumo = _rodar_com_resumos(tmp_path)["series-macro"]
 

@@ -489,3 +489,35 @@ def test_carga_com_minutos_nao_sela_depois_do_prazo(tmp_path, monkeypatch, capsy
     # leituras: prazo em 0 s (+120 s), coleta em 61 s, selos em 122 s em diante: já passou
     assert pedidos == []
     assert "3 dias ficam sem selo" in capsys.readouterr().out
+
+
+def test_pelo_cron_com_a_coleta_desligada_sai_bem_sem_pedir_nada(
+    tmp_path, monkeypatch, capsys
+):
+    # 26/11/2026: a IEX tirou o HIST do ar; o cron que ainda chama o script não pode virar falha
+    pedidos: list[str] = []
+    monkeypatch.setattr(coletor, "main", lambda *_: pedidos.append("main") or 1)
+
+    assert coletor.pelo_cron(["--pasta", str(tmp_path)]) == 0
+    assert pedidos == []
+    assert "desligada desde 26/11/2026" in capsys.readouterr().out
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_pelo_cron_religado_roda_a_coleta(monkeypatch):
+    recebidos: list[list[str] | None] = []
+    monkeypatch.setattr(coletor, "COLETA_DESLIGADA_DESDE", None)
+    monkeypatch.setattr(
+        coletor, "main", lambda argumentos=None: recebidos.append(argumentos) or 0
+    )
+
+    assert coletor.pelo_cron(["--data", "2026-10-09"]) == 0
+    assert recebidos == [["--data", "2026-10-09"]]
+
+
+def test_a_entrada_do_modulo_passa_pela_trava_do_desligamento():
+    # o cron roda `python -m scripts.coletar_iex_do_dia`: a entrada tem de passar pela trava
+    codigo = Path(coletor.__file__).read_text(encoding="utf-8")
+    entrada = codigo.split('if __name__ == "__main__":', 1)[1]
+
+    assert "sys.exit(pelo_cron())" in entrada
