@@ -78,7 +78,9 @@ LIMITES = (
     ),
     (
         "A lista só tem pessoa jurídica: MEI e empresário individual não entram, nem nos totais; empresa que a "
-        "trava de pessoa segura (número de pessoa na razão social, por exemplo) conta no total e não é listada."
+        "trava de pessoa segura (número de pessoa na razão social, por exemplo) conta no total e não é listada. "
+        f"Em cada recorte a trava confere só {FOLGA_DA_TRAVA} candidatas além das que cabem na lista: se segurar "
+        "mais que isso, a lista vem menor, ou vazia, mesmo havendo outras depois."
     ),
     (
         "A lista não diz quem é o dono (no exterior ou no Brasil) nem traz sinal de risco de cada vizinha: "

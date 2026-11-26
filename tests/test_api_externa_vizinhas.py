@@ -250,6 +250,39 @@ def test_empresario_individual_e_quem_a_rede_trata_como_pessoa_nao_sao_listados(
     assert "DE MENTIRA" not in str(corpo)
 
 
+def test_trava_que_segura_as_primeiras_deixa_a_lista_vazia_e_o_bloco_diz_isso(tmp_path):
+    """Só as primeiras de cada recorte são conferidas (Revisor, PR 1349): as de baixo não sobem para a lista."""
+    conferidas = vizinhas.TETO_DE_VIZINHAS + vizinhas.FOLGA_DA_TRAVA
+    muitas = [
+        (f"{10_000_000 + n}000191", True, "02", "2010-01-01", CNAE, "SP", CIDADE)
+        for n in range(conferidas + 10)
+    ]
+    # da maior para a menor pelo capital; as `conferidas` de cima têm cara de CPF na razão social
+    empresas_ = [
+        (
+            cnpj[:8],
+            f"EMPRESA {'888.000.000-46' if n < conferidas else n} LTDA",
+            "2062",
+            "micro",
+            float(1000 - n),
+            1,
+        )
+        for n, (cnpj, *_) in enumerate(muitas)
+    ]
+    gravar(
+        tmp_path / "base",
+        _estabelecimentos([ESTABELECIMENTOS[0], *muitas]),
+        _empresas([EMPRESAS[0], *empresas_]),
+    )
+    corpo = _ler(tmp_path / "base").corpo
+    assert corpo["no_municipio"] == []
+    assert corpo["total_no_municipio"] == corpo["total_na_uf"] == 25
+    assert corpo["cortada"] is True
+    texto = " ".join(corpo["limites"])
+    assert "só 5 candidatas além das que cabem na lista" in texto
+    assert "menor, ou vazia" in texto
+
+
 def test_conta_o_ramo_no_municipio_e_na_uf_e_diz_quando_a_lista_foi_cortada(pasta):
     corpo = _ler(pasta, linhas=1).corpo
     assert _cnpjs(corpo["no_municipio"]) == ["33333333000191"]
