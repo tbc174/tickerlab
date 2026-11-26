@@ -194,6 +194,9 @@ FICAM_EM_CASA = (
     # licença a confirmar)
     "anp_revendedores",
     "anp_revendedores_produtos",
+    # fila do montador, linha 1 (PR 1341): contratos do PNCP, só fornecedor PJ e marca de pessoa por linha; o envio
+    # ao VPS pede o "pode" da Diretoria com a prova de zero pessoa da 1ª carga
+    "pncp_contratos",
     # linha 1074 (PR 1): RAPP do IBAMA (família `ibama`, integridade sob contrato), só CNPJ; o envio ao VPS pede o
     # "pode" da Diretoria com a prova de zero pessoa da 1ª carga
     "ibama_rapp_emissoes_atmosfericas",

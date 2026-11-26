@@ -164,6 +164,8 @@ FECHADAS_ATE_A_PRONTIDAO = frozenset({
     # linha 1074 (PR 1): RAPP do IBAMA, só CNPJ; em casa até o pode do envio
     "ibama_rapp_emissoes_atmosfericas", "ibama_rapp_efluentes_liquidos", "ibama_rapp_fontes_de_energia",
     "ibama_rapp_residuos_destinados", "ibama_rapp_residuos_transportados", "ibama_rapp_residuos_armazenados",
+    # fila do montador, linha 1 (PR 1341): contratos do PNCP, só fornecedor PJ; em casa até o pode do envio
+    "pncp_contratos",
 })  # fmt: skip
 
 

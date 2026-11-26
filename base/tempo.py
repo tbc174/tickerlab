@@ -114,6 +114,10 @@ _POR_TABELA: dict[tuple[str, str], str] = {
     # linha 1075: o dia da publicação no Diário Oficial do RJ é fato do contrato; a base soube no
     # dia do arquivo (`disponivel_em`), então não é a data de publicar (revisão de segurança do #1316)
     ("rj_contratos", "publicado_em"): "aconteceu_em",
+    # PNCP: publicação original não antecipa a versão atual; vigência não apaga o histórico.
+    ("pncp_contratos", "publicado_em"): "aconteceu_em",
+    ("pncp_contratos", "atualizado_global_em"): "aconteceu_em",
+    ("pncp_contratos", "vigencia_fim"): "aconteceu_em",
     # linha 904 (lote 2 das 300 tabelas): os passos da fiscalização da ANEEL são fatos do processo; o
     # `recebido_em` é o dia em que o agente recebeu o auto ou o termo, não o dia em que ficou público
     **{

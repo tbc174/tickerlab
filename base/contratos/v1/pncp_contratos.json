@@ -1,0 +1,125 @@
+{
+  "tabela": "pncp_contratos",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "numero_controle_pncp": {
+      "descricao": "Identificador nacional do contrato no PNCP; repete a cada versão observada",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ do fornecedor: 14 dígitos sem pontuação, com DV válido",
+      "unidade": "texto"
+    },
+    "cnpj_basico": {
+      "descricao": "Raiz do CNPJ do fornecedor, oito dígitos",
+      "unidade": "texto"
+    },
+    "cnpj_orgao": {
+      "descricao": "CNPJ do órgão contratante, extraído do identificador nacional",
+      "unidade": "texto"
+    },
+    "numero_retificacao": {
+      "descricao": "Número de retificação informado pelo PNCP; nulo se ausente ou inválido",
+      "unidade": "número inteiro"
+    },
+    "assinado_em": {
+      "descricao": "Assinatura; usa início da vigência quando a assinatura não vem",
+      "unidade": "data (dia)"
+    },
+    "vigencia_inicio": {
+      "descricao": "Primeiro dia da vigência contratual",
+      "unidade": "data (dia)"
+    },
+    "vigencia_fim": {
+      "descricao": "Último dia previsto da vigência contratual; não é exclusão da versão",
+      "unidade": "data (dia)"
+    },
+    "publicado_em": {
+      "descricao": "Dia da publicação original informado pelo PNCP",
+      "unidade": "data (dia)"
+    },
+    "atualizado_em": {
+      "descricao": "Dia da atualização do contrato informado pelo PNCP",
+      "unidade": "data (dia)"
+    },
+    "atualizado_global_em": {
+      "descricao": "Dia da atualização global informado pelo PNCP",
+      "unidade": "data (dia)"
+    },
+    "valor_inicial": {
+      "descricao": "Valor inicial do contrato em reais",
+      "unidade": "reais (R$)"
+    },
+    "valor_global": {
+      "descricao": "Valor global da versão do contrato em reais",
+      "unidade": "reais (R$)"
+    },
+    "valor_acumulado": {
+      "descricao": "Valor acumulado informado nessa versão em reais",
+      "unidade": "reais (R$)"
+    },
+    "receita": {
+      "descricao": "Verdadeiro se o contrato é de receita; falso se é de despesa",
+      "unidade": "verdadeiro ou falso"
+    },
+    "disponivel_em": {
+      "descricao": "Maior data pública da fonte, ou coleta na ausência; mudanças posteriores valem no mínimo desde a coleta",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Momento da coleta que observou esta versão pela primeira vez",
+      "unidade": "data e hora (UTC)"
+    },
+    "trata_como_pessoa": {
+      "descricao": "MEI, empresário individual, natureza do grupo 4 ou CNPJ desconhecido da Receita: a porta retira",
+      "unidade": "verdadeiro ou falso"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "numero_controle_pncp",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "assinado_em",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "assinado_em": "aconteceu_em",
+    "vigencia_inicio": "aconteceu_em",
+    "vigencia_fim": "aconteceu_em",
+    "publicado_em": "aconteceu_em",
+    "atualizado_em": "aconteceu_em",
+    "atualizado_global_em": "aconteceu_em",
+    "disponivel_em": "publico_em",
+    "visto_em": "visto_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2026-11-26",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "PNCP: licença não escrita (a confirmar; citar o PNCP)",
+  "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
+  "pessoa": false,
+  "frequencia": "Semanal, lotes diários dos últimos 14 dias guardados pelo arquivista",
+  "atraso": "Primeira versão: maior data de publicação/atualização da fonte; retificação sem data usa a coleta. Mudanças posteriores nunca valem antes da coleta que as observou.",
+  "linhas_de_pessoa": "trata_como_pessoa"
+}
