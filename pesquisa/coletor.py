@@ -25,8 +25,14 @@ from bs4 import BeautifulSoup
 from base.arquivo import robots
 from base.arquivo.coleta import BloqueioAntiRobo, Resposta
 from pesquisa import leitores
-from pesquisa.memoria import Memoria, Visto, agora
-from pesquisa.renderizacao import BloqueioNaRenderizacao
+from pesquisa.memoria import STATUS_DE_BLOQUEIO, Memoria, Visto, agora
+from pesquisa.pessoa import tem_sequencia_de_cpf
+from pesquisa.renderizacao import (
+    BloqueioNaRenderizacao,
+    Mapeador,
+    TetoDeCreditos,
+    so_letras_e_numeros,
+)
 from pesquisa.rodada import LimiteExcedido, Rodada
 
 log = logging.getLogger(__name__)
@@ -120,14 +126,18 @@ class Coletor:
         rodada: Rodada,
         *,
         renderizador: Renderizador | None = None,
+        mapeador: Mapeador | None = None,
     ) -> None:
         self.cliente = cliente
         self.memoria = memoria
         self.rodada = rodada
         self.renderizador = renderizador
+        self.mapeador = mapeador
         self.documentos = pasta / "documentos"
         self.documentos.mkdir(parents=True, exist_ok=True)
         self._robots: dict[str, str | None] = {}
+        # Origens cujo robots.txt respondeu bloqueio (anti-robô, 401, 403, 429).
+        self._bloqueio_no_robots: set[str] = set()
 
     # --- buscar página -------------------------------------------------------------------
 
@@ -267,6 +277,103 @@ class Coletor:
             }
         ordem = sorted(achados.values(), key=lambda link: link["tipo"] == "pagina")
         return ordem[:MAXIMO_DE_LINKS]
+
+    # --- mapear o site -------------------------------------------------------------------
+
+    def mapear_site(self, url: str, termo: str | None = None) -> dict[str, object]:
+        """Os endereços reais do site de `url` (sitemap e índice do Firecrawl), em vez de chutar: só do
+        mesmo endereço, documentos primeiro. `termo` filtra aqui, sem acento nem caixa, pelo endereço e
+        pelo título: ao Firecrawl vai só `url`. Os links ficam a um passo de `url`, como os de uma
+        página lida. Nada fica na memória (não é página)."""
+        try:
+            url = normalizar_url(url)
+            if self.mapeador is None:
+                raise Recusa(
+                    "o mapa do site pede o Firecrawl hospedado, que não está ligado",
+                    lembrar=False,
+                )
+            self._conferir_bloqueio_no_site(url)
+            self.rodada.examinar(url)
+            self.rodada.gastar_mapa()
+            self._conferir_robots(url)
+            self._conferir_bloqueio_no_robots(url)
+            achados = self._pedir_mapa(url)
+        except LimiteExcedido as erro:
+            return {"ok": False, "limite": str(erro)}
+        except Recusa as recusa:
+            return self._recusar(url, recusa)
+        do_site = self._links_do_mesmo_site(url, achados)
+        # Canal novo de volta ao modelo (terceiro): link com cara de CPF não volta, nem fica anotado na
+        # rodada (Diretoria, 26/11/2026). O que `buscar_pagina` devolve espera a decisão do Tiago.
+        sem_cpf = [
+            link
+            for link in do_site
+            if not tem_sequencia_de_cpf(link["url"], link["titulo"])
+        ]
+        links = _filtrar_pelo_termo(sem_cpf, termo)
+        self.rodada.anotar_links(url, [link["url"] for link in links])
+        resposta: dict[str, object] = {
+            "ok": True,
+            "url": url,
+            "no_mapa": len(do_site),
+            "omitidos_por_cpf": len(do_site) - len(sem_cpf),
+            "links": links[:MAXIMO_DE_LINKS],
+            "links_cortados": len(links) > MAXIMO_DE_LINKS,
+            "proximo_passo": "buscar_pagina ou baixar_documento num destes endereços",
+            "aviso": AVISO_DE_CONTEUDO,
+        }
+        if sem_cpf and not links:
+            resposta["dica"] = (
+                "nenhum endereço do mapa tem todas as palavras do termo: tente outro termo"
+            )
+        return resposta
+
+    def _conferir_bloqueio_no_site(self, url: str) -> None:
+        """Site que já bloqueou o bot não vai ao Firecrawl (outro IP): seria contornar o bloqueio."""
+        if self.memoria.bloqueio_valido_no_site(urlsplit(url).hostname or ""):
+            raise Recusa(
+                "o site já bloqueou o bot (anti-robô, 401, 403 ou 429): bloqueio não se contorna",
+                lembrar=False,
+            )
+
+    def _conferir_bloqueio_no_robots(self, url: str) -> None:
+        """O robots.txt que respondeu bloqueio é o site barrando o bot: o mapa não vai ao Firecrawl, e o
+        negativo fica lembrado para a próxima vez."""
+        partes = urlsplit(url)
+        if f"{partes.scheme}://{partes.netloc}" in self._bloqueio_no_robots:
+            raise Recusa(
+                "bloqueio anti-robô ao ler o robots.txt, não se contorna",
+            )
+
+    def _pedir_mapa(self, url: str) -> list[dict[str, str]]:
+        assert self.mapeador is not None
+        try:
+            return self.mapeador(url)
+        except TetoDeCreditos as erro:
+            raise LimiteExcedido(str(erro)) from erro
+        except Exception as erro:
+            # A mensagem do porteiro não repete o que barrou; a do serviço não leva a chave.
+            raise Recusa(f"o mapa do site falhou: {erro}", lembrar=False) from erro
+
+    @staticmethod
+    def _links_do_mesmo_site(
+        url: str, achados: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
+        host = urlsplit(url).hostname
+        links: dict[str, dict[str, str]] = {}
+        for achado in achados:
+            try:
+                destino = normalizar_url(achado["url"])
+            except Recusa:
+                continue
+            if urlsplit(destino).hostname != host or destino in links:
+                continue
+            links[destino] = {
+                "url": destino,
+                "titulo": leitores.limpar(achado.get("titulo", ""))[:120],
+                "tipo": tipo_do_link(destino),
+            }
+        return sorted(links.values(), key=lambda link: link["tipo"] == "pagina")
 
     # --- baixar documento ----------------------------------------------------------------
 
@@ -455,8 +562,33 @@ class Coletor:
         """O robots.txt do site; sem ele (404, rede fora), vale a regra de quem não tem robots."""
         try:
             return self.cliente.ler(url).conteudo.decode("utf-8", errors="replace")
-        except (requests.RequestException, BloqueioAntiRobo):
+        except BloqueioAntiRobo:
+            self._bloqueio_no_robots.add(url.removesuffix("/robots.txt"))
             return None
+        except requests.RequestException as erro:
+            resposta = getattr(erro, "response", None)
+            if resposta is not None and resposta.status_code in STATUS_DE_BLOQUEIO:
+                self._bloqueio_no_robots.add(url.removesuffix("/robots.txt"))
+            return None
+
+
+def _filtrar_pelo_termo(
+    links: list[dict[str, str]], termo: str | None
+) -> list[dict[str, str]]:
+    """Os links com todas as palavras de `termo` no endereço ou no título, sem acento, caixa nem
+    separador ("ProUni bolsas" acha `.../mec-prouni` com o título "Bolsas concedidas")."""
+    palavras = [so_letras_e_numeros(p) for p in (termo or "").split()]
+    palavras = [p for p in palavras if p]
+    if not palavras:
+        return links
+    return [
+        link
+        for link in links
+        if all(
+            p in so_letras_e_numeros(f"{link['url']} {link['titulo']}")
+            for p in palavras
+        )
+    ]
 
 
 def leitores_tipo(arquivo: Path | None) -> str:
