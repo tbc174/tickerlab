@@ -35,10 +35,10 @@ COLUNAS = (
 # raiz e nome fantasia nos `Estabelecimentos*.zip`; nenhuma outra coluna é lida
 CAMPOS_DA_FANTASIA = {0: "cnpj_basico", 4: "nome_fantasia"}
 CONTATO_NO_NOME = r"@|\bWWW\.|HTTP"
-# só no nome fantasia (texto livre): telefone (8 ou 9 dígitos, com ou sem separador, ou 0800), CEP e logradouro seguido
+# só no nome fantasia (texto livre): telefone (8 a 10 dígitos, ou 0800), CEP e logradouro seguido
 # de número. Na dúvida o nome sai: a empresa continua achada pela razão social
 CONTATO_NA_FANTASIA = (
-    r"(?<!\d)(?:9[\s.-]?)?\d{4}[\s.-]?\d{4}(?!\d)|\b0800[\s.-]?\d|(?<!\d)\d{5}-\d{3}(?!\d)"
+    r"(?<!\d)(?:9[\s.-]?)?\d{4}[\s.-]?\d{4}(?!\d)|(?<!\d)\d{10}(?!\d)|\b0800[\s.-]?\d|(?<!\d)\d{5}-\d{3}(?!\d)"
     r"|\b(?:RUA|R\.|AVENIDA|AV|ALAMEDA|TRAVESSA|PRACA|PRAÇA|ESTRADA|RODOVIA)(?=[\s.,]).*\d"
 )
 FORMA_JURIDICA_NO_FIM = r"(?: (?:LTDA|LIMITADA|SA|EIRELI|ME|EPP))+$"

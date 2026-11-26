@@ -10,6 +10,7 @@ import pytest
 from base import busca_de_empresa as busca
 from base import nomes_de_empresa as nomes
 from base.porta import Porta
+from tests.ajudantes_de_cpf import CPF_DE_TESTE, formatado
 
 MES = "2026-10"
 PUBLICO = date(2026, 10, 31)
@@ -236,12 +237,19 @@ def test_nomes_de_um_retrato_velho_nao_escondem_a_razao_social_de_hoje(tmp_path)
 
 @pytest.mark.parametrize(
     "pedido",
-    ["", "  ", "ab", "123.456.789-09", "um dois tres quatro cinco seis sete", "a;b%"],
+    [
+        "",
+        "  ",
+        "ab",
+        formatado(CPF_DE_TESTE),
+        "um dois tres quatro cinco seis sete",
+        "a;b%",
+    ],
 )
 def test_pedido_fora_da_forma_e_recusado_sem_repetir_o_que_entrou(pedido):
     with pytest.raises(busca.EntradaInvalida) as erro:
         busca.palavras_do_nome(pedido)
-    assert "123" not in str(erro.value)
+    assert formatado(CPF_DE_TESTE)[:3] not in str(erro.value)
 
 
 def test_pedido_cheio_de_sinais_e_recusado_na_hora():

@@ -91,6 +91,11 @@ def _do_prefixo(
     vista = _ler(_arquivos(destino / ESTABELECIMENTOS / arquivo))
     if empresas is None or vista is None:
         return None
+    if {str(t["mes_do_retrato"].max()) for t in (empresas, vista)} != {mes}:
+        raise SemListaDeEmpresas(
+            f"o prefixo {prefixo} das listas não é de {mes} (montagem pela metade): "
+            "rode o montar_empresas_pj de novo"
+        )
     empresas = empresas[empresas["cnpj_basico"].isin(set(vista["cnpj_basico"]))]
     fantasias = _ler(_arquivos(trabalho / prefixo))
     if fantasias is None:
