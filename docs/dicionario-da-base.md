@@ -2925,7 +2925,7 @@ Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: q
 
 ## `cnpj_nomes_pj`
 
-Os nomes pelos quais se acha uma empresa: a razão social, o nome fantasia dos estabelecimentos e as razões sociais antigas, uma linha por empresa e nome. Serve a busca por nome. **Sem pessoa:** só raízes de `cnpj_estabelecimentos_pj` (fora MEI, empresário individual e grupo 4); CPF escrito no nome sai, nome com e-mail ou endereço de site não entra, e telefone e endereço nem são lidos. O nome antigo só aparece desde o primeiro mês do `cnpj_empresas_historico` (2023-05). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+Os nomes pelos quais se acha uma empresa: a razão social, o nome fantasia dos estabelecimentos e as razões sociais antigas, uma linha por empresa e nome. Serve a busca por nome. **Sem pessoa:** só raízes de `cnpj_estabelecimentos_pj` (fora MEI, empresário individual e grupo 4); CPF escrito no nome sai, nome com e-mail ou endereço de site não entra, nem nome fantasia com telefone ou endereço escrito dentro; o telefone e o endereço do cadastro nem são lidos. O nome antigo só aparece desde o primeiro mês do `cnpj_empresas_historico` (2023-05). Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ (`scripts/montar_nomes_pj.py`)
 - **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)

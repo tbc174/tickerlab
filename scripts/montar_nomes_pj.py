@@ -26,7 +26,7 @@ from pathlib import Path
 import pandas as pd
 
 from base import nomes_de_empresa as nomes
-from base.parquet import gravar_se_mudou
+from base.parquet import arquivos_atuais, gravar_se_mudou
 from base.receita_diff import disponivel_em
 from base.receita_retrato import ErroDeLayout
 from scripts import carga_receita_mes as carga
@@ -52,22 +52,40 @@ Baixar = Callable[[str, Path], list[Path]]
 
 
 class SemListaDeEmpresas(ValueError):
-    """`--destino` não tem as listas sem pessoa: sem elas não dá para saber quem é empresa."""
+    """`--destino` não tem as listas sem pessoa, ou elas são de meses diferentes: sem elas não dá para saber
+    quem é empresa."""
+
+
+def _mes_da_lista(pasta: Path) -> str | None:
+    """O mês do retrato mais novo nos arquivos atuais de uma lista (sem as versões guardadas)."""
+    meses = [
+        pd.read_parquet(arquivo, columns=["mes_do_retrato"])["mes_do_retrato"].max()
+        for arquivo in arquivos_atuais(pasta)
+    ]
+    return str(max(meses)) if meses else None
 
 
 def mes_das_empresas(destino: Path) -> str:
-    """O mês do retrato da lista sem pessoa que `--destino` tem."""
-    meses = [
-        pd.read_parquet(arquivo, columns=["mes_do_retrato"])["mes_do_retrato"].max()
-        for arquivo in _arquivos(destino / EMPRESAS)
-    ]
-    if not meses or not _arquivos(destino / ESTABELECIMENTOS):
+    """O mês do retrato das listas sem pessoa que `--destino` tem; as duas têm de ser do mesmo mês."""
+    mes = _mes_da_lista(destino / EMPRESAS)
+    da_vista = _mes_da_lista(destino / ESTABELECIMENTOS)
+    if mes is None or da_vista is None:
         raise SemListaDeEmpresas(f"rode antes o montar_empresas_pj em {destino}")
-    return str(max(meses))
+    if da_vista != mes:
+        raise SemListaDeEmpresas(
+            f"a lista de empresas é de {mes} e a de estabelecimentos é de {da_vista}: "
+            "rode o montar_empresas_pj de novo"
+        )
+    return mes
 
 
-def _do_prefixo(destino: Path, prefixo: str, trabalho: Path) -> pd.DataFrame | None:
-    """Os nomes de um prefixo de raiz; None se não há empresa sem pessoa nele."""
+def _do_prefixo(
+    destino: Path, prefixo: str, trabalho: Path, mes: str
+) -> pd.DataFrame | None:
+    """Os nomes de um prefixo de raiz no retrato `mes`; None se não há empresa sem pessoa nele.
+
+    O histórico pode estar à frente das listas: versão de um mês depois de `mes` é futuro para o retrato.
+    """
     arquivo = f"{prefixo}.parquet"
     empresas = _ler(_arquivos(destino / EMPRESAS / arquivo))
     vista = _ler(_arquivos(destino / ESTABELECIMENTOS / arquivo))
@@ -78,6 +96,8 @@ def _do_prefixo(destino: Path, prefixo: str, trabalho: Path) -> pd.DataFrame | N
     if fantasias is None:
         fantasias = pd.DataFrame(columns=["cnpj_basico", "nome_fantasia"])
     historico = _ler(_arquivos(destino / HISTORICO / arquivo))
+    if historico is not None:
+        historico = historico[historico["mes_do_retrato"] <= mes]
     return nomes.tabela_de_nomes(empresas, fantasias, historico)
 
 
@@ -98,8 +118,8 @@ def montar(destino: Path, zips: list[Path], agora: datetime) -> dict[str, int]:
             for parte_numero, parte in enumerate(nomes.ler_nomes_fantasia(arquivo)):
                 parte = parte.drop_duplicates()
                 _repartir(parte, trabalho, f"{numero:02d}-{parte_numero:04d}")
-        for prefixo in sorted(p.stem for p in _arquivos(destino / EMPRESAS)):
-            tabela = _do_prefixo(destino, prefixo, trabalho)
+        for prefixo in [p.stem for p in arquivos_atuais(destino / EMPRESAS)]:
+            tabela = _do_prefixo(destino, prefixo, trabalho, mes)
             if tabela is None or tabela.empty:
                 continue
             datada = tabela.assign(

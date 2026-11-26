@@ -1,6 +1,7 @@
 """A busca de empresa pelo nome (linhas 1033 e 1037; `base/busca_de_empresa.py`): razão social, nome fantasia e
 razão social antiga, com UF, município e CNAE, o nome exato na frente. Base de mentira, nomes inventados."""
 
+import time
 from datetime import date
 
 import pandas as pd
@@ -241,3 +242,11 @@ def test_pedido_fora_da_forma_e_recusado_sem_repetir_o_que_entrou(pedido):
     with pytest.raises(busca.EntradaInvalida) as erro:
         busca.palavras_do_nome(pedido)
     assert "123" not in str(erro.value)
+
+
+def test_pedido_cheio_de_sinais_e_recusado_na_hora():
+    """A conferência dos caracteres não pode voltar atrás exponencialmente (o conector recebe o texto de fora)."""
+    inicio = time.monotonic()
+    with pytest.raises(busca.EntradaInvalida):
+        busca.palavras_do_nome("&" * 26 + "!")
+    assert time.monotonic() - inicio < 0.5

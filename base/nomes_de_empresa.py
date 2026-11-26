@@ -23,6 +23,7 @@ import pandas as pd
 from base.pessoas.sem_cpf import tirar_cpf_da_coluna
 from base.receita_empresas import sem_numero_de_pessoa
 from base.receita_retrato import CAMPOS_DO_ESTABELECIMENTO, _partes
+from base.rede.entidades import natureza_de_pessoa
 
 RAZAO_SOCIAL, NOME_FANTASIA = "razao_social", "nome_fantasia"
 RAZAO_SOCIAL_ANTERIOR = "razao_social_anterior"
@@ -34,6 +35,12 @@ COLUNAS = (
 # raiz e nome fantasia nos `Estabelecimentos*.zip`; nenhuma outra coluna é lida
 CAMPOS_DA_FANTASIA = {0: "cnpj_basico", 4: "nome_fantasia"}
 CONTATO_NO_NOME = r"@|\bWWW\.|HTTP"
+# só no nome fantasia (texto livre): telefone (8 ou 9 dígitos, com ou sem separador, ou 0800), CEP e logradouro seguido
+# de número. Na dúvida o nome sai: a empresa continua achada pela razão social
+CONTATO_NA_FANTASIA = (
+    r"(?<!\d)(?:9[\s.-]?)?\d{4}[\s.-]?\d{4}(?!\d)|\b0800[\s.-]?\d|(?<!\d)\d{5}-\d{3}(?!\d)"
+    r"|\b(?:RUA|R\.|AVENIDA|AV|ALAMEDA|TRAVESSA|PRACA|PRAÇA|ESTRADA|RODOVIA)(?=[\s.,]).*\d"
+)
 FORMA_JURIDICA_NO_FIM = r"(?: (?:LTDA|LIMITADA|SA|EIRELI|ME|EPP))+$"
 LETRA_SOLTA_ANTES_DE_OUTRA = r"\b([A-Z0-9]) (?=[A-Z0-9]\b)"
 
@@ -76,11 +83,16 @@ def _antigos(historico: pd.DataFrame) -> pd.DataFrame:
     """Cada razão social de uma versão do histórico, com o mês da versão seguinte (quando ela mudou).
 
     A versão que ainda vale também sai daqui, sem mês: `tabela_de_nomes` a descarta por ser igual à de hoje.
+    A versão do tempo em que a raiz era empresário individual ou grupo 4 nunca entra (a razão social era o
+    nome da pessoa); o leitor do histórico já a grava vazia, e aqui se confere de novo.
     """
     versoes = historico.sort_values(["cnpj_basico", "mes_do_retrato"], kind="stable")
     seguinte = versoes.groupby("cnpj_basico")["mes_do_retrato"].shift(-1)
     versoes = versoes.assign(trocado=seguinte.fillna(""))
     valendo = versoes["consta"].astype(bool) & versoes["razao_social"].fillna("").ne("")
+    if "natureza_juridica" in versoes.columns:
+        naturezas = versoes["natureza_juridica"].fillna("").astype(str)
+        valendo &= ~naturezas.map(natureza_de_pessoa).astype(bool)
     versoes = versoes[valendo]
     return _nomes(
         versoes["cnpj_basico"],
@@ -91,12 +103,17 @@ def _antigos(historico: pd.DataFrame) -> pd.DataFrame:
 
 
 def _limpar(nomes: pd.DataFrame) -> pd.DataFrame:
-    """Sem CPF nem contato no nome, com a forma de procurar; sai o nome que ficou vazio."""
+    """Sem CPF nem contato no nome, com a forma de procurar; sai o nome que ficou vazio. O nome fantasia
+    com telefone ou endereço escrito dentro sai inteiro."""
     texto = sem_numero_de_pessoa(
         tirar_cpf_da_coluna(nomes["nome_de_empresa"].astype(str).str.strip())
     )
     limpos = nomes.assign(nome_de_empresa=texto, nome_para_busca=texto.map(normalizar))
-    com_contato = texto.str.upper().str.contains(CONTATO_NO_NOME, regex=True)
+    maiusculo = texto.str.upper()
+    com_contato = maiusculo.str.contains(CONTATO_NO_NOME, regex=True) | (
+        nomes["tipo_de_nome"].eq(NOME_FANTASIA)
+        & maiusculo.str.contains(CONTATO_NA_FANTASIA, regex=True)
+    )
     return limpos[~com_contato & limpos["nome_para_busca"].ne("")]
 
 

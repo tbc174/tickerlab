@@ -32,7 +32,8 @@ LIMITE_PADRAO = 20
 MAXIMO_DE_PALAVRAS = 6
 MINIMO_DE_LETRAS = 3  # "ltd" não é um nome: seria a base inteira
 DIGITOS_DE_UM_DOCUMENTO = 8  # o nome com tantos números é um CNPJ ou um CPF
-CARACTERES_DO_NOME = re.compile(r"^[^\W_&.'/-]*(?:[&.'/-]+[^\W_&.'/-]*)*$")
+# letra, número ou um dos sinais: as duas alternativas não se cruzam, então não há volta exponencial
+CARACTERES_DO_NOME = re.compile(r"^(?:[^\W_]|[&.'/-])+$")
 ATIVA = "02"
 COLUNAS_DA_LINHA = (
     "cnpj", "cnpj_basico", "razao_social", "casou_com", "casou_nome", "trocado_em_mes",

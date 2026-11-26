@@ -72,7 +72,9 @@ def _base(tmp_path: Path, com_historico: bool = True) -> Path:
             "mes_do_retrato": "2026-10",
         }
     )
-    vista = pd.DataFrame({"cnpj_basico": ["33000167", "33444555"]})
+    vista = pd.DataFrame(
+        {"cnpj_basico": ["33000167", "33444555"], "mes_do_retrato": "2026-10"}
+    )
     tabelas = {"cnpj_empresas_pj": empresas, "cnpj_estabelecimentos_pj": vista}
     if com_historico:
         tabelas["cnpj_empresas_historico"] = pd.DataFrame(
@@ -137,6 +139,52 @@ def test_monta_razao_fantasia_e_antiga_so_de_empresa(tmp_path):
         assert proibido not in tudo
 
 
+def _acrescentar_ao_historico(destino: Path, **versao: object) -> None:
+    arquivo = destino / montar.HISTORICO / "33.parquet"
+    historico = pd.read_parquet(arquivo)
+    nova = pd.DataFrame([{"cnpj_basico": "33000167", "consta": True, **versao}])
+    pd.concat([historico, nova], ignore_index=True).to_parquet(arquivo, index=False)
+
+
+def test_mes_do_historico_depois_do_retrato_nao_entra(tmp_path):
+    """O histórico pode estar um mês à frente das listas: o nome desse mês é futuro para o retrato."""
+    destino = _base(tmp_path)
+    _acrescentar_ao_historico(
+        destino, mes_do_retrato="2026-11", razao_social="NOME DO MES QUE VEM LTDA"
+    )
+    montar.montar(destino, [_zip(tmp_path)], AGORA)
+    linhas = _linhas(destino)
+    assert "NOME DO MES QUE VEM LTDA" not in set(linhas["nome_de_empresa"])
+    assert "2026-11" not in set(linhas["trocado_em_mes"])
+    de_hoje = linhas[linhas["nome_de_empresa"] == "ALFA ENERGIA S.A."]
+    assert set(de_hoje["trocado_em_mes"]) == {""}
+
+
+def test_versao_do_tempo_de_empresario_individual_nunca_vira_nome_antigo(tmp_path):
+    """Quem era empresário individual e virou sociedade tinha o nome da pessoa como razão social."""
+    destino = _base(tmp_path)
+    _acrescentar_ao_historico(
+        destino,
+        mes_do_retrato="2023-04",
+        razao_social="PESSOA INVENTADA DE TAL",
+        natureza_juridica="2135",
+    )
+    montar.montar(destino, [_zip(tmp_path)], AGORA)
+    assert "PESSOA INVENTADA" not in _linhas(destino).to_csv()
+
+
+def test_versao_guardada_das_listas_nao_vira_prefixo(tmp_path):
+    destino = _base(tmp_path)
+    for tabela in (montar.EMPRESAS, montar.ESTABELECIMENTOS):
+        antiga = pd.read_parquet(destino / tabela / "33.parquet")
+        antiga.to_parquet(destino / tabela / "33.v1.parquet", index=False)
+    contagem = montar.montar(destino, [_zip(tmp_path)], AGORA)
+    assert contagem["razao_social"] == 2
+    assert sorted(p.name for p in (destino / montar.NOMES).rglob("*.parquet")) == [
+        "33.parquet"
+    ]
+
+
 def test_sem_o_historico_monta_sem_razao_social_antiga(tmp_path):
     destino = _base(tmp_path, com_historico=False)
     contagem = montar.montar(destino, [_zip(tmp_path)], AGORA)
@@ -157,6 +205,53 @@ def test_remontar_o_mesmo_mes_nao_regrava(tmp_path):
 def test_sem_as_listas_sem_pessoa_a_montagem_para(tmp_path):
     with pytest.raises(montar.SemListaDeEmpresas):
         montar.montar(tmp_path / "base", [_zip(tmp_path)], AGORA)
+
+
+def test_vista_de_outro_mes_para_a_montagem(tmp_path):
+    destino = _base(tmp_path)
+    arquivo = destino / montar.ESTABELECIMENTOS / "33.parquet"
+    pd.read_parquet(arquivo).assign(mes_do_retrato="2026-09").to_parquet(arquivo)
+    with pytest.raises(montar.SemListaDeEmpresas):
+        montar.montar(destino, [_zip(tmp_path)], AGORA)
+
+
+@pytest.mark.parametrize(
+    "fantasia",
+    [
+        "DISK TESTE 3333-4444",
+        "DISK TESTE (11) 98888-7777",
+        "GAS INVENTADO 33334444",
+        "TELE INVENTADA 0800 123 456",
+        "OFICINA RUA INVENTADA 123",
+        "MERCADO AV. INVENTADA, 45",
+        "LOJA 01000-000",
+    ],
+)
+def test_nome_fantasia_com_telefone_ou_endereco_nao_entra(fantasia):
+    assert _fantasias_que_ficam(fantasia) == []
+
+
+@pytest.mark.parametrize(
+    "fantasia",
+    [
+        "POSTO 2000",
+        "MERCADO 24 HORAS",
+        "AV TECNOLOGIA",
+        "AUTO PECAS BR 101",
+        "AGRO DESDE 1990",
+    ],
+)
+def test_nome_fantasia_com_numero_de_negocio_fica(fantasia):
+    assert _fantasias_que_ficam(fantasia) == [fantasia]
+
+
+def _fantasias_que_ficam(fantasia: str) -> list[str]:
+    empresas = pd.DataFrame(
+        {"cnpj_basico": ["33000167"], "razao_social": ["ALFA S.A."]}
+    )
+    fantasias = pd.DataFrame({"cnpj_basico": ["33000167"], "nome_fantasia": [fantasia]})
+    tabela = nomes.tabela_de_nomes(empresas, fantasias, None)
+    return list(tabela[tabela["tipo_de_nome"] == "nome_fantasia"]["nome_de_empresa"])
 
 
 def test_carregar_baixa_o_mes_da_lista_de_empresas_e_nao_deixa_o_zip(tmp_path):

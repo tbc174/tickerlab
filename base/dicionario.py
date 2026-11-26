@@ -758,7 +758,8 @@ def _tabela_de_nomes_de_empresa() -> dict[str, Tabela]:
                 "estabelecimentos e as razões sociais antigas, uma linha por empresa e nome. Serve a busca "
                 "por nome. **Sem pessoa:** só raízes de `cnpj_estabelecimentos_pj` (fora MEI, empresário "
                 "individual e grupo 4); CPF escrito no nome sai, nome com e-mail ou endereço de site não "
-                "entra, e telefone e endereço nem são lidos. O nome antigo só aparece desde o primeiro mês "
+                "entra, nem nome fantasia com telefone ou endereço escrito dentro; o telefone e o endereço do "
+                "cadastro nem são lidos. O nome antigo só aparece desde o primeiro mês "
                 "do `cnpj_empresas_historico` (2023-05). " + _FINALIDADE_DO_CNPJ
             ),
             onde=(
