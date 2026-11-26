@@ -110,11 +110,13 @@ def _arquivar_com_nova_tentativa(
     temporaria: Path,
     orcamentos: dict[bool, _Orcamento],
 ) -> Resultado | str:
-    """Uma rodada; se falhou (toda ou em parte), espera e tenta mais uma vez. Freio de disco não
-    tenta de novo (vira falha na hora). Sem orçamento de espera na rodada, não tenta de novo."""
+    """Uma rodada; se falhou (toda ou em parte), espera e tenta mais uma vez. Freio de disco e
+    `FalhaSemNovaTentativa` não tentam de novo (viram falha na hora). Sem orçamento de espera na rodada, não tenta de novo."""
     try:
         resultado = _uma_rodada(fonte, cliente, temporaria)
-        if isinstance(resultado, Resultado) and not resultado.falhas:
+        if isinstance(resultado, Resultado) and (
+            not resultado.falhas or resultado.sem_nova_tentativa
+        ):
             return resultado
         espera = ESPERA_DOS_TERMOS if _eh_termo(fonte) else ESPERA_PARA_TENTAR_DE_NOVO
         if not orcamentos[_eh_termo(fonte)].gastar(espera):

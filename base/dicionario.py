@@ -4448,9 +4448,77 @@ def _tabelas_dos_cadastros_conferidos() -> dict[str, Tabela]:
             },
             **comum,
         ),
+        "anp_revendedores": Tabela(
+            descricao=(
+                "Os postos de combustíveis automotivos que a ANP tem autorizados e em operação, pelo CNPJ do "
+                "estabelecimento: município, bandeira (a distribuidora, ou bandeira branca) e desde quando, e o dia "
+                "da autorização. Mostra o tamanho da rede de postos de uma empresa e a troca de bandeira desde a "
+                "primeira coleta. Só CNPJ de dígito certo; a razão social e o endereço ficam de fora. Licença "
+                "Creative Commons Attribution na página do conjunto no dados.gov.br, lida em 26/11/2026: cite a ANP"
+            ),
+            fonte="ANP: dados abertos, cadastro dos revendedores varejistas de combustíveis automotivos (`base/anp_revendedores.py`)",
+            familia_da_fonte="anp",
+            atraso="A fonte não escreve a data de publicação; a linha vale desde o dia do arquivo em que a vimos",
+            onde=_ONDE_DOS_REVENDEDORES.format(
+                tabela="anp_revendedores", arquivo="cadastro"
+            ),
+            colunas={
+                **da_empresa,
+                "uf": ("Sigla da unidade da federação do posto", TEXTO),
+                "municipio": ("Município do posto, como a ANP escreve", TEXTO),
+                "bandeira": (
+                    "Distribuidora a que o posto está vinculado, ou bandeira branca, como a ANP escreve",
+                    TEXTO,
+                ),
+                "data_da_autorizacao": (
+                    "Dia em que a ANP publicou a autorização",
+                    DATA,
+                ),
+                "data_da_vinculacao": (
+                    "Dia da vinculação do posto à bandeira atual",
+                    DATA,
+                ),
+                **carimbos,
+            },
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            frequencia="A ANP atualiza todo dia; o arquivista guarda um retrato por mês",
+        ),
+        "anp_revendedores_produtos": Tabela(
+            descricao=(
+                "O detalhe dos postos de combustíveis da ANP por produto: capacidade de tancagem em m³, número de "
+                "bicos e interdição, pelo CNPJ do estabelecimento (junte com `anp_revendedores` pelo CNPJ). Uso "
+                "interno: licença a confirmar. Só CNPJ de dígito certo"
+            ),
+            fonte="ANP: API de Revendedores (`base/anp_revendedores.py`)",
+            familia_da_fonte="anp-revendedores-api",
+            atraso="A fonte não escreve a data de publicação; a linha vale desde o dia da coleta em que a vimos",
+            onde=_ONDE_DOS_REVENDEDORES.format(
+                tabela="anp_revendedores_produtos", arquivo="produtos"
+            ),
+            colunas={
+                **da_empresa,
+                "produto": (
+                    "Combustível que o posto vende, como a ANP escreve (vazio no posto sem produto na fonte)",
+                    TEXTO,
+                ),
+                "interdicao": (
+                    "Situação de interdição do posto, como a API escreve (vazia na coleta conferida em 26/11/2026)",
+                    TEXTO,
+                ),
+                "tancagem_m3": (
+                    "Capacidade de armazenamento do produto no posto, em metros cúbicos",
+                    NUMERO_DECIMAL,
+                ),
+                "bicos": ("Número de bicos de abastecimento do produto", NUMERO),
+                **carimbos,
+            },
+            linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+            frequencia="Sem calendário fixo: a coleta da API não é agendada e roda à mão",
+        ),
     }
 
 
+_ONDE_DOS_REVENDEDORES = "Parquet em `<acervo>/base/{tabela}/{arquivo}.parquet` (servidor de casa, `base/anp_revendedores.py`)"
 _ONDE_DOS_CONFERIDOS_19_11 = "Parquet em `<acervo>/base/{pasta}/{arquivo}.parquet` (servidor de casa, `base/cadastros_conferidos_19_11.py`)"
 
 
@@ -12605,6 +12673,8 @@ _CADASTROS_DO_BCB_E_DA_ANTT = "2026-11-16"
 # linha 904 (conferência de 14/11): a 1ª coleta do arquivista das fontes novas (ECF, PAT, TAH, PADOs, homologados,
 # tancagem); a posição de cada dia vale desde o dia do arquivo, nunca antes
 _CADASTROS_CONFERIDOS = "2026-11-17"
+# linha 1123: o dia em que os revendedores da ANP entram no arquivista; a linha vale desde o dia do retrato
+_REVENDEDORES_DA_ANP = "2026-11-26"
 # conferência de 19/11 (SICAF e BPS): entram no arquivista neste dia; a linha vale desde o dia do arquivo
 _CONFERIDOS_19_11 = "2026-11-19"
 # linha 1074 (PR 1): os relatórios do RAPP do IBAMA entram no arquivista neste dia; a linha vale desde o dia do
@@ -12899,6 +12969,9 @@ _CONTRATO = {
     "anatel_pados": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "anatel_produtos_homologados": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_homologacao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
     "anp_tancagem": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_posicao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CADASTROS_CONFERIDOS, granularidade_do_publico_em="dia"),
+    # linha 1123: os postos da ANP (cadastro CC BY; o detalhe da API com licença a confirmar)
+    "anp_revendedores": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_REVENDEDORES_DA_ANP, granularidade_do_publico_em="dia"),
+    "anp_revendedores_produtos": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_REVENDEDORES_DA_ANP, granularidade_do_publico_em="dia"),
     # conferência de 19/11: SICAF (206) e Banco de Preços em Saúde (205) (licenças em src/banco/coletas.py)
     "comprasgov_sicaf": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONFERIDOS_19_11, granularidade_do_publico_em="dia"),
     "bps_compras": _contrato(modulo=_ME, linhas_de_pessoa="trata_como_pessoa", chaves=("id_na_fonte", "visto_em"), datas={"aconteceu_em": "data_da_compra", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CONFERIDOS_19_11, granularidade_do_publico_em="dia"),
@@ -13344,6 +13417,15 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "anp_tancagem",
         "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "codigo_da_instalacao"),
         "faixas": {c: _SEM_NEGATIVO for c in ("tancagem_m3",)},
+    },
+    "anp_revendedores": {
+        "pasta": "anp_revendedores",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em", "uf"),
+    },
+    "anp_revendedores_produtos": {
+        "pasta": "anp_revendedores_produtos",
+        "nao_nulas": ("id_na_fonte", "cnpj", "cnpj_basico", "consta", "trata_como_pessoa", "visto_em", "disponivel_em"),
+        "faixas": {c: _SEM_NEGATIVO for c in ("tancagem_m3", "bicos")},
     },
     "comprasgov_sicaf": {
         "pasta": "comprasgov_sicaf",
