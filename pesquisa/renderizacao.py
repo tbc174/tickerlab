@@ -256,11 +256,15 @@ def _creditos_gastos(corpo: Mapping[str, object]) -> int:
     return gasto if isinstance(gasto, int) and gasto >= 0 else CREDITOS_POR_PAGINA
 
 
-# nome com "cpf" (cpf, CPF, nr_cpf, cpfCnpj) seguido de = ou :, depois de ?, &, ;, #, /, = ou de um filtro
-# em JSON: ?cpf=, #cpf=, ?a/cpf=, ?q=cpf:<n>, filters={"cpf":"<n>"}. A palavra solta (?q=cpf) e o
-# caminho (/cpf-e-cnpj/) passam.
+# nome com "cpf" (cpf, CPF, nr_cpf, cpfCnpj, filters[cpf][$eq]) seguido de =, : ou operador por extenso,
+# depois de ?, &, ;, #, /, :, =, { , vírgula, aspas, parêntese ou espaço: ?cpf=, #!cpf=, ?a/cpf=, ?q=cpf:<n>,
+# filters={"cpf":"<n>"}, $filter=cpf eq '<n>', where=cpf in ('<n>'). A palavra solta (?q=cpf) e o caminho
+# (/cpf-e-cnpj/) passam.
+_SEPARADORES = r"""\s=:&;?#/"'{},()"""
 _PARAMETRO_CPF = re.compile(
-    r"""(?:^|[?&;#/={,"'(\s])[\w.\-\[\]]*cpf[\w.\-\[\]]*["']?\s*[=:]""", re.IGNORECASE
+    rf"(?:^|[{_SEPARADORES}])[^{_SEPARADORES}]*cpf[^{_SEPARADORES}]*[\"']?"
+    r"(?:\s*[=:]|\s+(?:eq|ne|in|like)\b)",
+    re.IGNORECASE,
 )
 
 

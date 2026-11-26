@@ -153,6 +153,14 @@ def test_endereco_de_pagina_com_cpf_vai_e_a_lista_continua_barrando(molde: str):
         "?q=cpf%3A{d}",
         "?filters=%7B%22cpf%22%3A%22{d}%22%7D",
         "?filters=%7B%22nr_cpf%22%20%3A%20%22{p}%22%7D",
+        "?filters[cpf][$eq]={d}",
+        "?filters%5Bcpf%5D%5B%24eq%5D={d}",
+        "?filtro|cpf={d}",
+        "?a@cpf={d}",
+        "#!cpf={d}",
+        "?%24filter=cpf%20eq%20%27{d}%27",
+        "?where=cpf%20in%20(%27{d}%27)",
+        "?where=CPF+LIKE+%27{d}%27",
     ],
 )
 def test_parametro_de_busca_chamado_cpf_nao_vai(molde: str):
