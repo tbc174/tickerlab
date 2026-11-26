@@ -388,6 +388,25 @@ def _participacao(linha: pd.Series, cedentes: list[str], cnpj_formatado: str) ->
     return max(validos) / POR_CENTO if validos else float("nan")
 
 
+def informes_por_fundo(
+    porta: Porta, cnpj_formatado: str, dia: date
+) -> pd.DataFrame | None:
+    """O informe mais novo de cada FIDC que lista o CNPJ entre os maiores cedentes nos 12 meses até o dia, com a
+    participação dele (`participacao`, de 0 a 1), pela mesma leitura dos fatos do FIDC (linha 1126: a dívida de
+    mercado da ficha). None: a tabela não tem as colunas dos cedentes."""
+    informes, cedentes = _informes_em_que_cede(porta, cnpj_formatado, dia)
+    if informes is None or informes.empty:
+        return informes
+    fundos = informes.sort_values(
+        ["cnpj_fundo", "competencia", "publico_em"]
+    ).drop_duplicates("cnpj_fundo", keep="last")
+    return fundos.assign(
+        participacao=fundos.apply(
+            _participacao, axis=1, args=(cedentes, cnpj_formatado)
+        )
+    )
+
+
 def _inadimplencia(fundos: pd.DataFrame) -> float | None:
     carteira = _numeros(fundos[_CARTEIRA])
     com_carteira = carteira > 0

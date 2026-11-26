@@ -25,6 +25,8 @@ from datetime import date
 from base import cnpj as cnpj_
 from base.porta import Porta
 from src.api_externa.conjuntos import Permitido
+from src.api_externa.conjuntos.divida_de_mercado import LIMITE as LIMITE_DA_DIVIDA
+from src.api_externa.conjuntos.divida_de_mercado import LeitorDaDivida
 from src.api_externa.conjuntos.empresas import e_empresa
 from src.api_externa.envelope import campo
 from src.credito.elegibilidade import CEDENTE
@@ -33,6 +35,7 @@ from src.credito.ficha import fatos_da_ficha
 from src.credito.sinais import DO_FIDC
 
 CONJUNTO = "credit"
+BLOCO_DA_DIVIDA = "divida_de_mercado"  # linha 1126: `conjuntos/divida_de_mercado.py`
 # as regras ficam fora desta rota e os fatos não mudam com o papel: a ficha inteira pede um, qualquer um
 # (os testes comparam com ela)
 PAPEL_DA_FICHA = CEDENTE
@@ -116,7 +119,11 @@ class LeitorDeCredito:
         # só os fatos de `FATOS`: a ficha inteira (PGFN, SCR, listas...) não cabia no prazo (linha 1015)
         fatos = fatos_da_ficha(self.porta, normal, como_era_em, frozenset(FATOS))
         liberados = self._liberados(fatos)
-        if not liberados:
+        # a dívida de mercado (linha 1126) sai só pelo portão, e o aviso dela só junto com ela
+        divida, fontes_da_divida = LeitorDaDivida(self.porta, self.permitido).bloco(
+            normal, como_era_em
+        )
+        if not liberados and not divida:
             return None
         servidos = {
             fato.chave: campo(
@@ -131,7 +138,8 @@ class LeitorDeCredito:
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),
             **servidos,
-            "limites": list(LIMITES),
+            **({BLOCO_DA_DIVIDA: divida} if divida else {}),
+            "limites": [*LIMITES, *([LIMITE_DA_DIVIDA] if divida else [])],
         }
-        fontes = {FATOS[fato.chave].fonte for fato in liberados}
+        fontes = {FATOS[fato.chave].fonte for fato in liberados} | fontes_da_divida
         return FichaServida(corpo, fontes, 1)
