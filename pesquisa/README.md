@@ -85,6 +85,17 @@ C:\Users\<voce>\ambientes\bot-pesquisa\Scripts\python -I pesquisa\rodar_agente.p
   Sem ele, PDF vai por `pypdf` e planilha por `openpyxl`.
 - **Crawl4AI** (Apache-2.0) para página que monta o conteúdo com JavaScript: `renderizar=true`. Pede o navegador
   do Playwright (`playwright install chromium`); sem ele a ferramenta avisa.
+- **Firecrawl** (AGPL), só por HTTP. Com `TICKERLAB_PESQUISA_FIRECRAWL` apontando para um Firecrawl do próprio PC,
+  ele renderiza no lugar do Crawl4AI. Com a chave em `FIRECRAWL_API_KEY`, o serviço hospedado entra **depois** do
+  Crawl4AI, só quando ele falta ou falha, com:
+  - porteiro: endereço com número que confere como CPF (qualquer separador), ou com termo da lista local de
+    barrados, não sai; o endereço é conferido em todas as decodificações (UTF-8, Latin-1, URL dentro de URL). A
+    lista é um arquivo fora do repositório, um termo por linha (`#` comenta), em
+    `TICKERLAB_PESQUISA_TERMOS_BARRADOS` ou, sem a variável, em `~/TickerLab-Pesquisa/termos-barrados.txt`. **Sem
+    o arquivo (pode ser vazio), o hospedado não liga**, e o aviso sai no stderr;
+  - página que responde 401, 403 ou 429 é bloqueio: vira recusa "não se contorna" e não passa ao Firecrawl;
+  - teto de créditos por processo em `TICKERLAB_FIRECRAWL_TETO` (padrão 50); a rodada diz quanto gastou;
+  - `proxy: basic` (sem o proxy que vence anti-robô: bloqueio não se contorna) e `storeInCache: false`.
 - **Código GPL/AGPL não entra por `import` nem por pin** (PyMuPDF, por exemplo). Firecrawl e semelhantes podem ser
   usados como ferramenta à parte (serviço por HTTP, linha de comando), sem copiar código deles: regra "GPL e AGPL"
   em "Segurança e privacidade" do `AGENTS.md` da raiz.

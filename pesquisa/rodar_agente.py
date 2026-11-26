@@ -71,7 +71,8 @@ def principal(argv: list[str]) -> int:
         args.modelo or openrouter.MODELO_PADRAO,
         cota,
     )
-    renderizador = renderizacao.escolher_renderizador()
+    creditos = renderizacao.ContadorDeCreditos()
+    renderizador = renderizacao.escolher_renderizador(contador=creditos)
     pesquisador = Pesquisador(args.pasta, ClienteHttp(), renderizador=renderizador)
     relatorio = agente.rodar_agente(
         args.hipotese,
@@ -84,6 +85,10 @@ def principal(argv: list[str]) -> int:
         f"{relatorio.parou_por}: {len(relatorio.confirmados)} confirmado(s), "
         f"{len(relatorio.pendentes)} pendente(s), {relatorio.passos} passo(s)\n{arquivo}"
     )
+    if creditos.paginas:
+        print(
+            f"Firecrawl hospedado: {creditos.paginas} página(s), {creditos.creditos} crédito(s)"
+        )
     return 0
 
 

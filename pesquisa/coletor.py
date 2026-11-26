@@ -26,6 +26,7 @@ from base.arquivo import robots
 from base.arquivo.coleta import BloqueioAntiRobo, Resposta
 from pesquisa import leitores
 from pesquisa.memoria import Memoria, Visto, agora
+from pesquisa.renderizacao import BloqueioNaRenderizacao
 from pesquisa.rodada import LimiteExcedido, Rodada
 
 log = logging.getLogger(__name__)
@@ -196,6 +197,8 @@ class Coletor:
             self.cliente_espera_a_vez(url)
             try:
                 url_final, html = self.renderizador(url)
+            except BloqueioNaRenderizacao as erro:
+                raise BloqueioAntiRobo(str(erro)) from erro
             except Exception as erro:
                 raise Recusa(
                     f"a renderização falhou ({type(erro).__name__}); tente buscar_pagina "
