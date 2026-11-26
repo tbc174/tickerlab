@@ -258,9 +258,10 @@ LICENCAS = {
     # jurídica; o `gleif` e o `sec` já existiam (a lista de tickers da SEC é obra da agência)
     "sec-company-tickers": "Domínio público (lista de tickers da SEC; citar a SEC)",
     "wikidata": "CC0 (Wikidata; citar Wikidata)",
-    "ofac": "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades",
-    "eufsf": "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas",
-    "ofsi": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
+    # sanções (condições da licença em 26/11/2026); a frase completa de cada uma está na tabela
+    "ofac": "Sem licença declarada; obra do governo dos EUA (17 U.S.C. 105); citar a fonte",
+    "eufsf": "Reuso 2011/833/UE; citar a Comissão Europeia (DG FISMA); só entidades mantidas",
+    "ofsi": "OGL v3.0 (FCDO, Reino Unido; citar a fonte), só entidades",
     # lote setoriais Brasil (termos lidos em 22/10/2026, licencas-por-fonte.md): EPE é CC BY 4.0;
     # INEP, Senatran e INPI só têm o rodapé CC BY-ND 3.0 do site gov.br, que vale para o conteúdo do
     # site e não para o conjunto: mostrar "como publicado" com a fonte citada (precedente da CONAB)

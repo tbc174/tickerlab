@@ -79,6 +79,15 @@ def test_lgpd_a_leitura_sozinha_tambem_barra_pessoa(formato, duble, ids):
         "INVENTADO INDIVIDUAL ENTREPRENEUR",
         "Private Entrepreneur Inventado",
         "SOLE TRADER INVENTADO",
+        "INDIVIDUALNYI PREDPRINIMATEL INVENTADO",
+        "Individualniy Predprinimatel Inventado",
+        "INVENTADO FIZYCHNA OSOBA-PIDPRYEMETS",
+        "FOP INVENTADO",
+        "ФОП ІНВЕНТАДО",
+        "ІП ІНВЕНТАДО",
+        "ЧП ИНВЕНТАДО",
+        "ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ ИНВЕНТАДО",
+        "ФІЗИЧНА ОСОБА-ПІДПРИЄМЕЦЬ ІНВЕНТАДО",
     ],
 )
 def test_empresario_individual_pelo_nome_nao_passa(nome):
@@ -86,7 +95,13 @@ def test_empresario_individual_pelo_nome_nao_passa(nome):
 
 
 @pytest.mark.parametrize(
-    "nome", ["EXEMPLO IP HOLDINGS", "IPANEMA EXEMPLO SA", "EXEMPLO ENTERPRISES"]
+    "nome",
+    [
+        "EXEMPLO IP HOLDINGS",
+        "IPANEMA EXEMPLO SA",
+        "EXEMPLO ENTERPRISES",
+        "FOPEXEMPLO SA",
+    ],
 )
 def test_empresa_com_ip_no_nome_passa(nome):
     assert not sancoes_xml.e_empresario_individual(nome)
@@ -238,6 +253,16 @@ def test_tabela_uma_linha_por_entidade_e_lista_sem_pessoa(banco, tmp_path):
     assert britanica["designado_em"] == date(2022, 3, 15)
     assert britanica["fonte"] == "Reino Unido (FCDO, UK Sanctions List), OGL v3.0"
     assert britanica["url_da_fonte"] == UK.url
+    europeia = _tabela(tmp_path, "uniao_europeia")["fonte"].unique().tolist()
+    assert europeia == [
+        (
+            "Comissão Europeia (DG FISMA), Decisão 2011/833/UE; mantidas só as entidades; "
+            "só o Jornal Oficial da UE é autêntico"
+        )
+    ]
+    for lista in ("ofac_sdn", "ofac_consolidada"):
+        do_tesouro = _tabela(tmp_path, lista)["fonte"].unique().tolist()
+        assert do_tesouro == ["OFAC, U.S. Department of the Treasury"]
 
 
 def _como_era(tabela, dia: date):
@@ -279,12 +304,47 @@ def test_sem_olhar_o_futuro_a_linha_vale_do_dia_em_que_o_arquivo_foi_visto(
     assert (depois["disponivel_em"] == depois["visto_em"]).all()
 
 
-def test_o_csv_antigo_da_mesma_fonte_fica_fora(banco, tmp_path):
-    antigo = "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.csv"
-    _coletar(banco, "ofsi-conlist", antigo, b"Report Date: x\r\n", date(2026, 11, 1))
+# os endereços do CSV que o arquivista guardou até o XML: o da União Europeia termina igual ao do XML
+CSV_ANTIGOS = [
+    (
+        "ofac-sdn",
+        "https://www.treasury.gov/ofac/downloads/sdn.csv",
+        OFAC_SDN,
+        dubles.sdn,
+        "ofac_sdn",
+    ),
+    (
+        "eufsf-sancoes",
+        (
+            "https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content"
+            "?token=dG9rZW4tMjAxNw"
+        ),
+        UE,
+        dubles.uniao_europeia,
+        "uniao_europeia",
+    ),
+    (
+        "ofsi-conlist",
+        "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.csv",
+        UK,
+        dubles.reino_unido,
+        "reino_unido",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("fonte", "antigo", "formato", "duble", "cadastro"), CSV_ANTIGOS
+)
+def test_o_csv_antigo_da_mesma_fonte_fica_fora(
+    banco, tmp_path, fonte, antigo, formato, duble, cadastro
+):
+    """O acervo continua com o CSV de antes: a carga o ignora em vez de tentar ler como XML."""
+    csv = b"Report Date: x;Entity_LogicalId;SubjectType"  # não é XML
+    _coletar(banco, fonte, antigo, csv, date(2026, 11, 1))
     assert _montar(banco, tmp_path) == {}
-    _coletar_uk(banco, date(2026, 11, 26))
-    assert _montar(banco, tmp_path)["reino_unido"]["retratos"] == 1
+    _coletar(banco, fonte, formato.url, duble(), date(2026, 11, 20))
+    assert _montar(banco, tmp_path)[cadastro]["retratos"] == 1
 
 
 def test_comando_sem_nada_guardado_sai_com_1_e_depois_monta(banco, tmp_path):
@@ -310,3 +370,26 @@ def test_contrato_destino_e_so_no_modo_dono():
     assert "sancoes_de_fora" in dossie.SO_NO_MODO_DONO
     assert not dossie.pode_mostrar("sancoes_de_fora")
     assert not dossie.pode_consultar("sancoes_de_fora")
+
+
+def test_a_licenca_a_atribuicao_e_o_limite_da_tabela():
+    """Condições do "pode" da licença (Diretoria, 26/11/2026)."""
+    tabela = TABELAS["sancoes_de_fora"]
+    ofac = coletas.licenca_da_fonte("ofac")
+    assert "sem licença declarada" in ofac.lower()
+    assert "17 U.S.C. 105" in ofac and "citar a fonte" in ofac
+    assert "DG FISMA" in coletas.licenca_da_fonte("eufsf")
+    assert "só entidades mantidas" in coletas.licenca_da_fonte("eufsf")
+    assert "sem licença declarada na página" in tabela.ressalva_de_revenda
+    assert "Jornal Oficial" in tabela.fonte
+    assert "FCDO" in coletas.licenca_da_fonte("ofsi")
+    assert "OGL v3.0" in coletas.licenca_da_fonte("ofsi")
+    for citado in (
+        "U.S. Department of the Treasury",
+        "sem endosso",
+        "DG FISMA",
+        "FCDO",
+        "OGL",
+    ):
+        assert citado in tabela.fonte, citado
+    assert "não é determinação de conformidade" in tabela.descricao

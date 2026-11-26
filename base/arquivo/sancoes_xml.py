@@ -25,13 +25,15 @@ from defusedxml.ElementTree import iterparse
 
 from base.arquivo.coleta import ErroDeDescoberta
 
-# nome de quem negocia em nome próprio: é a pessoa, mesmo quando a fonte o lista como entidade
+# nome de quem negocia em nome próprio: é a pessoa, mesmo quando a fonte o lista como entidade. Além do
+# inglês, as formas russa, ucraniana e bielorrussa, em cirílico e transliteradas
 _PALAVRAS_DE_EMPRESARIO_INDIVIDUAL = re.compile(
     r"individual entrepreneur|sole propriet|sole trader|private entrepreneur"
-    r"|индивидуальный предприниматель",
+    r"|individualn\w* predprinimatel|fizychn\w* osoba|fizichesk\w* lico"
+    r"|индивидуальный предприниматель|фізична особа",
     re.IGNORECASE,
 )
-_PREFIXO_DE_EMPRESARIO_INDIVIDUAL = re.compile(r"^(IP|ИП)\s")  # a forma russa
+_PREFIXO_DE_EMPRESARIO_INDIVIDUAL = re.compile(r"^(IP|ИП|ІП|ЧП|FOP|ФОП)\s")
 _CARACTERISTICA_DE_PESSOA = re.compile(r"birth|gender|citizen|passport", re.IGNORECASE)
 _ATRIBUTOS_DE_PESSOA_NA_UE = ("firstName", "middleName", "lastName", "gender")
 RAIZ_DO_FILTRADO = "registros"

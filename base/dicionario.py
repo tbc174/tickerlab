@@ -1586,15 +1586,18 @@ def _tabelas_das_sancoes_de_fora() -> dict[str, Tabela]:
                 "guardado: quem saiu antes não está aqui. A linha com `consta` falso diz que o "
                 "registro deixou de aparecer, o que não prova, sozinho, que a sanção acabou. Não há "
                 "CNPJ: ligar um nome a uma empresa brasileira é dedução e pede conferência. A lista "
-                "da ONU e a consolidada do Comércio dos EUA ficam fora."
+                "da ONU e a consolidada do Comércio dos EUA ficam fora. Estar ou não estar na lista "
+                "não é determinação de conformidade: confira sempre na própria fonte."
             ),
             fonte=(
-                "OFAC (U.S. Department of the Treasury), União Europeia (Comissão Europeia, "
-                "DG FISMA; só o Jornal Oficial é autêntico) e Reino Unido (FCDO, UK Sanctions List)"
+                "OFAC, U.S. Department of the Treasury (sem endosso do órgão); Comissão Europeia "
+                "(DG FISMA), lista consolidada com só as entidades mantidas (só o Jornal Oficial da UE "
+                "é autêntico); e Reino Unido (FCDO, UK Sanctions List), OGL v3.0"
             ),
             familia_da_fonte="ofac",
             ressalva_de_revenda=(
-                "As linhas da União Europeia seguem a Decisão 2011/833/UE da Comissão (citar a UE e "
+                "OFAC: sem licença declarada na página; obra do governo dos EUA (17 U.S.C. 105); citar "
+                "a fonte, sem sugerir endosso. As linhas da União Europeia seguem a Decisão 2011/833/UE da Comissão (citar a UE e "
                 "dizer que o arquivo foi filtrado) e as do Reino Unido a Open Government Licence "
                 "(OGL v3.0, citar o FCDO); a coluna `fonte` diz de quem é cada linha."
             ),

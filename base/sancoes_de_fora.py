@@ -67,8 +67,11 @@ class Cadastro:
 
     @property
     def url_termina_em(self) -> str:
-        """Só o arquivo XML: a coleta antiga (CSV) da mesma fonte continua no acervo e fica fora."""
-        return self.formato.url.rsplit("/", 1)[-1]
+        """Só o arquivo XML: a coleta antiga (CSV) da mesma fonte continua no acervo e fica fora.
+
+        Os dois últimos trechos do endereço: na União Europeia o último é igual no CSV e no XML.
+        """
+        return "/".join(self.formato.url.rsplit("/", 2)[-2:])
 
 
 CADASTROS: dict[str, Cadastro] = {
@@ -89,7 +92,8 @@ CADASTROS: dict[str, Cadastro] = {
         Cadastro(
             "uniao_europeia",
             "eufsf-sancoes",
-            "União Europeia (Comissão Europeia, DG FISMA), Decisão 2011/833/UE",
+            "Comissão Europeia (DG FISMA), Decisão 2011/833/UE; mantidas só as entidades; "
+            "só o Jornal Oficial da UE é autêntico",
             sancoes_xml.UNIAO_EUROPEIA,
         ),
         Cadastro(

@@ -1831,7 +1831,7 @@
       ],
       "familia": "ofac",
       "licencas": [
-        "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades"
+        "Sem licença declarada; obra do governo dos EUA (17 U.S.C. 105); citar a fonte"
       ],
       "link": "https://ofac.treasury.gov/",
       "marca": "vendavel",
@@ -1846,7 +1846,7 @@
       ],
       "familia": "eufsf",
       "licencas": [
-        "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas"
+        "Reuso 2011/833/UE; citar a Comissão Europeia (DG FISMA); só entidades mantidas"
       ],
       "link": "https://webgate.ec.europa.eu/fsd/fsf",
       "marca": "vendavel",
@@ -1861,7 +1861,7 @@
       ],
       "familia": "ofsi",
       "licencas": [
-        "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades"
+        "OGL v3.0 (FCDO, Reino Unido; citar a fonte), só entidades"
       ],
       "link": "https://sanctionslist.fcdo.gov.uk/",
       "marca": "vendavel",
@@ -6766,21 +6766,21 @@
     },
     {
       "id": "ofac-sdn",
-      "licenca": "Obra do governo dos EUA (domínio público); citar a OFAC, só entidades",
+      "licenca": "Sem licença declarada; obra do governo dos EUA (17 U.S.C. 105); citar a fonte",
       "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "eufsf-sancoes",
-      "licenca": "Reuso da Comissão Europeia (Decisão 2011/833/UE); citar a UE, só empresas",
+      "licenca": "Reuso 2011/833/UE; citar a Comissão Europeia (DG FISMA); só entidades mantidas",
       "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
     },
     {
       "id": "ofsi-conlist",
-      "licenca": "OGL v3 (OFSI, Reino Unido; citar a fonte), só entidades",
+      "licenca": "OGL v3.0 (FCDO, Reino Unido; citar a fonte), só entidades",
       "marca": "vendavel",
       "ritmo": "diaria",
       "termos_lidos_em": "2026-10-22"
