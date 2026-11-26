@@ -25,6 +25,8 @@ from datetime import date
 from base import cnpj as cnpj_
 from base.porta import Porta
 from src.api_externa.conjuntos import Permitido
+from src.api_externa.conjuntos.divida_de_mercado import LIMITE as LIMITE_DA_DIVIDA
+from src.api_externa.conjuntos.divida_de_mercado import LeitorDaDivida, itens
 from src.api_externa.conjuntos.empresas import e_empresa
 from src.api_externa.envelope import campo
 from src.credito.elegibilidade import CEDENTE
@@ -33,6 +35,7 @@ from src.credito.ficha import fatos_da_ficha
 from src.credito.sinais import DO_FIDC
 
 CONJUNTO = "credit"
+BLOCO_DA_DIVIDA = "divida_de_mercado"  # linha 1126: `conjuntos/divida_de_mercado.py`
 # as regras ficam fora desta rota e os fatos não mudam com o papel: a ficha inteira pede um, qualquer um
 # (os testes comparam com ela)
 PAPEL_DA_FICHA = CEDENTE
@@ -92,9 +95,13 @@ def _servivel(fato: Feature) -> bool:
 class LeitorDeCredito:
     """Lê a ficha de crédito de uma empresa de uma porta para um pedido."""
 
-    def __init__(self, porta: Porta, permitido: Permitido) -> None:
+    def __init__(
+        self, porta: Porta, permitido: Permitido, linhas_maximas: int | None = None
+    ) -> None:
         self.porta = porta
         self.permitido = permitido
+        # o teto das listas da dívida de mercado (o do plano na rota, o da análise no bloco)
+        self.linhas_maximas = linhas_maximas
 
     def _liberados(self, fatos: tuple[Feature, ...]) -> list[Feature]:
         """Os fatos que o portão libera; todos são contas nossas sobre a fonte (derivados)."""
@@ -116,7 +123,11 @@ class LeitorDeCredito:
         # só os fatos de `FATOS`: a ficha inteira (PGFN, SCR, listas...) não cabia no prazo (linha 1015)
         fatos = fatos_da_ficha(self.porta, normal, como_era_em, frozenset(FATOS))
         liberados = self._liberados(fatos)
-        if not liberados:
+        # a dívida de mercado (linha 1126) sai só pelo portão, e o aviso dela só junto com ela
+        divida, fontes_da_divida = LeitorDaDivida(
+            self.porta, self.permitido, self.linhas_maximas
+        ).bloco(normal, como_era_em)
+        if not liberados and not divida:
             return None
         servidos = {
             fato.chave: campo(
@@ -131,7 +142,9 @@ class LeitorDeCredito:
             "cnpj": normal,
             "como_era_em": como_era_em.isoformat(),
             **servidos,
-            "limites": list(LIMITES),
+            **({BLOCO_DA_DIVIDA: divida} if divida else {}),
+            "limites": [*LIMITES, *([LIMITE_DA_DIVIDA] if divida else [])],
         }
-        fontes = {FATOS[fato.chave].fonte for fato in liberados}
-        return FichaServida(corpo, fontes, 1)
+        fontes = {FATOS[fato.chave].fonte for fato in liberados} | fontes_da_divida
+        # a ficha conta uma linha, e cada item da dívida de mercado mais uma
+        return FichaServida(corpo, fontes, 1 + itens(divida))

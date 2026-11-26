@@ -177,7 +177,10 @@ _FICHA_DA_EMPRESA = Ferramenta(
     descricao=(
         "A ficha de uma empresa pelo CNPJ: o cadastro na Receita (razão social, natureza jurídica, Simples,\n"
         "situação, CNAE principal e município, cada código com o texto da tabela atual da Receita ao lado, UF e data de\n"
-        "abertura) e, se for companhia aberta, as entregas de DFP e ITR à CVM com prazo e atraso. Cada valor traz a fonte e o dia em que ficou público. O campo do cadastro que a base não consultou\n"
+        "abertura) e, se for companhia aberta, as entregas de DFP e ITR à CVM com prazo e atraso. Traz também, em\n"
+        "`size_signals`, os sinais de tamanho que a chave pode ver: os acessos na Anatel do último mês, somados por\n"
+        "serviço, os estabelecimentos ativos e o capital social, com o aviso de que capital social não mede tamanho.\n"
+        "Cada valor traz a fonte e o dia em que ficou público. O campo do cadastro que a base não consultou\n"
         "vem em `unavailable_registration_fields`, e o DFP ou ITR não consultado em `unavailable_filings`, com o aviso\n"
         "em `limits`: estar ali é falta de consulta, não valor vazio.\n"
         "Serve para a triagem de um CNPJ antes da reunião.\n"
@@ -199,7 +202,7 @@ _ANALISE_COMPLETA = Ferramenta(
     titulo="Análise completa de uma empresa",
     descricao=(
         "A análise de uma empresa pelo CNPJ numa resposta só, com cada bloco que a chave pode ver: o cadastro\n"
-        "(a ficha), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o\n"
+        "(a ficha, com os sinais de tamanho), os sócios e as participadas pessoa jurídica do quadro de sócios da Receita, os vínculos e o\n"
         "auditor, os eventos, a ficha de crédito, os ativos, os comparáveis de companhia aberta, os indicadores das\n"
         "agências reguladoras (ANEEL e ANS), o balanço no Banco Central (IF.data) e o registro de administradora de\n"
         "fundo imobiliário na CVM. Para a organização com o conjunto de integridade no contrato, traz também as\n"

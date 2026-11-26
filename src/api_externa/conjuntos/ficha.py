@@ -45,8 +45,9 @@ from base.porta import Porta
 from base.porta.duckdb import condicao_como_era, dia_de, nome_da_view
 from base.porta.rede import views
 from src.api_externa import nao_disponivel
-from src.api_externa.conjuntos import Permitido, empresas
+from src.api_externa.conjuntos import Permitido, empresas, sinais_de_tamanho
 from src.api_externa.conjuntos.empresas import LeitorDeEmpresas
+from src.api_externa.conjuntos.sinais_de_tamanho import LeitorDeTamanho
 from src.api_externa.envelope import campo
 from src.api_externa.nomes import NOMES_DE_FORA
 from src.api_externa.porta_compartilhada import lembrar
@@ -63,6 +64,7 @@ DERIVADOS = frozenset({"dias_uteis_de_atraso", "situacao_da_entrega"})
 # as colunas de `rotulos_atraso` de onde sai a situação da entrega (`_situacao_entregue`)
 COLUNAS_DA_SITUACAO = ("atrasou", "atraso_grave", "zona_cinzenta")
 CHAVES_DO_PEDIDO = ("cnpj", "como_era_em")
+BLOCO_DOS_SINAIS = "sinais_de_tamanho"  # linha 1130: `conjuntos/sinais_de_tamanho.py`
 # do estabelecimento (linha 955): a lista sem pessoa que a busca lê, no retrato mais novo já público
 TABELA_DO_ESTABELECIMENTO = empresas.LISTA_DE_ESTABELECIMENTOS
 CAMPOS_DO_ESTABELECIMENTO = (
@@ -418,6 +420,13 @@ class LeitorDeFicha:
             blocos["entregas"] = entregas
             fontes |= fontes_das_entregas
             linhas += len(entregas)
+        # os sinais de tamanho (linha 1130): só o que o portão libera, e o aviso do capital junto com ele
+        sinais, fontes_dos_sinais = LeitorDeTamanho(self.porta, self.permitido).bloco(
+            normal, como_era_em
+        )
+        if sinais:
+            blocos[BLOCO_DOS_SINAIS] = sinais
+            fontes |= fontes_dos_sinais
         # a lista do cadastro vem pronta do leitor de `companies`, já com o nome de fora; os campos novos, depois
         campos_de_fora = [
             *cadastro.corpo[CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS],
@@ -429,6 +438,9 @@ class LeitorDeFicha:
             **blocos,
             CAMPOS_DO_CADASTRO_NAO_DISPONIVEIS: campos_de_fora,
             NAO_DISPONIVEIS: nao_disponiveis,
-            "limites": limites(servidos, nao_disponiveis, campos_de_fora),
+            "limites": [
+                *limites(servidos, nao_disponiveis, campos_de_fora),
+                *sinais_de_tamanho.limites(sinais),
+            ],
         }
         return FichaServida(corpo, fontes, linhas)

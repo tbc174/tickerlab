@@ -946,6 +946,7 @@ def _leitor_de_credito(
     return credito.LeitorDeCredito(
         porta,
         _portao(conexao, contexto, credito.CONJUNTO, FINALIDADE_DE_CREDITO),
+        acesso.linhas_por_resposta(contexto),
     )
 
 
