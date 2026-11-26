@@ -115,27 +115,31 @@ def _do_retrato(parametro: str) -> str:
     return f"publico_em <= CAST($dia AS DATE) AND mes_do_retrato = ${parametro}"
 
 
-def _fontes_dos_nomes(mes: str, mes_dos_nomes: str | None) -> list[str]:
+def _fontes_dos_nomes(mes_das_empresas: str, mes_dos_nomes: str | None) -> list[str]:
     """As consultas que dão (raiz, tipo, nome, nome para busca, mês da troca) dos nomes a procurar.
 
     A razão social vem da tabela de nomes só quando ela é do mesmo mês da lista de empresas; senão vem da lista
     de hoje (a tabela atrasada não esconde empresa nova nem nome trocado), e da de nomes ficam os outros dois.
+    A montagem grava um prefixo de raiz por vez: o prefixo que ainda não saiu no mês também vem da lista.
     """
     consultas = []
-    em_dia = mes_dos_nomes == mes
+    em_dia = mes_dos_nomes == mes_das_empresas
     if mes_dos_nomes is not None:
         so_os_outros = "" if em_dia else f" AND tipo_de_nome <> '{nomes.RAZAO_SOCIAL}'"
         consultas.append(
             "SELECT cnpj_basico, tipo_de_nome, nome_de_empresa, nome_para_busca, trocado_em_mes "
             f'FROM "{NOMES}" WHERE {_do_retrato("mes_dos_nomes")}{so_os_outros}'
         )
-    if not em_dia:
-        normalizada = "trim(regexp_replace(strip_accents(upper(razao_social)), '[^A-Z0-9]+', ' ', 'g'))"
-        consultas.append(
-            f"SELECT cnpj_basico, '{nomes.RAZAO_SOCIAL}' AS tipo_de_nome, razao_social AS nome_de_empresa, "
-            f"{normalizada} AS nome_para_busca, '' AS trocado_em_mes FROM empresas"
+    da_lista = (
+        f"SELECT cnpj_basico, '{nomes.RAZAO_SOCIAL}' AS tipo_de_nome, razao_social AS nome_de_empresa, "
+        f"{nomes.normalizar_em_sql('razao_social')} AS nome_para_busca, '' AS trocado_em_mes FROM empresas"
+    )
+    if em_dia:
+        da_lista += (
+            " WHERE left(cnpj_basico, 2) NOT IN (SELECT DISTINCT left(cnpj_basico, 2) "
+            f'FROM "{NOMES}" WHERE {_do_retrato("mes_dos_nomes")})'
         )
-    return consultas
+    return [*consultas, da_lista]
 
 
 def _casados(palavras: Sequence[str]) -> str:

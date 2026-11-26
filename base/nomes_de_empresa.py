@@ -43,6 +43,9 @@ CONTATO_NA_FANTASIA = (
 )
 FORMA_JURIDICA_NO_FIM = r"(?: (?:LTDA|LIMITADA|SA|EIRELI|ME|EPP))+$"
 LETRA_SOLTA_ANTES_DE_OUTRA = r"\b([A-Z0-9]) (?=[A-Z0-9]\b)"
+# a mesma junção no banco, cujo motor de expressão não olha à frente: marca com "~" cada palavra de uma letra
+# (duas passadas, porque o espaço entre vizinhas é um só) e junta as marcadas vizinhas, dobrando a cada passada
+PASSADAS_PARA_MARCAR, PASSADAS_PARA_JUNTAR = 2, 5  # 5 juntam até 32 letras soltas
 
 
 def normalizar(nome: str) -> str:
@@ -51,6 +54,25 @@ def normalizar(nome: str) -> str:
     sem_acento = "".join(c for c in decomposto if not unicodedata.combining(c))
     palavras = re.sub(r"[^A-Z0-9]+", " ", sem_acento).strip()
     return re.sub(LETRA_SOLTA_ANTES_DE_OUTRA, r"\1", palavras)
+
+
+def normalizar_em_sql(coluna: str) -> str:
+    """A expressão do DuckDB que dá o mesmo que `normalizar`, para o nome que ainda não está na tabela de nomes.
+
+    `coluna` é um nome de coluna ou parâmetro escrito no código, nunca um texto de quem pede.
+    """
+    base = (
+        f"trim(regexp_replace(strip_accents(upper({coluna})), '[^A-Z0-9]+', ' ', 'g'))"
+    )
+    junto = f"(' ' || {base} || ' ')"
+    for _ in range(PASSADAS_PARA_MARCAR):
+        junto = rf"regexp_replace({junto}, ' ([A-Z0-9]) ', ' \1~ ', 'g')"
+    for _ in range(PASSADAS_PARA_JUNTAR):
+        junto = rf"regexp_replace({junto}, '~ ([A-Z0-9]+)~', '\1~', 'g')"
+    return (
+        f"CASE WHEN regexp_matches({base}, '(^| )[A-Z0-9] [A-Z0-9]( |$)') "
+        f"THEN trim(replace({junto}, '~', '')) ELSE {base} END"
+    )
 
 
 def sem_forma_juridica(normalizado: str) -> str:

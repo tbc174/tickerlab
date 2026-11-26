@@ -4,6 +4,7 @@ razão social antiga, com UF, município e CNAE, o nome exato na frente. Base de
 import time
 from datetime import date
 
+import duckdb
 import pandas as pd
 import pytest
 
@@ -233,6 +234,39 @@ def test_nomes_de_um_retrato_velho_nao_escondem_a_razao_social_de_hoje(tmp_path)
     porta = _porta(tmp_path, velha[velha["cnpj_basico"] != "77777777"])
     assert _raizes(_procurar(porta, "vitaficta")) == ["11111111", "22222222"]
     assert _raizes(_procurar(porta, "rometa componentes")) == ["77777777"]
+
+
+def test_montagem_pela_metade_nao_esconde_empresa(tmp_path):
+    """Os nomes saem prefixo a prefixo: o que ainda não foi gravado continua achado pela razão social."""
+    metade = _nomes()
+    porta = _porta(tmp_path, metade[~metade["cnpj_basico"].str.startswith("77")])
+    assert _raizes(_procurar(porta, "rometa componentes")) == ["77777777"]
+    assert _raizes(_procurar(porta, "vitaficta")) == ["11111111", "22222222"]
+
+
+def test_sem_a_tabela_de_nomes_as_iniciais_separadas_casam(tmp_path):
+    porta = _porta(tmp_path, None)
+    assert _raizes(_procurar(porta, "D Q R")) == ["11111111"]
+    assert _raizes(_procurar(porta, "dqr avicultura")) == ["11111111"]
+
+
+@pytest.mark.parametrize(
+    "nome",
+    [
+        "D Q R AVICULTURA - COMERCIO DE OVOS LTDA",
+        "J.B.S. Inventada S/A",
+        "A B C D E F G H I Ficticia",
+        "AB C D",
+        "Casa & Cia - 1 2 3",
+        "  Água   é  Vida ",
+        "ALFA B",
+        "X",
+    ],
+)
+def test_o_nome_normalizado_no_banco_e_o_mesmo_do_python(nome):
+    consulta = f"SELECT {nomes.normalizar_em_sql('$nome')}"
+    (no_banco,) = duckdb.connect().execute(consulta, {"nome": nome}).fetchone()
+    assert no_banco == nomes.normalizar(nome)
 
 
 @pytest.mark.parametrize(
