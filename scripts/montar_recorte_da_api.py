@@ -234,7 +234,6 @@ DEGRAU_2_ACRESCENTA = (
     # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_raizes_so_pj`
     # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
     "entradas_de_socio_pj",
-    "movimento_de_socios_pf",  # linha 1104: só contagens; raiz conferida pela mesma guarda do molde PJ
     # sem pessoa por desenho (linha 841): só das raízes de `cnpj_estabelecimentos_pj`, só para a API externa
     # (ficha por CNPJ e crédito). A mesma guarda (`conferir_raizes_so_pj`) confere cada raiz na saída.
     "cnpj_situacao_cadastral",

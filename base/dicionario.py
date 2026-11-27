@@ -891,10 +891,13 @@ def _tabela_de_movimento_socios_pf() -> dict[str, Tabela]:
                 "significam ausência de comparação, não ausência de movimentos. O mês é o da observação, "
                 "não a data de um ato nem prova de aquisição; em S.A. o QSA lista administradores. "
                 "Só raízes da lista vigente cnpj_estabelecimentos_pj, sem MEI, EI e grupo 4; quem deixa "
-                "a lista sai da série inteira. Chave PF vazia omite a comparação inteira da empresa "
-                "naquele mês; lacuna mensal ou mudanças incompletas interrompem a montagem. "
-                "Não aplica a correção de 2024-09 do molde PJ: aquela evidência "
-                "é de PJ, não de PF. ADR 0088 (restrição de pessoa) e ADR 0106 (histórico do CNPJ e CC BY); "
+                "a lista sai da série inteira. Chave PF vazia no mês M omite a comparação inteira "
+                "da empresa em M e M+1; lacuna mensal ou mudanças incompletas interrompem a montagem. "
+                "Herda a regra do molde PJ para os mesmos arquivos Socios: 2024-09 é omitido e "
+                "2024-10 compara com 2024-08. A Diretoria medirá PF no ensaio antes da primeira carga; "
+                "se PF não tiver o defeito, a regra sai por PR próprio. O contrato mantém historico_desde "
+                "da família governo (2026-10-14); retratos anteriores foram recarregados em bloco. "
+                "ADR 0088 (restrição de pessoa) e ADR 0106 (histórico do CNPJ e CC BY); "
                 "a saída agrega contagens, sem identificar o sócio. "
                 + _FINALIDADE_DO_CNPJ
             ),
@@ -916,19 +919,19 @@ def _tabela_de_movimento_socios_pf() -> dict[str, Tabela]:
                 ),
                 "socios_pf_entraram": (
                     "PF presentes neste retrato e ausentes no anterior; zero no saldo inicial",
-                    "inteiro",
+                    NUMERO,
                 ),
                 "socios_pf_sairam": (
                     "PF ausentes neste retrato e presentes no anterior; zero no saldo inicial",
-                    "inteiro",
+                    NUMERO,
                 ),
                 "socios_pf_no_fim": (
                     "PF distintas presentes no retrato, sem duplicatas",
-                    "inteiro",
+                    NUMERO,
                 ),
                 "tem_retrato_anterior": (
                     "Falso no primeiro retrato: movimentos não observáveis, só saldo inicial",
-                    "booleano",
+                    SIM_OU_NAO,
                 ),
                 "fonte": (
                     "Crédito à Receita Federal, dados abertos do CNPJ; mês em mes_do_retrato",
@@ -13177,7 +13180,7 @@ _CONTRATO = {
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_nomes_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "tipo_de_nome", "nome_para_busca"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "entradas_de_socio_pj": _contrato(modulo="governo_e_sancoes", chaves=("movimento", "cnpj_basico", "raiz_socio_pj", "data_entrada", "mes_do_retrato"), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "movimento_de_socios_pf": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde="2023-05-01", granularidade_do_publico_em="mes"),
+    "movimento_de_socios_pf": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "participacoes_de_socio_pj": _contrato(modulo="governo_e_sancoes", chaves=("raiz_socio_pj", "cnpj_basico"), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),

@@ -22,6 +22,9 @@ AGORA = datetime(2026, 11, 27, tzinfo=UTC)
 @pytest.fixture
 def acervo(tmp_path, monkeypatch):
     monkeypatch.setattr(
+        script, "exigir_versao_do_codigo", lambda: "a" * 40, raising=False
+    )
+    monkeypatch.setattr(
         script, "espaco_do_disco", lambda _: (200 * 1024**3, 150 * 1024**3)
     )
     cnpj, destino = tmp_path / "cnpj", tmp_path / "base"
@@ -138,14 +141,92 @@ def test_raiz_retirada_da_lista_nao_sobra_na_particao_antiga(acervo):
     assert pd.read_parquet(acervo[1] / socios_pf.TABELA / "22.parquet").empty
 
 
-def test_erro_nao_copia_identificador_para_saida(acervo, monkeypatch, capsys):
-    def falhar(*args, **kwargs):
-        raise ValueError("***111111** identificador sintético")
-
-    monkeypatch.setattr(script, "montar", falhar)
+def test_erro_nao_copia_identificador_para_saida(acervo, capsys):
+    arquivo = acervo[0] / "vigente" / "qsa" / "11.parquet"
+    tabela = pd.read_parquet(arquivo).drop(columns="tipo_socio")
+    tabela.to_parquet(arquivo, index=False)
     assert rodar(acervo) == 1
     saida = capsys.readouterr().out
     assert "FALHAS" in saida and "***" not in saida and "sintético" not in saida
+
+
+def test_guarda_de_faixa_nao_publica_prefixo_antes_de_conferir_mes(
+    acervo, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        script,
+        "MAXIMO_POR_MES",
+        {"socios_pf_entraram": 0, "socios_pf_sairam": 0},
+        raising=False,
+    )
+    assert rodar(acervo) == 1
+    assert not (acervo[1] / socios_pf.TABELA).exists()
+    assert "2023-06" in capsys.readouterr().out
+
+
+def test_guarda_nao_reprova_mes_ja_gravado(acervo, monkeypatch):
+    assert rodar(acervo) == 0
+    monkeypatch.setattr(
+        script,
+        "MAXIMO_POR_MES",
+        {"socios_pf_entraram": 0, "socios_pf_sairam": 0},
+        raising=False,
+    )
+    assert rodar(acervo) == 0
+
+
+def test_ensaio_imprime_totais_por_mes_sem_identificador(acervo, capsys):
+    assert rodar(acervo, "--ensaio") == 0
+    saida = capsys.readouterr().out
+    assert "2023-07: entraram=0 sairam=2" in saida
+    assert "sem_correcao" in saida and "com_correcao" in saida
+    assert "***" not in saida and EMPRESA not in saida
+
+
+def test_versao_desconhecida_interrompe_sem_gravar(acervo, monkeypatch):
+    from src.versao_do_codigo import VersaoDesconhecidaError
+
+    def desconhecida():
+        raise VersaoDesconhecidaError("sem commit")
+
+    monkeypatch.setattr(script, "exigir_versao_do_codigo", desconhecida, raising=False)
+    assert rodar(acervo) == 1
+    assert not (acervo[1] / socios_pf.TABELA).exists()
+
+
+def test_freio_e_conferido_de_novo_antes_de_cada_gravacao(acervo, monkeypatch):
+    disco = iter([(200, 150), (200, 150), (200, 40)])
+    monkeypatch.setattr(
+        script, "espaco_do_disco", lambda _: tuple(n * 1024**3 for n in next(disco))
+    )
+    assert rodar(acervo) == 1
+    assert not (acervo[1] / socios_pf.TABELA).exists()
+
+
+def test_freio_tambem_antes_de_publicar_cada_prefixo(acervo, monkeypatch):
+    # Início, dois temporários, primeira publicação, segunda publicação (sem espaço).
+    disco = iter([(200, 150)] * 4 + [(200, 40)])
+    monkeypatch.setattr(
+        script, "espaco_do_disco", lambda _: tuple(n * 1024**3 for n in next(disco))
+    )
+    assert rodar(acervo) == 1
+    pasta = acervo[1] / socios_pf.TABELA
+    assert (pasta / "11.parquet").exists()
+    assert not (pasta / "22.parquet").exists()
+
+
+def test_guarda_preserva_tabela_anterior_e_limpa_temporarios(acervo, monkeypatch):
+    assert rodar(acervo) == 0
+    pasta = acervo[1] / socios_pf.TABELA
+    antes = {p.name: p.read_bytes() for p in pasta.iterdir()}
+    # Trata todos os meses como novos para exercitar a guarda diante de uma tabela existente.
+    monkeypatch.setattr(script, "_meses_gravados", lambda _: set())
+    monkeypatch.setattr(
+        script, "MAXIMO_POR_MES", {"socios_pf_entraram": 0, "socios_pf_sairam": 0}
+    )
+    assert rodar(acervo) == 1
+    assert antes == {p.name: p.read_bytes() for p in pasta.iterdir()}
+    assert not list(acervo[1].glob("movimento-pf-*"))
 
 
 def test_porta_le_publicacao_no_fim_do_mes_e_nenhum_id(acervo):

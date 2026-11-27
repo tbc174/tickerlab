@@ -7,11 +7,12 @@ entrada nem saída. Nenhum identificador individual faz parte da saída.
 """
 
 from collections import Counter
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 
 import pandas as pd
 
 from base.receita_diff import ENTROU, MES, SAIU, disponivel_em
+from base.socios_pj import RETRATOS_COM_DEFEITO
 
 TABELA = "movimento_de_socios_pf"
 EMPRESA = "cnpj_basico"
@@ -86,6 +87,7 @@ def contar_movimentos(
     mudancas: pd.DataFrame,
     meses: Sequence[str],
     pessoas_juridicas: Collection[str],
+    retratos_com_defeito: Mapping[str, str] = RETRATOS_COM_DEFEITO,
 ) -> pd.DataFrame:
     """Conta PF distintas por raiz e mês, só nas empresas da lista sem pessoa.
 
@@ -95,6 +97,8 @@ def contar_movimentos(
     inteira da empresa naquele mês. Mudanças só de atributos não contam;
     tipo 3 (estrangeiro) fica fora.
     A lista de empresas é a vigente, como no molde PJ: privacidade antes do PIT.
+    Herda os retratos defeituosos do molde: o mês seguinte compara com o anterior
+    ao defeito; nenhuma linha sai no mês defeituoso.
     """
     conferir_meses(meses)
     estado = _chaves(_filtrar(vigente, pessoas_juridicas))
@@ -109,7 +113,14 @@ def contar_movimentos(
         anterior = (
             _anterior(estado, mudancas[mudancas.mes == mes]) if comparavel else estado
         )
-        linhas.extend(_contar(set(anterior), set(estado), mes, comparavel))
+        para_comparar = anterior
+        for defeito, seguinte in retratos_com_defeito.items():
+            if seguinte == mes and defeito in meses:
+                para_comparar = _anterior(
+                    para_comparar, mudancas[mudancas.mes == defeito]
+                )
+        if mes not in retratos_com_defeito:
+            linhas.extend(_contar(set(para_comparar), set(estado), mes, comparavel))
         estado = anterior
     tabela = pd.DataFrame(linhas, columns=COLUNAS)
     tabela = tabela.astype(

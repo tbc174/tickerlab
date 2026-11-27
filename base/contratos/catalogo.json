@@ -8045,19 +8045,19 @@
         },
         "socios_pf_entraram": {
           "descricao": "PF presentes neste retrato e ausentes no anterior; zero no saldo inicial",
-          "unidade": "inteiro"
+          "unidade": "número inteiro"
         },
         "socios_pf_sairam": {
           "descricao": "PF ausentes neste retrato e presentes no anterior; zero no saldo inicial",
-          "unidade": "inteiro"
+          "unidade": "número inteiro"
         },
         "socios_pf_no_fim": {
           "descricao": "PF distintas presentes no retrato, sem duplicatas",
-          "unidade": "inteiro"
+          "unidade": "número inteiro"
         },
         "tem_retrato_anterior": {
           "descricao": "Falso no primeiro retrato: movimentos não observáveis, só saldo inicial",
-          "unidade": "booleano"
+          "unidade": "verdadeiro ou falso"
         },
         "fonte": {
           "descricao": "Crédito à Receita Federal, dados abertos do CNPJ; mês em mes_do_retrato",
@@ -8087,7 +8087,7 @@
         "disponivel_em": "publico_em",
         "montado_em": "coletado_em"
       },
-      "historico_desde": "2023-05-01",
+      "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "revenda": "vendável com atribuição à fonte",

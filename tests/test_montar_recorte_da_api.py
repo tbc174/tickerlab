@@ -437,7 +437,8 @@ def _movimento_pf(base, raiz="11111111"):
 
 def test_contagem_pf_segue_portas_do_molde_pj(tmp_path):
     nome = "movimento_de_socios_pf"
-    assert nome in envio.tabelas_do_degrau(2)
+    # A guarda está pronta, mas o envio padrão espera a primeira carga conferida pela Diretoria.
+    assert nome not in envio.tabelas_do_degrau(2)
     assert nome not in envio.tabelas_do_degrau(1)
     assert not pode_consultar(nome)
     base = tmp_path / "base"

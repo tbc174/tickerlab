@@ -422,10 +422,7 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
         assert tabela.granularidade_do_publico_em in {"dia", "mes", "ano"}, nome
         # o lote de governo guardado desde 14/10 (mensal); o RAPP do IBAMA (linha 1074) só entrou no arquivista
         # em 25/11 e vale pelo dia do arquivo
-        if nome == "movimento_de_socios_pf":
-            # Linha 1104: a cobertura é a série de retratos já guardada desde 2023-05.
-            assert tabela.historico_desde == "2023-05-01"
-        elif tabela.familia_da_fonte in FAMILIAS_DE_GOVERNO and not nome.startswith(
+        if tabela.familia_da_fonte in FAMILIAS_DE_GOVERNO and not nome.startswith(
             "ibama_rapp_"
         ):
             assert tabela.historico_desde == "2026-10-14", nome

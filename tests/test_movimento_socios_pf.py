@@ -135,3 +135,71 @@ def test_tipo_pj_e_estrangeiro_ficam_fora_e_tabela_vazia_tem_esquema():
     mudancas = receita_diff.diff(quadro, quadro, receita_diff.CHAVE_DO_QSA, MESES[0])
     tabela = contar_movimentos(quadro, mudancas, MESES[:1], {EMPRESA})
     assert tabela.empty and list(tabela) == saida
+
+
+@pytest.mark.parametrize("problema", ["negativo", "mes", "tipo"])
+def test_recusa_mudanca_inconsistente(problema):
+    from base.socios_pf import contar_movimentos
+
+    maio, junho = retratos()["2023-05"], retratos()["2023-06"]
+    mudou = receita_diff.diff(maio, junho, receita_diff.CHAVE_DO_QSA, "2023-06")
+    if problema == "negativo":
+        mudou = pd.concat([mudou, mudou[mudou.tipo == "entrou"]], ignore_index=True)
+        mensagem = "inconsistentes"
+    elif problema == "mes":
+        mudou["mes"] = "2024-01"
+        mensagem = "fora dos meses"
+    else:
+        mudou["tipo"] = "desconhecido"
+        mensagem = "desconhecido"
+    with pytest.raises(ValueError, match=mensagem):
+        contar_movimentos(junho, mudou, MESES[:2], {EMPRESA, OUTRA})
+
+
+def _retrato_defeituoso(ate):
+    from base.socios_pf import contar_movimentos
+
+    quadros = retratos()
+    meses = [m for m in MESES if m <= ate]
+    quadros["2023-07"] = quadros["2023-05"].iloc[0:0]
+    mudancas = pd.concat(
+        [
+            receita_diff.diff(quadros[a], quadros[b], receita_diff.CHAVE_DO_QSA, b)
+            for a, b in pairwise(meses)
+        ],
+        ignore_index=True,
+    )
+    return contar_movimentos(
+        quadros[ate], mudancas, meses, {EMPRESA, OUTRA}, {"2023-07": "2023-08"}
+    )
+
+
+def test_defeito_compara_mes_seguinte_com_anterior_ao_defeito():
+    tabela = _retrato_defeituoso("2023-08")
+    assert "2023-07" not in set(tabela.mes_do_retrato)
+    agosto = tabela[tabela.mes_do_retrato == "2023-08"].set_index("cnpj_basico")
+    assert agosto.loc[EMPRESA, ["socios_pf_entraram", "socios_pf_sairam"]].tolist() == [
+        0,
+        0,
+    ]
+    assert agosto.loc[OUTRA, ["socios_pf_entraram", "socios_pf_sairam"]].tolist() == [
+        0,
+        1,
+    ]
+    assert set(agosto.disponivel_em) == {
+        pd.Timestamp(receita_diff.disponivel_em("2023-08"))
+    }
+    pd.testing.assert_frame_equal(
+        _retrato_defeituoso("2023-06"),
+        tabela[tabela.mes_do_retrato <= "2023-06"].reset_index(drop=True),
+    )
+
+
+def test_regra_do_retrato_defeituoso_e_herdada_do_molde_pj():
+    from base import socios_pf, socios_pj
+
+    assert (
+        socios_pf.RETRATOS_COM_DEFEITO
+        == socios_pj.RETRATOS_COM_DEFEITO
+        == {"2024-09": "2024-10"}
+    )
