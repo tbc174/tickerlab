@@ -36,7 +36,7 @@ original.
 | **Base de dados por CNPJ** | os arquivos oficiais guardados com o hash de cada um, em tabelas "como eram na data": uma consulta a um dia nunca enxerga o que só foi publicado depois | a origem de tudo o que vem abaixo |
 | **API, CLI e conector MCP** (TickerLab Data) | a mesma base por HTTP (`/data/v1`), no terminal (`tickerlab empresa <cnpj>`) e em assistentes de IA: perfil, demonstrações, setores, fundos, busca de empresas e comparáveis, conforme o acesso e a interface | quem integra dados ou faz prospecção e análise por CNPJ |
 | **App de análise e backtest** | relatório da empresa e do setor, Research com os fatos da CVM e da SEC, carteira, relatórios em PDF e teste de estratégias com dados do passado | quem analisa empresas e ativos |
-| **Site público** | o produto, as fontes da base uma a uma, calculadoras e simuladores gratuitos, o pregão do dia e os estudos abertos | qualquer pessoa, sem login |
+| **Site público** | o produto, o catálogo público de fontes, calculadoras e simuladores gratuitos, o pregão do dia e os estudos abertos | qualquer pessoa, sem login |
 
 Três regras atravessam tudo: **origem de cada número** (fonte, data e documento), **sem olhar o
 futuro** (cada dado vale só a partir do dia em que ficou público) e **honestidade com os números** (o
@@ -122,8 +122,9 @@ cada original e responde como os dados **eram** em qualquer data.
 - **Um CNPJ, muitas fontes:** cadastro e quadro de sócios pessoa jurídica (Receita), demonstrações e
   eventos (CVM), sanções (CGU), dívida ativa (PGFN), embargos (IBAMA), licenças e registros de
   agências reguladoras (ANEEL, ANP, ANS, SUSEP, ANM e outras), financiamentos e incentivos, fundos e
-  o grupo econômico. A lista completa, com a licença e a data de cada fonte, está em
-  [tickerlab.com.br/dados.html](https://tickerlab.com.br/dados.html).
+  o grupo econômico. As fontes divulgadas, com licença e data, estão em
+  [tickerlab.com.br/dados.html](https://tickerlab.com.br/dados.html). O catálogo técnico também
+  inclui tabelas reservadas ao uso interno, fora da vitrine, da API externa e do conector.
 - **Original guardado:** cada arquivo baixado fica no acervo com o SHA-256 como nome, e cada coleta
   entra num registro e num manifesto diário.
 - **Ponto no tempo:** cada linha tem a data em que ficou pública e até quando valeu;
@@ -215,7 +216,7 @@ de 20) consomem a API e já são a entrada principal; o que ainda não migrou ab
 Gerado em `site/` pelo React de `web/` e por `scripts/gerar_site.py`, a partir dos mesmos lugares
 que o app lê (páginas, planos, marca e catálogo da base).
 
-- **Dados** ([dados.html](https://tickerlab.com.br/dados.html)): todas as fontes da base, por
+- **Dados** ([dados.html](https://tickerlab.com.br/dados.html)): fontes do catálogo público, por
   órgão, com a licença e o uso de cada uma.
 - **Ferramentas grátis** ([ferramentas.html](https://tickerlab.com.br/ferramentas.html)):
   calculadoras e simuladores sem login (juros compostos, renda fixa, DARF, preço médio,
