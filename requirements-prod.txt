@@ -44,6 +44,8 @@ pydantic==2.14.0
 psycopg-binary==3.3.6
 psycopg==3.3.6
 requests==2.34.2
+# urllib3: o cliente Sintegra trata as falhas de leitura do socket; já vem com requests.
+urllib3==2.8.0
 SQLAlchemy==2.1.4
 # starlette: o conector remoto usa direto (rotas e respostas); já vinha com o FastAPI.
 starlette==1.7.0

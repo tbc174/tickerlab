@@ -77,6 +77,8 @@ AINDA_SEM_A_MARCA = frozenset(
 # não saem pelo piloto (a marca falta); entram aqui com o mesmo compromisso: só encolhe.
 FORA_DA_CONSULTA_SEM_A_MARCA = frozenset(
     {
+        # Linha 1120: cadastro estadual restrito, sem classificação de EI/MEI.
+        "sintegra_estadual",
         # Linha 1108: CNPJ da escola/mantenedora sem natureza/MEI; tabela inteira
         # marcada como pessoa e fora da porta até a marca por linha existir.
         "inep_censo_escolar",

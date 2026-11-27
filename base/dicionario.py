@@ -6585,6 +6585,80 @@ def _tabela_do_pncp() -> dict[str, Tabela]:
 
 
 TABELAS: dict[str, Tabela] = {
+    "sintegra_estadual": Tabela(
+        descricao="Cadastros estaduais de ICMS por estabelecimento. Só PR tem coleta operacional; leitores RS/MG somente offline até URL permitida conferida. Lista fechada sem nome ou endereço; CNPJ estrito com DV e recusa de CPF preenchido com zeros. Pode conter EI/MEI: tabela inteira restrita, sem view, API ou catálogo público. Categoria estadual só existe no RS; Simples/MEI da Receita é informação federal separada, não comprova regime ou sublimite estadual.",
+        fonte="SEFA-PR, SEFAZ-RS e SEF-MG / Sintegra; cnpj_simples local da Receita Federal",
+        familia_da_fonte="sintegra",
+        frequencia="Manual; PR conforme arquivo publicado, RS/MG bloqueados",
+        atraso="Disponível apenas no dia da coleta. Last-Modified é a data do arquivo, não disponibilidade histórica. Sem histórico até a primeira carga real. Simples vigente observado na carga, nunca retroagido às datas de opção.",
+        onde="Parquet em `<acervo>/base/sintegra_estadual/<UF>/<edicao>.parquet` (`scripts/carga_sintegra_estadual.py`)",
+        linhagem="URL, SHA-256 e Last-Modified de cada TXT no manifesto; data ausente fica vazia. Edição pela maior data dos dois arquivos; sem ambas, usa dia da coleta. Origem federal aponta os Parquets locais com hash. Originais temporários apagados; recorte com versões .vN. "
+        + COM_VERSAO_DO_CODIGO,
+        colunas={
+            "ie": ("Inscrição estadual preservada como texto", TEXTO),
+            "cnpj": (
+                "CNPJ de 14 caracteres com DV, inclusive alfanumérico, sem completar zeros; não classifica natureza jurídica",
+                TEXTO,
+            ),
+            "uf": ("UF do cadastro tributário", TEXTO),
+            "arquivo": (
+                "ativos ou cancelados; PR cancelados não inclui baixados a pedido",
+                TEXTO,
+            ),
+            "situacao": (
+                "Código original: PR oito dígitos; MG H/N; RS ativo pelo arquivo",
+                TEXTO,
+            ),
+            "categoria": (
+                "Categoria do RS: GERAL/EPP/MICRO/S NAC; ausente em PR/MG",
+                TEXTO,
+            ),
+            "cnae": ("CNAE publicado, sete dígitos", TEXTO),
+            "codigo_municipio": (
+                "Código de cinco dígitos da SEFA-PR, sem presumir código IBGE",
+                TEXTO,
+            ),
+            "habilitado_desde_mes": ("Mês AAAAMM do PR; sem inventar dia", TEXTO),
+            "data_abertura": ("Data de abertura publicada pelo RS", DATA),
+            "uf_estabelecimento": (
+                "UF do estabelecimento publicada pelo RS, pode diferir da UF do cadastro",
+                TEXTO,
+            ),
+            "data_arquivo": (
+                "Dia do Last-Modified HTTP; vazio se não informado, nunca disponibilidade",
+                DATA,
+            ),
+            "optante_simples": (
+                "Opção federal pelo Simples no cnpj_simples local; nulo se ausente",
+                SIM_OU_NAO,
+            ),
+            "optante_mei": (
+                "Opção federal pelo MEI no cnpj_simples local; nulo se ausente",
+                SIM_OU_NAO,
+            ),
+            "data_opcao_simples": (
+                "Data de opção federal pelo Simples, não disponibilidade",
+                DATA,
+            ),
+            "data_exclusao_simples": ("Data de exclusão federal do Simples", DATA),
+            "data_opcao_mei": (
+                "Data de opção federal pelo MEI, não disponibilidade",
+                DATA,
+            ),
+            "data_exclusao_mei": ("Data de exclusão federal do MEI", DATA),
+            "simples_observado_em": (
+                "Dia em que o vigente federal foi lido localmente; vazio se raiz ausente",
+                DATA,
+            ),
+            "fonte": ("Órgão estadual responsável", TEXTO),
+            "publico_em": ("Dia da coleta deste conteúdo, igual a disponivel_em", DATA),
+            "disponivel_em": (
+                "Dia da primeira coleta deste conteúdo, sem retroagir",
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "inep_censo_escolar": Tabela(
         descricao="Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido, sem CPF completado com zeros; sem nome, contato, endereço ou dados individuais. Pode incluir empresário individual ou MEI: sem cruzamento com a Receita para marcar ambos os CNPJs, a tabela inteira fica restrita, fora da porta e da consulta aberta. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.",
         fonte="INEP / Censo Escolar da Educação Básica",
@@ -12939,6 +13013,11 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 
 _CONTRATO = {
+    "sintegra_estadual": _contrato(
+        modulo="governo_e_sancoes", pessoa=True, chaves=("uf", "arquivo", "ie", "cnpj"),
+        datas={"publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde="",  # ainda não houve carga real
+    ),
     "inep_censo_escolar": _contrato(
         modulo="governo_e_sancoes", pessoa=True, chaves=("co_entidade", "ano_censo"),
         datas={"aconteceu_em": "data_edicao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
@@ -13350,6 +13429,10 @@ _CONTRATO = {
 # por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
 _SEM_NEGATIVO = (0.0, None)
 _CONFERENCIA: dict[str, dict[str, object]] = {
+    "sintegra_estadual": {
+        "pasta": "sintegra_estadual",
+        "nao_nulas": ("uf", "arquivo", "ie", "cnpj", "situacao", "cnae", "fonte", "disponivel_em", "publico_em"),
+    },
     "inep_censo_escolar": {
         "pasta": "inep_censo_escolar",
         "nao_nulas": ("co_entidade", "ano_censo", "dependencia", "situacao_funcionamento", "data_edicao", "disponivel_em", "fonte"),

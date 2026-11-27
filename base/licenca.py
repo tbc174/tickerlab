@@ -40,6 +40,7 @@ TABELAS_CONFERIDAS = "base/conferidas/"
 SEM_ORIGENS = "(sem origens)"  # tabela sem nenhuma fonte: a confirmar, e a trava barra
 # o começo do endereço (sem o "https://") → a família da fonte em `coletas.REVENDA`; vale o mais longo
 FAMILIA_DO_ENDERECO = {
+    "processos.fazenda.pr.gov.br/arquivos/": "sintegra",
     "dados.cvm.gov.br/": "cvm",
     "www.rad.cvm.gov.br/": "cvm",
     "cvm.gov.br/": "cvm",

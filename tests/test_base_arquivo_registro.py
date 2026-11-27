@@ -9,7 +9,7 @@ import pytest
 from base import contrato
 from base.arquivo import registro
 from base.arquivo.fontes import FONTES
-from base.arquivo.orgaos import NAO_SAO_FONTE, ORGAO_DA_FAMILIA
+from base.arquivo.orgaos import FONTES_NAO_PUBLICADAS, NAO_SAO_FONTE, ORGAO_DA_FAMILIA
 from src.banco.coletas import (
     LICENCAS,
     REVENDA,
@@ -138,7 +138,8 @@ def test_toda_familia_tem_orgao():
 def test_a_lista_publica_tem_todas_as_familias_menos_as_que_nao_sao_fonte(familias):
     nomes = [f["familia"] for f in familias]
     assert len(nomes) == len(set(nomes))
-    assert set(nomes) == set(ORGAO_DA_FAMILIA)
+    assert set(nomes) == set(ORGAO_DA_FAMILIA) - FONTES_NAO_PUBLICADAS
+    assert not set(nomes) & FONTES_NAO_PUBLICADAS
     assert not set(nomes) & set(NAO_SAO_FONTE)
 
 

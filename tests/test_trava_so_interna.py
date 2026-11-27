@@ -27,8 +27,8 @@ DATAJUD = ("datajud", "datajud-processos")
 HOJE = date(2026, 11, 5)
 
 
-def test_o_datajud_e_a_unica_fonte_so_interna():
-    assert frozenset({"datajud"}) == FONTES_SO_INTERNAS
+def test_fontes_so_internas_sao_datajud_e_sintegra():
+    assert frozenset({"datajud", "sintegra"}) == FONTES_SO_INTERNAS
     assert USOS_INTERNOS == ("treinar", "rotular")
     assert set(USOS_INTERNOS) < set(coletas.USOS)
 

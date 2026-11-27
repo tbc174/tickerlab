@@ -97,6 +97,9 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
 
 # Onde o mesmo nome de coluna tem outro sentido: (tabela, coluna) → nome canônico.
 _POR_TABELA: dict[tuple[str, str], str] = {
+    ("sintegra_estadual", "data_arquivo"): "referencia",
+    ("sintegra_estadual", "data_abertura"): "aconteceu_em",
+    ("sintegra_estadual", "simples_observado_em"): "coletado_em",
     ("inep_censo_escolar", "data_edicao"): "referencia",
     # o dia da foto: "o que se sabia neste dia"
     ("amostra_painel", "data"): "referencia",

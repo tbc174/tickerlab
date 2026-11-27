@@ -5,6 +5,52 @@ Exigência 8 do critério de pronto da base (ADR 0027 do autor): para cada tabel
 frequência, atraso de divulgação, fonte e licença. Exigências 11 e 13 (ADR 0055): se pode
 ser revendida (não é parecer jurídico) e a linhagem até o arquivo original.
 
+## `sintegra_estadual`
+
+Cadastros estaduais de ICMS por estabelecimento. Só PR tem coleta operacional; leitores RS/MG somente offline até URL permitida conferida. Lista fechada sem nome ou endereço; CNPJ estrito com DV e recusa de CPF preenchido com zeros. Pode conter EI/MEI: tabela inteira restrita, sem view, API ou catálogo público. Categoria estadual só existe no RS; Simples/MEI da Receita é informação federal separada, não comprova regime ou sublimite estadual.
+
+- **Fonte:** SEFA-PR, SEFAZ-RS e SEF-MG / Sintegra; cnpj_simples local da Receita Federal
+- **Licença:** não declarada pela fonte; uso interno
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Manual; PR conforme arquivo publicado, RS/MG bloqueados
+- **Atraso de divulgação:** Disponível apenas no dia da coleta. Last-Modified é a data do arquivo, não disponibilidade histórica. Sem histórico até a primeira carga real. Simples vigente observado na carga, nunca retroagido às datas de opção.
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `uf`, `arquivo`, `ie`, `cnpj`
+- **Três datas:** publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:**  (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/sintegra_estadual/<UF>/<edicao>.parquet` (`scripts/carga_sintegra_estadual.py`)
+- **Linhagem:** URL, SHA-256 e Last-Modified de cada TXT no manifesto; data ausente fica vazia. Edição pela maior data dos dois arquivos; sem ambas, usa dia da coleta. Origem federal aponta os Parquets locais com hash. Originais temporários apagados; recorte com versões .vN. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `ie` | Inscrição estadual preservada como texto | texto |
+| `cnpj` | CNPJ de 14 caracteres com DV, inclusive alfanumérico, sem completar zeros; não classifica natureza jurídica | texto |
+| `uf` | UF do cadastro tributário | texto |
+| `arquivo` | ativos ou cancelados; PR cancelados não inclui baixados a pedido | texto |
+| `situacao` | Código original: PR oito dígitos; MG H/N; RS ativo pelo arquivo | texto |
+| `categoria` | Categoria do RS: GERAL/EPP/MICRO/S NAC; ausente em PR/MG | texto |
+| `cnae` | CNAE publicado, sete dígitos | texto |
+| `codigo_municipio` | Código de cinco dígitos da SEFA-PR, sem presumir código IBGE | texto |
+| `habilitado_desde_mes` | Mês AAAAMM do PR; sem inventar dia | texto |
+| `data_abertura` | Data de abertura publicada pelo RS | data (dia) |
+| `uf_estabelecimento` | UF do estabelecimento publicada pelo RS, pode diferir da UF do cadastro | texto |
+| `data_arquivo` | Dia do Last-Modified HTTP; vazio se não informado, nunca disponibilidade | data (dia) |
+| `optante_simples` | Opção federal pelo Simples no cnpj_simples local; nulo se ausente | verdadeiro ou falso |
+| `optante_mei` | Opção federal pelo MEI no cnpj_simples local; nulo se ausente | verdadeiro ou falso |
+| `data_opcao_simples` | Data de opção federal pelo Simples, não disponibilidade | data (dia) |
+| `data_exclusao_simples` | Data de exclusão federal do Simples | data (dia) |
+| `data_opcao_mei` | Data de opção federal pelo MEI, não disponibilidade | data (dia) |
+| `data_exclusao_mei` | Data de exclusão federal do MEI | data (dia) |
+| `simples_observado_em` | Dia em que o vigente federal foi lido localmente; vazio se raiz ausente | data (dia) |
+| `fonte` | Órgão estadual responsável | texto |
+| `publico_em` | Dia da coleta deste conteúdo, igual a disponivel_em | data (dia) |
+| `disponivel_em` | Dia da primeira coleta deste conteúdo, sem retroagir | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `inep_censo_escolar`
 
 Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido, sem CPF completado com zeros; sem nome, contato, endereço ou dados individuais. Pode incluir empresário individual ou MEI: sem cruzamento com a Receita para marcar ambos os CNPJs, a tabela inteira fica restrita, fora da porta e da consulta aberta. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.
