@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 
 # a licença de cada família de fontes (licencas-por-fonte.md do autor); a fonte é "família-detalhe"
 LICENCAS = {
+    "sintegra-estadual": "não declarada pela fonte; uso interno",
     "cvm": "ODbL (dados abertos da CVM; citar a fonte)",
     "sec": "Acesso público (EDGAR, SEC)",
     "bcb": "ODbL (dados abertos do Banco Central; citar a fonte)",
@@ -347,6 +348,7 @@ NAO_COMERCIAL = (
     "nunca em modelo, rótulo ou exportação)"
 )
 REVENDA = {
+    "sintegra-estadual": SO_USO_INTERNO,
     "cvm": VENDAVEL_ODBL,
     "bcb": VENDAVEL_ODBL,
     "ibge": VENDAVEL_COM_ATRIBUICAO,
@@ -922,7 +924,7 @@ FONTES_FORA_DOS_USOS: frozenset[str] = frozenset()
 # mostrar. O DataJud (plano dos processos de 03/11/2026, ADR 0121): o termo de uso da API Pública veda o uso
 # comercial e a consultoria (itens 3.3 e 3.8). Como a trava passa por `pode_usar`, vale para a vitrine, o
 # dossiê, a busca por CNPJ, o relatório, a exportação do acervo e o portão da API externa.
-FONTES_SO_INTERNAS: frozenset[str] = frozenset({"datajud"})
+FONTES_SO_INTERNAS: frozenset[str] = frozenset({"datajud", "sintegra-estadual"})
 USOS_INTERNOS = ("treinar", "rotular")
 # As famílias que mostram, rotulam e exportam, mas não treinam modelo. O DATASUS (ADR 0122, item 1): o
 # Ministério da Saúde liberou o uso comercial por escrito em 05/11/2026, e a resposta não fala de treino, que

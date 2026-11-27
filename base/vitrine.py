@@ -238,7 +238,8 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
 # E as que só o modo dono vê (`dossie.SO_NO_MODO_DONO`).
 # O Censo Escolar aguarda a marca de EI/MEI nos CNPJs de escola e mantenedora.
 TABELAS_SO_INTERNAS: frozenset[str] = (
-    frozenset({"sus_competencias", "inep_censo_escolar"}) | SO_NO_MODO_DONO
+    frozenset({"sus_competencias", "inep_censo_escolar", "sintegra_estadual"})
+    | SO_NO_MODO_DONO
 )
 # Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
 # mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.

@@ -50,6 +50,15 @@ def test_a_lista_inteira_passa_na_conferencia():
     envio.conferir_a_lista(envio.tabelas_do_degrau(2))
 
 
+def test_sintegra_restrito_nao_entra_no_recorte(tmp_path):
+    nome = "sintegra_estadual"
+    assert nome not in ARQUIVOS
+    assert nome not in envio.tabelas_do_degrau(2)
+    with pytest.raises(envio.RecorteErro, match="não serve"):
+        envio.montar(tmp_path / "base", tmp_path / "saida", (nome,))
+    assert not list(tmp_path.rglob("*.parquet"))
+
+
 def test_os_degraus_nao_repetem_tabela_nem_se_cruzam_com_o_que_fica_em_casa():
     todas = envio.tabelas_do_degrau(2)
     assert len(todas) == len(set(todas))
