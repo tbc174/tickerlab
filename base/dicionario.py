@@ -11,6 +11,7 @@ desatualizado.
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+from base.inep_censo_escolar import MATRICULAS as MATRICULAS_DO_CENSO
 from src.banco.coletas import NAO_COMERCIAL, licenca_da_fonte, revenda_da_fonte
 from src.padroes import MULTIPLOS
 
@@ -6584,6 +6585,53 @@ def _tabela_do_pncp() -> dict[str, Tabela]:
 
 
 TABELAS: dict[str, Tabela] = {
+    "inep_censo_escolar": Tabela(
+        descricao="Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido; sem nome, contato, endereço ou dados individuais. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.",
+        fonte="INEP / Censo Escolar da Educação Básica",
+        familia_da_fonte="inep",
+        frequencia="Anual; coleta manual por edição",
+        atraso="A referência de maio não é a publicação: disponível somente desde a coleta desta versão; o INEP pode revisar edições antigas.",
+        onde="Parquet em `<acervo>/base/inep_censo_escolar/<ano>.parquet` (`scripts/carga_censo_escolar.py`)",
+        linhagem="MD5 publicado dos CSVs conferido antes da leitura. URL e SHA-256 do ZIP no manifesto e SHA-256 por linha; o ZIP não é guardado pois contém colunas fora do recorte. Só o Parquet filtrado é preservado, com manifesto, commit e versões .vN quando muda. "
+        + COM_VERSAO_DO_CODIGO,
+        colunas={
+            "co_entidade": (
+                "Código INEP da escola, 8 dígitos; chave entre anos",
+                TEXTO,
+            ),
+            "ano_censo": ("Ano da edição", NUMERO),
+            "dependencia": ("Dependência administrativa; somente 4 (privada)", NUMERO),
+            "situacao_funcionamento": (
+                "1 ativa, 2 paralisada, 3 extinta no ano, 4 extinta antes; preservada",
+                NUMERO,
+            ),
+            "cnpj_escola": (
+                "CNPJ válido da escola; nulo quando inválido, sem completar zeros",
+                TEXTO,
+            ),
+            "cnpj_mantenedora": (
+                "CNPJ válido da mantenedora; pelo menos um dos dois CNPJs existe",
+                TEXTO,
+            ),
+            "uf": ("Sigla da UF", TEXTO),
+            "codigo_municipio": ("Código IBGE do município", TEXTO),
+            "municipio": ("Nome do município; nunca endereço", TEXTO),
+            **{
+                c.lower(): (descricao, NUMERO)
+                for c, descricao in MATRICULAS_DO_CENSO.items()
+            },
+            "fonte": ("Atribuição: INEP / Censo Escolar da Educação Básica", TEXTO),
+            "data_edicao": (
+                "Data de referência da edição: última quarta-feira de maio",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Dia da primeira coleta deste conteúdo; não retroagir ao ano do censo",
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     **_tabela_do_pncp(),
     "demonstracoes_como_era": Tabela(
         descricao=(
@@ -12888,6 +12936,11 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 
 _CONTRATO = {
+    "inep_censo_escolar": _contrato(
+        modulo="governo_e_sancoes", chaves=("co_entidade", "ano_censo"),
+        datas={"aconteceu_em": "data_edicao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
+        historico_desde="2022-05-25",
+    ),
     "pncp_contratos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("numero_controle_pncp", "visto_em"), datas={"aconteceu_em": "assinado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-26", granularidade_do_publico_em="dia"),
     # 2.0.0: a série T1 pôs a DFC, a DVA e a DRA na tabela (quem não filtra `demonstracao` muda)
     "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta", "ordem", "inicio", "fim"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 3.0.0 (03/11/2026): a chave ganha `ordem`, `inicio` e `fim` (a DRE do ITR traz o trimestre e o acumulado; sem elas 40.913 linhas só em 2011 repetiam a chave)
@@ -13294,6 +13347,11 @@ _CONTRATO = {
 # por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
 _SEM_NEGATIVO = (0.0, None)
 _CONFERENCIA: dict[str, dict[str, object]] = {
+    "inep_censo_escolar": {
+        "pasta": "inep_censo_escolar",
+        "nao_nulas": ("co_entidade", "ano_censo", "dependencia", "situacao_funcionamento", "data_edicao", "disponivel_em", "fonte"),
+        "faixas": {c.lower(): _SEM_NEGATIVO for c in MATRICULAS_DO_CENSO},
+    },
     "pncp_contratos": {"pasta": "pncp_contratos", "nao_nulas": ("numero_controle_pncp", "cnpj", "cnpj_basico", "disponivel_em", "visto_em", "trata_como_pessoa")},
     # DFP/ITR "como eram" (API A3, 03/11/2026): um Parquet por ano; `inicio` é vazio no balanço
     "demonstracoes_como_era": {"pasta": "demonstracoes", "chaves_com_vazio": ("inicio",)},

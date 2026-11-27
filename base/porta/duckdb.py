@@ -45,6 +45,7 @@ PASTA_TEMPORARIA = Path(tempfile.gettempdir()) / "tickerlab-duckdb"
 
 # tabela → arquivos dentro de `<acervo>/base` (o `onde` do dicionário diz o mesmo; um teste confere)
 ARQUIVOS: dict[str, str] = {
+    "inep_censo_escolar": "inep_censo_escolar/*.parquet",
     "pncp_contratos": "pncp_contratos/*.parquet",
     "demonstracoes_como_era": "demonstracoes/*.parquet",
     "dmpl_como_era": "dmpl/*.parquet",

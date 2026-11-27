@@ -5,6 +5,62 @@ Exigência 8 do critério de pronto da base (ADR 0027 do autor): para cada tabel
 frequência, atraso de divulgação, fonte e licença. Exigências 11 e 13 (ADR 0055): se pode
 ser revendida (não é parecer jurídico) e a linhagem até o arquivo original.
 
+## `inep_censo_escolar`
+
+Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido; sem nome, contato, endereço ou dados individuais. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.
+
+- **Fonte:** INEP / Censo Escolar da Educação Básica
+- **Licença:** CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP
+- **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
+- **Frequência:** Anual; coleta manual por edição
+- **Atraso de divulgação:** A referência de maio não é a publicação: disponível somente desde a coleta desta versão; o INEP pode revisar edições antigas.
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `co_entidade`, `ano_censo`
+- **Três datas:** aconteceu_em = `data_edicao`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2022-05-25 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/inep_censo_escolar/<ano>.parquet` (`scripts/carga_censo_escolar.py`)
+- **Linhagem:** MD5 publicado dos CSVs conferido antes da leitura. URL e SHA-256 do ZIP no manifesto e SHA-256 por linha; o ZIP não é guardado pois contém colunas fora do recorte. Só o Parquet filtrado é preservado, com manifesto, commit e versões .vN quando muda. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `co_entidade` | Código INEP da escola, 8 dígitos; chave entre anos | texto |
+| `ano_censo` | Ano da edição | número inteiro |
+| `dependencia` | Dependência administrativa; somente 4 (privada) | número inteiro |
+| `situacao_funcionamento` | 1 ativa, 2 paralisada, 3 extinta no ano, 4 extinta antes; preservada | número inteiro |
+| `cnpj_escola` | CNPJ válido da escola; nulo quando inválido, sem completar zeros | texto |
+| `cnpj_mantenedora` | CNPJ válido da mantenedora; pelo menos um dos dois CNPJs existe | texto |
+| `uf` | Sigla da UF | texto |
+| `codigo_municipio` | Código IBGE do município | texto |
+| `municipio` | Nome do município; nunca endereço | texto |
+| `qt_mat_bas` | Total da educação básica (não somar os recortes) | número inteiro |
+| `qt_mat_inf` | Educação infantil | número inteiro |
+| `qt_mat_inf_cre` | Creche | número inteiro |
+| `qt_mat_inf_pre` | Pré-escola | número inteiro |
+| `qt_mat_fund` | Ensino fundamental | número inteiro |
+| `qt_mat_fund_ai` | Ensino fundamental, anos iniciais | número inteiro |
+| `qt_mat_fund_af` | Ensino fundamental, anos finais | número inteiro |
+| `qt_mat_med` | Ensino médio | número inteiro |
+| `qt_mat_prof` | Educação profissional | número inteiro |
+| `qt_mat_prof_tec` | Educação profissional técnica | número inteiro |
+| `qt_mat_eja` | Educação de jovens e adultos | número inteiro |
+| `qt_mat_esp` | Educação especial (incluída nos totais, nunca somar ao total) | número inteiro |
+| `qt_mat_bas_int` | Tempo integral, educação básica (coluna de 2025) | número inteiro |
+| `qt_mat_inf_int` | Tempo integral, educação infantil | número inteiro |
+| `qt_mat_inf_cre_int` | Tempo integral, creche | número inteiro |
+| `qt_mat_inf_pre_int` | Tempo integral, pré-escola | número inteiro |
+| `qt_mat_fund_int` | Tempo integral, ensino fundamental | número inteiro |
+| `qt_mat_fund_ai_int` | Tempo integral, anos iniciais | número inteiro |
+| `qt_mat_fund_af_int` | Tempo integral, anos finais | número inteiro |
+| `qt_mat_med_int` | Tempo integral, ensino médio | número inteiro |
+| `fonte` | Atribuição: INEP / Censo Escolar da Educação Básica | texto |
+| `data_edicao` | Data de referência da edição: última quarta-feira de maio | data (dia) |
+| `disponivel_em` | Dia da primeira coleta deste conteúdo; não retroagir ao ano do censo | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `pncp_contratos`
 
 Versões dos contratos públicos do PNCP ligadas ao CNPJ do fornecedor, com órgão, datas e valores. Lotes diários de publicação e atualização; ausência num lote não significa exclusão. Não somar versões como contratos distintos. Só PJ com CNPJ numérico de 14 dígitos e DV válido; sem nomes, objeto, subcontratados ou texto livre. MEI, empresário individual e CNPJ desconhecido da Receita são marcados e retirados pela porta.

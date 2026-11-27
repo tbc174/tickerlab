@@ -1,0 +1,174 @@
+{
+  "tabela": "inep_censo_escolar",
+  "modulo": "governo_e_sancoes",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "co_entidade": {
+      "descricao": "Código INEP da escola, 8 dígitos; chave entre anos",
+      "unidade": "texto"
+    },
+    "ano_censo": {
+      "descricao": "Ano da edição",
+      "unidade": "número inteiro"
+    },
+    "dependencia": {
+      "descricao": "Dependência administrativa; somente 4 (privada)",
+      "unidade": "número inteiro"
+    },
+    "situacao_funcionamento": {
+      "descricao": "1 ativa, 2 paralisada, 3 extinta no ano, 4 extinta antes; preservada",
+      "unidade": "número inteiro"
+    },
+    "cnpj_escola": {
+      "descricao": "CNPJ válido da escola; nulo quando inválido, sem completar zeros",
+      "unidade": "texto"
+    },
+    "cnpj_mantenedora": {
+      "descricao": "CNPJ válido da mantenedora; pelo menos um dos dois CNPJs existe",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla da UF",
+      "unidade": "texto"
+    },
+    "codigo_municipio": {
+      "descricao": "Código IBGE do município",
+      "unidade": "texto"
+    },
+    "municipio": {
+      "descricao": "Nome do município; nunca endereço",
+      "unidade": "texto"
+    },
+    "qt_mat_bas": {
+      "descricao": "Total da educação básica (não somar os recortes)",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_inf": {
+      "descricao": "Educação infantil",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_inf_cre": {
+      "descricao": "Creche",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_inf_pre": {
+      "descricao": "Pré-escola",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_fund": {
+      "descricao": "Ensino fundamental",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_fund_ai": {
+      "descricao": "Ensino fundamental, anos iniciais",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_fund_af": {
+      "descricao": "Ensino fundamental, anos finais",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_med": {
+      "descricao": "Ensino médio",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_prof": {
+      "descricao": "Educação profissional",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_prof_tec": {
+      "descricao": "Educação profissional técnica",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_eja": {
+      "descricao": "Educação de jovens e adultos",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_esp": {
+      "descricao": "Educação especial (incluída nos totais, nunca somar ao total)",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_bas_int": {
+      "descricao": "Tempo integral, educação básica (coluna de 2025)",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_inf_int": {
+      "descricao": "Tempo integral, educação infantil",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_inf_cre_int": {
+      "descricao": "Tempo integral, creche",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_inf_pre_int": {
+      "descricao": "Tempo integral, pré-escola",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_fund_int": {
+      "descricao": "Tempo integral, ensino fundamental",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_fund_ai_int": {
+      "descricao": "Tempo integral, anos iniciais",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_fund_af_int": {
+      "descricao": "Tempo integral, anos finais",
+      "unidade": "número inteiro"
+    },
+    "qt_mat_med_int": {
+      "descricao": "Tempo integral, ensino médio",
+      "unidade": "número inteiro"
+    },
+    "fonte": {
+      "descricao": "Atribuição: INEP / Censo Escolar da Educação Básica",
+      "unidade": "texto"
+    },
+    "data_edicao": {
+      "descricao": "Data de referência da edição: última quarta-feira de maio",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Dia da primeira coleta deste conteúdo; não retroagir ao ano do censo",
+      "unidade": "data (dia)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "co_entidade",
+    "ano_censo"
+  ],
+  "datas": {
+    "aconteceu_em": "data_edicao",
+    "publico_em": "disponivel_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "sinonimos_de_tempo": {
+    "data_edicao": "a_conferir",
+    "disponivel_em": "publico_em",
+    "origem_coletada_em": "coletado_em",
+    "montado_em": "coletado_em"
+  },
+  "historico_desde": "2022-05-25",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
+  "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
+  "pessoa": false,
+  "frequencia": "Anual; coleta manual por edição",
+  "atraso": "A referência de maio não é a publicação: disponível somente desde a coleta desta versão; o INEP pode revisar edições antigas."
+}
