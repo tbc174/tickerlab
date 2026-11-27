@@ -174,11 +174,12 @@ O Tiago trabalha com mais de uma IA (decisão na pasta privada, ADR 0110). Para 
 
 **Emenda de 27/11/2026** (Tiago: "nenhuma LLM você deve considerar como terceiro"): as IAs de programação e
 os modelos que o Tiago assina e orquestra (hoje Claude, Codex e Gemini; Copilot só em tarefas de teste e doc) **não
-são terceiros**. Recebem o que a tarefa pede com a mesma confiança, inclusive o conector do modo dono. Dado de
+são terceiros**. Recebem o que a tarefa pede com a mesma confiança. Dado de
 pessoa adulta só pela ficha do modo dono, sem CPF, e dentro das regras de "Análises de empresa e de grupo".
 Isso não libera CPF, menor de idade, endereço residencial, segredo nem o nome da casa de M&A para nenhum modelo.
 Para dar o conector do modo dono ao Codex e
-ao Gemini, Tiago confirmou: "Sim, aos dois". Continuam valendo a permissão por organização conferida no servidor e
+ao Gemini, Tiago confirmou: "Sim, aos dois". O Copilot não recebe o conector do modo dono.
+Continuam valendo a permissão por organização conferida no servidor e
 a revisão cruzada por modelo diferente; para esta emenda, Tiago pediu: "Sim, com as duas revisões".
 
 1. **Um livro de regras só.** Este `AGENTS.md` (e o `trader/AGENTS.md`). Os `CLAUDE.md` só importam
