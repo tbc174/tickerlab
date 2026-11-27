@@ -4954,6 +4954,17 @@
             "title": "O Que",
             "type": "string"
           },
+          "papel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Papel"
+          },
           "publico_em": {
             "anyOf": [
               {
@@ -4964,6 +4975,17 @@
               }
             ],
             "title": "Publico Em"
+          },
+          "raiz_do_cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raiz Do Cnpj"
           },
           "titulo_do_bloco": {
             "title": "Titulo Do Bloco",
