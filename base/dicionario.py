@@ -6599,7 +6599,10 @@ TABELAS: dict[str, Tabela] = {
                 "Código INEP da escola, 8 dígitos; chave entre anos",
                 TEXTO,
             ),
-            "ano_censo": ("Ano de referência do censo, não o ano de publicação", NUMERO),
+            "ano_censo": (
+                "Ano de referência do censo, não o ano de publicação",
+                NUMERO,
+            ),
             "dependencia": ("Dependência administrativa; somente 4 (privada)", NUMERO),
             "situacao_funcionamento": (
                 "1 ativa, 2 paralisada, 3 extinta no ano, 4 extinta antes; preservada",
