@@ -877,6 +877,75 @@ def _tabela_de_nomes_de_empresa() -> dict[str, Tabela]:
     }
 
 
+def _tabela_de_movimento_socios_pf() -> dict[str, Tabela]:
+    """Contagem sem identificação de PF por empresa e retrato (linha 1104)."""
+    return {
+        "movimento_de_socios_pf": Tabela(
+            descricao=(
+                "Contagem sem identificação: quantos sócios pessoa física entraram, saíram e estavam "
+                "no fim de cada retrato mensal da Receita. Compara a presença de chaves já pseudonimizadas "
+                "do QSA (tipo 2) entre meses consecutivos, só em memória; nomes, CPF e identificadores "
+                "de pessoa nunca saem. Duplicatas e mudanças de qualificação ou data de entrada não "
+                "são movimentos. Só há linha se havia PF no mês ou no anterior. O primeiro retrato "
+                "(2023-05) tem saldo inicial: entradas e saídas zero com tem_retrato_anterior falso "
+                "significam ausência de comparação, não ausência de movimentos. O mês é o da observação, "
+                "não a data de um ato nem prova de aquisição; em S.A. o QSA lista administradores. "
+                "Só raízes da lista vigente cnpj_estabelecimentos_pj, sem MEI, EI e grupo 4; quem deixa "
+                "a lista sai da série inteira. Chave PF vazia omite a comparação inteira da empresa "
+                "naquele mês; lacuna mensal ou mudanças incompletas interrompem a montagem. "
+                "Não aplica a correção de 2024-09 do molde PJ: aquela evidência "
+                "é de PJ, não de PF. ADR 0088 (restrição de pessoa) e ADR 0106 (histórico do CNPJ e CC BY); "
+                "a saída agrega contagens, sem identificar o sócio. "
+                + _FINALIDADE_DO_CNPJ
+            ),
+            fonte="Receita Federal: dados abertos do CNPJ, QSA vigente e diferenças mensais (scripts/montar_movimento_socios_pf.py)",
+            familia_da_fonte="rfb-cnpj",
+            frequencia=_FREQUENCIA_DO_CNPJ,
+            atraso=_ATRASO_DO_CNPJ,
+            onde="Parquet em `<acervo>/base/movimento_de_socios_pf/<prefixo da raiz>.parquet` (servidor de casa)",
+            linhagem="Derivada de cnpj_qsa, cnpj_qsa_mudancas e cnpj_estabelecimentos_pj. Manifesto com SHA-256 dos ZIPs de sócios dos meses lidos. "
+            + COM_VERSAO_DO_CODIGO,
+            colunas={
+                "cnpj_basico": (
+                    "Raiz da empresa (8 caracteres), somente da lista sem pessoa",
+                    TEXTO,
+                ),
+                "mes_do_retrato": (
+                    "Mês observado na Receita, não data do ato societário",
+                    "AAAA-MM",
+                ),
+                "socios_pf_entraram": (
+                    "PF presentes neste retrato e ausentes no anterior; zero no saldo inicial",
+                    "inteiro",
+                ),
+                "socios_pf_sairam": (
+                    "PF ausentes neste retrato e presentes no anterior; zero no saldo inicial",
+                    "inteiro",
+                ),
+                "socios_pf_no_fim": (
+                    "PF distintas presentes no retrato, sem duplicatas",
+                    "inteiro",
+                ),
+                "tem_retrato_anterior": (
+                    "Falso no primeiro retrato: movimentos não observáveis, só saldo inicial",
+                    "booleano",
+                ),
+                "fonte": (
+                    "Crédito à Receita Federal, dados abertos do CNPJ; mês em mes_do_retrato",
+                    TEXTO,
+                ),
+                "disponivel_em": (
+                    "Dia 21 do retrato; a porta arredonda a publicação para o último dia do mês",
+                    DATA,
+                ),
+                "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+                "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+            },
+            ressalva_de_revenda=_RESSALVA_DO_CNPJ,
+        ),
+    }
+
+
 def _tabela_de_entradas_de_socio_pj() -> dict[str, Tabela]:
     """Quem entrou como sócio PJ de quem, e quando (linha 810, `base/socios_pj.py`): a matéria-prima da lista de
     compradores por setor, só entre pessoas jurídicas."""
@@ -10491,6 +10560,7 @@ TABELAS: dict[str, Tabela] = {
     **_historicos_do_cnpj(),
     **_tabelas_sem_pessoa_do_cnpj(),
     **_tabela_de_entradas_de_socio_pj(),
+    **_tabela_de_movimento_socios_pf(),
     **_tabela_de_participacoes_de_socio_pj(),
     **_tabela_de_nomes_de_empresa(),
     **_tabela_da_anvisa_por_empresa(),
@@ -13107,6 +13177,7 @@ _CONTRATO = {
     "cnpj_estabelecimentos_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj",), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_inicio_atividade"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_nomes_pj": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "tipo_de_nome", "nome_para_busca"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "entradas_de_socio_pj": _contrato(modulo="governo_e_sancoes", chaves=("movimento", "cnpj_basico", "raiz_socio_pj", "data_entrada", "mes_do_retrato"), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "movimento_de_socios_pf": _contrato(modulo="governo_e_sancoes", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde="2023-05-01", granularidade_do_publico_em="mes"),
     "participacoes_de_socio_pj": _contrato(modulo="governo_e_sancoes", chaves=("raiz_socio_pj", "cnpj_basico"), datas={"publico_em": "disponivel_em", "aconteceu_em": "data_entrada"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_empresas_historico": _contrato(modulo="governo_e_sancoes", pessoa_tirada_na_rota="raízes de empresário individual e MEI", chaves=("cnpj_basico", "mes_do_retrato"), datas={"publico_em": "disponivel_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "cnpj_simples_mudancas": _contrato(modulo="governo_e_sancoes", chaves=("mes", "cnpj_basico", "ordem"), datas={"publico_em": "mes"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),

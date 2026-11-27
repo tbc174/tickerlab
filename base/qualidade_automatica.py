@@ -297,6 +297,7 @@ REGRAS: dict[str, Regra] = {
         porque_repetidas="a maior parte são investidas sem CNPJ que só se distinguem pelo nome; 866 linhas são idênticas em todas as colunas; o resto repete o CNPJ com participação ou tipo diferente no mesmo documento. Quem junta por CNPJ pode receber mais de uma linha; a base não corrige",
     ),
     "participacoes_de_socio_pj": Regra(chave=("raiz_socio_pj", "cnpj_basico")),
+    "movimento_de_socios_pf": Regra(chave=("cnpj_basico", "mes_do_retrato")),
     "entradas_de_socio_pj": Regra(
         chave=(
             "movimento",

@@ -118,6 +118,7 @@ ARQUIVOS: dict[str, str] = {
     "cnpj_estabelecimentos_pj": "cnpj_estabelecimentos_pj/*.parquet",
     "cnpj_nomes_pj": "cnpj_nomes_pj/*.parquet",
     "entradas_de_socio_pj": "entradas_de_socio_pj/*.parquet",
+    "movimento_de_socios_pf": "movimento_de_socios_pf/*.parquet",
     "participacoes_de_socio_pj": "participacoes_de_socio_pj/*.parquet",
     "pgfn_divida": "pgfn_divida/*/*.parquet",
     "sancoes_cgu": "sancoes_cgu/*.parquet",

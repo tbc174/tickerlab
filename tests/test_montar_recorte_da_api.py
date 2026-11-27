@@ -421,6 +421,48 @@ def test_a_da_api_externa_ainda_passa_pela_trava_de_mostrar(monkeypatch):
 
 # ---------------------------------------------------------------- situação cadastral (linha 841)
 
+
+def _movimento_pf(base, raiz="11111111"):
+    _empresas_pj(
+        base, "('11111111', 'EMPRESA SINTETICA SA', '2054', 'demais')", "('11111111')"
+    )
+    _parquet(
+        base / "movimento_de_socios_pf" / "11.parquet",
+        f"SELECT '{raiz}' AS cnpj_basico, '2023-06' AS mes_do_retrato, "
+        "1::BIGINT AS socios_pf_entraram, 2::BIGINT AS socios_pf_sairam, "
+        "3::BIGINT AS socios_pf_no_fim, true AS tem_retrato_anterior, "
+        "'Receita Federal, dados abertos do CNPJ' AS fonte, DATE '2023-06-21' AS disponivel_em",
+    )
+
+
+def test_contagem_pf_segue_portas_do_molde_pj(tmp_path):
+    nome = "movimento_de_socios_pf"
+    assert nome in envio.tabelas_do_degrau(2)
+    assert nome not in envio.tabelas_do_degrau(1)
+    assert not pode_consultar(nome)
+    base = tmp_path / "base"
+    _movimento_pf(base)
+    envio.montar(base, tmp_path / "saida", (*TABELAS_PJ, nome))
+    arquivo = tmp_path / "saida" / nome / "11.parquet"
+    assert duckdb.sql(
+        f"SELECT socios_pf_entraram, socios_pf_sairam FROM '{arquivo.as_posix()}'"
+    ).fetchall() == [(1, 2)]
+
+
+def test_contagem_pf_fora_da_lista_sem_pessoa_derruba_envio(tmp_path):
+    base = tmp_path / "base"
+    _movimento_pf(base, "99999999")
+    with pytest.raises(envio.RecorteErro, match="fora da lista sem pessoa"):
+        envio.montar(base, tmp_path / "saida", (*TABELAS_PJ, "movimento_de_socios_pf"))
+
+
+def test_contagem_pf_nao_vai_sem_lista_de_empresas(tmp_path):
+    base = tmp_path / "base"
+    _movimento_pf(base)
+    with pytest.raises(envio.RecorteErro, match="junto"):
+        envio.montar(base, tmp_path / "saida", ("movimento_de_socios_pf",))
+
+
 COM_SITUACAO = (*TABELAS_PJ, "cnpj_situacao_cadastral")
 
 

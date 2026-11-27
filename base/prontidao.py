@@ -542,6 +542,7 @@ SEM_PESSOA_NA_MONTAGEM = frozenset(
         "demonstracoes_como_era",
         "emissores",
         "entradas_de_socio_pj",
+        "movimento_de_socios_pf",  # linha 1104: contagens sem identificação, raiz conferida na montagem e no recorte
         "participacoes_de_socio_pj",
         "eventos",
         "fca_geral",

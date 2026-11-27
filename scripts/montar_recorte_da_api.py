@@ -234,6 +234,7 @@ DEGRAU_2_ACRESCENTA = (
     # não a serve: `base.dossie.SO_PELA_API_EXTERNA`). Vai neste degrau porque a guarda `conferir_raizes_so_pj`
     # exige `cnpj_empresas_pj` na mesma saída. Pode da Diretoria, 11/11/2026 (Emenda 4).
     "entradas_de_socio_pj",
+    "movimento_de_socios_pf",  # linha 1104: só contagens; raiz conferida pela mesma guarda do molde PJ
     # sem pessoa por desenho (linha 841): só das raízes de `cnpj_estabelecimentos_pj`, só para a API externa
     # (ficha por CNPJ e crédito). A mesma guarda (`conferir_raizes_so_pj`) confere cada raiz na saída.
     "cnpj_situacao_cadastral",
@@ -583,6 +584,7 @@ def tirar_raizes_de_mei(
 # As tabelas só de PJ por desenho e as colunas de raiz de cada uma: toda raiz tem de estar em `cnpj_empresas_pj`
 # da mesma saída (`conferir_raizes_so_pj`).
 RAIZES_SO_PJ: dict[str, tuple[str, ...]] = {
+    "movimento_de_socios_pf": ("cnpj_basico",),
     "entradas_de_socio_pj": (
         "cnpj_basico",
         "raiz_socio_pj",
