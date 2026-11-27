@@ -66,9 +66,6 @@ class LeitorDeGrupo(socios_pj.LeitorDeSociosPj):
         super().__init__(porta, permitido, max(linhas_maximas, 1))
         self._camadas: dict[tuple[str, tuple[str, ...], date], pd.DataFrame] = {}
 
-    def _quadro(self, coluna: str, raiz: str, dia: date) -> pd.DataFrame:
-        return self._camada(coluna, [raiz], dia)
-
     def _camada(self, coluna: str, raizes: list[str], dia: date) -> pd.DataFrame:
         if coluna not in ("cnpj_basico", "raiz_socio_pj"):
             raise ValueError("Direção inválida do quadro societário")
@@ -122,6 +119,9 @@ class LeitorDeGrupo(socios_pj.LeitorDeSociosPj):
             camada = rede.adicionar(quadro, "socia", nivel, f"holding nível {nivel}")
             if not camada:
                 break
+        # A camada seguinte só detecta o corte; não acrescenta empresas além da profundidade.
+        if camada and not self._camada("cnpj_basico", camada, dia).empty:
+            rede.completa = False
         rede.adicionar(
             self._camada("raiz_socio_pj", [raiz], dia),
             "empresa",

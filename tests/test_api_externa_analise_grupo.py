@@ -179,6 +179,25 @@ def test_limite_do_grupo_avisa_que_as_conferencias_sao_parciais(pasta):
     assert corpo["blocos"][tabelas_por_cnpj.SANCOES]["grupo_completo"] is False
 
 
+def test_redutor_do_conector_preserva_papeis_marcos_e_estado_das_conferencias(pasta):
+    from conector_remoto import enxugar, saida
+
+    corpo = traduzir_chaves(montar(pasta).corpo)
+    pronto = saida.preparar_saida(enxugar.enxugar_analise(corpo))
+    assert (
+        pronto["blocks"]["corporate_ownership"]["group"]
+        == corpo["blocks"]["corporate_ownership"]["group"]
+    )
+    assert pronto["timeline"] == corpo["timeline"]
+    assert any(
+        m.get("cnpj_root") == ACIMA and m.get("role") == "holding nível 2"
+        for m in pronto["timeline"]
+    )
+    for bloco in integridade.BLOCOS_DE_FORA:
+        assert pronto["blocks"][bloco]["group_checks_status"] == "ready"
+        assert len(pronto["blocks"][bloco]["group_checks"]) == 3
+
+
 def test_cortar_ligacoes_futuras_nao_muda_a_analise(tmp_path, pasta):
     sem = gravar_grupo(
         tmp_path / "sem", [l for l in LIGACOES if l[4] <= DIA.isoformat()]
@@ -194,16 +213,19 @@ def test_ciclo_societario_nao_repete_empresa_nem_trava(tmp_path):
     assert grupo["completo"] is True
 
 
-def test_grupo_lento_nao_vira_ausencia_de_sancao_nem_prende_a_analise(
-    pasta, monkeypatch
+def test_grupo_lento_preserva_socios_diretos_e_integridade_da_alvo(
+    tmp_path, monkeypatch
 ):
     from src.api_externa.conjuntos import grupo_da_analise
 
     liberado = threading.Event()
     original = grupo_da_analise.ampliar
+    filha = "20000001"
+    vinculo = (RAIZ, filha, "2015-01-01", "2023-05", "2023-06-30", "entrou")
+    pasta = gravar_grupo(tmp_path, [*LIGACOES, vinculo], (filha,))
 
     def lento(*args):
-        liberado.wait(5)
+        liberado.wait(10)
         return original(*args)
 
     monkeypatch.setattr(grupo_da_analise, "ampliar", lento)
@@ -213,14 +235,37 @@ def test_grupo_lento_nao_vira_ausencia_de_sancao_nem_prende_a_analise(
     )
     inicio = time.monotonic()
     try:
-        corpo = montar(pasta, prazo=1).corpo
-        assert time.monotonic() - inicio < 3
+        resultado = montar(pasta, prazo=3)
+        corpo = resultado.corpo
+        assert time.monotonic() - inicio < 5
         atrasados = {b["bloco"] for b in corpo["nao_respondeu_a_tempo"]}
-        assert atrasados == {"corporate_ownership"}
+        assert "corporate_ownership" not in atrasados
+        direto = corpo["blocos"]["socios_pj"]
+        assert [e["raiz_do_cnpj"] for e in direto["socias_pj"]] == [HOLDING]
+        assert [e["raiz_do_cnpj"] for e in direto["participacoes_pj"]] == [filha]
+        assert direto["cortada"] is False
+        assert "grupo" not in direto
+        assert any(
+            "grupo não lido a tempo" in limite.lower() for limite in corpo["limites"]
+        )
+        assert {
+            m["dia"]
+            for m in corpo["linha_do_tempo"]
+            if m["bloco"] == "corporate_ownership"
+        } == {"2012-01-01", "2015-01-01"}
+        assert any("sócia(s)" in l["texto"] for l in corpo["leituras"])
+        assert resultado.consumo[(compradores.CONJUNTO, analise.ANALISE)] == (2, False)
         sancoes = corpo["blocos"][tabelas_por_cnpj.SANCOES]
         assert sancoes["sancoes_da_cgu"]["achou"] is True
         assert sancoes["estado_conferencias_do_grupo"] == "timed_out"
         assert sancoes["conferencias_do_grupo"] == []
+        from conector_remoto import enxugar
+
+        no_conector = enxugar.enxugar_analise(traduzir_chaves(corpo))
+        quadro = no_conector["blocks"]["corporate_ownership"]
+        assert quadro["equity_holders"] and quadro["equity_stakes"]
+        assert "group" not in quadro
+        assert no_conector["blocks"]["sanctions"]["group_checks_status"] == "timed_out"
     finally:
         liberado.set()
 
@@ -361,7 +406,9 @@ def test_camadas_do_qsa_tem_limite_no_sql_e_ligacoes_tem_teto(tmp_path, monkeypa
 
     monkeypatch.setattr(analise._Consultas, "execute", executar)
     grupo = montar(pasta).corpo["blocos"]["socios_pj"]["grupo"]
-    assert consultas and all("LIMIT" in sql.upper() for sql in consultas)
+    assert len(consultas) > 2
+    assert all("elegiveis" not in sql for sql in consultas[:2])
+    assert all("LIMIT" in sql.upper() for sql in consultas[2:])
     assert len(grupo["ligacoes"]) <= 30
     assert grupo["completo"] is False
 
@@ -388,6 +435,60 @@ def test_tres_niveis_ascendentes_tem_prioridade_e_quarto_fica_fora(tmp_path):
     assert grupo["empresas"][3]["papel"] == "holding nível 3"
     assert quarta not in str(grupo)
     assert len(grupo["empresas"]) == 10
+
+
+@pytest.mark.parametrize("quarta", [True, False])
+def test_limite_de_profundidade_avisa_se_a_cadeia_continua(tmp_path, quarta):
+    terceira, acima_dela = "20000001", "20000002"
+    pares = [(terceira, ACIMA), *([(acima_dela, terceira)] if quarta else [])]
+    vinculos = [
+        (s, e, "2020-01-01", "2023-05", "2023-06-30", "entrou") for s, e in pares
+    ]
+    pasta = gravar_grupo(tmp_path, [*LIGACOES, *vinculos], (terceira, acima_dela))
+    grupo = montar(pasta).corpo["blocos"]["socios_pj"]["grupo"]
+    assert len(grupo["empresas"]) == 4
+    assert acima_dela not in str(grupo)
+    assert grupo["completo"] is (not quarta)
+
+
+@pytest.mark.parametrize("linhas", [1, 10])
+def test_grupo_preserva_campos_e_corte_das_listas_diretas(tmp_path, linhas):
+    filhas = ["20000001", "20000002", "20000003"]
+    vinculos = [
+        (RAIZ, f, "2020-01-01", "2023-05", "2023-06-30", "entrou") for f in filhas
+    ]
+    pasta = gravar_grupo(tmp_path, [*LIGACOES, *vinculos], filhas)
+    with Porta(pasta) as porta:
+        direto = analise._socios(porta, lambda *_: True, linhas, socios.EMPRESA, DIA)
+    assert direto is not None
+    com_grupo = montar(pasta, linhas=linhas).corpo["blocos"]["socios_pj"]
+    for campo in ("socias_pj", "participacoes_pj", "cortada"):
+        assert com_grupo[campo] == direto.corpo[campo]
+    assert com_grupo["cortada"] is (linhas == 1)
+
+
+def test_prazo_no_meio_da_leitura_direta_nao_publica_falsa_ausencia(pasta, monkeypatch):
+    # Só CNEP tem achado; CEIS é lido antes de o prazo fechar os demais cadastros.
+    integridade.gravar(
+        pasta, integridade.SANCOES, integridade._sancoes().iloc[[1]].copy()
+    )
+    original = analise._PortaoDividido.de
+
+    def de(self, bloco):
+        permitido = original(self, bloco)
+
+        def interromper(fonte, campo, derivado):
+            if bloco.nome == tabelas_por_cnpj.SANCOES and fonte == "cgu-cnep":
+                self.encerrar()  # fora da trava do portão; ordem determinística, sem relógio
+            return permitido(fonte, campo, derivado)
+
+        return interromper
+
+    monkeypatch.setattr(analise._PortaoDividido, "de", de)
+    corpo = montar(pasta).corpo
+    assert tabelas_por_cnpj.SANCOES not in corpo["blocos"]
+    assert "sanctions" in {b["bloco"] for b in corpo["nao_respondeu_a_tempo"]}
+    assert "sanctions" not in {b["bloco"] for b in corpo["nao_encontrado"]}
 
 
 def test_ciclo_denso_corta_ligacoes_e_avisa_incompleto(tmp_path):

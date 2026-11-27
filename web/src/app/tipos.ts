@@ -1088,6 +1088,8 @@ export interface MarcoDaAnaliseCompletaV1 {
   titulo_do_bloco: string;
   fonte?: string | null;
   publico_em?: string | null;
+  raiz_do_cnpj?: string | null;
+  papel?: string | null;
 }
 
 export interface LeituraDaAnaliseCompletaV1 {

@@ -778,6 +778,17 @@ def _com_grupo(
             leitor = grupo_da_analise.LeitorDeGrupo(porta, permitido, linhas)
             direto = leitor.socios(cnpj, dia)
             if direto is not None:
+                parciais["socios_pj"] = _Lido(
+                    direto.corpo
+                    | {
+                        "limites": [
+                            *direto.corpo.get("limites", []),
+                            "Grupo não lido a tempo; sócios e participações diretas preservados.",
+                        ],
+                    },
+                    set(direto.fontes),
+                    direto.linhas,
+                )
                 servido = grupo_da_analise.ampliar(
                     direto, leitor, permitido_cadastro, cnpj, dia
                 )
@@ -789,7 +800,7 @@ def _com_grupo(
         dataclasses.replace(b, ler=ler_grupo)
         if b.nome == "socios_pj"
         else dataclasses.replace(
-            b, ler=_conferir_grupo(b, pronto, termina_em, parciais)
+            b, ler=_conferir_grupo(b, pronto, termina_em, parciais, portoes)
         )
         if b.conjunto == tabelas_por_cnpj.INTEGRIDADE
         else b
@@ -802,13 +813,14 @@ def _conferir_grupo(
     pronto: Future[Servido | None],
     termina_em: float,
     parciais: dict[str, Servido],
+    portoes: _PortaoDividido,
 ) -> LerBloco:
     def ler(
         porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
     ) -> Servido | None:
         leitor = por_tabela.LeitorPorTabela(porta, permitido, linhas)
         direto = leitor.bloco(bloco.nome, cnpj, dia)
-        if direto is None:
+        if direto is None or bloco.nome in portoes.barrados:
             return None
         parcial = _conferencia_direta(direto, "timed_out")
         parciais[bloco.nome] = parcial
