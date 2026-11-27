@@ -33,6 +33,7 @@ from src.registro_de_acesso import (
     proxies_pelo_ambiente,
     registro_pelo_ambiente,
 )
+from src.saude_frescor import frescor_da_base
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +48,17 @@ def saude() -> dict[str, str] | JSONResponse:
     if banco_esta_saudavel():
         return {"status": "ok"}
     return JSONResponse({"status": "banco indisponível"}, status_code=503)
+
+
+@router.get("/saude/frescor")
+def saude_do_frescor() -> JSONResponse:
+    """Expõe só o carimbo do recorte principal; falta de base responde 503, sem detalhe."""
+    frescor = frescor_da_base()
+    return JSONResponse(
+        frescor if frescor is not None else {"status": "frescor indisponível"},
+        status_code=200 if frescor is not None else 503,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/webhooks/stripe")
