@@ -220,7 +220,8 @@ a revisão cruzada por modelo diferente; para esta emenda, Tiago pediu: "Sim, co
   público: nunca nome de pessoa, dado de cliente nem alvo de mandato. O endereço de uma página pública que traga um
   número de CPF pode ir ao Firecrawl (decisão do Tiago em 26/11/2026); o CPF continua fora de termo de busca, de log,
   de teste, de prompt e de qualquer serviço ou modelo de fora do conector do modo dono. A `ficha_pessoa` recebe
-  o CPF e nunca o devolve nem o leva a outro modelo.
+  o CPF e nunca o devolve. O CPF não sai do modelo que chamou a `ficha_pessoa`, nem para outra LLM, nem em passagem,
+  revisão cruzada, handoff ou mensagem entre sessões.
 
 ## Padrões de código
 
