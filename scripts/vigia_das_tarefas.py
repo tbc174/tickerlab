@@ -33,6 +33,9 @@ from src.estado_das_tarefas import EstadoDaTarefa, Marca, estado_das_tarefas
 SUFIXO_DO_SUCESSO = ".ok"
 SUFIXO_DA_FALHA = ".falha"
 SITUACOES_COM_RESUMO = ("falhou", "atrasada")
+# o resumo some quando a tarefa volta ao ok ou sai do crontab (desligada, como o IEX em 26/11/2026):
+# tarefa que não roda mais não fica em `falhas/` para sempre
+SITUACOES_QUE_APAGAM_O_RESUMO = ("ok", "fora_da_agenda")
 # a cauda do log que o classificador lê: o bastante para o traceback da última rodada
 BYTES_DA_CAUDA_DO_LOG = 64 * 1024
 BYTES_DA_MARCA = 2 * 1024
@@ -79,14 +82,15 @@ def escrever_resumos(
     servidor: str,
     pasta: Path,
 ) -> None:
-    """Escreve `<tarefa>.json` com o resumo de cada tarefa falhando ou atrasada; apaga o das que voltaram.
+    """Escreve `<tarefa>.json` com o resumo de cada tarefa falhando ou atrasada; apaga o das que
+    voltaram ao ok e o das que saíram do crontab.
 
     O resumo é conferido (`src/classificar_falha.validar`) antes de ir para o disco: o que não passa
     não é escrito.
     """
     for estado in estados:
         destino = pasta / f"{estado.nome}.json"
-        if estado.situacao == "ok":
+        if estado.situacao in SITUACOES_QUE_APAGAM_O_RESUMO:
             destino.unlink(missing_ok=True)
         if estado.situacao not in SITUACOES_COM_RESUMO:
             continue

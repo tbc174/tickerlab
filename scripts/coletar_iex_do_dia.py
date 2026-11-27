@@ -36,7 +36,16 @@ falha (na carga antiga, um desdobramento depois do dia muda o preço oficial).
 
 Atribuição obrigatória ao mostrar estes dados: `iex_tops.ATRIBUICAO` (termos da IEX, ADR 0019).
 
-Roda: cron do VPS (todo dia às 0h30 e 5h00); outro script (medir_iex_um_dia.py).
+**Desligado desde 26/11/2026** (decisão do Tiago): desde 14/11/2026 a lista do HIST responde 403 e a
+página de dados da IEX diz que o PCAP histórico não está mais disponível para baixar. Chamado pelo
+cron, o script só avisa e sai com 0, sem pedir nada à IEX (`COLETA_DESLIGADA_DESDE`); o código e as
+barras já guardadas ficam. Para religar, se a IEX voltar: conferir à mão que a lista do dia responde
+(`python -m scripts.medir_iex_um_dia --data <pregão> --limite-gb 0.5`), pôr `COLETA_DESLIGADA_DESDE =
+None` num PR e devolver ao crontab do VPS as linhas `iex-intradiario` (5h00) e `iex-carga` (0h30)
+(ver `notas/erros-e-solucoes.md`, "IEX tirou o HIST do ar").
+
+Roda: desligado (sai sem coletar); antes, cron do VPS (todo dia às 0h30 e 5h00). Outro script
+(medir_iex_um_dia.py) usa as funções.
 """
 
 import argparse
@@ -77,6 +86,13 @@ SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
 HTTP_NAO_ENCONTRADO = 404
 MAXIMO_DE_SELOS_POR_RODADA = (
     40  # um pedido ao Yahoo por dia; a carga põe ~20 dias por noite
+)
+
+# 26/11/2026: a IEX tirou o HIST do ar (403 desde 14/11/2026); None religa a coleta
+COLETA_DESLIGADA_DESDE: date | None = date(2026, 11, 26)
+MENSAGEM_DA_COLETA_DESLIGADA = (
+    "Coleta do IEX desligada desde {dia}: a IEX tirou o HIST do ar (403 na lista do dia). "
+    "Nada foi pedido; para religar, ver a docstring de scripts/coletar_iex_do_dia.py."
 )
 
 MENSAGEM_DO_SELO_PAUSADO = (
@@ -387,6 +403,18 @@ def _coletar(opcoes: argparse.Namespace, buscar: Callable, prazo: float | None) 
     return 1 if falhou else 0
 
 
+def pelo_cron(argumentos: list[str] | None = None) -> int:
+    """A entrada do cron: com a coleta desligada, só avisa e sai com 0, sem pedir nada à IEX."""
+    if COLETA_DESLIGADA_DESDE is not None:
+        print(
+            MENSAGEM_DA_COLETA_DESLIGADA.format(
+                dia=COLETA_DESLIGADA_DESDE.strftime("%d/%m/%Y")
+            )
+        )
+        return 0
+    return main(argumentos)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    sys.exit(main())
+    sys.exit(pelo_cron())
