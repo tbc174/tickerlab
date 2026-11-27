@@ -28,6 +28,7 @@ CHAMADAS_DE_REDE = {
 PERMITIDOS = {
     "src/rede.py": "é onde o agente é posto",
     "base/arquivo/cliente_http.py": "a sessão já leva o AGENTE no cabeçalho",
+    "base/sintegra_http.py": "sessão com AGENTE, sem retry; robots e cabeçalho cobertos em test_sintegra_http.py",
     "base/enet_coleta.py": "a sessão do Enet leva o AGENTE em cada pedido",
     "scripts/carga_leve.py": "teste de carga no site do próprio TickerLab",
     "src/api_v1/acesso.py": "chaves públicas do Google para validar o login, não é coleta",

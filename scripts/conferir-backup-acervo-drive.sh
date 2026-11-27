@@ -32,7 +32,7 @@ MIN_IDADE=${MIN_IDADE:-7h}
 # `coletas.FONTES_SO_INTERNAS`): o lugar delas é `restrito/`, mas enquanto o `mover_acervo_restrito` não rodou
 # ainda há cópia delas em `bruto/`. Não sobem de jeito nenhum (LGPD: o que sobe nunca mais sai do Drive).
 # Há teste que compara esta lista com a do código.
-FONTES_SO_NO_RESTRITO="rfb-cnpj pgfn-divida mte-lista-suja ibama-autos ibama-embargos cvm-enet-notas antt-autos-de-transito djen-partes djen-processos datajud"
+FONTES_SO_NO_RESTRITO="rfb-cnpj pgfn-divida mte-lista-suja ibama-autos ibama-embargos cvm-enet-notas antt-autos-de-transito djen-partes djen-processos datajud sintegra"
 # Filtros sem âncora: valem em qualquer profundidade da origem, não só na raiz.
 FILTROS_DE_EXCLUSAO=(--exclude "restrito/**" --exclude "tickerlab-sala/**")
 for fonte in $FONTES_SO_NO_RESTRITO; do

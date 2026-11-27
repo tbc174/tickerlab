@@ -25,6 +25,7 @@ _FONTES_NOVAS = {
 
 # família sem vigia de termos → por quê (o motivo precisa ser verdadeiro hoje; trocar por vigia quando mudar)
 _SEM_VIGIA = {
+    "sintegra": "lotes estaduais sem licença ou termos próprios; leitura manual em 27/11/2026, só uso interno; robots do PR conferido a cada execução; RS/MG bloqueados (docs/coleta-sintegra-estadual.md)",
     # licença dita no catálogo do dados.gov.br ou no portal CKAN, sem página de termos própria
     **dict.fromkeys(
         (

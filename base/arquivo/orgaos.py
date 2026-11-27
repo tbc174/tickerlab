@@ -23,7 +23,14 @@ class Orgao:
 # não comercial, sem coleta (linha 512). Ficam fora da lista pública.
 NAO_SAO_FONTE = ("termos", "catalogo", "snb")
 
+# Fontes reais registradas apenas para controle interno, sem anúncio no site.
+FONTES_NAO_PUBLICADAS = frozenset({"sintegra"})
+
 ORGAO_DA_FAMILIA: dict[str, Orgao] = {
+    "sintegra": Orgao(
+        "Secretarias estaduais de Fazenda (Sintegra, só uso interno)",
+        "https://www.fazenda.pr.gov.br/Pagina/CAD/ICMS",
+    ),
     # Brasil: reguladores e agências
     "anac": Orgao("ANAC (aviação civil)", "https://sistemas.anac.gov.br/dadosabertos/"),
     "anatel": Orgao(

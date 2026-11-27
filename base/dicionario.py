@@ -6588,7 +6588,7 @@ TABELAS: dict[str, Tabela] = {
     "sintegra_estadual": Tabela(
         descricao="Cadastros estaduais de ICMS por estabelecimento. Só PR tem coleta operacional; leitores RS/MG somente offline até URL permitida conferida. Lista fechada sem nome ou endereço; CNPJ estrito com DV e recusa de CPF preenchido com zeros. Pode conter EI/MEI: tabela inteira restrita, sem view, API ou catálogo público. Categoria estadual só existe no RS; Simples/MEI da Receita é informação federal separada, não comprova regime ou sublimite estadual.",
         fonte="SEFA-PR, SEFAZ-RS e SEF-MG / Sintegra; cnpj_simples local da Receita Federal",
-        familia_da_fonte="sintegra-estadual",
+        familia_da_fonte="sintegra",
         frequencia="Manual; PR conforme arquivo publicado, RS/MG bloqueados",
         atraso="Disponível apenas no dia da coleta. Last-Modified é a data do arquivo, não disponibilidade histórica. Sem histórico até a primeira carga real. Simples vigente observado na carga, nunca retroagido às datas de opção.",
         onde="Parquet em `<acervo>/base/sintegra_estadual/<UF>/<edicao>.parquet` (`scripts/carga_sintegra_estadual.py`)",
@@ -6597,7 +6597,7 @@ TABELAS: dict[str, Tabela] = {
         colunas={
             "ie": ("Inscrição estadual preservada como texto", TEXTO),
             "cnpj": (
-                "CNPJ de 14 dígitos com DV, sem completar zeros; não classifica natureza jurídica",
+                "CNPJ de 14 caracteres com DV, inclusive alfanumérico, sem completar zeros; não classifica natureza jurídica",
                 TEXTO,
             ),
             "uf": ("UF do cadastro tributário", TEXTO),

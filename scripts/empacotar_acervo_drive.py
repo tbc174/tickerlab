@@ -59,6 +59,7 @@ NOMES_PROIBIDOS = ("restrito", "tickerlab-sala")
 # `coletas.FONTES_SO_INTERNAS`. Enquanto o `mover_acervo_restrito` não rodou ainda há cópia delas em `bruto/`.
 # O que sobe ao Drive nunca mais sai (LGPD): elas não sobem de jeito nenhum.
 FONTES_SO_NO_RESTRITO = (
+    "sintegra",
     "rfb-cnpj",
     "pgfn-divida",
     "mte-lista-suja",

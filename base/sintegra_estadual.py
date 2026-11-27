@@ -1,6 +1,6 @@
 """Leitores restritos dos layouts Sintegra PR, RS e MG; nenhum acesso à rede.
 
-Só documentos de 14 dígitos com DV, sem CPF preenchido com zeros. CNPJ não
+Só CNPJ de 14 caracteres com DV, inclusive alfanumérico, sem CPF com zeros. CNPJ não
 prova natureza jurídica: toda a tabela permanece interna até classificar EI/MEI.
 RS e MG têm leitor para prova offline, mas a coleta está bloqueada.
 """
@@ -16,7 +16,7 @@ from typing import TextIO
 
 import pandas as pd
 
-from base.cnpj import cpf_confere, dv_confere
+from base.cnpj import FORMA, cpf_confere, dv_confere
 
 TABELA = "sintegra_estadual"
 UFS = ("PR", "RS", "MG")
@@ -103,7 +103,7 @@ def urls_para_coleta(uf: str) -> dict[str, str]:
 
 def _cnpj_valido(documento: str) -> bool:
     return bool(
-        re.fullmatch(r"[0-9]{14}", documento)
+        FORMA.fullmatch(documento)
         and dv_confere(documento)
         and not (documento.startswith("000") and cpf_confere(documento[3:]))
     )
@@ -161,12 +161,15 @@ def _mg(campos: list[str]) -> dict[str, object]:
     }
 
 
-def _linhas(entrada: TextIO, uf: str, arquivo: str) -> Iterator[dict[str, object]]:
+def _linhas(
+    entrada: TextIO, uf: str, arquivo: str, contagem: dict[str, int]
+) -> Iterator[dict[str, object]]:
     esperadas = {"PR": 6, "RS": 7, "MG": 5}[uf]
     leitor = {"PR": _pr, "RS": _rs, "MG": _mg}[uf]
     for linha in entrada:
         if not linha.strip():
             continue
+        contagem["linhas_lidas"] += 1
         if len(linha) > MAX_LINHA:
             raise ValueError("Sintegra: linha acima do limite")
         # RS: o levantamento descreve campos separados, sem fixar o caractere.
@@ -180,13 +183,15 @@ def _linhas(entrada: TextIO, uf: str, arquivo: str) -> Iterator[dict[str, object
             raise ValueError("Sintegra: quantidade de campos inesperada")
         campos = [c.strip() for c in campos]
         if not _cnpj_valido(campos[1]):
+            contagem["documentos_recusados"] += 1
             continue
         yield {"cnpj": campos[1], "uf": uf, "arquivo": arquivo, **leitor(campos)}
 
 
 def _tabela(entrada: TextIO, uf: str, arquivo: str) -> pd.DataFrame:
+    contagem = {"linhas_lidas": 0, "documentos_recusados": 0}
     try:
-        tabela = pd.DataFrame(_linhas(entrada, uf, arquivo), columns=COLUNAS)
+        tabela = pd.DataFrame(_linhas(entrada, uf, arquivo, contagem), columns=COLUNAS)
     except (ValueError, csv.Error, UnicodeError):
         raise ValueError(
             "Sintegra: conteúdo fora do layout; arquivo recusado"
@@ -196,6 +201,7 @@ def _tabela(entrada: TextIO, uf: str, arquivo: str) -> pd.DataFrame:
     for coluna in set(COLUNAS) - {"data_abertura"}:
         tabela[coluna] = tabela[coluna].astype("string")
     tabela["data_abertura"] = pd.to_datetime(tabela.data_abertura).dt.date
+    tabela.attrs["contagem"] = contagem
     return tabela.sort_values(list(CHAVE)).reset_index(drop=True)
 
 

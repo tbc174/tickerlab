@@ -15,7 +15,7 @@ from datetime import date
 from typing import Literal
 
 from base.arquivo.fontes import FONTES
-from base.arquivo.orgaos import NAO_SAO_FONTE, ORGAO_DA_FAMILIA
+from base.arquivo.orgaos import FONTES_NAO_PUBLICADAS, NAO_SAO_FONTE, ORGAO_DA_FAMILIA
 from base.vitrine import licenca_do_site
 from src.banco.coletas import (
     USOS_SEM_COBRANCA,
@@ -28,6 +28,7 @@ from src.banco.coletas import (
 # família da fonte (o começo do id) → dia em que os termos foram lidos (licencas-por-fonte.md e
 # comentários de `LICENCAS`); família que não está aqui ainda não tem a data anotada
 TERMOS_LIDOS_EM: dict[str, date] = {
+    "sintegra": date(2026, 11, 27),
     "cvm": date(2026, 10, 12),
     "susep": date(2026, 10, 15),
     "wayback": date(2026, 10, 16),
@@ -322,7 +323,7 @@ def familias_publicas() -> list[str]:
     """As famílias da lista pública: as do arquivista, na ordem de `FONTES`, e depois as de fora."""
     vistas = dict.fromkeys(_familia(f.id) for f in FONTES)
     vistas |= dict.fromkeys(FONTES_DE_FORA_DO_ARQUIVISTA)
-    return [f for f in vistas if f not in NAO_SAO_FONTE]
+    return [f for f in vistas if f not in {*NAO_SAO_FONTE, *FONTES_NAO_PUBLICADAS}]
 
 
 def _fontes_da_familia(familia: str) -> list[str]:

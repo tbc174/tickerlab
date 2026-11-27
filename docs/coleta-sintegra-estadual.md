@@ -32,7 +32,10 @@ Decisão expressa do Tiago em **27/11/2026, item 23**: **“Colete sem pedir
 autorização”**, para arquivos públicos sem licença escrita, sem pedido a terceiro.
 A licença registrada no dicionário e no contrato é **“não declarada pela fonte;
 uso interno”**. Não se atribui CC BY aos lotes estaduais. A marca de revenda é
-`SO_USO_INTERNO`, e a família está em `FONTES_SO_INTERNAS`.
+`SO_USO_INTERNO`, e a família `sintegra` está em `FONTES_SO_INTERNAS` (inclusive
+para ids como `sintegra-estadual`). As listas do empacotador e dos três scripts
+de backup/restauração excluem a família. O registro de órgãos é interno: a fonte
+também está em `FONTES_NAO_PUBLICADAS`, sem anúncio na lista do site.
 
 A Diretoria confirmou nesta tarefa o escopo ajustado: PR operacional; RS/MG
 recusados até existir URL direta permitida e conferida. A decisão de uso da fonte
@@ -48,6 +51,7 @@ não autoriza cruzar robots, captcha, WAF ou login.
 | GET do arquivo ativos com `Range: bytes=0-3` | 200, sem Content-Range; anuncia `Content-Disposition: attachment; filename="ativos.zip"`. O servidor ignorou Range: o corpo não foi lido, e a conexão foi fechada. |
 | GET `https://www.sefaz.rs.gov.br/robots.txt` | 200; trecho literal abaixo cobre o endpoint `SEF-Download-ICS-Ativo.asp`. |
 | HEAD `https://www.fazenda.mg.gov.br/export/utilidades/download.html` | 404, HTML, 842 bytes (página de erro, não o cadastro). |
+| HEAD `https://processos.fazenda.pr.gov.br/robots.txt` | Conexão recusada na porta HTTPS. Não se desativou verificação TLS nem se procurou espelho. |
 
 Trecho literal do robots do RS, conferido em 27/11/2026:
 
@@ -61,6 +65,14 @@ e o servidor não aceitou Range. O ZIP e seus nomes internos não foram inspecio
 O leitor aceita TXT simples ou ZIP contendo um único TXT, sem extrair no disco;
 arquivos inesperados ou ambíguos falham. Essa compatibilidade foi testada somente
 com fixtures sintéticas. Não é prova de uma carga real bem-sucedida.
+
+**Primeira carga real é uma prova isolada**, a ser comandada pela Diretoria em
+uma pasta de base de teste, sem substituir o acervo. Conferir contagens, cobertura
+e layout antes de promover uma edição. O teto de tolerância a layout divergente
+continua zero: mês `000000`, IE inesperada, quebra de linha dentro de campo ou
+outra divergência recusam a edição inteira. O próximo passo, se ocorrer, é
+registrar apenas motivo e contagem, ajustar a regra com fixture sintética e novo
+PR, e repetir a prova. Não relaxar o parser nem guardar células para depurar.
 
 ## Colunas e restrição
 
@@ -82,10 +94,14 @@ o leitor aceita ponto e vírgula, tabulação ou barra vertical, com contagem ex
 Sem amostra real, o separador e nome do membro do RS seguem sujeitos a conferência
 quando existir acesso permitido (`ICS_Ativo.txt` é o membro esperado pelo leitor).
 
-Documento precisa de 14 dígitos ASCII e DV válido. Não se completa zero, não se
+Documento precisa de 14 caracteres ASCII e DV válido: as primeiras 12 posições
+aceitam números ou letras maiúsculas, os dois DVs são numéricos, conforme
+`base/cnpj.py`. Não se completa zero, não se
 remove pontuação e não se aceita número decimal. Documento pessoal completado
 com três zeros é recusado mesmo quando também passa no DV do CNPJ. Linha com
-documento inválido sai; lote sem nenhuma linha válida falha. Chave duplicada,
+documento inválido sai; cada origem no manifesto conta `linhas_lidas` e
+`documentos_recusados` (numerais em texto, sem os valores recusados). Lote sem
+nenhuma linha válida falha. Chave duplicada,
 layout divergente, campo inesperado, data inválida ou HTML também falham.
 Não se guardam nome, endereço, telefone, e-mail ou coordenada.
 
@@ -117,14 +133,29 @@ não é autenticação independente da fonte, e os links oficiais do PR usam HTT
 `publico_em = disponivel_em` é sempre o dia da coleta do conteúdo, nunca a data
 de habilitação, abertura, opção ou Last-Modified. `historico_desde` fica vazio
 até a primeira carga real. Há também fonte estadual, data/hora da coleta,
-commit e data/hora da montagem. Recoleta idêntica da mesma edição preserva os
-carimbos; revisão guarda o retrato anterior em `.vN`, inclusive quando só
-acrescenta linhas. Sem Last-Modified, cada dia é uma edição observada.
+commit e data/hora da montagem. A carga compara o SHA-256 do conteúdo normalizado
+e as contagens de descarte com a **última edição observada**, escolhida pelo
+`coletado_em` das origens do manifesto, independentemente do nome do arquivo.
+Conteúdo e contagens idênticos preservam o arquivo e a primeira disponibilidade,
+mesmo sem Last-Modified e em outro dia. Conteúdo novo usa a data de edição
+definida acima; se esse nome já existe, preserva a anterior em `.vN`, inclusive quando só
+acrescenta linhas. A versão nova recebe a disponibilidade da nova coleta;
+o `.vN` mantém a disponibilidade antiga.
+
+Quem lê o retrato atual escolhe o manifesto com maior `coletado_em` entre os
+Parquets vigentes (sem `.vN`). Para uma data histórica, considera também `.vN`,
+filtra `disponivel_em <= data` e escolhe a observação mais recente que já existia.
+Nunca concatenar edições como se fossem estabelecimentos diferentes.
 
 O cliente manda o User-Agent oficial do TickerLab, respeita Disallow e Crawl-delay,
 faz um GET por arquivo e não segue redirecionamentos nem repete respostas de erro.
 Robots inacessível (exceto 404), desafio, HTML, erro HTTP ou tamanho excessivo
-impede a carga. O freio de disco roda antes e durante o download. Limites:
+impede a carga. O prazo de rede do cliente é 300 segundos, verificado antes/depois
+de cada leitura; conexão/leitura tem timeout de até 15 segundos (ou o restante
+do prazo). `read1` devolve os bytes disponíveis sem esperar encher o bloco. O
+Crawl-delay acima de 60 segundos recusa a coleta, sem reduzir a pausa pedida.
+Não se aceita compressão HTTP; os arquivos ZIP seguem permitidos. O freio de
+disco roda antes e durante o download. Limites:
 256 MiB por arquivo/TXT descompactado, 256 KiB de robots e 32 KiB por linha.
 Os dois arquivos são validados antes da publicação. Temporários são removidos
 inclusive em erro; logs trazem só UF, resultado e classe do erro, nunca células.

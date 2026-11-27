@@ -11,6 +11,7 @@ Roda: manual pela Diretoria na máquina de casa; python -m scripts.carga_sintegr
 
 import argparse
 import hashlib
+import json
 import logging
 import tempfile
 import zipfile
@@ -18,18 +19,21 @@ from collections.abc import Mapping
 from datetime import UTC, date, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from typing import Protocol
 
 import pandas as pd
 import requests
 
 from base import sintegra_estadual as sintegra
-from base.arquivo.coleta import Cliente, FreioDeDisco, conferir_freio, espaco_do_disco
+from base.arquivo.coleta import FreioDeDisco, conferir_freio, espaco_do_disco
 from base.parquet import (
     IGUAL,
     LINHAGEM,
+    arquivos_atuais,
     como_no_disco,
     conferir_tabela,
     gravar_com_versoes,
+    hash_da_tabela,
     ler_tabela,
 )
 from base.sintegra_http import ClienteSintegra
@@ -37,6 +41,12 @@ from src import acervo
 from src.versao_do_codigo import exigir_versao_do_codigo, versao_do_codigo
 
 log = logging.getLogger(__name__)
+
+
+class Baixador(Protocol):
+    """Só a operação usada pela carga, sem exigir os métodos do arquivista."""
+
+    def baixar(self, url: str, destino: Path) -> Mapping[str, str]: ...
 
 
 def _data_do_arquivo(cabecalhos: Mapping[str, str], quando: datetime) -> date | None:
@@ -53,7 +63,7 @@ def _data_do_arquivo(cabecalhos: Mapping[str, str], quando: datetime) -> date | 
 
 
 def _baixar_uf(
-    uf: str, urls: dict[str, str], temporaria: Path, quando: datetime, cliente: Cliente
+    uf: str, urls: dict[str, str], temporaria: Path, quando: datetime, cliente: Baixador
 ) -> tuple[pd.DataFrame, list[dict[str, str]]]:
     partes, origens = [], []
     for arquivo, url in urls.items():
@@ -68,6 +78,8 @@ def _baixar_uf(
                 "url": url,
                 "sha256": sha256,
                 "data_arquivo": dia.isoformat() if dia else "",
+                "coletado_em": quando.isoformat(),
+                **{k: str(v) for k, v in tabela.attrs["contagem"].items()},
             }
         )
         tabela["origem_sha256"] = sha256
@@ -125,7 +137,7 @@ def _ligar_simples(
     return tabela.drop(columns="cnpj_basico"), origens
 
 
-def carregar_uf(uf: str, pasta: Path, quando: datetime, cliente: Cliente) -> str:
+def carregar_uf(uf: str, pasta: Path, quando: datetime, cliente: Baixador) -> str:
     """Valida os dois arquivos antes de publicar a edição; falha preserva o acervo."""
     urls = sintegra.urls_para_coleta(uf)
     pasta.mkdir(parents=True, exist_ok=True)
@@ -147,14 +159,51 @@ def carregar_uf(uf: str, pasta: Path, quando: datetime, cliente: Cliente) -> str
     return _gravar(tabela, destino, origens + origens_simples)
 
 
+def _origens_da_edicao(arquivo: Path) -> list[dict[str, str]]:
+    return json.loads(arquivo.with_suffix(".json").read_text(encoding="utf-8"))[
+        "origens"
+    ]
+
+
+def _ultima_edicao(pasta: Path) -> Path | None:
+    arquivos = arquivos_atuais(pasta)
+    # Coletado_em vem da carga, não do Last-Modified da fonte. Assim uma
+    # republicação com data antiga também pode ser a observação mais recente.
+    return max(
+        arquivos,
+        key=lambda p: max(o.get("coletado_em", "") for o in _origens_da_edicao(p)),
+        default=None,
+    )
+
+
+def _hash_do_conteudo(tabela: pd.DataFrame) -> str:
+    carimbos = [
+        *LINHAGEM,
+        "publico_em",
+        "disponivel_em",
+        "simples_observado_em",
+        "data_arquivo",
+    ]
+    return hash_da_tabela(
+        como_no_disco(tabela).drop(columns=carimbos), list(sintegra.CHAVE)
+    )
+
+
+def _contagens(origens: list[dict[str, str]]) -> list[tuple[str | None, ...]]:
+    return [
+        (o.get("url"), o.get("linhas_lidas"), o.get("documentos_recusados"))
+        for o in origens
+    ]
+
+
 def _gravar(tabela: pd.DataFrame, destino: Path, origens: list[dict[str, str]]) -> str:
-    arquivo = destino.with_suffix(".parquet")
-    if arquivo.exists() and conferir_tabela(arquivo):
-        anterior = ler_tabela(arquivo)
-        carimbos = [*LINHAGEM, "publico_em", "disponivel_em", "simples_observado_em"]
-        if anterior.drop(columns=carimbos).equals(
-            como_no_disco(tabela).drop(columns=carimbos)
-        ):
+    anterior = _ultima_edicao(destino.parent)
+    if anterior is not None:
+        if not conferir_tabela(anterior):
+            raise ValueError("Sintegra: edição anterior não confere; carga recusada")
+        if _hash_do_conteudo(ler_tabela(anterior)) == _hash_do_conteudo(
+            tabela
+        ) and _contagens(_origens_da_edicao(anterior)) == _contagens(origens):
             return IGUAL
     return gravar_com_versoes(
         lambda: tabela, destino, origens, list(sintegra.CHAVE), forcar=True
@@ -186,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
                 ValueError,
                 OSError,
                 zipfile.BadZipFile,
+                RuntimeError,
                 requests.RequestException,
                 FreioDeDisco,
             ) as erro:

@@ -25,7 +25,7 @@ Cadastros estaduais de ICMS por estabelecimento. Só PR tem coleta operacional; 
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `ie` | Inscrição estadual preservada como texto | texto |
-| `cnpj` | CNPJ de 14 dígitos com DV, sem completar zeros; não classifica natureza jurídica | texto |
+| `cnpj` | CNPJ de 14 caracteres com DV, inclusive alfanumérico, sem completar zeros; não classifica natureza jurídica | texto |
 | `uf` | UF do cadastro tributário | texto |
 | `arquivo` | ativos ou cancelados; PR cancelados não inclui baixados a pedido | texto |
 | `situacao` | Código original: PR oito dígitos; MG H/N; RS ativo pelo arquivo | texto |

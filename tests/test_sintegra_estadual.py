@@ -336,3 +336,79 @@ def test_cli_zip_corrompido_falha_sem_conteudo_da_fonte(tmp_path, monkeypatch, c
     monkeypatch.setattr(carga, "carregar_uf", corrompido)
     assert carga.main(["--uf", "PR", "--pasta", str(tmp_path)]) == 1
     assert "CAMPO PROIBIDO" not in caplog.text
+
+
+@pytest.mark.parametrize("fonte", ["sintegra", "sintegra-estadual"])
+def test_familia_interna_bloqueia_tambem_origem_derivada_e_guarda_restrita(fonte):
+    from src import acervo
+    from src.banco.coletas import (
+        LicencaNaoPermiteError,
+        exigir_licenca,
+        pode_usar,
+        so_interna,
+    )
+
+    assert so_interna(fonte)
+    for uso in ("mostrar", "exportar"):
+        assert not pode_usar(uso, fonte)
+        with pytest.raises(LicencaNaoPermiteError):
+            exigir_licenca(uso, [fonte])
+    assert acervo.caminho_relativo(
+        fonte, "https://example.invalid/a.zip", b"teste", QUANDO
+    ).startswith("restrito/")
+
+
+@pytest.mark.parametrize("uf", ["PR", "RS", "MG"])
+def test_aceita_cnpj_alfanumerico_com_dv_e_conta_documentos_recusados(tmp_path, uf):
+    from base import sintegra_estadual as sintegra
+
+    base = "99ABCDE10001"
+    documento = base + digitos_verificadores(base)
+    tabela = sintegra.ler_arquivo(
+        _arquivo(tmp_path, uf, [_linha(uf, documento), _linha(uf, "invalido")]),
+        uf,
+        "ativos",
+    )
+    assert list(tabela.cnpj) == [documento]
+    assert tabela.attrs["contagem"] == {"linhas_lidas": 2, "documentos_recusados": 1}
+
+
+def test_recoleta_identica_sem_last_modified_nao_cria_outra_edicao(
+    tmp_path, monkeypatch
+):
+    from scripts import carga_sintegra_estadual as carga
+
+    monkeypatch.setattr(
+        carga, "espaco_do_disco", lambda pasta: (1000 * 1024**3, 800 * 1024**3)
+    )
+
+    class SemData(_Servidor):
+        def baixar(self, url, destino):
+            super().baixar(url, destino)
+            return {}
+
+    servidor = SemData()
+    carga.carregar_uf("PR", tmp_path, QUANDO, servidor)
+    assert (
+        carga.carregar_uf("PR", tmp_path, datetime(2026, 11, 28, tzinfo=UTC), servidor)
+        == "igual"
+    )
+    assert [p.name for p in (tmp_path / TABELA / "PR").glob("*.parquet")] == [
+        "2026-11-27.parquet"
+    ]
+    manifesto = json.loads(
+        (tmp_path / TABELA / "PR/2026-11-27.json").read_text(encoding="utf-8")
+    )
+    assert manifesto["origens"][0]["documentos_recusados"] == "0"
+    assert manifesto["origens"][0]["linhas_lidas"] == "1"
+
+
+def test_familia_nao_e_anunciada_mesmo_se_entrar_no_arquivista(monkeypatch):
+    from base.arquivo import registro
+
+    monkeypatch.setattr(
+        registro,
+        "FONTES_DE_FORA_DO_ARQUIVISTA",
+        (*registro.FONTES_DE_FORA_DO_ARQUIVISTA, "sintegra"),
+    )
+    assert "sintegra" not in registro.familias_publicas()

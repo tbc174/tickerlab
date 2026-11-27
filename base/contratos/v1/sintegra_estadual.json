@@ -9,7 +9,7 @@
       "unidade": "texto"
     },
     "cnpj": {
-      "descricao": "CNPJ de 14 dígitos com DV, sem completar zeros; não classifica natureza jurídica",
+      "descricao": "CNPJ de 14 caracteres com DV, inclusive alfanumérico, sem completar zeros; não classifica natureza jurídica",
       "unidade": "texto"
     },
     "uf": {
