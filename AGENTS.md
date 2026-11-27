@@ -174,8 +174,10 @@ O Tiago trabalha com mais de uma IA (decisão na pasta privada, ADR 0110). Para 
 
 **Emenda de 27/11/2026** (Tiago: "nenhuma LLM você deve considerar como terceiro"): as IAs de programação e
 os modelos que o Tiago assina e orquestra (hoje Claude, Codex e Gemini; Copilot só em tarefas de teste e doc) **não
-são terceiros**. Recebem o que a tarefa pede com a mesma confiança, inclusive o conector do modo dono e dado de
-pessoa adulta, dentro das regras de "Análises de empresa e de grupo". Para dar o conector do modo dono ao Codex e
+são terceiros**. Recebem o que a tarefa pede com a mesma confiança, inclusive o conector do modo dono. Dado de
+pessoa adulta só pela ficha do modo dono, sem CPF, e dentro das regras de "Análises de empresa e de grupo".
+Isso não libera CPF, menor de idade, endereço residencial, segredo nem o nome da casa de M&A para nenhum modelo.
+Para dar o conector do modo dono ao Codex e
 ao Gemini, Tiago confirmou: "Sim, aos dois". Continuam valendo a permissão por organização conferida no servidor e
 a revisão cruzada por modelo diferente; para esta emenda, Tiago pediu: "Sim, com as duas revisões".
 
@@ -217,7 +219,8 @@ a revisão cruzada por modelo diferente; para esta emenda, Tiago pediu: "Sim, co
   dele para cá. Serviço de terceiro, inclusive busca e raspagem (Firecrawl, buscadores), recebe só página e termo
   público: nunca nome de pessoa, dado de cliente nem alvo de mandato. O endereço de uma página pública que traga um
   número de CPF pode ir ao Firecrawl (decisão do Tiago em 26/11/2026); o CPF continua fora de termo de busca, de log,
-  de teste e de qualquer serviço de terceiro, inclusive busca e raspagem.
+  de teste, de prompt e de qualquer serviço ou modelo de fora do conector do modo dono. A `ficha_pessoa` recebe
+  o CPF e nunca o devolve nem o leva a outro modelo.
 
 ## Padrões de código
 
