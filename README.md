@@ -120,7 +120,7 @@ cada original e responde como os dados **eram** em qualquer data.
 Um serviço FastAPI (`src/api.py`) com duas APIs: a de leitura está no ar, servindo o app; a
 externa fica desligada em produção até a decisão do autor.
 
-Saúde pública: [`/saude`](https://api.tickerlab.com.br/saude); [`/saude/frescor`](https://api.tickerlab.com.br/saude/frescor) devolve só `base_atualizada_em` (ISO com fuso) e `fonte: mtime_base`, a data da pasta do último recorte principal recebido (não o frescor de cada fonte); sem base, responde 503.
+Saúde pública: [`/saude`](https://api.tickerlab.com.br/saude); [`/saude/frescor`](https://api.tickerlab.com.br/saude/frescor) devolve só `base_atualizada_em` (ISO com fuso) e `fonte: mtime_parquet`, a data de modificação do Parquet mais recente da base principal (não o frescor de cada fonte); sem base, responde 503.
 
 - **API externa (`/data/v1`)**, para quem integra. A organização entra por uma chave no cabeçalho
   (na URL, o pedido é recusado), com quota do mês e limite por minuto. Cada campo sai num envelope

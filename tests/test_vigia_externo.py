@@ -25,7 +25,7 @@ def rede(monkeypatch):
         json.dumps(
             {
                 "base_atualizada_em": (AGORA - timedelta(hours=1)).isoformat(),
-                "fonte": "mtime_base",
+                "fonte": "mtime_parquet",
             }
         ).encode(),
     )
@@ -100,7 +100,7 @@ def test_limite_de_frescor_e_data_futura(rede, horas, esperado):
         json.dumps(
             {
                 "base_atualizada_em": (AGORA - timedelta(hours=horas)).isoformat(),
-                "fonte": "mtime_base",
+                "fonte": "mtime_parquet",
             }
         ).encode(),
     )
