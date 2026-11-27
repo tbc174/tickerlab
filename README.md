@@ -71,8 +71,17 @@ as rotas da TickerLab Data e só mostra as ferramentas liberadas para a organiza
 configurado e o acesso habilitado, um pedido típico é:
 
 > Busque empresas por CNAE e UF. Para um CNPJ selecionado, reúna a ficha, os eventos da CVM e os
-> vínculos societários. Se for companhia aberta, mostre também os comparáveis. Cite a fonte e a
-> data de cada bloco e diga o que não foi possível consultar.
+> vínculos societários. Separe o que foi consultado na empresa-alvo do que foi consultado no grupo.
+> Se for companhia aberta, mostre também os comparáveis. Cite fonte, data e o que ficou sem consulta.
+
+Na implementação de `analise_completa` (MCP e `GET /data/v1/companies/{cnpj}/analysis`),
+os vínculos diretos da empresa-alvo ficam separados de um recorte inferido do grupo: a própria
+empresa, sócias pessoa jurídica até três níveis acima e participadas diretas. O recorte tem limites,
+não inclui empresas-irmãs nem coinvestidoras e não comprova controle.
+Quando as permissões da organização permitem, as conferências de CGU, IBAMA e MTE distinguem
+os resultados da empresa-alvo dos resultados por integrante do grupo. Se a expansão exceder o prazo,
+os resultados diretos já concluídos permanecem e o retorno sinaliza a cobertura parcial.
+Não encontrar um registro na empresa-alvo não significa que ele inexista no grupo.
 
 Para mapear potenciais compradores, a implementação de `compradores_do_setor` (MCP e
 `GET /data/v1/buyers`) pode agrupar compradores ligados por uma sócia pessoa jurídica em comum e
