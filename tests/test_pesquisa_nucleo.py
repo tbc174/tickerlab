@@ -113,7 +113,12 @@ def test_negativo_vence_em_7_dias(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_memoria_registra_fato_e_conta(tmp_path: Path):
     banco = memoria.Memoria(tmp_path / "m.sqlite")
     banco.registrar_fato("r1", "h", {"valor": "120"}, "confirmado", [])
-    assert banco.contagens() == {"visto": 0, "negativo": 0, "fato": 1}
+    assert banco.contagens() == {
+        "visto": 0,
+        "negativo": 0,
+        "fato": 1,
+        "renderizacao": 0,
+    }
 
 
 def test_memoria_persiste_entre_aberturas(tmp_path: Path):

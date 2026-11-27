@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 
 VALIDADE_DO_NEGATIVO_DIAS = 7
 STATUS_DE_BLOQUEIO = (401, 403, 429)
-TABELAS = ("visto", "negativo", "fato")
+TABELAS = ("visto", "negativo", "fato", "renderizacao")
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS visto (
@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS visto (
 CREATE TABLE IF NOT EXISTS negativo (
     url TEXT PRIMARY KEY, motivo TEXT NOT NULL, status_http INTEGER,
     quando TEXT NOT NULL, rodada TEXT NOT NULL
+);
+-- Cada tentativa de renderizar (pedida ou sozinha), para medir as mudanças: só o tipo do erro, nunca a
+-- mensagem (pode trazer texto de terceiro).
+CREATE TABLE IF NOT EXISTS renderizacao (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT NOT NULL, rodada TEXT NOT NULL,
+    sozinha INTEGER NOT NULL, resultado TEXT NOT NULL, erro TEXT, quando TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS fato (
     id INTEGER PRIMARY KEY AUTOINCREMENT, rodada TEXT NOT NULL, hipotese TEXT NOT NULL,
@@ -137,7 +143,55 @@ class Memoria:
             mesmo_host = urlsplit(negativo.url).hostname == host.lower()
             if mesmo_host and self.negativo_valido(negativo.url) is not None:
                 return negativo
+        return self._bloqueio_ao_renderizar(host)
+
+    def _bloqueio_ao_renderizar(self, host: str) -> Negativo | None:
+        """O bloqueio que o renderizador recebeu (401, 403, 429) e o desafio anti-robô reconhecido na
+        casca valem para o host como um negativo: a página lida sem navegador fica guardada, e o
+        bloqueio não pode sumir com ela."""
+        limite = (agora() - timedelta(days=VALIDADE_DO_NEGATIVO_DIAS)).isoformat()
+        with self._conexao() as conexao:
+            linhas = conexao.execute(
+                "SELECT url, rodada, quando, resultado FROM renderizacao"
+                " WHERE resultado IN ('bloqueio', 'desafio') AND quando >= ?",
+                (limite,),
+            ).fetchall()
+        for url, rodada, quando, resultado in linhas:
+            if urlsplit(url).hostname == host.lower():
+                motivo = (
+                    "bloqueio ao renderizar"
+                    if resultado == "bloqueio"
+                    else "desafio anti-robô na casca"
+                )
+                return Negativo(url, motivo, None, quando, rodada)
         return None
+
+    def anotar_renderizacao(
+        self,
+        url: str,
+        rodada: str,
+        *,
+        sozinha: bool,
+        resultado: str,
+        erro: str | None = None,
+    ) -> None:
+        """Uma tentativa de renderizar: `resultado` é ok, falhou, bloqueio ou barrado; `erro`, o tipo."""
+        with self._conexao() as conexao:
+            conexao.execute(
+                "INSERT INTO renderizacao (url, rodada, sozinha, resultado, erro, quando)"
+                " VALUES (?,?,?,?,?,?)",
+                (url, rodada, int(sozinha), resultado, erro, agora().isoformat()),
+            )
+            conexao.commit()
+
+    def renderizacoes(self) -> list[dict[str, object]]:
+        """As tentativas de renderizar, na ordem em que aconteceram."""
+        with self._conexao() as conexao:
+            linhas = conexao.execute(
+                "SELECT url, rodada, sozinha, resultado, erro, quando FROM renderizacao"
+                " ORDER BY id"
+            ).fetchall()
+        return [dict(linha) for linha in linhas]
 
     def registrar_fato(
         self,

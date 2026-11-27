@@ -29,6 +29,7 @@ from pesquisa.memoria import STATUS_DE_BLOQUEIO, Memoria, Visto, agora
 from pesquisa.pessoa import tem_sequencia_de_cpf
 from pesquisa.renderizacao import (
     BloqueioNaRenderizacao,
+    EnvioBarrado,
     Mapeador,
     TetoDeCreditos,
     so_letras_e_numeros,
@@ -53,6 +54,57 @@ EXTENSOES = {
 TIPOS_QUE_EXIGEM_DOCUMENTO = frozenset({"pdf", "xlsx", "zip"})
 CABECALHOS_DA_PROVENIENCIA = ("Content-Type", "Content-Length", "Last-Modified", "ETag")
 TAMANHO_DA_LEITURA = 1024 * 1024
+# Página com menos texto que isto e com <script> é casca de JavaScript: renderiza sozinha. Na linha de
+# base de 26/11/2026, as cascas vieram com 4, 21 e 82 caracteres; página de verdade passa de centenas.
+TEXTO_MINIMO_DE_PAGINA = 200
+# Marcas de página de desafio anti-robô ou de rejeição de WAF que vêm com status 2xx (o `ClienteHttp` só
+# reconhece o desafio da Cloudflare pelo cabeçalho). Casca com uma delas não vai a navegador nenhum: um
+# navegador resolveria o desafio, e bloqueio não se contorna. Na dúvida, não renderiza. O desafio
+# reconhecido vale para o host inteiro, como o bloqueio por status (ver `Memoria.bloqueio_valido_no_site`).
+# Comparadas sem caixa (casefold), inclusive nas letras acentuadas.
+MARCAS_DE_DESAFIO = (
+    "challenge",
+    "captcha",
+    "cf-chl",
+    "awswaf",
+    "aws-waf",
+    "just a moment",
+    "checking your browser",
+    "verify you are human",
+    "are you a robot",
+    "verifique o navegador",
+    "verificando o navegador",
+    "não sou um robô",
+    "você é um robô",
+    "incapsula",
+    "perimeterx",
+    "datadome",
+    "request rejected",
+    "access denied",
+    "acesso negado",
+    "ddos",
+    "tspd",  # F5 Bot Defense
+    "bobcmn",  # F5 ASM
+    "sucuri",
+    "bm-verify",  # Akamai Bot Manager
+    "_abck",  # Akamai Bot Manager
+    "kpsdk",  # Kasada
+    "perfdrive",  # Radware (ShieldSquare)
+    "shieldsquare",
+)
+# Trechos inofensivos que contêm uma marca e saem do texto antes da busca (PKCE do login OIDC de SPA).
+TRECHOS_SEM_DESAFIO = ("code_challenge",)
+ALERTA_DE_DESAFIO = (
+    "a página tem cara de desafio anti-robô: não foi renderizada, e renderizar ou mapear este site fica"
+    " barrado por 7 dias (bloqueio não se contorna; o texto acima é só o que veio sem navegador)"
+)
+
+
+def _tem_marca_de_desafio(conteudo: bytes) -> bool:
+    texto = conteudo.decode("utf-8", errors="replace").casefold()
+    for trecho in TRECHOS_SEM_DESAFIO:
+        texto = texto.replace(trecho, "")
+    return any(marca in texto for marca in MARCAS_DE_DESAFIO)
 
 
 class Cliente(Protocol):
@@ -155,7 +207,19 @@ class Coletor:
             self.rodada.gastar_busca()
             self._conferir_robots(url)
             url_final, conteudo, cabecalhos = self._pedir_pagina(url, renderizar)
-            return self._responder_pagina(url, url_final, conteudo, cabecalhos)
+            sozinha, alerta = None, None
+            if not renderizar and self._e_casca_de_javascript(conteudo, cabecalhos):
+                url_final, conteudo, cabecalhos, sozinha, alerta = (
+                    self._renderizar_sozinho(url, (url_final, conteudo, cabecalhos))
+                )
+            resposta = self._responder_pagina(url, url_final, conteudo, cabecalhos)
+            if sozinha is not None and resposta.get("tipo") == "html":
+                resposta["renderizada_sozinha"] = sozinha
+                if (
+                    alerta is not None
+                ):  # chave própria: o aviso de conteúdo de terceiros fica
+                    resposta["alerta"] = alerta
+            return resposta
         except LimiteExcedido as erro:
             return {"ok": False, "limite": str(erro)}
         except Recusa as recusa:
@@ -204,21 +268,104 @@ class Coletor:
                     "renderização pede o Crawl4AI, que não está instalado",
                     lembrar=False,
                 )
+            if self._site_bloqueado(url):
+                raise Recusa(
+                    "o site já bloqueou o bot (anti-robô, 401, 403 ou 429): bloqueio não se contorna",
+                    lembrar=False,
+                )
             self.cliente_espera_a_vez(url)
             try:
                 url_final, html = self.renderizador(url)
             except BloqueioNaRenderizacao as erro:
+                self._anotar_renderizacao(url, False, erro)
                 raise BloqueioAntiRobo(str(erro)) from erro
             except Exception as erro:
+                self._anotar_renderizacao(url, False, erro)
                 raise Recusa(
                     f"a renderização falhou ({type(erro).__name__}); tente buscar_pagina "
                     "sem renderizar",
                     lembrar=False,
                 ) from erro
+            self._anotar_renderizacao(url, False, None)
             return url_final, html, {"Content-Type": "text/html"}
         resposta = self.cliente.ler(url)
         self.rodada.gastar_bytes(len(resposta.conteudo))
         return resposta.url, resposta.conteudo, resposta.cabecalhos
+
+    def _e_casca_de_javascript(
+        self, conteudo: bytes, cabecalhos: Mapping[str, str]
+    ) -> bool:
+        """HTML com <script> e quase sem texto: o conteúdo é montado no navegador."""
+        if self.renderizador is None:
+            return False
+        tipo = {k.lower(): v for k, v in cabecalhos.items()}.get("content-type", "")
+        if "html" not in tipo.lower() or b"<script" not in conteudo.lower():
+            return False
+        extracao = leitores.ler_html(conteudo)
+        texto = extracao.blocos[0].texto if extracao.blocos else ""
+        return len(texto) < TEXTO_MINIMO_DE_PAGINA
+
+    def _renderizar_sozinho(
+        self, url: str, lida: tuple[str, bytes, Mapping[str, str]]
+    ) -> tuple[str, bytes, Mapping[str, str], bool, str | None]:
+        """Renderiza a casca pelo mesmo renderizador do `renderizar=true` (porteiro e teto valem). Não
+        renderiza se o site já bloqueou o bot ou se a casca tem cara de desafio anti-robô. Se não der, a
+        página lida volta como veio: a busca já deu certo, e a falha fica anotada (o bloqueio recebido
+        aqui, e o desafio reconhecido, valem para o host na memória). O último item é o alerta ao modelo."""
+        assert self.renderizador is not None
+        if self._site_bloqueado(url):
+            self._anotar_pulada(url, "bloqueio no site")
+            return (*lida, False, None)
+        if _tem_marca_de_desafio(lida[1]):
+            self.memoria.anotar_renderizacao(
+                url, self.rodada.identificador, sozinha=True, resultado="desafio"
+            )
+            return (*lida, False, ALERTA_DE_DESAFIO)
+        self.cliente_espera_a_vez(url)
+        try:
+            url_final, html = self.renderizador(url)
+        except Exception as erro:  # noqa: BLE001 (qualquer falha devolve a página lida)
+            self._anotar_renderizacao(url, True, erro)
+            return (*lida, False, None)
+        self._anotar_renderizacao(url, True, None)
+        return url_final, html, {"Content-Type": "text/html"}, True, None
+
+    def _site_bloqueado(self, url: str) -> bool:
+        """O host já bloqueou o bot (lembrado na memória, inclusive ao renderizar) ou o robots.txt dele
+        respondeu bloqueio nesta rodada."""
+        partes = urlsplit(url)
+        return (
+            self.memoria.bloqueio_valido_no_site(partes.hostname or "") is not None
+            or f"{partes.scheme}://{partes.netloc}" in self._bloqueio_no_robots
+        )
+
+    def _anotar_pulada(self, url: str, motivo: str) -> None:
+        self.memoria.anotar_renderizacao(
+            url,
+            self.rodada.identificador,
+            sozinha=True,
+            resultado="pulada",
+            erro=motivo,
+        )
+
+    def _anotar_renderizacao(
+        self, url: str, sozinha: bool, erro: Exception | None
+    ) -> None:
+        if erro is None:
+            resultado = "ok"
+        elif isinstance(erro, BloqueioNaRenderizacao):
+            resultado = "bloqueio"
+        elif isinstance(erro, EnvioBarrado):
+            resultado = "barrado"
+        else:
+            resultado = "falhou"
+        self.memoria.anotar_renderizacao(
+            url,
+            self.rodada.identificador,
+            sozinha=sozinha,
+            resultado=resultado,
+            erro=type(erro).__name__ if erro else None,
+        )
 
     def cliente_espera_a_vez(self, url: str) -> None:
         """O renderizador não passa pelo `ClienteHttp`: o ritmo do domínio vale do mesmo jeito."""
