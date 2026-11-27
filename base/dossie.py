@@ -112,6 +112,7 @@ DERIVADAS_DO_CNPJ = frozenset(
         "identificadores",
         "ligacoes",
         "entradas_de_socio_pj",
+        "movimento_de_socios_pf",
         "participacoes_de_socio_pj",
     }
 )
@@ -183,6 +184,7 @@ def exige_prontidao_na_consulta_aberta(nome_da_tabela: str) -> bool:
 SO_PELA_API_EXTERNA = frozenset(
     {
         "entradas_de_socio_pj",
+        "movimento_de_socios_pf",
         # linha 1032: o quadro de sócios virado, só sócia PJ; em casa, nada o serve de fora ainda
         "participacoes_de_socio_pj",
         "cnpj_situacao_cadastral",

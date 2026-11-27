@@ -583,6 +583,7 @@ def tirar_raizes_de_mei(
 # As tabelas só de PJ por desenho e as colunas de raiz de cada uma: toda raiz tem de estar em `cnpj_empresas_pj`
 # da mesma saída (`conferir_raizes_so_pj`).
 RAIZES_SO_PJ: dict[str, tuple[str, ...]] = {
+    "movimento_de_socios_pf": ("cnpj_basico",),
     "entradas_de_socio_pj": (
         "cnpj_basico",
         "raiz_socio_pj",

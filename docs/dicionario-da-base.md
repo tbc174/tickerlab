@@ -3068,6 +3068,37 @@ Entradas e saídas de sócio pessoa jurídica no quadro de sócios da Receita: q
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `movimento_de_socios_pf`
+
+Contagem sem identificação: quantos sócios pessoa física entraram, saíram e estavam no fim de cada retrato mensal da Receita. Compara a presença de chaves já pseudonimizadas do QSA (tipo 2) entre meses consecutivos, só em memória; nomes, CPF e identificadores de pessoa nunca saem. Duplicatas e mudanças de qualificação ou data de entrada não são movimentos. Só há linha se havia PF no mês ou no anterior. O primeiro retrato (2023-05) tem saldo inicial: entradas e saídas zero com tem_retrato_anterior falso significam ausência de comparação, não ausência de movimentos. O mês é o da observação, não a data de um ato nem prova de aquisição; em S.A. o QSA lista administradores. Só raízes da lista vigente cnpj_estabelecimentos_pj, sem MEI, EI e grupo 4; quem deixa a lista sai da série inteira. Chave PF vazia no mês M omite a comparação inteira da empresa em M e M+1; lacuna mensal ou mudanças incompletas interrompem a montagem. Herda a regra do molde PJ para os mesmos arquivos Socios: 2024-09 é omitido e 2024-10 compara com 2024-08. A Diretoria medirá PF no ensaio antes da primeira carga; se PF não tiver o defeito, a regra sai por PR próprio. O contrato mantém historico_desde da família governo (2026-10-14); retratos anteriores foram recarregados em bloco. ADR 0088 (restrição de pessoa) e ADR 0106 (histórico do CNPJ e CC BY); a saída agrega contagens, sem identificar o sócio. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, QSA vigente e diferenças mensais (scripts/montar_movimento_socios_pf.py)
+- **Licença:** CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** CC BY: citar "Receita Federal, dados abertos do CNPJ" e o mês da extração em tudo o que sair
+- **Frequência:** Mensal (a Receita publica uma pasta AAAA-MM por mês; a carga anda um mês por vez)
+- **Atraso de divulgação:** A Receita põe a pasta do mês no ar durante o mês; a base conta como público o dia 27 (`base/receita_diff.py`, valor prudente até a medida no servidor)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj_basico`, `mes_do_retrato`
+- **Três datas:** publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/movimento_de_socios_pf/<prefixo da raiz>.parquet` (servidor de casa)
+- **Linhagem:** Derivada de cnpj_qsa, cnpj_qsa_mudancas e cnpj_estabelecimentos_pj. Manifesto com SHA-256 dos ZIPs de sócios dos meses lidos. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_basico` | Raiz da empresa (8 caracteres), somente da lista sem pessoa | texto |
+| `mes_do_retrato` | Mês observado na Receita, não data do ato societário | AAAA-MM |
+| `socios_pf_entraram` | PF presentes neste retrato e ausentes no anterior; zero no saldo inicial | número inteiro |
+| `socios_pf_sairam` | PF ausentes neste retrato e presentes no anterior; zero no saldo inicial | número inteiro |
+| `socios_pf_no_fim` | PF distintas presentes no retrato, sem duplicatas | número inteiro |
+| `tem_retrato_anterior` | Falso no primeiro retrato: movimentos não observáveis, só saldo inicial | verdadeiro ou falso |
+| `fonte` | Crédito à Receita Federal, dados abertos do CNPJ; mês em mes_do_retrato | texto |
+| `disponivel_em` | Dia 21 do retrato; a porta arredonda a publicação para o último dia do mês | data (dia) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `participacoes_de_socio_pj`
 
 O quadro de sócios da Receita visto pela sócia pessoa jurídica: de quais empresas ela é sócia no retrato do mês mais recente, e desde quando (a data de entrada que a Receita dá). Filtre por `raiz_socio_pj`. É só o quadro de hoje: quem entrou e já saiu está em `entradas_de_socio_pj`. Ser sócia não é mandar, e na S.A. o quadro lista administradores, não acionistas: acionista de S.A. não aparece. **Sem pessoa:** só sócio do tipo 1 e só raízes de `cnpj_estabelecimentos_pj`, dos dois lados (fora MEI, empresário individual e grupo 4, mesmo com CNPJ). A empresa sócia de si mesma não conta. Finalidade: conhecer a empresa com quem se faz negócio (contraparte, crédito, compliance, fornecedor, M&A), a mesma da publicação pela Receita; base legal: legítimo interesse (LGPD, art. 7º, IX), com o RIPD da base e a ADR 0106
