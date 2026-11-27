@@ -266,6 +266,10 @@ _CNPJ_DA_CARGA = (
     "dela e do portão de qualidade da API externa"
 )
 FORA_DA_PORTA: dict[str, str] = {
+    "inep_censo_escolar": (
+        "linha 1108: coleta interna; CNPJ da escola ou da mantenedora pode ser EI/MEI. "
+        "Fora de toda view até cruzar ambos com a Receita e marcar as linhas de pessoa (ADR 0075)"
+    ),
     "achados_de_qualidade": _NO_BANCO,
     "padroes_setoriais": _NO_BANCO,
     "fre_proventos": _NO_BANCO,

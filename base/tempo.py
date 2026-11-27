@@ -97,6 +97,7 @@ _POR_CANONICO: dict[str, tuple[str, ...]] = {
 
 # Onde o mesmo nome de coluna tem outro sentido: (tabela, coluna) → nome canônico.
 _POR_TABELA: dict[tuple[str, str], str] = {
+    ("inep_censo_escolar", "data_edicao"): "referencia",
     # o dia da foto: "o que se sabia neste dia"
     ("amostra_painel", "data"): "referencia",
     # o mês do retrato em que a mudança foi vista (o `datas` usa o mês como `publico_em`, no
