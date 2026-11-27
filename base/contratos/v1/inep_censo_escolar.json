@@ -9,7 +9,7 @@
       "unidade": "texto"
     },
     "ano_censo": {
-      "descricao": "Ano da edição",
+      "descricao": "Ano de referência do censo, não o ano de publicação",
       "unidade": "número inteiro"
     },
     "dependencia": {
@@ -159,16 +159,16 @@
     "coletado_em": "origem_coletada_em"
   },
   "sinonimos_de_tempo": {
-    "data_edicao": "a_conferir",
+    "data_edicao": "referencia",
     "disponivel_em": "publico_em",
     "origem_coletada_em": "coletado_em",
     "montado_em": "coletado_em"
   },
-  "historico_desde": "2022-05-25",
+  "historico_desde": "",
   "granularidade_do_publico_em": "dia",
   "licenca": "CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP",
   "revenda": "vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial",
-  "pessoa": false,
+  "pessoa": true,
   "frequencia": "Anual; coleta manual por edição",
-  "atraso": "A referência de maio não é a publicação: disponível somente desde a coleta desta versão; o INEP pode revisar edições antigas."
+  "atraso": "O ano do censo e a referência de maio não são datas de publicação: disponível somente desde a coleta desta versão. Histórico público ainda não iniciado; definir após a primeira carga. O INEP pode revisar edições antigas."
 }

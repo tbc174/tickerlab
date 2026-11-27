@@ -49,7 +49,8 @@ o leitor passa `usecols` ao pandas, em blocos de 20 mil linhas.
 Só dependência 4 (privada), com pelo menos um dos dois CNPJs válido. Cada CNPJ é
 validado separadamente: exatamente 14 dígitos ASCII e DV correto, sem completar
 zeros, limpar pontuação nem aceitar decimal. Vazio, zeros, sentinela de não
-declaração e DV inválido viram nulo; sem nenhum CNPJ válido a linha sai. Não há
+declaração, DV inválido e documento pessoal completado com zeros viram nulo;
+sem nenhum CNPJ válido a linha sai. Não há
 nome de escola, gestor, telefone, e-mail, endereço, coordenada ou dado individual.
 A situação de funcionamento é preservada, inclusive paralisada/extinta.
 
@@ -66,7 +67,19 @@ e `data_edicao` (última quarta-feira de maio). Essa é a data de referência, n
 data de publicação. `disponivel_em` é o dia em que este conteúdo foi coletado;
 não se usa o ano histórico como disponibilidade. `origem_coletada_em`,
 `origem_sha256`, `montado_em` e `versao_do_codigo` permitem identificar a carga.
-A porta usa somente Parquets vigentes; `.vN` preserva versões anteriores no acervo.
+Os Parquets vigentes e as versões `.vN` ficam no acervo interno.
+O contrato deixa `historico_desde` não informado (`""`, valor padrão do
+dicionário) até a primeira carga real; nessa ocasião, deve receber o dia da
+primeira coleta, nunca a referência de 2022.
+
+**Recorte interno até classificar EI/MEI:** CNPJ com DV válido não prova que o
+titular é uma sociedade. A escola ou a mantenedora pode ser empresário individual
+ou MEI. Como esta carga não cruza os dois documentos com a Receita, o contrato
+marca a tabela inteira como `pessoa: true`, e ela fica em `FORA_DA_PORTA` e no
+inventário `FORA_DA_CONSULTA_SEM_A_MARCA`. Não existe view consultável, nem saída
+pela consulta aberta ou pela API de organizações. `TABELAS_SO_INTERNAS` também
+impede o anúncio no catálogo do site, mesmo depois de montada. Uma carga futura deve marcar
+as linhas dos dois lados, incluindo desconhecidos, antes de habilitar a porta.
 
 O [conjunto oficial do INEP no dados.gov.br](https://dados.gov.br/dados/conjuntos-dados/microdados-publicos-do-censo-escolar-da-educacao-basica)
 tem CC BY segundo o levantamento da fonte de 27/11/2026, baseado na leitura

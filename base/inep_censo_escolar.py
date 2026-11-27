@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base.cnpj import dv_confere
+from base.cnpj import cpf_confere, dv_confere
 
 ANOS = (2022, 2023, 2024, 2025)
 FONTE = "INEP / Censo Escolar da Educação Básica"
@@ -61,6 +61,7 @@ MATRICULAS = {
 MATRICULAS_OBRIGATORIAS = tuple(c for c in MATRICULAS if not c.endswith("_INT"))
 CHAVE_ORIGINAL = ("NU_ANO_CENSO", "CO_ENTIDADE")
 CNPJ_NUMERICO = re.compile(r"[0-9]{14}\Z")
+ZEROS_DO_CPF = "000"
 MD5 = re.compile(r"^([a-fA-F0-9]{32})\s+\*?(.+?)\s*$")
 
 
@@ -128,7 +129,13 @@ def _conferir_md5(
 
 def _cnpj_estrito(valor: str) -> str | None:
     # Não completar zeros, limpar pontuação, truncar ou converter float.
-    return valor if CNPJ_NUMERICO.fullmatch(valor) and dv_confere(valor) else None
+    if not CNPJ_NUMERICO.fullmatch(valor) or not dv_confere(valor):
+        return None
+    # Mesmo tratamento conservador de recorte_dos_compradores.cnpj_de_empresa:
+    # o documento pessoal com zeros pode também satisfazer o DV do CNPJ.
+    if valor.startswith(ZEROS_DO_CPF) and cpf_confere(valor[len(ZEROS_DO_CPF) :]):
+        return None
+    return valor
 
 
 def _cadastro_privado(tabela: pd.DataFrame) -> pd.DataFrame:

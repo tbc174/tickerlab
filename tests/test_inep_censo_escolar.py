@@ -12,6 +12,7 @@ from base import cnpj
 from base import inep_censo_escolar as censo
 from base.parquet import conferir_tabela
 from scripts import carga_censo_escolar as carga
+from tests.ajudantes_de_cpf import cpf_que_tambem_passa_como_cnpj
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +23,7 @@ def _disco_de_teste(monkeypatch):
 
 
 def _cnpj(numero=1):
-    base = f"{numero:08d}0001"
+    base = f"{99_000_000 + numero:08d}0001"
     return base + cnpj.digitos_verificadores(base)
 
 
@@ -219,6 +220,7 @@ def test_carga_corrompida_nao_publica_parquet(tmp_path):
             2024, tmp_path / "base", datetime(2026, 11, 27, tzinfo=UTC), servidor
         )
     assert not list((tmp_path / "base").rglob("*.parquet"))
+    assert not list((tmp_path / "base").rglob("*.zip"))
 
 
 @pytest.mark.parametrize(
@@ -372,3 +374,68 @@ def test_comando_sem_edicao_nao_baixa(monkeypatch):
     with pytest.raises(SystemExit) as erro:
         carga.main([])
     assert erro.value.code == 2
+
+
+def test_documento_pessoal_com_zeros_e_dv_de_cnpj_nao_entra(tmp_path):
+    documento = "000" + cpf_que_tambem_passa_como_cnpj()
+    assert cnpj.dv_confere(documento)
+    linhas = [
+        _escola(2025, NU_CNPJ_ESCOLA_PRIVADA=documento, NU_CNPJ_MANTENEDORA=documento),
+        _escola(2025, "99000002", NU_CNPJ_ESCOLA_PRIVADA=documento),
+        _escola(2025, "99000003", NU_CNPJ_MANTENEDORA=documento),
+    ]
+    tabela = censo.ler_edicao(_zip(tmp_path, 2025, linhas), 2025)
+    assert len(tabela) == 2
+    assert documento not in tabela.to_csv()
+
+
+def test_sem_marca_de_ei_mei_tabela_nao_e_servida_nem_aberta():
+    from base.dicionario import TABELAS
+    from base.dossie import pode_consultar, pode_consultar_aberto, pode_mostrar
+    from base.porta.duckdb import ARQUIVOS, FORA_DA_PORTA
+    from base.prontidao import tabelas_com_pessoa_decidida
+
+    assert TABELAS[censo.TABELA].pessoa
+    assert censo.TABELA not in ARQUIVOS
+    assert censo.TABELA in FORA_DA_PORTA
+    assert not pode_consultar(censo.TABELA)
+    assert not pode_consultar_aberto(censo.TABELA)
+    assert not pode_mostrar(censo.TABELA)
+    assert censo.TABELA not in tabelas_com_pessoa_decidida()
+
+
+def test_2025_usa_url_v2_com_sublinhado_final():
+    assert (
+        censo.url_da_edicao(2025)
+        == "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2025_.zip"
+    )
+
+
+def test_catalogo_nao_promete_historico_antes_da_primeira_carga():
+    from base.dicionario import TABELAS
+    from base.tempo import sinonimos_de_tempo
+
+    tabela = TABELAS[censo.TABELA]
+    assert not tabela.historico_desde
+    assert tabela.datas["publico_em"] == "disponivel_em"
+    assert sinonimos_de_tempo(tabela, censo.TABELA)["data_edicao"] == "referencia"
+
+
+def test_censo_restrito_nao_e_anunciado_mesmo_depois_de_montado():
+    from base.contrato import catalogo
+    from base.vitrine import catalogo_publico
+
+    publico = catalogo_publico(catalogo(), montadas=frozenset({censo.TABELA}))
+    assert censo.TABELA not in publico["tabelas"]
+
+
+def test_falha_no_meio_do_download_remove_zip_parcial(tmp_path):
+    class ServidorInterrompido:
+        def baixar(self, url, destino):
+            destino.write_bytes(b"ZIP PARCIAL")
+            raise OSError("conexão interrompida")
+
+    pasta = tmp_path / "base"
+    with pytest.raises(OSError):
+        carga.carregar_edicao(2024, pasta, datetime.now(UTC), ServidorInterrompido())
+    assert not list(pasta.iterdir())

@@ -6586,11 +6586,11 @@ def _tabela_do_pncp() -> dict[str, Tabela]:
 
 TABELAS: dict[str, Tabela] = {
     "inep_censo_escolar": Tabela(
-        descricao="Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido; sem nome, contato, endereço ou dados individuais. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.",
+        descricao="Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido, sem CPF completado com zeros; sem nome, contato, endereço ou dados individuais. Pode incluir empresário individual ou MEI: sem cruzamento com a Receita para marcar ambos os CNPJs, a tabela inteira fica restrita, fora da porta e da consulta aberta. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.",
         fonte="INEP / Censo Escolar da Educação Básica",
         familia_da_fonte="inep",
         frequencia="Anual; coleta manual por edição",
-        atraso="A referência de maio não é a publicação: disponível somente desde a coleta desta versão; o INEP pode revisar edições antigas.",
+        atraso="O ano do censo e a referência de maio não são datas de publicação: disponível somente desde a coleta desta versão. Histórico público ainda não iniciado; definir após a primeira carga. O INEP pode revisar edições antigas.",
         onde="Parquet em `<acervo>/base/inep_censo_escolar/<ano>.parquet` (`scripts/carga_censo_escolar.py`)",
         linhagem="MD5 publicado dos CSVs conferido antes da leitura. URL e SHA-256 do ZIP no manifesto e SHA-256 por linha; o ZIP não é guardado pois contém colunas fora do recorte. Só o Parquet filtrado é preservado, com manifesto, commit e versões .vN quando muda. "
         + COM_VERSAO_DO_CODIGO,
@@ -6599,7 +6599,7 @@ TABELAS: dict[str, Tabela] = {
                 "Código INEP da escola, 8 dígitos; chave entre anos",
                 TEXTO,
             ),
-            "ano_censo": ("Ano da edição", NUMERO),
+            "ano_censo": ("Ano de referência do censo, não o ano de publicação", NUMERO),
             "dependencia": ("Dependência administrativa; somente 4 (privada)", NUMERO),
             "situacao_funcionamento": (
                 "1 ativa, 2 paralisada, 3 extinta no ano, 4 extinta antes; preservada",
@@ -12937,9 +12937,9 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 _CONTRATO = {
     "inep_censo_escolar": _contrato(
-        modulo="governo_e_sancoes", chaves=("co_entidade", "ano_censo"),
+        modulo="governo_e_sancoes", pessoa=True, chaves=("co_entidade", "ano_censo"),
         datas={"aconteceu_em": "data_edicao", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"},
-        historico_desde="2022-05-25",
+        historico_desde="",  # primeira carga ainda não executada; não inventar data pública
     ),
     "pncp_contratos": _contrato(modulo="governo_e_sancoes", linhas_de_pessoa="trata_como_pessoa", chaves=("numero_controle_pncp", "visto_em"), datas={"aconteceu_em": "assinado_em", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde="2026-11-26", granularidade_do_publico_em="dia"),
     # 2.0.0: a série T1 pôs a DFC, a DVA e a DRA na tabela (quem não filtra `demonstracao` muda)

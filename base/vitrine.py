@@ -82,7 +82,6 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da Finep\b", "Finep"),
     (r"empregadores do MTE", "MTE"),
     (r"do IBAMA\b", "IBAMA"),
-    (r"do INEP\b", "INEP"),
     (r"\bINPI\b", "INPI"),
     (r"\(GLEIF,", "GLEIF"),
     (r"da SUSEP\b", "SUSEP"),
@@ -237,7 +236,10 @@ def repasse_do_site(licenca: str, situacao: str) -> str:
 # Tabelas só internas de uma fonte que sai: a situação das coletas do SUS (linha 698), onde `registros`
 # por UF menos a soma publicada revelaria a célula suprimida (ADR 0081, item 4). Também fora da porta.
 # E as que só o modo dono vê (`dossie.SO_NO_MODO_DONO`).
-TABELAS_SO_INTERNAS: frozenset[str] = frozenset({"sus_competencias"}) | SO_NO_MODO_DONO
+# O Censo Escolar aguarda a marca de EI/MEI nos CNPJs de escola e mantenedora.
+TABELAS_SO_INTERNAS: frozenset[str] = (
+    frozenset({"sus_competencias", "inep_censo_escolar"}) | SO_NO_MODO_DONO
+)
 # Cópias reduzidas de tabelas que o catálogo já mostra (linha 844, `base/recorte_dos_compradores.py`): o
 # mesmo dado, mais estreito, só para a lista de compradores no VPS. O site não conta o mesmo dado duas vezes.
 COPIAS_REDUZIDAS: frozenset[str] = frozenset({"controladas_pj", "fips_registrados"})
@@ -650,7 +652,7 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
         "Licenças e registros nas agências",
         "Autorizações da Anvisa, concessões, tanques e postos de combustíveis na ANP, transportadoras, operadores multimodais e seguros de transporte na ANTT, instituições, cooperativas, correspondentes e filiais de consórcio autorizados pelo Banco Central, registros e habilitações para exportar no MAPA, "
         "os agentes do setor elétrico na ANEEL, outorgas e produtos homologados na Anatel, títulos, taxa por hectare, barragens e royalties na ANM, a inscrição no PAT do MTE, preços de remédios na CMED, "
-        "a Ancine, as operadoras da ANS, as entidades da SUSEP, as escolas privadas do INEP, os estabelecimentos de saúde do CNES e as marcas, "
+        "a Ancine, as operadoras da ANS, as entidades da SUSEP, os estabelecimentos de saúde do CNES e as marcas, "
         "patentes, desenhos e programas de computador no INPI.",
         (
             "ans_operadoras",
@@ -681,7 +683,6 @@ TEMAS_DO_CNPJ: tuple[TemaDoCnpj, ...] = (
             "cmed_precos",
             "ancine_agentes",
             "cnes_estabelecimentos",
-            "inep_censo_escolar",
             "mte_pat",
             "inpi_marcas_titulares",
             "inpi_patentes_depositantes",

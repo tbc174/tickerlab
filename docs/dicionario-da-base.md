@@ -7,17 +7,17 @@ ser revendida (não é parecer jurídico) e a linhagem até o arquivo original.
 
 ## `inep_censo_escolar`
 
-Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido; sem nome, contato, endereço ou dados individuais. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.
+Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e da mantenedora e matrículas agregadas. Só documentos numéricos de 14 dígitos com DV válido, sem CPF completado com zeros; sem nome, contato, endereço ou dados individuais. Pode incluir empresário individual ou MEI: sem cruzamento com a Receita para marcar ambos os CNPJs, a tabela inteira fica restrita, fora da porta e da consulta aberta. Os recortes de matrículas se sobrepõem: não somar ao total. Coluna ausente fica nula.
 
 - **Fonte:** INEP / Censo Escolar da Educação Básica
 - **Licença:** CC BY-ND 3.0 (rodapé do site do INEP); usar como publicado, citando o INEP
 - **Revenda:** vendável com atribuição à fonte, risco assumido pelo Tiago (ADR 0122, 05/11/2026): sem resposta escrita sobre uso comercial
 - **Frequência:** Anual; coleta manual por edição
-- **Atraso de divulgação:** A referência de maio não é a publicação: disponível somente desde a coleta desta versão; o INEP pode revisar edições antigas.
-- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
+- **Atraso de divulgação:** O ano do censo e a referência de maio não são datas de publicação: disponível somente desde a coleta desta versão. Histórico público ainda não iniciado; definir após a primeira carga. O INEP pode revisar edições antigas.
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
 - **Chaves:** `co_entidade`, `ano_censo`
 - **Três datas:** aconteceu_em = `data_edicao`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
-- **Histórico desde:** 2022-05-25 (`publico_em` por dia)
+- **Histórico desde:**  (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/inep_censo_escolar/<ano>.parquet` (`scripts/carga_censo_escolar.py`)
 - **Linhagem:** MD5 publicado dos CSVs conferido antes da leitura. URL e SHA-256 do ZIP no manifesto e SHA-256 por linha; o ZIP não é guardado pois contém colunas fora do recorte. Só o Parquet filtrado é preservado, com manifesto, commit e versões .vN quando muda. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
@@ -25,7 +25,7 @@ Escolas privadas por código INEP e edição (2022 a 2025), com CNPJ da escola e
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `co_entidade` | Código INEP da escola, 8 dígitos; chave entre anos | texto |
-| `ano_censo` | Ano da edição | número inteiro |
+| `ano_censo` | Ano de referência do censo, não o ano de publicação | número inteiro |
 | `dependencia` | Dependência administrativa; somente 4 (privada) | número inteiro |
 | `situacao_funcionamento` | 1 ativa, 2 paralisada, 3 extinta no ano, 4 extinta antes; preservada | número inteiro |
 | `cnpj_escola` | CNPJ válido da escola; nulo quando inválido, sem completar zeros | texto |
