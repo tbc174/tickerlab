@@ -56,6 +56,7 @@ from src.api_externa.conjuntos import (
     empresas,
     eventos,
     ficha,
+    grupo_da_analise,
     por_tabela,
     socios_pj,
     vinculos,
@@ -584,6 +585,7 @@ def _ler_ao_mesmo_tempo(
     dia: date,
     prazo: float,
     relogio: _Relogio,
+    parciais: dict[str, Servido] | None = None,
 ) -> tuple[dict[str, Servido | None], list[str]]:
     """Cada bloco no próprio cursor e na própria linha de execução; o que passa do prazo é interrompido. O tempo
     de cada um vai para o `relogio`, também quando um bloco quebra."""
@@ -630,6 +632,9 @@ def _ler_ao_mesmo_tempo(
     for tarefa in tarefas:
         if tarefa in terminadas and tarefa.bloco.nome not in portoes.barrados:
             lidos[tarefa.bloco.nome] = tarefa.futuro.result()  # type: ignore[union-attr]
+        elif parciais and tarefa.bloco.nome in parciais:
+            # O prazo interrompe a extensão ao grupo; a leitura já concluída da alvo continua válida.
+            lidos[tarefa.bloco.nome] = parciais[tarefa.bloco.nome]
         else:
             atrasados.append(tarefa.bloco.nome)
     return lidos, atrasados
@@ -731,9 +736,11 @@ def _montar(
     }
     if lido is None:
         return Analise({}, set(), 0, consumo, tuple(relogio.tempos))
+    parciais: dict[str, Servido] = {}
+    outros = _com_grupo(outros, cadastro, portoes, relogio.inicio + prazo, parciais)
     restante = prazo - (time.monotonic() - relogio.inicio)
     lidos, atrasados = _ler_ao_mesmo_tempo(
-        porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante, relogio
+        porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante, relogio, parciais
     )
     for bloco in outros:
         servido = lidos.get(bloco.nome)
@@ -748,6 +755,127 @@ def _montar(
         )
     montada = _Montagem(cadastro, lido, outros, lidos, atrasados, dia).analise(consumo)
     return dataclasses.replace(montada, tempos=tuple(relogio.tempos))
+
+
+def _com_grupo(
+    outros: tuple[Bloco, ...],
+    cadastro: Bloco,
+    portoes: _PortaoDividido,
+    termina_em: float,
+    parciais: dict[str, Servido],
+) -> tuple[Bloco, ...]:
+    """O grupo é lido uma vez; as conferências esperam por ele dentro do mesmo prazo."""
+    if not any(b.nome == "socios_pj" and b.ler is _socios for b in outros):
+        return outros
+    pronto: Future[Servido | None] = Future()
+    permitido_cadastro = portoes.de(cadastro)
+
+    def ler_grupo(
+        porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
+    ) -> Servido | None:
+        servido = None
+        try:
+            leitor = grupo_da_analise.LeitorDeGrupo(porta, permitido, linhas)
+            direto = leitor.socios(cnpj, dia)
+            if direto is not None:
+                parciais["socios_pj"] = _Lido(
+                    direto.corpo
+                    | {
+                        "limites": [
+                            *direto.corpo.get("limites", []),
+                            "Grupo não lido a tempo; sócios e participações diretas preservados.",
+                        ],
+                    },
+                    set(direto.fontes),
+                    direto.linhas,
+                )
+                servido = grupo_da_analise.ampliar(
+                    direto, leitor, permitido_cadastro, cnpj, dia
+                )
+            return servido
+        finally:
+            pronto.set_result(servido)  # erro ou interrupção também solta quem espera
+
+    return tuple(
+        dataclasses.replace(b, ler=ler_grupo)
+        if b.nome == "socios_pj"
+        else dataclasses.replace(
+            b, ler=_conferir_grupo(b, pronto, termina_em, parciais, portoes)
+        )
+        if b.conjunto == tabelas_por_cnpj.INTEGRIDADE
+        else b
+        for b in outros
+    )
+
+
+def _conferir_grupo(
+    bloco: Bloco,
+    pronto: Future[Servido | None],
+    termina_em: float,
+    parciais: dict[str, Servido],
+    portoes: _PortaoDividido,
+) -> LerBloco:
+    def ler(
+        porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
+    ) -> Servido | None:
+        leitor = por_tabela.LeitorPorTabela(porta, permitido, linhas)
+        direto = leitor.bloco(bloco.nome, cnpj, dia)
+        if direto is None or bloco.nome in portoes.barrados:
+            return None
+        parcial = _conferencia_direta(direto, "timed_out")
+        parciais[bloco.nome] = parcial
+        try:
+            socios = pronto.result(timeout=max(termina_em - time.monotonic(), 0))
+        except TimeoutError:
+            return parcial
+        if socios is None:
+            return _conferencia_direta(direto, "not_available")
+        grupo = socios.corpo["grupo"]
+        conferencias = []
+        fontes = set(direto.fontes)
+        total = direto.linhas
+        for empresa in grupo["empresas"]:
+            raiz = empresa["raiz_do_cnpj"]
+            lido = (
+                direto
+                if raiz == cnpj[:8]
+                else leitor.bloco_por_raiz(bloco.nome, raiz, dia)
+            )
+            if lido is None:
+                continue
+            conferencias.append({"raiz_do_cnpj": raiz, "resultado": lido.corpo})
+            fontes |= lido.fontes
+            if raiz != cnpj[:8]:
+                total += lido.linhas
+        return _Lido(
+            direto.corpo
+            | {
+                "conferencias_do_grupo": conferencias,
+                "grupo_completo": grupo["completo"],
+                "estado_conferencias_do_grupo": "ready",
+            },
+            fontes,
+            total,
+        )
+
+    return ler
+
+
+def _conferencia_direta(direto: Servido, estado: str) -> Servido:
+    motivo = "não lidas a tempo" if estado == "timed_out" else "não disponíveis"
+    return _Lido(
+        direto.corpo
+        | {
+            "conferencias_do_grupo": [],
+            "grupo_completo": False,
+            "estado_conferencias_do_grupo": estado,
+            "limites": [
+                f"Conferências do grupo: {motivo}; resultado direto da alvo preservado."
+            ],
+        },
+        set(direto.fontes),
+        direto.linhas,
+    )
 
 
 def _valor(envelope: object) -> object:
@@ -765,6 +893,8 @@ class _Marco:
     o_que: str
     bloco: str
     envelope: dict
+    raiz_do_cnpj: str | None = None
+    papel: str | None = None
 
     def item(self) -> dict:
         return {
@@ -773,6 +903,11 @@ class _Marco:
             "bloco": para_fora(self.bloco),
             "fonte": self.envelope.get("fonte"),
             "publico_em": self.envelope.get("publico_em"),
+            **(
+                {"raiz_do_cnpj": self.raiz_do_cnpj, "papel": self.papel}
+                if self.raiz_do_cnpj
+                else {}
+            ),
         }
 
 
@@ -857,6 +992,9 @@ def _marcos_do_cadastro(corpo: dict) -> Iterator[_Marco]:
 
 
 def _marcos_dos_socios(corpo: dict) -> Iterator[_Marco]:
+    if "grupo" in corpo:
+        yield from _marcos_do_grupo_pj(corpo["grupo"])
+        return
     for item in corpo.get(socios_pj.SOCIAS, []):
         nome = _texto(item.get("razao_social")) or item.get("raiz_do_cnpj")
         yield from _marco(
@@ -867,6 +1005,32 @@ def _marcos_dos_socios(corpo: dict) -> Iterator[_Marco]:
         yield from _marco(
             item.get("data_entrada"), f"Passa a ser sócia de {nome}", "socios_pj"
         )
+
+
+def _marcos_do_grupo_pj(grupo: dict) -> Iterator[_Marco]:
+    empresas = {e["raiz_do_cnpj"]: e for e in grupo["empresas"]}
+    for raiz, empresa in empresas.items():
+        if empresa["papel"].startswith("holding"):
+            nome = _texto(empresa.get("razao_social")) or raiz
+            for marco in _marco(
+                empresa.get("data_inicio_atividade"),
+                f"Abertura de {nome} ({empresa['papel']})",
+                "socios_pj",
+            ):
+                yield dataclasses.replace(
+                    marco, raiz_do_cnpj=raiz, papel=empresa["papel"]
+                )
+    for ligacao in grupo["ligacoes"]:
+        socia, participada = ligacao["socia"], ligacao["empresa_do_vinculo"]
+        raiz = participada if empresas[socia]["papel"] == "alvo" else socia
+        texto = (
+            f"Entrada de {_nome_da_ponta(empresas[socia])} ({empresas[socia]['papel']}) "
+            f"como sócia de {_nome_da_ponta(empresas[participada])} ({empresas[participada]['papel']})"
+        )
+        for marco in _marco(ligacao["data_entrada"], texto, "socios_pj"):
+            yield dataclasses.replace(
+                marco, raiz_do_cnpj=raiz, papel=empresas[raiz]["papel"]
+            )
 
 
 def _marcos_dos_vinculos(corpo: dict) -> Iterator[_Marco]:
@@ -1073,4 +1237,20 @@ def _leitura_dos_socios(servidos: dict[str, Servido], _: date) -> Iterator[dict]
         )
 
 
-LEITURAS = (_leitura_da_idade, _leitura_da_cvm, _leitura_do_grupo, _leitura_dos_socios)
+def _leitura_da_composicao_pj(servidos: dict[str, Servido], _: date) -> Iterator[dict]:
+    socios = servidos.get("socios_pj")
+    if socios is not None and "grupo" in socios.corpo:
+        yield _deducao(
+            "A composição do grupo é uma dedução: reúne a alvo, as sócias PJ ascendentes até três níveis "
+            "e as participadas diretas da alvo; não prova controle e exclui irmãs e coinvestidoras.",
+            "socios_pj",
+        )
+
+
+LEITURAS = (
+    _leitura_da_idade,
+    _leitura_da_cvm,
+    _leitura_do_grupo,
+    _leitura_dos_socios,
+    _leitura_da_composicao_pj,
+)

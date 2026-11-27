@@ -78,6 +78,36 @@ def test_sem_pessoa_na_resposta(cliente):
     assert socios_de_mentira.EMPRESARIO not in texto
 
 
+def test_grupo_e_marcos_preservam_empresa_e_papel_na_rota_com_login(
+    cliente, tmp_path, monkeypatch
+):
+    from tests import test_api_externa_analise_grupo as grupo
+
+    pasta = grupo.gravar_grupo(tmp_path / "grupo")
+    monkeypatch.setattr(
+        rotas_da_api_externa, "abrir_porta", lambda banco_: Porta(pasta, banco_)
+    )
+    resposta = _pedir(cliente)
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    quadro = next(b["corpo"] for b in dados["blocos"] if b["nome"] == "socios_pj")
+    assert any(
+        e["raiz_do_cnpj"] == grupo.ACIMA and e["papel"] == "holding nível 2"
+        for e in quadro["grupo"]["empresas"]
+    )
+    marcos = [
+        m for m in dados["linha_do_tempo"] if m.get("raiz_do_cnpj") == grupo.ACIMA
+    ]
+    assert {m["dia"] for m in marcos} >= {grupo.ABERTURAS[grupo.ACIMA], "2013-01-01"}
+    assert all(m["papel"] == "holding nível 2" for m in marcos)
+    assert not {b["nome"] for b in dados["blocos"]} & {
+        "sancoes",
+        "embargos_ambientais",
+        "lista_suja",
+    }
+    assert "estado_conferencias_do_grupo" not in resposta.text
+
+
 @pytest.mark.parametrize(
     "cnpj",
     [

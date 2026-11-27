@@ -18,6 +18,7 @@ a base cobre e os itens, cada campo no envelope com a fonte e o dia em que ficou
 - Tabela que não está na base (ou sem uma coluna que a entrada usa) responde "não achou", com a cobertura.
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
@@ -134,6 +135,7 @@ class LeitorPorTabela:
         self.porta = porta
         self.permitido = permitido
         self.linhas_maximas = max(linhas_maximas, 1)
+        self._retratos: dict[tuple[str, date], str | None] = {}
 
     def _servidos(self, entrada: TabelaPorCnpj) -> dict[str, tuple[str, ...]]:
         """Os campos liberados de cada fonte da entrada, na ordem do registro (fonte sem campo fica de fora)."""
@@ -236,6 +238,13 @@ class LeitorPorTabela:
         return (fonte, item) if item else None
 
     def _retrato(self, entrada: TabelaPorCnpj, como_era_em: date) -> str | None:
+        """O retrato é da lista inteira, lembrado só neste leitor do pedido."""
+        chave = (entrada.chave, como_era_em)
+        if chave not in self._retratos:
+            self._retratos[chave] = self._ler_retrato(entrada, como_era_em)
+        return self._retratos[chave]
+
+    def _ler_retrato(self, entrada: TabelaPorCnpj, como_era_em: date) -> str | None:
         """O dia da mudança mais nova que a base viu na lista até o dia pedido (entrada ou saída de um registro de
         empresa; a linha de pessoa não conta), em ISO; None se a tabela não está na base ou não tem a coluna."""
         if entrada.tabela not in views(self.porta.con):
@@ -286,7 +295,19 @@ class LeitorPorTabela:
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
-        cnpj = normal
+        return self._bloco(nome, normal, como_era_em)
+
+    def bloco_por_raiz(
+        self, nome: str, raiz: str, como_era_em: date
+    ) -> LidoPorTabela | None:
+        """Conferência de uma raiz PJ já validada pelo grupo; nunca serve a rota de fundo."""
+        if not re.fullmatch(r"[0-9A-Z]{8}", raiz) or any(
+            e.onde_sai == FUNDO for e in do_bloco(nome)
+        ):
+            raise ValueError("Raiz ou bloco inválido para conferência de grupo")
+        return self._bloco(nome, raiz, como_era_em)
+
+    def _bloco(self, nome: str, cnpj: str, como_era_em: date) -> LidoPorTabela | None:
         corpo: dict[str, dict] = {}
         fontes: set[str] = set()
         linhas = 0

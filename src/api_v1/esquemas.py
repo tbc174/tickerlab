@@ -1748,6 +1748,8 @@ class MarcoDaAnaliseCompletaV1(BaseModel):
     titulo_do_bloco: str
     fonte: str | None = None
     publico_em: str | None = None
+    raiz_do_cnpj: str | None = None
+    papel: str | None = None
 
 
 class LeituraDaAnaliseCompletaV1(BaseModel):

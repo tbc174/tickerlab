@@ -174,6 +174,48 @@ describe("análise completa da ficha", () => {
     expect(within(tempo).getByText("Receita Federal, dados abertos do CNPJ (CC BY)")).toBeTruthy();
   });
 
+  it("renderiza os papéis do grupo e os marcos com os campos adicionais da API", async () => {
+    const dados: AnaliseCompletaV1 = {
+      ...PRONTA,
+      blocos: PRONTA.blocos.map((bloco) =>
+        bloco.nome === "socios_pj"
+          ? {
+              ...bloco,
+              corpo: {
+                ...bloco.corpo,
+                grupo: {
+                  tipo: "inference",
+                  completo: true,
+                  empresas: [
+                    { raiz_do_cnpj: "12000005", papel: "holding nível 2", razao_social: receita("HOLDING FICTICIA ACIMA") },
+                  ],
+                },
+              },
+            }
+          : bloco,
+      ),
+      linha_do_tempo: [
+        {
+          dia: "2001-02-03",
+          o_que: "Abertura de HOLDING FICTICIA ACIMA (holding nível 2)",
+          bloco: "socios_pj",
+          titulo_do_bloco: "Grupo e sócios pessoa jurídica",
+          fonte: "rfb-cnpj",
+          publico_em: "2026-09-30",
+          raiz_do_cnpj: "12000005",
+          papel: "holding nível 2",
+        },
+      ],
+    };
+    abrir(() => respostaJson(200, dados));
+    await verAnalise();
+    const grupo = screen.getByRole("region", { name: "Grupo e sócios pessoa jurídica" });
+    expect(within(grupo).getByText(/12000005.*holding nível 2.*HOLDING FICTICIA ACIMA/)).toBeTruthy();
+    const tempo = screen.getByRole("region", { name: "Linha do tempo" });
+    expect(within(tempo).getByText("03/02/2001")).toBeTruthy();
+    expect(within(tempo).getByText("Abertura de HOLDING FICTICIA ACIMA (holding nível 2)")).toBeTruthy();
+  });
+
   it("diz o que não foi achado e o que a tela não consulta, sem dizer que não existe", async () => {
     abrir(() => respostaJson(200, PRONTA));
     await verAnalise();
