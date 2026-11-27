@@ -56,6 +56,7 @@ from src.api_externa.conjuntos import (
     empresas,
     eventos,
     ficha,
+    grupo_da_analise,
     por_tabela,
     socios_pj,
     vinculos,
@@ -732,6 +733,7 @@ def _montar(
     if lido is None:
         return Analise({}, set(), 0, consumo, tuple(relogio.tempos))
     restante = prazo - (time.monotonic() - relogio.inicio)
+    outros = _com_grupo(outros, cadastro, portoes, restante)
     lidos, atrasados = _ler_ao_mesmo_tempo(
         porta, outros, portoes, linhas_do_bloco, cnpj, dia, restante, relogio
     )
@@ -748,6 +750,85 @@ def _montar(
         )
     montada = _Montagem(cadastro, lido, outros, lidos, atrasados, dia).analise(consumo)
     return dataclasses.replace(montada, tempos=tuple(relogio.tempos))
+
+
+def _com_grupo(
+    outros: tuple[Bloco, ...], cadastro: Bloco, portoes: _PortaoDividido, prazo: float
+) -> tuple[Bloco, ...]:
+    """O grupo é lido uma vez; as conferências esperam por ele dentro do mesmo prazo."""
+    if not any(b.nome == "socios_pj" and b.ler is _socios for b in outros):
+        return outros
+    pronto: Future[Servido | None] = Future()
+    permitido_cadastro = portoes.de(cadastro)
+
+    def ler_grupo(
+        porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
+    ) -> Servido | None:
+        servido = None
+        try:
+            direto = _socios(porta, permitido, linhas, cnpj, dia)
+            if direto is not None:
+                servido = grupo_da_analise.ampliar(
+                    direto, porta, permitido, permitido_cadastro, linhas, cnpj, dia
+                )
+            return servido
+        finally:
+            pronto.set_result(servido)  # erro ou interrupção também solta quem espera
+
+    return tuple(
+        dataclasses.replace(b, ler=ler_grupo)
+        if b.nome == "socios_pj"
+        else dataclasses.replace(b, ler=_conferir_grupo(b, pronto, portoes, prazo))
+        if b.conjunto == tabelas_por_cnpj.INTEGRIDADE
+        else b
+        for b in outros
+    )
+
+
+def _conferir_grupo(
+    bloco: Bloco, pronto: Future[Servido | None], portoes: _PortaoDividido, prazo: float
+) -> LerBloco:
+    def ler(
+        porta: Porta, permitido: Permitido, linhas: int, cnpj: str, dia: date
+    ) -> Servido | None:
+        try:
+            socios = pronto.result(timeout=max(prazo, 0))
+        except TimeoutError:
+            # Inclusive se a tarefa do grupo foi cancelada antes de começar: nunca espera para sempre.
+            portoes._barrar(bloco)
+            return None
+        direto = bloco.ler(porta, permitido, linhas, cnpj, dia)
+        if direto is None or socios is None:
+            return direto
+        grupo = socios.corpo["grupo"]
+        conferencias = []
+        fontes = set(direto.fontes)
+        total = direto.linhas
+        leitor = por_tabela.LeitorPorTabela(porta, permitido, linhas)
+        for empresa in grupo["empresas"]:
+            raiz = empresa["raiz_do_cnpj"]
+            lido = (
+                direto
+                if raiz == cnpj[:8]
+                else leitor.bloco_por_raiz(bloco.nome, raiz, dia)
+            )
+            if lido is None:
+                continue
+            conferencias.append({"raiz_do_cnpj": raiz, "resultado": lido.corpo})
+            fontes |= lido.fontes
+            if raiz != cnpj[:8]:
+                total += lido.linhas
+        return _Lido(
+            direto.corpo
+            | {
+                "conferencias_do_grupo": conferencias,
+                "grupo_completo": grupo["completo"],
+            },
+            fontes,
+            total,
+        )
+
+    return ler
 
 
 def _valor(envelope: object) -> object:

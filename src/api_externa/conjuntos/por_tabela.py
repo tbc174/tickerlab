@@ -18,6 +18,7 @@ a base cobre e os itens, cada campo no envelope com a fonte e o dia em que ficou
 - Tabela que não está na base (ou sem uma coluna que a entrada usa) responde "não achou", com a cobertura.
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
@@ -50,7 +51,11 @@ class LidoPorTabela:
 
 def vazio(corpo: dict) -> bool:
     """Se nenhuma entrada do bloco achou a empresa (a análise põe o bloco em "não achado")."""
-    return not any(sub.get("achou") for sub in corpo.values() if isinstance(sub, dict))
+    direto = any(sub.get("achou") for sub in corpo.values() if isinstance(sub, dict))
+    no_grupo = any(
+        not vazio(item["resultado"]) for item in corpo.get("conferencias_do_grupo", [])
+    )
+    return not direto and not no_grupo
 
 
 def pares(entrada: TabelaPorCnpj) -> tuple[tuple[str, str], ...]:
@@ -286,7 +291,19 @@ class LeitorPorTabela:
         normal = cnpj_.normalizar_cnpj(cnpj)
         if not normal:
             raise ValueError(f"CNPJ inválido: {cnpj!r}")
-        cnpj = normal
+        return self._bloco(nome, normal, como_era_em)
+
+    def bloco_por_raiz(
+        self, nome: str, raiz: str, como_era_em: date
+    ) -> LidoPorTabela | None:
+        """Conferência de uma raiz PJ já validada pelo grupo; nunca serve a rota de fundo."""
+        if not re.fullmatch(r"[0-9A-Z]{8}", raiz) or any(
+            e.onde_sai == FUNDO for e in do_bloco(nome)
+        ):
+            raise ValueError("Raiz ou bloco inválido para conferência de grupo")
+        return self._bloco(nome, raiz, como_era_em)
+
+    def _bloco(self, nome: str, cnpj: str, como_era_em: date) -> LidoPorTabela | None:
         corpo: dict[str, dict] = {}
         fontes: set[str] = set()
         linhas = 0
