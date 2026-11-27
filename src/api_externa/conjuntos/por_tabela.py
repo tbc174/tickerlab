@@ -51,11 +51,7 @@ class LidoPorTabela:
 
 def vazio(corpo: dict) -> bool:
     """Se nenhuma entrada do bloco achou a empresa (a análise põe o bloco em "não achado")."""
-    direto = any(sub.get("achou") for sub in corpo.values() if isinstance(sub, dict))
-    no_grupo = any(
-        not vazio(item["resultado"]) for item in corpo.get("conferencias_do_grupo", [])
-    )
-    return not direto and not no_grupo
+    return not any(sub.get("achou") for sub in corpo.values() if isinstance(sub, dict))
 
 
 def pares(entrada: TabelaPorCnpj) -> tuple[tuple[str, str], ...]:
@@ -139,6 +135,7 @@ class LeitorPorTabela:
         self.porta = porta
         self.permitido = permitido
         self.linhas_maximas = max(linhas_maximas, 1)
+        self._retratos: dict[tuple[str, date], str | None] = {}
 
     def _servidos(self, entrada: TabelaPorCnpj) -> dict[str, tuple[str, ...]]:
         """Os campos liberados de cada fonte da entrada, na ordem do registro (fonte sem campo fica de fora)."""
@@ -241,6 +238,13 @@ class LeitorPorTabela:
         return (fonte, item) if item else None
 
     def _retrato(self, entrada: TabelaPorCnpj, como_era_em: date) -> str | None:
+        """O retrato é da lista inteira, lembrado só neste leitor do pedido."""
+        chave = (entrada.chave, como_era_em)
+        if chave not in self._retratos:
+            self._retratos[chave] = self._ler_retrato(entrada, como_era_em)
+        return self._retratos[chave]
+
+    def _ler_retrato(self, entrada: TabelaPorCnpj, como_era_em: date) -> str | None:
         """O dia da mudança mais nova que a base viu na lista até o dia pedido (entrada ou saída de um registro de
         empresa; a linha de pessoa não conta), em ISO; None se a tabela não está na base ou não tem a coluna."""
         if entrada.tabela not in views(self.porta.con):

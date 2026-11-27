@@ -305,6 +305,7 @@ NOMES_DE_FORA: Mapping[str, str] = {
     "empresa_do_vinculo": "company_root",
     "conferencias_do_grupo": "group_checks",
     "grupo_completo": "group_complete",
+    "estado_conferencias_do_grupo": "group_checks_status",
     "resultado": "result",
     "ativos": "assets",
     "comparaveis": "comparables",
