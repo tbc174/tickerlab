@@ -1,0 +1,44 @@
+name: Vigia externo
+
+# Fila 1150: aviso de fora do VPS, usando só as quatro rotas públicas do verificador.
+# Depois que o workflow entrar na main, rodar normalmente:
+#   gh workflow run vigia-externo.yml --ref main
+# Testar o e-mail (a execução DEVE falhar, sem consultar os serviços):
+#   gh workflow run vigia-externo.yml --ref main -f forcar_falha=true
+# Para testar outro ramo, trocar --ref main pelo ramo. O primeiro dispatch só é
+# aceito depois que o arquivo existir na branch padrão do repositório.
+# O dono precisa habilitar e-mail de falhas do Actions nas notificações do GitHub
+# e conferir o recebimento; job vermelho sozinho não prova que o e-mail chegou.
+# Notificações do schedule vão a quem alterou o cron por último. Não há envio próprio.
+# Aceite operacional: depois do deploy da rota, 24 h de execuções normais verdes
+# e uma falha forçada com e-mail recebido. O GitHub pode atrasar execuções agendadas.
+# https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+
+on:
+  schedule:
+    - cron: '17,47 * * * *' # UTC; a cada 30 min, fora do pico do início da hora
+  workflow_dispatch:
+    inputs:
+      forcar_falha:
+        description: Falhar de propósito para conferir o e-mail do GitHub
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  saude:
+    name: Saúde e frescor públicos
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      FRESCOR_MAX_HORAS: ${{ vars.FRESCOR_MAX_HORAS || '72' }}
+      FORCAR_FALHA: ${{ inputs.forcar_falha && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Conferir as quatro rotas públicas
+        run: python3 -m scripts.vigiar_saude_publica
